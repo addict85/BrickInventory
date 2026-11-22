@@ -22,9 +22,9 @@ import javax.crypto.spec.SecretKeySpec
  * a seal is taken over once; regular writes keep the seal intact.
  *
  * Counter-checks (Robolectric, local):
- *   A  checkSeal() without the comparison (always `return`) → red „an edited file to unlocked …“
- *      and „a lock switched off in the file …“
- *   B  in the tamper branch `putBoolean(LOCKED, true)` removed → red „an edited file to unlocked …“
+ *   A  checkSeal() without the comparison (always `return`) → red „an edited file to unlocked …“,
+ *      „a lock switched off in the file …“ and „a state of an older version …“
+ *   B  in the tamper branch `putBoolean(LOCKED, true)` removed → red, the same three
  *   C  the first-run branch without `!seal.exists()` → red „a state of an older version …“
  */
 @RunWith(RobolectricTestRunner::class)

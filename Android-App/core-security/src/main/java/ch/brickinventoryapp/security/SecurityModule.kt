@@ -2,6 +2,7 @@ package ch.brickinventoryapp.security
 
 import android.app.KeyguardManager
 import android.content.Context
+import ch.brickinventoryapp.model.util.LockWipe
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

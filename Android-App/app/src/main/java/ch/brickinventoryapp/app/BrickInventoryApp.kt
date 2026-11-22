@@ -33,7 +33,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import android.app.KeyguardManager
-import ch.brickinventoryapp.security.LockWipe
+import ch.brickinventoryapp.model.util.LockWipe
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {

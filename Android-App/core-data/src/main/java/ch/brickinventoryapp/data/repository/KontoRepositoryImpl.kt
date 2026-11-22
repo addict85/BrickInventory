@@ -51,6 +51,7 @@ import ch.brickinventoryapp.data.classifyRedemption
 import ch.brickinventoryapp.contract.QrAbholRequest
 import ch.brickinventoryapp.contract.QrLoginRequest
 import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.model.util.zeitpunkt
 import ch.brickinventoryapp.network.util.Protokoll
 
 /**
@@ -122,7 +123,7 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen { api.discardQr(QrVerwerfen(abholung = abholung)) }.withoutContent()
 
     override suspend fun getMe(): Ergebnis<AccountOwner?> = sicherAufrufen { api.getMe() }.shown { r ->
-        r.user?.let { AccountOwner(it.id, it.username, it.isAdmin, it.zweiterFaktorPflicht, r.tokenInfo?.hardExpiresAt) }
+        r.user?.let { AccountOwner(it.id, it.username, it.isAdmin, it.zweiterFaktorPflicht, zeitpunkt(r.tokenInfo?.hardExpiresAt)) }
     }
 
     // Create account and forgot password — both without an existing sign-in.

@@ -6,6 +6,8 @@ import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
 import ch.brickinventoryapp.data.Tokenspiegel
+import ch.brickinventoryapp.data.TokenAblage
+import java.io.IOException
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.VersionsHint
 import okhttp3.OkHttpClient
@@ -47,9 +49,9 @@ private class DevicesAccess(private val prefs: Tokenspiegel) : Zugangslage {
     override fun token(): String {
         bereit()
         val token = prefs.authTokenState.value.orEmpty()
-        if (token == ch.brickinventoryapp.data.TokenAblage.TOKEN_WIPED) {
+        if (token == TokenAblage.TOKEN_WIPED) {
             prefs.restoreAfterLock()
-            throw java.io.IOException("Gerät gesperrt")
+            throw IOException("Gerät gesperrt")
         }
         return token
     }

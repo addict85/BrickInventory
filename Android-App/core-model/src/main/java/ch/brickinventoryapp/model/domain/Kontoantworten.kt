@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.domain
 
+import java.time.Instant
+
 import ch.brickinventoryapp.model.ui.theme.Design
 
 // What the account repository delivers, in domain values: the areas read no field of the
@@ -27,7 +29,7 @@ data class AccountOwner(
     val benutzer: String,
     val verwalter: Boolean,
     val zweiterFaktorPflicht: Boolean,
-    val tokenEndsAt: String? = null,
+    val tokenEndsAt: Instant? = null,
 )
 
 /** A started QR pairing: [code] is shown by the app for comparison with the browser. */

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.security.LockWipe
+import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import kotlinx.coroutines.CoroutineScope

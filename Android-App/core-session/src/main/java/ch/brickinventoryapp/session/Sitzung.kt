@@ -14,6 +14,7 @@ import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.domain.AccountOwner
+import java.time.Instant
 
 /**
  * The app's session: server, sign-in, account settings. It is only changed
@@ -165,12 +166,10 @@ suspend fun Sitzung.adoptAccount(
 
 /**
  * Does the server's hard end of the token lie within [warnMs]? The server may set a shorter
- * maximum than the app's own 90 days; an unreadable value says nothing.
+ * maximum than the app's own 90 days; without a value (older server) it says nothing.
  */
-fun tokenEndsSoon(endsAt: String?, jetzt: Long, warnMs: Long = LOGIN_WARNING_MS): Boolean {
-    val ende = endsAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: return false
-    return ende - jetzt <= warnMs
-}
+fun tokenEndsSoon(endsAt: Instant?, jetzt: Long, warnMs: Long = LOGIN_WARNING_MS): Boolean =
+    endsAt != null && endsAt.toEpochMilli() - jetzt <= warnMs
 
 /** A week: enough to sign in again at leisure before requests start failing. */
 const val LOGIN_WARNING_MS = 7L * 24 * 60 * 60 * 1000

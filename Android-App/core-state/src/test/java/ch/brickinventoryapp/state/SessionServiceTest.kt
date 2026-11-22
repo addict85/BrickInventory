@@ -19,6 +19,8 @@ import ch.brickinventoryapp.contract.MeResponse
 import ch.brickinventoryapp.contract.StartupStatus
 import ch.brickinventoryapp.contract.User
 import ch.brickinventoryapp.contract.TokenInfo
+import ch.brickinventoryapp.session.tokenEndsSoon
+import java.time.Instant
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.Abmeldevorgang
 import ch.brickinventoryapp.session.SitzungsDienst
@@ -193,17 +195,17 @@ class SessionServiceTest {
     @Test
     fun `a server end within a week asks for a new sign-in, a later one does not`() = withVm {
         val tag = 24L * 60 * 60 * 1000
-        val bald = java.time.Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
+        val bald = Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
         fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna"),
             tokenInfo = TokenInfo(scope = "app", hardExpiresAt = bald, neverExpires = false))
         angemeldet()
         advanceUntilIdle()
         assertEquals(0, signOuts)
         assertEquals("t${R.string.vm_anmeldung_laeuft_ab}", t.meldungen.text)
-        assertTrue(ch.brickinventoryapp.session.tokenEndsSoon(bald, System.currentTimeMillis()))
-        val spaeter = java.time.Instant.ofEpochMilli(System.currentTimeMillis() + 30 * tag).toString()
-        assertFalse(ch.brickinventoryapp.session.tokenEndsSoon(spaeter, System.currentTimeMillis()))
-        assertFalse("Unlesbar sagt nichts", ch.brickinventoryapp.session.tokenEndsSoon("morgen", System.currentTimeMillis()))
+        val jetzt = System.currentTimeMillis()
+        assertTrue(tokenEndsSoon(Instant.ofEpochMilli(jetzt + 3 * tag), jetzt))
+        assertFalse(tokenEndsSoon(Instant.ofEpochMilli(jetzt + 30 * tag), jetzt))
+        assertFalse("Ohne Angabe sagt es nichts", tokenEndsSoon(null, jetzt))
     }
 
     @Test

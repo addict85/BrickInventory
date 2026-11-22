@@ -10,7 +10,7 @@ import ch.brickinventoryapp.data.cache.CacheOwner
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.Geraetesperre
-import ch.brickinventoryapp.security.LockWipe
+import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.security.Tresorbefund
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Provider
@@ -407,7 +408,7 @@ class TokenAblage @Inject constructor(
         }
     }
 
-    private val restoring = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val restoring = AtomicBoolean(false)
 
     /** Reads the token from disk again; locked, readToken waits for unlocking. */
     override fun restoreAfterLock() {

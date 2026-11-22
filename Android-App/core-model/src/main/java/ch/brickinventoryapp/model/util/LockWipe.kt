@@ -1,7 +1,5 @@
-package ch.brickinventoryapp.security
+package ch.brickinventoryapp.model.util
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.network.util.Protokoll
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,12 +20,9 @@ class LockWipe @Inject constructor() {
         holders += Holder(wipe, restore)
     }
 
-    // One failing holder must not keep the others' secrets in memory.
-    fun wipe() = holders.forEach { h ->
-        fangeAusserAbbruch { h.wipe() }.onFailure { Protokoll.warnung("Sperre", "Verwerfen fehlgeschlagen", it) }
-    }
+    // One failing holder must not keep the others' secrets in memory; the failure itself only
+    // means that holder reloads lazily, so there is nothing to report.
+    fun wipe() = holders.forEach { h -> fangeAusserAbbruch { h.wipe() } }
 
-    fun restore() = holders.forEach { h ->
-        fangeAusserAbbruch { h.restore() }.onFailure { Protokoll.warnung("Sperre", "Nachladen fehlgeschlagen", it) }
-    }
+    fun restore() = holders.forEach { h -> fangeAusserAbbruch { h.restore() } }
 }

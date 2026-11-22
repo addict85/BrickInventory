@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.security
 
+import ch.brickinventoryapp.model.util.LockWipe
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

@@ -2,6 +2,7 @@ package ch.brickinventoryapp.app
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -58,7 +59,7 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
         if (neu == null) remove(SEAL) else putString(SEAL, neu)
     }
 
-    private fun write(change: android.content.SharedPreferences.Editor.() -> Unit) {
+    private fun write(change: SharedPreferences.Editor.() -> Unit) {
         checkSeal()
         prefs.edit(commit = true, action = change)
         reseal()
