@@ -193,7 +193,7 @@ test('the inventory reconciliation reads its scope from its own choice', () => {
   const js = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
-  assert.ok(js.includes("G('pl-bestand-subs')"), 'Die Wahl „Unterkonten mit einbeziehen" wird nicht gelesen');
+  assert.ok(js.includes("G('pl-stock-subs')"), 'Die Wahl „Unterkonten mit einbeziehen" wird nicht gelesen');
   assert.ok(
     js.includes("'?accounts=own'"),
     'Ohne Haken muss `accounts=own` mitreisen — sonst zählt der Haushalt immer mit',
@@ -204,5 +204,5 @@ test('the inventory reconciliation reads its scope from its own choice', () => {
       'jeder Anmeldung auf „Alle Konten" und beantwortet hier eine Frage, die ' +
       'niemand an dieser Stelle gestellt hat.',
   );
-  assert.ok(html.includes('id="pl-bestand-subs"'), 'Die Wahl fehlt im Markup');
+  assert.ok(html.includes('id="pl-stock-subs"'), 'Die Wahl fehlt im Markup');
 });

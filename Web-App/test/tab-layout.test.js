@@ -5,10 +5,10 @@
  * a flex order or a grid can reverse the sequence.
  *
  * Counter-checks (measured 10.11.2026, each on its own):
- *   A  in styles.css #tab-gallery as a flex column with `.erfassen-leiste{order:9}`
+ *   A  in styles.css #tab-gallery as a flex column with `.capture-bar{order:9}`
  *      → red: “adding is above the filters …” (gallery) — in the markup
  *      everything would still be right
- *   B  `.filterzeile{… margin-bottom:1rem}` → red: “the filter bars keep distance …”
+ *   B  `.filter-row{… margin-bottom:1rem}` → red: “the filter bars keep distance …”
  *   C  #btn-pl-bestand moved behind #pl-setnr into the tool row → red:
  *      “the own stock …”
  */
@@ -25,9 +25,9 @@ const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css'];
 
 /** Add, filter, list per tab — as selectors on the drawn document. */
 const REITER = {
-  Galerie: ['[data-click="oeffneErfassen"][data-arg="set"]', '#gs', '#gallery'],
-  Teile: ['[data-click="oeffneErfassen"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
-  Minifiguren: ['[data-click="oeffneErfassen"][data-arg="fig"]', '#fig-search', '#manual-figs-list', '#figs-list'],
+  Galerie: ['[data-click="openCapture"][data-arg="set"]', '#gs', '#gallery'],
+  Teile: ['[data-click="openCapture"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
+  Minifiguren: ['[data-click="openCapture"][data-arg="fig"]', '#fig-search', '#manual-figs-list', '#figs-list'],
   Katalog: ['[data-tab-title="catalog"]', '#cat-search', '#catalog-grid'],
 };
 const EINMAL = [
@@ -62,13 +62,13 @@ function gemessen(t) {
   const koerper = html
     .slice(html.indexOf('<body'), html.lastIndexOf('</body>'))
     .replace(/<script[\s\S]*?<\/script>/g, '')
-    .replace(/data-stil="display:none;?/g, 'style="')
-    .replace(/data-stil="/g, 'style="')
+    .replace(/data-style="display:none;?/g, 'style="')
+    .replace(/data-style="/g, 'style="')
     .replace(/ hidden(?=[ >])/g, '')
     .replace(/<details /g, '<details open ');
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   const seite = `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
-<style>#app{display:block!important}.tab{display:block!important}#login-screen,#startgeruest{display:none!important}</style></head>
+<style>#app{display:block!important}.tab{display:block!important}#login-screen,#start-skeleton{display:none!important}</style></head>
 ${koerper.replace(/^<body[^>]*>/, '<body>')}
 <pre id="ergebnis"></pre>
 <script>
@@ -78,10 +78,10 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
   const aus = { reiter: {}, einmal: {}, leisten: [], bestand: {} };
   for (const [n, sel] of Object.entries(REITER)) aus.reiter[n] = sel.map(s => [s, oben(s)]);
   for (const id of EINMAL) aus.einmal[id] = document.querySelectorAll('#' + id).length;
-  for (const l of document.querySelectorAll('.filterzeile'))
+  for (const l of document.querySelectorAll('.filter-row'))
     aus.leisten.push(parseFloat(getComputedStyle(l).marginBottom) / parseFloat(getComputedStyle(document.documentElement).fontSize));
   const r = id => document.getElementById(id)?.getBoundingClientRect();
-  const nr = r('pl-setnr'), b = r('btn-pl-bestand'), lose = r('pl-bestand-lose');
+  const nr = r('pl-setnr'), b = r('btn-pl-stock'), lose = r('pl-stock-lose');
   aus.bestand = { setnr: nr && [nr.top, nr.bottom], knopf: b && [b.top, b.bottom], lose: lose && [lose.top, lose.bottom] };
   document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(aus) + 'ENDE';
 }));

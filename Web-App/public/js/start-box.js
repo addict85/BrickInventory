@@ -6,7 +6,7 @@ import { G } from './dom.js';
 
 /** The static startup scaffold from index.html gives way once login, app or startup progress show up. */
 export function removeStartupScaffold() {
-  G('startgeruest')?.remove();
+  G('start-skeleton')?.remove();
 }
 
 export async function waitForStartup() {
@@ -22,7 +22,7 @@ export async function waitForStartup() {
   let errorSince = 0;
   /** @type {() => void} */
   let retryNow = () => {};
-  const button = G('start-erneut');
+  const button = G('start-again');
   if (button) button.onclick = () => retryNow();
   while (true) {
     try {
@@ -107,14 +107,14 @@ export function showOffline(on, o = {}) {
   const el = G('start-offline');
   if (!el) return;
   if (on) {
-    G('start-offline-titel').textContent = o.title || tRaw('startup.offline_titel');
+    G('start-offline-title').textContent = o.title || tRaw('startup.offline_title');
     G('start-offline-text').textContent = o.text || tRaw('startup.offline_text');
   }
   if (el.hidden === on) el.hidden = !on;
 }
 
 /** The session check, with Retry-After: api() does not pass the response headers through.
- * @returns {Promise<{ d: import('../../frontend-types/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
+ * @returns {Promise<{ d: import('../../frontend-types/api').ApiResponse<'GET', '/v1/auth/me'>, waitSec: number }>} */
 export async function checkSession() {
   try {
     const r = await apiRaw('GET', '/v1/auth/me', { cache: 'no-store' });
@@ -147,17 +147,17 @@ export function sessionUnresolved(d, waitSec, retry) {
   const throttled = d.status === 429;
   const render = () =>
     showOffline(true, {
-      title: tRaw(throttled ? 'startup.gedrosselt_titel' : 'startup.sitzung_offen'),
+      title: tRaw(throttled ? 'startup.throttled_title' : 'startup.session_open'),
       text: throttled
-        ? tRaw('startup.gedrosselt_text', { sek: remaining })
-        : `${reason}${/[.!?]$/.test(reason) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: remaining })}`,
+        ? tRaw('startup.throttled_text', { sek: remaining })
+        : `${reason}${/[.!?]$/.test(reason) ? '' : '.'} ${tRaw('startup.next_attempt', { sek: remaining })}`,
     });
   const retryAgain = () => {
     clearInterval(_sessionTimer);
     retry();
   };
   render();
-  G('start-erneut').onclick = retryAgain;
+  G('start-again').onclick = retryAgain;
   _sessionTimer = setInterval(() => {
     if (--remaining <= 0) retryAgain();
     else render();

@@ -44,7 +44,7 @@ test('no more inline handlers anywhere — neither in index.html nor in the temp
 });
 
 test('no style attribute and no <style> in the markup — except the start skeleton, which the CSP allows by hash', () => {
-  // Counter-check: a data-stil in index.html back as style= → red.
+  // Counter-check: a data-style in index.html back as style= → red.
   const strip = t =>
     require('./helpers/sources')
       .withoutHtmlComments(t)
@@ -59,9 +59,9 @@ test('no style attribute and no <style> in the markup — except the start skele
   ]) {
     for (const m of strip(src).matchAll(/(?<![-\w])style=\\?["']|<style[\s>]/g)) found.push(`${name}: ${m[0]}`);
     // A value with ${…} is not on the allow list and would have no effect;
-    // only the building blocks pass on the stil parameter of their caller.
-    for (const m of src.matchAll(/data-stil="([^"]*\$\{[^"]*)"/g))
-      if (!/^\$\{(esc\()?o\.(stil|rowsStyle|valueStyle)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
+    // only the building blocks pass on the style parameter of their caller.
+    for (const m of src.matchAll(/data-style="([^"]*\$\{[^"]*)"/g))
+      if (!/^\$\{(esc\()?o\.(style|rowsStyle|valueStyle)\)?\}$/.test(m[1])) found.push(`${name}: data-style="${m[1]}"`);
   }
   assert.deepEqual(found, []);
 });
@@ -151,13 +151,13 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   // via the detail dialog. A title tells the mouse what it does.
   assert.match(
     gallery,
-    /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
+    /<span class="delbtn" data-click="delSetStop"(?:\$\{genuine\(\)\})? aria-hidden="true"[^>]*title=/,
     'Set-Kachel: Papierkorb nicht verborgen',
   );
   const figs = fs.readFileSync(path.join(PUB, 'js', 'minifigs.js'), 'utf8');
   assert.match(
     figs,
-    /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
+    /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{genuine\(\)\})? aria-hidden="true"[^>]*title=/,
     'Minifiguren-Kachel: Papierkorb nicht verborgen',
   );
 
@@ -177,11 +177,11 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   // The hover applies to set AND manual tiles, and without a pointing device
   // the button stays visible — otherwise deleting by touch would not be reachable.
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  // .mk-zeile has been in it since 24.09.: the wishlist row carries
+  // .mk-row has been in it since 24.09.: the wishlist row carries
   // the same trash at the top right and needs the same fade-in.
   assert.match(
     css,
-    /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-zeile:hover \.ca\{opacity:1\}/,
+    /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-row:hover \.ca\{opacity:1\}/,
     'Manuelle Kacheln oder die Merklisten-Zeile zeigen den Löschknopf nicht beim Überfahren',
   );
   assert.match(

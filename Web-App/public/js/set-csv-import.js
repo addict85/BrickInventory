@@ -1,7 +1,7 @@
 import { emit } from './events.js';
 import { registerActions } from './registry.js';
 import { LANG, t, tRaw } from '../i18n.js';
-import { errorMessage, api, apiData, strom } from './api.js';
+import { errorMessage, api, apiData, stream } from './api.js';
 import { G } from './dom.js';
 import { fmtPct } from './format.js';
 import { toast } from './messages.js';
@@ -44,13 +44,13 @@ async function startSetCsvImport() {
   if (
     (preflight.vorhanden ?? 0) > 0 &&
     !(await confirmDelete(
-      tRaw('csv.vorhanden_titel'),
-      tRaw('csv.vorhanden_text', {
+      tRaw('csv.present_title'),
+      tRaw('csv.present_text', {
         n: preflight.vorhanden ?? 0,
-        nummern: (preflight.vorhanden_nummern || []).slice(0, 5).join(', '),
+        numbers: (preflight.vorhanden_nummern || []).slice(0, 5).join(', '),
       }),
       'import',
-      { knopf: 'csv.vorhanden_knopf', art: 'bp' },
+      { button: 'csv.present_button', art: 'bp' },
     ))
   ) {
     fi.value = '';
@@ -70,7 +70,7 @@ async function startSetCsvImport() {
     // gets 498 imported should find out.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent = tRaw('csv.items_progress', { done: 0, total });
-    G('prog-set-name').textContent = tRaw('csv.wartet');
+    G('prog-set-name').textContent = tRaw('csv.waiting');
 
     setCsvPollActive(true);
     gibStart(); // show the global bar (this window and others)
@@ -91,10 +91,10 @@ async function startSetCsvImport() {
           }
         };
 
-        const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
-          ereignis: state => {
+        const s = stream(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
+          event: state => {
             if (csvApplyOverlayStatus(state, ctx, fi)) {
-              s?.schliesse();
+              s?.close();
               finish();
             }
           },
@@ -114,7 +114,7 @@ async function startSetCsvImport() {
 
 // Processes a CSV status object for the starting window's overlay. Returns true once the import is done.
 /**
- * @param {import('./progress.js').ImportStand} s
+ * @param {import('./progress.js').ImportStatus} s
  * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
  * @param {HTMLInputElement | null} fi
  */
@@ -128,9 +128,9 @@ function csvApplyOverlayStatus(s, ctx, fi) {
     setProgBar(pct);
     G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
     G('prog-set-name').textContent = s.current
-      ? tRaw('csv.verarbeite', { set: s.current, done, total })
+      ? tRaw('csv.processing', { set: s.current, done, total })
       : done === 0 && s.status === 'running'
-        ? tRaw('csv.wartet')
+        ? tRaw('csv.waiting')
         : '';
     // Update the progress bar in the header directly
     {
@@ -139,7 +139,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       if (_b) {
         _b.style.display = 'flex';
         G('gib-fill').style.width = _p + '%';
-        G('gib-text').textContent = done + '/' + total + ' (' + fmtPct(_p, { sign: false, stellen: 0 }) + ')';
+        G('gib-text').textContent = done + '/' + total + ' (' + fmtPct(_p, { sign: false, places: 0 }) + ')';
       }
     }
     // Show live results as they come in
@@ -178,10 +178,10 @@ function csvApplyOverlayStatus(s, ctx, fi) {
         console.warn('[CSV Import] Fehler: ' + errorList);
       }
       const counter = importCounter(s, 'csv.warnings_n');
-      G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${counter}`;
+      G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${counter}`;
       showImportCompletion();
-      emit('sammlungLaden');
-      toast(tRaw('csv.import_meldung', { ergebnis: counter }), s.err ? 'error' : s.warn ? 'info' : 'success');
+      emit('collectionLoad');
+      toast(tRaw('csv.import_message', { result: counter }), s.err ? 'error' : s.warn ? 'info' : 'success');
       if (fi) fi.value = '';
     }
     return true;
@@ -202,7 +202,7 @@ async function csvPollLoop(ctx, fi) {
       // apiData instead of api: api() would overwrite the `status` field with the HTTP status, and the
       // loop would never end.
       const s = await apiData('GET', '/v1/sets/import/csv/status');
-      if (s && csvApplyOverlayStatus(/** @type {import('./progress.js').ImportStand} */ (s), ctx, fi)) break;
+      if (s && csvApplyOverlayStatus(/** @type {import('./progress.js').ImportStatus} */ (s), ctx, fi)) break;
     } catch (e) {
       console.warn('Poll error:', e);
     }

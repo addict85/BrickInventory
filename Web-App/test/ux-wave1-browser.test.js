@@ -10,7 +10,7 @@
  *   42 no browser alert()
  *
  * Counter-checks (22.11.2026, each alone, bundle rebuilt):
- *   A  .ii-weg back to min 14 px and color var(--s400) → red: “instructions” (tap target, contrast)
+ *   A  .ii-remove back to min 14 px and color var(--s400) → red: “instructions” (tap target, contrast)
  *   B  badge without its text span → red: “instructions” (kind only as colour)
  *   C  noppe.css back to .modal-content → red: “themes style the dialogs” (noppe border)
  *   D  index.html placeholder back to „Klicke auf «Preise laden»“ → red: “finance placeholder”
@@ -75,12 +75,12 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
   }
   const { b, bis, ruhig } = app;
   // Without a Rebrickable key the setup wizard opens after startup (if it does, within two seconds).
-  await bis(`!!document.querySelector('#einrichtung-modal.open')`, 'Einrichtung', 20).catch(() => {});
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+  await bis(`!!document.querySelector('#setup-modal.open')`, 'Setup', 20).catch(() => {});
+  await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
   await ruhig();
   const zu = () =>
     b.auswerten(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-dialog-zu]')?.click());
+      document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-dialog-close]')?.click());
       document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); return true; })()`);
   const oeffneSet = async () => {
     await b.auswerten(klick(`#gallery .sc[data-arg="${SN}"]`));
@@ -103,11 +103,11 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       const m = await b.auswerten(`(() => {
         const rows = [...document.querySelectorAll('#m-instr .ii')];
         const box = e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; };
-        return { arten: rows.map(r => r.querySelector('.ii-art')?.textContent.trim()),
+        return { arten: rows.map(r => r.querySelector('.ii-kind')?.textContent.trim()),
           links: rows.map(r => box(r.querySelector('a'))[1]),
-          weg: [...document.querySelectorAll('#m-instr .ii-weg')].map(box),
-          weg_name: document.querySelector('#m-instr .ii-weg')?.getAttribute('aria-label'),
-          extern: document.querySelector('#m-instr a[target=_blank] .neuer-tab .vh')?.textContent };
+          weg: [...document.querySelectorAll('#m-instr .ii-remove')].map(box),
+          weg_name: document.querySelector('#m-instr .ii-remove')?.getAttribute('aria-label'),
+          extern: document.querySelector('#m-instr a[target=_blank] .new-tab .vh')?.textContent };
       })()`);
       assert.deepEqual(m.arten, ['Extern', 'Lokal', 'Manuell'], 'Art nur als Farbe oder Symbol');
       assert.ok(
@@ -119,16 +119,16 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       assert.equal(m.weg_name, 'Anleitung löschen');
       assert.equal(m.extern, '(öffnet in neuem Tab)');
       for (const dunkel of [false, true]) {
-        await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
+        await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
         await ruhig();
-        const k = await b.auswerten(CONTRAST('#m-instr .ii-weg'));
-        assert.ok(k >= 4.5, `${breite} px ${dunkel ? 'dunkel' : 'hell'}: Löschknopf ${k.toFixed(2)}:1`);
+        const k = await b.auswerten(CONTRAST('#m-instr .ii-remove'));
+        assert.ok(k >= 4.5, `${breite} px ${dunkel ? 'dark' : 'hell'}: Löschknopf ${k.toFixed(2)}:1`);
         const funde = [...(await b.auswerten(LAYOUT(mobil))), ...(await b.auswerten(AXE_LAUF))].filter(f =>
-          /\.ii|m-instr|neuer-tab/.test(f),
+          /\.ii|m-instr|new-tab/.test(f),
         );
-        assert.deepEqual(funde, [], `${breite} px ${dunkel ? 'dunkel' : 'hell'}`);
+        assert.deepEqual(funde, [], `${breite} px ${dunkel ? 'dark' : 'hell'}`);
       }
-      await b.auswerten(`document.documentElement.removeAttribute('data-dunkel'); true`);
+      await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
       await zu();
       await ruhig();
     }
@@ -140,7 +140,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     });
     // Static links into a new tab carry the same hint.
     const statisch = await b.auswerten(
-      `[...document.querySelectorAll('a[target=_blank]')].filter(a => !a.querySelector('.neuer-tab .vh')?.textContent).map(a => a.href)`,
+      `[...document.querySelectorAll('a[target=_blank]')].filter(a => !a.querySelector('.new-tab .vh')?.textContent).map(a => a.href)`,
     );
     assert.deepEqual(statisch, []);
   });
@@ -169,7 +169,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     const text = await b.auswerten(`document.querySelector('#fin-tbl .empty p')?.textContent ?? 'geladen'`);
     // Either the tab already loaded (then no placeholder), or the placeholder says what happens.
     assert.doesNotMatch(text, /Preise laden/);
-    if (text !== 'geladen') assert.equal(text, 'Die Preise werden geladen, sobald dieser Reiter offen ist.');
+    if (text !== 'loaded') assert.equal(text, 'Die Preise werden geladen, sobald dieser Reiter offen ist.');
   });
 
   await t.test('delete rule: restorable at once with undo, irreversible with a question', async () => {
@@ -183,8 +183,8 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       'flex',
       'Rückfrage vor Wiederherstellbarem',
     );
-    await bis(`!!document.querySelector('#toasts .toast-aktion')`, 'Rückgängig im Toast');
-    await b.auswerten(klick('#toasts .toast-aktion'));
+    await bis(`!!document.querySelector('#toasts .toast-action')`, 'Rückgängig im Toast');
+    await b.auswerten(klick('#toasts .toast-action'));
     await bis(`!!document.querySelector('.man-tile[data-arg="part"][data-arg2="3001"]')`, 'Teil zurück');
     // A purchase is gone for good: that asks.
     await b.auswerten(klick('.ntab[data-tab="gallery"]'));
@@ -222,10 +222,10 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     await bis(`!!document.querySelector('#toasts .toast.error')`, 'Fehlermeldung');
     const text = await b.auswerten(`document.querySelector('#toasts .toast.error .toast-text').textContent`);
     await bis(
-      `document.getElementById('ansage-fehler').textContent === ${JSON.stringify(text)}`,
+      `document.getElementById('announcement-error').textContent === ${JSON.stringify(text)}`,
       'Fehler im Alarmbereich',
     );
-    assert.notEqual(await b.auswerten(`document.getElementById('ansage-status').textContent`), text);
+    assert.notEqual(await b.auswerten(`document.getElementById('announcement-status').textContent`), text);
     assert.equal(await b.auswerten(`document.getElementById('toasts').closest('[aria-live]')`), null);
     await zu();
   });
@@ -272,7 +272,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
 
   await t.test('every page head: title and subtitle', async () => {
     const ohne = await b.auswerten(`[...document.querySelectorAll('#app .tab')].filter(t => {
-      const ph = t.querySelector(':scope > .ph'); return !ph?.querySelector('h1.ptitle') || !ph.querySelector('.ptitle-unter')?.textContent.trim();
+      const ph = t.querySelector(':scope > .ph'); return !ph?.querySelector('h1.ptitle') || !ph.querySelector('.ptitle-sub')?.textContent.trim();
     }).map(t => t.id)`);
     assert.deepEqual(ohne, []);
   });

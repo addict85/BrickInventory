@@ -26,7 +26,7 @@ const SCRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const dom = new JSDOM(
-    `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge","log.stufe.error":"Fehler","log.mehr_zeilen":"{n} weitere Zeilen"}'>
+    `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge","log.level.error":"Error","log.more_rows":"{n} weitere Zeilen"}'>
     <select id="period" data-change="loadLogs"><option value="15">15</option></select>
     <button id="btn-info" data-click="toggleLevel" data-arg="info"></button>
     <button id="btn-warn" class="active" data-click="toggleLevel" data-arg="warn"></button>
@@ -113,7 +113,7 @@ test('level translated, stack trace collapsed, the search expands it', async () 
   try {
     await takt(10);
     const stapel = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));
-    assert.equal(stapel.querySelector('.lv').textContent, 'Fehler');
+    assert.equal(stapel.querySelector('.lv').textContent, 'Error');
     const auf = stapel.querySelector('details');
     assert.ok(auf && !auf.open, 'Stacktrace nicht eingeklappt');
     assert.match(auf.querySelector('summary').textContent, /^Abbruch \(2 weitere Zeilen\)$/);

@@ -1,12 +1,12 @@
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum } from './format.js';
+import { ico, G, setHtml } from './dom.js';
+import { fmtDate } from './format.js';
 import { toast } from './messages.js';
 import { loggedInAccount } from './state.js';
 import { html } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor, fetchSetPasskey } from './confirm-prompt.js';
+import { confirmDeleteWithPassword, withSecondFactor, fetchSetPasskey } from './confirm-prompt.js';
 
 // ═══ Passkeys (server: src/factors/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // No third-party script: the server sends the options as JSON (Base64URL), the browser needs an
@@ -88,7 +88,7 @@ async function getAssertion(purpose) {
       })
     );
   } catch {
-    toast(tRaw('pk.abgebrochen'), 'info');
+    toast(tRaw('pk.cancelled'), 'info');
     return null;
   }
   const r = /** @type {AuthenticatorAssertionResponse} */ (c.response);
@@ -109,8 +109,8 @@ async function getAssertion(purpose) {
 // ── Login page ─────────────────────────────────────────────────────────────
 
 /** No password: the browser offers this site's passkeys. */
-export async function passkeyAnmelden() {
-  const answer = await getAssertion('anmelden');
+export async function passkeyLogin() {
+  const answer = await getAssertion('login');
   if (!answer) return;
   const d = await api('POST', '/v1/auth/passkey/anmelden', { antwort: answer });
   if (!d?.success) {
@@ -124,7 +124,7 @@ export async function passkeyAnmelden() {
 }
 
 /** Second factor: passkey instead of a code, together with the name and password entered above. */
-export async function passkeyZweiterFaktor() {
+export async function passkeySecondFactor() {
   const passkey = await getAssertion('zweiter_faktor');
   if (!passkey) return;
   const d = await api('POST', '/v1/auth/login', {
@@ -146,47 +146,47 @@ export async function passkeyZweiterFaktor() {
  * @param {{ keks_fehlt?: boolean }} d */
 function cookieMissing(d) {
   if (!d.keks_fehlt) return false;
-  const h = G('login-hinweis');
-  h.textContent = tRaw('auth.cookie_fehlt');
+  const h = G('login-hint');
+  h.textContent = tRaw('auth.cookie_missing');
   h.hidden = false;
   return true;
 }
 
 // ── Account ────────────────────────────────────────────────────────────────────
 
-const area = () => G('pk-flaeche');
+const area = () => G('pk-surface');
 
-export async function ladePasskeys() {
+export async function loadPasskeys() {
   const f = area();
   if (!f) return;
-  const [d, zf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
+  const [d, sf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
   if (!d?.success || !Array.isArray(d.passkeys)) {
-    setzeHtml(f, html`<div class="voucher-leer">${tRaw('settings.error')}</div>`);
+    setHtml(f, html`<div class="voucher-empty">${tRaw('settings.error')}</div>`);
     return;
   }
   const list = d.passkeys.length
     ? html`<div class="tw"><table class="dt" aria-label="${tRaw('pk.title')}"><thead><tr><th>${tRaw('pk.col.name')}</th><th>${tRaw('tokens.col.created')}</th>
         <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.passkeys.map(
           p => html`<tr><td><strong>${p.name || '—'}</strong></td>
-          <td>${fmtDatum(p.created_at, 'tagzeit')}</td>
-          <td>${p.last_used ? fmtDatum(p.last_used, 'tagzeit') : '—'}</td>
-          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${p.id}" data-arg2="${p.name || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button></td></tr>`,
+          <td>${fmtDate(p.created_at, 'datetime')}</td>
+          <td>${p.last_used ? fmtDate(p.last_used, 'datetime') : '—'}</td>
+          <td><button class="btn bd btn-sm" data-click="deletePasskey"${genuine()} data-arg="${p.id}" data-arg2="${p.name || ''}" aria-label="${tRaw('common.delete')}">${ico('delete')}</button></td></tr>`,
         )}</tbody></table></div>`
-    : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
+    : html`<p class="hint-paragraph">${tRaw('pk.none')}</p>`;
   const addForm = !d.verfuegbar
-    ? html`<p class="text-klein hinweis-warnung">${tRaw(loggedInAccount?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
+    ? html`<p class="text-small hint-warning">${tRaw(loggedInAccount?.isAdmin ? 'pk.without_domain_admin' : 'pk.without_domain')}</p>`
     : !passkeysPossible()
-      ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
-      : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
+      ? html`<p class="text-small hint-warning">${tRaw('pk.browser')}</p>`
+      : html`<form class="sform space-top-075" data-submit="pk-new" data-style="max-width:420px">
         <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
         <div class="fg"><label for="pk-pw">${tRaw('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
-        ${zf?.aktiv ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
-        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${tRaw('pk.add')}</button></div>
+        ${sf?.aktiv ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
+        <div><button type="button" class="btn bp btn-sm" id="pk-new" data-click="addPasskey"${genuine()}>${tRaw('pk.add')}</button></div>
       </form>`;
-  setzeHtml(f, html`${list}${addForm}`);
+  setHtml(f, html`${list}${addForm}`);
 }
 
-export async function passkeyHinzufuegen() {
+export async function addPasskey() {
   // With a second factor active, the server also demands the code.
   const o = await api('POST', '/v1/auth/passkey/registrieren/optionen', {
     password: G('pk-pw')?.value || '',
@@ -203,7 +203,7 @@ export async function passkeyHinzufuegen() {
       /** @type {OptionsJson & { user: { id: string, name: string, displayName: string } }} */ (o.optionen),
     );
   } catch {
-    toast(tRaw('pk.abgebrochen'), 'info');
+    toast(tRaw('pk.cancelled'), 'info');
     return;
   }
   const d = await api('POST', '/v1/auth/passkey/registrieren', { antwort: answer, name: G('pk-name')?.value || '' });
@@ -212,16 +212,16 @@ export async function passkeyHinzufuegen() {
     return;
   }
   toast(tRaw('pk.added'), 'success');
-  ladePasskeys();
+  loadPasskeys();
 }
 
 /** @param {string} id @param {string} name */
-export async function passkeyLoeschen(id, name) {
-  const password = await bestaetigeMitPasswort(
+export async function deletePasskey(id, name) {
+  const password = await confirmDeleteWithPassword(
     tRaw('pk.delete_title'),
     tRaw('pk.delete_text', { name: name || '—' }),
-    'schluessel',
-    { knopf: 'confirm.btn.entfernen', art: 'bd' },
+    'key',
+    { button: 'confirm.btn.remove', art: 'bd' },
   );
   if (password === null) return;
   const d = await withSecondFactor(z =>
@@ -233,7 +233,7 @@ export async function passkeyLoeschen(id, name) {
     return;
   }
   toast(tRaw('pk.deleted'), 'success');
-  ladePasskeys();
+  loadPasskeys();
 }
 
 // The button on the login page only shows up where the browser can do passkeys.
@@ -244,4 +244,4 @@ export async function passkeyLoeschen(id, name) {
 }
 
 // Names below are registry-exposed (index.html/connection.js) — kept unchanged.
-registerActions({ passkeyAnmelden, passkeyZweiterFaktor, ladePasskeys, passkeyHinzufuegen, passkeyLoeschen });
+registerActions({ passkeyLogin, passkeySecondFactor, loadPasskeys, addPasskey, deletePasskey });

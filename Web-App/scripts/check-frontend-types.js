@@ -3,7 +3,7 @@
 
 /**
  * Type check of the UI: tsc over tsconfig.frontend.json (ES modules) and
- * tsconfig.frontend-skripte.json (the two classic scripts). Both must
+ * tsconfig.frontend-scripts.json (the two classic scripts). Both must
  * have 0 messages. `--json` outputs the messages per run machine-readably
  * (for test/browser-names.test.js).
  *
@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
-const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json'];
+const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-scripts.json'];
 
 /** @param {string} config @param {string[]} [extra] @returns {string[]} the messages */
 function pruefe(config, extra = []) {

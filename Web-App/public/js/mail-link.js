@@ -8,21 +8,21 @@ import { formError } from './form.js';
 // (src/account/loginLimiter.ts). Only the button acts (POST): a mail provider's link scanner would
 // otherwise cancel or release it by itself.
 
-/** @type {{ token: string, kind: 'abbrechen' | 'freigeben' } | null} */
+/** @type {{ token: string, kind: 'cancel' | 'release' } | null} */
 let open = null;
 // Spelled out, so the dictionary check finds every key as a call.
 const TEXTS = {
-  abbrechen: () => ({
-    titel: tRaw('maillink.abbrechen.title'),
-    text: tRaw('maillink.abbrechen.text'),
-    knopf: tRaw('maillink.abbrechen.button'),
-    ok: tRaw('maillink.abbrechen.ok'),
+  cancel: () => ({
+    title: tRaw('maillink.cancel.title'),
+    text: tRaw('maillink.cancel.text'),
+    button: tRaw('maillink.cancel.button'),
+    ok: tRaw('maillink.cancel.ok'),
   }),
-  freigeben: () => ({
-    titel: tRaw('maillink.freigeben.title'),
-    text: tRaw('maillink.freigeben.text'),
-    knopf: tRaw('maillink.freigeben.button'),
-    ok: tRaw('maillink.freigeben.ok'),
+  release: () => ({
+    title: tRaw('maillink.release.title'),
+    text: tRaw('maillink.release.text'),
+    button: tRaw('maillink.release.button'),
+    ok: tRaw('maillink.release.ok'),
   }),
 };
 
@@ -32,13 +32,13 @@ const TEXTS = {
  * @returns {boolean}
  */
 export function acceptMailLink(token, path) {
-  const kind = path === '/uebernahme-abbrechen' ? 'abbrechen' : path === '/anmeldung-freigeben' ? 'freigeben' : null;
+  const kind = path === '/uebernahme-abbrechen' ? 'cancel' : path === '/anmeldung-freigeben' ? 'release' : null;
   if (!kind) return false;
   open = { token, kind };
   const t = TEXTS[kind]();
-  G('maillink-titel').textContent = t.titel;
+  G('maillink-title').textContent = t.title;
   G('maillink-text').textContent = t.text;
-  G('btn-maillink').textContent = t.knopf;
+  G('btn-maillink').textContent = t.button;
   return true;
 }
 
@@ -52,7 +52,7 @@ G('btn-maillink')?.addEventListener('click', async () => {
   btn.disabled = true;
   const body = { token: open.token };
   const d =
-    open.kind === 'abbrechen'
+    open.kind === 'cancel'
       ? await api('POST', '/v1/auth/uebernahme-abbrechen', body)
       : await api('POST', '/v1/auth/anmeldung-freigeben', body);
   btn.disabled = false;

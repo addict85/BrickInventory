@@ -4,7 +4,7 @@
  * type check found the error: selectedOwner() was called without a field identifier
  * and always delivered „no account“.
  *
- * Counter-check (measured 05.11.2026, bundle rebuilt): in importMerklisteCsv
+ * Counter-check (measured 05.11.2026, bundle rebuilt): in importWantedCsv
  * again `selectedOwner()` without an identifier → red: „Zielkonto im Upload“
  * (owner_user_id was missing in the form).
  */

@@ -6,8 +6,8 @@
  *
  * Counter-checks (measured 04.11.2026, each on its own):
  *   A  container query „setdialog“ in mobile.css again @media (max-width: 18em)
- *      → red: „Set-Detail“ (cut off (frame): .wk-label, .wk-wert …)
+ *      → red: „Set-Detail“ (cut off (frame): .wk-label, .wk-value …)
  *   B  referenceLine() without wrapping (one line, right-aligned) → red: „Finanzen“
  *      (cut off (chart): „Kaufpreis (nur bewertete …“)
  */
-require('./helpers/ui-check').checkLargeFont('seite', 390);
+require('./helpers/ui-check').checkLargeFont('page', 390);

@@ -53,19 +53,19 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
     assert.ok(await warte(() => d.querySelector('.pl-have-input'), 3000), 'keine Bauliste');
     const feld = () => d.querySelector('.pl-have-input').value;
 
-    d.getElementById('btn-pl-bestand').click();
+    d.getElementById('btn-pl-stock').click();
     assert.ok(await warte(() => anfragen.length === 1 && feld() === '5'), `alles: ${feld()}`);
     // With the BrickLink number the server would find nothing — and “not found” looks like “don't have it”.
     assert.deepEqual(anfragen[0].teile, [{ part_number: '3001', color_id: 4 }]);
     assert.match(anfragen[0].url, /\/api\/v1\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
     assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Statustext ohne Übersetzung');
 
-    const lose = d.getElementById('pl-bestand-lose');
+    const lose = d.getElementById('pl-stock-lose');
     lose.checked = true;
     lose.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => anfragen.length === 2 && feld() === '2'), `nur lose: ${feld()}`);
 
-    const subs = d.getElementById('pl-bestand-subs');
+    const subs = d.getElementById('pl-stock-subs');
     subs.checked = true;
     subs.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => anfragen.length === 3), 'mit Unterkonten nicht neu gefragt');

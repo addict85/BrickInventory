@@ -225,7 +225,7 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  path → response (object or function(url))
- * @param {{ angemeldet?: boolean, sprache?: string, browserLanguage?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ * @param {{ loggedIn?: boolean, sprache?: string, browserLanguage?: string, before?: (w: any) => void, url?: string }} [opt]
  *   url: address of the page (default http://localhost/), e.g. https:// for a page with TLS.
  */
 async function openUi(antworten = {}, opt = {}) {

@@ -63,12 +63,12 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
   });
   await t.test('the purchase price list explains ≈', async () => {
     await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'geschätzte Zeile');
-    const legende = await b.auswerten(`document.querySelector('#m-acq-summary .acq-legende')?.textContent || ''`);
+    const legende = await b.auswerten(`document.querySelector('#m-acq-summary .acq-legend')?.textContent || ''`);
     assert.match(legende, /≈ geschätzt/);
   });
   await t.test('change opens the purchase prices', async () => {
     const da = await b.auswerten(
-      `(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
+      `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
     );
     assert.ok(da, 'Knopf „Ändern“ fehlt');
     await bis(`document.getElementById('acq-modal')?.classList.contains('open')`, 'Kaufpreis-Dialog');

@@ -1,16 +1,16 @@
 /**
  * The app runs under `style-src 'self'` without a single CSP violation, and
- * the styles from data-stil still arrive. Measured in Chrome on the real
+ * the styles from data-style still arrive. Measured in Chrome on the real
  * server: log in, open every tab, meanwhile record every `securitypolicyviolation`
  * and every message „nicht freigegeben“ from js/styles.js.
  *
  * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  in index.html a data-stil again as style= → red: „keine
+ *   A  in index.html a data-style again as style= → red: „keine
  *      CSP-Verstösse“ (style-src-attr)
  *   B  the wrapper around innerHTML removed in js/styles.js → red: „jedes
- *      data-stil ist angewendet“
+ *      data-style ist angewendet“
  *   C  an empty allowlist in the build → red: „nur freigegebene Werte“
  * Counter-check (measured on 29.10.2026):
  *   D  form-action, base-uri and object-src removed from the CSP in server.ts
@@ -225,7 +225,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   await warte(800);
   const s = await b.auswerten(`({
     violations: window.__verstoesse,
-    uebrig: [...document.querySelectorAll('[data-stil]')].map(e => e.getAttribute('data-stil')).slice(0, 5),
+    uebrig: [...document.querySelectorAll('[data-style]')].map(e => e.getAttribute('data-style')).slice(0, 5),
     styleSet: document.querySelectorAll('[style]').length,
   })`);
   const warnings = b.ereignisse
@@ -234,7 +234,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     .filter(x => x.includes('[stile]'));
 
   await t.test('no CSP violations', () => assert.deepEqual(s.violations, []));
-  await t.test('every data-stil is applied', () => {
+  await t.test('every data-style is applied', () => {
     assert.deepEqual(s.uebrig, []);
     assert.ok(s.styleSet > 50, `nur ${s.styleSet} Elemente mit Stil`);
   });

@@ -6,10 +6,10 @@
  *   A  doLogin() without the branch d.keks_fehlt → red: “M1 … server reports …” (app opens and loads without session)
  *   B  withoutHttps() only with isSecureContext (without location.protocol) → red: “M1 … older server …”
  *      („Sitzung abgelaufen“) and “N1 … http://localhost” (hint hidden)
- *   C  hint login-ohne-https never shown → red: “N1” in both cases without HTTPS
- *   D  filterBedienbar() without the class finanzen-fehler → red: “N3 …” (in the error case)
- *   E  zoomStand() without the branch for the button → red: “N7 …” (button stays disabled with an image)
- *   F  sitzungBeendet without !_cookieSet → red: “M1 … server confirms …” (cookie hint instead of „abgelaufen“)
+ *   C  hint login-without-https never shown → red: “N1” in both cases without HTTPS
+ *   D  filterBedienbar() without the class finances-error → red: “N3 …” (in the error case)
+ *   E  zoomStatus() without the branch for the button → red: “N7 …” (button stays disabled with an image)
+ *   F  sessionEnded without !_cookieSet → red: “M1 … server confirms …” (cookie hint instead of „abgelaufen“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,7 +45,7 @@ async function anmelden(f) {
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'richtig-richtig';
   o.d.getElementById('btn-login').click();
-  await warte(() => angemeldet && !o.d.getElementById('login-hinweis').hidden);
+  await warte(() => angemeldet && !o.d.getElementById('login-hint').hidden);
   return o;
 }
 
@@ -57,7 +57,7 @@ test('M1 login without a set session cookie', async t => {
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: true },
     });
     try {
-      assert.match(text(d.getElementById('login-hinweis')), COOKIE_MISSING);
+      assert.match(text(d.getElementById('login-hint')), COOKIE_MISSING);
       assert.equal(d.getElementById('app').style.display, 'none', 'App geöffnet');
       assert.equal(d.getElementById('login-screen').style.display, 'flex');
       assert.equal(d.getElementById('lu').value, 'anna', 'Name bleibt stehen');
@@ -75,7 +75,7 @@ test('M1 login without a set session cookie', async t => {
       danach: WITHOUT_SESSION,
     });
     try {
-      assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);
+      assert.match(text(d.getElementById('login-hint')), /Sitzung abgelaufen/);
     } finally {
       w.close();
     }
@@ -91,7 +91,7 @@ test('M1 login without a set session cookie', async t => {
       danach: WITHOUT_SESSION,
     });
     try {
-      assert.match(text(d.getElementById('login-hinweis')), COOKIE_MISSING);
+      assert.match(text(d.getElementById('login-hint')), COOKIE_MISSING);
     } finally {
       w.close();
     }
@@ -111,7 +111,7 @@ test('N1 hint without HTTPS already on the login page', async t => {
       );
       try {
         await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-        const h = d.getElementById('login-ohne-https');
+        const h = d.getElementById('login-without-https');
         assert.equal(!h.hidden, sichtbar);
         if (sichtbar) assert.match(text(h), /Verbindung unverschlüsselt/);
       } finally {
@@ -137,14 +137,14 @@ test('N3 finance error: period, chips and search gone, back after success', asyn
   try {
     const tab = d.getElementById('tab-finance');
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .fehler-zustand'));
+    await warte(() => d.querySelector('#portfolio-chart .error-state'));
     await ruhig();
-    assert.equal(tab.classList.contains('finanzen-fehler'), true, 'im Fehlerfall');
+    assert.equal(tab.classList.contains('finances-error'), true, 'im Fehlerfall');
     kaputt = false;
-    d.querySelector('#portfolio-chart .fehler-zustand button[data-click]').click();
+    d.querySelector('#portfolio-chart .error-state button[data-click]').click();
     await warte(() => d.querySelector('#fin-tbl table'));
     await ruhig();
-    assert.equal(tab.classList.contains('finanzen-fehler'), false, 'nach Erfolg');
+    assert.equal(tab.classList.contains('finances-error'), false, 'nach Erfolg');
   } finally {
     w.close();
   }

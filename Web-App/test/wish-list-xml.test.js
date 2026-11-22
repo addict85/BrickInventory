@@ -46,13 +46,13 @@ test('the schedule inserts server values escaped', async () => {
     assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(BOESE));
     await reiter(o.w, 'settings');
     assert.ok(
-      await warte(() => o.d.querySelectorAll('#einst-zeitplaene .job-sched-input').length === 2),
+      await warte(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2),
       'Einstellungen',
     );
     assert.equal(o.d.getElementById('eingeschleust'), null, 'Einstellungen: ein Wert wurde zu Markup');
-    assert.equal(o.d.querySelector('.mon-minuten').value, '15');
-    assert.equal(o.d.querySelector('.mon-zeit').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
-    assert.equal(o.d.querySelector('.mon-zeit').dataset.arg, 'priceJob');
+    assert.equal(o.d.querySelector('.mon-minutes').value, '15');
+    assert.equal(o.d.querySelector('.mon-time').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
+    assert.equal(o.d.querySelector('.mon-time').dataset.arg, 'priceJob');
   } finally {
     o.w.close();
   }

@@ -1,5 +1,5 @@
 /**
- * The real markup helpers (escaping.js, setzeHtml/fuegeHtmlEin from dom.js)
+ * The real markup helpers (escaping.js, setHtml/fuegeHtmlEin from dom.js)
  * for tests that run a module without the bundle in a sandbox. Rebuilding them
  * would mean: the sandbox checks a different escaping than the page.
  */
@@ -32,12 +32,12 @@ function markupHelper() {
     'html',
     'rawHtml',
     'joinHtml',
-    'setzeHtml',
-    'fuegeHtmlEin',
+    'setHtml',
+    'insertHtml',
   ];
   // eslint-disable-next-line no-new-func
   return new Function(
-    `${escaping}\n${funktion(dom, 'setzeHtml')}\n${funktion(dom, 'fuegeHtmlEin')}\nreturn { ${namen.join(', ')} };`,
+    `${escaping}\n${funktion(dom, 'setHtml')}\n${funktion(dom, 'insertHtml')}\nreturn { ${namen.join(', ')} };`,
   )();
 }
 

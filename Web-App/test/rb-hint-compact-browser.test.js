@@ -23,7 +23,7 @@ test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t =>
   }
   const { b, bis, ruhig } = app;
   await ruhig();
-  await bis(`document.getElementById('rb-hinweis') && !document.getElementById('rb-hinweis').hidden`, 'Band');
+  await bis(`document.getElementById('rb-hint') && !document.getElementById('rb-hint').hidden`, 'Band');
 
   await t.test('banner is slim', async () => {
     for (const breite of [390, 320]) {
@@ -34,7 +34,7 @@ test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t =>
         mobile: true,
       });
       await ruhig();
-      const h = await b.auswerten(`Math.round(document.getElementById('rb-hinweis').getBoundingClientRect().height)`);
+      const h = await b.auswerten(`Math.round(document.getElementById('rb-hint').getBoundingClientRect().height)`);
       assert.ok(h <= 56, `Band bei ${breite} px ${h} px hoch`);
       const overflow = await b.auswerten(`document.documentElement.scrollWidth > innerWidth`);
       assert.equal(overflow, false, `Band schiebt die Seite bei ${breite} px auf`);
@@ -42,8 +42,7 @@ test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t =>
   });
 
   await t.test('button keeps its name', async () => {
-    const m =
-      await b.auswerten(`(() => { const k = document.querySelector('#rb-hinweis [data-click="rbHinweisOeffnen"]');
+    const m = await b.auswerten(`(() => { const k = document.querySelector('#rb-hint [data-click="openRbHint"]');
       return { name: k.getAttribute('aria-label'), sichtbar: [...k.querySelectorAll('span')].filter(s => s.checkVisibility()).map(s => s.textContent.trim()) }; })()`);
     assert.equal(m.name, 'Schlüssel eintragen');
     assert.deepEqual(m.sichtbar, ['Eintragen']);

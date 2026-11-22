@@ -12,12 +12,12 @@
  *   B  mouseenter back in DELEGATED → red: “hover triggers"
  *   C  ONLY check for change removed → red: “change with a foreign handler"
  *   D  fallback to window back in resolveAction() → red: “window.open"
- *   E  echt() removed from nutzerKnopf() in einstellungen.js → red: “real
+ *   E  genuine() removed from nutzerKnopf() in einstellungen.js → red: “real
  *      button of the user list works"
  *   F  a name deleted from ONLY.change → red: “every handler in the markup
  *      is in the list of its event"
- *   G  echt() removed from papierkorbEndgueltig (papierkorb.js) → red:
- *      “every template with a dangerous action carries echt()"
+ *   G  genuine() removed from papierkorbEndgueltig (papierkorb.js) → red:
+ *      “every template with a dangerous action carries genuine()"
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -158,7 +158,7 @@ test('every handler in the markup is in the list of its event', () => {
   assert.deepEqual(fehlt, []);
 });
 
-test('every template with a dangerous action carries echt()', () => {
+test('every template with a dangerous action carries genuine()', () => {
   // Otherwise the button would be dead: the dispatcher rejects it.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const dangerous = new Set(
@@ -169,7 +169,7 @@ test('every template with a dangerous action carries echt()', () => {
   for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => isAppModule(f)))
     for (const m of fs
       .readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8')
-      .matchAll(/data-click="([^"$]+)"(\$\{echt\(\)\})?/g))
+      .matchAll(/data-click="([^"$]+)"(\$\{genuine\(\)\})?/g))
       if (dangerous.has(m[1])) {
         gesehen++;
         if (!m[2]) ohne.push(`${f}: ${m[1]}`);

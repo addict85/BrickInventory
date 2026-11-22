@@ -98,10 +98,10 @@
     if (!rest.length) return `<span class="msg">${highlight(text, search)}</span>`;
     const open = !!search && rest.join('\n').toLowerCase().includes(search);
     const n = String(rest.length);
-    const more = tx(rest.length === 1 ? 'log.mehr_zeilen_one' : 'log.mehr_zeilen').replace('{n}', n);
+    const more = tx(rest.length === 1 ? 'log.more_rows_one' : 'log.more_rows').replace('{n}', n);
     return (
       `<details class="msg"${open ? ' open' : ''}><summary>${highlight(head, search)} ` +
-      `<span class="mehr">(${esc(more)})</span></summary>${highlight(rest.join('\n'), search)}</details>`
+      `<span class="more">(${esc(more)})</span></summary>${highlight(rest.join('\n'), search)}</details>`
     );
   }
 
@@ -111,7 +111,7 @@
     const hits = _logs.filter(l => _levels.has(l.level) && (!search || l.message.toLowerCase().includes(search)));
     el('status').textContent = hits.length + ' / ' + _logs.length + ' ' + tx('log.entries');
     if (!hits.length) {
-      wrap.innerHTML = asHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
+      wrap.innerHTML = asHtml('<div class="empty-state">' + esc(tx('log.none_found')) + '</div>');
       return;
     }
     wrap.innerHTML = asHtml(
@@ -125,7 +125,7 @@
           const level = esc(l.level);
           return (
             `<div class="ll ${level}"><span class="ts">${time}</span>` +
-            `<span class="lv ${level}">${esc(tx('log.stufe.' + l.level))}</span>${message(l.message, search)}</div>`
+            `<span class="lv ${level}">${esc(tx('log.level.' + l.level))}</span>${message(l.message, search)}</div>`
           );
         })
         .join(''),

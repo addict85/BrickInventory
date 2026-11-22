@@ -3,11 +3,11 @@ import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { html } from './escaping.js';
 import { api } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum } from './format.js';
+import { ico, G, setHtml } from './dom.js';
+import { fmtDate } from './format.js';
 import { scopeMode } from './account-filter.js';
 import { accountCurrency, financeHeaderValue } from './state.js';
-import { chartWidth, portfolioChartSVG, zeitpunkt, diagrammLeer } from './charts.js';
+import { chartWidth, portfolioChartSVG, moment, chartEmpty } from './charts.js';
 
 // Value trend of the holdings: period, curve and its reference line (cost basis) from the metrics.
 // The longest period is preselected: a week often has only one data point on a fresh collection and
@@ -19,7 +19,7 @@ let _chartPeriod = 'max';
 function setChartPeriod(period) {
   _chartPeriod = period;
   // Only the period buttons: the filter chips below share the same class.
-  document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => {
+  document.querySelectorAll('.period-choice .period-btn').forEach(b => {
     const on = /** @type {HTMLElement} */ (b).dataset.period === period;
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', String(on));
@@ -28,7 +28,7 @@ function setChartPeriod(period) {
 }
 
 /** Last drawn curve — redrawn in the new width when the phone is rotated.
- * @type {{ day: string, total: number, zeit?: number }[] | null} */
+ * @type {{ day: string, total: number, time?: number }[] | null} */
 let _lastCurve = null;
 /** Is a curve already showing? Then it stays put if the metrics fail to load. */
 export const hasCurve = () => !!_lastCurve;
@@ -53,7 +53,7 @@ function redrawCurve() {
   const b = chartWidth(el);
   if (Math.abs(b - _curveWidth) < 24) return;
   _curveWidth = b;
-  setzeHtml(
+  setHtml(
     el,
     portfolioChartSVG(
       _lastCurve,
@@ -78,14 +78,14 @@ window.addEventListener('resize', redrawCurve);
  * just smaller.
  * @param {boolean} offline @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d */
 function chartUnavailable(offline, d) {
-  const { grund, details } = offline ? { grund: tRaw('api.unreachable') } : clearerReason(d);
-  return html`${html`<div class="empty leer klein fehler-zustand" role="status"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${tRaw('chart.unavailable')}</h2><p>${grund}</p>`}${details ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>` : ''}${html`<button type="button" class="btn bs" data-lesend data-click="loadPortfolioChart">${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
+  const { grund: reason, details } = offline ? { grund: tRaw('api.unreachable') } : clearerReason(d);
+  return html`${html`<div class="empty empty-state small error-state" role="status"><div class="empty-ico">${ico('warning')}</div>`}${html`<h2>${tRaw('chart.unavailable')}</h2><p>${reason}</p>`}${details ? html`<details class="error-details"><summary>${tRaw('list.details')}</summary><code>${details}</code></details>` : ''}${html`<button type="button" class="btn bs" data-reading data-click="loadPortfolioChart">${ico('refresh')}<span>${tRaw('list.again')}</span></button></div>`}`;
 }
 
 export async function loadPortfolioChart() {
   const el = G('portfolio-chart');
   if (!el) return;
-  setzeHtml(el, loadDisplay(tRaw('common.loading'), { klein: true }));
+  setHtml(el, loadDisplay(tRaw('common.loading'), { small: true }));
 
   const d = await api(
     'GET',
@@ -94,10 +94,10 @@ export async function loadPortfolioChart() {
   if (!d.success) {
     if (d.status === 401) return;
     // Without history no period selects anything; "retry" is the only available action.
-    document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => {
+    document.querySelectorAll('.period-choice .period-btn').forEach(b => {
       /** @type {HTMLButtonElement} */ (b).disabled = true;
     });
-    setzeHtml(el, chartUnavailable(!!d.networkError, d));
+    setHtml(el, chartUnavailable(!!d.networkError, d));
     return;
   }
   // Fewer than two real data points is not a history: the server then adds an artificial starting value,
@@ -110,11 +110,11 @@ export async function loadPortfolioChart() {
   _lastCurve = null;
   // With no history at all ("Max" empty) there is no period to choose from.
   const fullyEmpty = (!d.points?.length || dataPoints < 2) && _chartPeriod === 'max';
-  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.zeitraum-wahl .period-btn')).forEach(b => {
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.period-choice .period-btn')).forEach(b => {
     b.disabled = fullyEmpty;
   });
   if (!d.points?.length || dataPoints < 2) {
-    setzeHtml(el, diagrammLeer());
+    setHtml(el, chartEmpty());
     const emptyPnl = G('portfolio-pnl');
     if (emptyPnl) emptyPnl.replaceChildren();
     return;
@@ -128,16 +128,16 @@ export async function loadPortfolioChart() {
   const scale = lastVal > 0 ? grandTotal / lastVal : 1;
   // The timestamps live in d.chart (same order as points); with them the points sit on a real time axis
   // instead of by index.
-  const times = untyped.chart?.values?.[0]?.values?.map(v => zeitpunkt(v.x)) || [];
+  const times = untyped.chart?.values?.[0]?.values?.map(v => moment(v.x)) || [];
   const withTime = times.length === d.points.length && times.every(Number.isFinite);
   const finalChartData = d.points.map((p, i) => ({
     day: p.x_label || '',
-    zeit: withTime ? times[i] : undefined,
+    time: withTime ? times[i] : undefined,
     total: i === d.points.length - 1 ? grandTotal : parseFloat((p.value * scale).toFixed(2)),
   }));
   _lastCurve = finalChartData;
   _curveWidth = chartWidth(el);
-  setzeHtml(
+  setHtml(
     el,
     portfolioChartSVG(finalChartData, _chartPeriod, _curveWidth, _costBasis, cur, _costBasisText || undefined),
   );
@@ -154,22 +154,22 @@ export async function loadPortfolioChart() {
       max: 'finance.change.max',
     }[_chartPeriod];
     // "since Sept 4" instead of "since the start": the percentage's reference point stays visible.
-    const start = finalChartData[0]?.zeit;
+    const start = finalChartData[0]?.time;
     const since =
       _chartPeriod === 'max' && start !== undefined && Number.isFinite(start)
-        ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) })
+        ? tRaw('finance.change.since', { date: fmtDate(new Date(start)) })
         : '';
-    const zeitraum = periodText ? html`<span class="pnl-zeitraum">${since ? since : tRaw(periodText)}</span>` : '';
+    const period = periodText ? html`<span class="pnl-period">${since ? since : tRaw(periodText)}</span>` : '';
     if (!(financeHeaderValue > 0)) pnlEl.replaceChildren();
     else if (d.period_change_pct != null) {
-      setzeHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${zeitraum}`);
+      setHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${period}`);
     } else {
       // Fallback: first chart point vs current
       const purchaseBaseline = parseFloat(d.purchase_total || '0');
       const firstVal = purchaseBaseline > 0 && finalChartData.length <= 2 ? purchaseBaseline : finalChartData[0].total;
       if (firstVal > 0 && grandTotal > 0) {
         const pct = ((grandTotal - firstVal) / firstVal) * 100;
-        setzeHtml(pnlEl, html`${pnlBadge(pct)}${zeitraum}`);
+        setHtml(pnlEl, html`${pnlBadge(pct)}${period}`);
       }
     }
   }

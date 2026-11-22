@@ -6,8 +6,8 @@ import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { escHex, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { apiRaw } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl } from './images.js';
-import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
+import { imageTag, placeholderContent, fullUrl, imgUrl } from './images.js';
+import { ico, G, XML_ICON_SVG, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { loadManualFigsTable } from './minifigs.js';
 import { loadManualParts } from './parts.js';
@@ -54,8 +54,8 @@ let _busy = false;
  * same button would overwrite each other once the release-after-run came in.
  */
 function updateButtons() {
-  const write = G('wanted-xml-schreiben');
-  const reload = G('wanted-xml-neu');
+  const write = G('wanted-xml-write');
+  const reload = G('wanted-xml-new');
   // Write only once a preview is showing: after writing, `vorschau` is
   // false, and a second click would be a second import.
   if (write) write.disabled = _busy || !_report?.vorschau;
@@ -66,7 +66,7 @@ function updateButtons() {
 // ── IMPORT ─────────────────────────────────────────────────────────────────
 
 /** File chosen (in one of the three tabs) → fetch the preview. @this {unknown} */
-async function wantedXmlGewaehlt() {
+async function wantedXmlSelected() {
   const el = this instanceof HTMLInputElement ? this : null;
   if (!el?.files?.[0]) return;
   // While an import is running, don't accept a new file: it would swap out _file mid-write. The button
@@ -86,7 +86,7 @@ async function wantedXmlGewaehlt() {
   await read(false);
 }
 
-function wantedXmlSchliessen() {
+function closeWantedXml() {
   G('wanted-xml-modal').classList.remove('open');
   _file = null;
   _report = null;
@@ -96,12 +96,12 @@ function wantedXmlSchliessen() {
 }
 
 /** Read again — e.g. after turning on "ask Rebrickable". */
-async function wantedXmlNeuLesen() {
+async function rereadWantedXml() {
   await read(false);
 }
 
 /** Actually write now. */
-async function wantedXmlSchreiben() {
+async function writeWantedXml() {
   await read(true);
 }
 
@@ -109,7 +109,7 @@ async function wantedXmlSchreiben() {
  * The one path to the server, for both steps.
  *
  * Two separate paths could have drifted apart — then the preview would promise something the import
- * doesn't do. The same reasoning applies server-side at importiereWantedListe().
+ * doesn't do. The same reasoning applies server-side in the wanted list import.
  * @param {boolean} write
  */
 async function read(write) {
@@ -133,7 +133,7 @@ async function read(write) {
  *   null hides it (before the first run, after the last).
  */
 function drawProgress(state) {
-  const box = G('wanted-xml-fortschritt');
+  const box = G('wanted-xml-progress');
   if (!box) return;
   if (!state?.gesamt) {
     box.style.display = 'none';
@@ -141,11 +141,11 @@ function drawProgress(state) {
   }
   const share = Math.max(0, Math.min(100, Math.round((state.fertig / state.gesamt) * 100)));
   box.style.display = '';
-  const bar = G('wanted-xml-balken');
+  const bar = G('wanted-xml-bar');
   if (bar) bar.style.width = share + '%';
   // The same number for screen readers too: a bar that only grows wider is no information for them.
-  G('wanted-xml-balken-wrap')?.setAttribute('aria-valuenow', String(share));
-  const txt = G('wanted-xml-fortschritt-text');
+  G('wanted-xml-bar-wrap')?.setAttribute('aria-valuenow', String(share));
+  const txt = G('wanted-xml-progress-text');
   if (txt) {
     // tRaw, not t: the target is textContent, and t() escapes for HTML — the escaping would show up as
     // literal characters (test/frontend-escaping.test.js).
@@ -206,8 +206,8 @@ async function readStream(r) {
  * @param {boolean} write
  */
 async function readReally(write) {
-  const tab = G('wanted-xml-tabelle');
-  const report = G('wanted-xml-bericht');
+  const tab = G('wanted-xml-table');
+  const report = G('wanted-xml-report');
   if (report) report.textContent = tRaw('import.running');
   if (!write && tab) tab.replaceChildren();
 
@@ -263,7 +263,7 @@ async function readReally(write) {
     const kinds = new Set((d.posten || []).map(x => x.art));
     if (kinds.has('part')) loadManualParts().catch(() => {});
     if (kinds.has('fig')) loadManualFigsTable().catch(() => {});
-    if (kinds.has('set')) emit('sammlungLaden');
+    if (kinds.has('set')) emit('collectionLoad');
     _file = null;
     _corrections = new Map();
   }
@@ -272,7 +272,7 @@ async function readReally(write) {
 /** The summary above the table. */
 /** @param {Report} d */
 function drawSummary(d) {
-  const el = G('wanted-xml-bericht');
+  const el = G('wanted-xml-report');
   if (!el) return;
   // The stages SEPARATELY and in words rather than colors: Marco sees red and green poorly, and
   // "probably" is a statement that must be stated, not just implied.
@@ -281,30 +281,30 @@ function drawSummary(d) {
   G('wanted-xml-sub').textContent = _file?.name || '';
   // Button state comes from updateButtons() — see its reasoning there.
   updateButtons();
-  setzeHtml(
+  setHtml(
     el,
     html`
-    <div data-stil="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
+    <div data-style="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
       <div><strong>${d.gelesen}</strong> ${tRaw('settings.wanted_read')}${d.vorschau ? html` — ${tRaw('settings.wanted_preview_only')}` : ''}</div>
       ${stage('zuordnung', tRaw('settings.wanted_s1'))}
       ${stage('gleich_vermerkt', tRaw('settings.wanted_s2'))}
       ${stage('katalogtreffer', tRaw('settings.wanted_s3'))}
       ${stage('rebrickable', tRaw('settings.wanted_s4'))}
       ${stage('korrigiert', tRaw('wanted.s_corrected'))}
-      ${d.offen?.length ? html`<div>${ico('warnung')} <strong>${d.offen.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
-      ${d.farbeOffen ? html`<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
+      ${d.offen?.length ? html`<div>${ico('warning')} <strong>${d.offen.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
+      ${d.farbeOffen ? html`<div>${ico('warning')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
       ${
         Object.keys(d.fremdeArten || {}).length
-          ? html`<div>${ico('warnung')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {})
+          ? html`<div>${ico('warning')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {})
               .map(([k, n]) => `${k}=${n}`)
               .join(', ')}</div>`
           : ''
       }
       ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
-      ${d.rebrickable?.abgebrochen ? html`<div>${ico('warnung')} ${tRaw(RB_CANCEL_REASON[d.rebrickable.abgebrochen])}</div>` : ''}
-      ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warnung')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
-      ${d.abgebrochen ? html`<div>${ico('warnung')} ${tRaw('wanted.cancelled')}</div>` : ''}
-      ${!d.vorschau ? html`<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
+      ${d.rebrickable?.abgebrochen ? html`<div>${ico('warning')} ${tRaw(RB_CANCEL_REASON[d.rebrickable.abgebrochen])}</div>` : ''}
+      ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warning')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
+      ${d.abgebrochen ? html`<div>${ico('warning')} ${tRaw('wanted.cancelled')}</div>` : ''}
+      ${!d.vorschau ? html`<div data-style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
     </div>`,
   );
 }
@@ -313,28 +313,28 @@ function drawSummary(d) {
 /** @param {Item} p @param {number} i */
 function row(p, i) {
   const image = p.bild
-    ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
-    : html`<span class="bild-ph bild-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
+    ? imageTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', class: 'image-40', ph: 'teil' })
+    : html`<span class="image-ph image-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
   const dot = p.farbHex
-    ? html`<span data-stil="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
-        data-farbe="${escHex(p.farbHex, 'var(--s300)')}"></span>`
+    ? html`<span data-style="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
+        data-color-hex="${escHex(p.farbHex, 'var(--s300)')}"></span>`
     : '';
   // The outcome in words, not just a color. In the preview "will be created", after import "created":
   // otherwise every row would still read in future tense after writing.
   const future = !!_report?.vorschau;
   const outcome = esc(
-    tRaw(p.ausgang === 'angelegt' && !future ? 'wanted.out_angelegt_fertig' : `wanted.out_${p.ausgang}`) || p.ausgang,
+    tRaw(p.ausgang === 'angelegt' && !future ? 'wanted.out_angelegt_done' : `wanted.out_${p.ausgang}`) || p.ausgang,
   );
   // The reason in the viewer's language. `grund` from the server is a German sentence — right for the log,
   // wrong in an English table (seen exactly that way on the running server). If the code is missing (for
   // outcome 'fehler' the exception message is there instead), the sentence stays as is.
-  const reason = p.grundCode ? t(`wanted.grund_${p.grundCode}`, { farbe: p.blFarbe }) : p.grund ? esc(p.grund) : '';
+  const reason = p.grundCode ? t(`wanted.reason_${p.grundCode}`, { farbe: p.blFarbe }) : p.grund ? esc(p.grund) : '';
   // The condition that gets created: from the file, else the account's default — with a note that it came
   // from there. Without the note, "Used" would read like a value from the file.
   const conditionValue = p.zustand === 'N' || p.zustand === 'U' ? p.zustand : _report?.standardZustand || null;
   const fromDefault = p.zustand !== 'N' && p.zustand !== 'U';
   const conditionCell = conditionValue
-    ? html`<span class="cond-badge ${conditionValue === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(conditionValue === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${fromDefault ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
+    ? html`<span class="cond-badge ${conditionValue === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(conditionValue === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${fromDefault ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
     : '';
   const correction = _corrections.get(i) || {};
 
@@ -348,65 +348,65 @@ function row(p, i) {
     /** @type {unknown} */ value,
     extra = '',
     width = 72,
-    key = 'wanted.feld_menge',
+    key = 'wanted.field_quantity',
   ) =>
-    html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}" aria-label="${tRaw(key, { id })}"
+    html`<input data-change="wantedCorrectionValue" data-field="${name}" data-i="${i}" aria-label="${tRaw(key, { id })}"
        value="${value}" ${rawHtml(extra)}
-       data-breite-px="${width}"
-       data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--feldrand);border-radius:5px;text-align:right" />`;
+       data-width-px="${width}"
+       data-style="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--field-border);border-radius:5px;text-align:right" />`;
   const quantityCell = field('menge', correction.menge ?? p.menge, 'type="number" min="1" step="1"');
   // The price per unit. Empty means "none" — then import fetches the market price, like MAXPRICE=-1 in
   // the file.
   const priceValue = correction.kaufpreis !== undefined ? (correction.kaufpreis ?? '') : (p.maxPreis ?? '');
   const priceCell = field(
-    'kaufpreis',
+    'purchase-price',
     priceValue,
     `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`,
     96,
-    'wanted.feld_preis',
+    'wanted.field_price',
   );
   // The condition as a choice with THREE options: the empty value isn't a gap, it's "the account's
   // default" — the same statement as CONDITION=X.
   const conditionNow = correction.zustand !== undefined ? (correction.zustand ?? '') : (p.zustand ?? '');
   const option = (/** @type {string} */ w, /** @type {string} */ text) =>
     html`<option value="${w}"${conditionNow === w ? ' selected' : ''}>${text}</option>`;
-  const conditionSelect = html`<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}" aria-label="${tRaw('wanted.feld_zustand', { id })}"
-      data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
+  const conditionSelect = html`<select data-change="wantedCorrectionValue" data-field="zustand" data-i="${i}" aria-label="${tRaw('wanted.field_state', { id })}"
+      data-style="font-size:var(--fs-1);padding:2px;border:1px solid var(--field-border);border-radius:5px">
       ${option('', tRaw('wanted.cond_default_opt'))}
       ${option('N', tRaw('common.condition_new'))}
       ${option('U', tRaw('common.condition_used'))}
     </select>`;
 
-  return html`<tr${p.ausgang === 'offen' ? html` data-stil="background:var(--s50)"` : ''}>
+  return html`<tr${p.ausgang === 'offen' ? html` data-style="background:var(--s50)"` : ''}>
     <td>${image}</td>
-    <td data-stil="font-family:monospace;font-size:var(--fs-1)">${p.blId}${p.rbId && p.rbId !== p.blId ? html`<div data-stil="color:var(--mut)">→ ${p.rbId}</div>` : ''}</td>
-    <td data-stil="font-size:var(--fs-2)">${p.name || ''}${p.nameGeraten ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.name_guessed')}</div>` : ''}</td>
-    <td data-stil="font-size:var(--fs-2);white-space:nowrap">${dot}${p.farbName || ''}${p.blFarbe !== null && !p.farbName ? html`<span data-stil="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
-    <td data-stil="text-align:right">${quantityCell}</td>
-    <td data-stil="font-size:var(--fs-1);white-space:nowrap">${conditionSelect}${conditionNow === '' && conditionCell ? html`<div data-stil="margin-top:2px">${conditionCell}</div>` : ''}</td>
-    <td data-stil="text-align:right">${priceCell}</td>
-    <td data-stil="font-size:var(--fs-1)">${rawHtml(outcome)}${reason ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${rawHtml(reason)}</div>` : ''}</td>
-    <td><input type="text" value="${correction.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" aria-label="${tRaw('wanted.feld_rb', { id })}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
-      border:1px solid var(--feldrand);border-radius:5px"
-      data-change="wantedKorrekturNummer" data-i="${i}" /></td>
-    <td><select data-change="wantedKorrekturFarbe" data-i="${i}" aria-label="${tRaw('wanted.feld_farbe', { id })}"
-      data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
+    <td data-style="font-family:monospace;font-size:var(--fs-1)">${p.blId}${p.rbId && p.rbId !== p.blId ? html`<div data-style="color:var(--mut)">→ ${p.rbId}</div>` : ''}</td>
+    <td data-style="font-size:var(--fs-2)">${p.name || ''}${p.nameGeraten ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.name_guessed')}</div>` : ''}</td>
+    <td data-style="font-size:var(--fs-2);white-space:nowrap">${dot}${p.farbName || ''}${p.blFarbe !== null && !p.farbName ? html`<span data-style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
+    <td data-style="text-align:right">${quantityCell}</td>
+    <td data-style="font-size:var(--fs-1);white-space:nowrap">${conditionSelect}${conditionNow === '' && conditionCell ? html`<div data-style="margin-top:2px">${conditionCell}</div>` : ''}</td>
+    <td data-style="text-align:right">${priceCell}</td>
+    <td data-style="font-size:var(--fs-1)">${rawHtml(outcome)}${reason ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${rawHtml(reason)}</div>` : ''}</td>
+    <td><input type="text" value="${correction.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" aria-label="${tRaw('wanted.field_rb', { id })}" data-style="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
+      border:1px solid var(--field-border);border-radius:5px"
+      data-change="wantedCorrectionNumber" data-i="${i}" /></td>
+    <td><select data-change="wantedCorrectionColor" data-i="${i}" aria-label="${tRaw('wanted.field_color', { id })}"
+      data-style="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--field-border);border-radius:5px">
       <option value="">${tRaw('wanted.keep')}</option></select></td>
   </tr>`;
 }
 
 /** @param {Report} d */
 function drawTable(d) {
-  const el = G('wanted-xml-tabelle');
+  const el = G('wanted-xml-table');
   if (!el) return;
   const items = d.posten || [];
   if (!items.length) {
     el.replaceChildren();
     return;
   }
-  setzeHtml(
+  setHtml(
     el,
-    html`<table class="dt" aria-label="${tRaw('wanted.preview_title')}" data-stil="font-size:var(--fs-2)"><thead><tr>
+    html`<table class="dt" aria-label="${tRaw('wanted.preview_title')}" data-style="font-size:var(--fs-2)"><thead><tr>
       <th>${tRaw('col.image_th')}</th>
       <th>BrickLink</th>
       <th>${tRaw('col.name')}</th>
@@ -435,17 +435,17 @@ async function fillColorChoices() {
     .map(c => html`<option value="${c.id}" data-hex="${rawHex(c.hex)}">${colorName(c.name)}</option>`)
     .join('');
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
-    G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]')
+    G('wanted-xml-table').querySelectorAll('select[data-change="wantedCorrectionColor"]')
   )) {
     const i = Number(sel.dataset.i);
     const chosen = _corrections.get(i)?.rbFarbe;
-    setzeHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${rawHtml(opts)}`);
+    setHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${rawHtml(opts)}`);
     if (chosen !== undefined && chosen !== null) sel.value = String(chosen);
   }
 }
 
 /** Remember an entered Rebrickable number (or clear the entry). @this {unknown} */
-function wantedKorrekturNummer() {
+function wantedCorrectionNumber() {
   const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
@@ -459,7 +459,7 @@ function wantedKorrekturNummer() {
 }
 
 /** @this {unknown} */
-function wantedKorrekturFarbe() {
+function wantedCorrectionColor() {
   const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
@@ -475,11 +475,11 @@ function wantedKorrekturFarbe() {
  * back.
  * @this {unknown}
  */
-function wantedKorrekturWert() {
+function wantedCorrectionValue() {
   const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
-  const name = el.dataset.feld;
+  const name = el.dataset.field;
   const p = _report?.posten?.[i];
   if (!p) return;
   const k = { ..._corrections.get(i) };
@@ -499,7 +499,7 @@ function wantedKorrekturWert() {
     const w = raw === '' ? null : raw;
     if (w === (p.zustand ?? null)) delete k.zustand;
     else k.zustand = w;
-  } else if (name === 'kaufpreis') {
+  } else if (name === 'purchase-price') {
     const old = p.maxPreis ?? null;
     /** @type {number | null} */
     let w = null;
@@ -523,7 +523,7 @@ function wantedKorrekturWert() {
 function setCorrection(i, k) {
   if (Object.keys(k).length === 0) _corrections.delete(i);
   else _corrections.set(i, k);
-  const button = G('wanted-xml-schreiben');
+  const button = G('wanted-xml-write');
   if (button) {
     // The count on the button, so it's visible that corrections travel with it — otherwise it stays a
     // promise you can only check afterwards.
@@ -533,19 +533,19 @@ function setCorrection(i, k) {
   }
 }
 
-G('wanted-xml-modal')?.addEventListener('click', e => e.target === e.currentTarget && wantedXmlSchliessen());
+G('wanted-xml-modal')?.addEventListener('click', e => e.target === e.currentTarget && closeWantedXml());
 
 // Attach the icon here once to all three buttons instead of three times in the HTML. Into its own <span>
 // with no data-i18n: the translation sets textContent and would throw it away on a language switch.
-for (const el of document.querySelectorAll('[data-wanted-icon]')) setzeHtml(el, XML_ICON_SVG);
+for (const el of document.querySelectorAll('[data-wanted-icon]')) setHtml(el, XML_ICON_SVG);
 
 // Names below are registry-exposed (data-click/data-change in index.html) — kept unchanged.
 registerActions({
-  wantedKorrekturFarbe,
-  wantedKorrekturWert,
-  wantedKorrekturNummer,
-  wantedXmlGewaehlt,
-  wantedXmlNeuLesen,
-  wantedXmlSchliessen,
-  wantedXmlSchreiben,
+  wantedCorrectionColor,
+  wantedCorrectionValue,
+  wantedCorrectionNumber,
+  wantedXmlSelected,
+  rereadWantedXml,
+  closeWantedXml,
+  writeWantedXml,
 });

@@ -57,7 +57,7 @@ test('former link names the path literally', async () => {
     },
   });
   try {
-    await sicht(w, 'haushalt');
+    await sicht(w, 'household');
     assert.ok(await warte(() => d.body.textContent.includes('Jerry')), 'Haushalt geladen');
     const place = [...d.querySelectorAll('span')].find(s => s.textContent.includes('Jerry'));
     assert.ok(place.textContent.includes('Tom & Jerry'), `Text: ${place.textContent}`);

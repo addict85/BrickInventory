@@ -310,8 +310,8 @@ test('the finances show one row per purchase price, the legacy data in one', asy
   });
   t.after(() => w.close());
   await reiter(w, 'finance');
-  assert.ok(await warte(() => d.querySelector('[data-fin-art] tbody tr')), 'Kein Abschnitt der manuellen Teile');
-  const zeilen = [...d.querySelectorAll('[data-fin-art] tbody tr')].map(z => z.textContent);
+  assert.ok(await warte(() => d.querySelector('[data-fin-kind] tbody tr')), 'Kein Abschnitt der manuellen Teile');
+  const zeilen = [...d.querySelectorAll('[data-fin-kind] tbody tr')].map(z => z.textContent);
   assert.equal(zeilen.filter(z => z.includes('Teil ma-zwei')).length, 2, zeilen.join('\n'));
   assert.equal(zeilen.filter(z => z.includes('Teil ma-alt')).length, 1, zeilen.join('\n'));
 });

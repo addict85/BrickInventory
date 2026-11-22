@@ -30,10 +30,10 @@ test('the lid colors come from the SAME source', () => {
   for (const hex of steine) {
     assert.ok(
       !css.toLowerCase().includes(hex.toLowerCase()),
-      `themes/noppe.css schreibt ${hex} aus, statt var(--stein-N) zu benutzen`,
+      `themes/noppe.css schreibt ${hex} aus, statt var(--brick-N) zu benutzen`,
     );
   }
-  assert.match(css, /var\(--stein-0\)/, 'themes/noppe.css benutzt die Steinliste nicht');
+  assert.match(css, /var\(--brick-0\)/, 'themes/noppe.css benutzt die Steinliste nicht');
 });
 
 test('the brick color runs in step with the brick list', () => {
@@ -46,7 +46,7 @@ test('the brick color runs in step with the brick list', () => {
     webTick,
     5,
     `themes/noppe.css zaehlt an ${webTick} verschiedenen Positionen durch, erwartet fuenf ` +
-      '(--stein-0 steht als Vorgabe schon in der Grundregel)',
+      '(--brick-0 steht als Vorgabe schon in der Grundregel)',
   );
 });
 
@@ -182,7 +182,7 @@ test('the studs have a round top edge, not a gradient edge', () => {
 
   for (const reihe of reihen) {
     const kopf = reihe.slice(0, reihe.indexOf('{')).trim();
-    assert.ok(reihe.includes('var(--noppen-form)'), `"${kopf}" benutzt die Noppenform nicht`);
+    assert.ok(reihe.includes('var(--studs-form)'), `"${kopf}" benutzt die Noppenform nicht`);
     assert.ok(
       !/repeating-linear-gradient/.test(reihe),
       `"${kopf}" zeichnet die Noppen wieder als Verlauf. Ein Verlauf kann keine ` +
@@ -201,14 +201,14 @@ test('bar and lid share ONE stud shape', () => {
   // would get round studs, the other would keep its old ones — and both stand
   // one below the other on the same screen.
   const grund = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
-  const explanations = [...(css + grund).matchAll(/--noppen-form:/g)].length;
+  const explanations = [...(css + grund).matchAll(/--studs-form:/g)].length;
   assert.equal(
     explanations,
     1,
     `Die Noppenform steht ${explanations}-mal im Baum. Einmal reicht; jede ` +
       'weitere Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).',
   );
-  assert.match(grund, /--noppen-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
+  assert.match(grund, /--studs-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
 });
 
 test('the gloss is in step with the mask', () => {
@@ -236,7 +236,7 @@ test('the lid color does not erase the lacquer', () => {
   const colorRules = css
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('}')
-    .filter(r => /--stein-\d/.test(r));
+    .filter(r => /--brick-\d/.test(r));
   // Self-proof: MEASURED there are six — the base rule and five positions.
   assert.equal(
     colorRules.length,
@@ -245,7 +245,7 @@ test('the lid color does not erase the lacquer', () => {
   );
 
   const shortForm = colorRules
-    .filter(r => /(?:^|[;{\s])background:\s*var\(--stein-/.test(r))
+    .filter(r => /(?:^|[;{\s])background:\s*var\(--brick-/.test(r))
     .map(r => r.slice(0, r.indexOf('{')).trim().split(',')[0]);
   assert.deepEqual(
     shortForm,
@@ -266,15 +266,15 @@ test('the stud shape belongs to all designs, not to one', () => {
   // auseinanderlaufen.
   assert.match(
     grundCss,
-    /--noppen-form:url\("data:image\/svg\+xml,/,
+    /--studs-form:url\("data:image\/svg\+xml,/,
     'Die Noppenform steht nicht mehr in styles.css unter :root',
   );
   assert.ok(
-    !/--noppen-form:/.test(css),
+    !/--studs-form:/.test(css),
     'themes/noppe.css fuehrt wieder eine eigene Noppenform — dann hat das ' +
       'Stein-Design seine eigene, und genau so ist der Unterschied entstanden.',
   );
-  assert.match(stein, /var\(--noppen-form\)/, 'Das Stein-Design benutzt die gemeinsame Noppenform nicht');
+  assert.match(stein, /var\(--studs-form\)/, 'Das Stein-Design benutzt die gemeinsame Noppenform nicht');
   // Only the ROW, not every circle: the handles of the year sliders are
   // round buttons with a highlight (`circle at 35% 32%`) and should stay
   // that. A stud row is recognized by its anchoring in pixels —

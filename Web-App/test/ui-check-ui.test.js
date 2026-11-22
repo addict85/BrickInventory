@@ -11,7 +11,7 @@
  *   E  priceRow without a label (art = '') → red „Preis auf der Kachel“
  *   F  diagrammNichtDa removed in the error branch of loadFinance → red „offline“
  *   G  parts empty state again „Keine Teile gefunden“ without a button → red „Teile-Suche ohne Treffer“
- *   H  fehlerKasten again as raw text → red „Hintergrundarbeiten“
+ *   H  errorBox again as raw text → red „Hintergrundarbeiten“
  *
  * Counter-checks (measured 13.11.2026):
  *   I  in monitor.js zeile() `wartet` fixed false → red „verschobener Auftrag wartet“
@@ -46,7 +46,7 @@ test('voucher number: separators off first, then groups of four; without a PDF i
     },
   });
   try {
-    await sicht(w, 'gutscheine');
+    await sicht(w, 'vouchers');
     await warte(() => d.querySelector('.voucher-num'));
     assert.equal(text(d.querySelector('.voucher-num')), '6123 4567 8901');
     assert.equal(text(d.querySelector('.voucher-nopdf')), 'kein PDF');
@@ -70,7 +70,7 @@ test('login error is read aloud (role=alert) and stays', async () => {
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     d.getElementById('lu').value = 'anna';
-    d.getElementById('lp').value = 'falsch';
+    d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
     await warte(() => text(d.getElementById('lerr')));
     assert.equal(d.getElementById('lerr').getAttribute('role'), 'alert');
@@ -94,17 +94,17 @@ test('period and filter of the finances report their state (aria-pressed)', asyn
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => !d.querySelector('.zeitraum-wahl [data-period="week"]').disabled);
+    await warte(() => !d.querySelector('.period-choice [data-period="week"]').disabled);
     const knopf = sel => d.querySelector(sel);
-    knopf('.zeitraum-wahl [data-period="week"]').click();
+    knopf('.period-choice [data-period="week"]').click();
     await takt(20);
     assert.deepEqual(
-      [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(
+      [...d.querySelectorAll('.period-choice .period-btn')].map(
         b => `${b.dataset.period}:${b.getAttribute('aria-pressed')}`,
       ),
       ['week:true', 'month:false', 'year:false', 'max:false'],
     );
-    knopf('#fin-filter [data-art="sets"]').click();
+    knopf('#fin-filter [data-kind="sets"]').click();
     await takt(20);
     assert.deepEqual(
       [...d.querySelectorAll('#fin-filter button')].map(b => b.getAttribute('aria-pressed')),
@@ -112,7 +112,7 @@ test('period and filter of the finances report their state (aria-pressed)', asyn
     );
     await reiter(w, 'parts');
     assert.deepEqual(
-      [...d.querySelectorAll('#tab-parts .sammlung-wahl button')].map(b => b.getAttribute('aria-current')),
+      [...d.querySelectorAll('#tab-parts .collection-choice button')].map(b => b.getAttribute('aria-current')),
       [null, 'page', null],
     );
   } finally {
@@ -162,9 +162,9 @@ test('price on the tile is labeled, condition and date named (de and en)', async
     try {
       await warte(() => d.querySelector('#gallery .sc'));
       const kachel = d.querySelector('#gallery .sc');
-      assert.equal(text(kachel.querySelector('.price-badge .preis-art')), art);
+      assert.equal(text(kachel.querySelector('.price-badge .price-kind')), art);
       assert.match(text(kachel.querySelector('.cond-new')), new RegExp(`: ${zustand}$`));
-      assert.match(text(kachel.querySelector('.kachel-datum')), new RegExp(`^${gekauft} `));
+      assert.match(text(kachel.querySelector('.tile-date')), new RegExp(`^${gekauft} `));
       assert.equal(text(kachel.querySelector('.sname')), unbekannt);
     } finally {
       w.close();
@@ -214,7 +214,7 @@ test('offline: the key figure cards of the finances drop, the period buttons are
       assert.equal(d.getElementById('fin-sum').hidden, true, 'Karten ohne Zahl sichtbar');
       assert.equal(text(d.getElementById('portfolio-current')), '—');
       assert.deepEqual(
-        [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => k.disabled),
+        [...d.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled),
         [true, true, true, true],
         'Zeitraum bedienbar',
       );
@@ -241,10 +241,10 @@ test('parts search without results: “No results for …” with a button that 
     const feld = d.getElementById('parts-search');
     feld.value = 'xyz';
     feld.dispatchEvent(new w.Event('input', { bubbles: true }));
-    await warte(() => /xyz/.test(text(d.querySelector('#tab-parts .leer'))), 3000);
-    assert.equal(text(d.querySelector('#tab-parts .leer h2')), 'Keine Treffer für „xyz“');
-    d.querySelector('#tab-parts .leer [data-click="filterZuruecksetzen"]').click();
-    await warte(() => text(d.querySelector('#tab-parts .leer h2')) === 'Noch keine Teile', 3000);
+    await warte(() => /xyz/.test(text(d.querySelector('#tab-parts .empty-state'))), 3000);
+    assert.equal(text(d.querySelector('#tab-parts .empty-state h2')), 'Keine Treffer für „xyz“');
+    d.querySelector('#tab-parts .empty-state [data-click="resetFilter"]').click();
+    await warte(() => text(d.querySelector('#tab-parts .empty-state h2')) === 'Noch keine Teile', 3000);
     assert.equal(feld.value, '');
   } finally {
     w.close();
@@ -277,8 +277,8 @@ test('background jobs: technical error as a sentence, details expandable', async
   });
   try {
     await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#auftraege-karte .fehler-kasten'), 3000);
-    const kasten = d.querySelector('#auftraege-karte .fehler-kasten');
+    await warte(() => d.querySelector('#jobs-card .error-box'), 3000);
+    const kasten = d.querySelector('#jobs-card .error-box');
     assert.equal(text(kasten.querySelector('summary')), 'Dienst nicht erreichbar — Netz oder Server gestört.');
     assert.equal(text(kasten.querySelector('code')), roh);
   } finally {
@@ -318,13 +318,13 @@ test('background jobs: a postponed job waits, an aborted one has not failed', as
   });
   try {
     await reiter(w, 'monitor');
-    await warte(() => d.querySelectorAll('#auftraege-karte .mon-einzeln tbody tr').length === 3, 3000);
-    const [wartend, wieder, ab] = [...d.querySelectorAll('#auftraege-karte .mon-einzeln tbody tr')];
-    assert.equal(wartend.querySelector('.fehler-kasten'), null, `als Fehler gezeigt: ${text(wartend)}`);
+    await warte(() => d.querySelectorAll('#jobs-card .mon-single tbody tr').length === 3, 3000);
+    const [wartend, wieder, ab] = [...d.querySelectorAll('#jobs-card .mon-single tbody tr')];
+    assert.equal(wartend.querySelector('.error-box'), null, `als Fehler gezeigt: ${text(wartend)}`);
     assert.match(text(wartend), /wartet bis .*\d{1,2}:\d{2}.*BrickLink-Tageskontingent erschöpft/);
     assert.doesNotMatch(text(wartend), /Versuch/);
-    assert.ok(wieder.querySelector('.fehler-kasten'), 'ein Fehler vor dem nächsten Versuch bleibt sichtbar');
-    assert.equal(ab.querySelector('.fehler-kasten'), null, `abgebrochen als Fehler gezeigt: ${text(ab)}`);
+    assert.ok(wieder.querySelector('.error-box'), 'ein Fehler vor dem nächsten Versuch bleibt sichtbar');
+    assert.equal(ab.querySelector('.error-box'), null, `abgebrochen als Fehler gezeigt: ${text(ab)}`);
     assert.equal(d.querySelector('[data-click="retryJob"]'), null);
   } finally {
     w.close();

@@ -5,12 +5,12 @@
  * and the dismissed Rebrickable banner stays away even in a new session.
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  the class kopf-weg never set in mobile.js → red: “header gives
+ *   A  the class header-remove never set in mobile.js → red: “header gives
  *      way when scrolling”
  *   B  the rule `.ntab .tab-label { position:absolute … }` for low height
  *      removed → red: “bottom bar narrow, names stay” (59 px); since
  *      15.11.2026 the rule for 601–640 px (`flex-direction: row`) → red: same place
- *   C  rbHinweisWeg/showRbHint again with sessionStorage → red: “banner
+ *   C  dismissRbHint/showRbHint again with sessionStorage → red: “banner
  *      stays away, even after a new session”
  *
  * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
@@ -72,9 +72,9 @@ test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 },
 
   await t.test('banner stays away, even after a new session', async () => {
     await rolle(0);
-    await bis(`!document.getElementById('rb-hinweis').hidden`, 'Hinweisband');
+    await bis(`!document.getElementById('rb-hint').hidden`, 'Hinweisband');
     await b.auswerten(
-      `document.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click(); sessionStorage.clear(); true`,
+      `document.querySelector('#rb-hint [data-click="dismissRbHint"]').click(); sessionStorage.clear(); true`,
     );
     await b.tab('Page.reload');
     await bis(
@@ -83,6 +83,6 @@ test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 },
       300,
     );
     await ruhig();
-    assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), true);
+    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), true);
   });
 });

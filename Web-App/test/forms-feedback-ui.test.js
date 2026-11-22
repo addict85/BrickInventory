@@ -14,19 +14,19 @@
  *   - Dark mode “always dark” also works with a light system.
  *
  * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
- *   A  in sendAlarm the line with feldFehler removed → red: “alert in the
+ *   A  in sendAlert the line with fieldError removed → red: “alert in the
  *      set detail” (DELETE instead of error message)
- *   B  in loescheAlarm again confirm() → red: “delete alert without question,
+ *   B  in deleteAlert again confirm() → red: “delete alert without question,
  *      with undo”
- *   B2 (22.11.2026, rule of js/deletion.js) loescheAlarm again with confirmDelete before →
+ *   B2 (22.11.2026, rule of js/deletion.js) deleteAlert again with confirmDelete before →
  *      red: “delete alert without question, with undo” (question opened)
- *   C  in lagerorte `belegt ? ' disabled'` removed → red: “storage locations”
+ *   C  in lagerorte `used ? ' disabled'` removed → red: “storage locations”
  *   D  in the counter listener (formular) return immediately → red: “storage locations”
- *   E  in ladeGutscheine again one sum over all currencies → red:
+ *   E  in loadVouchers again one sum over all currencies → red:
  *      “voucher sum per currency”
  *   F  in nutzerverwaltung the name check removed → red: “create
  *      account”
- *   G  in theme-boot `w === 'immer' ||` removed → red: “always dark”
+ *   G  in theme-boot `w === 'always' ||` removed → red: “always dark”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,7 +60,7 @@ test('alert in the set detail', async () => {
     feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(30);
     assert.equal(loeschen(o, '/alert').length, 0, 'abc löschte den Alarm');
-    const fehler = o.d.getElementById('m-alert-val-fehler');
+    const fehler = o.d.getElementById('m-alert-val-error');
     assert.ok(fehler && !fehler.hidden && fehler.textContent.trim(), 'kein Fehler am Feld');
   } finally {
     o.w.close();
@@ -89,9 +89,9 @@ test('delete alert without question, with undo', async () => {
     return true;
   };
   try {
-    await sicht(o.w, 'alarme');
-    await warte(() => o.d.querySelector('#alerts-list [data-click="loescheAlarm"]'));
-    o.d.querySelector('#alerts-list [data-click="loescheAlarm"]').click();
+    await sicht(o.w, 'alerts');
+    await warte(() => o.d.querySelector('#alerts-list [data-click="deleteAlert"]'));
+    o.d.querySelector('#alerts-list [data-click="deleteAlert"]').click();
     assert.ok(await warte(() => loeschen(o, `/sets/${SN}/alert`).length === 1));
     assert.equal(browserConfirm, 0);
     assert.notEqual(o.d.getElementById('confirm-modal').style.display, 'flex', 'Rückfrage vor Wiederherstellbarem');
@@ -125,18 +125,18 @@ test('storage locations', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await sicht(o.w, 'lagerorte');
-    await warte(() => o.d.querySelectorAll('#storage-list [data-click="loescheLagerort"]').length === 2);
-    const [regal, kiste] = o.d.querySelectorAll('#storage-list [data-click="loescheLagerort"]');
+    await sicht(o.w, 'locations');
+    await warte(() => o.d.querySelectorAll('#storage-list [data-click="deleteLocation"]').length === 2);
+    const [regal, kiste] = o.d.querySelectorAll('#storage-list [data-click="deleteLocation"]');
     assert.equal(regal.disabled, true, 'belegter Ort löschbar');
     assert.match(regal.getAttribute('title'), /2 Sets/);
     assert.equal(kiste.disabled, false);
 
-    const name = o.d.querySelector('#storage-list [data-change="benenneLagerortUm"][data-arg="2"]');
+    const name = o.d.querySelector('#storage-list [data-change="renameLocation"][data-arg="2"]');
     name.value = 'Kiste C';
     name.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => /Kiste C/.test(o.d.getElementById('toasts').textContent)), 'keine Erfolgsmeldung');
-    const nochmal = o.d.querySelector('#storage-list [data-change="benenneLagerortUm"][data-arg="2"]');
+    const nochmal = o.d.querySelector('#storage-list [data-change="renameLocation"][data-arg="2"]');
     nochmal.value = '  ';
     nochmal.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(
@@ -148,7 +148,7 @@ test('storage locations', async () => {
     neu.value = 'x'.repeat(55);
     neu.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     const zaehler = neu.nextElementSibling;
-    assert.ok(zaehler?.classList.contains('zeichen-zaehler') && !zaehler.hidden, 'kein Zähler');
+    assert.ok(zaehler?.classList.contains('char-counter') && !zaehler.hidden, 'kein Zähler');
     assert.match(zaehler.textContent, /55.*60/);
   } finally {
     o.w.close();
@@ -170,7 +170,7 @@ test('voucher sum per currency', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await sicht(o.w, 'gutscheine');
+    await sicht(o.w, 'vouchers');
     await warte(() => o.d.getElementById('vouchers-total')?.textContent.trim());
     const summe = o.d.getElementById('vouchers-total').textContent.replace(/\s+/g, ' ');
     assert.match(summe, /70,00 € · .*30,00/);
@@ -188,21 +188,21 @@ test('create account: rules at the field before the password prompt', async () =
     o.d.getElementById('btn-cu').click();
     await takt(30);
     assert.ok(
-      !o.d.getElementById('nu-n-fehler')?.hidden && o.d.getElementById('nu-n-fehler')?.textContent.trim(),
+      !o.d.getElementById('nu-n-error')?.hidden && o.d.getElementById('nu-n-error')?.textContent.trim(),
       'Name ohne Fehler am Feld',
     );
     assert.notEqual(o.d.getElementById('confirm-modal').style.display, 'flex', 'Passwortabfrage trotz falschem Namen');
     o.d.getElementById('nu-n').value = 'bert';
-    o.d.getElementById('nu-p').value = 'kurz';
+    o.d.getElementById('nu-p').value = 'short';
     o.d.getElementById('btn-cu').click();
     await takt(30);
     assert.ok(
-      !o.d.getElementById('nu-p-fehler')?.hidden && o.d.getElementById('nu-p-fehler')?.textContent.trim(),
+      !o.d.getElementById('nu-p-error')?.hidden && o.d.getElementById('nu-p-error')?.textContent.trim(),
       'Passwort ohne Fehler am Feld',
     );
     assert.match(
       o.d.getElementById('nu-p').getAttribute('aria-describedby'),
-      /nu-p-regel/,
+      /nu-p-rule/,
       'Regelhinweis bleibt verknüpft',
     );
     assert.ok(!o.aufrufe.some(a => a.method === 'POST' && a.url.includes('/auth/users')));
@@ -230,19 +230,19 @@ test('always dark', async () => {
     },
   );
   try {
-    const wahl = o.d.getElementById('dunkel-wahl');
+    const wahl = o.d.getElementById('dark-choice');
     assert.ok(
-      [...wahl.options].some(x => x.value === 'immer'),
+      [...wahl.options].some(x => x.value === 'always'),
       'keine Wahl „Immer dunkel“',
     );
-    wahl.value = 'immer';
+    wahl.value = 'always';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(10);
-    assert.ok(o.d.documentElement.hasAttribute('data-dunkel'), 'helles System, trotzdem nicht dunkel');
+    assert.ok(o.d.documentElement.hasAttribute('data-dark'), 'helles System, trotzdem nicht dunkel');
     wahl.value = 'server';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(10);
-    assert.ok(!o.d.documentElement.hasAttribute('data-dunkel'));
+    assert.ok(!o.d.documentElement.hasAttribute('data-dark'));
   } finally {
     o.w.close();
   }

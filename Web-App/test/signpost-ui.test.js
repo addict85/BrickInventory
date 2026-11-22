@@ -22,7 +22,7 @@ for (const sprache of ['de', 'en']) {
     const { w, d } = await openUi({}, { sprache });
     try {
       const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
-      const sections = [...d.querySelectorAll('.einst-nav a')].map(a => a.textContent.trim());
+      const sections = [...d.querySelectorAll('.settings-nav a')].map(a => a.textContent.trim());
       assert.ok(menue.length >= 8 && sections.length >= 5, `Menü/Abschnitte nicht gerendert: ${menue} / ${sections}`);
       const words = sprache === 'de' ? w.I18N_DE : w.I18N_EN;
       const MENU = sprache === 'de' ? 'Menü' : 'Menu';

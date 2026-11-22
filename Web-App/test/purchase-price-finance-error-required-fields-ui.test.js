@@ -10,9 +10,9 @@
  *      (locked after „Erneut versuchen“)
  *   C  teile.js again fmtN() without „je“ → red: “N3 …” (part „0,12 €“); minifigs.js likewise → red: same place (figure)
  *   D  doLogin() without the check of the required fields → red: “N4 …” (all three subcases); errorPlace()
- *      without .geheim-feld → red: “both empty” (message between password field and eye button)
- *   E  kontoSprung() without focus() → red: “N5 …” (focus stays on the link)
- *   F  sitzungBeendet without the branch withoutCookie → red: “operation …” (Sitzung abgelaufen); with isSecureContext
+ *      without .secret-field → red: “both empty” (message between password field and eye button)
+ *   E  jumpToAccount() without focus() → red: “N5 …” (focus stays on the link)
+ *   F  sessionEnded without the branch withoutCookie → red: “operation …” (Sitzung abgelaufen); with isSecureContext
  *      true the same flow shows „Sitzung abgelaufen“ (second subcase, counterpart)
  */
 const test = require('node:test');
@@ -65,8 +65,8 @@ test('N1 purchase price tile: neutral while loading, the addition only with data
     '/v1/finance/pnl': PNL,
   });
   try {
-    const titel = () => text(d.getElementById('fin-einstand-titel'));
-    const zusatz = () => text(d.getElementById('fin-einstand-sub'));
+    const titel = () => text(d.getElementById('fin-cost-basis-title'));
+    const zusatz = () => text(d.getElementById('fin-cost-basis-sub'));
     assert.equal(titel(), 'Kaufpreis', 'vor dem ersten Laden');
     assert.equal(zusatz(), '');
     anhalten = true;
@@ -92,17 +92,17 @@ test('N2 finances error: own title, chips and search locked, free after success'
   });
   try {
     const bedienbar = () =>
-      [...d.querySelectorAll('#fin-filter button, #fin-suche')].map(el => `${el.id || text(el)}:${!el.disabled}`);
+      [...d.querySelectorAll('#fin-filter button, #fin-search')].map(el => `${el.id || text(el)}:${!el.disabled}`);
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .fehler-zustand'));
+    await warte(() => d.querySelector('#portfolio-chart .error-state'));
     await ruhig();
-    assert.equal(text(d.querySelector('#portfolio-chart .fehler-zustand h2')), 'Finanzen konnten nicht geladen werden');
-    assert.deepEqual(bedienbar(), ['Alle:false', 'Sets:false', 'Teile:false', 'Minifiguren:false', 'fin-suche:false']);
+    assert.equal(text(d.querySelector('#portfolio-chart .error-state h2')), 'Finanzen konnten nicht geladen werden');
+    assert.deepEqual(bedienbar(), ['Alle:false', 'Sets:false', 'Teile:false', 'Minifiguren:false', 'fin-search:false']);
     kaputt = false;
-    d.querySelector('#portfolio-chart .fehler-zustand button[data-click]').click();
+    d.querySelector('#portfolio-chart .error-state button[data-click]').click();
     await warte(() => d.querySelector('#fin-tbl table'));
     await ruhig();
-    assert.deepEqual(bedienbar(), ['Alle:true', 'Sets:true', 'Teile:true', 'Minifiguren:true', 'fin-suche:true']);
+    assert.deepEqual(bedienbar(), ['Alle:true', 'Sets:true', 'Teile:true', 'Minifiguren:true', 'fin-search:true']);
   } finally {
     w.close();
   }
@@ -134,13 +134,13 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
   });
   try {
     await reiter(w, 'parts');
-    await warte(() => d.querySelector('#manual-parts-list .man-preis'));
+    await warte(() => d.querySelector('#manual-parts-list .man-price'));
     await ruhig();
-    assert.equal(text(d.querySelector('#manual-parts-list .man-preis')), 'je 0,12 €', 'Teil');
+    assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'Teil');
     await reiter(w, 'minifigs');
-    await warte(() => d.querySelector('#figs-list .man-preis, #manual-figs-list .man-preis'));
+    await warte(() => d.querySelector('#figs-list .man-price, #manual-figs-list .man-price'));
     await ruhig();
-    assert.equal(text(d.querySelector('.man-tile[data-arg="fig"] .man-preis')), 'je 4,50 €', 'Figur');
+    assert.equal(text(d.querySelector('.man-tile[data-arg="fig"] .man-price')), 'je 4,50 €', 'Figur');
   } finally {
     w.close();
   }
@@ -173,29 +173,29 @@ test('N4 login: empty required fields report at the field', async t => {
         const f = d.getElementById(id);
         assert.equal(f.getAttribute('aria-invalid'), 'true', id);
         const ids = (f.getAttribute('aria-describedby') || '').split(/\s+/);
-        assert.ok(ids.includes(`${id}-fehler`), `${id}: aria-describedby`);
-        assert.equal(text(d.getElementById(`${id}-fehler`)), meldung);
+        assert.ok(ids.includes(`${id}-error`), `${id}: aria-describedby`);
+        assert.equal(text(d.getElementById(`${id}-error`)), meldung);
       }
       assert.equal(d.activeElement.id, 'lu', 'Fokus ins erste fehlerhafte Feld');
       // The message stands below the password field, not between field and eye button.
-      assert.equal(d.getElementById('lp-fehler').parentElement.classList.contains('geheim-feld'), false);
+      assert.equal(d.getElementById('lp-error').parentElement.classList.contains('secret-field'), false);
     });
     await t.test('only the password empty', async () => {
       d.getElementById('lu').value = 'anna';
       d.getElementById('btn-login').click();
       await takt(30);
       assert.equal(logins(), 0);
-      assert.equal(d.getElementById('lu-fehler').hidden, true);
+      assert.equal(d.getElementById('lu-error').hidden, true);
       assert.equal(d.getElementById('lu').hasAttribute('aria-invalid'), false);
       assert.equal(d.activeElement.id, 'lp');
     });
     await t.test('wrong credentials stay at the top', async () => {
-      d.getElementById('lp').value = 'falsch';
+      d.getElementById('lp').value = 'wrong';
       d.getElementById('btn-login').click();
       await warte(() => text(d.getElementById('lerr')));
       assert.equal(logins(), 1);
       assert.equal(text(d.getElementById('lerr')), 'Benutzername oder Passwort falsch');
-      assert.equal(d.getElementById('lp-fehler').hidden, true);
+      assert.equal(d.getElementById('lp-error').hidden, true);
     });
   } finally {
     w.close();
@@ -205,8 +205,8 @@ test('N4 login: empty required fields report at the field', async t => {
 test('N5 account: jump bar to all sections', async () => {
   const { w, d } = await openUi();
   try {
-    await sicht(w, 'profil');
-    const nav = d.querySelector('#tab-profil [role="navigation"].konto-nav');
+    await sicht(w, 'profile');
+    const nav = d.querySelector('#tab-profile [role="navigation"].account-nav');
     assert.ok(nav, 'keine Leiste');
     assert.equal(nav.getAttribute('aria-label'), 'Abschnitte');
     const links = [...nav.querySelectorAll('a')];
@@ -266,7 +266,7 @@ async function signInWithoutCookie(sicher) {
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'richtig-richtig';
   o.d.getElementById('btn-login').click();
-  await warte(() => angemeldet && !o.d.getElementById('login-hinweis').hidden);
+  await warte(() => angemeldet && !o.d.getElementById('login-hint').hidden);
   return o;
 }
 
@@ -274,7 +274,7 @@ test('operation: login without a stored session cookie', async t => {
   await t.test('page without HTTPS: clear hint instead of “expired”', async () => {
     const { w, d } = await signInWithoutCookie(false);
     try {
-      const h = text(d.getElementById('login-hinweis'));
+      const h = text(d.getElementById('login-hint'));
       assert.match(h, /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./);
       assert.match(h, /HTTPS/);
       assert.match(h, /COOKIE_SECURE=0/);
@@ -286,7 +286,7 @@ test('operation: login without a stored session cookie', async t => {
   await t.test('secure page: as before “session expired”', async () => {
     const { w, d } = await signInWithoutCookie(true);
     try {
-      assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);
+      assert.match(text(d.getElementById('login-hint')), /Sitzung abgelaufen/);
     } finally {
       w.close();
     }

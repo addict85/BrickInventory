@@ -30,7 +30,7 @@ export async function deleteRestorable(o) {
   else
     toast(o.message, 'success', {
       text: tRaw('trash.undo'),
-      bleibt: true,
+      stays: true,
       fn: async () => {
         if (!(await undo())) return;
         toast(tRaw('trash.restored'), 'success');

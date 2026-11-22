@@ -1,5 +1,5 @@
 import { isTrusted, registerActions, resolveAction } from './registry.js';
-import { bildPlatzhalter, imageProvisional, imageLoaded, fullUrl, zoomStand, PLACEHOLDER_SET } from './images.js';
+import { imagePlaceholder, imageProvisional, imageLoaded, fullUrl, zoomStatus, PLACEHOLDER_SET } from './images.js';
 import { G, atPhoneSwitch } from './dom.js';
 import { setLang } from './account.js';
 import { toast } from './messages.js';
@@ -7,7 +7,7 @@ import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './monitor.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { allMinifigs, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
-import { merkpostenLoeschen } from './wanted.js';
+import { deleteWantedItem } from './wanted.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './set-detail.js';
 import { setQuantitiesField } from './detail-fields.js';
 import { hideProgress } from './progress.js';
@@ -30,24 +30,24 @@ import { deleteManualPart } from './parts.js';
   const ONLY = {
     change: new Set([
       'acqSave',
-      'aendereAlarmSchwelle',
+      'changeAlertThreshold',
       'autosaveSet',
-      'benenneLagerortUm',
-      'gutscheinDateiGewaehlt',
-      'gutscheinLandSpeichern',
-      'importAlarmeCsv',
+      'renameLocation',
+      'voucherFileSelected',
+      'saveVoucherCountry',
+      'importAlertsCsv',
       'importConfig',
       'importFigsCsv',
-      'importMerklisteCsv',
+      'importWantedCsv',
       'importPartsCsv',
-      'ladeMerkliste',
-      'lagerortGewaehlt',
+      'loadWanted',
+      'locationSelected',
       'manAcqSave',
       'manQtySave',
-      'merkpostenInhaberGewaehlt',
+      'wantedOwnerSelected',
       'onScopeChange',
       'onStorageChange',
-      'plFuelleBestand',
+      'plFillStock',
       'renderFigsAll',
       'renderGallery',
       'saveJobMinutes',
@@ -56,30 +56,30 @@ import { deleteManualPart } from './parts.js';
       'setCatFilter',
       'setColorFilter',
       'setLangFromEl',
-      'setzeDunkel',
-      'setzeEigenesDesign',
-      'speichereAlarm',
-      'speichereAppDesign',
-      'speichereCacheTtl',
-      'speichereWaehrung',
-      'speichereZustand',
-      'speichereSetLagerort',
-      'speichereStandardZustand',
-      'speichereTeilFarbe',
-      'speichereTeilLagerort',
+      'setDark',
+      'setOwnDesign',
+      'saveAlert',
+      'saveAppDesign',
+      'saveCacheTtl',
+      'saveCurrency',
+      'saveState',
+      'saveSetLocation',
+      'saveStandardState',
+      'savePartColor',
+      'savePartLocation',
       'startSetCsvImport',
       'updateColorDot',
       'uploadInstr',
-      'waehrungPruefen',
-      'wantedKorrekturFarbe',
-      'wantedKorrekturNummer',
-      'wantedKorrekturWert',
-      'wantedXmlGewaehlt',
-      'wechsleAlarmZustand',
+      'checkCurrency',
+      'wantedCorrectionColor',
+      'wantedCorrectionNumber',
+      'wantedCorrectionValue',
+      'wantedXmlSelected',
+      'toggleAlertState',
     ]),
-    input: new Set(['alarmGetippt', 'filterFigs', 'finSuchen']),
-    blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
-    keydown: new Set(['blurOnEnter', 'lagerortTaste']),
+    input: new Set(['alertTyped', 'filterFigs', 'finSearch']),
+    blur: new Set(['acqSave', 'locationTyped', 'manAcqSave', 'saveManualFigBl']),
+    keydown: new Set(['blurOnEnter', 'locationKeydown']),
   };
 
   // Delete, account, access, admin: only from elements our own code created (isTrusted), never from
@@ -93,38 +93,38 @@ import { deleteManualPart } from './parts.js';
     'deleteManualFig',
     'deleteManualFigStop',
     'deleteManualPartStop',
-    'merkpostenLoeschen',
-    'merkpostenLoeschenStop',
-    'merkpostenDetailLoeschen',
-    'gutscheinLoeschen',
-    'loescheAlarm',
-    'loescheLagerort',
-    'papierkorbEndgueltig',
-    'papierkorbLeeren',
+    'deleteWantedItem',
+    'stopDeleteWantedItem',
+    'deleteWantedDetail',
+    'deleteVoucher',
+    'deleteAlert',
+    'deleteLocation',
+    'deleteFromTrashPermanently',
+    'emptyTrash',
     'deleteBricksetQueueEntry',
     'revokeToken',
     'revokeOtherTokens',
-    'passkeyHinzufuegen',
-    'passkeyLoeschen',
-    'qrKopplungBestaetigen',
-    'qrKopplungAblehnen',
-    'zfEinrichten',
-    'zfNeueCodes',
-    'zfAbschalten',
-    'zfZuruecksetzen',
+    'addPasskey',
+    'deletePasskey',
+    'confirmQrPairing',
+    'rejectQrPairing',
+    'setupSecondFactor',
+    'newRecoveryCodes',
+    'disableSecondFactor',
+    'resetSecondFactor',
     'createHouseholdInvite',
     'redeemHouseholdInvite',
     'unlinkHousehold',
     'unlinkFromParent',
     'delUser',
-    'kontoFreischalten',
+    'unlockAccount',
     'toggleAdmin',
-    'toggleAktiv',
+    'toggleActive',
     'openRpw',
     'saveRegEnabled',
     'importConfig',
-    'auftragAbbrechen',
-    'auftragsArtLeeren',
+    'cancelJob',
+    'emptyJobKind',
   ]);
 
   /**
@@ -274,20 +274,20 @@ import { deleteManualPart } from './parts.js';
         return;
       }
       const orig = el.dataset.orig;
-      if (orig && !el.dataset.origVersucht && el.getAttribute('src') !== orig) {
-        el.dataset.origVersucht = '1';
+      if (orig && !el.dataset.origTried && el.getAttribute('src') !== orig) {
+        el.dataset.origTried = '1';
         el.src = orig;
-        zoomStand(el);
+        zoomStatus(el);
         return;
       }
       if (el.dataset.fallbackDone) return;
       el.dataset.fallbackDone = '1';
-      // Images from templates (bildTag) get their kind's placeholder; the fixed dialog images get the
+      // Images from templates (imageTag) get their kind's placeholder; the fixed dialog images get the
       // set's, otherwise a broken-image icon would show up.
-      if (el.dataset.ph) bildPlatzhalter(el);
+      if (el.dataset.ph) imagePlaceholder(el);
       else if (el.classList.contains('zoombar')) {
         el.src = PLACEHOLDER_SET;
-        zoomStand(el);
+        zoomStatus(el);
       } else {
         el.removeAttribute('src');
         el.classList.add('loaded');
@@ -369,7 +369,7 @@ function openImageLightboxFromEl() {
   const dialog = this.closest('.ovl');
   const name = [
     dialog?.querySelector('.mtit')?.textContent,
-    dialog?.querySelector('.muntertit, [id$="-sub"]')?.textContent,
+    dialog?.querySelector('.msubtitle, [id$="-sub"]')?.textContent,
   ]
     .map(s => (s || '').trim())
     .filter(Boolean)
@@ -382,8 +382,8 @@ function setLangFromEl() {
   setLang(this.value);
 }
 /** Appearance per device — the logic lives in theme-boot.js. @this {HTMLSelectElement} */
-function setzeDunkel() {
-  window.__bimDunkel?.(this.value);
+function setDark() {
+  window.__bimDark?.(this.value);
 }
 
 /**
@@ -429,7 +429,7 @@ export function saveJobTime(k) {
   const valid = !!m && +m[1] < 24 && +m[2] < 60;
   this.setAttribute('aria-invalid', String(!valid));
   if (!valid) {
-    toast(tRaw('monitor.sched.ungueltig'), 'error');
+    toast(tRaw('monitor.sched.invalid'), 'error');
     return;
   }
   this.value = m[1].padStart(2, '0') + ':' + m[2];
@@ -487,9 +487,9 @@ export function deleteManualPartStop(partNumber, colorId, owner, ev) {
  * @param {string} arg
  * @param {Event | undefined} ev
  */
-export function merkpostenLoeschenStop(arg, ev) {
+export function stopDeleteWantedItem(arg, ev) {
   ev?.stopPropagation();
-  merkpostenLoeschen(arg);
+  deleteWantedItem(arg);
 }
 
 /**
@@ -523,7 +523,7 @@ registerActions({
   closePwModal,
   deleteManualFigStop,
   deleteManualPartStop,
-  merkpostenLoeschenStop,
+  stopDeleteWantedItem,
   lightboxBackdrop,
   mQtyDec,
   mQtyInc,
@@ -534,6 +534,6 @@ registerActions({
   saveJobTime,
   saveManualFigBl,
   setLangFromEl,
-  setzeDunkel,
+  setDark,
   stopEvent,
 });

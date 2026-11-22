@@ -14,7 +14,7 @@
  *      test runner charges to the test)
  *   C  `_busy ||` deleted from the line for the write button → red: “a
  *      second click …” (writing operable during the run)
- *   D  the line `if (_busy) { … return; }` removed in wantedXmlGewaehlt →
+ *   D  the line `if (_busy) { … return; }` removed in wantedXmlSelected →
  *      red: “a second click …” (new file accepted during the run)
  *   E  in readStream `rest = lines.pop() ?? ''` → `rest = ''` → red: “the
  *      progress arrives piece by piece …” (report about two pieces breaks)
@@ -59,35 +59,35 @@ test('a second click starts no second run, a new file is rejected', async () => 
     choose('liste.xml');
     assert.ok(await warte(() => importe.length === 1), 'Die Datei startet keinen Lauf');
     assert.deepEqual(
-      [knopf('wanted-xml-neu').disabled, knopf('wanted-xml-schreiben').disabled],
+      [knopf('wanted-xml-new').disabled, knopf('wanted-xml-write').disabled],
       [true, true],
       'Während des Laufs sind beide Knöpfe gesperrt',
     );
     // Locked or not: a triggered click and a new file also come to nothing.
-    knopf('wanted-xml-neu').disabled = false;
-    knopf('wanted-xml-neu').click();
-    knopf('wanted-xml-schreiben').disabled = false;
-    knopf('wanted-xml-schreiben').click();
+    knopf('wanted-xml-new').disabled = false;
+    knopf('wanted-xml-new').click();
+    knopf('wanted-xml-write').disabled = false;
+    knopf('wanted-xml-write').click();
     choose('andere.xml');
     assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
     assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
     // Back to locked, as updateButtons() would keep it: the release must bring the preview.
-    knopf('wanted-xml-neu').disabled = true;
-    knopf('wanted-xml-schreiben').disabled = true;
+    knopf('wanted-xml-new').disabled = true;
+    knopf('wanted-xml-write').disabled = true;
     freigeben();
     assert.ok(await warte(() => d.getElementById('wanted-xml-sub').textContent !== ''), 'Die Vorschau kommt nicht');
     assert.deepEqual(
-      [knopf('wanted-xml-neu').disabled, knopf('wanted-xml-schreiben').disabled],
+      [knopf('wanted-xml-new').disabled, knopf('wanted-xml-write').disabled],
       [false, false],
       'Nach der Vorschau sind beide Knöpfe frei',
     );
     assert.equal(d.getElementById('wanted-xml-sub').textContent, 'liste.xml', 'Die Datei wurde ausgetauscht');
     // Re-read with the preview showing: writing is locked now too, as long as it runs.
-    knopf('wanted-xml-neu').click();
+    knopf('wanted-xml-new').click();
     assert.ok(await warte(() => importe.length === 2));
-    assert.equal(knopf('wanted-xml-schreiben').disabled, true, 'Schreiben ist während des Neueinlesens bedienbar');
+    assert.equal(knopf('wanted-xml-write').disabled, true, 'Schreiben ist während des Neueinlesens bedienbar');
     freigeben();
-    assert.ok(await warte(() => !knopf('wanted-xml-schreiben').disabled));
+    assert.ok(await warte(() => !knopf('wanted-xml-write').disabled));
   } finally {
     w.close();
   }
@@ -101,8 +101,8 @@ test('the latch opens again even after an error', async () => {
   try {
     choose('liste.xml');
     assert.ok(await warte(() => importe.length === 1));
-    assert.ok(await warte(() => !knopf('wanted-xml-neu').disabled), 'Nach dem Fehler bleibt der Dialog gesperrt');
-    knopf('wanted-xml-neu').click();
+    assert.ok(await warte(() => !knopf('wanted-xml-new').disabled), 'Nach dem Fehler bleibt der Dialog gesperrt');
+    knopf('wanted-xml-new').click();
     assert.ok(await warte(() => importe.length === 2), 'Neu einlesen startet nach dem Fehler nichts');
   } finally {
     w.close();
@@ -135,8 +135,8 @@ test('the progress arrives piece by piece and fills the bar', async () => {
     },
   }));
   try {
-    const box = d.getElementById('wanted-xml-fortschritt');
-    const wrap = d.getElementById('wanted-xml-balken-wrap');
+    const box = d.getElementById('wanted-xml-progress');
+    const wrap = d.getElementById('wanted-xml-bar-wrap');
     assert.equal(box.style.display, 'none', 'Der Balken steht vor dem Lauf leer da');
     assert.deepEqual(
       [wrap.getAttribute('role'), wrap.getAttribute('aria-valuemin'), wrap.getAttribute('aria-valuemax')],
@@ -147,11 +147,11 @@ test('the progress arrives piece by piece and fills the bar', async () => {
     assert.match(importe[0], /[?&]strom=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
     assert.equal(box.style.display, '');
     assert.equal(wrap.getAttribute('aria-valuenow'), '25');
-    assert.match(d.getElementById('wanted-xml-fortschritt-text').textContent, /1.*4/);
+    assert.match(d.getElementById('wanted-xml-progress-text').textContent, /1.*4/);
     weiter();
     assert.ok(
-      await warte(() => /7/.test(d.getElementById('wanted-xml-bericht').textContent)),
-      `Der Bericht über zwei Stücke kommt nicht an: ${d.getElementById('wanted-xml-bericht').textContent}`,
+      await warte(() => /7/.test(d.getElementById('wanted-xml-report').textContent)),
+      `Der Bericht über zwei Stücke kommt nicht an: ${d.getElementById('wanted-xml-report').textContent}`,
     );
     assert.equal(box.style.display, 'none', 'Nach dem Lauf verschwindet der Balken');
   } finally {

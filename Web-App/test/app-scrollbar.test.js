@@ -69,13 +69,13 @@ test('redrawing is throttled', () => {
   assert.match(code, /requestAnimationFrame\(/, 'Das Neuzeichnen hängt ungedrosselt am Scroll-Ereignis');
   const i = code.indexOf("addEventListener('scroll'");
   assert.ok(i > 0, 'Kein Scroll-Zuhörer');
-  assert.match(code.slice(0, i), /angefordert/, 'Der Zuhörer ruft nicht die gedrosselte Fassung');
+  assert.match(code.slice(0, i), /requested/, 'Der Zuhörer ruft nicht die gedrosselte Fassung');
 });
 
 test('the label disappears again after dragging', () => {
   // Marco's screenshot
   const code = scrollbarCode();
-  const i = code.indexOf('const ende =');
+  const i = code.indexOf('const end =');
   assert.ok(i > 0, 'Kein Ende-Handler');
   // Cut up to the END of the handler, not by fixed length: the
   // rationale in the comment is longer than any window I would guess

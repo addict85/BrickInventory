@@ -34,7 +34,7 @@ test('parts: the table loads the set mapping', async () => {
     await reiter(w, 'parts');
     assert.ok(await ruhig(), 'der Reiter lädt nicht fertig');
     const vorher = aufrufe.length;
-    const knopf = d.querySelector('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]');
+    const knopf = d.querySelector('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]');
     knopf.click();
     await ruhig();
     assert.ok(

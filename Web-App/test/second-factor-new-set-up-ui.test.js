@@ -5,8 +5,8 @@
  * phone. An ordinary account switches off as the text says, without a setup afterwards.
  *
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
- *   A  `withCode: true` deleted in zfAbschalten() → red: both tests (code field hidden)
- *   B  in zfAbschalten() `begonnen = null` instead of the setup → red: “admin” (no key in the
+ *   A  `withCode: true` deleted in disableSecondFactor() → red: both tests (code field hidden)
+ *   B  in disableSecondFactor() `begonnen = null` instead of the setup → red: “admin” (no key in the
  *      required field)
  *   C  the otpauth link never made visible → red: “admin” (link hidden)
  *   D  button always „Abschalten“ → red: “admin” ('Abschalten' instead of 'Neu einrichten')
@@ -51,9 +51,9 @@ test('administrator: set up again in one dialog, then key and link', async () =>
   const kopiert = [];
   const { w, d, aufrufe } = await oeffne(true, kopiert);
   try {
-    await sicht(w, 'profil');
-    await warte(() => d.querySelector('#zf-flaeche [data-click="zfAbschalten"]'));
-    const knopf = d.querySelector('#zf-flaeche [data-click="zfAbschalten"]');
+    await sicht(w, 'profile');
+    await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
+    const knopf = d.querySelector('#sf-surface [data-click="disableSecondFactor"]');
     assert.equal(knopf.textContent.trim(), 'Neu einrichten');
     knopf.click();
     await warte(() => dialog(d).offen);
@@ -68,17 +68,14 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     assert.deepEqual(JSON.parse(ab.body), { password: 'geheim-Passwort-1', code: '123456' });
     const ein = aufrufe.find(a => a.url.endsWith('/zweiter-faktor/einrichten'));
     assert.deepEqual(JSON.parse(ein.body), { password: 'geheim-Passwort-1' });
-    assert.ok(
-      await warte(() => d.querySelector('#zf-pflicht-flaeche #zf-schluessel')),
-      'kein Schlüssel im Pflichtfeld',
-    );
-    assert.equal(d.getElementById('panel-zweitpflicht').style.display, 'block', 'Pflichtfeld nicht offen');
-    assert.equal(d.getElementById('zf-start'), null, 'noch einmal „Einrichten“');
+    assert.ok(await warte(() => d.querySelector('#sf-required-surface #sf-key')), 'kein Schlüssel im Pflichtfeld');
+    assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'Pflichtfeld nicht offen');
+    assert.equal(d.getElementById('sf-start'), null, 'noch einmal „Einrichten“');
     assert.equal(dialog(d).offen, false, 'zweite Passwortfrage');
-    const link = d.getElementById('zf-otpauth');
+    const link = d.getElementById('sf-otpauth');
     assert.equal(link.hidden, false, 'Link verborgen');
     assert.equal(link.getAttribute('href'), OTPAUTH);
-    d.querySelector('[data-click="zfSchluesselKopieren"]').click();
+    d.querySelector('[data-click="copySecondFactorKey"]').click();
     assert.ok(await warte(() => kopiert.length === 1));
     assert.equal(kopiert[0], 'JBSWY3DPEHPK3PXP');
   } finally {
@@ -89,9 +86,9 @@ test('administrator: set up again in one dialog, then key and link', async () =>
 test('account without admin rights: switching off as announced, without setup', async () => {
   const { w, d, aufrufe } = await oeffne(false, []);
   try {
-    await sicht(w, 'profil');
-    await warte(() => d.querySelector('#zf-flaeche [data-click="zfAbschalten"]'));
-    d.querySelector('#zf-flaeche [data-click="zfAbschalten"]').click();
+    await sicht(w, 'profile');
+    await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
+    d.querySelector('#sf-surface [data-click="disableSecondFactor"]').click();
     await warte(() => dialog(d).offen);
     const f = dialog(d);
     assert.deepEqual([f.titel, f.pw, f.code], ['Abschalten', true, true], JSON.stringify(f));

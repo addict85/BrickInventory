@@ -563,7 +563,7 @@ test('routes, jobs and clients import no repositories', () => {
         if (/Bereich$/.test(n)) treffer.push(`${d}: ${n} (Import)`);
   }
   assert.ok(
-    CALL.test('await kontoBereich().konten.accountShort(1)') && tsBelow('routes').length > 15,
+    CALL.test('await kontoBereich().accounts.accountShort(1)') && tsBelow('routes').length > 15,
     'Selbstbeweis: das Muster findet einen Aufruf, und es gibt Routen',
   );
   assert.deepEqual(treffer, []);

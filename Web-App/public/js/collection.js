@@ -1,5 +1,5 @@
 // The collection: metrics, gallery (tiles and list), set CSV import and deletion. It also
-// reloads when a lower-level module emits 'setsGeaendert' or 'bestandGeaendert'.
+// reloads when a lower-level module emits 'setsChanged' or 'stockChanged'.
 import { subscribe, emit } from './events.js';
 import {
   skeletonTiles,
@@ -8,15 +8,15 @@ import {
   ownerBadges,
   pnlBadge,
   estimatedPurchase,
-  kachelName,
+  tileName,
   accountDisplay,
 } from './components.js';
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
-import { bildTag, fullUrl, placeholderContent, imgUrl, observeLazyImages, thumbUrl } from './images.js';
+import { imageTag, fullUrl, placeholderContent, imgUrl, observeLazyImages, thumbUrl } from './images.js';
 import {
   emptyState,
   reportHits,
@@ -24,15 +24,15 @@ import {
   G,
   TRASH_ICON_SVG,
   resetButton,
-  alle,
-  fuegeHtmlEin,
-  setzeHtml,
-  telefonBreite,
+  queryAll,
+  insertHtml,
+  setHtml,
+  phoneWidth,
   atPhoneSwitch,
 } from './dom.js';
-import { fmtDatum, fmtGeld, fmtN, isGift } from './format.js';
+import { fmtDate, fmtMoney, fmtN, isGift } from './format.js';
 import { toast } from './messages.js';
-import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './account-filter.js';
+import { addScopeParam, scopeQuery, addLocationParam, locationMode } from './account-filter.js';
 import { deleteRestorable } from './deletion.js';
 import {
   accountCurrency,
@@ -44,28 +44,28 @@ import {
   setPnlBySet,
 } from './state.js';
 import { deleteWithChoice } from './confirm-prompt.js';
-import { COLUMNS_SORT, setsTabelle, tableRow, valueCell } from './sets-table.js';
+import { COLUMNS_SORT, setsTable, tableRow, valueCell } from './sets-table.js';
 import { loadStats } from './metrics.js';
 /** @typedef {import('./state.js').Tile} Tile */
 
 /**
- * The theme hue for the "Farbfächer" theme — in the collection too: without it that theme was grey on
+ * The theme hue for the colour-fan theme (farbfaecher) — in the collection too: without it that theme was grey on
  * grey here. With no theme id, the theme name decides, so a theme always carries the same hue.
  * @param {{ theme_id?: number | null, theme?: string | null }} s
  */
 function themeFanTone(s) {
   if (typeof s.theme_id === 'number' && Number.isInteger(s.theme_id))
-    return html` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
+    return html` data-fan="${((s.theme_id % 12) + 12) % 12}"`;
   const name = String(s.theme || '').split(' / ')[0];
   if (!name) return '';
   let h = 0;
   for (const c of name) h = (h * 31 + (c.codePointAt(0) ?? 0)) >>> 0;
-  return html` data-faecher="${h % 12}"`;
+  return html` data-fan="${h % 12}"`;
 }
 
 // ── GALLERY ───────────────────────────────────────────
 let curView = 'grid';
-const asTiles = () => curView === 'grid' || telefonBreite();
+const asTiles = () => curView === 'grid' || phoneWidth();
 
 /**
  * Takes over the condition aggregate from the server: recomputing it locally used the most recently
@@ -102,7 +102,7 @@ function galleryParams(page, pageSize = GAL_PAGE_SIZE) {
   const so = G('gsort')?.value;
   if (so) p.set('sort', so);
   addScopeParam(p, 'gallery');
-  addLagerParam(p, 'gallery');
+  addLocationParam(p, 'gallery');
   return p.toString();
 }
 
@@ -140,10 +140,10 @@ function appendGallery(batch) {
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
   if (asTiles() && grid) {
-    fuegeHtmlEin(grid, 'beforeend', batch.map(gridCard));
+    insertHtml(grid, 'beforeend', batch.map(gridCard));
     observeLazyImages(grid);
   } else if (tbody) {
-    fuegeHtmlEin(tbody, 'beforeend', batch.map(tableRow));
+    insertHtml(tbody, 'beforeend', batch.map(tableRow));
   } else {
     renderGallery(); // structure is missing (empty state)
   }
@@ -218,7 +218,7 @@ export async function loadGallery(opts = {}) {
   // empty wall flashed up.
   const gal = G('gallery');
   if (!gallerySets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    setzeHtml(gal, skeletonTiles(8, tRaw('gallery.loading')));
+    setHtml(gal, skeletonTiles(8, tRaw('gallery.loading')));
   }
   galleryGuard.start();
   _galPage = 1;
@@ -229,7 +229,7 @@ export async function loadGallery(opts = {}) {
   const hadList = gallerySets.length > 0;
   const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, fetchSize)}`));
   if (d === undefined) return;
-  if (listLoadError(gal, d, { erneut: 'loadGallery', behalten: hadList })) {
+  if (listLoadError(gal, d, { again: 'loadGallery', keep: hadList })) {
     if (hadList) renderGallery();
     return;
   }
@@ -246,7 +246,7 @@ export async function loadGallery(opts = {}) {
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
-    setzeHtml(
+    setHtml(
       themeEl,
       html`${html`<option value="">${tRaw('gallery.filter.all')}</option>`}${d.themes.map(th => html`<option value="${th}"${th === current ? ' selected' : ''}>${th}</option>`)}`,
     );
@@ -264,47 +264,47 @@ export async function loadGallery(opts = {}) {
   enrichGalleryWithPrices();
 }
 export function renderGallery() {
-  // Filtering and sorting is done by the server (setsLesen in src/sets/read.ts) — this only draws what
+  // Filtering and sorting is done by the server (src/sets/read.ts) — this only draws what
   // is already loaded. Otherwise a filter would merely search the currently loaded page.
   const q = G('gs')?.value?.toLowerCase() || '';
   const list = gallerySets;
   const c = G('gallery');
   // A filter with no search text (theme, storage location) is a filter too: otherwise "No sets yet"
   // would show over a collection that is merely hidden.
-  const filtered = !!(q || G('gtheme')?.value || lagerModus('gallery'));
+  const filtered = !!(q || G('gtheme')?.value || locationMode('gallery'));
   // Without a single set, the fields filter and sort nothing (N5).
-  G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !filtered);
+  G('tab-gallery')?.classList.toggle('collection-empty', !list.length && !filtered);
   if (filtered)
     reportHits(
       list.length
-        ? tRaw('treffer.sets', { n: _galTotal || list.length })
+        ? tRaw('match.sets', { n: _galTotal || list.length })
         : q
           ? tRaw('common.no_hits', { query: q })
           : tRaw('gallery.no_results_filter'),
     );
   if (!list.length) {
-    setzeHtml(
+    setHtml(
       c,
       filtered
         ? emptyState({
-            ico: 'suche',
-            titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
-            knopf: resetButton('gallery'),
+            ico: 'search',
+            title: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
+            button: resetButton('gallery'),
           })
         : emptyState({
             ico: 'set',
-            titel: tRaw('gallery.empty'),
-            text: tRaw(telefonBreite() ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
-            knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' },
+            title: tRaw('gallery.empty'),
+            text: tRaw(phoneWidth() ? 'gallery.empty_hint_phone' : 'gallery.empty_hint'),
+            button: { text: tRaw('gallery.add.title'), click: 'openCapture', arg: 'set' },
           }),
     );
     return;
   }
   if (asTiles()) {
-    setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
+    setHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
-    setzeHtml(c, setsTabelle(list));
+    setHtml(c, setsTable(list));
     observeLazyImages(c); // was completely missing for the list view
   }
 }
@@ -314,16 +314,16 @@ export function renderGallery() {
  */
 export function updateGalleryPrices() {
   const bySet = new Map(gallerySets.map(x => [x.set_number, x]));
-  alle('[data-price-for]').forEach(el => {
+  queryAll('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
     const content = priceLine(s);
-    setzeHtml(el, content);
+    setHtml(el, content);
     el.hidden = !content;
   });
-  alle('[data-tabwert-for]').forEach(el => {
-    const s = bySet.get(el.dataset.tabwertFor ?? '');
-    if (s) setzeHtml(el, valueCell(s));
+  queryAll('[data-tab-value-for]').forEach(el => {
+    const s = bySet.get(el.dataset.tabValueFor ?? '');
+    if (s) setHtml(el, valueCell(s));
   });
 }
 
@@ -337,7 +337,7 @@ function priceLine(s) {
   const buy = s.avg_purchase_price ?? s.max_purchase_price;
   // The server says where kachel_preis comes from: without a market price it is the purchase price.
   const market = !!s._price && (s._source ? s._source === 'markt' : true);
-  const buyAmount = buy != null ? fmtGeld(buy, accountCurrency) : s._price ? fmtGeld(s._price, accountCurrency) : '';
+  const buyAmount = buy != null ? fmtMoney(buy, accountCurrency) : s._price ? fmtMoney(s._price, accountCurrency) : '';
   const amount = market
     ? fmtN(s._price, accountCurrency)
     : s.kaufpreis_geschaetzt && buyAmount
@@ -347,12 +347,12 @@ function priceLine(s) {
   const pnl = isGift(buy) ? '' : pnlBadge(s._pnl_pct, buy);
   if (!amount && !pnl) return '';
   const kind = amount
-    ? html`<span class="preis-art">${tRaw(market ? 'gallery.card.market' : 'gallery.card.paid')}</span>`
+    ? html`<span class="price-kind">${tRaw(market ? 'gallery.card.market' : 'gallery.card.paid')}</span>`
     : '';
   const pct = pnl
     ? html`<span title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>`
     : '';
-  return html`${kind}<span class="preis">${rawHtml(amount)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
+  return html`${kind}<span class="price">${rawHtml(amount)}</span>${pct ? html`<span class="price-pnl">${pct}</span>` : ''}`;
 }
 
 /** @param {Tile} s */
@@ -364,62 +364,62 @@ function gridCard(s) {
   const thumb = src ? imgUrl(thumbUrl(src) || src, true) : null;
   // No alt text: the tile is a button, its text already names the set.
   const img = src
-    ? bildTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
-    : html`<span class="bild-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
+    ? imageTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
+    : html`<span class="image-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
   // Without a loaded market price, the quantity-weighted purchase price, not the highest one.
   const price = priceLine(s);
   // The date of the last purchase: when importing, the date added to the account was the same day for
   // every set and said nothing. With several purchases (often within a household), the tile shows it is
   // the most recent one.
-  const buyFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
+  const buyFmt = s.letzter_kauf ? fmtDate(s.letzter_kauf) : '';
   const buys = Number(s.acq_count) || 0;
   const buyText =
     buys > 1
-      ? html`<span>${tRaw('gallery.card.kaeufe', { n: buys })}</span> ${buyFmt}`
+      ? html`<span>${tRaw('gallery.card.purchases', { n: buys })}</span> ${buyFmt}`
       : html`<span>${tRaw('detail.added')}</span> ${buyFmt}`;
   // Condition: the server delivers the conditions present as an aggregate — one badge per condition, see
   // condBadges().
   const condBadge = condBadges(s);
   // Without a year, theme or real name, the catalog does not (yet) know this number.
   const unknown = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
-  const k = kachelName(3);
+  const k = tileName(3);
   return html`<div class="sc"${themeFanTone(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
-    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" data-taste="${tRaw('kachel.entf')}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
+    <div class="ca"><span class="delbtn" data-click="delSetStop"${genuine()} aria-hidden="true" data-arg="${s.set_number}" data-key-hint="${tRaw('tile.delete_key')}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>
       <div class="sname">${s.name || tRaw('common.unknown')}</div>
       <div class="smeta"${k.teil(0)}>
         <span class="smeta-text"${s.theme ? html` title="${s.theme}"` : ''}>${s.year || '—'}${s.theme ? html`${' · '}${s.theme}` : ''}</span>
-        <div class="splaketten">
-          ${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : ''}
+        <div class="sbadges">
+          ${s.instructions?.length ? html`<span class="ibadge">${ico('list')}${s.instructions.length}</span>` : ''}
           ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
           ${condBadge}
-          ${isGift(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
-          ${unknown ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
+          ${isGift(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="gift-badge">${tRaw('finance.gift')}</span>` : ''}
+          ${unknown ? html`<span class="unknown-badge" title="${tRaw('gallery.card.unknown_hint')}">${tRaw('gallery.card.unknown')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
       </div>
       <div class="price-badge"${k.teil(1)} data-price-for="${s.set_number}"${price ? '' : ' hidden'}>${price}</div>
-      ${buyFmt ? html`<div class="kachel-datum"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('kalender')} ${buyText}</div>` : html`<div class="kachel-datum" ${k.teil(2)}></div>`}
+      ${buyFmt ? html`<div class="tile-date"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('calendar')} ${buyText}</div>` : html`<div class="tile-date" ${k.teil(2)}></div>`}
     </div>
   </div>`;
 }
 /** @param {string} field */
-async function setsSortieren(field) {
+async function sortSets(field) {
   const sel = G('gsort');
   const [first, second] = COLUMNS_SORT[field];
   sel.value = sel.value === first ? second : first;
   await loadGallery();
   /** @type {HTMLElement | null} */ (
-    document.querySelector(`#gallery [data-click="setsSortieren"][data-arg="${field}"]`)
+    document.querySelector(`#gallery [data-click="sortSets"][data-arg="${field}"]`)
   )?.focus();
 }
 
 // Add set via SSE stream
 /** On a phone the filter sits behind an icon; the number says that a filter is currently active. */
 export function showFilterNumber() {
-  const num = G('gallery-filter-zahl');
+  const num = G('gallery-filter-number');
   if (!num) return;
   const n = ['gtheme', 'storage-gallery'].filter(id => /** @type {HTMLInputElement | null} */ (G(id))?.value).length;
   num.textContent = n ? String(n) : '';
@@ -427,7 +427,7 @@ export function showFilterNumber() {
 }
 
 atPhoneSwitch(() => {
-  if (G('gallery')?.querySelector('.sgrid, .tw, .empty.leer:not(.fehler-zustand)')) renderGallery();
+  if (G('gallery')?.querySelector('.sgrid, .tw, .empty.empty-state:not(.error-state)')) renderGallery();
 });
 G('vg').onclick = () => {
   curView = 'grid';
@@ -477,9 +477,12 @@ async function deletionChoice(sn, name, set) {
   const order = [...accounts].sort(
     (x, y) => Number(y.id === loggedInAccount?.id) - Number(x.id === loggedInAccount?.id),
   );
-  return deleteWithChoice(title, tRaw('gallery.delete.konten', { name, konten: list }), [
-    ...order.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: accountDisplay(k), n: k.n }) })),
-    { wert: '', text: tRaw('gallery.delete.alle', { n: total }) },
+  return deleteWithChoice(title, tRaw('gallery.delete.accounts', { name, accounts: list }), [
+    ...order.map(k => ({
+      value: String(k.id),
+      text: tRaw('gallery.delete.only', { account: accountDisplay(k), n: k.n }),
+    })),
+    { value: '', text: tRaw('gallery.delete.all', { n: total }) },
   ]);
 }
 
@@ -499,11 +502,11 @@ export async function delSet(sn) {
   const d = await deleteRestorable({
     request: () => api('DELETE', `/v1/sets/${sn}${account ? `?accounts=${account}` : ''}`),
     message: `${tRaw('users.deleted', { name })}${owner ? ` · ${accountDisplay(owner)}` : ''}`,
-    focus: `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
+    focus: `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .row-open`,
   });
   if (!d) return false;
   loadGallery();
-  emit('teileLaden');
+  emit('loadParts');
   return true;
 }
 /** @param {string} sn */
@@ -512,7 +515,7 @@ export async function reimportParts(sn) {
   const d = await api('POST', `/v1/sets/${sn}/parts`);
   if (d.success) {
     toast(tRaw('detail.parts_imported', { count: d.count }), 'success');
-    emit('teileLaden');
+    emit('loadParts');
   } else toast(d.error, 'error');
 }
 
@@ -553,18 +556,18 @@ G('btn-set-csv-template').onclick = e => {
 };
 
 // Other modules report that the inventory has changed; reloading happens here.
-subscribe('setsGeaendert', () => {
+subscribe('setsChanged', () => {
   loadGallery();
   loadStats();
 });
-subscribe('bestandGeaendert', () => {
+subscribe('stockChanged', () => {
   loadGallery();
   loadStats();
 });
-subscribe('sammlungLaden', o => loadGallery(o));
-subscribe('kennzahlenLaden', () => loadStats());
-subscribe('sammlungZeichnen', () => renderGallery());
-subscribe('setAggregat', agg => applySetAggregate(/** @type {Partial<Tile> | null | undefined} */ (agg)));
+subscribe('collectionLoad', o => loadGallery(o));
+subscribe('metricsLoad', () => loadStats());
+subscribe('collectionDraw', () => renderGallery());
+subscribe('setAggregate', agg => applySetAggregate(/** @type {Partial<Tile> | null | undefined} */ (agg)));
 
 // No comment between the names: test/bundle-smoke.test.js splits the keys at commas, and a comment
 // would wander into the first name.
@@ -583,5 +586,5 @@ registerActions({
   delSetStop,
   reimportParts,
   renderGallery,
-  setsSortieren,
+  sortSets,
 });

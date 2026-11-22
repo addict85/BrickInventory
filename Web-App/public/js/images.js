@@ -1,5 +1,5 @@
 import { html, safeUrl, rawHtml } from './escaping.js';
-import { ico, setzeHtml } from './dom.js';
+import { ico, setHtml } from './dom.js';
 
 // Image addresses and placeholders. Foreign images only go via the server's proxy; whatever does not load shows the
 // placeholder of its kind instead of the browser icon.
@@ -8,22 +8,22 @@ import { ico, setzeHtml } from './dom.js';
  * A preview image from a template. If it does not load, actions.js puts the placeholder of its kind (`ph`) in
  * its place — the same image as for an entry without any image, instead of the browser icon for broken
  * images.
- * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
- *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
+ * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', class?: string,
+ *           orig?: string, style?: string, fade?: boolean, extra?: string }} o
  */
-export function bildTag(o) {
-  return html`${html`<img src="${safeUrl(o.src)}" alt="${o.alt || ''}"${o.klasse ? html` class="${o.klasse}"` : ''}`}${html` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${o.ph || 'set'}"`}${html`${o.orig ? html` data-orig="${safeUrl(o.orig)}"` : ''}${o.fade ? html` data-fade="1"` : ''}`}${html`${o.stil ? html` data-stil="${o.stil}"` : ''}${o.extra ? html`${' '}${rawHtml(o.extra)}` : ''} />`}`;
+export function imageTag(o) {
+  return html`${html`<img src="${safeUrl(o.src)}" alt="${o.alt || ''}"${o.class ? html` class="${o.class}"` : ''}`}${html` loading="lazy" decoding="async" data-onerror="placeholder" data-ph="${o.ph || 'set'}"`}${html`${o.orig ? html` data-orig="${safeUrl(o.orig)}"` : ''}${o.fade ? html` data-fade="1"` : ''}`}${html`${o.style ? html` data-style="${o.style}"` : ''}${o.extra ? html`${' '}${rawHtml(o.extra)}` : ''} />`}`;
 }
 
 /**
  * The placeholder of a kind: the set image or the icon in a tinted area.
- * @param {string} art
+ * @param {string} kind
  */
-export function placeholderContent(art) {
+export function placeholderContent(kind) {
   // The same subtle icon as for parts and figures; the red logo filled every card the same way without images.
   // Sets take the file: it looks the same in every theme (UI check 6, M3).
-  if (art === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
-  return ico(art === 'figur' ? 'figur' : 'teil');
+  if (kind === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
+  return ico(kind === 'figur' ? 'minifig' : 'part');
 }
 
 /**
@@ -32,8 +32,8 @@ export function placeholderContent(art) {
  * @param {HTMLImageElement} img
  */
 export function imageProvisional(img) {
-  if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
-  bildPlatzhalter(img, true);
+  if (img.previousElementSibling?.classList.contains('image-ph-provisional')) return;
+  imagePlaceholder(img, true);
   img.hidden = true;
   img.style.display = 'none';
   // Hidden, a lazy image never loads; but the second attempt should run.
@@ -46,7 +46,7 @@ export function imageProvisional(img) {
  */
 export function imageLoaded(img) {
   const ph = img.previousElementSibling;
-  if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
+  if (!ph?.classList.contains('image-ph-provisional')) return;
   ph.remove();
   img.hidden = false;
   img.style.display = '';
@@ -56,15 +56,15 @@ export function imageLoaded(img) {
  * Replaces an image that does not load with its placeholder of the same size.
  * @param {HTMLImageElement} img
  */
-export function bildPlatzhalter(img, vorlaeufig = false) {
+export function imagePlaceholder(img, provisional = false) {
   const alt = img.previousElementSibling;
-  if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) {
-    alt.classList.remove('bild-ph-vorlaeufig');
+  if (!provisional && alt?.classList.contains('image-ph-provisional')) {
+    alt.classList.remove('image-ph-provisional');
     img.remove();
     return;
   }
   const ph = document.createElement('span');
-  ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
+  ph.className = ('image-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
   ph.setAttribute('role', 'img');
   ph.setAttribute('aria-label', img.getAttribute('alt') || '');
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
@@ -73,9 +73,9 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   if (!img.closest('.sci'))
     for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin']))
       if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
-  setzeHtml(ph, placeholderContent(img.dataset.ph ?? ''));
-  if (vorlaeufig) {
-    ph.classList.add('bild-ph-vorlaeufig');
+  setHtml(ph, placeholderContent(img.dataset.ph ?? ''));
+  if (provisional) {
+    ph.classList.add('image-ph-provisional');
     img.before(ph);
     return;
   }
@@ -118,46 +118,46 @@ export const PLACEHOLDER_SET = '/assets/set-placeholder.svg';
  * would stay from the last opening: the second time there was then no placeholder, only a broken image.
  * @param {HTMLElement} el @param {string} src @param {string} [orig]
  */
-export function setDialogbild(el, src, orig) {
+export function setDialogImage(el, src, orig) {
   const img = /** @type {HTMLImageElement} */ (el);
   delete img.dataset.retried;
-  delete img.dataset.origVersucht;
+  delete img.dataset.origTried;
   delete img.dataset.fallbackDone;
   if (orig !== undefined) img.dataset.orig = orig;
   img.src = src;
-  zoomStand(img);
+  zoomStatus(img);
 }
 
 /**
  * A placeholder enlarges nothing: it is then neither a button nor a tab stop.
  * @param {HTMLImageElement} img
  */
-export function zoomStand(img) {
+export function zoomStatus(img) {
   if (!img.classList.contains('zoombar')) return;
-  const leer = !img.getAttribute('src') || img.getAttribute('src') === PLACEHOLDER_SET;
+  const empty = !img.getAttribute('src') || img.getAttribute('src') === PLACEHOLDER_SET;
   // The dialog images lie in a real button (keyboard, screen reader); disabled it is no tab stop.
-  const knopf = img.parentElement;
-  if (knopf instanceof HTMLButtonElement && knopf.classList.contains('zoom-knopf')) {
-    knopf.disabled = leer;
-    knopf.toggleAttribute('aria-hidden', leer);
-    if (leer) knopf.removeAttribute('data-click');
-    else knopf.dataset.click = knopf.dataset.zoomKlick || '';
+  const button = img.parentElement;
+  if (button instanceof HTMLButtonElement && button.classList.contains('zoom-button')) {
+    button.disabled = empty;
+    button.toggleAttribute('aria-hidden', empty);
+    if (empty) button.removeAttribute('data-click');
+    else button.dataset.click = button.dataset.zoomClick || '';
     return;
   }
   // The click rests too: a mouse click area without a tab stop would only be there for the mouse.
-  if (leer) {
+  if (empty) {
     img.removeAttribute('role');
     img.tabIndex = -1;
     img.setAttribute('aria-hidden', 'true');
     if (img.dataset.click) {
-      img.dataset.zoomKlick = img.dataset.click;
+      img.dataset.zoomClick = img.dataset.click;
       delete img.dataset.click;
     }
   } else {
     img.setAttribute('role', 'button');
     img.tabIndex = 0;
     img.removeAttribute('aria-hidden');
-    if (img.dataset.zoomKlick && !img.dataset.click) img.dataset.click = img.dataset.zoomKlick;
+    if (img.dataset.zoomClick && !img.dataset.click) img.dataset.click = img.dataset.zoomClick;
   }
 }
 
@@ -165,7 +165,7 @@ export function zoomStand(img) {
  * The address under which an image is loaded. `thumb` only has an effect for images via the proxy; for local
  * files the server decides (image_local is already the right address, see thumbUrl()).
  * @param {string | null | undefined} src
- * @param {boolean | 'nur'} [thumb]  'nur': only the reduced version, never load the original afterwards
+ * @param {boolean | 'only'} [thumb]  'only': only the reduced version, never load the original afterwards
  */
 export function imgUrl(src, thumb) {
   if (!src) return '';
@@ -183,10 +183,10 @@ export function imgUrl(src, thumb) {
   // exclusively by the server (ALLOWED_IMAGE_HOSTS in src/infra/foreignAddresses.ts); a second, diverging
   // allowlist test in the client would only be another place one forgets to maintain.
   if (/^https?:\/\//.test(src)) {
-    // Previews are created in the proxy. `thumb` 'nur' uses an existing one but computes no new one: for the
+    // Previews are created in the proxy. `thumb` 'only' uses an existing one but computes no new one: for the
     // catalog with 25,000 foreign sets one scrolls past. The own inventory gets the preview
     // (true).
-    const tp = thumb === 'nur' ? '&thumb=1&gen=0' : thumb ? '&thumb=1' : '';
+    const tp = thumb === 'only' ? '&thumb=1&gen=0' : thumb ? '&thumb=1' : '';
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
   }
   return src;

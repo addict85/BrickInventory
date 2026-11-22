@@ -6,7 +6,7 @@
  * Counter-checks (measured 02.11.2026, each on its own):
  *   A  the immediate opening removed in openModal() → red: “set detail …”
  *      (dialog closed before the response)
- *   B  the placeholder rows removed in ladeMerkliste() → red: “wishlist …”
+ *   B  the placeholder rows removed in loadWanted() → red: “wishlist …”
  *   C  run check removed in openModal() → red: “set detail: closed
  *      stays closed” (dialog opened again after the response)
  */
@@ -40,10 +40,10 @@ test('set detail opens immediately with a placeholder', async () => {
   try {
     await detail(o);
     assert.equal(o.d.getElementById('set-modal').classList.contains('open'), true, 'Dialog vor der Antwort zu');
-    assert.ok(o.d.querySelector('#m-det .skelett-liste[aria-busy="true"]'), 'kein Platzhalter');
+    assert.ok(o.d.querySelector('#m-det .skeleton-list[aria-busy="true"]'), 'kein Platzhalter');
     assert.equal(o.d.getElementById('m-tit').textContent, '10294-1');
     await warte(() => o.d.getElementById('m-tit').textContent === 'Titanic');
-    assert.equal(o.d.querySelector('#m-det .skelett-liste'), null, 'Platzhalter blieb stehen');
+    assert.equal(o.d.querySelector('#m-det .skeleton-list'), null, 'Platzhalter blieb stehen');
   } finally {
     o.w.close();
   }
@@ -72,9 +72,9 @@ test('wishlist shows placeholder rows until the list is there', async () => {
   const o = await openUi({ '/v1/wanted': spaeter(liste) });
   try {
     await reiter(o.w, 'wanted');
-    assert.ok(o.d.querySelector('#mk-list .skelett-liste[aria-busy="true"]'), 'keine Platzhalter');
-    await warte(() => o.d.querySelector('#mk-list .mk-zeile'));
-    assert.equal(o.d.querySelector('#mk-list .skelett-liste'), null);
+    assert.ok(o.d.querySelector('#mk-list .skeleton-list[aria-busy="true"]'), 'keine Platzhalter');
+    await warte(() => o.d.querySelector('#mk-list .mk-row'));
+    assert.equal(o.d.querySelector('#mk-list .skeleton-list'), null);
   } finally {
     o.w.close();
   }

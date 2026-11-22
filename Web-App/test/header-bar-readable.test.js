@@ -35,12 +35,12 @@ const STILE = [
 ];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** The header as in production: data-stil as style (styles.js), flap open, name set. */
+/** The header as in production: data-style as style (styles.js), flap open, name set. */
 function kopfleiste() {
   const html = require('./helpers/sources').withoutHtmlComments(fs.readFileSync(P('public', 'index.html'), 'utf8'));
   const kopf = html
     .slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
-    .replace(/data-stil="/g, 'style="')
+    .replace(/data-style="/g, 'style="')
     .replace('<span class="ubadge-name" id="ubadge">—</span>', '<span class="ubadge-name" id="ubadge">anna</span>');
   assert.match(kopf, /id="umenu-pop"/, 'Die Menüklappe steht nicht mehr in der Kopfleiste');
   return kopf;
@@ -53,7 +53,7 @@ function testPage() {
   for (const d of DESIGNS)
     for (const dunkel of d === 'werkbank' ? [true] : [false, true])
       teile.push(
-        `<div class="probe" data-theme="${d}"${dunkel ? ' data-dunkel' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`,
+        `<div class="probe" data-theme="${d}"${dunkel ? ' data-dark' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}#umenu-pop{display:block!important;position:static!important}</style></head><body>${teile.join('\n')}

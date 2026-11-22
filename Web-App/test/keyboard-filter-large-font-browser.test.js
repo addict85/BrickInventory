@@ -4,24 +4,24 @@
  *
  * Counter-checks (measured 14.11.2026, each alone, bundle rebuilt):
  *   A  set form without data-submit → red: “Enter from every field” (add-qty does not submit)
- *   B  schliesseErfassen() without form.reset() → red: “Esc discards the draft” (price “12”) and
+ *   B  closeCapture() without form.reset() → red: “Esc discards the draft” (price “12”) and
  *      “Enter from every field” (the hint “schon da” stays, Enter opens the set)
  *   C  loadFinance shows the error in #fin-tbl again → red: “finances on server error” (no error at the top)
- *   D  catalog again without .filterleiste → red: “filters behind the button” (catalog: search and four fields)
- *   E  without the label .delbtn[data-taste]::before → red: “Delete deletes”; hover:none rule again without
+ *   D  catalog again without .filter-bar → red: “filters behind the button” (catalog: search and four fields)
+ *   E  without the label .delbtn[data-key-hint]::before → red: “Delete deletes”; hover:none rule again without
  *      :not(:focus-visible) → red: same place (trash invisible)
  *   F  SET_SORTS without name_desc → red: “table of the sets” (not sorted descending); action buttons
  *      again without set names → red: same place
- *   G  erfassungsPreis() without the gift branch → red: “gift and minifigure count” (“0,00 €”)
+ *   G  acquisitionPrice() without the gift branch → red: “gift and minifigure count” (“0,00 €”)
  *   H  the minifigure count again from /v1/minifigs?source=set → red: same place (detail 1, table 4)
  *   I  Brick .ntab back to 6px 2px → red: “Brick at 320 px” (tabs two lines); #app back to 16 px margin →
- *      red: same place (collection choice in two rows); .hinweis-zu back in the flow → red: same place (× own line)
- *   K  .preis-mit-waehrung without flex-wrap → red: “large font: add set” (price field 95 px)
+ *      red: same place (collection choice in two rows); .hint-close back in the flow → red: same place (× own line)
+ *   K  .price-with-currency without flex-wrap → red: “large font: add set” (price field 95 px)
  *   L  without @container ovl → red: “large font: set detail” (250 px content)
- *   M  rb-hinweis visible offline again → red: “offline banner alone”
- *   N  --chart-wert back to var(--chart-new) → red: “value line in the color of the amounts” (hochglanz blue)
+ *   M  rb-hint visible offline again → red: “offline banner alone”
+ *   N  --chart-value back to var(--chart-new) → red: “value line in the color of the amounts” (hochglanz blue)
  *   O  focusIfDa() without el.focus() → red: “focus after undo” (stays on the heading)
- *   P  #tab-monitor .mon-knoepfe .btn without hyphens:manual → red: “cancel in one line” (42 > 33 px)
+ *   P  #tab-monitor .mon-buttons .btn without hyphens:manual → red: “cancel in one line” (42 > 33 px)
  *   Q  phone text back to “neben dem Titel” → red: “empty collection on the phone”
  *
  * N16 (date field 11/14/2026): the native field formats by the browser's language, not by `lang`;
@@ -36,7 +36,7 @@ const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 
 async function groesse(b, breite, telefon, hoehe) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -66,7 +66,7 @@ async function taste(b, key, vk) {
   await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: vk });
 }
 
-const addOpenSet = `(() => { document.querySelector('#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]').click(); return true; })()`;
+const addOpenSet = `(() => { document.querySelector('#tab-gallery [data-click="openCapture"][data-arg="set"]').click(); return true; })()`;
 
 async function enterFromEachField(_t, a) {
   const { b, bis } = a;
@@ -86,18 +86,18 @@ async function enterFromEachField(_t, a) {
       document.getElementById('${feld}').focus(); return true; })()`);
     const vorher = anfragen();
     await taste(b, 'Enter', 13);
-    await bis(`!document.getElementById('add-unbekannt').hidden`, `Enter aus ${feld} schickt nicht ab`, 50);
+    await bis(`!document.getElementById('add-unknown').hidden`, `Enter aus ${feld} schickt nicht ab`, 50);
     await a.ruhig(2000);
     assert.equal(anfragen() - vorher, 1, `Enter aus ${feld}: Abfragen`);
-    assert.match(await b.auswerten(text('#add-unbekannt')), /schon in deiner Sammlung/);
+    assert.match(await b.auswerten(text('#add-unknown')), /schon in deiner Sammlung/);
   }
   // Part and minifigure: without a number the dialog reports it at the result, submitted from the price field.
   for (const [hash, type, feld, result, meldung] of [
     ['#/teile', 'part', 'ap-price-inline', 'ap-inline-result', 'Teilenummer erforderlich'],
     ['#/minifiguren', 'fig', 'af-price-inline', 'af-inline-result', 'Figur-Nummer erforderlich'],
   ]) {
-    await geh(a, hash, `document.querySelector('.tab.active [data-arg="${type}"][data-click="oeffneErfassen"]')`, type);
-    await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="oeffneErfassen"][data-arg="${type}"]').click();
+    await geh(a, hash, `document.querySelector('.tab.active [data-arg="${type}"][data-click="openCapture"]')`, type);
+    await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="openCapture"][data-arg="${type}"]').click();
       document.getElementById('${result}').textContent = ''; document.getElementById('${feld}').focus(); return true; })()`);
     await taste(b, 'Enter', 13);
     await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${feld}`, 50);
@@ -119,11 +119,11 @@ async function draftDiscarded(_t, a) {
   const m =
     await b.auswerten(`({ preis: document.getElementById('add-price').value, nr: document.getElementById('add-num').value,
     datum: document.getElementById('add-date').value,
-    abbrechen: [...document.querySelectorAll('#add-set-modal .erfassen-fuss .btn')].map(k => k.textContent.trim()) })`);
+    abbrechen: [...document.querySelectorAll('#add-set-modal .capture-footer .btn')].map(k => k.textContent.trim()) })`);
   assert.deepEqual([m.preis, m.nr], ['', ''], `Esc verwirft den Entwurf nicht: ${JSON.stringify(m)}`);
   assert.match(m.datum, /^\d{4}-\d{2}-\d{2}$/, 'Kaufdatum steht wieder auf heute');
   assert.deepEqual(m.abbrechen, ['Abbrechen', 'Hinzufügen']);
-  await b.auswerten(`document.querySelector('#add-set-modal .erfassen-fuss .btn.bs').click(); true`);
+  await b.auswerten(`document.querySelector('#add-set-modal .capture-footer .btn.bs').click(); true`);
   await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, '„Abbrechen“ schliesst');
 }
 
@@ -140,22 +140,22 @@ async function finanzenFehler(_t, a) {
   try {
     await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
     await bis(
-      `!window.__alt && !!document.querySelector('#portfolio-chart .fehler-zustand button, #fin-tbl .fehler-zustand button')`,
-      'Fehler',
+      `!window.__alt && !!document.querySelector('#portfolio-chart .error-state button, #fin-tbl .error-state button')`,
+      'Error',
       300,
     );
     await a.ruhig();
-    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .fehler-zustand button');
+    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .error-state button');
       return { inBox: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
         karten: document.getElementById('fin-sum').checkVisibility(), strich: [...document.querySelectorAll('#fin-sum .fval')].filter(f => f.checkVisibility() && f.textContent.trim() === '—').length }; })()`);
     assert.ok(m.inBox, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
     assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ nicht im ersten Bildschirm: ${JSON.stringify(m)}`);
     assert.equal(m.karten, false, 'Karten ohne Zahl stehen über dem Fehler');
     await b.auswerten(
-      `window.__fehler = false; document.querySelector('#portfolio-chart .fehler-zustand button').click(); true`,
+      `window.__fehler = false; document.querySelector('#portfolio-chart .error-state button').click(); true`,
     );
     await bis(
-      `document.getElementById('fin-sum').checkVisibility() && /€/.test(${text('#fin-einstand')})`,
+      `document.getElementById('fin-sum').checkVisibility() && /€/.test(${text('#fin-cost-basis')})`,
       'nach „Erneut versuchen“',
     );
   } finally {
@@ -167,8 +167,8 @@ async function finanzenFehler(_t, a) {
 async function filterKnopf(_t, a) {
   const { b, bis } = a;
   const reihe = sel =>
-    b.auswerten(`[...document.querySelector('${sel} .filterleiste').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
-      .map(e => e.matches('.filter-knopf') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.suchfeld') ? 'Suche' : e.tagName)`);
+    b.auswerten(`[...document.querySelector('${sel} .filter-bar').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
+      .map(e => e.matches('.filter-button') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.search-field') ? 'Suche' : e.tagName)`);
   try {
     for (const breite of [390, 320]) {
       await groesse(b, breite, true);
@@ -176,16 +176,16 @@ async function filterKnopf(_t, a) {
       const muster = await reihe('#tab-gallery');
       for (const [hash, tab, bereit] of [
         ['#/katalog', '#tab-catalog', '#catalog-grid .sc'],
-        ['#/merkliste', '#tab-wanted', '#mk-list .mk-zeile'],
+        ['#/merkliste', '#tab-wanted', '#mk-list .mk-row'],
       ]) {
         await geh(a, hash, `!!document.querySelector('${bereit}')`, tab);
         assert.deepEqual(await reihe(tab), muster, `${tab} bei ${breite} px`);
-        await b.auswerten(`document.querySelector('${tab} .filter-knopf').click(); true`);
+        await b.auswerten(`document.querySelector('${tab} .filter-button').click(); true`);
         await bis(
-          `document.querySelector('${tab} .filterleiste > select').checkVisibility()`,
+          `document.querySelector('${tab} .filter-bar > select').checkVisibility()`,
           `${tab}: Filter aufgeklappt`,
         );
-        await b.auswerten(`document.querySelector('${tab} .filter-knopf').click(); true`);
+        await b.auswerten(`document.querySelector('${tab} .filter-button').click(); true`);
       }
     }
   } finally {
@@ -219,8 +219,8 @@ async function setsTabelle(_t, a) {
       const z = document.querySelector('#gallery tr[data-arg="10294-1"]');
       return { headers: kopf.map(k => k.textContent.trim()), cells: z.children.length,
         datum: z.children[kopf.findIndex(k => k.textContent.trim() === 'Gekauft am')]?.textContent.trim(),
-        namen: [...z.querySelectorAll('.zeilen-aktionen button')].map(k => k.getAttribute('aria-label')),
-        bunt: !!z.querySelector('.zeilen-aktionen [fill^="#"]') }; })()`);
+        namen: [...z.querySelectorAll('.rows-actions button')].map(k => k.getAttribute('aria-label')),
+        bunt: !!z.querySelector('.rows-actions [fill^="#"]') }; })()`);
     assert.equal(t.headers.length, t.cells, 'Spalten ohne Kopf');
     assert.deepEqual(
       t.headers.filter(k => !k),
@@ -234,14 +234,14 @@ async function setsTabelle(_t, a) {
 
     const sequence = `[...document.querySelectorAll('#gallery tbody tr')].map(z => z.children[2].textContent.trim())`;
     const stand = `document.querySelector('#gallery [data-arg="name"]').closest('th').getAttribute('aria-sort')`;
-    await b.auswerten(`document.querySelector('#gallery [data-click="setsSortieren"][data-arg="name"]').click(); true`);
+    await b.auswerten(`document.querySelector('#gallery [data-click="sortSets"][data-arg="name"]').click(); true`);
     await bis(`${stand} === 'ascending'`, 'Name aufsteigend');
     const auf = await b.auswerten(sequence);
     assert.deepEqual(
       auf,
       [...auf].sort((x, y) => x.localeCompare(y, 'de')),
     );
-    await b.auswerten(`document.querySelector('#gallery [data-click="setsSortieren"][data-arg="name"]').click(); true`);
+    await b.auswerten(`document.querySelector('#gallery [data-click="sortSets"][data-arg="name"]').click(); true`);
     await bis(`${stand} === 'descending'`, 'Name absteigend');
     await a.ruhig();
     assert.deepEqual(await b.auswerten(sequence), [...auf].reverse(), 'absteigend nicht sortiert');
@@ -281,18 +281,18 @@ async function giftAndMinifigs(_t, a) {
 async function brick320(_t, a) {
   const { b, bis } = a;
   const alt = await b.auswerten(`document.documentElement.getAttribute('data-theme')`);
-  await b.auswerten(`(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hinweis_weg')) localStorage.removeItem(k);
+  await b.auswerten(`(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hint_dismissed')) localStorage.removeItem(k);
     document.documentElement.setAttribute('data-theme', 'brick'); return true; })()`);
   await groesse(b, 320, true);
   try {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-    await bis(`document.getElementById('rb-hinweis').checkVisibility()`, 'Rebrickable-Hinweis');
+    await bis(`document.getElementById('rb-hint').checkVisibility()`, 'Rebrickable-Hinweis');
     const m =
-      await b.auswerten(`(() => { const l = document.querySelector('nav .ntab.gruppe-aktiv .tab-label, nav .ntab.active .tab-label');
+      await b.auswerten(`(() => { const l = document.querySelector('nav .ntab.group-active .tab-label, nav .ntab.active .tab-label');
       const r = s => document.querySelector(s).getBoundingClientRect();
       return { zeilen: Math.round(l.getBoundingClientRect().height / parseFloat(getComputedStyle(l).lineHeight)),
-        reihen: new Set([...document.querySelectorAll('#tab-gallery .sammlung-wahl button')].map(k => Math.round(k.getBoundingClientRect().top))).size,
-        zu: r('#rb-hinweis .hinweis-zu').top, knopf: r('#rb-hinweis .btn.bp').top, band: r('#rb-hinweis').height,
+        reihen: new Set([...document.querySelectorAll('#tab-gallery .collection-choice button')].map(k => Math.round(k.getBoundingClientRect().top))).size,
+        zu: r('#rb-hint .hint-close').top, knopf: r('#rb-hint .btn.bp').top, band: r('#rb-hint').height,
         breit: document.documentElement.scrollWidth }; })()`);
     assert.equal(m.zeilen, 1, `aktiver Reiter bricht um: ${JSON.stringify(m)}`);
     assert.equal(m.reihen, 1, `Sammlungswahl zweireihig: ${JSON.stringify(m)}`);
@@ -346,7 +346,7 @@ async function offlineBand(_t, a) {
   const { b, bis } = a;
   await groesse(b, 390, true);
   await b.auswerten(
-    `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hinweis_weg')) localStorage.removeItem(k); return true; })()`,
+    `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hint_dismissed')) localStorage.removeItem(k); return true; })()`,
   );
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.tab('Network.emulateNetworkConditions', {
@@ -358,7 +358,7 @@ async function offlineBand(_t, a) {
   try {
     await b.auswerten(`document.getElementById('gsort').dispatchEvent(new Event('change')); true`);
     await bis(`!document.getElementById('offline-band').hidden`, 'Offline-Band');
-    const m = await b.auswerten(`({ rb: document.getElementById('rb-hinweis').checkVisibility(),
+    const m = await b.auswerten(`({ rb: document.getElementById('rb-hint').checkVisibility(),
       band: document.getElementById('offline-band').getBoundingClientRect().height })`);
     assert.equal(m.rb, false, 'Rebrickable-Hinweis neben dem Offline-Band');
     assert.ok(m.band < 60, `Offline-Band ${m.band} px`);
@@ -409,7 +409,7 @@ async function rueckgaengig(_t, a) {
   await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
   await a.ruhig();
   await b.auswerten(
-    `(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].at(-1); k.focus(); k.click(); return true; })()`,
+    `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
   await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
   await bis(`document.activeElement?.dataset?.arg === '75192-1'`, 'Fokus auf der zurückgeholten Karte', 60);
@@ -417,13 +417,13 @@ async function rueckgaengig(_t, a) {
 
 async function cancelSingleLine(_t, a) {
   const { b, bis } = a;
-  await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
+  await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-card .mon-single')`, 'Hintergrund');
   await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
   await bis(
-    `[...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
+    `[...document.querySelectorAll('#jobs-card .mon-buttons .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
     'Abbrechen',
   );
-  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')];
+  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#jobs-card .mon-buttons .btn')];
     const hoehe = t => Math.max(...k.filter(x => x.textContent.trim() === t).map(x => x.getBoundingClientRect().height));
     return { abbrechen: hoehe('Abbrechen'), jetzt: hoehe('Jetzt starten') }; })()`);
   assert.ok(h.abbrechen <= h.jetzt + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);
@@ -438,8 +438,8 @@ async function emptyCollection(_t, a, kid) {
     await geh(a, '#/finanzen', `document.getElementById('tab-finance').classList.contains('active')`, 'Finanzen');
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .empty p')`, 'leere Sammlung');
     const m =
-      await b.auswerten(`(() => { const s = document.querySelector('#tab-gallery .import-menue > summary').getBoundingClientRect();
-      const w = document.querySelector('#tab-gallery .sammlung-wahl').getBoundingClientRect();
+      await b.auswerten(`(() => { const s = document.querySelector('#tab-gallery .import-menu > summary').getBoundingClientRect();
+      const w = document.querySelector('#tab-gallery .collection-choice').getBoundingClientRect();
       return { text: ${text('#gallery .empty p')}, rechts: innerWidth - s.right, oben: s.top - w.top,
         titel: getComputedStyle(document.querySelector('#tab-gallery .ph h1')).opacity }; })()`);
     assert.equal(m.titel, '0', 'Testdaten: Titel am Telefon unsichtbar');

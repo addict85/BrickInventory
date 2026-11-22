@@ -10,7 +10,7 @@
  *   B  createInvitation again with randomBytes(24).base64url → red: “invitation code
  *      in groups of four” (format) and “invitation names the main account”
  *      (entered in lower case without dashes: expired)
- *   C  profile again with tRaw('konto.profil') without explanation → red: “e-mail
+ *   C  profile again with tRaw('account.profile') without explanation → red: “e-mail
  *      change: title and new address”
  *   D  discardToasts again “all with a button stay” → red: “toast of the view
  *      closes on switching”
@@ -20,7 +20,7 @@
  *      with an icon”
  *   H  priceStatusBadge without a neutral branch → red: “price missing: gray when it
  *      is missing almost everywhere” (6 red triangles)
- *   I  the rules .knopf-schwebend > span { display: none } removed → red:
+ *   I  the rules .button-floating > span { display: none } removed → red:
  *      “floating button: only icon” (measured again 05.11.2026 with waiting for the state:
  *      red after 5 s at “when scrolling only the icon”)
  *   K  referenceLine without the space test at the top → red: “sub-account: purchase price
@@ -71,7 +71,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [andere]).catch(() => {}));
 
   await t.test('invitation code in groups of four', async () => {
-    await b.auswerten(klick('.umenu-item[data-arg="haushalt"]'));
+    await b.auswerten(klick('.umenu-item[data-arg="household"]'));
     await bis(`document.getElementById('household-invite-box')?.checkVisibility()`, 'Haushalt');
     await b.auswerten(klick('[data-click="createHouseholdInvite"]'));
     await bis(`!!document.getElementById('household-invite-code').value`, 'Code erzeugt');
@@ -113,8 +113,8 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   });
 
   await t.test('email change: title and new address', async () => {
-    await b.auswerten(klick('.umenu-item[data-arg="profil"]'));
-    await bis(`!!document.getElementById('prof-email').value`, 'Profil');
+    await b.auswerten(klick('.umenu-item[data-arg="profile"]'));
+    await bis(`!!document.getElementById('prof-email').value`, 'Profile');
     await b.auswerten(
       `document.getElementById('prof-email').value = 'neu-${process.pid}@example.org'; document.getElementById('btn-sav-prof').click(); true`,
     );
@@ -159,7 +159,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
     await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
     assert.equal(await b.auswerten(offen), false, 'Rückfrage vor Wiederherstellbarem');
-    await b.auswerten(`[...document.querySelectorAll('#toasts .toast-aktion')].at(-1).click(); true`);
+    await b.auswerten(`[...document.querySelectorAll('#toasts .toast-action')].at(-1).click(); true`);
     await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
     await ruhig();
   });
@@ -167,16 +167,16 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   await t.test('gift as a badge', async () => {
     const z =
       await b.auswerten(`(() => { const k = [...document.querySelectorAll('#gallery .sc')].find(x => x.textContent.includes('10300-1'));
-      return { plakette: k.querySelector('.splaketten .geschenk-badge')?.textContent, preis: k.querySelector('.price-badge').textContent }; })()`);
+      return { plakette: k.querySelector('.sbadges .gift-badge')?.textContent, preis: k.querySelector('.price-badge').textContent }; })()`);
     assert.equal(z.plakette, 'Geschenk');
     assert.doesNotMatch(z.preis, /Geschenk/);
   });
 
   await t.test('background jobs: every service with an icon', async () => {
     await b.auswerten(klick('.ntab[data-tab="monitor"]'));
-    await bis(`document.querySelectorAll('.mon-dienste .mon-name').length >= 6`, 'Dienste');
+    await bis(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Dienste');
     const ohne = await b.auswerten(
-      `[...document.querySelectorAll('.mon-dienste .mon-name')].filter(n => !n.querySelector('svg.mon-sinnbild *')).map(n => n.textContent.trim())`,
+      `[...document.querySelectorAll('.mon-services .mon-name')].filter(n => !n.querySelector('svg.mon-icon *')).map(n => n.textContent.trim())`,
     );
     assert.deepEqual(ohne, []);
   });
@@ -185,9 +185,9 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     const zeichen = async () => {
       await geh('sammlung');
       await geh('finanzen');
-      await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen', 300);
+      await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen', 300);
       return b.auswerten(
-        `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody .pst-leer').length })`,
+        `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`,
       );
     };
     // Without a price in the cache and without BrickLink access the fetch fails.
@@ -211,14 +211,14 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       `(() => { const s = document.getElementById('scope-finance'); s.value = '${kid}'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
     await bis(
-      `/Kaufpreis .*210[.,]00/.test(document.querySelector('#portfolio-chart .einstand-linie')?.textContent || '')`,
+      `/Kaufpreis .*210[.,]00/.test(document.querySelector('#portfolio-chart .cost-basis-line')?.textContent || '')`,
       'Kaufpreislinie',
       200,
     );
     const funde = (await b.auswerten(LAYOUT(true))).filter(f => /Diagramm/.test(f));
     assert.deepEqual(funde, []);
     assert.doesNotMatch(
-      await b.auswerten(text('#portfolio-chart .einstand-linie')),
+      await b.auswerten(text('#portfolio-chart .cost-basis-line')),
       /gesamt|bewertete/,
       'am Telefon kurz',
     );
@@ -228,7 +228,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   });
 
   await t.test('floating button: icon only', async () => {
-    const knopf = `(() => { const k = document.querySelector('#tab-gallery .knopf-schwebend');
+    const knopf = `(() => { const k = document.querySelector('#tab-gallery .button-floating');
       return { breit: Math.round(k.getBoundingClientRect().width), text: k.querySelector('span').checkVisibility(), name: k.getAttribute('aria-label') }; })()`;
     // Under load scroll event and recomputation come late: the wait is for
     // the state (at most 5 s), checked afterwards — a fixed pause tipped over.
@@ -272,9 +272,9 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${roh}` });
     await bis(
-      `/neu-${process.pid}@example\\.org/.test(document.getElementById('verify-ziel')?.textContent || '')`,
+      `/neu-${process.pid}@example\\.org/.test(document.getElementById('verify-target')?.textContent || '')`,
       'Ziel genannt',
     );
-    assert.match(await b.auswerten(text('#verify-ziel')), new RegExp(`Konto „${NAME}“`));
+    assert.match(await b.auswerten(text('#verify-target')), new RegExp(`Konto „${NAME}“`));
   });
 });

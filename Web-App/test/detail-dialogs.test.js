@@ -65,7 +65,7 @@ test('the set detail no longer shows purchase addresses', () => {
   for (const [modal, id] of [
     ['cat-modal', 'cat-m-bricklink'],
     ['mk-detail-modal', 'mk-m-bricklink'],
-    ['mk-detail-modal', 'mk-m-vergleich'],
+    ['mk-detail-modal', 'mk-m-comparison'],
   ]) {
     assert.ok(dialog(modal).includes(`id="${id}"`), `#${id} fehlt in #${modal} — dort gehoert die Adresse hin.`);
   }

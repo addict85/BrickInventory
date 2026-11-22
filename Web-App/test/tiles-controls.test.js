@@ -62,15 +62,15 @@ test('wishlist: without a name the number appears once, space stays on the right
   });
   try {
     await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-zeile'));
-    const zeile = d.querySelector('.mk-zeile');
+    await warte(() => d.querySelector('.mk-row'));
+    const zeile = d.querySelector('.mk-row');
     const n = (zeile.textContent.match(/99999-1/g) || []).length;
     assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
     // Since 29.10. the class (styles.css) holds the space; the row carries no inline style any more.
     assert.equal(zeile.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
     assert.match(
       require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),
-      /\.mk-zeile\{[^}]*padding:10px 44px 10px 10px/,
+      /\.mk-row\{[^}]*padding:10px 44px 10px 10px/,
       'rechts kein Platz für den Papierkorb',
     );
     assert.equal(tabbar(zeile).filter(el => el !== zeile).length, 0, 'der Papierkorb steht in der Tab-Folge');

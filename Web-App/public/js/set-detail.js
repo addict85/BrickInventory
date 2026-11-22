@@ -2,27 +2,27 @@
 // the acquisition dialog; code that must open it from elsewhere uses jumpTo('setDetail', …) from targets.js.
 import { emit } from './events.js';
 import { registerTarget } from './targets.js';
-import { registerActions, echt } from './registry.js';
+import { registerActions, genuine } from './registry.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
 import { escJs, esc, html, safeUrl, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { fullUrl, setDialogbild, PLACEHOLDER_SET } from './images.js';
-import { G, ico, activeTab, setzeHtml, newTabHint } from './dom.js';
-import { fmtDatum, fmtGeld } from './format.js';
-import { meldeAmFeld, toast, discardToasts } from './messages.js';
+import { fullUrl, setDialogImage, PLACEHOLDER_SET } from './images.js';
+import { G, ico, activeTab, setHtml, newTabHint } from './dom.js';
+import { fmtDate, fmtMoney } from './format.js';
+import { reportAtField, toast, discardToasts } from './messages.js';
 import { deletedWithUndo } from './trash.js';
 import {
-  alarmBlock,
+  alertBlock,
   closeModal,
-  ladeAlarm,
+  loadAlert,
   loadLocationSelection,
   locationBlock,
-  setAlarmField,
+  setAlertField,
   setQuantitiesField,
 } from './detail-fields.js';
 import { deleteFinal } from './deletion.js';
 import { delSet, reimportParts } from './collection.js';
-import { detailRow, accountDisplay, orStroke, skeletonRows, oeffneErfassen } from './components.js';
+import { detailRow, accountDisplay, orStroke, skeletonRows, openCapture } from './components.js';
 import { chartWidth, priceChartSVG, renderMarketRows } from './charts.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { openAcqModal, renderAcqModalBody } from './purchase-dialogs.js';
@@ -73,26 +73,26 @@ function quantitiesByAccount(set, acqs) {
  */
 function quantityBlock(set, acqs) {
   if (!inHousehold(set))
-    return html`<span class="menge-regler" data-rueckmeldung>
-      <button class="btn bs btn-sm detail-knopf menge-knopf" id="m-qty-dec" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
-      <span class="feld-status" role="status"></span><span class="vh" id="m-qty-letztes">${tRaw('detail.qty_letztes')}</span></span>`;
+    return html`<span class="quantity-stepper" data-feedback>
+      <button class="btn bs btn-sm detail-button quantity-button" id="m-qty-dec" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-field quantity-field" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
+      <button class="btn bs btn-sm detail-button quantity-button" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
+      <span class="field-status" role="status"></span><span class="vh" id="m-qty-last">${tRaw('detail.qty_last')}</span></span>`;
   const accounts = quantitiesByAccount(set, acqs);
   const total = accounts.reduce((s, k) => s + k.menge, 0);
   const rows = accounts.map(k => {
     const allowed = !_writableAccounts || _writableAccounts.includes(k.id);
     const name = accountName(k);
     const button = (/** @type {number} */ step, /** @type {string} */ symbol, /** @type {string} */ label) =>
-      html`<button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mengeJeKonto" data-arg="${k.id}" data-arg2="${step}" aria-label="${tRaw(label)}: ${name}"${step < 0 && (k.menge === 0 || total <= 1) ? html` disabled title="${tRaw(total <= 1 ? 'detail.qty_letztes' : 'detail.qty_less')}"` : ''}>${symbol}</button>`;
-    return html`<div class="menge-konto" data-konto="${k.id}">
-      <span class="menge-name">${name}</span>
-      ${allowed ? button(-1, '−', 'detail.qty_less') : ''}<output class="menge-zahl" aria-label="${tRaw('detail.qty')}: ${name}">${k.menge}</output>${allowed ? button(1, '+', 'detail.qty_more') : ''}
+      html`<button class="btn bs btn-sm detail-button quantity-button" data-click="quantityPerAccount" data-arg="${k.id}" data-arg2="${step}" aria-label="${tRaw(label)}: ${name}"${step < 0 && (k.menge === 0 || total <= 1) ? html` disabled title="${tRaw(total <= 1 ? 'detail.qty_last' : 'detail.qty_less')}"` : ''}>${symbol}</button>`;
+    return html`<div class="quantity-account" data-account="${k.id}">
+      <span class="quantity-name">${name}</span>
+      ${allowed ? button(-1, '−', 'detail.qty_less') : ''}<output class="quantity-number" aria-label="${tRaw('detail.qty')}: ${name}">${k.menge}</output>${allowed ? button(1, '+', 'detail.qty_more') : ''}
     </div>`;
   });
-  return html`<div class="menge-konten" data-rueckmeldung>${rows}
-    <div class="menge-gesamt">${tRaw('detail.qty_zusammen', { n: total })}</div>
-    <span class="feld-status" role="status"></span></div>`;
+  return html`<div class="quantity-accounts" data-feedback>${rows}
+    <div class="quantity-total">${tRaw('detail.qty_together', { n: total })}</div>
+    <span class="field-status" role="status"></span></div>`;
 }
 
 /** Header line: number and, in a household, ALL owners — naming only the other account read as if
@@ -106,27 +106,29 @@ function subtitle(set) {
   // Only the set number in fixed width; the owners are plain flowing text like everywhere else.
   const nr = set.name ? html`<span class="setnr">${set.set_number}</span>` : '';
   const who = owners.length
-    ? tRaw(owners.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: owners.map(accountName).join(', ') })
+    ? tRaw(owners.length > 1 ? 'detail.accounts_of' : 'detail.account_of', {
+        names: owners.map(accountName).join(', '),
+      })
     : '';
   return html`${nr}${nr && who ? ' · ' : ''}${who}`;
 }
 
-const PAIR = { paar: true };
+const PAIR = { pair: true };
 
 /** Content of the set dialog from openSet and the acquisitions: value and history to the left under
  * the image, the fields on the right. @param {string} sn @param {import('../../frontend-types/contract').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = openSet;
   if (!set) return null;
-  const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
+  const addedFmt = set.added_at ? fmtDate(set.added_at) : '—';
   // Market price and its movement per condition, from the same query as the price history; here only
   // the placeholder. A single value for the whole set mixed new and used.
-  const priceRow = html`<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${tRaw('detail.wert')}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  const priceRow = html`<div class="m-value-header" id="m-market-rows" data-header="1" role="group" aria-label="${tRaw('detail.value')}"><div class="skeleton-row"></div><div class="skeleton-row short"></div></div>`;
   const pnlRow = '';
   const qtyRow = detailRow(t('detail.qty'), quantityBlock(set, acqs), {
     rowsStyle: 'align-items:flex-start',
-    wertId: 'm-menge',
-    paar: true,
+    valueId: 'm-quantity',
+    pair: true,
   });
 
   // Acquisition summary: compact read-only rows + button to open full editor
@@ -134,20 +136,20 @@ function setDetailHtml(sn, acqs) {
     t('detail.purchase_price'),
     html`
       ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${sn}">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm detail-button" data-click="openAcqModal" data-arg="${sn}">${ico('edit')} ${tRaw('detail.edit_prices')}</button>
     `,
     {
       rowsStyle: 'align-items:flex-start',
-      wertId: 'm-acq-summary',
+      valueId: 'm-acq-summary',
       valueStyle: 'flex-direction:column;align-items:flex-end;gap:3px',
-      paar: true,
+      pair: true,
     },
   );
 
   const left = html`${priceRow}${pnlRow}
     <div id="m-price-chart">
-      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
+      <h3 class="area-title" data-style="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
     </div>`;
   // The minifig count comes from the catalog, same as in the table: the own minifig list only counts
   // what a parts import has taken over, and showed a different number for the same set.
@@ -157,28 +159,28 @@ function setDetailHtml(sn, acqs) {
     ${detailRow(t('detail.theme'), esc(orStroke(set.theme)), PAIR)}
     ${qtyRow}
     ${detailRow(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—', PAIR)}
-    ${detailRow(t('detail.minifigs'), orStroke(set.minifigs), { wertId: 'm-minifigs-val', paar: true })}
+    ${detailRow(t('detail.minifigs'), orStroke(set.minifigs), { valueId: 'm-minifigs-val', pair: true })}
     ${detailRow(
       t('detail.alert'),
-      alarmBlock(sn, 'm', (openSet?.conditions || []).includes('N') || !(openSet?.conditions || []).length ? 'N' : 'U'),
+      alertBlock(sn, 'm', (openSet?.conditions || []).includes('N') || !(openSet?.conditions || []).length ? 'N' : 'U'),
       {
-        klasse: 'alarm-zeile',
-        paar: true,
+        class: 'alert-row',
+        pair: true,
         rowsStyle: 'align-items:flex-start',
         valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end',
       },
     )}
     ${detailRow(
       t('detail.storage'),
-      html`${locationBlock('m-storage', set.storage, `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`)}<button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="lagerorte">${tRaw('detail.lagerorte_verwalten')}</button>`,
-      { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end', paar: true },
+      html`${locationBlock('m-storage', set.storage, `data-change="saveSetLocation" data-arg="${escJs(sn)}"`)}<button type="button" class="close-view" data-click="viewFromDialog" data-arg="locations">${tRaw('detail.locations_manage')}</button>`,
+      { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end', pair: true },
     )}
     ${detailRow(
       t('detail.created'),
-      html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
-      { klasse: 'dr-leise', paar: true },
+      html`${ico('calendar')} ${addedFmt} <span class="text-small">(${tRaw('detail.created_hint')})</span>`,
+      { class: 'dr-quiet', pair: true },
     )}</dl>`;
-  return { links: left, rechts: right };
+  return { links: left, right: right };
 }
 
 /** Load the price history in the background, without holding up the dialog.
@@ -194,11 +196,11 @@ function loadSetFollowups(sn, acqs) {
     const el = G('m-sparkline-content');
     if (!el) return;
     // Both conditions in ONE chart — see priceChartSVG().
-    setzeHtml(
+    setHtml(
       el,
       ph.success
         ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), chartWidth(el), multi)
-        : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
+        : html`<span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
     );
   });
 }
@@ -211,12 +213,12 @@ export async function openModal(sn) {
   // The dialog appears right away, with a placeholder: on a slow connection nothing happened until
   // the answer arrived, and a second tap opened it twice.
   G('m-tit').textContent = sn;
-  G('m-untertit').textContent = '';
-  setDialogbild(G('m-img'), PLACEHOLDER_SET, PLACEHOLDER_SET);
-  setzeHtml(G('m-det'), skeletonRows(4, tRaw('common.loading')));
+  G('m-subtitle').textContent = '';
+  setDialogImage(G('m-img'), PLACEHOLDER_SET, PLACEHOLDER_SET);
+  setHtml(G('m-det'), skeletonRows(4, tRaw('common.loading')));
   G('m-det-links')?.replaceChildren();
   G('m-instr').replaceChildren();
-  G('set-modal').dataset.nummer = sn;
+  G('set-modal').dataset.number = sn;
   G('set-modal').classList.add('open');
   const [d, ad, hm] = await Promise.all([
     api('GET', `/v1/sets/${sn}`),
@@ -228,16 +230,16 @@ export async function openModal(sn) {
   if (run !== _detailRun || !G('set-modal').classList.contains('open')) return;
   // Without a connection, the dialog shows what the collection has already loaded instead of not opening at all.
   const fromCache = !d?.success && d?.networkError ? gallerySets.find(x => x.set_number === sn) : undefined;
-  if (fromCache) toast(tRaw('detail.offline_stand'), 'info');
+  if (fromCache) toast(tRaw('detail.offline_status'), 'info');
   if (!d?.success && !fromCache) {
     G('set-modal').classList.remove('open');
     // Usually a link to a set that is (not yet) in this account: say so and offer to add it.
     if (d?.status === 404) {
       discardToasts();
-      toast(tRaw('detail.nicht_in_sammlung', { nr: sn }), 'info', {
-        text: tRaw('detail.jetzt_hinzufuegen'),
+      toast(tRaw('detail.not_in_collection', { nr: sn }), 'info', {
+        text: tRaw('detail.now_add'),
         fn: () => {
-          oeffneErfassen('set');
+          openCapture('set');
           const f = G('add-num');
           if (f) {
             f.value = sn;
@@ -251,25 +253,25 @@ export async function openModal(sn) {
   const set = d?.success ? d.set : fromCache;
   if (!set) return;
   setOpenSet(set);
-  document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
+  document.querySelector('#set-modal .more-menu')?.removeAttribute('open');
   G('m-tit').textContent = set.name || set.set_number;
-  setzeHtml(G('m-untertit'), subtitle(set));
+  setHtml(G('m-subtitle'), subtitle(set));
   // fullUrl(): full resolution, even when image_local points at the _thumb file
   const img = G('m-img');
-  setDialogbild(img, fullUrl(set.image_local || set.image_url) || PLACEHOLDER_SET, PLACEHOLDER_SET);
+  setDialogImage(img, fullUrl(set.image_local || set.image_url) || PLACEHOLDER_SET, PLACEHOLDER_SET);
   img.style.display = 'block';
 
   const content = setDetailHtml(sn, ad?.acquisitions || []);
-  setzeHtml(G('m-det-links'), content ? content.links : '');
-  setzeHtml(G('m-det'), content ? content.rechts : '');
+  setHtml(G('m-det-links'), content ? content.links : '');
+  setHtml(G('m-det'), content ? content.right : '');
 
   setQuantitiesField(set.quantity);
 
   renderInstructions(set.instructions || [], sn);
   // From here on, the alert handlers mean THIS dialog.
-  setAlarmField('m');
+  setAlertField('m');
   G('set-modal').classList.add('open');
-  ladeAlarm(sn).catch(() => {});
+  loadAlert(sn).catch(() => {});
   // The storage-location list belongs to the set's OWNER, not the viewer — see loadLocationSelection() for why.
   loadLocationSelection(set.owners).catch(() => {});
 
@@ -277,7 +279,7 @@ export async function openModal(sn) {
 }
 
 /** From "more actions" in set detail: the currently open set. */
-function teileNeuImportieren() {
+function reimportOpenSetParts() {
   if (openSet?.set_number) reimportParts(openSet.set_number);
 }
 
@@ -294,43 +296,43 @@ export function renderInstructions(instr, sn) {
       const label = esc(i.description) || t('instr.label');
       // Local files (PDF/image) open in the in-app viewer; external URLs open in a new tab.
       const link = isLocal
-        ? html`<a href="${safeUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description || ''}" data-stil="cursor:pointer">${rawHtml(label)}</a>`
+        ? html`<a href="${safeUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description || ''}" data-style="cursor:pointer">${rawHtml(label)}</a>`
         : html`<a href="${safeUrl(href)}" target="_blank" rel="noopener">${rawHtml(label)}${newTabHint()}</a>`;
       // The kind as text, not only as colour or icon: “manual” can be deleted, the other two cannot.
       const kind = isUpload ? 'manual' : isLocal ? 'local' : 'external';
-      const badgeIco = isUpload ? 'datei' : isLocal ? 'speichern' : 'globus';
+      const badgeIco = isUpload ? 'file' : isLocal ? 'save' : 'globe';
       return html`<div class="ii" id="instr-${i.id}">
       ${link}
-      <span class="ii-art ii-art-${kind}">${ico(badgeIco)}<span>${tRaw(`instr.badge_${kind}`)}</span></span>
-      ${isUpload ? html`<button type="button" class="ii-weg" data-click="delInstr"${echt()} data-arg="${sn}" data-arg2="${i.id}" title="${tRaw('instr.delete_tooltip')}" aria-label="${tRaw('instr.delete_tooltip')}">${ico('loeschen')}</button>` : ''}
+      <span class="ii-kind ii-kind-${kind}">${ico(badgeIco)}<span>${tRaw(`instr.badge_${kind}`)}</span></span>
+      ${isUpload ? html`<button type="button" class="ii-remove" data-click="delInstr"${genuine()} data-arg="${sn}" data-arg2="${i.id}" title="${tRaw('instr.delete_tooltip')}" aria-label="${tRaw('instr.delete_tooltip')}">${ico('delete')}</button>` : ''}
     </div>`;
     })
     .join('');
 
   const uploadForm = html`
-    <div id="instr-upload-form" data-stil="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${tRaw('instr.upload_title')}</div>
-      <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
-        <div data-stil="flex:1;min-width:140px">
-          <label for="instr-desc" class="feld-titel-klein">${tRaw('instr.desc_placeholder')}</label>
+    <div id="instr-upload-form" data-style="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
+      <div data-style="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${tRaw('instr.upload_title')}</div>
+      <div data-style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+        <div data-style="flex:1;min-width:140px">
+          <label for="instr-desc" class="field-title-small">${tRaw('instr.desc_placeholder')}</label>
           <input type="text" id="instr-desc" />
         </div>
-        <label class="btn bs btn-sm zeiger">
-          ${ico('datei')} ${tRaw('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${sn}" />
+        <label class="btn bs btn-sm cursor-pointer">
+          ${ico('file')} ${tRaw('instr.choose_file')}
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="file-hidden" data-change="uploadInstr" data-arg="${sn}" />
         </label>
       </div>
-      <div id="instr-upload-status" role="status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" role="status" data-style="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
-  setzeHtml(
+  setHtml(
     G('m-instr'),
     html`
-    <div class="zeile umbruch mittig" data-stil="margin:12px 0 7px;gap:8px">
-      <h3 class="bereich-titel" data-stil="margin:0">${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}</h3>
-      ${loggedInAccount?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
+    <div class="row flex-wrap items-center" data-style="margin:12px 0 7px;gap:8px">
+      <h3 class="area-title" data-style="margin:0">${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}</h3>
+      ${loggedInAccount?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-style="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
     </div>
-    ${items ? rawHtml(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
+    ${items ? rawHtml(items) : html`<div data-style="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
     ${uploadForm}`,
   );
 }
@@ -340,7 +342,7 @@ async function delInstr(sn, instrId) {
   const d = await deleteFinal({
     title: tRaw('instr.delete_title'),
     text: tRaw('instr.delete_text'),
-    icon: 'datei',
+    icon: 'file',
     request: () => api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`),
   });
   if (!d) return;
@@ -379,7 +381,7 @@ async function uploadInstr(sn) {
 export function openImageLightbox(src, name = '') {
   if (!src || src.endsWith('/assets/set-placeholder.svg')) return;
   G('lightbox-img').src = src;
-  G('lightbox-img').setAttribute('alt', name || tRaw('common.bild'));
+  G('lightbox-img').setAttribute('alt', name || tRaw('common.image'));
   G('img-lightbox').classList.add('open');
 }
 
@@ -427,12 +429,12 @@ export function autosaveSet() {
 }
 
 /** The stepper of one account in a household: a single step, relative, for exactly this account.
- * @param {string} konto @param {string} schritt */
-function mengeJeKonto(konto, schritt) {
-  const id = Number(konto),
-    n = Number(schritt);
+ * @param {string} account @param {string} step */
+function quantityPerAccount(account, step) {
+  const id = Number(account),
+    n = Number(step);
   if (!openSet || !Number.isInteger(id) || !n) return;
-  const button = document.querySelector(`#m-menge [data-konto="${id}"] [data-arg2="${n}"]`);
+  const button = document.querySelector(`#m-quantity [data-account="${id}"] [data-arg2="${n}"]`);
   changeQuantity({ quantity_delta: n, ...(id === loggedInAccount?.id ? {} : { owner_user_id: id }) }, n, button);
 }
 
@@ -452,12 +454,12 @@ async function changeQuantity(body, step, field, set = openSet) {
     return;
   }
   // Saved, but without a market price for the new acquisition: it follows with the price job.
-  if (d.degradiert?.includes('kaufpreis')) toast(tRaw('set.kaufpreis_folgt'), 'info');
+  if (d.degradiert?.includes('purchase-price')) toast(tRaw('set.purchase_price_follows'), 'info');
   if (d.entfallen?.length) reportRemovedPurchase(sn, d, body.owner_user_id);
   const ad = await refreshDetail(sn, field);
   if (step > 0 && ad) reportNewCopies(sn, ad.acquisitions, step);
-  emit('sammlungLaden');
-  if (activeTab() === 'finance') emit('finanzenLaden');
+  emit('collectionLoad');
+  if (activeTab() === 'finance') emit('financesLoad');
 }
 
 /** "Purchase from 09/13/2026 (€250.00) removed" with Undo; the acquisition sits in the trash.
@@ -465,12 +467,12 @@ async function changeQuantity(body, step, field, set = openSet) {
 function reportRemovedPurchase(sn, d, accountId) {
   const removed = d.entfallen || [];
   const k = removed[0];
-  const preis = k?.purchase_price != null ? ` (${fmtGeld(k.purchase_price, k.currency || accountCurrency)})` : '';
+  const price = k?.purchase_price != null ? ` (${fmtMoney(k.purchase_price, k.currency || accountCurrency)})` : '';
   const owner = accountId ? (openSet?.owners || []).find(o => o.id === accountId) : null;
   const text =
     removed.length === 1 && k
-      ? tRaw('detail.kauf_entfernt', { datum: fmtDatum(k.date || ''), preis })
-      : tRaw('detail.kaeufe_entfernt', { n: removed.length });
+      ? tRaw('detail.purchase_removed', { date: fmtDate(k.date || ''), price })
+      : tRaw('detail.purchases_removed', { n: removed.length });
   const ids = typeof d.papierkorb === 'number' ? [d.papierkorb] : d.papierkorb || [];
   deletedWithUndo(owner ? `${text} · ${accountName(owner)}` : text, { papierkorb: ids }, () => {
     if (openSet?.set_number === sn) refreshDetail(sn, null);
@@ -492,14 +494,14 @@ async function refreshDetail(sn, field) {
   setOpenSet(d.set);
   const acqs = ad?.acquisitions || [];
   const focused = field && field === document.activeElement ? field : null;
-  const quantityEl = G('m-menge');
-  if (quantityEl) setzeHtml(quantityEl, quantityBlock(d.set, acqs));
+  const quantityEl = G('m-quantity');
+  if (quantityEl) setHtml(quantityEl, quantityBlock(d.set, acqs));
   const newField = G('m-qty');
   setQuantitiesField(d.set.quantity);
   const sumEl = G('m-acq-summary');
-  if (sumEl) setzeHtml(sumEl, summary(acqs, sn));
+  if (sumEl) setHtml(sumEl, summary(acqs, sn));
   if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);
-  setzeHtml(G('m-untertit'), subtitle(d.set));
+  setHtml(G('m-subtitle'), subtitle(d.set));
   // The pressed button has been replaced; focus goes to its successor, or, if that is disabled (last
   // "−"), to "+".
   const accountId = field instanceof HTMLElement ? field.dataset.arg : undefined;
@@ -516,7 +518,7 @@ async function refreshDetail(sn, field) {
         buttons.find(k => !k.hasAttribute('disabled')) ??
         null);
   if (focused && target instanceof HTMLElement) target.focus({ preventScroll: true });
-  meldeAmFeld(target || quantityEl?.querySelector('[data-rueckmeldung]'));
+  reportAtField(target || quantityEl?.querySelector('[data-feedback]'));
   loadSetFollowups(sn, acqs);
   return ad;
 }
@@ -528,15 +530,15 @@ async function refreshDetail(sn, field) {
  */
 function reportNewCopies(sn, acqs, n) {
   const latest = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-  const preis = latest?.purchase_price;
-  const plural = n > 1 ? 'exemplare' : 'exemplar';
+  const price = latest?.purchase_price;
+  const plural = n > 1 ? 'copies' : 'copy';
   const text =
-    preis != null && latest.price_estimated
-      ? tRaw(`acq.${plural}_geschaetzt`, { n, preis: fmtGeld(preis, latest.currency || accountCurrency) })
-      : preis == null
-        ? tRaw(`acq.${plural}_ohne_preis`, { n })
+    price != null && latest.price_estimated
+      ? tRaw(`acq.${plural}_estimated`, { n, price: fmtMoney(price, latest.currency || accountCurrency) })
+      : price == null
+        ? tRaw(`acq.${plural}_without_price`, { n })
         : tRaw('settings.saved');
-  toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
+  toast(text, 'success', { text: tRaw('acq.change'), fn: () => openAcqModal(sn) });
 }
 
 // No separate confirmation here anymore — delSet() asks (see there). The dialog closes only on an
@@ -557,7 +559,7 @@ async function redownloadInstr(sn) {
     if (openSet) {
       openModal(sn);
     }
-    emit('kennzahlenLaden');
+    emit('metricsLoad');
   } else toast(d.error, 'error');
 }
 
@@ -565,9 +567,9 @@ registerTarget({ setDetail: openModal });
 
 // Names below are registry-exposed (data-click/data-change in index.html, or connection.js) — kept unchanged.
 registerActions({
-  teileNeuImportieren,
+  reimportOpenSetParts,
   autosaveSet,
-  mengeJeKonto,
+  quantityPerAccount,
   closeImageLightbox,
   delInstr,
   redownloadInstr,

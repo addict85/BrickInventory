@@ -8,7 +8,7 @@
  * made exactly its own case red):
  *   A  pnlBadge without the gift branch → red: “gift in tile, table
  *      and detail” (tile showed “+163.700,0 %”)
- *   B  markGroup(null) removed in oeffneSicht → red: “menu page:
+ *   B  markGroup(null) removed in openView → red: “menu page:
  *      no tab marked” (aria-current on “Sammlung”)
  *   C  smeta-text again with substring(0,12) → red: “theme in full”
  *   D  referenceLine not drawn in the value chart → red: “value chart”
@@ -112,7 +112,7 @@ test('gift in tile, table and detail', async () => {
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
     // Since UI review 13 as a badge next to the condition, not in the price box.
     assert.match(
-      text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')),
+      text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.sbadges')),
       /Geschenk/,
     );
     assert.doesNotMatch(kachel, /%|Geschenk/, `Kachel: ${kachel}`);
@@ -150,16 +150,16 @@ test('set without image: the same cube as in the tile', () => {
 test('menu page: no tab marked, name in the header', async () => {
   const { w, d } = await openUi({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     assert.deepEqual(
-      [...d.querySelectorAll('.ntab[aria-current], .ntab.gruppe-aktiv, .ntab.active')].map(x => x.dataset.tab),
+      [...d.querySelectorAll('.ntab[aria-current], .ntab.group-active, .ntab.active')].map(x => x.dataset.tab),
       [],
     );
-    assert.equal(d.getElementById('kopf-sicht').hidden, false);
-    assert.equal(text(d.getElementById('kopf-sicht')), 'Konto');
+    assert.equal(d.getElementById('header-view').hidden, false);
+    assert.equal(text(d.getElementById('header-view')), 'Konto');
     assert.match(d.title, /^Konto – /);
     await reiter(w, 'finance');
-    assert.equal(d.getElementById('kopf-sicht').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
+    assert.equal(d.getElementById('header-view').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
     assert.match(d.title, /^Finanzen – /);
   } finally {
@@ -171,15 +171,15 @@ test('import as one menu', async () => {
   const { w, d } = await openUi({});
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
-      const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
+      const leiste = d.querySelector(`#tab-${tab} .capture-bar`);
       assert.deepEqual(
-        [...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')),
-        ['BUTTON.btn bp', 'DETAILS.import-menue'],
+        [...leiste.children].map(e => e.tagName + '.' + e.className.replace(' button-floating', '')),
+        ['BUTTON.btn bp', 'DETAILS.import-menu'],
         tab,
       );
       const menue = leiste.querySelector('details');
       // Plus in the set menu "last import" (UI review 17 M4), hidden as long as there is none.
-      assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
+      assert.equal(menue.querySelectorAll('.import-toggle > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);
@@ -223,15 +223,15 @@ test('value chart: currency, cost basis, axis break, crosshair via keyboard', as
     const svg = d.querySelector('#portfolio-chart svg');
     const achse = [...svg.querySelectorAll('text[text-anchor="end"]')].filter(t => +t.getAttribute('x') < 90).map(text);
     assert.ok(achse.length >= 3 && achse.every(t => /€|EUR/.test(t)), `Achse: ${achse.join(' | ')}`);
-    assert.match(zahl(text(svg.querySelector('.einstand-linie'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
-    assert.equal(svg.querySelector('.einstand-linie line').getAttribute('stroke-dasharray'), '6 4');
-    assert.ok(svg.querySelector('.achsenbruch'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');
+    assert.match(zahl(text(svg.querySelector('.cost-basis-line'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
+    assert.equal(svg.querySelector('.cost-basis-line line').getAttribute('stroke-dasharray'), '6 4');
+    assert.ok(svg.querySelector('.axis-break'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');
     assert.match(svg.getAttribute('aria-label'), /beginnt bei \D*1\D?500[.,]00/);
     svg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    const fk = svg.querySelector('.fadenkreuz');
+    const fk = svg.querySelector('.crosshair');
     assert.equal(fk.getAttribute('visibility'), 'visible');
     assert.match(zahl(text(fk.querySelector('.fk-text'))), /01\.?10\.?2026.*1720\.00/);
-    assert.match(zahl(text(svg.parentElement.querySelector('.diagramm-ansage'))), /1720\.00/);
+    assert.match(zahl(text(svg.parentElement.querySelector('.chart-announcement'))), /1720\.00/);
   } finally {
     w.close();
   }
@@ -244,16 +244,16 @@ test('period without history', async () => {
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .diagramm-leer'));
+    await warte(() => d.querySelector('#portfolio-chart .chart-empty'));
     assert.deepEqual(
-      [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(b => b.disabled),
+      [...d.querySelectorAll('.period-choice .period-btn')].map(b => b.disabled),
       [true, true, true, true],
     );
-    w.document.querySelector('.zeitraum-wahl .period-btn[data-period="week"]').disabled = false;
-    w.document.querySelector('.zeitraum-wahl .period-btn[data-period="week"]').click();
+    w.document.querySelector('.period-choice .period-btn[data-period="week"]').disabled = false;
+    w.document.querySelector('.period-choice .period-btn[data-period="week"]').click();
     await takt(50);
     assert.ok(
-      d.querySelector('#fin-filter [data-art=""]').classList.contains('active'),
+      d.querySelector('#fin-filter [data-kind=""]').classList.contains('active'),
       'der Chip „Alle“ verlor seine Wahl',
     );
   } finally {

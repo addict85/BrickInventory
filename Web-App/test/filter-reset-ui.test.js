@@ -3,10 +3,10 @@
  * jsdom.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  in renderGallery `knopf: resetButton('gallery')` removed → red:
+ *   A  in renderGallery `button: resetButton('gallery')` removed → red:
  *      “collection: search without results” and “collection: theme filter without results”
- *   B  `gefiltert` again only `q` → red: “collection: theme filter without results”
- *   C  in filterZuruecksetzen the branch 'merkliste' removed → red:
+ *   B  `filtered` again only `q` → red: “collection: theme filter without results”
+ *   C  in resetFilter the branch 'wanted' removed → red:
  *      “wishlist: search without results”
  */
 const test = require('node:test');
@@ -20,8 +20,8 @@ test('collection: search without hits', async () => {
   try {
     d.getElementById('gs').value = 'xyz';
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
-    await warte(() => d.querySelector('#gallery [data-click="filterZuruecksetzen"]'));
-    const knopf = d.querySelector('#gallery [data-click="filterZuruecksetzen"]');
+    await warte(() => d.querySelector('#gallery [data-click="resetFilter"]'));
+    const knopf = d.querySelector('#gallery [data-click="resetFilter"]');
     assert.ok(knopf, 'Kein Knopf „Filter zurücksetzen“');
     assert.equal(knopf.textContent.trim(), 'Filter zurücksetzen');
     const vorher = aufrufe.length;
@@ -42,9 +42,9 @@ test('collection: theme filter without hits', async () => {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
     d.getElementById('gtheme').value = 'Icons';
     d.getElementById('gtheme').dispatchEvent(new w.Event('change'));
-    await warte(() => d.querySelector('#gallery .leer h2')?.textContent.includes('Filter'));
-    assert.equal(d.querySelector('#gallery .leer h2').textContent, 'Keine Sets passen zu diesem Filter');
-    assert.ok(d.querySelector('#gallery [data-click="filterZuruecksetzen"]'));
+    await warte(() => d.querySelector('#gallery .empty-state h2')?.textContent.includes('Filter'));
+    assert.equal(d.querySelector('#gallery .empty-state h2').textContent, 'Keine Sets passen zu diesem Filter');
+    assert.ok(d.querySelector('#gallery [data-click="resetFilter"]'));
   } finally {
     w.close();
   }
@@ -56,13 +56,13 @@ test('wishlist: search without hits', async () => {
     await reiter(w, 'wanted');
     d.getElementById('mks').value = 'xyz';
     d.getElementById('mks').dispatchEvent(new w.Event('input'));
-    await warte(() => d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'));
-    d.querySelector('#mk-list [data-click="filterZuruecksetzen"]').click();
+    await warte(() => d.querySelector('#mk-list [data-click="resetFilter"]'));
+    d.querySelector('#mk-list [data-click="resetFilter"]').click();
     await takt(30);
     assert.equal(d.getElementById('mks').value, '');
-    await warte(() => !d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'));
+    await warte(() => !d.querySelector('#mk-list [data-click="resetFilter"]'));
     assert.equal(
-      d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'),
+      d.querySelector('#mk-list [data-click="resetFilter"]'),
       null,
       'Nach dem Zurücksetzen steht weiter „nichts gefunden“',
     );

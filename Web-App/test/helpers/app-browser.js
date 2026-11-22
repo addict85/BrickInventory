@@ -33,7 +33,9 @@ function chrome() {
   ];
   const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
   if (!bin && process.env.REQUIRE_BROWSER === '1')
-    throw new Error(`REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'leer'})`);
+    throw new Error(
+      `REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'empty-state'})`,
+    );
   return bin;
 }
 
@@ -336,7 +338,7 @@ async function startApp(t, opt = {}) {
   // writes the session; on a busy runner that took over 10 s.
   await bis(
     `document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`,
-    'angemeldet',
+    'loggedIn',
     300,
   );
   // On the phone the name only stands in the menu; that is why the account badge itself is checked.
@@ -350,7 +352,7 @@ async function startApp(t, opt = {}) {
     `(() => {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
-    return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`,
+    return !!g && g.children.length > 0 && !g.querySelector('.skeleton-grid'); })()`,
     'Start abgeschlossen',
   );
   if (opt.allDesigns)

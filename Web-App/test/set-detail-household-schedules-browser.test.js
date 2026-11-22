@@ -11,19 +11,19 @@
  *      („Konto: …_kind“ instead of „Konten: r19_… (ich), …_kind“)
  *   C  ladeSetNachtraege(sn) removed in frischeDetailAuf() → red: same place
  *      (chart still names 205,00 €)
- *   D  owner_user_id left out in mengeJeKonto() → red: same place (toast
+ *   D  owner_user_id left out in quantityPerAccount() → red: same place (toast
  *      names the own purchase of 01.06.)
- *   E  meldeAmFeld() removed in frischeDetailAuf() → red: same place (no
+ *   E  reportAtField() removed in frischeDetailAuf() → red: same place (no
  *      „Gespeichert ✓“)
  *   F  in monitor.js the schedule fields back into the services table → red:
  *      „Einstellungen an einem Ort“ (fields under background jobs)
  *   G  loadSchedules() not called when opening the settings → red:
  *      same place („Zeitpläne als Felder“)
- *   H  meldeAmFeld() removed in speichereCacheTtl → red: same place
+ *   H  reportAtField() removed in saveCacheTtl → red: same place
  *      („Gespeichert ✓“ at the field)
  *   I  in mobile.css the header of the collection again with a visible title →
  *      red: „Telefon: erste Karte“ (43 % of the height)
- *   K  rbHinweisWeg() without localStorage → red: same place (banner after reloading)
+ *   K  dismissRbHint() without localStorage → red: same place (banner after reloading)
  *   L  .delbtn again with font-size var(--fs-1) → red: „Pfad, Kacheln,
  *      Achse“ (symbol too small)
  *   M  tile trash can again only hidden at (hover:none) and (pointer:coarse)
@@ -50,29 +50,31 @@ async function setDetailInHousehold(_t, a) {
   const kind = `r19_${process.pid}_kind`;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click();
     document.querySelector('#gallery [data-click="openModal"][data-arg="21318-1"]').click(); true`);
-  await bis(`document.querySelectorAll('#m-menge .menge-konto').length === 2`, 'Regler je Konto');
+  await bis(`document.querySelectorAll('#m-quantity .quantity-account').length === 2`, 'Regler je Konto');
   await bis(`/205,00/.test(${text('#m-sparkline-content')})`, 'Diagramm mit dem Mischpreis');
-  assert.equal(await b.auswerten(text('#m-untertit')), `21318-1 · Konten: r19_${process.pid} (ich), ${kind}`);
-  const zeilen = `[...document.querySelectorAll('#m-menge .menge-konto')].map(z => z.querySelector('.menge-name').textContent + ' ' + z.querySelector('.menge-zahl').textContent)`;
+  assert.equal(await b.auswerten(text('#m-subtitle')), `21318-1 · Konten: r19_${process.pid} (ich), ${kind}`);
+  const zeilen = `[...document.querySelectorAll('#m-quantity .quantity-account')].map(z => z.querySelector('.quantity-name').textContent + ' ' + z.querySelector('.quantity-number').textContent)`;
   assert.deepEqual(await b.auswerten(zeilen), [`r19_${process.pid} (ich) 1`, `${kind} 1`]);
 
-  await b.auswerten(`document.querySelector('#m-menge .menge-konto:nth-child(2) [data-arg2="-1"]').click(); true`);
+  await b.auswerten(
+    `document.querySelector('#m-quantity .quantity-account:nth-child(2) [data-arg2="-1"]').click(); true`,
+  );
   await bis(`/Kauf vom 02\\.06\\.2026/.test(document.getElementById('toasts').textContent)`, 'Toast nennt den Kauf');
   await ruhig();
   assert.match(
     await b.auswerten(text('#toasts')),
     new RegExp(`Kauf vom 02\\.06\\.2026 \\(210,00 €\\) entfernt · ${kind}`),
   );
-  assert.ok(await b.auswerten(`!!document.querySelector('#toasts .toast-aktion')`), 'kein Rückgängig');
+  assert.ok(await b.auswerten(`!!document.querySelector('#toasts .toast-action')`), 'kein Rückgängig');
   // Without the child the set only belongs to the account: the one field again, the header without accounts.
   assert.deepEqual(await b.auswerten(zeilen), []);
   assert.equal(await b.auswerten(`document.getElementById('m-qty')?.value`), '1');
-  assert.equal(await b.auswerten(text('#m-untertit')), '21318-1');
-  assert.equal(await b.auswerten(text('#m-menge .feld-status')), 'Gespeichert ✓');
-  assert.equal(await b.auswerten(`document.querySelector('#m-menge .feld-status').getAttribute('role')`), 'status');
+  assert.equal(await b.auswerten(text('#m-subtitle')), '21318-1');
+  assert.equal(await b.auswerten(text('#m-quantity .field-status')), 'Gespeichert ✓');
+  assert.equal(await b.auswerten(`document.querySelector('#m-quantity .field-status').getAttribute('role')`), 'status');
   await bis(`/199,99/.test(${text('#m-sparkline-content')})`, 'Diagramm mit dem verbliebenen Kaufpreis', 50);
 
-  await b.auswerten(`[...document.querySelectorAll('#toasts .toast-aktion')].at(-1).click(); true`);
+  await b.auswerten(`[...document.querySelectorAll('#toasts .toast-action')].at(-1).click(); true`);
   await bis(
     `JSON.stringify(${zeilen}) === ${JSON.stringify(JSON.stringify([`r19_${process.pid} (ich) 1`, `${kind} 1`]))}`,
     'Rückgängig bringt den Kauf zurück',
@@ -90,18 +92,18 @@ async function settingsOneLocation(_t, a) {
   assert.deepEqual(felder, [], 'Hintergrundarbeiten enthält noch Einstellungen');
   await b.auswerten(`document.querySelector('#monitor-content .mon-plan ~ a').click(); true`);
   await bis(
-    `document.getElementById('tab-settings').classList.contains('active') && document.getElementById('einst-hintergrund').classList.contains('einst-aktiv')`,
+    `document.getElementById('tab-settings').classList.contains('active') && document.getElementById('settings-background').classList.contains('settings-active')`,
     'Einstellungen › Hintergrundarbeiten',
   );
-  await bis(`document.querySelectorAll('#einst-zeitplaene .job-sched-input').length > 0`, 'Zeitpläne als Felder');
+  await bis(`document.querySelectorAll('#settings-schedules .job-sched-input').length > 0`, 'Zeitpläne als Felder');
   await b.auswerten(`(() => { const s = document.getElementById('mon-cache-ttl'); s.value = '168';
     s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
-  await bis(`${text('#mon-cache-ttl + .feld-status')} === 'Gespeichert ✓'`, '„Gespeichert ✓“ am Feld');
+  await bis(`${text('#mon-cache-ttl + .field-status')} === 'Gespeichert ✓'`, '„Gespeichert ✓“ am Feld');
   const ttl = await b.auswerten(`fetch('/api/v1/admin/cache-ttl').then(r => r.json()).then(d => d.ttl)`);
   assert.equal(String(ttl), '168');
-  await b.auswerten(`(() => { const f = document.querySelector('#einst-zeitplaene .mon-minuten, #einst-zeitplaene .mon-zeit');
+  await b.auswerten(`(() => { const f = document.querySelector('#settings-schedules .mon-minutes, #settings-schedules .mon-time');
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
-  await bis(`${text('#einst-zeitplaene .feld-status')} === 'Gespeichert ✓'`, 'Zeitplan bestätigt am Feld');
+  await bis(`${text('#settings-schedules .field-status')} === 'Gespeichert ✓'`, 'Zeitplan bestätigt am Feld');
 }
 
 const CARD_TOP = `(() => { scrollTo(0, 0); const k = document.querySelector('#gallery .sc');
@@ -115,17 +117,17 @@ async function phoneFirstCard(_t, a) {
     await groesse(390, 844, true);
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(
-      `!!document.querySelector('#gallery .sc') && !document.getElementById('rb-hinweis').hidden`,
+      `!!document.querySelector('#gallery .sc') && !document.getElementById('rb-hint').hidden`,
       'Karten mit Band',
     );
     await ruhig();
     const withBand = await b.auswerten(CARD_TOP);
     assert.ok(withBand < 0.38, `erste Karte bei ${Math.round(withBand * 100)} % der Höhe (vorher 43 %)`);
-    await b.auswerten(`document.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click(); true`);
+    await b.auswerten(`document.querySelector('#rb-hint [data-click="dismissRbHint"]').click(); true`);
     await b.tab('Page.reload');
     await bis(`!!document.querySelector('#gallery .sc')`, 'nach dem Neuladen', 200);
     await ruhig();
-    assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), true, 'Band nach Neuladen zurück');
+    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), true, 'Band nach Neuladen zurück');
     const ohne = await b.auswerten(CARD_TOP);
     assert.ok(ohne < 0.3, `ohne Band erste Karte bei ${Math.round(ohne * 100)} % der Höhe`);
   } finally {
@@ -137,13 +139,13 @@ async function pathTilesAxis(_t, a) {
   const { b, bis, ruhig } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
   await bis(`document.getElementById('tab-parts').classList.contains('active')`, 'Teile');
-  assert.equal(await b.auswerten(text('#tab-parts .brotkrume')), 'Sammlung › Teile');
-  assert.ok(await b.auswerten(`document.querySelector('#tab-parts .brotkrume').checkVisibility()`), 'Pfad unsichtbar');
-  await b.auswerten(`document.querySelector('#tab-parts .brotkrume a').click(); true`);
+  assert.equal(await b.auswerten(text('#tab-parts .breadcrumb')), 'Sammlung › Teile');
+  assert.ok(await b.auswerten(`document.querySelector('#tab-parts .breadcrumb').checkVisibility()`), 'Pfad unsichtbar');
+  await b.auswerten(`document.querySelector('#tab-parts .breadcrumb a').click(); true`);
   await bis(`document.getElementById('tab-gallery').classList.contains('active')`, 'Pfad führt zur Sammlung');
 
-  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .kachel-datum')`, 'Kachel Tree House');
-  assert.equal(await b.auswerten(text('#gallery [data-arg="21318-1"] .kachel-datum')), '2 Käufe, zuletzt 02.06.2026');
+  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .tile-date')`, 'Kachel Tree House');
+  assert.equal(await b.auswerten(text('#gallery [data-arg="21318-1"] .tile-date')), '2 Käufe, zuletzt 02.06.2026');
   // Trash can: without hovering (Chrome headless reports hover: none, like a touch device) it does not stand on
   // the tile. With a mouse it appears on hover; that cannot be emulated here, so it is shown for
   // size and contrast: symbol ≥ 16 px, in the dark ≥ 3:1 to the surface.
@@ -157,14 +159,14 @@ async function pathTilesAxis(_t, a) {
       return k.querySelector('svg').getBoundingClientRect().width; })()`,
   );
   assert.ok(breite >= 16, `Symbol zu klein (${breite} px)`);
-  await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', true); true`);
+  await b.auswerten(`document.documentElement.toggleAttribute('data-dark', true); true`);
   const kontrast = await b.auswerten(`(() => { const rgb = s => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
     const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const L = f => 0.2126 * lin(f[0]) + 0.7152 * lin(f[1]) + 0.0722 * lin(f[2]);
     const grund = e => { for (let x = e; x; x = x.parentElement) { const f = getComputedStyle(x).backgroundColor; if (!/rgba\\(.*, 0\\)|transparent/.test(f)) return rgb(f); } return [255, 255, 255]; };
     const k = ${korb}; const [h, d] = [L(rgb(getComputedStyle(k).color)), L(grund(k))].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); })()`);
   await b.auswerten(
-    `document.documentElement.toggleAttribute('data-dunkel', false); ${korb}.parentElement.removeAttribute('style'); true`,
+    `document.documentElement.toggleAttribute('data-dark', false); ${korb}.parentElement.removeAttribute('style'); true`,
   );
   assert.ok(kontrast >= 3, `Papierkorb im Dunkeln ${kontrast.toFixed(2)}:1`);
 

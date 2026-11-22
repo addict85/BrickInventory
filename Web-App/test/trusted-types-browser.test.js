@@ -1,6 +1,6 @@
 /**
  * Trusted Types in the real app (Chrome): the CSP requires them, markup
- * only enters the page via setzeHtml()/fuegeHtmlEin(), every other
+ * only enters the page via setHtml()/fuegeHtmlEin(), every other
  * assignment to innerHTML fails with TypeError, foreign script addresses
  * likewise. The collection still builds up, and the log window
  * (own document, inherits the CSP) shows its entries.
@@ -8,7 +8,7 @@
  * Counter-checks (measured 05.11.2026, each on its own; D on 09.11.2026):
  *   A  the two Trusted Types lines removed from the CSP (server.ts) → red:
  *      “the CSP requires Trusted Types” and “innerHTML outside …” (no error)
- *   B  in setzeHtml() again `el.innerHTML = einsetzen(inhalt)` (bundle
+ *   B  in setHtml() again `el.innerHTML = einsetzen(content)` (bundle
  *      rebuilt) → red already at the start: the login form does not appear
  *   C  the policy left out in logviewer.js (string to innerHTML)
  *      → red: “the log window …”
@@ -43,7 +43,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.equal(bericht.status, 204);
   });
 
-  await t.test('setzeHtml() builds the collection, innerHTML outside throws TypeError', async () => {
+  await t.test('setHtml() builds the collection, innerHTML outside throws TypeError', async () => {
     assert.ok(
       (await app.b.auswerten(`document.querySelectorAll('#gallery .sc').length`)) > 0,
       'keine Kachel in der Sammlung',

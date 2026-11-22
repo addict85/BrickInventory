@@ -5,7 +5,7 @@
  * number the catalog does not know is shown as such and does not count as a set.
  *
  * Counter-checks (measured 04.11.2026, each alone):
- *   A  plExportStand() with box.hidden = _plParts === null (the old state) →
+ *   A  plExportStatus() with box.hidden = _plParts === null (the old state) →
  *      red: “empty result” (export visible at 0 parts)
  *   D  in plAddSet setting eintrag.unbekannt removed → red:
  *      “unknown number” (chip without hint, “from 2 sets”)
@@ -127,7 +127,7 @@ test('removing recomputes', async () => {
 test('empty result: reason, no exports', async () => {
   const { w, d } = await create([]);
   try {
-    assert.equal(d.getElementById('pl-optionen').hidden, true, 'Export und Optionen bei 0 Teilen');
+    assert.equal(d.getElementById('pl-options').hidden, true, 'Export und Optionen bei 0 Teilen');
     assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF bei 0 Teilen');
     assert.match(text(d.getElementById('pl-result')), /noch keine Teileliste vor.*Rebrickable/);
     assert.equal(text(d.getElementById('pl-status')), '0 Sorten (0 Teile) aus 1 Set');
@@ -141,7 +141,7 @@ test('unknown number: named in the chip, not counted', async () => {
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
       text: text(c),
-      unbekannt: c.classList.contains('unbekannt'),
+      unbekannt: c.classList.contains('unknown'),
     }));
     assert.deepEqual(chips, [
       { text: '10294-1 — Titanic', unbekannt: false },
@@ -159,7 +159,7 @@ test('unknown number: named in the chip, not counted', async () => {
 test('result with parts: exports enabled, input fields labeled', async () => {
   const { w, d } = await create([TEIL]);
   try {
-    assert.equal(d.getElementById('pl-optionen').hidden, false);
+    assert.equal(d.getElementById('pl-options').hidden, false);
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
     assert.equal(text(d.getElementById('pl-status')), '1 Sorte (6 Teile) aus 1 Set');
     assert.equal(d.querySelector('.pl-have-input').getAttribute('aria-label'), 'Vorhanden: 3001 Red');

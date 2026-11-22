@@ -8,20 +8,20 @@
  *      subline „Summe der Kaufpreise“ → red: “purchase price card names its reference”
  *   B  the footer of the parts again with parts.stat.types → red: “parts
  *      footer names entries”
- *   C  .diagramm-wert again with max-height:180px, chartWidth again divides
+ *   C  .chart-value again with max-height:180px, chartWidth again divides
  *      by the font size and fontFactor delivers 1 (the old state) →
  *      red: “chart grows with the font”
  *   D  in openModal again only toast('Fehler') → red: “unknown set”
  *   E  nutzerAktionen without the exception for the own account → red:
  *      “no actions against the own account”
- *   F  in the set dialog the classes v-mehr nach-oben removed → red: “more
+ *   F  in the set dialog the classes v-more nach-top removed → red: “more
  *      actions overlay the content” (the list stands in the footer)
  *   G  in zeigeDesignWahl the locking of the appearance removed → red:
  *      “werkbank locks the appearance”
  *   H  the value line again fixed var(--chart-new) → red: “value line in the
  *      accent color”
  *   I  in doLogin again ['lp','lu'] → red: “empty login: focus into the first field”
- *   J  (12.11.2026, UX check 19 N4) finance.stat.purchase_von again „von
+ *   J  (12.11.2026, UX check 19 N4) finance.stat.purchase_of again „von
  *      {betrag} Kaufpreis gesamt“ → red: “purchase price card names its reference”
  *      (the reference is not explained)
  */
@@ -44,10 +44,10 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
 
   await t.test('purchase price card names its reference', async () => {
     await geh('finanzen');
-    await bis(`!!document.querySelector('#fin-tbl .dt-summe tfoot')`, 'Finanzen geladen', 200);
-    const z = await b.auswerten(`({ titel: document.getElementById('fin-einstand-titel').textContent.trim(),
-      unter: document.getElementById('fin-einstand-sub').textContent,
-      gesamt: document.querySelector('#fin-tbl .dt-summe tfoot td.fin-fuss-wert').textContent.trim(),
+    await bis(`!!document.querySelector('#fin-tbl .dt-sum tfoot')`, 'Finanzen geladen', 200);
+    const z = await b.auswerten(`({ titel: document.getElementById('fin-cost-basis-title').textContent.trim(),
+      unter: document.getElementById('fin-cost-basis-sub').textContent,
+      gesamt: document.querySelector('#fin-tbl .dt-sum tfoot td.fin-footer-value').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
     assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
     // Named briefly since UX check 25 (B2); what „bewertet“ means stands in the tooltip and below the cards.
@@ -108,7 +108,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       100,
     );
     assert.equal(
-      await b.auswerten(`!!document.querySelector('#toasts .toast .toast-aktion')`),
+      await b.auswerten(`!!document.querySelector('#toasts .toast .toast-action')`),
       true,
       'mit „Hinzufügen“',
     );
@@ -124,17 +124,17 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     );
     const hoehe = `document.querySelector('#set-modal .mfooter').getBoundingClientRect().height`;
     const vorher = await b.auswerten(hoehe);
-    await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
-    await bis(`document.querySelector('#set-modal .mehr-menue').open`, 'Menü offen');
+    await b.auswerten(`document.querySelector('#set-modal .more-menu > summary').click(); true`);
+    await bis(`document.querySelector('#set-modal .more-menu').open`, 'Menü offen');
     const situation =
-      await b.auswerten(`({ liste: document.querySelector('#set-modal .mehr-liste').getBoundingClientRect().bottom,
-      fuss: document.querySelector('#set-modal .mehr-menue > summary').getBoundingClientRect().top })`);
+      await b.auswerten(`({ liste: document.querySelector('#set-modal .more-list').getBoundingClientRect().bottom,
+      fuss: document.querySelector('#set-modal .more-menu > summary').getBoundingClientRect().top })`);
     assert.ok(
       situation.liste <= situation.fuss + 1,
       `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(situation)}`,
     );
     assert.ok(Math.abs((await b.auswerten(hoehe)) - vorher) < 2, 'die Fusszeile wächst nicht');
-    await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
+    await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
   });
 
   await t.test('no actions against the own account', async () => {
@@ -153,8 +153,8 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     const z =
       await b.auswerten(`(() => { const zeile = n => [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === n);
       const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(ANDERE)});
-      return { eigene: eigene.querySelectorAll('button').length, otherDirect: andere.querySelectorAll('.nutzer-aktionen > button').length,
-        otherMore: andere.querySelectorAll('.v-mehr .mehr-liste button').length }; })()`);
+      return { eigene: eigene.querySelectorAll('button').length, otherDirect: andere.querySelectorAll('.user-actions > button').length,
+        otherMore: andere.querySelectorAll('.v-more .more-list button').length }; })()`);
     assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');
     assert.deepEqual(
       [z.otherDirect, z.otherMore],
@@ -165,16 +165,16 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
 
   await t.test('werkbank locks the appearance', async () => {
     await geh('konto');
-    await bis(`document.getElementById('design-wahl')?.options.length > 1`, 'Design-Wahl');
+    await bis(`document.getElementById('design-choice')?.options.length > 1`, 'Design-Wahl');
     await b.auswerten(
-      `(() => { const s = document.getElementById('design-wahl'); s.value = 'werkbank'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+      `(() => { const s = document.getElementById('design-choice'); s.value = 'werkbank'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
-    await bis(`document.getElementById('dunkel-wahl').disabled`, 'Werkbank sperrt die Darstellung', 50);
-    assert.equal(await b.auswerten(`document.getElementById('dunkel-hinweis').hidden`), false);
+    await bis(`document.getElementById('dark-choice').disabled`, 'Werkbank sperrt die Darstellung', 50);
+    assert.equal(await b.auswerten(`document.getElementById('dark-hint').hidden`), false);
     await b.auswerten(
-      `(() => { const s = document.getElementById('design-wahl'); s.value = ''; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+      `(() => { const s = document.getElementById('design-choice'); s.value = ''; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
-    await bis(`!document.getElementById('dunkel-wahl').disabled`, 'andere Designs geben sie frei', 50);
+    await bis(`!document.getElementById('dark-choice').disabled`, 'andere Designs geben sie frei', 50);
   });
 
   await t.test('empty login: focus into the first field', async () => {
@@ -185,7 +185,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     );
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
     // Since round 26 (N4) the empty field reports itself without asking the server.
-    await bis(`document.getElementById('lu-fehler')?.hidden === false`, 'Fehler am Feld', 100);
+    await bis(`document.getElementById('lu-error')?.hidden === false`, 'Fehler am Feld', 100);
     assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');
   });
 });

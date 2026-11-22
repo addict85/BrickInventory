@@ -10,7 +10,7 @@
  *   B  in api.d.ts Genaueste omitted (all matching routes instead of the
  *      most specific) → red: “api(): every path gets the response of its route”
  *      and “/v1/sets/:nr/parts-list hits only its route”
- *   C  in api.d.ts FehlerZu replaced by ApiFehler → red: “without checking
+ *   C  in api.d.ts ErrorClose replaced by ApiError → red: “without checking
  *      success a field is undefined, not unknown”
  *   D  in kauf-dialoge.js a path as a variable instead of a template → red:
  *      “api() paths are written as literal or template” (13 instead of 12)
@@ -75,7 +75,7 @@ function pruefe(probe) {
 const HEADER = `/**
  * @template {string} M @template {string} P
  * @param {M} m @param {P} p
- * @returns {Promise<import(${JSON.stringify(path.join(ROOT, 'frontend-types', 'api'))}).ApiAntwort<M, P>>}
+ * @returns {Promise<import(${JSON.stringify(path.join(ROOT, 'frontend-types', 'api'))}).ApiResponse<M, P>>}
  */
 async function api(m, p) { return /** @type {any} */ (null); }
 /** @param {number} n */ function zahl(n) { return n; }

@@ -6,7 +6,7 @@
  * Checked on the real bundle and the real markup in jsdom.
  *
  * Counter-checks (25.10., measured):
- *   A  data-dialog-zu removed from the ✕ of the set dialog → red: guard and Escape
+ *   A  data-dialog-close removed from the ✕ of the set dialog → red: guard and Escape
  *   B  Tab branch removed in tasteGedrueckt()      → red: “Tab leaves the dialog"
  *   C  focus return removed                        → red: “focus does not return"
  *   D  exception for input fields removed          → red: “Escape in the field closes"
@@ -56,8 +56,8 @@ test('every dialog has exactly one close button for Escape', async () => {
     const fehler = [];
     for (const el of ovl) {
       if (el.getAttribute('role') !== 'dialog') fehler.push(`#${el.id}: role="dialog" fehlt`);
-      const n = el.querySelectorAll('[data-dialog-zu]').length;
-      if (n !== 1) fehler.push(`#${el.id}: ${n}× data-dialog-zu`);
+      const n = el.querySelectorAll('[data-dialog-close]').length;
+      if (n !== 1) fehler.push(`#${el.id}: ${n}× data-dialog-close`);
     }
     assert.deepEqual(fehler, []);
   } finally {
@@ -138,9 +138,9 @@ test('Escape in an input field first only leaves the field', async () => {
     modal.classList.add('open');
     await takt();
     // As in the preview: the correction field sits in a table cell.
-    d.getElementById('wanted-xml-tabelle').innerHTML =
-      '<table><tbody><tr><td><input id="zelle"></td></tr></tbody></table>';
-    const feld = d.getElementById('zelle');
+    d.getElementById('wanted-xml-table').innerHTML =
+      '<table><tbody><tr><td><input id="cell"></td></tr></tbody></table>';
+    const feld = d.getElementById('cell');
     feld.focus();
     taste(w, 'Escape');
     await takt();

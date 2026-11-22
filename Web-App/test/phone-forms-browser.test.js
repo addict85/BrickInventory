@@ -3,17 +3,17 @@
  * dialog „Set hinzufügen“, catalog filters and the section bar of the settings.
  *
  * Counter-checks (measured 08.11.2026, each on its own):
- *   A  the rule `.erfassen-raster > .fg:has(> .preis-mit-waehrung)` removed in mobile.css
+ *   A  the rule `.capture-grid > .fg:has(> .price-with-currency)` removed in mobile.css
  *      → red: “add set: purchase price placeholder fully visible” („Platzhalter braucht 65 px,
  *      das Feld hat 58 px“)
  *   B  (14.11.2026, round 24: filters behind the button) the rule
- *      `#tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to)` removed in mobile.css
+ *      `#tab-catalog .filter-bar.open > :is(#cat-year-from, #cat-year-to)` removed in mobile.css
  *      → red: “catalog: filters in four rows, nothing cut off” („stehen in 5 Zeilen“)
- *   C  in styles.css the arrow rules of the section bar (`.einst-nav[data-mehr*="r"]::after`)
+ *   C  in styles.css the arrow rules of the section bar (`.settings-nav[data-more*="r"]::after`)
  *      reset to the old character without a button (width:2rem, border:0)
  *      → red: “settings: arrow as a button while there are sections to the right”
- *   D  the line `nav.dataset.mehr = …` removed in mobile.js → red: “settings: arrow as a
- *      button …” and “… switches the page at the end” (no data-mehr)
+ *   D  the line `nav.dataset.more = …` removed in mobile.js → red: “settings: arrow as a
+ *      button …” and “… switches the page at the end” (no data-more)
  *
  * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -48,7 +48,7 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
 
   await t.test('add set: purchase price placeholder fully visible', async () => {
     await reiter('gallery');
-    await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
+    await b.auswerten(`document.querySelector('button[data-click="openCapture"][data-arg="set"]').click(); true`);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
     await ruhig();
     const m = await b.auswerten(`(() => { const breite = ${TEXT_WIDTH};
@@ -59,7 +59,7 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
                // Die Währung steht neben dem Preis, nicht darunter, und beide bleiben im Dialog.
                nebeneinander: Math.abs(p.top - w.top) < 2, imDialog: w.right <= modal.right + 0.5 && p.left >= modal.left - 0.5,
                seite: document.documentElement.scrollWidth }; })()`);
-    await b.auswerten(`document.querySelector('#add-set-modal [data-click="schliesseErfassen"]').click(); true`);
+    await b.auswerten(`document.querySelector('#add-set-modal [data-click="closeCapture"]').click(); true`);
     assert.ok(m.platzhalter.breit > 0, 'kein Platzhalter gemessen');
     assert.ok(
       m.platzhalter.passt,
@@ -74,7 +74,7 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
   await t.test('catalog: filters in four rows, nothing cut off', async () => {
     await reiter('catalog');
     // Since round 24 behind the funnel button as in the collection; when expanded the same order applies.
-    await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-knopf');
+    await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-button');
       if (k.getAttribute('aria-expanded') !== 'true') k.click(); return true; })()`);
     const m = await b.auswerten(`(() => { const breite = ${TEXT_WIDTH};
       const ids = ['cat-theme', 'cat-year-from', 'cat-year-to', 'cat-sort'], f = id => document.getElementById(id);
@@ -97,12 +97,12 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
   await t.test('settings: arrow as a button while there are sections to the right', async () => {
     await reiter('settings');
     await bis(
-      `document.querySelector('.einst-nav')?.getClientRects().length > 0 && !!document.querySelector('.einst-nav').dataset.mehr`,
+      `document.querySelector('.settings-nav')?.getClientRects().length > 0 && !!document.querySelector('.settings-nav').dataset.more`,
       'Abschnittsleiste mit Hinweis',
     );
     const m =
-      await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav'), s = getComputedStyle(nav, '::after');
-      return { mehr: nav.dataset.mehr, inhalt: s.content, breite: parseFloat(s.width), hoehe: parseFloat(s.height),
+      await b.auswerten(`(() => { const nav = document.querySelector('.settings-nav'), s = getComputedStyle(nav, '::after');
+      return { mehr: nav.dataset.more, inhalt: s.content, breite: parseFloat(s.width), hoehe: parseFloat(s.height),
                rand: parseFloat(s.borderTopWidth), rund: s.borderTopLeftRadius, fuellung: s.backgroundColor,
                rollt: nav.scrollWidth > nav.clientWidth, zeilen: new Set([...nav.querySelectorAll('a')].map(a => Math.round(a.getBoundingClientRect().top))).size }; })()`);
     assert.equal(m.rollt, true, 'die Leiste rollt gar nicht');
@@ -117,10 +117,10 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
 
   await t.test('settings: arrow switches the page at the end', async () => {
     await b.auswerten(
-      `(() => { const nav = document.querySelector('.einst-nav'); nav.scrollLeft = nav.scrollWidth; return true; })()`,
+      `(() => { const nav = document.querySelector('.settings-nav'); nav.scrollLeft = nav.scrollWidth; return true; })()`,
     );
-    await bis(`document.querySelector('.einst-nav').dataset.mehr === 'l'`, 'Hinweis nach links');
-    const m = await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav');
+    await bis(`document.querySelector('.settings-nav').dataset.more === 'l'`, 'Hinweis nach links');
+    const m = await b.auswerten(`(() => { const nav = document.querySelector('.settings-nav');
       return { vorn: getComputedStyle(nav, '::before').content, hinten: getComputedStyle(nav, '::after').content }; })()`);
     assert.match(m.vorn, /‹/);
     assert.equal(m.hinten, 'none', 'am Ende liegt rechts nichts mehr');

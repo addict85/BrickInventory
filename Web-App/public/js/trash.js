@@ -1,37 +1,37 @@
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum } from './format.js';
+import { ico, G, setHtml } from './dom.js';
+import { fmtDate } from './format.js';
 import { toast } from './messages.js';
 import { html, joinHtml } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
+import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
 import { emit } from './events.js';
 
 // ═══ Trash (settings → data) ═══════════════════════════════════════════════
 // The server stores a snapshot on deletion (src/inventory/trash.ts); here it is shown,
 // restored or removed permanently.
 
-const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
+const ICON = { set: 'set', teil: 'part', figur: 'minifig' };
 
 /**
  * Identical sets of two accounts looked the same; account and quantity distinguish them, also in the buttons' names.
  * @param {import('../../frontend-types/contract').PapierkorbEintrag} e
- * @param {Map<number, string>} konten name per account, empty without a household
+ * @param {Map<number, string>} accounts name per account, empty without a household
  */
-function zeile(e, konten) {
-  const frist = fmtDatum(e.endgueltig_am);
-  const konto = konten.get(e.user_id);
-  const was = [e.number, e.label, tRaw('trash.menge', { n: e.anzahl }), konto].filter(Boolean).join(' · ');
-  return html`<div class="pk-zeile" data-pk-id="${e.id}">
-    <span aria-hidden="true">${ico(ICON[e.type] || 'loeschen')}</span>
+function row(e, accounts) {
+  const deadline = fmtDate(e.endgueltig_am);
+  const account = accounts.get(e.user_id);
+  const was = [e.number, e.label, tRaw('trash.quantity', { n: e.anzahl }), account].filter(Boolean).join(' · ');
+  return html`<div class="pk-row" data-pk-id="${e.id}">
+    <span aria-hidden="true">${ico(ICON[e.type] || 'delete')}</span>
     <span class="pk-name"><span class="pk-nr">${e.number}</span>
       ${e.label ? html`${' · '}${e.label}` : ''}
-      <span>${' · '}${tRaw('trash.menge', { n: e.anzahl })}</span>
-      ${konto ? html`<span>${' · '}${konto}</span>` : ''}</span>
-    <span class="pk-frist">${tRaw('trash.until', { datum: frist })}</span>
-    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}" aria-label="${tRaw('trash.restore_was', { was })}">${tRaw('trash.restore')}</button>
-    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}" aria-label="${tRaw('trash.delete_final_was', { was })}">${tRaw('trash.delete_final')}</button>
+      <span>${' · '}${tRaw('trash.quantity', { n: e.anzahl })}</span>
+      ${account ? html`<span>${' · '}${account}</span>` : ''}</span>
+    <span class="pk-deadline">${tRaw('trash.until', { date: deadline })}</span>
+    <button class="btn bs btn-sm" data-click="restoreFromTrash" data-arg="${e.id}" aria-label="${tRaw('trash.restore_was', { was })}">${tRaw('trash.restore')}</button>
+    <button class="btn bd btn-sm" data-click="deleteFromTrashPermanently"${genuine()} data-arg="${e.id}" aria-label="${tRaw('trash.delete_final_was', { was })}">${tRaw('trash.delete_final')}</button>
   </div>`;
 }
 
@@ -46,40 +46,40 @@ async function accountsNames() {
 
 /** @param {string} [focusAfter] identifier of the entry just removed: the focus goes to its neighbor. */
 export async function loadTrash(focusAfter) {
-  const liste = G('papierkorb-liste');
-  if (!liste) return;
-  const vorher = focusAfter
-    ? [...liste.querySelectorAll('.pk-zeile')].findIndex(z => z.getAttribute('data-pk-id') === focusAfter)
+  const list = G('trash-list');
+  if (!list) return;
+  const before = focusAfter
+    ? [...list.querySelectorAll('.pk-row')].findIndex(z => z.getAttribute('data-pk-id') === focusAfter)
     : -1;
-  const [d, konten] = await Promise.all([api('GET', '/v1/papierkorb'), accountsNames()]);
-  const leeren = G('papierkorb-leeren');
+  const [d, accounts] = await Promise.all([api('GET', '/v1/papierkorb'), accountsNames()]);
+  const empty = G('trash-empty');
   if (!d?.success) {
-    setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`);
+    setHtml(list, html`<div class="voucher-empty">${tRaw('trash.load_error')}</div>`);
     return;
   }
-  const eintraege = d.eintraege || [];
-  setzeHtml(
-    liste,
-    eintraege.length
-      ? joinHtml(eintraege.map(e => zeile(e, konten)))
-      : html`<div class="voucher-leer" tabindex="-1">${tRaw('trash.empty')}</div>`,
+  const entries = d.eintraege || [];
+  setHtml(
+    list,
+    entries.length
+      ? joinHtml(entries.map(e => row(e, accounts)))
+      : html`<div class="voucher-empty" tabindex="-1">${tRaw('trash.empty')}</div>`,
   );
-  if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
-  if (vorher < 0) return;
-  const zeilen = liste.querySelectorAll('.pk-zeile');
-  const neighbor = zeilen[Math.min(vorher, zeilen.length - 1)];
+  if (empty) empty.style.display = entries.length ? '' : 'none';
+  if (before < 0) return;
+  const rows = list.querySelectorAll('.pk-row');
+  const neighbor = rows[Math.min(before, rows.length - 1)];
   /** @type {HTMLElement | null} */ (
-    neighbor?.querySelector('button') ?? liste.querySelector('.voucher-leer')
+    neighbor?.querySelector('button') ?? list.querySelector('.voucher-empty')
   )?.focus();
 }
 
 /** Reload everything a restore may have changed. */
 function loadInventoryNew() {
-  emit('bestandGeaendert');
+  emit('stockChanged');
 }
 
 /** @param {(number | string)[]} ids */
-async function wiederherstellen(ids) {
+async function restore(ids) {
   for (const id of ids) {
     const d = await api('POST', `/v1/papierkorb/${id}/wiederherstellen`);
     if (!d?.success) {
@@ -91,11 +91,11 @@ async function wiederherstellen(ids) {
 }
 
 /** @param {string} id */
-export async function papierkorbWiederherstellen(id) {
-  if (!(await wiederherstellen([id]))) return;
+export async function restoreFromTrash(id) {
+  if (!(await restore([id]))) return;
   // The "undo" of the same deletion would have nothing left to restore.
-  for (const t of document.querySelectorAll('#toasts [data-papierkorb]'))
-    if (t.getAttribute('data-papierkorb')?.split(',').includes(String(id))) t.remove();
+  for (const t of document.querySelectorAll('#toasts [data-trash]'))
+    if (t.getAttribute('data-trash')?.split(',').includes(String(id))) t.remove();
   toast(tRaw('trash.restored'), 'success');
   loadInventoryNew();
   await loadTrash(String(id));
@@ -103,9 +103,9 @@ export async function papierkorbWiederherstellen(id) {
 
 // Permanently means irreversibly: the server requires the password for it (and the second factor).
 /** @param {string} id */
-export async function papierkorbEndgueltig(id) {
-  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'loeschen', {
-    knopf: 'confirm.btn.endgueltig_loeschen',
+export async function deleteFromTrashPermanently(id) {
+  const password = await confirmDeleteWithPassword(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'delete', {
+    button: 'confirm.btn.permanently_delete',
     art: 'bd',
   });
   if (password === null) return;
@@ -118,9 +118,9 @@ export async function papierkorbEndgueltig(id) {
   await loadTrash(String(id));
 }
 
-export async function papierkorbLeeren() {
-  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'loeschen', {
-    knopf: 'confirm.btn.papierkorb_leeren',
+export async function emptyTrash() {
+  const password = await confirmDeleteWithPassword(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'delete', {
+    button: 'confirm.btn.trash_empty',
     art: 'bd',
   });
   if (password === null) return;
@@ -140,44 +140,44 @@ export async function papierkorbLeeren() {
  * @param {string} sel
  */
 function focusIfDa(sel) {
-  const ende = Date.now() + 5000;
-  const versuch = () => {
+  const end = Date.now() + 5000;
+  const attempt = () => {
     const el = /** @type {HTMLElement | null} */ (document.querySelector(`#app .tab.active :is(${sel})`));
-    const aktiv = document.activeElement;
-    const verloren = !aktiv || aktiv === document.body || aktiv.matches('#app .tab.active h1, #toasts *');
-    if (el && aktiv !== el && verloren) el.focus();
-    if (Date.now() < ende && (verloren || aktiv === el)) setTimeout(versuch, 100);
+    const active = document.activeElement;
+    const lost = !active || active === document.body || active.matches('#app .tab.active h1, #toasts *');
+    if (el && active !== el && lost) el.focus();
+    if (Date.now() < end && (lost || active === el)) setTimeout(attempt, 100);
   };
-  versuch();
+  attempt();
 }
 
 /**
  * The success message after deleting, with "undo".
- * @param {string} meldung
- * @param {{papierkorb?: number[]}} antwort the response of the DELETE
- * @param {() => unknown} [nachher] what to redraw afterwards, e.g. the open set detail
- * @param {string} [fokus] selector of the entry that gets the focus after restoring
+ * @param {string} message
+ * @param {{papierkorb?: number[]}} response the response of the DELETE
+ * @param {() => unknown} [after] what to redraw afterwards, e.g. the open set detail
+ * @param {string} [focus] selector of the entry that gets the focus after restoring
  */
-export function deletedWithUndo(meldung, antwort, nachher, fokus) {
-  const ids = antwort?.papierkorb || [];
+export function deletedWithUndo(message, response, after, focus) {
+  const ids = response?.papierkorb || [];
   const el = toast(
-    meldung,
+    message,
     'success',
     ids.length
       ? {
           text: tRaw('trash.undo'),
-          bleibt: true,
+          stays: true,
           fn: async () => {
-            if (!(await wiederherstellen(ids))) return;
+            if (!(await restore(ids))) return;
             toast(tRaw('trash.restored'), 'success');
             loadInventoryNew();
-            nachher?.();
-            if (fokus) focusIfDa(fokus);
+            after?.();
+            if (focus) focusIfDa(focus);
           },
         }
       : undefined,
   );
-  if (el && ids.length) el.dataset.papierkorb = ids.join(',');
+  if (el && ids.length) el.dataset.trash = ids.join(',');
 }
 
-registerActions({ papierkorbWiederherstellen, papierkorbEndgueltig, papierkorbLeeren });
+registerActions({ restoreFromTrash, deleteFromTrashPermanently, emptyTrash });

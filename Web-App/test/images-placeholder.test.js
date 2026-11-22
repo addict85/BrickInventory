@@ -6,9 +6,9 @@
  * browser does (first retry, then original size, then placeholder).
  *
  * Counter-checks (measured on 28.10.):
- *   A  in aktionen.js again removeAttribute('src') instead of bildPlatzhalter()
+ *   A  in aktionen.js again removeAttribute('src') instead of imagePlaceholder()
  *      → red: “gallery: broken image becomes the placeholder"
- *   B  the alt omitted in bildTag() (bilder.js) → red: “alt on every image"
+ *   B  the alt omitted in imageTag() (bilder.js) → red: “alt on every image"
  *   C  (03.11.) placeholderContent('set') again the icon instead of
  *      set-placeholder.svg → red: “gallery: broken image becomes the placeholder"
  */
@@ -88,7 +88,7 @@ test('alt on every image and the placeholder path on every template image', asyn
       assert.ok(liste.length > 0, `${name}: keine Bilder gezeichnet — prüft nichts`);
       for (const img of liste) {
         assert.ok(img.hasAttribute('alt'), `${name}: <img src="${img.getAttribute('src')}"> ohne alt`);
-        assert.equal(img.dataset.onerror, 'platzhalter', `${name}: ${img.getAttribute('src')} ohne Platzhalter`);
+        assert.equal(img.dataset.onerror, 'placeholder', `${name}: ${img.getAttribute('src')} ohne Platzhalter`);
       }
       gesehen.push(name);
     };
@@ -134,7 +134,7 @@ test('gallery: a broken image becomes a placeholder', async () => {
     await takt(10);
     const sci = d.querySelector('#gallery .sc .sci');
     assert.equal(sci.querySelector('img[data-onerror]'), null, 'Das kaputte Bild steht noch da');
-    const ph = sci.querySelector('.bild-ph');
+    const ph = sci.querySelector('.image-ph');
     assert.ok(ph, 'Kein Platzhalter an seiner Stelle');
     // Without alt (the tile names the set in text) the placeholder is decoration.
     assert.equal(ph.getAttribute('aria-hidden'), 'true');

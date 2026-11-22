@@ -38,7 +38,7 @@ async function measureMove(debounced) {
     withoutModuleShell(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
   if (!debounced) {
     const vorher = code;
-    code = code.replace(/_catLadeTimer = setTimeout\(tun, \d+\)/, 'tun()');
+    code = code.replace(/_catLoadTimer = setTimeout\(tun, \d+\)/, 'tun()');
     assert.notEqual(
       code,
       vorher,
@@ -100,12 +100,12 @@ async function measureMove(debounced) {
   Object.assign(w, require('./helpers/markup').markupHelper());
   w.eval(`
     window.G = id => document.getElementById(id);
-    window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
+    window.queryAll = (s, w = document) => [...w.querySelectorAll(s)]; window.queryOne = (s, w = document) => w.querySelector(s);
     window.t = k => k; window.tRaw = k => k;
     window.locale = () => 'de-CH'; window.toast = () => {}; window.reportHits = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
     window.imgUrl = s => s;
-    window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.placeholderContent = () => '';
+    window.imageTag = o => '<img src="' + o.src + '" alt="">'; window.placeholderContent = () => '';
     window.thumbUrl = s => s; window.fullUrl = s => s; window.detailRow = () => '';
   `);
 

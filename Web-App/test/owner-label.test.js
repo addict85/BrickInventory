@@ -42,7 +42,7 @@ async function galerie() {
   return o;
 }
 const labels = (d, nr) =>
-  [...d.querySelector(`#gallery .sc[data-arg="${nr}"]`).querySelectorAll('.besitzer-badge')].map(e => e.textContent);
+  [...d.querySelector(`#gallery .sc[data-arg="${nr}"]`).querySelectorAll('.owner-badge')].map(e => e.textContent);
 
 test('own sets without a label', async () => {
   const { w, d } = await galerie();

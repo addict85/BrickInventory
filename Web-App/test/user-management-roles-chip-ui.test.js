@@ -5,7 +5,7 @@
  * no button. On the real bundle in jsdom.
  *
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
- *   A  in rolle() the X also for the own account (`selbst` ignored) → red:
+ *   A  in rolle() the X also for the own account (`self` ignored) → red:
  *      “own account: chip without X” and “a single administrator: no X”
  *   B  data-arg2 on the X again fixed '0' → red: “X on the administrator chip revokes
  *      after confirmation” (is_admin true instead of false)
@@ -56,9 +56,9 @@ test('X on the administrator chip revokes after confirmation', async () => {
   try {
     await reiter(w, 'settings');
     await warte(() => zeile(d, 'carla'));
-    const chip = zeile(d, 'carla').querySelector('.rolle-chip');
+    const chip = zeile(d, 'carla').querySelector('.role-chip');
     assert.equal(chip?.textContent.trim(), 'Administrator', 'Chip mit dem Wort');
-    const x = chip.querySelector('button.chip-weg');
+    const x = chip.querySelector('button.chip-remove');
     assert.ok(x, 'X im Chip');
     assert.equal(x.getAttribute('aria-label'), 'Administratorrechte von carla entziehen');
     assert.equal(x.getAttribute('type'), 'button');
@@ -94,7 +94,7 @@ test('default chip without X, + administrator appoints', async () => {
     await warte(() => zeile(d, 'ben'));
     const z = zeile(d, 'ben');
     assert.equal(z.querySelector('.rb.ru')?.textContent.trim(), 'Standard');
-    assert.equal(z.querySelector('.chip-weg'), null, 'Standard-Chip ohne X');
+    assert.equal(z.querySelector('.chip-remove'), null, 'Standard-Chip ohne X');
     const k = z.querySelector('button[data-click="toggleAdmin"][data-arg2="0"]');
     assert.ok(k, 'Knopf zum Ernennen');
     assert.equal(k.textContent.trim(), 'Administrator');
@@ -118,9 +118,9 @@ test('own account: chip without X', async () => {
     await reiter(w, 'settings');
     await warte(() => zeile(d, 'anna'));
     const z = zeile(d, 'anna');
-    assert.equal(z.querySelector('.rolle-chip')?.textContent.trim(), 'Administrator');
+    assert.equal(z.querySelector('.role-chip')?.textContent.trim(), 'Administrator');
     assert.equal(z.querySelectorAll('button').length, 0, 'kein Knopf gegen das eigene Konto');
-    assert.ok(zeile(d, 'carla').querySelector('.chip-weg'), 'Testdaten: ein fremder Administrator hat das X');
+    assert.ok(zeile(d, 'carla').querySelector('.chip-remove'), 'Testdaten: ein fremder Administrator hat das X');
   } finally {
     w.close();
   }
@@ -131,8 +131,8 @@ test('a single administrator: no X', async () => {
   try {
     await reiter(w, 'settings');
     await warte(() => zeile(d, 'ben'));
-    assert.equal(d.querySelectorAll('#users-tbl .rolle-chip').length, 1, 'Testdaten: ein Administrator-Chip');
-    assert.equal(d.querySelectorAll('#users-tbl .chip-weg').length, 0, 'den letzten Administrator entzieht kein X');
+    assert.equal(d.querySelectorAll('#users-tbl .role-chip').length, 1, 'Testdaten: ein Administrator-Chip');
+    assert.equal(d.querySelectorAll('#users-tbl .chip-remove').length, 0, 'den letzten Administrator entzieht kein X');
     assert.ok(zeile(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'ernennen bleibt möglich');
   } finally {
     w.close();

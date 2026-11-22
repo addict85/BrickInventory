@@ -5,10 +5,10 @@ import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
-import { responseError, feldFehler, passwordRuleText } from './form.js';
+import { ico, G, buttonBusy, setHtml } from './dom.js';
+import { responseError, fieldError, passwordRuleText } from './form.js';
 import { _updateLangSelect, applyTheme, initDefaultCondition, showUsernames } from './account.js';
-import { meldeAmFeld, toast } from './messages.js';
+import { reportAtField, toast } from './messages.js';
 import { loadParts } from './parts.js';
 import { loadMinifigs } from './minifigs.js';
 import { reportSection } from './router.js';
@@ -23,12 +23,12 @@ import {
 import { html } from './escaping.js';
 import {
   confirmDelete,
-  bestaetigeMitPasswort,
+  confirmDeleteWithPassword,
   withSecondFactor,
   confirmWithPassword,
   saveSettings,
 } from './confirm-prompt.js';
-import { LAND_TO_CURRENCY } from './vouchers.js';
+import { COUNTRY_TO_CURRENCY } from './vouchers.js';
 // Settings: profile, theme, source credentials, mail, cache, QR login and config
 // import/export. Household, user management, alerts and storage locations have their own files.
 
@@ -46,7 +46,7 @@ async function loadSmtpSettings(settings) {
   if (G('smtp-secure')) G('smtp-secure').checked = s.smtp_secure === '1';
   if (G('smtp-tls-fp')) G('smtp-tls-fp').value = s.smtp_tls_fingerprint || '';
   if (G('smtp-tls-ca')) G('smtp-tls-ca').value = s.smtp_tls_ca || '';
-  if (G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls === '1' ? '' : 'none';
+  if (G('smtp-tls-legacy')) G('smtp-tls-legacy').style.display = s.smtp_insecure_tls === '1' ? '' : 'none';
   if (G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled === '1';
   loadedSmtp = JSON.stringify(smtpFormValues());
   registrationMailHint();
@@ -55,13 +55,13 @@ async function loadSmtpSettings(settings) {
 /** Without mail delivery every registration would stay unconfirmed; the toggle says so instead of staying silent. */
 async function registrationMailHint() {
   const box = G('reg-enabled'),
-    hint = G('reg-mail-hinweis');
+    hint = G('reg-mail-hint');
   if (!box || !hint) return;
   const d = await api('GET', '/v1/auth/registration-status');
   const none = d?.mail_versand === false;
   box.disabled = none && !box.checked;
   hint.hidden = !none;
-  hint.textContent = none ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
+  hint.textContent = none ? tRaw(box.checked ? 'settings.reg_paused' : 'settings.reg_needs_mail') : '';
 }
 
 // The server requires the admin password whenever an SMTP value changes; it is only asked for
@@ -84,12 +84,17 @@ function smtpFormValues() {
 async function saveSmtp() {
   const values = smtpFormValues();
   // Save unchanged too when the old-exception hint is still showing: only a save clears it.
-  const legacy = G('smtp-tls-altlast');
+  const legacy = G('smtp-tls-legacy');
   if (JSON.stringify(values) === loadedSmtp && (!legacy || legacy.style.display === 'none')) return { success: true };
-  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss', {
-    knopf: 'confirm.btn.speichern',
-    art: 'bp',
-  });
+  const admin_password = await confirmDeleteWithPassword(
+    tRaw('smtp.confirm_title'),
+    tRaw('smtp.confirm_text'),
+    'lock',
+    {
+      button: 'confirm.btn.save',
+      art: 'bp',
+    },
+  );
   if (admin_password === null) return null;
   const d = await withSecondFactor(z => api('POST', '/v1/settings', { ...values, admin_password, ...z }));
   if (d === null) return null;
@@ -104,7 +109,7 @@ async function saveSmtp() {
 G('btn-test-smtp')?.addEventListener('click', async () => {
   const btn = G('btn-test-smtp');
   const res = G('smtp-test-result');
-  const release = knopfBesetzt(btn);
+  const release = buttonBusy(btn);
   // Save first, so the test runs with exactly these values.
   const saved = await saveSmtp();
   if (!saved?.success) {
@@ -146,7 +151,7 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
 G('btn-sav-smtp')?.addEventListener('click', async () => {
   const d = await saveSmtp();
   if (!d) return;
-  if (d.success) meldeAmFeld(G('btn-sav-smtp'));
+  if (d.success) reportAtField(G('btn-sav-smtp'));
   else toast(d.error || t('settings.error'), 'error');
 });
 
@@ -185,18 +190,18 @@ export async function loadCacheTtl() {
   } catch (_) {}
 }
 
-/** One value, one save: like every single value, saved right away, confirmed at the field (meldeAmFeld). */
-async function speichereCacheTtl() {
+/** One value, one save: like every single value, saved right away, confirmed at the field (reportAtField). */
+async function saveCacheTtl() {
   const sel = G('mon-cache-ttl');
   const d = await api('POST', '/v1/admin/cache-ttl', { ttl: sel?.value || '24' });
-  if (d.success) meldeAmFeld(sel);
+  if (d.success) reportAtField(sel);
   else toast(d.error || t('settings.error'), 'error');
 }
 
-async function speichereStandardZustand() {
+async function saveStandardState() {
   const sel = G('mon-default-condition');
   const d = await api('POST', '/v1/admin/default-condition', { condition: sel?.value || 'N' });
-  if (d.success) meldeAmFeld(sel);
+  if (d.success) reportAtField(sel);
   else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -208,7 +213,7 @@ export async function loadRateLimitStats() {
   for (const service of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
     const rl = d.rate_limits[service];
     if (G('rl-' + service)) G('rl-' + service).textContent = fmt(rl);
-    const bar = G('rl-' + service + '-balken');
+    const bar = G('rl-' + service + '-bar');
     if (bar) bar.style.width = rl?.limit ? Math.min(100, (100 * rl.count) / rl.limit) + '%' : '0';
   }
 }
@@ -219,7 +224,7 @@ export async function loadCacheStats() {
   if (G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
   if (G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
   // After a read error this shows 0; the hint says that it is not a real 0.
-  if (d.degradiert?.length) toast(tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') }), 'info');
+  if (d.degradiert?.length) toast(tRaw('monitor.degraded', { teile: d.degradiert.join(', ') }), 'info');
 }
 export async function loadApiLimits() {
   const d = await api('GET', '/v1/admin/api-limits');
@@ -230,8 +235,8 @@ export async function loadApiLimits() {
 }
 
 export async function loadProfile() {
-  const dw = G('dunkel-wahl');
-  if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
+  const dw = G('dark-choice');
+  if (dw && window.__bimDarkValue) dw.value = window.__bimDarkValue();
   loadOwnTheme();
   const d = await api('GET', '/v1/auth/profile');
   const u = d.success ? d.user : null;
@@ -240,17 +245,17 @@ export async function loadProfile() {
   G('prof-last').value = u.last_name || '';
   G('prof-user').value = u.username || '';
   G('prof-email').value = u.email || '';
-  G('prof-email').dataset.bisher = u.email || '';
+  G('prof-email').dataset.soFar = u.email || '';
   // Without an address there is nothing to confirm — "verified" next to an empty field would contradict itself.
   const vEl = G('prof-email-verified');
   if (vEl)
-    setzeHtml(
+    setHtml(
       vEl,
       !u.email
         ? ''
         : u.email_verified
           ? html`<span class="email-ok">${tRaw('profile.verified')}</span>`
-          : html`<span class="email-offen">${tRaw('profile.not_verified')}</span>`,
+          : html`<span class="email-open">${tRaw('profile.not_verified')}</span>`,
     );
   // The new address only takes effect after the confirmation link; until then it only shows here.
   const hint = G('prof-email-hint');
@@ -259,7 +264,7 @@ export async function loadProfile() {
 
 /** Account theme choice: own theme or the admin's default. */
 async function loadOwnTheme() {
-  const sel = G('design-wahl');
+  const sel = G('design-choice');
   if (!sel) return;
   const d = await api('GET', '/v1/settings/theme');
   if (!d.success) return;
@@ -268,7 +273,7 @@ async function loadOwnTheme() {
 
 /** @param {import('../../frontend-types/contract').AppThemeResponse} d */
 function showThemeChoice(d) {
-  const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
+  const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-choice')));
   const NAMES = {
     classic: 'settings.theme_classic',
     brick: 'settings.theme_brick',
@@ -280,9 +285,9 @@ function showThemeChoice(d) {
   const defaultName = tRaw(/** @type {Record<string, string>} */ (NAMES)[d.vorgabe ?? ''] || NAMES.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: defaultName });
   sel.value = d.eigenes || '';
-  // A sentence about the chosen theme: names like "Noppe" and "Hochglanz" alone don't say what it looks like.
+  // A sentence about the chosen theme: theme names alone don't say what it looks like.
   // Werkbank has no light variant; that is noted here too.
-  const hint = G('design-hinweis');
+  const hint = G('design-hint');
   const active = d.eigenes || d.vorgabe || 'classic';
   const DESCRIPTIONS = {
     classic: 'settings.theme_desc.classic',
@@ -295,15 +300,15 @@ function showThemeChoice(d) {
   const description = /** @type {Record<string, string>} */ (DESCRIPTIONS)[active];
   if (hint) hint.textContent = description ? tRaw(description) : '';
   // For a theme with no light variant, the choice below has no effect; the note shows right where it is made.
-  const darkOnly = !!window.__bimNurDunkel?.(active),
-    dw = G('dunkel-wahl'),
-    dh = G('dunkel-hinweis');
+  const darkOnly = !!window.__bimOnlyDark?.(active),
+    dw = G('dark-choice'),
+    dh = G('dark-hint');
   if (dw) dw.disabled = darkOnly;
   if (dh) dh.hidden = !darkOnly;
 }
 
-async function setzeEigenesDesign() {
-  const theme = G('design-wahl').value;
+async function setOwnDesign() {
+  const theme = G('design-choice').value;
   const d = await api('POST', '/v1/settings/user/theme', { theme });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
@@ -312,21 +317,21 @@ async function setzeEigenesDesign() {
   applyTheme(d.theme);
   if (settingsSnapshot) settingsSnapshot.app_theme = d.theme;
   showThemeChoice(d);
-  meldeAmFeld(G('design-wahl'));
+  reportAtField(G('design-choice'));
 }
 
 // Display settings take effect right away: currency and default condition save on selection.
-async function speichereWaehrung() {
+async function saveCurrency() {
   const value = G('s-cur').value;
   // Market prices exist per currency; after a switch they're missing until the price job fetches them. Without
   // this confirmation it looked as if all values had been lost.
   if (
     value !== accountCurrency &&
     !(await confirmDelete(
-      tRaw('konto.waehrung_wechsel_titel'),
-      tRaw('konto.waehrung_wechsel_text', { alt: accountCurrency, neu: value }),
-      'finanzen',
-      { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' },
+      tRaw('account.currency_change_title'),
+      tRaw('account.currency_change_text', { alt: accountCurrency, new: value }),
+      'finances',
+      { button: 'account.currency_change_button', art: 'bp' },
     ))
   ) {
     G('s-cur').value = accountCurrency;
@@ -340,13 +345,13 @@ async function speichereWaehrung() {
   setAccountCurrency(value);
   if (settingsSnapshot) settingsSnapshot.currency = value;
   await loadHousehold().catch(() => {});
-  emit('kennzahlenLaden');
-  if (document.getElementById('tab-gallery')?.classList.contains('active')) emit('sammlungLaden');
-  meldeAmFeld(G('s-cur'));
-  toast(tRaw('konto.waehrung_gespeichert_markt', { w: value }), 'success');
+  emit('metricsLoad');
+  if (document.getElementById('tab-gallery')?.classList.contains('active')) emit('collectionLoad');
+  reportAtField(G('s-cur'));
+  toast(tRaw('account.currency_saved_market', { w: value }), 'success');
 }
 
-async function speichereZustand() {
+async function saveState() {
   const condVal = G('s-default-condition')?.value || 'N';
   const d = await api('POST', '/v1/settings/user/default-condition', { condition: condVal });
   if (!d?.success) {
@@ -354,7 +359,7 @@ async function speichereZustand() {
     return;
   }
   initDefaultCondition();
-  meldeAmFeld(G('s-default-condition'));
+  reportAtField(G('s-default-condition'));
 }
 
 G('btn-sav-prof').onclick = async () => {
@@ -371,12 +376,12 @@ G('btn-sav-prof').onclick = async () => {
   try {
     // The server confirms every profile change with the password; otherwise it would reveal whether a
     // name is taken. A new address is named in the dialog so one sees what one is confirming.
-    const newAddress = email && email !== (G('prof-email').dataset.bisher || '');
+    const newAddress = email && email !== (G('prof-email').dataset.soFar || '');
     const d = await confirmWithPassword(
-      tRaw(newAddress ? 'profile.email_aendern_titel' : 'profile.speichern_titel'),
+      tRaw(newAddress ? 'profile.email_change_title' : 'profile.save_title'),
       (pwC, z) =>
         api('PUT', '/v1/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
-      newAddress ? tRaw('profile.email_aendern_text', { email }) : undefined,
+      newAddress ? tRaw('profile.email_change_text', { email }) : undefined,
     );
     if (!d) return;
     if (!d.success) {
@@ -391,7 +396,7 @@ G('btn-sav-prof').onclick = async () => {
     }
     if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
     else if (d.emailChanged) toast(tRaw('profile.saved_mail'), 'success');
-    else meldeAmFeld(btn);
+    else reportAtField(btn);
   } finally {
     btn.disabled = false;
   }
@@ -403,8 +408,8 @@ G('btn-sav-pw').onclick = async () => {
   // All field errors at once: shown one at a time, fixing the length only then revealed the mismatch.
   const errorN = pwN ? (passwordRuleText(pwN) ?? '') : tRaw('settings.password.fill_all');
   const errorR = pwN && pwN !== pwR ? tRaw('settings.password.mismatch') : '';
-  feldFehler('pw-n', errorN);
-  feldFehler('pw-r', errorR);
+  fieldError('pw-n', errorN);
+  fieldError('pw-r', errorR);
   if (errorN || errorR) {
     G(errorN ? 'pw-n' : 'pw-r').focus();
     return;
@@ -436,7 +441,7 @@ G('btn-sav-pw').onclick = async () => {
     }
     G('pw-n').value = G('pw-r').value = '';
     if (G('pw-pk')) G('pw-pk').checked = true;
-    toast(tRaw('konto.passwort_geaendert'), 'success');
+    toast(tRaw('account.password_changed'), 'success');
   } finally {
     btn.disabled = false;
   }
@@ -461,8 +466,8 @@ function applySettings(s) {
   // itself is `admin-only` (index.html). Without this line the select would always show its first
   // entry, regardless of what is saved.
   _set(
-    'gutschein-land',
-    s.gutschein_land || /** @type {Record<string, string>} */ (LAND_TO_CURRENCY)[accountCurrency] || 'de-CH',
+    'voucher-country',
+    s.gutschein_land || /** @type {Record<string, string>} */ (COUNTRY_TO_CURRENCY)[accountCurrency] || 'de-CH',
   );
   if (loggedInAccount?.isAdmin) {
     _set('bl-ck', s.bricklink_consumer_key || '');
@@ -505,7 +510,7 @@ async function saveApiCredential(values, service, limitId, button) {
   }
   await api('PUT', '/v1/admin/api-limits', { [service]: parseInt(G(limitId).value, 10) });
   const empty = Object.values(values).every(w => !String(w).trim());
-  meldeAmFeld(G(button), empty ? tRaw('settings.zugang_entfernt') : undefined);
+  reportAtField(G(button), empty ? tRaw('settings.access_removed') : undefined);
   loadRateLimitStats();
 }
 G('btn-sav-bl').onclick = () =>
@@ -525,7 +530,7 @@ G('btn-sav-rb').onclick = () =>
 G('btn-sav-bs').onclick = () =>
   saveApiCredential({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', 'btn-sav-bs');
 /** Saved right away like the other single values, confirmed at the field. */
-async function speichereAppDesign() {
+async function saveAppDesign() {
   const theme = G('mon-app-theme')?.value || 'classic';
   const d = await api('POST', '/v1/settings/admin/theme', { theme });
   // What is applied is what holds for THIS account — an own theme stays.
@@ -536,14 +541,14 @@ async function speichereAppDesign() {
       if (settingsSnapshot) settingsSnapshot.app_theme = w.theme;
     }
   }
-  if (d.success) meldeAmFeld(G('mon-app-theme'));
+  if (d.success) reportAtField(G('mon-app-theme'));
   else toast(tRaw('settings.error'), 'error');
 }
 G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
   toast(tRaw('settings.cache_cleared'), 'info');
   loadCacheStats();
-  emit('finanzenLaden');
+  emit('financesLoad');
 };
 /**
  * Before clearing, this shows what is lost and what a fresh fetch costs — with today's numbers.
@@ -558,8 +563,10 @@ async function clearCache(all) {
   const title = tRaw(all ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
   const text = known
     ? tRaw(all ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n)
-    : tRaw(all ? 'settings.all_cache.confirm_text_ohne_zahl' : 'settings.cache_prices.confirm_text_ohne_zahl');
-  if (!(await confirmDelete(title, text, 'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' }))) return;
+    : tRaw(
+        all ? 'settings.all_cache.confirm_text_without_number' : 'settings.cache_prices.confirm_text_without_number',
+      );
+  if (!(await confirmDelete(title, text, 'delete', { button: 'confirm.btn.empty', art: 'bd' }))) return;
   const d = await api('POST', '/v1/admin/cache-clear', all ? { all: true } : {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -573,11 +580,11 @@ G('btn-clr-all-cache').onclick = () => clearCache(true);
 G('btn-dall').onclick = async () => {
   // Everything into the trash: restorable for 30 days, hence a confirmation dialog rather than the
   // previous typed "DELETE". Only the OWN account (server-side).
-  const password = await bestaetigeMitPasswort(
+  const password = await confirmDeleteWithPassword(
     tRaw('settings.delete_all.title'),
     tRaw('settings.delete_all.text'),
-    'loeschen',
-    { knopf: 'confirm.btn.alles_loeschen', art: 'bd' },
+    'delete',
+    { button: 'confirm.btn.all_delete', art: 'bd' },
   );
   if (password === null) return;
   const d = await withSecondFactor(z => api('DELETE', '/v1/bestand', { password, ...z }));
@@ -587,18 +594,18 @@ G('btn-dall').onclick = async () => {
     return;
   }
   toast(tRaw('settings.delete_all.done', { n: d.sets + d.teile + d.figuren }), 'success');
-  emit('sammlungLaden');
+  emit('collectionLoad');
   loadParts();
   loadMinifigs();
-  emit('kennzahlenLaden');
+  emit('metricsLoad');
 };
-G('btn-konto-loeschen').onclick = async () => {
+G('btn-account-delete').onclick = async () => {
   // Final and without a trash: password and, if set up, the second factor.
-  const password = await bestaetigeMitPasswort(
+  const password = await confirmDeleteWithPassword(
     tRaw('settings.delete_account.title'),
     tRaw('settings.delete_account.text'),
-    'loeschen',
-    { knopf: 'confirm.btn.konto_loeschen', art: 'bd' },
+    'delete',
+    { button: 'confirm.btn.account_delete', art: 'bd' },
   );
   if (password === null) return;
   const d = await withSecondFactor(z => api('DELETE', '/v1/auth/konto', { password, ...z }));
@@ -665,32 +672,32 @@ async function importConfig() {
  * Show or re-hide a masked field (the eye button).
  * @param {string} id
  */
-function geheimUmschalten(id) {
+function toggleSecret(id) {
   const field = G(id);
-  const btn = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);
+  const btn = document.querySelector(`[data-click="toggleSecret"][data-arg="${id}"]`);
   if (!field || !btn) return;
   const reveal = field.type === 'password';
   field.type = reveal ? 'text' : 'password';
   btn.setAttribute('aria-pressed', String(reveal));
-  btn.querySelector('use')?.setAttribute('href', reveal ? '#i-auge-zu' : '#i-auge');
+  btn.querySelector('use')?.setAttribute('href', reveal ? '#i-eye-close' : '#i-eye');
 }
 
-const ONCE_KEY = 'bim_einst_abschnitt';
+const ONCE_KEY = 'bim_settings_section';
 /**
  * Global settings as sub-pages: exactly one section shows at a time, and the nav shows which.
  * Remembered per browser so a reload doesn't jump back to the first section.
  * @param {string|null} id  section; unknown or empty means the first
  * @param {Event} [ev]      the link click — it then doesn't jump
  */
-export function einstAbschnitt(id, ev) {
+export function settingsSection(id, ev) {
   ev?.preventDefault();
   const grid = G('global-settings-grid');
   if (!grid) return;
   const sections = [...grid.querySelectorAll(':scope > .ssec')];
   const target = sections.find(a => a.id === id) || sections[0];
   if (!target) return;
-  for (const a of sections) a.classList.toggle('einst-aktiv', a === target);
-  for (const l of grid.querySelectorAll('.einst-nav a')) {
+  for (const a of sections) a.classList.toggle('settings-active', a === target);
+  for (const l of grid.querySelectorAll('.settings-nav a')) {
     if (l.getAttribute('data-arg') === target.id) l.setAttribute('aria-current', 'page');
     else l.removeAttribute('aria-current');
   }
@@ -701,7 +708,7 @@ export function einstAbschnitt(id, ev) {
   }
   if (ev) reportSection();
 }
-einstAbschnitt(
+settingsSection(
   (() => {
     try {
       return localStorage.getItem(ONCE_KEY);
@@ -712,35 +719,35 @@ einstAbschnitt(
 );
 
 /** Checks the stored credential, like the setup wizard — also later, without reopening it.
- * @this {HTMLButtonElement} @param {string} quelle */
-async function einstellungenQuellePruefen(quelle) {
-  const status = G('pruef-' + quelle);
+ * @this {HTMLButtonElement} @param {string} source */
+async function checkSettingsSource(source) {
+  const status = G('check-' + source);
   if (!status) return;
-  const release = knopfBesetzt(this);
-  status.className = 'quelle-stand';
-  status.textContent = tRaw('settings.zugang_laeuft');
-  const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
+  const release = buttonBusy(this);
+  status.className = 'source-status';
+  status.textContent = tRaw('settings.access_running');
+  const d = await api('POST', '/v1/settings/quelle-testen', { quelle: source });
   release();
-  const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : clearerReason(d);
-  status.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
-  setzeHtml(
+  const { grund: reason } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : clearerReason(d);
+  status.classList.add(d?.success ? 'source-ok' : 'source-error');
+  setHtml(
     status,
-    html`${ico(d?.success ? 'ok' : 'fehler')}<span>${d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed')}</span>`,
+    html`${ico(d?.success ? 'ok' : 'error')}<span>${d?.success ? tRaw('setup.test_ok') : reason || tRaw('setup.test_failed')}</span>`,
   );
 }
 
-registerTarget({ einstAbschnitt });
+registerTarget({ settingsSection });
 
 registerActions({
-  einstellungenQuellePruefen,
-  speichereAppDesign,
-  speichereCacheTtl,
-  speichereStandardZustand,
-  speichereWaehrung,
-  speichereZustand,
-  setzeEigenesDesign,
-  einstAbschnitt,
-  geheimUmschalten,
+  checkSettingsSource,
+  saveAppDesign,
+  saveCacheTtl,
+  saveStandardState,
+  saveCurrency,
+  saveState,
+  setOwnDesign,
+  settingsSection,
+  toggleSecret,
   saveRegEnabled,
   importConfig,
 });

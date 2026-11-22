@@ -7,21 +7,21 @@
  * caught by type checking. The event names themselves stay German (chosen before the English
  * migration); renaming them touches every call site across the app and is its own round.
  * @typedef {object} Events
- * @property {string} sitzungBeendet        Path of the call that ended with 401
- * @property {undefined} passwortWechselNoetig
+ * @property {string} sessionEnded        Path of the call that ended with 401
+ * @property {undefined} passwordChangeRequired
  * @property {undefined} zweiterFaktorPflicht  Admin without a second factor: only its setup is allowed
- * @property {undefined} setsGeaendert      Sets differ from what is shown (import finished or aborted)
- * @property {undefined} bestandGeaendert   Sets, parts and figures differ from what is shown (restore)
- * @property {{ restore?: boolean } | undefined} sammlungLaden  Reload the collection (restore: at the same spot)
- * @property {undefined} kennzahlenLaden    only the metrics above the collection
- * @property {undefined} sammlungZeichnen   redraw without a fetch (view switched)
- * @property {undefined} finanzenLaden      Reload finances (purchase or inventory changed)
- * @property {undefined} teileLaden         Reload the parts list (set deleted, parts refetched)
- * @property {object | null | undefined} setAggregat  A set's state from the server (collection tile)
+ * @property {undefined} setsChanged      Sets differ from what is shown (import finished or aborted)
+ * @property {undefined} stockChanged   Sets, parts and figures differ from what is shown (restore)
+ * @property {{ restore?: boolean } | undefined} collectionLoad  Reload the collection (restore: at the same spot)
+ * @property {undefined} metricsLoad    only the metrics above the collection
+ * @property {undefined} collectionDraw   redraw without a fetch (view switched)
+ * @property {undefined} financesLoad      Reload finances (purchase or inventory changed)
+ * @property {undefined} loadParts         Reload the parts list (set deleted, parts refetched)
+ * @property {object | null | undefined} setAggregate  A set's state from the server (collection tile)
  * @property {string} viewSwitched     Name of the tab or view
  * @property {undefined} filterReset
  * @property {undefined} sectionSwitched
- * @property {{ sprache: string, speichern: boolean, realSwitch: boolean }} spracheGewechselt
+ * @property {{ language: string, save: boolean, realSwitch: boolean }} languageChanged
  */
 
 /** @type {Map<string, Set<(data: unknown) => void>>} */

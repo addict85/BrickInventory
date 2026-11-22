@@ -9,16 +9,16 @@
  *      Tabelle und Filter“
  *   B  confirmedSignedIn() again location.replace('/') → red: „Bestätigung
  *      angemeldet“ (no toast)
- *   C  .v-mehr > .mehr-liste again min-width:14rem → red: „Weitere Aktionen bei
+ *   C  .v-more > .more-list again min-width:14rem → red: „Weitere Aktionen bei
  *      320 px und 200 %“
  *   D  container rule (max-width: 15em) for the floating button ineffective
  *      → red: „Schwebender Knopf bei 200 %“
  *   E  unlinkHousehold() without names → red: „Verknüpfung lösen nennt das Konto“
- *   F  ladeMerkliste() does not collapse the form in the error case → red:
+ *   F  loadWanted() does not collapse the form in the error case → red:
  *      „Merkliste: Fehler 500 über der Falz“
  *   G  approve button gone / role again „Admin“ / switch free without mail
  *      → each red: „Verwaltung: wartendes Konto, Schalter ohne Mail“
- *   H  .voucher-actions > .mehr-menue again flex → red: „Gutscheinkarte ruhig“
+ *   H  .voucher-actions > .more-menu again flex → red: „Gutscheinkarte ruhig“
  *   I  offline banner again with a date → red: „Offline-Band: heute“
  *   K  fallback to the heading in dialoge.js gone → red: „Fokus nach Esc
  *      bei Direktaufruf“
@@ -92,10 +92,10 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       return true; })()`);
     try {
       await geh('merkliste');
-      await bis(`!!document.querySelector('#mk-list .fehler-zustand')`, 'Fehlerzustand');
+      await bis(`!!document.querySelector('#mk-list .error-state')`, 'Fehlerzustand');
       const z =
-        await b.auswerten(`(() => { const f = document.querySelector('#mk-list .fehler-zustand').getBoundingClientRect();
-        return { kasten: document.getElementById('mk-kasten').open, belowBar: f.top > document.querySelector('nav:not(.einst-nav)').getBoundingClientRect().top - 40 }; })()`);
+        await b.auswerten(`(() => { const f = document.querySelector('#mk-list .error-state').getBoundingClientRect();
+        return { kasten: document.getElementById('mk-box').open, belowBar: f.top > document.querySelector('nav:not(.settings-nav)').getBoundingClientRect().top - 40 }; })()`);
       assert.deepEqual(z, { kasten: false, belowBar: false });
     } finally {
       await b.auswerten(`window.fetch = window.__echtFetch; true`);
@@ -107,8 +107,8 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     await bis(`!!document.querySelector('.voucher-row .voucher-actions')`, 'Gutscheine');
     const z = await b.auswerten(`(() => { const w = (e) => Math.round(e.getBoundingClientRect().width);
       const knopf = [...document.querySelectorAll('.voucher-row .v-btn')].map(w);
-      const [a, m] = [document.querySelector('.voucher-actions > .btn'), document.querySelector('.voucher-actions > .mehr-menue > summary')].map(e => e.getBoundingClientRect());
-      const unten = ['guthabenAlleAbfragen', 'gutscheineExportieren'].map(k => w(document.querySelector('[data-click="' + k + '"]')));
+      const [a, m] = [document.querySelector('.voucher-actions > .btn'), document.querySelector('.voucher-actions > .more-menu > summary')].map(e => e.getBoundingClientRect());
+      const unten = ['queryAllBalances', 'exportVouchers'].map(k => w(document.querySelector('[data-click="' + k + '"]')));
       return { knopf: [...new Set(knopf)], nebeneinander: Math.round(a.top) === Math.round(m.top), gleich: Math.abs(a.width - m.width) < 2, unten: unten[0] === unten[1] }; })()`);
     assert.deepEqual(z, { knopf: [44], nebeneinander: true, gleich: true, unten: true });
   });
@@ -120,13 +120,13 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     try {
       await b.auswerten(`scrollTo(0, 0); true`);
       await warte(300);
-      const knopf = await b.auswerten(rect('#tab-gallery .knopf-schwebend'));
+      const knopf = await b.auswerten(rect('#tab-gallery .button-floating'));
       for (const sel of [
         '#gs',
         '#tab-gallery .brick-stats',
-        '#tab-gallery .filter-knopf',
+        '#tab-gallery .filter-button',
         // On the phone the toggle is the visible heading (UX check 19 M4).
-        '#tab-gallery .sammlung-wahl',
+        '#tab-gallery .collection-choice',
       ])
         assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `über ${sel}`);
     } finally {
@@ -162,14 +162,14 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
   await t.test('more actions at 320 px and 200 %', async () => {
     await geh('sammlung/set/10294-1');
     await bis(
-      `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`,
+      `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skeleton-row')`,
       'Set-Dialog',
     );
-    await b.auswerten(klick('#set-modal .v-mehr > summary'));
-    await bis(`document.querySelector('#set-modal .v-mehr').open`, 'Menü offen');
-    const r = await b.auswerten(rect('#set-modal .v-mehr > .mehr-liste'));
+    await b.auswerten(klick('#set-modal .v-more > summary'));
+    await bis(`document.querySelector('#set-modal .v-more').open`, 'Menü offen');
+    const r = await b.auswerten(rect('#set-modal .v-more > .more-list'));
     assert.ok(r.l >= 0 && r.r <= 320, `Menü von ${r.l} bis ${r.r}`);
-    await b.auswerten(`document.querySelector('#set-modal .v-mehr').open = false; true`);
+    await b.auswerten(`document.querySelector('#set-modal .v-more').open = false; true`);
   });
 
   await t.test('focus after Esc on direct call', async () => {
@@ -202,22 +202,22 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
   await t.test('administration: waiting account, switch without mail', async () => {
     await geh('einstellungen/benutzer');
     await bis(
-      `!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hinweis').hidden`,
+      `!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hint').hidden`,
       'Benutzerliste',
     );
     const z =
       await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)}));
       const tabelle = document.getElementById('users-tbl').innerText;
-      return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="kontoFreischalten"]'),
+      return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="unlockAccount"]'),
         verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
-        hinweis: document.getElementById('reg-mail-hinweis').textContent }; })()`);
+        hinweis: document.getElementById('reg-mail-hint').textContent }; })()`);
     assert.deepEqual(
       { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
       { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
     );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
-      `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="kontoFreischalten"]').click(); true`,
+      `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="unlockAccount"]').click(); true`,
     );
     await bis(offen, 'Dialog');
     assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WARTET}“ freischalten?`);
@@ -226,7 +226,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
 
   await t.test('category in table and filter', async () => {
     await geh('teile');
-    await b.auswerten(klick('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]'));
+    await b.auswerten(klick('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]'));
     await bis(
       `[...document.querySelectorAll('#parts-main tbody.parts-body tr')].some(r => r.textContent.includes('99901'))`,
       'Teiletabelle',
@@ -257,9 +257,9 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
 
   await t.test('background jobs: instructions', async () => {
     await geh('hintergrund');
-    await bis(`document.querySelectorAll('.mon-dienste .mon-name').length >= 6`, 'Dienste');
+    await bis(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Dienste');
     const namen = await b.auswerten(
-      `[...document.querySelectorAll('.mon-dienste .mon-name')].map(n => n.textContent.trim()).join(' | ')`,
+      `[...document.querySelectorAll('.mon-services .mon-name')].map(n => n.textContent.trim()).join(' | ')`,
     );
     assert.match(namen, /Anleitungen herunterladen/);
     assert.doesNotMatch(namen, /Handbücher/);
@@ -275,7 +275,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });
     await bis(
-      `(document.getElementById('verify-ziel')?.textContent || '').includes(${JSON.stringify(NEU)})`,
+      `(document.getElementById('verify-target')?.textContent || '').includes(${JSON.stringify(NEU)})`,
       'Ziel genannt',
     );
     const z =
@@ -301,7 +301,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     // Nothing pending: confirming is no longer the suggested step.
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=veraltet` });
     await bis(
-      `/wartet keine neue Adresse/.test(document.getElementById('verify-ziel')?.textContent || '')`,
+      `/wartet keine neue Adresse/.test(document.getElementById('verify-target')?.textContent || '')`,
       'nichts ausstehend',
     );
     assert.deepEqual(

@@ -7,9 +7,9 @@
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
  *   A  .smeta-text again nowrap with ellipsis → red: „Thema ganz“ (scrollWidth > clientWidth)
  *   B  logviewer.css without min-height:24px on the button → red: „Protokollfenster“ (button 22 px)
- *   C  monitor.js without data-dunkel in the window → red: „Protokollfenster“ (dark app, background 250)
+ *   C  monitor.js without data-dark in the window → red: „Protokollfenster“ (dark app, background 250)
  *   D  min-height:44px deleted on the brick .ntab in mobile.css → red: „untere Leiste“ (34 px)
- *   E  name row again data-stil="display:flex;gap:10px" instead of .reg-namen → red: „Registrierung“
+ *   E  name row again data-style="display:flex;gap:10px" instead of .reg-names → red: „Registrierung“
  *      (classic, noppe, werkbank … 332 > 320)
  */
 const test = require('node:test');
@@ -51,7 +51,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
     const im = (/** @type {string} */ a) =>
       `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${a}); })()`;
     for (const dunkel of [false, true]) {
-      await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', ${dunkel});
+      await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel});
         document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
       await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
       await b.auswerten(`window.open = () => { const f = document.createElement('iframe'); f.id = 'lv-rahmen';
@@ -75,7 +75,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
       );
       await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);
     }
-    await b.auswerten(`document.documentElement.removeAttribute('data-dunkel'); true`);
+    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
   });
 
   await t.test('bottom bar in the brick design at 200 % zoom', async () => {

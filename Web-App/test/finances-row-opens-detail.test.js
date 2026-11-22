@@ -59,10 +59,10 @@ async function oeffne() {
 
 /** Click the row (not the row button) and return the dialog title; close it again afterwards. */
 async function klicke(o, art) {
-  const zeile = o.d.querySelector(`#fin-tbl [data-fin-art="${art}"] tbody tr[data-click="openManDetail"]`);
+  const zeile = o.d.querySelector(`#fin-tbl [data-fin-kind="${art}"] tbody tr[data-click="openManDetail"]`);
   assert.ok(zeile, `keine ${art}-Zeile in der Finanztabelle`);
   const m = o.d.getElementById('man-detail-modal');
-  zeile.querySelector('td.fin-wert').click();
+  zeile.querySelector('td.fin-value').click();
   const offen = await warte(() => m.classList.contains('open'), 2000);
   const titel = o.d.getElementById('man-detail-tit').textContent;
   if (offen) m.querySelector('[data-click="closeManDetail"]').click();

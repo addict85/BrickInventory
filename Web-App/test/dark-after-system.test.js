@@ -1,18 +1,18 @@
 /**
  * “Dark when the system is dark" — per device, via theme-boot.js.
  * Since 29.10. that means: the same design in its dark variant
- * (data-dunkel on <html>, colors from tokens.css), no longer “werkbank".
+ * (data-dark on <html>, colors from tokens.css), no longer “werkbank".
  * Without a stored choice the device follows the system (default “system”).
  *
  * Counter-checks (measured on 25.10.):
  *   A  wirksam() always returns the server design → red: “stays light"
  *   B  in apply() the displayed instead of the server design cached
  *      (localStorage KEY = werkbank) → red: “cache"
- *   C  (29.10.) wirksam() never sets data-dunkel → red: “stays light";
+ *   C  (29.10.) wirksam() never sets data-dark → red: “stays light";
  *      wirksam() again with 'werkbank' on a dark system → red: “the design
  *      stays"
  *   D  (29.10.) folgtSystem() again with === 'system' → red: “without a choice the
- *      device follows the system” (data-dunkel was missing)
+ *      device follows the system” (data-dark was missing)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,13 +34,13 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   const mq = { matches: dunkel, addEventListener: (_e, f) => listener.push(f) };
   w.matchMedia = () => mq;
   w.fetch = async () => ({ ok: false });
-  if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
+  if (wahl) w.localStorage.setItem('bim_dark', wahl);
   w.eval(BOOT);
   const systemSwitch = d => {
     mq.matches = d;
     for (const f of listener) f();
   };
-  const hatDark = () => w.document.documentElement.hasAttribute('data-dunkel');
+  const hatDark = () => w.document.documentElement.hasAttribute('data-dark');
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDark, systemSwitch };
 }
 
@@ -48,7 +48,7 @@ test('without a choice the device follows the system', () => {
   const { w, thema, dunkel } = fenster({ dunkel: true });
   assert.equal(thema(), 'classic');
   assert.equal(dunkel(), true, 'Vorgabe ist „system“, das dunkle System wurde übergangen');
-  assert.equal(w.__bimDunkelWert(), 'system');
+  assert.equal(w.__bimDarkValue(), 'system');
 });
 
 test('with the choice "server" the theme stays light — even with a dark system', () => {
@@ -81,8 +81,8 @@ test('a later theme from the server applies, the device stays dark', () => {
   assert.equal(thema(), 'brick');
   assert.equal(dunkel(), true);
   assert.equal(w.localStorage.getItem('bim_theme'), 'brick', 'Cache');
-  w.__bimDunkel('server');
+  w.__bimDark('server');
   assert.equal(thema(), 'brick');
   assert.equal(dunkel(), false);
-  assert.equal(w.__bimDunkelWert(), 'server');
+  assert.equal(w.__bimDarkValue(), 'server');
 });

@@ -130,15 +130,15 @@ async function finanzen(opt) {
 test('without market prices: cost basis at the top and in the sums, a hint instead of "—"', async () => {
   const { w, d } = await finanzen({ withPrice: false });
   try {
-    assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
-    assert.equal(text(d.getElementById('fin-wert')), 'Marktpreis fehlt für 4 Positionen');
+    assert.match(zahl(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Einstand fehlt oben');
+    assert.equal(text(d.getElementById('fin-value')), 'Marktpreis fehlt für 4 Positionen');
     // The G&L tile stays (the row does not jump) and says what is missing.
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
     assert.equal(text(d.getElementById('fin-total-pnl')), '—');
     assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
-    const setsFuss = d.querySelector('[data-fin-art="sets"] tfoot');
+    const setsFuss = d.querySelector('[data-fin-kind="sets"] tfoot');
     assert.match(zahl(text(setsFuss)), /1028\.00/, 'Die Summenzeile der Sets zeigt den Einstand nicht');
-    const summe = d.querySelector('.dt-summe tfoot');
+    const summe = d.querySelector('.dt-sum tfoot');
     assert.match(zahl(text(summe)), /1097\.93/, 'Die Gesamtsumme zeigt den Einstand nicht');
   } finally {
     w.close();
@@ -148,7 +148,7 @@ test('without market prices: cost basis at the top and in the sums, a hint inste
 test('with market prices: total value and P&L', async () => {
   const { w, d } = await finanzen({ withPrice: true });
   try {
-    assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
+    assert.match(zahl(text(d.getElementById('fin-value'))), /700\.00/);
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
@@ -169,10 +169,10 @@ test('nothing captured: one empty state, no "price missing"', async () => {
   const o = await openUi({});
   try {
     await reiter(o.w, 'finance');
-    await warte(() => o.d.querySelector('#fin-tbl .leer'));
+    await warte(() => o.d.querySelector('#fin-tbl .empty-state'));
     const finanzen = text(o.d.getElementById('tab-finance'));
     assert.equal((finanzen.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finanzen.slice(0, 300)}`);
-    assert.match(text(o.d.querySelector('#fin-tbl .leer')), /Noch nichts zu bewerten/);
+    assert.match(text(o.d.querySelector('#fin-tbl .empty-state')), /Noch nichts zu bewerten/);
   } finally {
     o.w.close();
   }

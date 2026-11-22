@@ -4,18 +4,18 @@
  * jobs (N3), legend (N7), 200 % font (N10), finances without connection (N11), password change (N12).
  *
  * Counter-checks (measured 13.11.2026, each alone, bundle rebuilt):
- *   A  feldFehler() again with insertAdjacentElement at the field instead of its own row → red: “purchase price dialog”
+ *   A  fieldError() again with insertAdjacentElement at the field instead of its own row → red: “purchase price dialog”
  *      (no message row below the row)
  *   B  amountFromField() without the check for a minus → red: same place (““-5” is not an amount …”)
- *   C  styles.css without the rules for .acq-tabelle select and the wider .acq-wide → red: same place
+ *   C  styles.css without the rules for .acq-table select and the wider .acq-wide → red: same place
  *      (selection shortened)
  *   D  unterKauf() returns '' → red: “finances on the phone” (no purchase price below the name)
  *   E  withoutMarket() back to ohneWert() → red: same place (value without “no market price”)
  *   F  rowsButton() without <span> around the content → red: same place (0 px between “4” and “(Schwarz)”)
  *   G  #add-num again inputmode="numeric" without autocapitalize → red: “set number fields”
  *   H  tile again with bare text “2 Käufe, zuletzt” → red: “tile with several purchases”
- *   I  monitor.js again fmtDatum(…, 'zeit') → red: “times with day” (“10:03” instead of “morgen 10:03”)
- *   K  legende() again as one sentence without .legende-eintrag → red: “legend holds together”
+ *   I  monitor.js again fmtDate(…, 'zeit') → red: “times with day” (“10:03” instead of “morgen 10:03”)
+ *   K  legende() again as one sentence without .legend-entry → red: “legend holds together”
  *   L  mobile.css again `.bstat:not(:first-child)::after` → red: “200 % font on the phone” (line starts
  *      with “·”)
  *   M  @container leiste without `.ntab .ico { display: none }` → red: same place (bar 106 px high)
@@ -51,12 +51,12 @@ async function financesOffline(_t, a) {
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     // Since round 24 (M2) the error stands at the top of the chart box, the cards drop away.
-    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand oben');
+    await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
-      hinweise: document.querySelectorAll('#tab-finance .fval-hinweis').length,
+      hinweise: document.querySelectorAll('#tab-finance .fval-hint').length,
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
-      zeitraum: [...document.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => k.disabled) })`);
+      zeitraum: [...document.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled) })`);
     assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
     assert.equal(z.hinweise, 0, '„Keine Verbindung“ in den Karten');
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
@@ -66,9 +66,9 @@ async function financesOffline(_t, a) {
   }
   // Back on the network the list loads by itself; otherwise the button helps.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
   await bis(
-    `[...document.querySelectorAll('.zeitraum-wahl .period-btn')].every(k => !k.disabled)`,
+    `[...document.querySelectorAll('.period-choice .period-btn')].every(k => !k.disabled)`,
     'Zeitraum wieder frei',
   );
   await ruhig();
@@ -83,26 +83,26 @@ async function purchasePriceDialog(_t, a) {
   await bis(`!!document.querySelector('[data-click="openAcqModal"]')`, 'Knopf Kaufpreise');
   await ruhig();
   await b.auswerten(`document.querySelector('[data-click="openAcqModal"]').click(); true`);
-  await bis(`document.querySelectorAll('.acq-tabelle tbody tr').length === 2`, 'Kaufpreis-Tabelle');
+  await bis(`document.querySelectorAll('.acq-table tbody tr').length === 2`, 'Kaufpreis-Tabelle');
   await ruhig();
   // N8: every select shows its chosen entry fully (measured by the select's font).
   const gekuerzt = await b.auswerten(`(() => { const c = document.createElement('canvas').getContext('2d');
-    return [...document.querySelectorAll('.acq-tabelle select')].filter(s => {
+    return [...document.querySelectorAll('.acq-table select')].filter(s => {
       const st = getComputedStyle(s); c.font = st.font;
       const noetig = c.measureText(s.selectedOptions[0].text).width + parseFloat(st.paddingLeft) + 16;
       return s.getBoundingClientRect().width < noetig; }).map(s => s.selectedOptions[0].text); })()`);
   assert.deepEqual(gekuerzt, [], 'Auswahl gekürzt');
 
-  const feld = `document.querySelector('.acq-tabelle tbody tr:first-child .acq-preis')`;
+  const feld = `document.querySelector('.acq-table tbody tr:first-child .acq-price')`;
   const eingeben = wert =>
     b.auswerten(`(() => { const f = ${feld}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
   await eingeben('-5');
-  await bis(`!!document.querySelector('.acq-tabelle .feld-fehler:not([hidden])')`, 'Meldung am Preis');
-  const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-tabelle'), w = t.closest('.tw');
+  await bis(`!!document.querySelector('.acq-table .field-error:not([hidden])')`, 'Meldung am Preis');
+  const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-table'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
-    const meldung = t.querySelector('.feld-fehler');
-    return { text: meldung.textContent, ownRow: !!danach?.classList.contains('feld-fehler-zeile') && danach.contains(meldung),
+    const meldung = t.querySelector('.field-error');
+    return { text: meldung.textContent, ownRow: !!danach?.classList.contains('field-error-row') && danach.contains(meldung),
       spalten: danach?.cells[0]?.colSpan, cells: zeile.cells.length, rollt: w.scrollWidth > w.clientWidth + 1,
       headers: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
       zustand: t.querySelector('tbody tr:first-child select').getBoundingClientRect().width }; })()`);
@@ -114,11 +114,11 @@ async function purchasePriceDialog(_t, a) {
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await eingeben('12,x');
   await bis(
-    `/„12,x“ ist kein Betrag/.test(${text('.acq-tabelle .feld-fehler')})`,
+    `/„12,x“ ist kein Betrag/.test(${text('.acq-table .field-error')})`,
     'Unlesbares heisst weiter „kein Betrag“',
   );
   await eingeben('199,99');
-  await bis(`document.querySelector('.feld-fehler-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
+  await bis(`document.querySelector('.field-error-row')?.hidden === true`, 'Meldungszeile verschwindet');
   await b.auswerten(CLOSE);
 }
 
@@ -127,12 +127,12 @@ async function financesPhone(_t, a) {
   await groesse(b, 390, 844);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-art="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
     await ruhig();
     const zeile = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));
       const sicht = e => !!e && e.checkVisibility() && e.getBoundingClientRect().width > 0;
-      const u = r.querySelector('.fin-unter'), w = r.querySelector('.fin-wert'), g = r.querySelector('.fin-guv');
+      const u = r.querySelector('.fin-sub'), w = r.querySelector('.fin-value'), g = r.querySelector('.fin-guv');
       return { unter: sicht(u) ? u.innerText.replace(/\\s+/g, ' ').trim() : '', wert: w.innerText.replace(/\\s+/g, ' ').trim(), guv: sicht(g) ? g.innerText.trim() : null }; })()`);
     const titanic = await zeile('Titanic');
     assert.match(titanic.unter, /Kaufpreis 679,99 €/, 'Set ohne Kaufpreis unter dem Namen');
@@ -142,7 +142,7 @@ async function financesPhone(_t, a) {
     assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
     // N1: between “Brick 2 x 4” and “(Schwarz)” there is a word space.
     const abstand =
-      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-art="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
+      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-kind="parts"] .row-open')].find(x => x.textContent.includes('(Schwarz)'));
       const farbe = [...k.querySelectorAll('span')].find(s => s.textContent.trim() === '(Schwarz)');
       const w = document.createTreeWalker(k, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('Brick'));
       const r = document.createRange(); const i = n.textContent.indexOf('4'); r.setStart(n, i); r.setEnd(n, i + 1);
@@ -158,7 +158,7 @@ async function financesPhone(_t, a) {
 async function setnummerFields(_t, a) {
   const { b } = a;
   const felder =
-    await b.auswerten(`['add-num', 'mk-num', 'pl-setnr', 'alarm-neu-set'].map(id => { const f = document.getElementById(id);
+    await b.auswerten(`['add-num', 'mk-num', 'pl-setnr', 'alert-new-set'].map(id => { const f = document.getElementById(id);
     return [id, f.inputMode || '', f.getAttribute('autocapitalize'), f.getAttribute('autocorrect'), f.spellcheck]; })`);
   for (const [id, modus, gross, korrektur, spelling] of felder) {
     assert.notEqual(modus, 'numeric', `${id}: Zifferntastatur ohne Bindestrich und Buchstaben`);
@@ -171,8 +171,8 @@ async function setnummerFields(_t, a) {
 async function tilePurchases(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .kachel-datum')`, 'Kachel Tree House');
-  const k = await b.auswerten(`(() => { const d = document.querySelector('#gallery [data-arg="21318-1"] .kachel-datum');
+  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .tile-date')`, 'Kachel Tree House');
+  const k = await b.auswerten(`(() => { const d = document.querySelector('#gallery [data-arg="21318-1"] .tile-date');
     return { text: d.textContent.replace(/\\s+/g, ' ').trim(), etikett: d.querySelector(':scope > span')?.textContent,
       lose: [...d.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim() && !/^\\d{2}\\.\\d{2}\\.\\d{4}$/.test(n.textContent.trim())).map(n => n.textContent) }; })()`);
   assert.equal(k.text, '2 Käufe, zuletzt 02.06.2026');
@@ -191,7 +191,7 @@ async function momentsWithTag(_t, a) {
     await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', $1)`, [wann.toISOString()]);
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
   await bis(`/Dateien gelöschter Konten/.test(document.getElementById('tab-monitor').textContent)`, 'Aufträge');
-  await b.auswerten(`document.querySelector('.mon-einzeln')?.setAttribute('open', ''); true`);
+  await b.auswerten(`document.querySelector('.mon-single')?.setAttribute('open', ''); true`);
   const z =
     await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('#tab-monitor tr')].filter(r => r.textContent.includes('Dateien gelöschter Konten'));
     return zeilen.map(r => r.innerText.replace(/\\s+/g, ' ')); })()`);
@@ -214,16 +214,16 @@ async function momentsWithTag(_t, a) {
 async function legendTogether(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl .fin-legende')`, 'Legende');
+  await bis(`!!document.querySelector('#fin-tbl .fin-legend')`, 'Legende');
   try {
     for (const breite of [700, 820, 1000, 1280]) {
       await groesse(b, breite);
       await bis(`innerWidth === ${breite}`, 'Fenstergrösse');
       const l =
-        await b.auswerten(`(() => { const e = [...document.querySelectorAll('#fin-tbl .fin-legende .legende-eintrag')];
-        return { n: e.length, zeichen: e.filter(x => x.querySelector('.legende-zeichen')).length,
+        await b.auswerten(`(() => { const e = [...document.querySelectorAll('#fin-tbl .fin-legend .legend-entry')];
+        return { n: e.length, zeichen: e.filter(x => x.querySelector('.legend-char')).length,
           getrennt: e.filter(x => new Set([...x.getClientRects()].map(r => Math.round(r.top))).size > 1
-            || Math.abs(x.querySelector('.legende-zeichen').getBoundingClientRect().top - x.getBoundingClientRect().top) > 8).map(x => x.textContent.trim()) }; })()`);
+            || Math.abs(x.querySelector('.legend-char').getBoundingClientRect().top - x.getBoundingClientRect().top) > 8).map(x => x.textContent.trim()) }; })()`);
       assert.equal(l.n, 3, `${breite} px: Einträge`);
       assert.equal(l.zeichen, 3, `${breite} px: Zeichen`);
       assert.deepEqual(l.getrennt, [], `${breite} px: Zeichen und Text getrennt`);
@@ -248,7 +248,7 @@ async function schrift200Phone(_t, a) {
       const verwaist = k.filter((e, i) => i > 0 && tops[i] > tops[i - 1] + 2)
         .map(e => Math.round(e.querySelector('.bstat-v').getBoundingClientRect().left - e.getBoundingClientRect().left))
         .filter(d => d > 2);
-      const nav = document.querySelector('nav:not(.einst-nav)');
+      const nav = document.querySelector('nav:not(.settings-nav)');
       const namen = [...nav.querySelectorAll('.ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
         .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => l.textContent.trim());
       return { reihen: new Set(tops).size, verwaist, leiste: Math.round(nav.getBoundingClientRect().height), namen,

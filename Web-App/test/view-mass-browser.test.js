@@ -4,15 +4,15 @@
  * Counter-checks (measured on 29.10.2026):
  *   A  .fval again `overflow-wrap: anywhere` instead of nowrap/clamp and the
  *      420 px rule removed → red: „Telefon: Beträge in einer Zeile“
- *   B  the two space rules (.man-tile:has(> .ca), .mk-zeile) removed from
+ *   B  the two space rules (.man-tile:has(> .ca), .mk-row) removed from
  *      mobile.css → red: „Telefon: Löschknopf verdeckt nichts“
  *   C  the phone rule again `grid-template-columns: 1fr` → red: „Stein:
  *      Kennzahlen kompakt“ (4 rows; 30.10.2026)
  *   D  noppe nav .ntab again var(--b100) → red: „Noppe: untere Leiste“ (3.74:1)
  *   E  .ntab:focus-visible removed → red: „Rechner: Fokusring innen“
- *   F  `.dt-fin .zahl{text-align:right}` removed → red: „Rechner: Zahlen
+ *   F  `.dt-fin .number{text-align:right}` removed → red: „Rechner: Zahlen
  *      rechtsbündig“
- *   G  .erfassen-raster removed → red: „Rechner: Set hinzufügen bündig“
+ *   G  .capture-grid removed → red: „Rechner: Set hinzufügen bündig“
  *
  * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -78,7 +78,7 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     );
     assert.ok(sichtbar >= 2, `nur ${sichtbar} Kacheln sichtbar`);
     await bis(
-      `!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-einstand').textContent)`,
+      `!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-cost-basis').textContent)`,
       'Finanzkacheln',
     );
     const fehler =
@@ -101,9 +101,9 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
       ueber(`document.querySelector('.man-tile .delbtn')`, `document.querySelector('.man-tile .man-tile-img')`),
     );
     await reiter('wanted');
-    await bis(`!!document.querySelector('.mk-zeile .delbtn')`, 'Merklistenzeile');
+    await bis(`!!document.querySelector('.mk-row .delbtn')`, 'Merklistenzeile');
     const merk = await b.auswerten(
-      ueber(`document.querySelector('.mk-zeile .delbtn')`, `document.querySelector('.mk-zeile .mk-preis')`),
+      ueber(`document.querySelector('.mk-row .delbtn')`, `document.querySelector('.mk-row .mk-price')`),
     );
     assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'überdeckte Fläche in px²');
   });
@@ -138,12 +138,10 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
   await t.test('desktop: focus ring inside', async () => {
     await reiter('gallery');
     // The setup wizard of the new admin would hold on to the focus.
-    await b.auswerten(
-      `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
-    );
+    await b.auswerten(`document.querySelector('#setup-modal.open [data-click="setupLater"]')?.click(); true`);
     await ruhig();
     // With the keyboard to the first tab: only then does :focus-visible apply.
-    await b.auswerten(`document.activeElement?.blur(); document.querySelector('.sprunglink').focus(); true`);
+    await b.auswerten(`document.activeElement?.blur(); document.querySelector('.skip-link').focus(); true`);
     const weg = [];
     for (let i = 0; i < 25; i++) {
       weg.push(
@@ -167,31 +165,31 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     await reiter('finance');
     await bis(`!!document.querySelector('#fin-tbl .dt-fin td.price-total')`, 'Finanztabelle');
     const links =
-      await b.auswerten(`[...document.querySelectorAll('#fin-tbl .dt-fin')][0].querySelectorAll('th.zahl, td.zahl').length === 0 ? ['keine Zahlenspalten'] :
-      [...document.querySelector('#fin-tbl .dt-fin').querySelectorAll('th.zahl, td.zahl')]
+      await b.auswerten(`[...document.querySelectorAll('#fin-tbl .dt-fin')][0].querySelectorAll('th.number, td.number').length === 0 ? ['keine Zahlenspalten'] :
+      [...document.querySelector('#fin-tbl .dt-fin').querySelectorAll('th.number, td.number')]
         .filter(e => getComputedStyle(e).textAlign !== 'right').map(e => e.tagName + ' ' + e.textContent.trim().slice(0, 15))`);
     assert.deepEqual(links, []);
   });
 
   await t.test('desktop: add set aligned', async () => {
     await reiter('gallery');
-    await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
+    await b.auswerten(`document.querySelector('button[data-click="openCapture"][data-arg="set"]').click(); true`);
     await ruhig();
     const m = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
       const felder = ['add-num', 'add-qty', 'add-price', 'add-condition'].map(id => document.getElementById(id));
       const labels = felder.map(f => document.querySelector('label[for="' + f.id + '"]'));
-      const raster = r(document.querySelector('#add-set-modal .erfassen-raster') || document.getElementById('add-num').closest('.frow'));
+      const raster = r(document.querySelector('#add-set-modal .capture-grid') || document.getElementById('add-num').closest('.frow'));
       const knopf = r(document.getElementById('btn-add'));
       return { zeile1: Math.abs(r(labels[0]).top - r(labels[1]).top) < 1, zeile2: Math.abs(r(labels[2]).top - r(labels[3]).top) < 1,
                buendig: felder.every((f, i) => Math.abs(r(f).left - r(labels[i]).left) < 1),
                spalten: Math.abs(r(felder[0]).left - r(felder[2]).left) < 1 && Math.abs(r(felder[1]).left - r(felder[3]).left) < 1,
                buttonRight: Math.abs(knopf.right - raster.right) < 1 }; })()`);
-    await b.auswerten(`document.querySelector('#add-set-modal [data-click="schliesseErfassen"]').click(); true`);
+    await b.auswerten(`document.querySelector('#add-set-modal [data-click="closeCapture"]').click(); true`);
     assert.deepEqual(m, { zeile1: true, zeile2: true, buendig: true, spalten: true, buttonRight: true });
   });
 
   await t.test('desktop: account with limited width', async () => {
-    await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
+    await b.auswerten(`document.querySelector('.umenu-item[data-arg="profile"]').click(); true`);
     await ruhig();
     const breite = await b.auswerten(
       `Math.round(document.getElementById('profile-settings-card').getBoundingClientRect().width)`,
