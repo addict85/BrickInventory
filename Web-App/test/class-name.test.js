@@ -53,7 +53,7 @@ test('every class name styles something or is a handle', () => {
   // Plus the one inline style in index.html (startup skeleton, via hash in the CSP).
   for (const [rel, s] of dateien)
     if (rel.endsWith('index.html'))
-      for (const m of (/<style id="startstil">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
+      for (const m of (/<style id="start-style">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
         definiert.add(m[1]);
   // MEASURED there are 600.
   assert.ok(definiert.size >= 300, `Nur ${definiert.size} Klassennamen in den Stylesheets — Muster veraltet?`);

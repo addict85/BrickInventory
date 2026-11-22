@@ -85,7 +85,7 @@ export async function conditionAggregate(sk: SetsContext, userId: Blickfeld, set
   const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
-    // The same fields as setsLesen(sk): the tile is updated after saving without
+    // The same fields as readSets(sk): the tile is updated after saving without
     // reloading and would otherwise lose the second badge.
     conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
@@ -118,7 +118,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     repo.ownInstructionsOfSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
-  // The same fields as setsLesen(sk), so that a client can overwrite the tile with the
+  // The same fields as readSets(sk), so that a client can overwrite the tile with the
   // detail.
   const agg = await conditionAggregate(sk, uids, setNumber);
   // The purchase addresses from the server: one address in four places would be four truths.

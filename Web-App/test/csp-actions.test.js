@@ -48,7 +48,7 @@ test('no style attribute and no <style> in the markup — except the start skele
   const strip = t =>
     require('./helpers/sources')
       .withoutHtmlComments(t)
-      .replace(/<style id="startstil">[\s\S]*?<\/style>/, '')
+      .replace(/<style id="start-style">[\s\S]*?<\/style>/, '')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];

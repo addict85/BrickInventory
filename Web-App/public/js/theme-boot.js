@@ -54,12 +54,12 @@
   }
 
   /**
-   * Fetches a theme's stylesheets from <template id="design-stile">. On a switch, `next` only runs once
+   * Fetches a theme's stylesheets from <template id="theme-styles">. On a switch, `next` only runs once
    * they are there — otherwise the page would sit unstyled for a moment.
    * @param {string} theme @param {() => void} next @param {boolean} [wait]
    */
   function loadStyles(theme, next, wait) {
-    var el = document.getElementById('design-stile');
+    var el = document.getElementById('theme-styles');
     var template = el instanceof HTMLTemplateElement ? el : null;
     var open = 0;
     var done = false;
@@ -69,8 +69,8 @@
       next();
     };
     if (template)
-      template.content.querySelectorAll('link[data-design]').forEach(link => {
-        if ((link.getAttribute('data-design') || '').split(' ').indexOf(theme) === -1) return;
+      template.content.querySelectorAll('link[data-themes]').forEach(link => {
+        if ((link.getAttribute('data-themes') || '').split(' ').indexOf(theme) === -1) return;
         if (wait) {
           open++;
           link.addEventListener('load', finish, { once: true });

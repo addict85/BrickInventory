@@ -20,7 +20,7 @@ const { openUi, warte } = require('./helpers/ui');
 
 test('the aggregate rule now exists in only one place', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
+  assert.match(h, /function conditionAggregate/, 'Der gemeinsame Helfer fehlt');
   // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
   // on their own — it stands in conditionFromAcquisitions().
   // Two parameters, not three: the third was the stored condition of the
@@ -180,7 +180,7 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
   );
   assert.match(
     est,
-    /fetchPartPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?blPartNum, p\.color_id \?\? KEINE_FARBE, cond,/,
+    /fetchPartPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?blPartNum, p\.color_id \?\? NO_COLOR, cond,/,
     'Die Teilepreise müssen im übergebenen Zustand geholt werden',
   );
   assert.doesNotMatch(
@@ -284,7 +284,7 @@ test('entries without a purchase price are filled in', () => {
   // The condition of the ACQUISITION determines the price, not that of the set
   assert.match(
     job,
-    /(?:aktuellerMarktpreis|aktuellerMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
+    /(?:k\.finances\.)?currentMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
   // No mirroring into the sets row
@@ -318,17 +318,14 @@ test('new sets fetch the right condition, not the default', () => {
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
   assert.match(
     job,
-    /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) eigene\.add\(hintCondition\);/,
+    /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) own\.add\(hintCondition\);/,
     'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen',
   );
-  assert.ok(
-    hatParameter(job, 'preisFuerSetHolen', 'hintCondition', true),
-    'preisFuerSetHolen muss den Hinweis annehmen',
-  );
+  assert.ok(hatParameter(job, 'fetchPriceForSet', 'hintCondition', true), 'fetchPriceForSet muss den Hinweis annehmen');
   assert.match(
     job,
     /conditionsNeededFor\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?setNumber, userId, hintCondition\)/,
-    'preisFuerSetHolen muss den Hinweis weiterreichen',
+    'fetchPriceForSet muss den Hinweis weiterreichen',
   );
 
   // And aktuellerMarktpreis must pass it along when creating — exactly at the
@@ -336,7 +333,7 @@ test('new sets fetch the right condition, not the default', () => {
   const preis = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
   assert.match(
     preis,
-    /preisFuerSetHolen\(k, setNumber, userId, condition\)/,
+    /fetchPriceForSet\(k, setNumber, userId, condition\)/,
     'aktuellerMarktpreis muss den angefragten Zustand als Hinweis übergeben',
   );
 });
@@ -350,10 +347,10 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   const fc = require('./helpers/sources').finanzQuelle();
   // Since the household view it also takes a list of accounts — the
   // main account queries the condition of a set that belongs to a sub-account.
-  checkParameter(fc, 'setState', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
+  checkParameter(fc, 'conditionOfSet', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
   assert.match(
     fc,
-    /export async function setState\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
+    /export async function conditionOfSet\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
     'Der Helfer muss exportiert sein',
   );
 
@@ -375,7 +372,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   // The price route of the Android API still resolves by itself (it fetches a
   // price, not a history) — exactly one occurrence.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finances\.setState\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finances\.setState\(scope, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 

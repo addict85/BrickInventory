@@ -133,7 +133,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     assert.deepEqual((await b.auswerten(geladen('/themes/'))).sort(), ['/themes/hochglanz.css', '/themes/noppe.css']);
     // Released in the HTML, not only by the script: this way the stylesheet holds the first image like any other.
     const html = await b.auswerten(`fetch('/', { credentials: 'same-origin' }).then(r => r.text())`);
-    const vorlage = html.indexOf('<template id="design-stile">');
+    const vorlage = html.indexOf('<template id="theme-styles">');
     const place = d => html.indexOf(`href="/themes/${d}.css`);
     assert.ok(vorlage > 0, 'keine Vorlage');
     for (const d of ['noppe', 'hochglanz']) assert.ok(place(d) > 0 && place(d) < vorlage, `${d} nicht frei`);

@@ -6,15 +6,15 @@
  * stand there, the skeleton disappears.
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  a character changed in <style id="startstil">, hash not recomputed
+ *   A  a character changed in <style id="start-style">, hash not recomputed
  *      (static copy) → red: “the hash matches the delivered block”
  *   B  removeStartupScaffold() removed in showApp() → red: “logged in: skeleton gone”
  *   C  styles.css again in the <head> → red: “before the first stylesheet”
  *   D  (08.11.2026) the two rules for [data-theme=brick] deleted from the start style
  *      → red: “Stein (blue): header blue, background blue-gray”
- *   E  the setting of data-abgemeldet deleted in startPageHtml() → red:
+ *   E  the setting of data-signed-out deleted in startPageHtml() → red:
  *      “without a session: no app tiles in the skeleton”; the rule
- *      [data-abgemeldet] deleted in the start style → likewise red
+ *      [data-signed-out] deleted in the start style → likewise red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ test.after(() =>
 
 test('the hash matches the delivered block', async () => {
   const html = await startPageHtml();
-  const block = /<style id="startstil">([\s\S]*?)<\/style>/.exec(html);
+  const block = /<style id="start-style">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
   const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
   assert.equal(startPageStyleHash(false), erwartet);

@@ -21,12 +21,12 @@ const Z = processWide('indexHtml', () => ({
   themeAt: 0,
 }));
 
-/** CSP source for the one inline block <style id="startstil"> (start skeleton), else ''. */
+/** CSP source for the one inline block <style id="start-style"> (start skeleton), else ''. */
 export function startPageStyleHash(production: boolean): string {
   const mtime =
     production && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
-  const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(
+  const m = /<style id="start-style">([\s\S]*?)<\/style>/.exec(
     fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
   );
   Z.stil = {
@@ -66,7 +66,7 @@ async function readIndex(production: boolean): Promise<string> {
 /** The login screen names the shipped build; without a known version the line stays empty. */
 export function insertVersion(html: string, version: string): string {
   const v = version && version !== 'unbekannt' ? `Version ${version.replace(/[^\w.+-]/g, '')}` : '';
-  return html.replace(/(<div class="start-fuss" data-version>)[^<]*(<\/div>)/, `$1${v}$2`);
+  return html.replace(/(<div class="start-footer" data-version>)[^<]*(<\/div>)/, `$1${v}$2`);
 }
 
 /** Developer comments belong in the source, not in every delivery. */
@@ -99,18 +99,18 @@ async function currentTheme(k: ProfileContext, userId?: number): Promise<string>
 
 const LANGS = ['de', 'en'];
 
-/** Pulls the theme's stylesheets out of <template id="design-stile"> and in front of the
+/** Pulls the theme's stylesheets out of <template id="theme-styles"> and in front of the
  * template: as part of the HTML they hold the first paint like any stylesheet, so the page
  * appears in the right theme right away. The rest stay in the template and don't load. */
 export function releaseThemeStyles(html: string, theme: string): string {
-  return html.replace(/<template id="design-stile">([\s\S]*?)<\/template>/, (template, content: string) => {
+  return html.replace(/<template id="theme-styles">([\s\S]*?)<\/template>/, (template, content: string) => {
     const released: string[] = [];
-    const rest = content.replace(/[ \t]*<link\b[^>]*\sdata-design="([^"]*)"[^>]*>\n?/g, (tag, designs: string) => {
+    const rest = content.replace(/[ \t]*<link\b[^>]*\sdata-themes="([^"]*)"[^>]*>\n?/g, (tag, designs: string) => {
       if (!designs.split(' ').includes(theme)) return tag;
       released.push(tag.trim());
       return '';
     });
-    return released.length ? `${released.join('\n')}\n<template id="design-stile">${rest}</template>` : template;
+    return released.length ? `${released.join('\n')}\n<template id="theme-styles">${rest}</template>` : template;
   });
 }
 
@@ -141,7 +141,7 @@ export async function startPageHtml(k: ProfileContext, userId?: number): Promise
     out = releaseThemeStyles(out, theme);
 
     // Without a session, the skeleton shows only the frame, no app tiles flashing first.
-    if (userId == null) out = out.replace(/<html\b/i, '<html data-abgemeldet');
+    if (userId == null) out = out.replace(/<html\b/i, '<html data-signed-out');
 
     // data-i18n-locale marks the tag so no script path needs guessing.
     const lang = await currentLang(k, userId);

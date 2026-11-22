@@ -16,7 +16,7 @@ const { holdsSet } = require('./helpers/inventory');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { readSet, setsLesen } = require('./helpers/sources').areaPage('sets');
+const { readSet, readSets } = require('./helpers/sources').areaPage('sets');
 
 test('instructions: the server says which one was uploaded by the user', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -83,7 +83,7 @@ test('instructions: the server says which one was uploaded by the user', { concu
     assert.notEqual(eigene.id, null, 'Die eigene Anleitung bringt ebenfalls eine id mit');
 
     // ── 3. List: the same marking so that the tile counts the same ─────────
-    const { sets } = await setsLesen(uid, {});
+    const { sets } = await readSets(uid, {});
     const inList = sets.find(s => s.set_number === SN);
     assert.ok(inList, 'Set fehlt in der Galerie');
     assert.deepEqual(
@@ -112,7 +112,7 @@ test('instructions: the web app attaches the trash to is_manual', () => {
     'Der Pfadvergleich war die zweite Fassung derselben Regel und soll weg sein',
   );
   assert.ok(
-    /\$\{isUpload \? (?:html)?`<button data-click="delInstr"/.test(galerie),
+    /\$\{isUpload \? (?:html)?`<button[^>]*data-click="delInstr"/.test(galerie),
     'Der Loeschknopf der Webapp soll nur bei selbst hochgeladenen Anleitungen stehen',
   );
 });

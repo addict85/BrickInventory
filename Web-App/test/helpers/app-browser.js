@@ -356,7 +356,7 @@ async function startApp(t, opt = {}) {
     'Start abgeschlossen',
   );
   if (opt.allDesigns)
-    await b.auswerten(`(() => { const v = document.getElementById('design-stile');
+    await b.auswerten(`(() => { const v = document.getElementById('theme-styles');
       return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
         l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
   /** Until no request runs anymore (twice in a row) and two frames are drawn. */

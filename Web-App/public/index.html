@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#14181d" media="(prefers-color-scheme: dark)">
   <title>BrickInventory Manager</title>
   <!-- Start skeleton: header, bar and tiles as placeholders until styles, language … -->
-  <style id="startstil">
+  <style id="start-style">
 #start-skeleton{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;--sg-accent:#2563eb;--sg-band:#eff6ff;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 [data-theme=brick] #start-skeleton{--sg-bg:#c9d5e2;--sg-sur:#e6ecf2;--sg-bdr:#b7c6d8;--sg-ph:#d3deea}
 [data-dark] #start-skeleton,[data-theme=werkbank] #start-skeleton{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee;--sg-accent:#93c5fd;--sg-band:#1a2433}
@@ -22,7 +22,7 @@
 [data-theme=brick] .sg-header{background:#3d5a80;color:#fff}
 [data-theme=brick][data-dark] .sg-header{background:#273849}
 [data-theme=brick] .sg-header{border:0;border-radius:16px;margin:14px 16px 0}
-[data-abgemeldet] #start-skeleton>*{display:none}
+[data-signed-out] #start-skeleton>*{display:none}
 #start-skeleton .sg-extra{color:var(--sg-accent);margin-left:-4px}
 [data-theme=brick] #start-skeleton .sg-extra{color:inherit}
 .sg-bar{display:flex;gap:28px;height:44px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
@@ -70,12 +70,12 @@
   <link rel="stylesheet" href="/tokens.css?v=2026.10.27.1901">
   <link rel="stylesheet" href="/styles.css?v=2026.10.27.1901">
   <!-- Themes: only the active one loads. The server takes it from the template, theme-boot.js the others on a switch. -->
-  <template id="design-stile">
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.10.27.1901" data-design="brick">
-  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.10.27.1901" data-design="werkbank">
-  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.10.27.1901" data-design="farbfaecher">
-  <link rel="stylesheet" href="/themes/noppe.css?v=2026.10.27.1901" data-design="noppe hochglanz">
-  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.10.27.1901" data-design="hochglanz">
+  <template id="theme-styles">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.10.27.1901" data-themes="brick">
+  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.10.27.1901" data-themes="werkbank">
+  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.10.27.1901" data-themes="farbfaecher">
+  <link rel="stylesheet" href="/themes/noppe.css?v=2026.10.27.1901" data-themes="noppe hochglanz">
+  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.10.27.1901" data-themes="hochglanz">
   </template>
   <!-- Responsive rules, loaded after the themes: the layout is the same in every theme, so the rules apply to all. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">
@@ -218,7 +218,7 @@
         <p class="text-small text-mut login-footer-hint" id="setup-check-hint" hidden data-i18n="es.link_hint">Frisch installiert? Hier siehst du, ob Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel eingerichtet sind.</p>
         <button type="button" class="btn bs btn-sm" id="btn-setup-check" hidden aria-describedby="setup-check-hint" data-click="checkSetup" data-i18n="es.link">Was fehlt noch zur Einrichtung?</button>
       </div>
-      <div class="start-fuss" data-version></div>
+      <div class="start-footer" data-version></div>
       <div id="verified-msg" role="status" data-style="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 

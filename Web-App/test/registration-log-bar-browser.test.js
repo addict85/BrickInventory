@@ -98,7 +98,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
       `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
       'Anmeldung',
     );
-    await b.auswerten(`(() => { const v = document.getElementById('design-stile');
+    await b.auswerten(`(() => { const v = document.getElementById('theme-styles');
       return !v || Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
         l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
     await groesse(320, 700, true);

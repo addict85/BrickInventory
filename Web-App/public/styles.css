@@ -1173,7 +1173,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .start-surface{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem}
 .start-badge{display:flex;align-items:center;gap:12px;margin-bottom:.5rem}
 .start-title{font-size:var(--fs-6);font-weight:800;color:var(--txt)}
-.start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;letter-spacing:.03em}
+.start-footer{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;letter-spacing:.03em}
 /* The links below the login are targets of their own, not running text: 24 px high. */
 #login-screen .lcard a[href]{display:inline-flex;align-items:center;min-height:24px}
 /* Hidden login methods (passkey, forgotten password) stay hidden, also against .btn and a[href]. */

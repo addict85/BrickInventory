@@ -133,7 +133,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
     'Anmeldemaske',
   );
   // Logging out reloads the page, and it only brings the active design: add the others again.
-  await b.auswerten(`(() => { const v = document.getElementById('design-stile');
+  await b.auswerten(`(() => { const v = document.getElementById('theme-styles');
     return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
       l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
   // The test server has no domain in APP_BASE_URL and hides passkey and

@@ -1690,8 +1690,6 @@ const NOT_OURS = {
   SERVER_TEXTS: ['Alle', 'Bilder', 'Keine', 'bereit', 'zum', 'aktualisiert', 'Starte'],
   /** Classes whose suffix is a job status from the server (mon-${status}). */
   STATUS_CLASSES: ['mon-fehler'],
-  /** Markers the server looks for in index.html (src/profile/indexHtml.ts). */
-  SERVER_MARKERS: ['start-fuss'],
   /** Addresses in the browser bar (#/sammlung?suche=…): bookmarks keep working. */
   ADDRESSES: [
     'sammlung',
