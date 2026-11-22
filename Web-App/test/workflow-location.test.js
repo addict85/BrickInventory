@@ -347,7 +347,7 @@ test('checkouts keep no credentials, except where the job writes', () => {
         ohne.push(`${datei}:${job}`);
     });
   }
-  assert.deepEqual(ohne.sort(), ['android.yml:bildschirmfotos-einchecken', 'android.yml:pruefsummen-vorschlagen']);
+  assert.deepEqual(ohne.sort(), ['android.yml:pruefsummen-vorschlagen', 'android.yml:screenshots-commit']);
 });
 
 // Counter-checks (measured 03.11.2026, each individually): `provenance: mode=max`
@@ -625,7 +625,7 @@ test('signing happens only with protected main, from main, for a real tag and wi
   assert.notEqual(regeln('pull_request'), 0, 'ohne Pflicht-Checks wird nicht signiert');
   const signieren = fs.readFileSync(path.join(REAL_LOCATION, 'android-signieren.yml'), 'utf8');
   const environment = stepAfter(signieren, 'Environment ist geschützt');
-  const env = (bypass, regel = 'branch:main') =>
+  const env = (bypass, regel = 'branch:main', selfReview = true) =>
     withGh(
       t,
       environment,
@@ -634,13 +634,14 @@ test('signing happens only with protected main, from main, for a real tag and wi
         'environments/release': JSON.stringify({
           can_admins_bypass: bypass,
           deployment_branch_policy: { custom_branch_policies: true },
-          protection_rules: [{ type: 'required_reviewers', prevent_self_review: false, reviewers: [{}] }],
+          protection_rules: [{ type: 'required_reviewers', prevent_self_review: selfReview, reviewers: [{}] }],
         }),
       },
       { UMGEBUNG: 'release' },
     ).status;
   assert.equal(env(false), 0);
   assert.notEqual(env(true), 0, 'Administratoren dürfen die Freigabe nicht umgehen');
+  assert.notEqual(env(false, 'branch:main', false), 0, 'ohne prevent_self_review gibt es kein Vier-Augen-Prinzip');
   assert.notEqual(
     env(false, 'tag:android-v*'),
     0,
