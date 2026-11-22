@@ -22,7 +22,7 @@ const SRC =
   fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 
 test('the theme is loaded when sending, not hard-wired', () => {
-  assert.match(SRC, /async function mailTheme\(k: MailContext\)/, 'Loader fehlt');
+  assert.match(SRC, /async function mailTheme\(k: MailContext\)/, 'loader missing');
   // Formerly the SQL statement itself stood here. Since all accesses to
   // global_settings run via src/settings/settings.ts, the test checks the path
   // there — the statement is the same: the theme is a GLOBAL
@@ -31,7 +31,7 @@ test('the theme is loaded when sending, not hard-wired', () => {
   assert.match(
     SRC,
     /await k\.settings\.globalValue\('app_theme'\)/,
-    'Das Design ist eine globale Einstellung und muss von dort kommen',
+    'The design is a global setting and must come from there',
   );
   // `'./settings'` OR `'../src/settings/settings'`: the mailer moved with an earlier round
   // from routes/ to utils/ (it never had a route), and with that
@@ -41,19 +41,19 @@ test('the theme is loaded when sending, not hard-wired', () => {
   assert.match(
     SRC,
     /import type \{ MailContext \} from '\.\/context'/,
-    'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage',
+    'namely via the central version, not via a query of its own',
   );
   // In any doubt classic — an email must never fail because of the theme
   assert.match(
     SRC,
     /catch \(_\) \{\s*return MAIL_THEMES\.classic;\s*\}/,
-    'Ohne Rückfall bliebe eine E-Mail bei einem Datenbankfehler aus',
+    'Without a fallback an email would not be sent on a database error',
   );
 
   // Both sending functions must load it
   for (const fn of ['sendVerificationMail', 'sendPasswordResetMail']) {
     const body = SRC.slice(SRC.indexOf(`async function ${fn}(`), SRC.indexOf(`async function ${fn}(`) + 1500);
-    assert.match(body, /const theme = await mailTheme\(k\);/, `${fn} lädt das Design nicht`);
+    assert.match(body, /const theme = await mailTheme\(k\);/, `${fn} does not load the design`);
   }
 });
 
@@ -78,12 +78,12 @@ test('template, button and info box draw in the passed theme', () => {
     ['infoBox', th => infoBox('Hinweis', th)],
   ])) {
     const withBrick = bau(brick);
-    assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: das Design kommt nicht an`);
+    assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: the design does not arrive`);
     assert.ok(
       !withBrick.includes(classic.primary) && !withBrick.includes(classic.bg),
-      `${name}: feste Farbe von classic`,
+      `${name}: fixed colour of classic`,
     );
     // Without a setting classic applies: a mail should never fail because of the theme.
-    assert.equal(bau(undefined), bau(classic), `${name}: Vorgabe ist nicht classic`);
+    assert.equal(bau(undefined), bau(classic), `${name}: the default is not classic`);
   }
 });

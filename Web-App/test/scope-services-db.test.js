@@ -53,7 +53,7 @@ test('services resolve the view', { concurrency: 1 }, async t => {
     assert.deepEqual(
       await nummern({ nutzer: sub, konten: String(haupt) }),
       ['75192-1'],
-      'ein Unterkonto sieht über eine fremde ID nicht ins Hauptkonto',
+      'a sub-account does not see into the main account via a foreign ID',
     );
   });
 
@@ -61,12 +61,12 @@ test('services resolve the view', { concurrency: 1 }, async t => {
     assert.equal(
       await deleteSetFor({ nutzer: sub, konten: String(haupt) }, '10179-1'),
       null,
-      'das Unterkonto löschte ein Set des Hauptkontos',
+      'the sub-account deleted a set of the main account',
     );
     assert.equal(
       await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '10179-1'),
       null,
-      'mit „Unterkonten“ gewählt traf das Löschen das eigene Set',
+      'with „Unterkonten“ selected the deletion hit the own set',
     );
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
     assert.ok(await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '75192-1'));
@@ -75,7 +75,7 @@ test('services resolve the view', { concurrency: 1 }, async t => {
 
   await t.test('a sub-account does not write for its main account', async () => {
     assert.equal(await H.writeTarget(haupt, sub), sub);
-    assert.equal(await H.writeTarget(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
+    assert.equal(await H.writeTarget(sub, undefined), sub, 'without a request the own account');
     await assert.rejects(
       H.writeTarget(sub, haupt),
       (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'verboten',

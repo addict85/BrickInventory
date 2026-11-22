@@ -60,7 +60,7 @@ test('metrics', { concurrency: 1 }, async t => {
       value(text, 'http_request_duration_seconds_count', { method: 'GET', route: '/api/v2/sets/:setNumber' }),
       2,
     );
-    assert.doesNotMatch(text, /10294-1/, 'ein roher Pfad als Bezeichnung liesse die Reihen unbegrenzt wachsen');
+    assert.doesNotMatch(text, /10294-1/, 'a raw path as label would let the series grow without bound');
     assert.match(text, /^# TYPE http_request_duration_seconds histogram$/m);
   });
 
@@ -68,13 +68,13 @@ test('metrics', { concurrency: 1 }, async t => {
     const { base } = testServer(_req, { t: st });
     assert.equal((await fetch(`${base}/metrics`)).status, 200);
     const proxied = await fetch(`${base}/metrics`, { headers: { 'X-Forwarded-For': '203.0.113.9' } });
-    assert.equal(proxied.status, 404, 'über Caddy (X-Forwarded-For) bleibt /metrics zu');
+    assert.equal(proxied.status, 404, 'via Caddy (X-Forwarded-For) /metrics stays closed');
     const app = express();
     app.use(metricsEndpoint('geheimes-token'));
     const srv = app.listen(0);
     st.after(() => new Promise(r => srv.close(r)));
     const url = `http://127.0.0.1:${portOf(srv)}/metrics`;
-    assert.equal((await fetch(url)).status, 404, 'mit Token reicht Loopback nicht');
+    assert.equal((await fetch(url)).status, 404, 'with a token, loopback is not enough');
     assert.equal((await fetch(url, { headers: { authorization: 'Bearer falsch' } })).status, 404);
     const ok = await fetch(url, { headers: { authorization: 'Bearer geheimes-token' } });
     assert.equal(ok.status, 200);
@@ -97,7 +97,7 @@ test('metrics', { concurrency: 1 }, async t => {
       ['jobs_queue{type="brickset",status="…"} 2'],
     );
     await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);
-    assert.ok(!(await M.renderMetrics()).includes('jobs_queue{type="brickset"'), 'eine leere Art bleibt nicht stehen');
+    assert.ok(!(await M.renderMetrics()).includes('jobs_queue{type="brickset"'), 'an empty kind does not remain');
   });
 
   await t.test('a job run is counted with kind, result and duration', async () => {
@@ -167,7 +167,7 @@ test('metrics', { concurrency: 1 }, async t => {
     const eigen = await fetch(`${base}/api/gibt-es-nicht`, { headers: { 'X-Request-Id': 'zwei zeilen' } });
     assert.equal(eigen.status, 404);
     const rid = eigen.headers.get('x-request-id');
-    assert.match(rid ?? '', /^[0-9a-z]{4}$/, 'eine Kennung mit Leerzeichen wird ersetzt');
+    assert.match(rid ?? '', /^[0-9a-z]{4}$/, 'an identifier with spaces is replaced');
     assert.equal((await eigen.json()).request_id, rid);
   });
 });

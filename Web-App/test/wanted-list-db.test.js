@@ -43,7 +43,7 @@ test('1. every item is read individually, not the file as a whole', () => {
   // tree (see readPageByPage in src/vouchers/pdfExport.ts).
   const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
   const r = readWantedList(xml);
-  assert.equal(r.items.length, 3, `${r.items.length} Posten statt 3`);
+  assert.equal(r.items.length, 3, `${r.items.length} items instead of 3`);
   assert.deepEqual(
     r.items.map(p => p.blId),
     ['41879', '973pb4536c01', 'x126'],
@@ -76,7 +76,7 @@ test('3. MAXPRICE=-1 is not a price', () => {
   // -1.0000 is in ALL 224 items of Marco's file. Taken over as a number
   // that would give a purchase price of minus one franc.
   const r = readWantedList(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
-  assert.equal(r.items[0].maxPrice, null, 'Aus -1 wurde ein Preis');
+  assert.equal(r.items[0].maxPrice, null, '-1 became a price');
   assert.equal(r.items[1].maxPrice, 2.5);
 });
 
@@ -94,7 +94,7 @@ test('4. foreign kinds are counted, not swallowed', () => {
       item('S', '75192-1', null),
     ),
   );
-  assert.equal(r.items.length, 3, `${r.items.length} brauchbare Posten statt 3`);
+  assert.equal(r.items.length, 3, `${r.items.length} usable items instead of 3`);
   assert.deepEqual(
     r.items.map(p => p.kind),
     ['part', 'fig', 'set'],
@@ -102,7 +102,7 @@ test('4. foreign kinds are counted, not swallowed', () => {
   assert.deepEqual(
     r.foreignTypes,
     { B: 2, G: 1 },
-    `Fremde Arten: ${JSON.stringify(r.foreignTypes)} — zwei Bücher und ein Zubehör`,
+    `foreign kinds: ${JSON.stringify(r.foreignTypes)} — two books and one gear item`,
   );
 });
 
@@ -110,7 +110,7 @@ test('5. an item without ITEMID is counted, not guessed', () => {
   const xml = liste(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
   const r = readWantedList(xml);
   assert.equal(r.items.length, 0);
-  assert.equal(r.withoutNumber, 1, 'Der Posten ohne Nummer wurde nicht gezählt');
+  assert.equal(r.withoutNumber, 1, 'The item without a number was not counted');
 });
 
 test('6. entities are resolved, and & last', () => {
@@ -119,7 +119,7 @@ test('6. entities are resolved, and & last', () => {
   const r = readWantedList(liste(item('P', 'A&amp;B', 4)));
   assert.equal(r.items[0].blId, 'A&B');
   const r2 = readWantedList(liste(item('P', 'A&amp;lt;B', 4)));
-  assert.equal(r2.items[0].blId, 'A&lt;B', 'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
+  assert.equal(r2.items[0].blId, 'A&lt;B', '&amp;lt; became „<" — the order of the replacements is wrong');
 });
 
 test('the local resolution separates mapping from guess', { concurrency: 1 }, async t => {
@@ -162,9 +162,9 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
   assert.equal(auf.length, 5);
 
   await t.test('stage 1: the registered deviating number', () => {
-    assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_mapping`);
+    assert.equal(auf[0].rbId, '98765', `4162 became ${auf[0].rbId} — expected 98765 from bl_mapping`);
     assert.equal(auf[0].confidence, 'zuordnung');
-    assert.equal(auf[0].rbColor, 4, 'BL-Farbe 5 ist Rebrickable 4 (Red)');
+    assert.equal(auf[0].rbColor, 4, 'BL colour 5 is Rebrickable 4 (Red)');
   });
 
   await t.test('stage 2: “no deviating number” is also a mapping', () => {
@@ -175,8 +175,7 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
     assert.equal(
       auf[1].confidence,
       'gleich_vermerkt',
-      `Stufe „${auf[1].confidence}" — ein NULL-Vermerk in bl_mapping ist eine ` +
-        'Abbildung und kein blosser Katalogtreffer',
+      `level „${auf[1].confidence}" — a NULL note in bl_mapping is a ` + 'mapping and not a mere catalogue hit',
     );
     assert.equal(auf[1].rbColor, 15);
   });
@@ -186,14 +185,14 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
     assert.equal(
       auf[2].confidence,
       'katalogtreffer',
-      `Stufe „${auf[2].confidence}" — niemand hat für 11111 bei BrickLink ` +
-        'nachgesehen. Als „zuordnung" gezählt sähe eine Vermutung wie eine ' +
-        'Abbildung aus, und genau diese Trennung soll die Vorschau zeigen.',
+      `level „${auf[2].confidence}“ — nobody looked up 11111 at BrickLink. ` +
+        'Counted as „zuordnung“, a guess would look like a ' +
+        'mapping, and exactly this separation is what the preview should show.',
     );
   });
 
   await t.test('without any hit it stays open — nothing is guessed', () => {
-    assert.equal(auf[3].rbId, null, `99999 wurde zu ${auf[3].rbId} aufgelöst`);
+    assert.equal(auf[3].rbId, null, `99999 was resolved to ${auf[3].rbId}`);
     assert.equal(auf[3].confidence, null);
   });
 
@@ -207,7 +206,7 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
     assert.equal(
       auf[4].colorPending,
       true,
-      'Die offene Farbe wird nicht gemeldet — dann legt der Import sie still falsch an',
+      'The open colour is not reported — then the import silently creates it wrongly',
     );
     // Opposite direction: for the four others nothing is open.
     assert.deepEqual(
@@ -275,17 +274,17 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     assert.equal(
       z1.gesehen.length,
       1,
-      `Der Anleger bekam ${z1.gesehen.length} Posten statt einem. Der zweite hat ` +
-        'eine Farbe, die der Katalog nicht kennt — ihn mit `color_id: 0` zu ' +
-        'schreiben heisst SCHWARZ, und daneben steht dasselbe Teil in seiner ' +
-        'richtigen Farbe. Das ist das Doppelte aus Marcos Bildschirmfoto.',
+      `The creator got ${z1.gesehen.length} items instead of one. The second has ` +
+        'a colour the catalogue does not know — writing it with `color_id: 0` ' +
+        'means BLACK, and next to it is the same part in its ' +
+        "correct colour. That is the duplicate from Marco's screenshot.",
     );
     const open = bericht.items.find(p => p.outcome === 'open');
-    assert.ok(open, 'Der Posten mit offener Farbe steht nicht als „offen" im Bericht');
+    assert.ok(open, 'The item with an open colour is not listed as „offen“ in the report');
     assert.match(
       open.reason || '',
       /BrickLink-Farbe 85/,
-      `Der Grund nennt die Farbe nicht: „${open.reason}" — dann weiss Marco ` + 'nicht, was er nachtragen muss.',
+      `The reason does not name the colour: „${open.reason}" — then Marco does not know ` + 'what he has to fill in.',
     );
   });
 
@@ -294,9 +293,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     assert.equal(
       z1.gesehen[0].color_name,
       'Red',
-      'Ohne `color_name` bleibt die Spalte leer. Die Teileliste liest den ' +
-        'Namen von dort — der Hex-Wert fällt auf den Katalog zurück, der Name ' +
-        'NICHT. Ergebnis ist ein Farbpunkt ohne Beschriftung.',
+      'Without `color_name` the column stays empty. The parts list reads the ' +
+        'name from there — the hex value falls back to the catalogue, the name ' +
+        'does NOT. The result is a colour dot without a label.',
     );
     assert.equal(z1.gesehen[0].color_hex, 'C91A09');
   });
@@ -307,19 +306,19 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     await importWantedList(1, liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')), {
       creator: z.creator,
     });
-    assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
+    assert.equal(z.gesehen.length, 2, 'Both items must arrive at the creator');
     assert.equal(
       z.gesehen[0].unit_price,
       0.8578,
-      `unit_price war ${JSON.stringify(z.gesehen[0].unit_price)}. Ohne den Wert ` +
-        'holt der Anleger den Marktpreis — und in der Finanzansicht steht dann ' +
-        'nicht, was Marco bezahlt hat.',
+      `unit_price was ${JSON.stringify(z.gesehen[0].unit_price)}. Without the value ` +
+        'the creator fetches the market price — and the finance view then does ' +
+        'not show what Marco paid.',
     );
     assert.ok(
       !('unit_price' in z.gesehen[1]),
-      `Bei MAXPRICE=-1 steht ${JSON.stringify(z.gesehen[1].unit_price)} im Rumpf. ` +
-        'Das Feld muss FEHLEN, nicht null sein: Die Anleger unterscheiden ' +
-        '„nichts angegeben" (dann gilt der Marktpreis) von einer ausdrücklichen Null.',
+      `With MAXPRICE=-1 the body contains ${JSON.stringify(z.gesehen[1].unit_price)}. ` +
+        'The field must be MISSING, not null: the creators distinguish ' +
+        '„nothing given" (then the market price applies) from an explicit zero.',
     );
   });
 
@@ -329,9 +328,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     assert.equal(
       b2.created,
       0,
-      `angelegt: ${b2.created} — der Anleger meldete „updated". Vorher zählte ` +
-        'der Import blind hoch: Ein zweiter Import derselben Liste meldete ' +
-        '„angelegt: 2, aufgestockt: 0", obwohl nichts Neues entstand.',
+      `created: ${b2.created} — the creator reported „updated“. Before, ` +
+        'the import counted up blindly: a second import of the same list reported ' +
+        '„angelegt: 2, aufgestockt: 0“ although nothing new was created.',
     );
     assert.equal(b2.topped_up, 1);
   });
@@ -339,8 +338,8 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   await t.test('nothing is written in the preview', () => {
     // The opposite direction: the case above would also be green if the import
     // wrote nothing at all any more.
-    assert.equal(bericht.preview, false, 'Dieser Lauf war keine Vorschau');
-    assert.equal(bericht.created, 1, 'Der abbildbare Posten muss angelegt werden');
+    assert.equal(bericht.preview, false, 'This run was not a preview');
+    assert.equal(bericht.created, 1, 'The mappable item must be created');
   });
 
   // Abort
@@ -365,16 +364,16 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     assert.equal(
       b.aborted,
       true,
-      'Der Bericht muss sagen, dass abgebrochen wurde — sonst sieht ein ' + 'halber Import aus wie ein vollständiger',
+      'The report must say that it was aborted — otherwise a ' + 'half import looks like a complete one',
     );
     assert.equal(
       z.gesehen.length,
       10,
-      `Der Anleger bekam ${z.gesehen.length} Posten. Erwartet sind zehn: ` +
-        'Gefragt wird nach jedem zehnten, und beim ersten Ja ist Schluss.',
+      `The creator got ${z.gesehen.length} items. Ten are expected: ` +
+        'the question is asked at every tenth, and at the first yes it stops.',
     );
-    assert.equal(asked, 1, `Die Frage fiel ${asked}-mal statt einmal`);
-    assert.equal(b.items.length, 10, 'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
+    assert.equal(asked, 1, `The question was asked ${asked} times instead of once`);
+    assert.equal(b.items.length, 10, 'The report lists only what was processed — the rest was left');
   });
 
   await t.test('without an abort the list runs through', async () => {
@@ -390,8 +389,8 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
       creator: z.creator,
       cancellation: async () => false,
     });
-    assert.equal(b.aborted, undefined, 'Nichts wurde abgebrochen');
-    assert.equal(z.gesehen.length, 25, `Der Anleger bekam ${z.gesehen.length} statt 25 Posten`);
+    assert.equal(b.aborted, undefined, 'Nothing was aborted');
+    assert.equal(z.gesehen.length, 25, `The creator got ${z.gesehen.length} instead of 25 items`);
   });
 
   await t.test('in the PREVIEW nothing is asked at all', async () => {
@@ -410,7 +409,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
         return true;
       },
     });
-    assert.equal(asked, 0, `Die Vorschau fragte ${asked}-mal nach dem Abbruch`);
-    assert.equal(b.items.length, 25, 'Die Vorschau zeigt die ganze Liste');
+    assert.equal(asked, 0, `The preview asked ${asked} times about aborting`);
+    assert.equal(b.items.length, 25, 'The preview shows the whole list');
   });
 });

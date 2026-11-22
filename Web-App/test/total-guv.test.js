@@ -18,10 +18,14 @@ test('total gain/loss only over items with purchase AND market price', () => {
   assert.equal(
     totalGuvPercent([{ purchase_price: 100, current_price: 0, quantity: 1 }]),
     null,
-    '−100 % ohne Marktpreis',
+    '−100 % without a market price',
   );
   assert.equal(totalGuvPercent([]), null);
-  assert.equal(totalGuvPercent([{ purchase_price: 0, current_price: 80, quantity: 1 }]), null, 'ohne Kaufpreis');
+  assert.equal(
+    totalGuvPercent([{ purchase_price: 0, current_price: 80, quantity: 1 }]),
+    null,
+    'without a purchase price',
+  );
   // Only the second set is comparable: 2 × 50 → 2 × 60 = +20 %.
   assert.equal(
     totalGuvPercent([

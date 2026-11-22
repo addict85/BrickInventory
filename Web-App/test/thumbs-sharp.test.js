@@ -51,8 +51,8 @@ async function checkPreview(datei, transparent) {
   assert.deepEqual([meta.format, meta.width, meta.height], [transparent ? 'png' : 'jpeg', 200, 133]);
   const { data, info } = await sharp(datei).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 4);
-  if (transparent) assert.equal(data[3], 0, 'Transparenz ging verloren');
-  else assert.ok(data[1] > 150 && data[3] === 255, `Grund (${[...data.subarray(0, 4)]}) ist nicht das deckende Grün`);
+  if (transparent) assert.equal(data[3], 0, 'transparency was lost');
+  else assert.ok(data[1] > 150 && data[3] === 255, `background (${[...data.subarray(0, 4)]}) is not the opaque green`);
 }
 
 test('sharp: transparent stays PNG with alpha, 200 × 133', async () => {
@@ -110,6 +110,6 @@ test('without sharp Jimp computes the same preview', async () => {
 test('sharp and Jimp are registered as dependencies', () => {
   // Without an entry sharp is missing in the Docker image and every preview would run via the slow fallback.
   const pkg = require(path.join(ROOT, 'package.json'));
-  assert.ok(pkg.dependencies?.sharp, 'sharp fehlt in den dependencies');
-  assert.ok(pkg.dependencies?.jimp, 'jimp muss als Rückfall erhalten bleiben');
+  assert.ok(pkg.dependencies?.sharp, 'sharp is missing in the dependencies');
+  assert.ok(pkg.dependencies?.jimp, 'jimp must stay as a fallback');
 });

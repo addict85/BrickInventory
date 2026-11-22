@@ -86,7 +86,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     return;
   }
   if (!WEB) {
-    noDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
+    noDb(t, new Error('without a test run (scripts/test-run.js) no web system role'));
     return;
   }
   const zugang = sources.testAccess();
@@ -106,7 +106,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
          FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p', 'v')`,
       [WEB],
     );
-    assert.ok(zeilen.length > 70, `nur ${zeilen.length} Tabellen`);
+    assert.ok(zeilen.length > 70, `only ${zeilen.length} tables`);
     const ist = Object.fromEntries(zeilen.filter(z => z.r !== null).map(z => [z.t, z.r]));
     assert.deepEqual(ist, EXPECTED);
     const fn = await db.get(
@@ -158,7 +158,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(
       sieht.map(z => z.user_id),
       [a],
-      'durch die Sicht nur das eigene Konto',
+      'through the view only the own account',
     );
   });
 
@@ -210,14 +210,14 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     const { summaryFresh } = _req('src/parts/summary.js');
     await asWebRequest({ session: { userId: uid } }, () => summaryFresh(uid));
     const open = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
-    assert.equal(await open(), 1, 'die Anfrage hat die Warteschlange geleert');
+    assert.equal(await open(), 1, 'the request emptied the queue');
     assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'catalog_followup' AND status = 'pending'`));
     const followUp = sources
       .testServices()
       .jobQueue.signedInKinds()
       .find(a => a.kind === 'catalog_followup');
     await inSystemContext('Test', () => followUp.ausfuehren({}, {}));
-    assert.equal(await open(), 0, 'der Auftrag leert sie');
+    assert.equal(await open(), 0, 'the job empties it');
   });
 
   await t.test('the web process starts with the web system role and waits for the re-encryption', async tt => {
@@ -257,7 +257,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       );
     for (let i = 0; i < 80 && !/warte, bis der Dienst jobs/.test(log) && srv.exitCode === null; i++) await warte(250);
     assert.match(log, /warte, bis der Dienst jobs/, log.slice(-1500));
-    assert.equal(await bereit(), null, 'ohne Marke nimmt der Web-Prozess keine Anfrage an');
+    assert.equal(await bereit(), null, 'without the marker the web process accepts no request');
     await db.run(`INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Test')`);
     let status = null;
     for (let i = 0; i < 120 && status !== 200 && srv.exitCode === null; i++) {

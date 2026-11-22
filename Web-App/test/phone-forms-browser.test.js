@@ -60,15 +60,15 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
                nebeneinander: Math.abs(p.top - w.top) < 2, imDialog: w.right <= modal.right + 0.5 && p.left >= modal.left - 0.5,
                seite: document.documentElement.scrollWidth }; })()`);
     await b.auswerten(`document.querySelector('#add-set-modal [data-click="closeCapture"]').click(); true`);
-    assert.ok(m.platzhalter.breit > 0, 'kein Platzhalter gemessen');
+    assert.ok(m.platzhalter.breit > 0, 'no placeholder measured');
     assert.ok(
       m.platzhalter.passt,
-      `Platzhalter braucht ${m.platzhalter.breit} px, das Feld hat ${m.platzhalter.innen} px`,
+      `placeholder needs ${m.platzhalter.breit} px, the field has ${m.platzhalter.innen} px`,
     );
-    assert.ok(m.waehrung.passt, `Währung braucht ${m.waehrung.breit} px, das Feld hat ${m.waehrung.innen} px`);
-    assert.equal(m.nebeneinander, true, 'Währung steht nicht neben dem Preis');
-    assert.equal(m.imDialog, true, 'Preis oder Währung ragen aus dem Dialog');
-    assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
+    assert.ok(m.waehrung.passt, `currency needs ${m.waehrung.breit} px, the field has ${m.waehrung.innen} px`);
+    assert.equal(m.nebeneinander, true, 'currency is not next to the price');
+    assert.equal(m.imDialog, true, 'price or currency sticks out of the dialog');
+    assert.ok(m.seite <= 390, `page ${m.seite} px wide`);
   });
 
   await t.test('catalog: filters in four rows, nothing cut off', async () => {
@@ -83,15 +83,15 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
       return { zeilen: zeilen.size, felder: ids.map(id => breite(f(id), [...f(id).options].map(o => o.text))),
                yearsEqual: Math.abs(r('cat-year-to').top - r('cat-year-from').top) < 2,
                themeFull: Math.abs(r('cat-theme').width - f('cat-theme').parentElement.clientWidth) < 2, seite: document.documentElement.scrollWidth }; })()`);
-    assert.equal(m.zeilen, 4, `Suche, Thema, die Jahre und die Sortierung stehen in ${m.zeilen} Zeilen`);
-    assert.equal(m.yearsEqual, true, 'Jahr ab und Jahr bis stehen nicht in einer Zeile');
-    assert.equal(m.themeFull, true, 'Thema ist nicht so breit wie die Filterleiste');
+    assert.equal(m.zeilen, 4, `search, theme, the years and the sorting are on ${m.zeilen} lines`);
+    assert.equal(m.yearsEqual, true, 'year from and year to are not on one line');
+    assert.equal(m.themeFull, true, 'theme is not as wide as the filter bar');
     assert.deepEqual(
       m.felder.filter(x => !x.passt),
       [],
       'abgeschnittene Auswahlfelder (id, Innenbreite, Textbreite)',
     );
-    assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
+    assert.ok(m.seite <= 390, `page ${m.seite} px wide`);
   });
 
   await t.test('settings: arrow as a button while there are sections to the right', async () => {
@@ -105,14 +105,14 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
       return { mehr: nav.dataset.more, inhalt: s.content, breite: parseFloat(s.width), hoehe: parseFloat(s.height),
                rand: parseFloat(s.borderTopWidth), rund: s.borderTopLeftRadius, fuellung: s.backgroundColor,
                rollt: nav.scrollWidth > nav.clientWidth, zeilen: new Set([...nav.querySelectorAll('a')].map(a => Math.round(a.getBoundingClientRect().top))).size }; })()`);
-    assert.equal(m.rollt, true, 'die Leiste rollt gar nicht');
-    assert.equal(m.mehr, 'r', 'Hinweis nur nach rechts, solange links nichts versteckt ist');
+    assert.equal(m.rollt, true, 'the bar does not scroll at all');
+    assert.equal(m.mehr, 'r', 'hint only to the right as long as nothing is hidden on the left');
     assert.match(m.inhalt, /›/);
-    assert.ok(m.breite >= 32 && m.hoehe >= 32, `Pfeil ${m.breite} × ${m.hoehe} px`);
-    assert.ok(m.rand >= 2, `Pfeil ohne Rand (${m.rand} px)`);
-    assert.notEqual(m.rund, '0px', 'Pfeil nicht rund');
-    assert.notEqual(m.fuellung, 'rgba(0, 0, 0, 0)', 'Pfeil ohne Fläche: Text läuft dahinter durch');
-    assert.equal(m.zeilen, 1, 'die Leiste bleibt einzeilig');
+    assert.ok(m.breite >= 32 && m.hoehe >= 32, `arrow ${m.breite} × ${m.hoehe} px`);
+    assert.ok(m.rand >= 2, `arrow without border (${m.rand} px)`);
+    assert.notEqual(m.rund, '0px', 'arrow not round');
+    assert.notEqual(m.fuellung, 'rgba(0, 0, 0, 0)', 'arrow without a fill: text runs through behind it');
+    assert.equal(m.zeilen, 1, 'the bar stays on one line');
   });
 
   await t.test('settings: arrow switches the page at the end', async () => {
@@ -123,6 +123,6 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
     const m = await b.auswerten(`(() => { const nav = document.querySelector('.settings-nav');
       return { vorn: getComputedStyle(nav, '::before').content, hinten: getComputedStyle(nav, '::after').content }; })()`);
     assert.match(m.vorn, /‹/);
-    assert.equal(m.hinten, 'none', 'am Ende liegt rechts nichts mehr');
+    assert.equal(m.hinten, 'none', 'at the end nothing is left on the right');
   });
 });

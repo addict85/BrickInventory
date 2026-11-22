@@ -30,7 +30,7 @@ test('no SQL statement is in more than one file', () => {
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 60, `Only ${dateien.length} source files found — the search no longer works`);
 
   // Fetch statements from strings, unify whitespace. A
   // route key of the API contract ('DELETE /api/v2/…') is not SQL.
@@ -53,7 +53,7 @@ test('no SQL statement is in more than one file', () => {
     }
   }
   // Self-proof: if the search found hardly any statements, the rule would be vacuously true.
-  assert.ok(found >= 300, `Nur ${found} SQL-Anweisungen gefunden — die Suche greift nicht mehr`);
+  assert.ok(found >= 300, `Only ${found} SQL statements found — the search no longer works`);
 
   const doppelt = [];
   const gebraucht = new Set();
@@ -72,14 +72,14 @@ test('no SQL statement is in more than one file', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ALLOWED beschreiben keine Doppelung mehr — raus damit:\n  ' +
+    'These entries in ALLOWED no longer describe a duplicate — remove them:\n  ' +
       veraltet.map(k => k.slice(0, 130)).join('\n  '),
   );
   assert.deepEqual(
     doppelt,
     [],
-    'Diese Anweisungen stehen in mehreren Dateien. Entweder gehoeren sie in ' +
-      'eine gemeinsame Funktion, oder es gibt einen Grund — dann in ALLOWED ' +
-      'eintragen, damit der Naechste ihn nicht neu herleiten muss',
+    'These statements are in several files. Either they belong in ' +
+      'a shared function, or there is a reason — then add it to ALLOWED ' +
+      'so that the next person does not have to work it out again',
   );
 });

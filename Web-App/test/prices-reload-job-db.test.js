@@ -66,7 +66,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   await t.test('per account and currency one open job that takes in new items', async () => {
     const a = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1), set(2)] });
     const b = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(2), set(3)] });
-    assert.equal(b, a, 'eine zweite Liste stellte einen zweiten Auftrag ein');
+    assert.equal(b, a, 'a second list queued a second job');
     await D.rememberPricesBefore({ user_id: uid, currency: 'EUR', items: [set(9)] });
     const z = await zeilen();
     assert.deepEqual(
@@ -96,7 +96,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
       ),
     );
     const z = await zeilen();
-    assert.equal(z.length, 1, `${z.length} offene Aufträge`);
+    assert.equal(z.length, 1, `${z.length} open jobs`);
     assert.equal(z[0].items.length, 9);
   });
 

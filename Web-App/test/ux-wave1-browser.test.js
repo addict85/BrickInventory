@@ -109,20 +109,20 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
           weg_name: document.querySelector('#m-instr .ii-remove')?.getAttribute('aria-label'),
           extern: document.querySelector('#m-instr a[target=_blank] .new-tab .vh')?.textContent };
       })()`);
-      assert.deepEqual(m.arten, ['Extern', 'Lokal', 'Manuell'], 'Art nur als Farbe oder Symbol');
+      assert.deepEqual(m.arten, ['Extern', 'Lokal', 'Manuell'], 'kind only as colour or icon');
       assert.ok(
         m.links.every(h => h >= min),
-        `${breite} px: Links ${m.links.join('/')} px hoch, mindestens ${min}`,
+        `${breite} px: links ${m.links.join('/')} px high, at least ${min}`,
       );
-      assert.equal(m.weg.length, 1, 'nur die hochgeladene Anleitung ist löschbar');
-      assert.ok(m.weg[0][0] >= min && m.weg[0][1] >= min, `${breite} px: Löschknopf ${m.weg[0].join('×')}`);
+      assert.equal(m.weg.length, 1, 'only the uploaded instructions can be deleted');
+      assert.ok(m.weg[0][0] >= min && m.weg[0][1] >= min, `${breite} px: delete button ${m.weg[0].join('×')}`);
       assert.equal(m.weg_name, 'Anleitung löschen');
       assert.equal(m.extern, '(öffnet in neuem Tab)');
       for (const dunkel of [false, true]) {
         await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
         await ruhig();
         const k = await b.auswerten(CONTRAST('#m-instr .ii-remove'));
-        assert.ok(k >= 4.5, `${breite} px ${dunkel ? 'dark' : 'hell'}: Löschknopf ${k.toFixed(2)}:1`);
+        assert.ok(k >= 4.5, `${breite} px ${dunkel ? 'dark' : 'light'}: delete button ${k.toFixed(2)}:1`);
         const funde = [...(await b.auswerten(LAYOUT(mobileView))), ...(await b.auswerten(AXE_LAUF))].filter(f =>
           /\.ii|m-instr|new-tab/.test(f),
         );
@@ -158,10 +158,10 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       document.documentElement.setAttribute('data-theme', 'classic'); return { r, s }; })()`);
     assert.ok(
       Object.values(treffer.r).every(n => n > 0),
-      `Design-Regeln für den Dialog: ${JSON.stringify(treffer)}`,
+      `design rules for the dialog: ${JSON.stringify(treffer)}`,
     );
-    assert.notEqual(treffer.s.noppe.rand, treffer.s.classic.rand, 'Noppe: Dialog ohne Tintenrand');
-    assert.equal(treffer.s.hochglanz.ecke, '20px', 'Hochglanz: Dialog ohne runde Lackecken');
+    assert.notEqual(treffer.s.noppe.rand, treffer.s.classic.rand, 'noppe: dialog without ink border');
+    assert.equal(treffer.s.hochglanz.ecke, '20px', 'hochglanz: dialog without rounded lacquer corners');
     await zu();
   });
 
@@ -181,7 +181,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     assert.notEqual(
       await b.auswerten(`document.getElementById('confirm-modal').style.display`),
       'flex',
-      'Rückfrage vor Wiederherstellbarem',
+      'confirmation prompt before something restorable',
     );
     await bis(`!!document.querySelector('#toasts .toast-action')`, 'Rückgängig im Toast');
     await b.auswerten(klick('#toasts .toast-action'));
@@ -195,7 +195,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     await b.auswerten(klick('#acq-modal [data-click="acqDelete"]'));
     await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage vor Unwiderruflichem');
     // The dialog below is inert while the question is open (41).
-    assert.equal(await b.auswerten(`document.getElementById('acq-modal').inert`), true, 'Dialog darunter bedienbar');
+    assert.equal(await b.auswerten(`document.getElementById('acq-modal').inert`), true, 'dialog below is operable');
     await b.auswerten(klick('#cd-cancel'));
     await bis(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
     await zu();
@@ -210,11 +210,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     assert.deepEqual(open, { app: true, dialog: false, toasts: false });
     await zu();
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
-    assert.equal(
-      await b.auswerten(`document.getElementById('app').inert`),
-      false,
-      'Seite bleibt nach dem Schliessen gesperrt',
-    );
+    assert.equal(await b.auswerten(`document.getElementById('app').inert`), false, 'page stays locked after closing');
     // An import without a file reports an error: only the assertive region reads it.
     await b.auswerten(
       `document.getElementById('csv-file').dispatchEvent(new Event('change', { bubbles: true })); true`,

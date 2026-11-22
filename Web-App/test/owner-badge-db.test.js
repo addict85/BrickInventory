@@ -82,15 +82,15 @@ test('every list with a badge in the client carries it in the response too', asy
 
   for (const [name, hole] of listen) {
     const zeilen = await hole();
-    assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile — dann prüft der Rest nichts`);
+    assert.ok(zeilen?.length, `${name}: precondition returns no row — then the rest checks nothing`);
     for (const z of zeilen) {
       assert.ok(
         Array.isArray(z.owners) && z.owners.length === 1,
-        `${name}: keine Besitzer-Plakette in der Antwort. Beide Clients zeichnen sie ` +
-          `an dieser Stelle (ownerBadges / OwnerBadges) — ohne den Wert bleibt sie leer.`,
+        `${name}: no owner badge in the response. Both clients draw it ` +
+          `at this place (ownerBadges / OwnerBadges) — without the value it stays empty.`,
       );
-      assert.equal(z.owners[0].id, kind, `${name}: falsches Konto in der Plakette`);
-      assert.equal(z.owners[0].username, 'kind', `${name}: Plakette ohne Namen nützt nichts`);
+      assert.equal(z.owners[0].id, kind, `${name}: wrong account in the badge`);
+      assert.equal(z.owners[0].username, 'kind', `${name}: a badge without a name is useless`);
     }
   }
 
@@ -99,13 +99,13 @@ test('every list with a badge in the client carries it in the response too', asy
   // clients draws a badge there. If one is added, this assertion
   // strikes — then the aggregate belongs in the query too.
   const parts = (await P.partsQuery(uids, { page_size: 60, exclude_manual: '1' })).parts;
-  assert.ok(parts?.length, 'Vorlage: Set-Teile fehlen');
+  assert.ok(parts?.length, 'precondition: set parts are missing');
   for (const z of parts) {
     assert.equal(
       z.owners,
       undefined,
-      'Die Set-Teileliste trägt jetzt Besitzer — dann muss auch ein Client sie ' +
-        'zeichnen, sonst ist es Ballast in jeder Antwort.',
+      'The set parts list now carries owners — then a client must also ' +
+        'draw them, otherwise it is ballast in every response.',
     );
   }
 });
@@ -147,10 +147,10 @@ test('in a single account there is no badge', async t => {
     ['/v2/sets', (await S.readSets(uids, { page_size: 60 })).sets],
     ['/v2/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
   ]) {
-    assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);
+    assert.ok(zeilen?.length, `${name}: precondition returns no row`);
     for (const z of zeilen) {
-      assert.equal(z.owners, undefined, `${name}: Plakette gehört nicht ins Einzelkonto`);
-      assert.equal(z.owner_ids, undefined, `${name}: owner_ids gehört nicht ins Einzelkonto`);
+      assert.equal(z.owners, undefined, `${name}: a badge does not belong in a single account`);
+      assert.equal(z.owner_ids, undefined, `${name}: owner_ids does not belong in a single account`);
     }
   }
 });

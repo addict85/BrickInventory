@@ -48,7 +48,7 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
     const t1 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
     const t2 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
     assert.equal(t1, t2);
-    assert.equal(t1.catalog, t2.catalog, 'die tieferen Bereiche entstehen nicht neu');
+    assert.equal(t1.catalog, t2.catalog, 'the deeper areas are not created anew');
     assert.notEqual(t1, k);
   });
 
@@ -70,7 +70,7 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
       k.transact(async (/** @type {any} */ t) => {
         los();
         await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), modul.TransactionEnded);
-        assert.ok((await t.db.get('SELECT txid_current() AS id')).id, 'die zweite selbst fragt weiter');
+        assert.ok((await t.db.get('SELECT txid_current() AS id')).id, 'the second one itself keeps querying');
       }),
     );
   });

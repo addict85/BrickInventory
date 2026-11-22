@@ -33,7 +33,7 @@ function dateien() {
 test('every font size takes a step of the scale', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const levels = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
-  assert.ok(levels.size >= 8, `Nur ${levels.size} Stufen in styles.css gefunden — greift die Suche noch?`);
+  assert.ok(levels.size >= 8, `Only ${levels.size} levels found in styles.css — does the search still work?`);
   const frei = [],
     fehlt = [];
   for (const f of dateien()) {
@@ -44,10 +44,6 @@ test('every font size takes a step of the scale', () => {
       for (const m of z.matchAll(/var\(--fs-(\d+)\)/g)) if (!levels.has(m[1])) fehlt.push(`${location}  --fs-${m[1]}`);
     });
   }
-  assert.deepEqual(
-    frei,
-    [],
-    'Schriftgrössen ausserhalb der Skala — bitte var(--fs-0 … 8) nehmen:\n  ' + frei.join('\n  '),
-  );
-  assert.deepEqual(fehlt, [], 'Stufe fehlt in styles.css:\n  ' + fehlt.join('\n  '));
+  assert.deepEqual(frei, [], 'Font sizes outside the scale — please use var(--fs-0 … 8):\n  ' + frei.join('\n  '));
+  assert.deepEqual(fehlt, [], 'level missing in styles.css:\n  ' + fehlt.join('\n  '));
 });

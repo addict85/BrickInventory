@@ -227,26 +227,26 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body.user.id, ids.pk_anna);
     const ich = await callFn('/me', undefined, a.cookie);
-    assert.equal(ich.body.user.id, ids.pk_anna, 'Die Anmeldung legt eine Sitzung an');
+    assert.equal(ich.body.user.id, ids.pk_anna, 'The login creates a session');
   });
 
   await t.test('a response only applies once, and an old counter does not', async () => {
     const response = anna.anmelden(await options());
     assert.equal((await callFn('/passkey/login', { response })).status, 200);
-    assert.equal((await callFn('/passkey/login', { response })).status, 401, 'Wiederholte Antwort');
+    assert.equal((await callFn('/passkey/login', { response })).status, 401, 'repeated response');
     // New challenge, but the counter value from just now: a cloned authenticator.
     const state = Number(
       (await db.get('SELECT sign_count FROM passkeys WHERE user_id = $1', [ids.pk_anna])).sign_count,
     );
     assert.ok(state > 0);
     const clone = anna.anmelden(await options(), { zaehler: state });
-    assert.equal((await callFn('/passkey/login', { response: clone })).status, 401, 'Zähler nicht gestiegen');
+    assert.equal((await callFn('/passkey/login', { response: clone })).status, 401, 'counter did not increase');
 
     // Many passkeys do not count at all (always 0): then the challenge alone protects.
     await register('pk_bert', withoutCounter);
     const null1 = withoutCounter.anmelden(await options(), { zaehler: 0 });
     assert.equal((await callFn('/passkey/login', { response: null1 })).status, 200);
-    assert.equal((await callFn('/passkey/login', { response: null1 })).status, 401, 'Challenge nur einmal gültig');
+    assert.equal((await callFn('/passkey/login', { response: null1 })).status, 401, 'challenge valid only once');
   });
 
   await t.test('a foreign origin is rejected', async () => {
@@ -275,7 +275,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const ohne = await callFn('/login', { username: 'pk_anna', password: PASS, without_token: true });
     assert.equal(ohne.status, 401);
     assert.equal(ohne.body.second_factor, true);
-    assert.equal(ohne.body.passkey, true, 'Der Client erfährt, dass ein Passkey geht');
+    assert.equal(ohne.body.passkey, true, 'The client learns that a passkey works');
 
     const fremd = await callFn('/login', {
       username: 'pk_anna',
@@ -283,7 +283,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       without_token: true,
       passkey: bert.anmelden(await options('second_factor')),
     });
-    assert.equal(fremd.status, 401, 'Der Passkey eines anderen Kontos öffnet nichts');
+    assert.equal(fremd.status, 401, "Another account's passkey opens nothing");
 
     const ok = await callFn('/login', {
       username: 'pk_anna',
@@ -312,11 +312,11 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.match(a.body.token, /^[0-9a-f]{64}$/);
     assert.equal(a.body.token_info.scope, 'app');
     const ich = await fetch(`${basis}/me`, { headers: { authorization: `Bearer ${a.body.token}` } });
-    assert.equal((await ich.json()).user.id, ids.pk_anna, 'Der Token gehört dem Konto des Passkeys');
+    assert.equal((await ich.json()).user.id, ids.pk_anna, "The token belongs to the passkey's account");
 
     const ohne = await callFn('/passkey/login', { response: anna.anmelden(await options()) });
     assert.equal(ohne.status, 200);
-    assert.equal(ohne.body.token, undefined, 'Der Browser bekommt keinen Token');
+    assert.equal(ohne.body.token, undefined, 'The browser gets no token');
 
     const zweiter = await callFn('/login', {
       username: 'pk_anna',
@@ -324,7 +324,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       without_token: true,
       passkey: anna.anmelden(await options('second_factor'), { origin: appOrigin(APP_HASH) }),
     });
-    assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
+    assert.equal(zweiter.status, 200, 'The app also counts as a second factor');
   });
 
   await t.test('an app with a different or no registered certificate is rejected', async tt => {
@@ -343,7 +343,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       response: anna.anmelden(await options(), { origin: appOrigin(APP_HASH) }),
       with_token: true,
     });
-    assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
+    assert.equal(ohne.status, 401, 'Without an entry the server accepts no app');
   });
 
   await t.test('deleting requires the password', async () => {
@@ -367,7 +367,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const c = (await callFn('/login', { username: 'pk_anna', password: PASS, without_token: true, code: annaCodes[0] }))
       .cookie;
     const ohne = await callFn('/passkey/register/options', { password: PASS }, c);
-    assert.equal(ohne.status, 400, 'Passwort allein prägt einen Passkey am zweiten Faktor vorbei');
+    assert.equal(ohne.status, 400, 'A password alone mints a passkey past the second factor');
     assert.equal(ohne.body.code, 'second_factor_required');
     const mit = await callFn('/passkey/register/options', { password: PASS, code: annaCodes[1] }, c);
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
@@ -385,11 +385,11 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const wechsel = (cookie, alt, neu, mehr = {}) =>
       callFn('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
     assert.equal((await wechsel(c, PASS, 'zwischenPasswort-9')).status, 200);
-    assert.equal(await count(ids.pk_bert), 1, 'ohne Wunsch bleiben die Passkeys');
+    assert.equal(await count(ids.pk_bert), 1, 'without a request the passkeys stay');
     const c2 = (await callFn('/login', { username: 'pk_bert', password: 'zwischenPasswort-9', without_token: true }))
       .cookie;
     assert.equal((await wechsel(c2, 'zwischenPasswort-9', PASS, { passkeys_revoked: true })).status, 200);
-    assert.equal(await count(ids.pk_bert), 0, 'passkeys_widerrufen wirkt nicht');
+    assert.equal(await count(ids.pk_bert), 0, 'passkeys_widerrufen has no effect');
   });
 
   await t.test('resetting via mail revokes all passkeys and reports it', async tt => {
@@ -416,11 +416,11 @@ test('Passkeys', { concurrency: 1 }, async t => {
     } finally {
       console.error = echt;
     }
-    assert.equal(await count(ids.pk_anna), 0, 'ein untergeschobener Passkey überlebt das Zurücksetzen');
+    assert.equal(await count(ids.pk_anna), 0, 'a planted passkey survives the reset');
     assert.equal((await callFn('/passkey/login', { response: anna.anmelden(await options()) })).status, 401);
     assert.ok(
       zeilen.some(z => z.includes('SMTP') && z.includes('example.org')),
-      `kein Hinweis verschickt: ${zeilen.join('\n')}`,
+      `no hint sent: ${zeilen.join('\n')}`,
     );
   });
 
@@ -439,7 +439,11 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const status = [];
     for (const [, c] of falsch) status.push((await callFn('/passkey/login', { response: carl.anmelden(c) })).status);
     assert.deepEqual(status, [401, 401, 401], falsch.map(([n]) => n).join(', '));
-    assert.equal((await callFn('/passkey/login', { response: carl.anmelden(echt) })).status, 200, 'die echte gilt');
+    assert.equal(
+      (await callFn('/passkey/login', { response: carl.anmelden(echt) })).status,
+      200,
+      'the real one counts',
+    );
   });
 
   await t.test('login options store nothing, a full pot only locks its purpose', async tt => {
@@ -458,21 +462,21 @@ test('Passkeys', { concurrency: 1 }, async t => {
     await fill('second_factor');
     for (const purpose of ['login', 'second_factor'])
       assert.equal((await callFn('/passkey/login/options', { purpose })).status, 200, purpose);
-    assert.equal(await count(), 2 * N, 'die Anmeldeoptionen haben eine Zeile angelegt');
+    assert.equal(await count(), 2 * N, 'the login options created a row');
     const c = await sitzung('pk_bert');
     const reg = () => callFn('/passkey/register/options', { password: PASS }, c);
-    assert.equal((await reg()).status, 200, 'volle Anmeldetöpfe sperren das Registrieren');
+    assert.equal((await reg()).status, 200, 'full login buckets block registering');
     await fill('register');
     const r = await reg();
     assert.deepEqual([r.status, r.body?.code], [503, 'server_busy']);
     assert.equal(
       (await callFn('/passkey/login/options', {})).status,
       200,
-      'ein voller Registriertopf sperrt das Anmelden',
+      'a full registration bucket blocks logging in',
     );
     await db.run(
       `UPDATE webauthn_challenges SET expires_at = NOW() - INTERVAL '1 minute' WHERE challenge LIKE 'voll%'`,
     );
-    assert.equal((await reg()).status, 200, 'abgelaufene räumt der nächste Aufruf ab');
+    assert.equal((await reg()).status, 200, 'the next call clears expired ones');
   });
 });

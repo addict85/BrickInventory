@@ -102,7 +102,7 @@ test('on the phone every control is at least 44 px large', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(ergebnis.length, CASES.length);
   const toSmall = ergebnis.filter(e => !e.ok).map(e => `${CASES[e.fall]?.[0]} (${e.w}×${e.h})`);

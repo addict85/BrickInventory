@@ -61,14 +61,14 @@ test('startBans without NODE_ENV', () => {
   assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_CONSOLE_WITH_TOKEN: '1' }), []);
   const k = loadConfig({});
   assert.equal(k.operation, true);
-  assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
+  assert.equal(cookieSafe(k), true, 'without NODE_ENV a secure cookie as in production');
 });
 
 test('MAIL_CONSOLE_WITH_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
   const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.notEqual(r.code, 0, r.log.slice(-400));
   assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
-  assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  assert.doesNotMatch(r.log, /Database initialisation failed/, 'the ban comes before the database');
 });
 
 test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, async t => {
@@ -76,7 +76,7 @@ test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, asyn
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const isSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;
-  assert.equal(isSuper, true, 'Vorbedingung: die Test-DB verbindet als Superuser');
+  assert.equal(isSuper, true, 'precondition: the test DB connects as superuser');
   const r = await starte({ DATABASE_URL: URL_DB });
   assert.equal(r.code, 1, r.log.slice(-600));
   assert.match(r.log, /als Superuser — Start verweigert/);

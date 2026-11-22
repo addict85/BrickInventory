@@ -176,7 +176,7 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Estrich' }),
     });
-    assert.notEqual((await grenze.json()).code, 'id_invalid', '2³¹−1 ist noch eine gültige ID');
+    assert.notEqual((await grenze.json()).code, 'id_invalid', '2³¹−1 is still a valid ID');
   });
 });
 

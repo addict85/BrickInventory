@@ -114,8 +114,8 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     let ab;
     for (let i = 0; i < 5; i++) ab = await claim(b, eins, 'GET', '/sets', now + 1000);
     assert.equal(ab.erlaubt, false);
-    assert.equal(ab.units, BUDGET, 'die Abweisung darf den Zähler nicht weiter hochziehen');
-    assert.equal(ab.restSec, WINDOW_MS / 1000 - 1, 'Retry-After nennt das Ende des Fensters');
+    assert.equal(ab.units, BUDGET, 'the rejection must not push the counter up further');
+    assert.equal(ab.restSec, WINDOW_MS / 1000 - 1, 'Retry-After names the end of the window');
     const neu = await claim(a, eins, 'GET', '/sets', now + WINDOW_MS);
     assert.deepEqual([neu.erlaubt, neu.units, neu.restSec], [true, 1, WINDOW_MS / 1000]);
   });
@@ -127,7 +127,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
       assert.equal((await claim(i % 2 ? a : b, eins, 'POST', '/sets/partslist-pdf', now)).erlaubt, true);
     const ab = await claim(a, eins, 'POST', '/sets/partslist-pdf', now);
     assert.deepEqual([ab.erlaubt, ab.auftrag], [false, true]);
-    assert.equal(ab.units, JOB_BUDGET * COST.auftrag, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
+    assert.equal(ab.units, JOB_BUDGET * COST.auftrag, 'otherwise the general budget would have closed, not the bucket');
     assert.equal((await claim(b, eins, 'GET', '/sets', now)).erlaubt, true);
   });
 
@@ -142,14 +142,14 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   await t.test('a ticket issued on A is redeemed once on B', async () => {
     const ticket = await ticketOn(a);
     assert.equal(await redeem(b, eins, ticket), true);
-    assert.equal(await redeem(a, eins, ticket), false, 'ein zweites Mal');
+    assert.equal(await redeem(a, eins, ticket), false, 'a second time');
     assert.equal(await data.get('SELECT count(*)::int AS n FROM pdf_tickets').then(r => r.n), 0);
   });
 
   await t.test('only for its account and target', async () => {
     const ticket = await ticketOn(a);
-    assert.equal(await redeem(b, zwei, ticket), false, 'fremdes Konto');
-    assert.equal(await redeem(b, eins, ticket, '12'), false, 'anderes Ziel');
+    assert.equal(await redeem(b, zwei, ticket), false, 'foreign account');
+    assert.equal(await redeem(b, eins, ticket, '12'), false, 'different target');
   });
 
   await t.test('after 60 s it no longer applies (set clock instead of waiting)', async () => {

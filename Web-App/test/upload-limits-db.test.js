@@ -166,7 +166,7 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.equal(
       (await json('/sets/partslist-pdf', { sets: [], parts: huge })).status,
       413,
-      'über 4 MB bleibt zu gross',
+      'above 4 MB stays too large',
     );
   });
 
@@ -195,7 +195,7 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   await t.test('… and on the login routes at most 16 KB', async () => {
     // The ballast in the field `label`: an unknown field would already be 400 before login.
     const mit = n => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
-    assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
+    assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'an ordinary login fits');
     assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'request_too_large' });
   });
 });

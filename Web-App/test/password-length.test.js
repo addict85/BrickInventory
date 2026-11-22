@@ -29,7 +29,7 @@ test('the rule itself also holds for what is not a string', () => {
   // `undefined`, and `undefined < 8` is FALSE — a password as a JSON number
   // thus got past `password.length < 8`. Only the two places with
   // `String(password).length` caught it.
-  assert.equal(passwordToShort(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
+  assert.equal(passwordToShort(123), true, 'A number has no .length — it must not slip through');
   // The opposite direction, so that the line above does not merely prove „everything is too
   // short": the number becomes its digit sequence, and that is long
   // enough (`String(123456789012)` has twelve characters).
@@ -39,8 +39,8 @@ test('the rule itself also holds for what is not a string', () => {
 test('server and web app name the same number', () => {
   const web = ohneKommentare(read('public/js/form.js'));
   const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
-  assert.ok(webNumber, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
-  assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Webapp und Server verlangen verschiedene Laengen');
+  assert.ok(webNumber, 'The web app no longer keeps a constant — then the number is scattered again');
+  assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Web app and server demand different lengths');
 });
 
 test('the error message names the same number as the rule', () => {
@@ -53,8 +53,8 @@ test('the error message names the same number as the rule', () => {
   const texte = require('./helpers/sources').loadTranslations();
   for (const language of ['de', 'en']) {
     const text = texte[language]['settings.password.too_short'];
-    assert.ok(text, `settings.password.too_short fehlt in ${language}.js`);
-    assert.ok(text.includes('{n}'), `${language}.js schreibt die Zahl aus statt {n} zu benutzen`);
+    assert.ok(text, `settings.password.too_short is missing in ${language}.js`);
+    assert.ok(text.includes('{n}'), `${language}.js spells out the number instead of using {n}`);
   }
 });
 
@@ -71,5 +71,5 @@ test('the web app checks before submitting', () => {
   // Five places set a password in the web app: registering,
   // resetting, changing, creating an account, resetting an account password.
   // Plus the definition itself in formular.js.
-  assert.ok(webCalls >= 6, `Nur ${webCalls} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
+  assert.ok(webCalls >= 6, `Only ${webCalls} occurrences — not all five forms check before submitting`);
 });

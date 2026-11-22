@@ -72,15 +72,15 @@ test('header and gallery count the same sets', async t => {
     assert.equal(
       kopf.total_sets,
       liste.total,
-      `Blickfeld ${modus}: Die Kopfzeile nennt ${kopf.total_sets} Sets, die Galerie ` +
-        `zeigt ${liste.total}. Beide Zahlen stehen übereinander auf demselben ` +
-        `Bildschirm — zählt eine die Tabellenzeilen und die andere die Kacheln, ` +
-        `widersprechen sie sich im Haushalt.`,
+      `scope ${modus}: the header names ${kopf.total_sets} sets, the gallery ` +
+        `shows ${liste.total}. Both numbers are on top of each other on the same ` +
+        `screen — if one counts table rows and the other the tiles, ` +
+        `they contradict each other in the household.`,
     );
     assert.equal(
       kopf.total_sets,
       (liste.sets || []).length,
-      `Blickfeld ${modus}: total passt, die Anzahl der Kacheln aber nicht`,
+      `scope ${modus}: total matches, but the number of tiles does not`,
     );
   }
 
@@ -88,6 +88,6 @@ test('header and gallery count the same sets', async t => {
   // next to it („Einheiten"). Without this assertion the obvious
   // „correction" — both on DISTINCT — would have gone unnoticed.
   const alle = await getStats(await scopeIds(haupt, 'all'));
-  assert.equal(alle.total_quantity, 3, 'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
-  assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');
+  assert.equal(alle.total_quantity, 3, 'copies still count individually: two accounts with the same set plus one');
+  assert.equal(alle.total_sets, 2, 'distinct sets in the household');
 });

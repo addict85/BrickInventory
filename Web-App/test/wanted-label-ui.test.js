@@ -27,7 +27,7 @@ test('English: tab and wishlist are called “Wishlist”', async () => {
     assert.equal(d.getElementById('mks').getAttribute('aria-label'), 'Search the wishlist');
     const text = sichtbar(tab);
     assert.match(text, /Add a wishlist item/);
-    assert.doesNotMatch(text, /wanted/i, `„wanted“ in der Merkliste: ${text.slice(0, 300)}`);
+    assert.doesNotMatch(text, /wanted/i, `„wanted“ in the wanted list: ${text.slice(0, 300)}`);
   } finally {
     o.w.close();
   }
@@ -37,7 +37,7 @@ test('English: export button of the settings names the “wishlist”', async ()
   const o = await openUi({}, { language: 'en' });
   try {
     const knopf = o.d.querySelector('[data-i18n="settings.data_zip_btn"]');
-    assert.ok(knopf, 'Export-Knopf nicht gefunden');
+    assert.ok(knopf, 'export button not found');
     assert.equal(sichtbar(knopf), 'Export sets, parts, minifigures, wishlist & alerts (ZIP)');
   } finally {
     o.w.close();

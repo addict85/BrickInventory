@@ -84,7 +84,7 @@ test('Rebrickable banner only in collection and catalog', async () => {
   try {
     const band = o.d.getElementById('rb-hint');
     await warte(() => !band.hidden, 2000);
-    assert.equal(zu(o.w, band), false, 'Sammlung');
+    assert.equal(zu(o.w, band), false, 'collection');
     for (const [tab, versteckt] of /** @type {[string, boolean][]} */ ([
       ['finance', true],
       ['wanted', true],

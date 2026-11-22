@@ -128,7 +128,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
         // On the phone the toggle is the visible heading (UX check 19 M4).
         '#tab-gallery .collection-choice',
       ])
-        assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `über ${sel}`);
+        assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `over ${sel}`);
     } finally {
       await schrift('');
     }
@@ -168,7 +168,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     await b.auswerten(klick('#set-modal .v-more > summary'));
     await bis(`document.querySelector('#set-modal .v-more').open`, 'Menü offen');
     const r = await b.auswerten(rect('#set-modal .v-more > .more-list'));
-    assert.ok(r.l >= 0 && r.r <= 320, `Menü von ${r.l} bis ${r.r}`);
+    assert.ok(r.l >= 0 && r.r <= 320, `menu from ${r.l} to ${r.r}`);
     await b.auswerten(`document.querySelector('#set-modal .v-more').open = false; true`);
   });
 

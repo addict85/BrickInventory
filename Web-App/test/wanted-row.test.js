@@ -39,12 +39,12 @@ test('the web app row shows market price and trash, no takeover button', async (
   });
   try {
     await reiter(o.w, 'wanted');
-    assert.ok(await warte(() => o.d.querySelector('#mk-list .mk-row')), 'keine Zeile');
+    assert.ok(await warte(() => o.d.querySelector('#mk-list .mk-row')), 'no row');
     const z = o.d.querySelector('#mk-list .mk-row');
-    assert.match(z.querySelector('.mk-price')?.textContent ?? '', /349[.,]99/, 'kein Marktpreis');
-    assert.ok(z.querySelector('.delbtn[data-click="stopDeleteWantedItem"]'), 'kein Papierkorb');
-    assert.equal(z.querySelector('[data-click="takeOverWantedItem"]'), null, 'die Zeile übernimmt wieder');
-    assert.equal(z.dataset.click, 'openWantedDetail', 'die Zeile öffnet nicht das Detail');
+    assert.match(z.querySelector('.mk-price')?.textContent ?? '', /349[.,]99/, 'no market price');
+    assert.ok(z.querySelector('.delbtn[data-click="stopDeleteWantedItem"]'), 'no trash can');
+    assert.equal(z.querySelector('[data-click="takeOverWantedItem"]'), null, 'the row takes over again');
+    assert.equal(z.dataset.click, 'openWantedDetail', 'the row does not open the detail');
   } finally {
     o.w.close();
   }
@@ -62,14 +62,14 @@ test('manual entries: trash on the tile, storage location and delete in the deta
   });
   try {
     await reiter(o.w, 'parts');
-    assert.ok(await warte(() => o.d.querySelector('#manual-parts-list .man-tile')), 'keine manuelle Kachel');
+    assert.ok(await warte(() => o.d.querySelector('#manual-parts-list .man-tile')), 'no manual tile');
     const kachel = o.d.querySelector('#manual-parts-list .man-tile');
-    assert.ok(kachel.querySelector('.delbtn[data-click="deleteManualPartStop"]'), 'kein Papierkorb auf der Kachel');
+    assert.ok(kachel.querySelector('.delbtn[data-click="deleteManualPartStop"]'), 'no trash can on the tile');
     kachel.click();
-    assert.ok(await warte(() => o.d.getElementById('man-storage')), 'das Detail hat keine Lagerortzeile');
+    assert.ok(await warte(() => o.d.getElementById('man-storage')), 'the detail has no location row');
     assert.ok(o.d.getElementById('man-detail-modal').classList.contains('open'));
     for (const id of ['btn-md', 'mk-m-del', 'man-detail-del'])
-      assert.ok(o.d.getElementById(id), `der Papierkorb im Detail fehlt (${id})`);
+      assert.ok(o.d.getElementById(id), `the trash can in the detail is missing (${id})`);
   } finally {
     o.w.close();
   }

@@ -55,8 +55,8 @@ test('1. open tags without an end cost no quadratic computing time', () => {
   };
   for (const [name, xml] of Object.entries(faelle)) {
     const { r, ms } = duration(() => readWantedList(xml));
-    assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Zerlegen ist nicht linear`);
-    assert.equal(r.items.length, 0, `${name}: ${r.items.length} Posten aus Müll gelesen`);
+    assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — parsing is not linear`);
+    assert.equal(r.items.length, 0, `${name}: ${r.items.length} items read from garbage`);
   }
 });
 
@@ -75,7 +75,7 @@ test('2. valid items stay correct, even next to an open block', () => {
       ['x126', 95, 14],
       ['3002', null, 2],
     ],
-    'Die geschlossenen Blöcke werden gelesen, Klein-Schreibung inbegriffen; der offene nicht',
+    'The closed blocks are read, lower case included; the open one is not',
   );
 });
 
@@ -113,9 +113,9 @@ test('3. the route rejects a list above the XML limit', async t => {
   assert.ok(Buffer.byteLength(gross) > XML_MAX_BYTES);
   const zuGross = await sendIt(gross);
   assert.notEqual(zuGross.status, 200, `Status ${zuGross.status}: ${JSON.stringify(zuGross.body).slice(0, 200)}`);
-  assert.ok(zuGross.status >= 400, `Status ${zuGross.status} statt einer Absage`);
+  assert.ok(zuGross.status >= 400, `status ${zuGross.status} instead of a refusal`);
 
   const klein = await sendIt('<INVENTORY>\n' + item('99999', 5, 1) + '</INVENTORY>');
-  assert.equal(klein.status, 200, `kleine Liste: ${klein.status} ${JSON.stringify(klein.body)}`);
+  assert.equal(klein.status, 200, `small list: ${klein.status} ${JSON.stringify(klein.body)}`);
   assert.equal(klein.body.parsed, 1);
 });

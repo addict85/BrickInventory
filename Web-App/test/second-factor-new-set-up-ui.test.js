@@ -67,10 +67,10 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     assert.deepEqual(JSON.parse(ab.body), { password: 'geheim-Passwort-1', code: '123456' });
     const ein = aufrufe.find(a => a.url.endsWith('/second-factor/setup'));
     assert.deepEqual(JSON.parse(ein.body), { password: 'geheim-Passwort-1' });
-    assert.ok(await warte(() => d.querySelector('#sf-required-surface #sf-key')), 'kein Schlüssel im Pflichtfeld');
-    assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'Pflichtfeld nicht offen');
-    assert.equal(d.getElementById('sf-start'), null, 'noch einmal „Einrichten“');
-    assert.equal(dialog(d).open, false, 'zweite Passwortfrage');
+    assert.ok(await warte(() => d.querySelector('#sf-required-surface #sf-key')), 'no key in the mandatory field');
+    assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'mandatory field not open');
+    assert.equal(d.getElementById('sf-start'), null, '„Einrichten“ once more');
+    assert.equal(dialog(d).open, false, 'second password prompt');
     const link = d.getElementById('sf-otpauth');
     assert.equal(link.hidden, false, 'Link verborgen');
     assert.equal(link.getAttribute('href'), OTPAUTH);
@@ -99,7 +99,7 @@ test('account without admin rights: switching off as announced, without setup', 
     assert.equal(
       aufrufe.some(a => a.url.endsWith('/second-factor/setup')),
       false,
-      'Einrichtung ohne Pflicht',
+      'setup without obligation',
     );
   } finally {
     w.close();

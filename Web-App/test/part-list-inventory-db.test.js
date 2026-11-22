@@ -97,10 +97,10 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['3001|0']?.total,
       6,
-      'Genau Marcos Befund: 3 Stück je Bausatz, das Set zweimal besessen — ' +
-        `erwartet 6, bekommen ${holding['3001|0']?.total}. Zählt sets.quantity nicht mit?`,
+      'Exactly what Marco reported: 3 pieces per kit, the set owned twice — ' +
+        `expected 6, got ${holding['3001|0']?.total}. Is sets.quantity not counted?`,
     );
-    assert.equal(holding['3001|0']?.loose, 0, 'Ein Set-Teil ist nicht „lose"');
+    assert.equal(holding['3001|0']?.loose, 0, 'A set part is not „lose"');
   });
 
   await t.test('a set owned once stays as it was', () => {
@@ -114,7 +114,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['3003|0']?.loose,
       7,
-      'Manuell erfasste Teile sind genau das, was „nur manuell erfasste Teile" zählt',
+      'Manually recorded parts are exactly what „nur manuell erfasste Teile“ counts',
     );
   });
 
@@ -126,10 +126,10 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['trn241|0']?.total,
       2,
-      'Die Figur steckt in einem zweimal besessenen Set — erwartet 2, bekommen ' +
-        `${holding['trn241|0']?.total}. Wird die Tabelle minifigs gar nicht gelesen?`,
+      'The figure is in a set owned twice — expected 2, got ' +
+        `${holding['trn241|0']?.total}. Is the minifigs table not read at all?`,
     );
-    assert.equal(holding['trn241|0']?.loose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
+    assert.equal(holding['trn241|0']?.loose, 0, 'A figure from a set is not „lose"');
   });
 
   await t.test('manually captured figures count as loose', () => {
@@ -141,7 +141,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     // The reason for LEFT instead of INNER: a deleted set would otherwise let its
     // part rows vanish without a trace — and the comparison would report a
     // part as missing that stands there.
-    assert.equal(holding['3004|0']?.total, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
+    assert.equal(holding['3004|0']?.total, 4, 'Without a matching sets row the item was joined away entirely');
   });
 });
 
@@ -160,9 +160,9 @@ test('demand and inventory are merged via the same number', () => {
   assert.match(
     src,
     /const key = `\$\{p\.part_number\}\|\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Der Bedarf wird nicht (mehr) nach der Rebrickable-Nummer zusammengefasst. ' +
-      'Fasst er nach der BrickLink-Nummer zusammen, laufen Formvarianten zu einer ' +
-      'Zeile zusammen, deren Bestand nur für eine der beiden Nummern gesucht wird.',
+    'The demand is no longer grouped by the Rebrickable number. ' +
+      'If it groups by the BrickLink number, mould variants merge into one ' +
+      'row whose stock is looked up for only one of the two numbers.',
   );
   assert.ok(!/const key = `\$\{blNum\}/.test(src), 'Der alte BrickLink-Schlüssel steht wieder da');
 
@@ -170,14 +170,14 @@ test('demand and inventory are merged via the same number', () => {
   assert.match(
     src,
     /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer',
+    'The stock query no longer asks with the Rebrickable number',
   );
 
   // And the display stays BrickLink — exactly Marco's specification.
   assert.match(
     src,
     /data-part="\$\{p\.bl_part_number\s*\|\|\s*p\.part_number\}"/,
-    'Die Anzeige zeigt nicht mehr die BrickLink-Nummer',
+    'The display no longer shows the BrickLink number',
   );
 });
 
@@ -193,16 +193,16 @@ test('the inventory reconciliation reads its scope from its own choice', () => {
   const js = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
-  assert.ok(js.includes("G('pl-stock-subs')"), 'Die Wahl „Unterkonten mit einbeziehen" wird nicht gelesen');
+  assert.ok(js.includes("G('pl-stock-subs')"), 'The choice „Unterkonten mit einbeziehen“ is not read');
   assert.ok(
     js.includes("'?accounts=own'"),
-    'Ohne Haken muss `accounts=own` mitreisen — sonst zählt der Haushalt immer mit',
+    'Without the tick `accounts=own` must travel along — otherwise the household always counts',
   );
   assert.ok(
     !js.includes("scopeQuery('parts')"),
-    'Der Abgleich hängt wieder am Kontofilter des Teile-Reiters. Der steht nach ' +
-      'jeder Anmeldung auf „Alle Konten" und beantwortet hier eine Frage, die ' +
-      'niemand an dieser Stelle gestellt hat.',
+    'The comparison depends on the account filter of the parts tab again. After ' +
+      'every login it is set to „Alle Konten“ and answers a question here that ' +
+      'nobody asked at this place.',
   );
-  assert.ok(html.includes('id="pl-stock-subs"'), 'Die Wahl fehlt im Markup');
+  assert.ok(html.includes('id="pl-stock-subs"'), 'The choice is missing in the markup');
 });

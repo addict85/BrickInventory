@@ -50,12 +50,12 @@ test('save buttons look the same', async () => {
     const buttonList = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
       .map(id => d.getElementById(id))
       .concat([d.querySelector('[data-click="saveVoucher"]')]);
-    assert.equal(buttonList.filter(Boolean).length, 6, 'Nicht alle sechs Knöpfe gefunden');
+    assert.equal(buttonList.filter(Boolean).length, 6, 'Not all six buttons found');
     for (const k of buttonList) {
       const name = k.id || k.dataset.click;
       assert.equal(k.textContent.trim(), 'Speichern', `${name}: „${k.textContent.trim()}“`);
-      assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-save', `${name}: anderes Symbol`);
-      assert.ok(k.classList.contains('bp') && k.classList.contains('btn-save'), `${name}: andere Form`);
+      assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-save', `${name}: different icon`);
+      assert.ok(k.classList.contains('bp') && k.classList.contains('btn-save'), `${name}: different shape`);
     }
   } finally {
     w.close();
@@ -70,14 +70,14 @@ test('actions of the user table are named', async () => {
     assert.equal(
       d.querySelectorAll('#users-tbl tbody tr')[0].querySelectorAll('button').length,
       0,
-      'keine Knöpfe gegen das eigene Konto',
+      'no buttons against the own account',
     );
     const buttonList = [...d.querySelectorAll('#users-tbl .user-actions button')];
-    assert.equal(buttonList.length, 7, '4 + 3 Knöpfe erwartet (ben hat einen zweiten Faktor; die Rolle steht am Chip)');
+    assert.equal(buttonList.length, 7, '4 + 3 buttons expected (ben has a second factor; the role is on the chip)');
     for (const k of buttonList) {
       const wort = k.querySelector('span')?.textContent.trim();
-      assert.ok(wort, `Knopf ${k.dataset.click} ohne sichtbares Wort`);
-      assert.ok(k.getAttribute('title'), `Knopf ${k.dataset.click} ohne Tooltip`);
+      assert.ok(wort, `button ${k.dataset.click} without a visible word`);
+      assert.ok(k.getAttribute('title'), `button ${k.dataset.click} without a tooltip`);
       const row = k.closest('tr').querySelector('strong').textContent;
       assert.equal(k.getAttribute('aria-label'), `${wort}: ${row}`);
     }
@@ -92,14 +92,14 @@ test('revoking admin rights sends is_admin:false', async () => {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="3"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
     // Changing foreign accounts requires the own password (admin log).
-    assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
+    assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin')));
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
-    assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
+    assert.ok(put, 'No call for the role change');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
   } finally {
     w.close();
@@ -118,13 +118,13 @@ test('deactivating and activating send is_active with the password', async () =>
       [2, true],
     ]) {
       d.querySelector(`#users-tbl [data-click="toggleActive"][data-arg="${id}"]`).click();
-      assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
+      assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
       d.getElementById('cd-pw').value = 'mein-passwort';
       d.getElementById('cd-confirm').click();
       await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`)));
       await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
       const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`));
-      assert.ok(put, `Kein Aufruf für Konto ${id}`);
+      assert.ok(put, `No call for account ${id}`);
       assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
     }
   } finally {
@@ -151,18 +151,18 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
   try {
     await reiter(w, 'settings');
     await warte(() => d.getElementById('smtp-host').value === 'mail.example');
-    assert.notEqual(d.getElementById('smtp-tls-legacy').style.display, 'none', 'Der Hinweis fehlt');
+    assert.notEqual(d.getElementById('smtp-tls-legacy').style.display, 'none', 'The hint is missing');
     assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
     d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
     d.getElementById('btn-sav-smtp').click();
     // The dialog clears the password field when opening: only enter it once it is open.
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Passwortdialog');
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'No password dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     const isPost = a => a.method === 'POST' && a.url.endsWith('/v2/settings');
     await warte(() => aufrufe.some(isPost));
     const post = aufrufe.find(isPost);
-    assert.ok(post, 'Nicht gespeichert');
+    assert.ok(post, 'not saved');
     const body = JSON.parse(post.body);
     assert.deepEqual(
       [body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
@@ -183,7 +183,7 @@ test('key hidden, with a button to show it', async () => {
     await reiter(w, 'settings');
     await warte(() => d.getElementById('rb-key').value === 'probe');
     for (const id of ['rb-key', 'bs-key', 'bl-cs', 'bl-ts', 'smtp-pass'])
-      assert.equal(d.getElementById(id).type, 'password', `${id} steht im Klartext`);
+      assert.equal(d.getElementById(id).type, 'password', `${id} is in plain text`);
     const knopf = d.querySelector('[data-click="toggleSecret"][data-arg="rb-key"]');
     assert.equal(knopf.getAttribute('aria-label'), 'Anzeigen');
     knopf.click();
@@ -204,7 +204,7 @@ test('jump bar to the sections', async () => {
     const ziele = [...d.querySelectorAll('#tab-settings .settings-nav a')].map(a => a.getAttribute('href'));
     assert.ok(ziele.length >= 6, `nur ${ziele.length} Abschnitte`);
     const fehlt = ziele.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
-    assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt im Raster');
+    assert.deepEqual(fehlt, [], 'jump targets without a section in the grid');
     // Subpages: exactly one active, the click switches it and does not jump.
     const active = () => [...d.querySelectorAll('#global-settings-grid > .ssec.settings-active')].map(s => s.id);
     assert.equal(active().length, 1);
@@ -213,7 +213,7 @@ test('jump bar to the sections', async () => {
     link.dispatchEvent(klick);
     assert.deepEqual(active(), ['usermgmt']);
     assert.equal(link.getAttribute('aria-current'), 'page');
-    assert.equal(klick.defaultPrevented, true, 'der Link soll nicht zum Anker springen');
+    assert.equal(klick.defaultPrevented, true, 'the link should not jump to the anchor');
     assert.equal(d.querySelectorAll('.settings-nav a[aria-current]').length, 1);
     // The card with the theme is no longer called „Einstellungen“ inside „Einstellungen“.
     assert.equal(d.querySelector('#settings-design .stit').textContent.trim(), 'Erscheinungsbild');

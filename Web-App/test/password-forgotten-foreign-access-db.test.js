@@ -109,11 +109,11 @@ test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   });
   await t.test('the mail names what was removed', async () => {
     const an = () => gesendet.find(m => m.to === `${namen[0]}@example.org` && /zurückgesetzt/.test(m.text));
-    assert.ok(await bis(() => !!an(), 10_000), 'keine Mail an das Konto');
+    assert.ok(await bis(() => !!an(), 10_000), 'no mail to the account');
     const text = an().text;
-    assert.match(text, new RegExp(`„${namen[1]}“`), 'das gelöste Hauptkonto fehlt');
-    assert.match(text, new RegExp(`boese-${P}@example\\.org`), 'die verworfene Adresse fehlt');
+    assert.match(text, new RegExp(`„${namen[1]}“`), 'the detached main account is missing');
+    assert.match(text, new RegExp(`boese-${P}@example\\.org`), 'the discarded address is missing');
     assert.match(text, /1 offene Haushaltseinladung/);
-    assert.doesNotMatch(text, new RegExp(namen[2]), 'das eigene Unterkonto ist nicht gelöst');
+    assert.doesNotMatch(text, new RegExp(namen[2]), 'the own sub-account is not detached');
   });
 });

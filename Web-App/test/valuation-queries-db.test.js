@@ -82,7 +82,7 @@ test('parts valuation: no lookup per part', async t => {
     const ergebnis = await fc.valueParts(UID, [UID]);
     count = false;
 
-    assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
+    assert.equal(ergebnis.parts.length, N, 'all parts valued');
 
     // ── 1. No SINGLE query per part any more ────────────────────────────────
     //
@@ -92,21 +92,21 @@ test('parts valuation: no lookup per part', async t => {
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,
-      'die Zuordnung wurde einzeln gefragt — das Vorladen (loadBlNumbersBefore) greift nicht',
+      'the mapping was queried one by one — the preloading (loadBlNumbersBefore) does not work',
     );
 
     // ── 2. Instead exactly one collective query ───────────────────────────
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
       1,
-      'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
+      'the batch query on bl_mapping is missing or ran several times',
     );
 
     // ── 3. The color table at most once ────────────────────────────────
     // At most, not exactly: a previous test in the same process may already
     // have loaded it, and then zero is the right number.
     const farben = howOften(/FROM rb_colors/);
-    assert.ok(farben <= 1, `rb_colors wurde ${farben}x gefragt — erwartet höchstens 1x für alle Teile`);
+    assert.ok(farben <= 1, `rb_colors was queried ${farben}x — expected at most 1x for all parts`);
 
     // ── 4. The total stays below two round trips per part ───────────────
     // Counted: 1.1 per part (the price cache row plus a few one-off ones).
@@ -114,7 +114,7 @@ test('parts valuation: no lookup per part', async t => {
     // — but far below the 4.1 from before.
     assert.ok(
       gesehen.length < 2 * N,
-      `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`,
+      `${gesehen.length} queries for ${N} parts (${(gesehen.length / N).toFixed(1)} per part) — expected below 2 per part`,
     );
 
     // ── COUNTER-CHECK ────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ test('parts valuation: no lookup per part', async t => {
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       1,
-      'Gegenprobe: die Einzelabfrage auf bl_mapping wurde nicht mitgezählt',
+      'counter-check: the single query on bl_mapping was not counted',
     );
   } finally {
     db.pool.query = altQuery;

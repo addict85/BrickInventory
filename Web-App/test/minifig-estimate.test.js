@@ -82,7 +82,7 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
       { preis: 2, geschaetzt: true, abdeckung: 0.5 },
     );
     const gebraucht = await figMarketPriceWithOrigin(FB, uid, null, 'U');
-    assert.equal(gebraucht.preis, 3, 'im Zustand der Anfrage');
+    assert.equal(gebraucht.preis, 3, 'in the condition of the request');
   });
 
   await t.test('the estimate is cached and recorded', async () => {
@@ -97,7 +97,7 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
         { condition: 'N', preis: 2, geschaetzt: true },
         { condition: 'U', preis: 3, geschaetzt: true },
       ],
-      'die Schätzung wird zwischengespeichert',
+      'the estimate is cached',
     );
     assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM minifig_price_history WHERE fig_number=$1', [FB])).n, 2);
     // Without part prices the stored value stays: no new fetch per part.

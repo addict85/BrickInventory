@@ -50,7 +50,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   server.app.get('/api/v2/probe', (_req2, res) => res.json({ ok: true }));
   // The cache only exists with a standing listen connection for revocations (fail closed).
   tokenCache.listenOnTokenRevocation();
-  assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
+  assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'the listen connection did not come about');
   t.after(async () => {
     await pgNotify.close();
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]).catch(() => {});
@@ -89,7 +89,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   await t.test('a valid token in the cache is served even for a throttled address', async () => {
     await bremse.forgetFailedAttempts();
     const token = await auth.createToken(uid, 'Cache');
-    assert.equal((await callFn(token)).status, 200, 'Vorbedingung: der Token gilt und steht im Cache');
+    assert.equal((await callFn(token)).status, 200, 'precondition: the token is valid and in the cache');
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX + 1; i++) await callFn(randomValue(i));
     assert.equal((await callFn(token)).status, 200);
   });
@@ -115,12 +115,8 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     await bremse.forgetFailedAttempts();
     const alt = await auth.createToken(uid, 'Alt', true);
     const neu = await auth.rotateToken(alt, null);
-    assert.ok(neu && neu !== 'laeuft', 'Vorbedingung: der Tausch hat geklappt');
-    assert.equal(
-      (await callFn(neu.token)).status,
-      200,
-      'der Nachfolger wird benutzt, der Vorgänger ist damit verbraucht',
-    );
+    assert.ok(neu && neu !== 'laeuft', 'precondition: the swap worked');
+    assert.equal((await callFn(neu.token)).status, 200, 'the successor is used, so the predecessor is spent');
     await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
     tokenCache.emptyTokenCache();
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) await callFn(randomValue(i));
@@ -130,7 +126,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     assert.equal(
       (await db.all(`SELECT 1 FROM api_tokens WHERE user_id = $1 AND label = 'Alt'`, [uid])).length,
       0,
-      'die Familie ist gesperrt',
+      'the family is locked',
     );
   });
 
@@ -140,8 +136,8 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await callFn(randomValue(`a${i}`))).status, 401);
     bremse.forgetLockInProcess();
     queryList = 0;
-    assert.equal((await callFn(randomValue('b1'))).status, 401, 'der erste Versuch im zweiten Prozess prüft noch');
-    assert.equal((await callFn(randomValue('b2'))).status, 429, 'danach gilt die gemeinsame Grenze');
+    assert.equal((await callFn(randomValue('b1'))).status, 401, 'the first attempt in the second process still checks');
+    assert.equal((await callFn(randomValue('b2'))).status, 429, 'after that the shared limit applies');
     assert.equal(queryList, 1);
     await bremse.forgetFailedAttempts();
   });

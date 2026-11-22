@@ -81,7 +81,7 @@ test("the countdown counts from the server's duration, the hint names the same",
       assert.match(
         d.getElementById('qr-hint').textContent,
         /\b5:00\b/,
-        'Der Zähler beginnt nicht bei der Dauer des Servers',
+        "The counter does not start at the server's duration",
       );
     } finally {
       w.close();

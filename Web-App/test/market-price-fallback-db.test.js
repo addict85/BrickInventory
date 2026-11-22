@@ -94,7 +94,7 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   await t.test('Wertkurve', async () => {
     const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
     const kurve = await portfolioHistory(uid, [uid], 'month');
-    assert.ok(kurve.points.length > 0, 'keine Punkte');
+    assert.ok(kurve.points.length > 0, 'no points');
     assert.equal(kurve.points.at(-1).value, 75);
   });
 

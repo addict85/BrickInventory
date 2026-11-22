@@ -70,7 +70,7 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
   await t.test('color list', async () => {
     assert.ok(
       (await colorList()).some(f => f.id === FARBE),
-      'die Probefarbe fehlt — die Prüfung darunter bewiese nichts',
+      'the probe colour is missing — the check below would prove nothing',
     );
     await ohne('rb_colors', () => assert.rejects(colorList(), /rb_colors/));
   });

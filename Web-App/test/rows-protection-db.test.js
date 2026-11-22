@@ -463,7 +463,11 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     for (const tab of ['vouchers', 'idempotency']) {
       assert.deepEqual(await als(A, () => app.all(`SELECT user_id FROM ${tab} WHERE user_id = $1`, [B])), [], tab);
       assert.equal((await als(A, () => app.run(`DELETE FROM ${tab} WHERE user_id = $1`, [B]))).changes, 0, tab);
-      assert.deepEqual(ids(await als(B, () => app.all(`SELECT user_id FROM ${tab}`))), [B], `${tab}: das Konto selbst`);
+      assert.deepEqual(
+        ids(await als(B, () => app.all(`SELECT user_id FROM ${tab}`))),
+        [B],
+        `${tab}: the account itself`,
+      );
     }
     await assert.rejects(
       als(A, () => app.run(`INSERT INTO idempotency (user_id, key, request) VALUES ($1, 'fremd', 'x')`, [B])),

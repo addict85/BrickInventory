@@ -58,7 +58,7 @@ test('wishlist: last state instead of an error, even after reloading the page', 
     netz(w, false);
     await reiter(w, 'wanted');
     await ruhig();
-    assert.equal(d.querySelector('#mk-list .error-state'), null, 'Merkliste: letzter Stand');
+    assert.equal(d.querySelector('#mk-list .error-state'), null, 'wanted list: last state');
     assert.match(d.getElementById('mk-list').textContent, /Galaxie-Forscher/);
     assert.match(d.getElementById('offline-band').textContent, /^Keine Verbindung/);
   } finally {
@@ -88,7 +88,7 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
     );
     await t.test('CSV label locked', () => {
       const label = d.querySelector('#tab-wanted label:has(> input[type=file])');
-      assert.ok(label, 'kein Datei-Label in der Merkliste');
+      assert.ok(label, 'no file label in the wanted list');
       assert.equal(w.getComputedStyle(label).pointerEvents, 'none');
     });
     offline = false;

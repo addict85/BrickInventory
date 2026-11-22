@@ -15,13 +15,13 @@ test('the same view buttons in all three tabs', async () => {
   try {
     for (const tab of ['tab-gallery', 'tab-parts', 'tab-minifigs']) {
       const gruppe = d.querySelector(`#${tab} .vtgl[role="group"]`);
-      assert.ok(gruppe, `${tab}: keine Ansichtsknöpfe`);
-      assert.equal(gruppe.querySelectorAll('button.vb[aria-pressed]').length, 2, `${tab}: nicht Karten und Tabelle`);
+      assert.ok(gruppe, `${tab}: no view buttons`);
+      assert.equal(gruppe.querySelectorAll('button.vb[aria-pressed]').length, 2, `${tab}: not cards and table`);
     }
     assert.equal(
       d.querySelectorAll('select#parts-view:not(.vh), select#figs-view:not(.vh)').length,
       0,
-      'ein sichtbares Auswahlfeld für die Ansicht ist geblieben',
+      'a visible select field for the view remained',
     );
   } finally {
     w.close();
@@ -32,14 +32,14 @@ test('parts: the table loads the set mapping', async () => {
   const { w, d, aufrufe, ruhig } = await openUi();
   try {
     await reiter(w, 'parts');
-    assert.ok(await ruhig(), 'der Reiter lädt nicht fertig');
+    assert.ok(await ruhig(), 'the tab does not finish loading');
     const vorher = aufrufe.length;
     const knopf = d.querySelector('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]');
     knopf.click();
     await ruhig();
     assert.ok(
       aufrufe.slice(vorher).some(a => /\/v2\/parts\?.*with_sets=1/.test(a.url)),
-      'der Wechsel hat nicht neu geladen',
+      'the switch did not reload',
     );
     assert.equal(d.getElementById('parts-view').value, 'table');
     assert.equal(knopf.getAttribute('aria-pressed'), 'true');

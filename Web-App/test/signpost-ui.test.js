@@ -23,7 +23,7 @@ for (const language of ['de', 'en']) {
     try {
       const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
       const sections = [...d.querySelectorAll('.settings-nav a')].map(a => a.textContent.trim());
-      assert.ok(menue.length >= 8 && sections.length >= 5, `Menü/Abschnitte nicht gerendert: ${menue} / ${sections}`);
+      assert.ok(menue.length >= 8 && sections.length >= 5, `menu/sections not rendered: ${menue} / ${sections}`);
       const words = language === 'de' ? w.I18N_DE : w.I18N_EN;
       const MENU = language === 'de' ? 'Menü' : 'Menu';
       const funde = [];
@@ -52,7 +52,7 @@ for (const language of ['de', 'en']) {
             funde.push(`${k}: „${danach.slice(3, 27)}…“ ist kein Abschnitt der Einstellungen`);
         }
       }
-      assert.ok(gesehen >= 4, `nur ${gesehen} Wegweiser gefunden — prüft die Suche noch etwas?`);
+      assert.ok(gesehen >= 4, `only ${gesehen} signposts found — does the search still check anything?`);
       assert.deepEqual(funde, []);
     } finally {
       w.close();

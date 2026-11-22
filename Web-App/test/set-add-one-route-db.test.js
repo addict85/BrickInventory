@@ -102,7 +102,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
     const r = await record(h, { setNumber: SN, quantity: 2, ifPresent: 'aufstocken' });
     assert.equal(r.action, 'updated');
     assert.equal(await quantity(h, SN), 3);
-    assert.deepEqual(netz, [], 'kein Netz beim Import');
+    assert.deepEqual(netz, [], 'no network during import');
   });
 
   await t.test('an import without a location leaves the storage location alone', async () => {
@@ -121,7 +121,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
 
   await t.test('if only the other account has the set, the import creates it in its own', async () => {
     assert.equal((await record(k, { setNumber: FREMD, quantity: 1 })).action, 'added');
-    assert.equal((await record(h, { setNumber: FREMD, quantity: 1 })).action, 'exists', 'getippt: im Blickfeld');
+    assert.equal((await record(h, { setNumber: FREMD, quantity: 1 })).action, 'exists', 'typed: in scope');
     assert.equal((await record(h, { setNumber: FREMD, quantity: 1, ifPresent: 'aufstocken' })).action, 'added');
     assert.equal(await quantity(h, FREMD), 1);
     assert.equal(await quantity(k, FREMD), 1);

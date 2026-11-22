@@ -80,7 +80,7 @@ test('repeated set import keeps storage location and identifier', { concurrency:
       assert.equal(await importMinifigs(SN, uid), 1);
       assert.equal(await figur('fig-t2'), undefined);
       assert.ok(await figur('fig-t1'));
-      assert.ok(await figur('fig-t9'), 'die eingetippte Figur ohne Set gehört nicht zum Import');
+      assert.ok(await figur('fig-t9'), 'the typed-in figure without a set does not belong to the import');
     });
 
     await t.test('build part and spare part of the same color', async () => {
@@ -89,7 +89,7 @@ test('repeated set import keeps storage location and identifier', { concurrency:
         `SELECT quantity, is_spare FROM set_parts WHERE set_number=$1 AND part_number='tp-1'`,
         [SN],
       );
-      assert.deepEqual(liste, { quantity: 4, is_spare: false }, 'die Bauteilmenge zählt, nicht die Ersatzteile');
+      assert.deepEqual(liste, { quantity: 4, is_spare: false }, 'the part quantity counts, not the spare parts');
     });
 
     await t.test('the part keeps identifier, storage location and date', async () => {

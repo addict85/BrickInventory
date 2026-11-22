@@ -72,10 +72,10 @@ test('maximum duration of the web app session', async t => {
     const bis = ms => warte(Math.max(0, anmeldung.am + ms - Date.now()));
     assert.equal(await wer(), 7);
     await bis(FRIST / 3);
-    assert.equal(await wer(), 7, 'innerhalb der Frist gilt sie');
+    assert.equal(await wer(), 7, 'within the period it is valid');
     await bis(FRIST + 200);
-    assert.equal(await wer(), null, 'nach der Frist ist niemand mehr angemeldet');
-    assert.equal(await wer(), null, 'und die Sitzung ist gelöscht, nicht nur übersprungen');
+    assert.equal(await wer(), null, 'after the period nobody is logged in any more');
+    assert.equal(await wer(), null, 'and the session is deleted, not just skipped');
   });
 });
 
@@ -97,12 +97,12 @@ test('administrator sessions have shorter periods', async t => {
     // Work for longer than the idle time: every request pushes the period.
     const bis = Date.now() + LEER * 1.5;
     while (Date.now() < bis) {
-      assert.equal(await chef.wer(), 8, 'trotz Anfragen abgemeldet');
+      assert.equal(await chef.wer(), 8, 'logged out despite requests');
       await warte(400);
     }
     await warte(LEER + 800);
-    assert.equal(await chef.wer(), null, 'nach dem Leerlauf noch angemeldet');
-    assert.equal(await nutzer.wer(), 7, 'die allgemeine Frist gilt für andere weiter');
+    assert.equal(await chef.wer(), null, 'still logged in after the idle time');
+    assert.equal(await nutzer.wer(), 7, 'the general period still applies for others');
   });
 
   await t.test('… and after its shorter maximum duration', async () => {
@@ -131,7 +131,7 @@ test('administrator sessions have shorter periods', async t => {
       adminIdleMs: 10 * 60_000,
     });
     const preset = sessionTimeouts(_req('src/infra/config.js').loadConfig({}));
-    assert.equal(preset.adminIdleMs, 30 * 60_000, 'Vorgabe 30 Minuten');
-    assert.equal(preset.adminMaxMs, 12 * 3_600_000, 'Vorgabe 12 Stunden');
+    assert.equal(preset.adminIdleMs, 30 * 60_000, 'default 30 minutes');
+    assert.equal(preset.adminMaxMs, 12 * 3_600_000, 'default 12 hours');
   });
 });

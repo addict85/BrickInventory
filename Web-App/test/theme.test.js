@@ -58,7 +58,7 @@ function bootWindow({ server = '', cached = '', response = {} } = {}) {
 
 test('the boot script is before startup and login markup', () => {
   // Structure: only a blocking script in the <head> takes effect before the first paint.
-  assert.ok(fs.existsSync(path.join(PUB, 'js', 'theme-boot.js')), 'js/theme-boot.js fehlt');
+  assert.ok(fs.existsSync(path.join(PUB, 'js', 'theme-boot.js')), 'js/theme-boot.js is missing');
   const vorher = html.slice(0, html.indexOf('id="startup-screen"'));
   assert.match(
     vorher,
@@ -69,19 +69,19 @@ test('the boot script is before startup and login markup', () => {
 
 test('without a server value the cache applies immediately, then the sync with the server', async () => {
   const b = bootWindow({ cached: 'brick', response: { success: true, theme: 'hochglanz' } });
-  assert.equal(b.thema(), 'brick', 'Der zuletzt bekannte Wert muss vor jeder Antwort gelten');
-  assert.deepEqual(b.fetches, ['/api/v2/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
+  assert.equal(b.thema(), 'brick', 'The last known value must apply before any response');
+  assert.deepEqual(b.fetches, ['/api/v2/settings/theme'], 'The boot script does not reconcile with the server');
   await b.responseDa();
-  assert.equal(b.thema(), 'hochglanz', 'Der Serverwert wird nicht angewendet');
-  assert.equal(b.w.localStorage.getItem('bim_theme'), 'hochglanz', 'Der Serverwert landet nicht im Cache');
+  assert.equal(b.thema(), 'hochglanz', 'The server value is not applied');
+  assert.equal(b.w.localStorage.getItem('bim_theme'), 'hochglanz', 'The server value does not land in the cache');
 });
 
 test('a server-set value applies, without sync and without a jump', async () => {
   const b = bootWindow({ server: 'noppe', cached: 'brick', response: { success: true, theme: 'hochglanz' } });
   await b.responseDa();
   assert.equal(b.thema(), 'noppe');
-  assert.deepEqual(b.fetches, [], 'Steht der Wert schon im HTML, ist jede Anfrage überflüssig');
-  assert.equal(b.w.localStorage.getItem('bim_theme'), 'noppe', 'Der Cache folgt dem Serverwert nicht');
+  assert.deepEqual(b.fetches, [], 'If the value is already in the HTML, every request is superfluous');
+  assert.equal(b.w.localStorage.getItem('bim_theme'), 'noppe', 'The cache does not follow the server value');
 });
 
 test('applyTheme runs via the boot helper (cache stays current)', async t => {
@@ -106,12 +106,12 @@ test('applyTheme runs via the boot helper (cache stays current)', async t => {
   assert.equal(
     w.document.documentElement.getAttribute('data-theme'),
     'brick',
-    'applyTheme() setzt das Design der Einstellungen nicht',
+    'applyTheme() does not set the design of the settings',
   );
   assert.equal(
     w.localStorage.getItem('bim_theme'),
     'brick',
-    'applyTheme() führt den Cache nicht nach — beim nächsten Laden blitzt das alte Design auf',
+    'applyTheme() does not update the cache — on the next load the old design flashes up',
   );
 });
 
@@ -121,11 +121,11 @@ test('login and startup screen have no hard-coded background', () => {
     assert.doesNotMatch(
       rule,
       /background:\s*#/,
-      `${id} darf keinen festen Hintergrund haben — sonst kommt kein Theme daran vorbei`,
+      `${id} must not have a fixed background — otherwise no theme gets past it`,
     );
-    assert.match(rule, /background:\s*var\(--screen-bg\)/, `${id} muss var(--screen-bg) verwenden`);
+    assert.match(rule, /background:\s*var\(--screen-bg\)/, `${id} must use var(--screen-bg)`);
   }
-  assert.match(styles, /--screen-bg:/, '--screen-bg ist in :root nicht definiert');
+  assert.match(styles, /--screen-bg:/, '--screen-bg is not defined in :root');
 });
 
 test('startup screen no longer sets colors via inline style', () => {
@@ -134,7 +134,7 @@ test('startup screen no longer sets colors via inline style', () => {
   // The LEGO brick in the logo is in brand colors and stays hard-coded; everything
   // else must run via the theme variables.
   const inlineColours = [...block.matchAll(/style="[^"]*?(?:background|color):\s*(#[0-9a-fA-F]{6})/g)].map(m => m[1]);
-  assert.deepEqual(inlineColours, [], `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
+  assert.deepEqual(inlineColours, [], `inline styles override every theme rule: ${inlineColours.join(', ')}`);
 });
 
 test('five lists name the same designs', () => {
@@ -146,11 +146,11 @@ test('five lists name the same designs', () => {
     .sort();
   // "classic" has no file of its own: it IS the base theme in styles.css.
   const erwartet = ['classic', ...asFile].sort();
-  assert.ok(asFile.length >= 2, `Nur ${asFile.length} Design-Datei(en) — greift die Suche noch?`);
+  assert.ok(asFile.length >= 2, `Only ${asFile.length} design file(s) — does the search still work?`);
 
   const liste = (src, re, wo) => {
     const m = src.match(re);
-    assert.ok(m, `${wo}: die Liste der Designs ist nicht mehr zu finden`);
+    assert.ok(m, `${wo}: the list of designs can no longer be found`);
     return [...m[1].matchAll(/['"]([a-z]+)['"]/g)].map(x => x[1]).sort();
   };
   // The <link> lines in index.html. Not via `list()`: there the
@@ -159,10 +159,10 @@ test('five lists name the same designs', () => {
   assert.deepEqual(
     linked,
     asFile,
-    'index.html laedt nicht genau die Stylesheets, die unter public/themes/ liegen. ' +
-      'Fehlt eines, kommen im Browser nur die Farben aus tokens.css an und keine ' +
-      'einzige Struktur — das Design sieht dann aus wie das Grunddesign mit anderer ' +
-      'Akzentfarbe.',
+    'index.html does not load exactly the stylesheets that are under public/themes/. ' +
+      'If one is missing, only the colours from tokens.css arrive in the browser and not a ' +
+      'single structure — the design then looks like the base design with a different ' +
+      'accent colour.',
   );
 
   const boot = liste(
@@ -180,9 +180,9 @@ test('five lists name the same designs', () => {
     JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'shared', 'design-tokens.json'), 'utf8')).designs,
   ).sort();
 
-  assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
-  assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
-  assert.deepEqual(geteilt, erwartet, 'shared/design-tokens.json weicht von den Dateien ab');
+  assert.deepEqual(boot, erwartet, 'ALLOWED in the boot script differs from the files');
+  assert.deepEqual(server, erwartet, "The server's whitelist differs from the files");
+  assert.deepEqual(geteilt, erwartet, 'shared/design-tokens.json differs from the files');
 });
 
 test('every theme under public/themes/ covers the screens before login', () => {
@@ -193,9 +193,9 @@ test('every theme under public/themes/ covers the screens before login', () => {
     assert.match(
       css,
       new RegExp(`\\[data-theme="${name}"\\][^{]*#login-screen`),
-      `${f} stylt den Login-Screen nicht — das Design würde nach dem Login umspringen`,
+      `${f} does not style the login screen — the design would jump after login`,
     );
-    assert.match(css, /--screen-bg\s*:/, `${f} setzt --screen-bg nicht`);
+    assert.match(css, /--screen-bg\s*:/, `${f} does not set --screen-bg`);
   }
 });
 
@@ -243,7 +243,7 @@ test('the server sets data-theme itself, and a design change applies immediately
     });
     return /<html[^>]*\sdata-theme="([^"]+)"/.exec(gesendet)?.[1];
   };
-  assert.equal(await startseite(), 'brick', 'Die Startseite trägt das Design nicht im <html>-Tag');
+  assert.equal(await startseite(), 'brick', 'The start page does not carry the design in the <html> tag');
 
   // Saved via the route: without discarding the cache the old theme would come
   // until expiry (THEME_TTL_MS).
@@ -257,39 +257,39 @@ test('the server sets data-theme itself, and a design change applies immediately
     body: JSON.stringify({ theme: 'noppe' }),
   });
   assert.equal(r.status, 200, await r.text());
-  assert.equal(await startseite(), 'noppe', 'Nach dem Speichern liefert der Server noch das alte Design aus');
+  assert.equal(await startseite(), 'noppe', 'After saving the server still serves the old design');
 });
 
 test('the chart colors match the condition badges', () => {
   // Why this is recorded
   const tokens = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8');
   const steinTeil = tokens.slice(tokens.indexOf('[data-theme="brick"]'));
-  assert.ok(steinTeil, 'tokens.css fuehrt kein Stein-Design mehr');
+  assert.ok(steinTeil, 'tokens.css no longer has a brick design');
   const brick = [steinTeil, fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8')]
     .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
   const grab = (re, what) => {
     const m = brick.match(re);
-    assert.ok(m, `${what} nicht gefunden`);
+    assert.ok(m, `${what} not found`);
     return m[1].toLowerCase();
   };
   assert.equal(
     grab(/--chart-new:\s*(#[0-9a-f]{6})/i, '--chart-new'),
     grab(/\.cond-new\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-new'),
-    'Neu-Linie und Neu-Plakette müssen dieselbe Farbe haben',
+    'New line and new badge must have the same colour',
   );
   assert.equal(
     grab(/--chart-used:\s*(#[0-9a-f]{6})/i, '--chart-used'),
     grab(/\.cond-used\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-used'),
-    'Gebraucht-Linie und Gebraucht-Plakette müssen dieselbe Farbe haben',
+    'Used line and used badge must have the same colour',
   );
 
   // The default theme keeps blue/amber — the pair stays distinguishable even with
   // red-green color blindness, because it lies on the other color axis.
   const base = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8').split('[data-theme=')[0];
-  assert.match(base, /--chart-new:\s*#2563eb;/, 'Der Vorgabewert der Neu-Linie fehlt');
-  assert.match(base, /--chart-used:\s*#d97706;/, 'Der Vorgabewert der Gebraucht-Linie fehlt');
+  assert.match(base, /--chart-new:\s*#2563eb;/, 'The default value of the new line is missing');
+  assert.match(base, /--chart-used:\s*#d97706;/, 'The default value of the used line is missing');
 });
 
 test('only the boot script knows the list of designs', () => {
@@ -301,13 +301,13 @@ test('only the boot script knows the list of designs', () => {
       .filter(f => f.endsWith('.css'))
       .map(f => path.basename(f, '.css')),
   ];
-  assert.ok(DESIGNS.length >= 3, `Nur ${DESIGNS.length} Designs — greift die Suche noch?`);
+  assert.ok(DESIGNS.length >= 3, `Only ${DESIGNS.length} designs — does the search still work?`);
 
   const ordner = path.join(PUB, 'js');
   const dateien = fs
     .readdirSync(ordner)
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js' && n !== 'theme-boot.js');
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
+  assert.ok(dateien.length >= 10, `Only ${dateien.length} scripts — does the search still work?`);
 
   // Comments away first: the reasoning above names the themes in
   // running text, and the explanation in konto.js likewise. Without this step
@@ -328,9 +328,9 @@ test('only the boot script knows the list of designs', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Diese Dateien fuehren eine eigene Liste der Designs. Es gibt genau eine, ' +
-      'in js/theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
-      'mit, und der Wechsel wirkt dann erst nach einem Neuladen.',
+    'These files keep their own list of designs. There is exactly one, ' +
+      'in js/theme-boot.js — every other one does not grow with the next design, ' +
+      'and the switch then only takes effect after a reload.',
   );
 });
 
@@ -344,7 +344,7 @@ test('only the boot script knows the list of designs', () => {
 test('whoever lets the tab bar wrap must make it narrower', () => {
   const ordner = path.join(PUB, 'themes');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.css'));
-  assert.ok(dateien.length >= 4, `Nur ${dateien.length} Designs — greift die Suche noch?`);
+  assert.ok(dateien.length >= 4, `Only ${dateien.length} designs — does the search still work?`);
 
   const error = [];
   let betroffen = 0;
@@ -364,13 +364,13 @@ test('whoever lets the tab bar wrap must make it narrower', () => {
   }
   assert.ok(
     betroffen >= 1,
-    'Kein Design lässt die Reiterleiste umbrechen UND deckelt den Inhalt — ' + 'dann ist diese Regel leer wahr',
+    'No design lets the tab bar wrap AND caps the content — ' + 'then this rule is vacuously true',
   );
   assert.deepEqual(
     error,
     [],
-    'Hier hängt die Breite der Reiter an der FENSTERbreite, obwohl sie in ' +
-      'einem gedeckelten Behälter stehen. Auf einem breiten Bildschirm greift ' +
-      'die Abfrage nicht — und genau dort brach die Leiste um.',
+    'Here the width of the tabs depends on the WINDOW width although they sit in ' +
+      'a capped container. On a wide screen the query does not ' +
+      'apply — and exactly there the bar wrapped.',
   );
 });

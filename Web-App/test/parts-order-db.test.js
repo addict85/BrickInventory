@@ -123,7 +123,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     const { w, d, aufrufe } = await openUi({ '/v2/parts': { success: true, parts: parts, total: 2 } });
     await reiter(w, 'parts');
     await warte(() => d.querySelectorAll('#parts-main .part-card').length === 2);
-    assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'nach Farbe: je Farbe eine Kachel');
+    assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'by colour: one tile per colour');
 
     const field = d.getElementById('parts-order');
     field.value = 'name';
@@ -137,7 +137,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
       [...d.querySelectorAll('#parts-main .part-card .part-num')].map(e => e.textContent),
       ['3003', '3001'],
     );
-    assert.equal(w.localStorage.getItem('bim_parts_order'), 'name', 'die Wahl bleibt im Browser');
+    assert.equal(w.localStorage.getItem('bim_parts_order'), 'name', 'the choice stays in the browser');
     w.close();
   });
 });

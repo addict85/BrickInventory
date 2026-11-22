@@ -57,20 +57,16 @@ const ROOT = path.join(__dirname, '..');
 
 test('the proxy can shrink and does it only once per image', () => {
   const server = require('./helpers/sources').serverAll();
-  assert.match(server, /req\.query\.thumb === '1'/, 'Der Proxy kennt kein thumb=1');
-  assert.match(
-    server,
-    /_thumbInFlight/,
-    'Ohne Zusammenfassung startet eine Kachelwand dieselbe Verkleinerung mehrfach',
-  );
+  assert.match(server, /req\.query\.thumb === '1'/, 'The proxy does not know thumb=1');
+  assert.match(server, /_thumbInFlight/, 'Without merging, a tile wall starts the same downscaling several times');
   // The cache durations were lowered and extended by must-revalidate after
   // a long max-age had nailed broken responses down in the browser
   // („200 from disk cache"). Now it is only checked that a
   // revalidation duty is set.
-  assert.match(server, /must-revalidate/, 'Ohne Rückfragepflicht bleiben Fehler im Browser stehen');
+  assert.match(server, /must-revalidate/, 'Without a mandatory check, errors stay in the browser');
 
   const core = stripModuleSyntax(require('./helpers/sources').coreSource());
-  assert.match(core, /thumb \? '&thumb=1' : ''/, 'imgUrl() reicht den Wunsch nicht weiter');
+  assert.match(core, /thumb \? '&thumb=1' : ''/, 'imgUrl() does not pass the wish on');
 });
 
 test('all list images load lazily', () => {
@@ -90,7 +86,7 @@ test('all list images load lazily', () => {
       bad.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
   }
-  assert.deepEqual(bad, [], `Listenbilder ohne loading="lazy": ${bad.join(', ')}`);
+  assert.deepEqual(bad, [], `List images without loading="lazy": ${bad.join(', ')}`);
 });
 
 test('shrinking keeps no request waiting', () => {
@@ -101,15 +97,15 @@ test('shrinking keeps no request waiting', () => {
   assert.match(
     server,
     /const THUMB_MAX_PARALLEL = \d+/,
-    'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig',
+    'Without an upper limit any number of downscalings run at once',
   );
-  assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
+  assert.match(server, /function queueThumb/, 'queue is missing');
   // In the delivery path the shrinking must not be waited for.
   // Since an earlier round this path IS src/images/imgCacheServe.ts — before that a
   // generously cut piece of the route body, which after the move showed
   // emptiness.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/images/imgCacheServe.ts'), 'utf8');
-  assert.doesNotMatch(proxy, /await createProxyPreview/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
+  assert.doesNotMatch(proxy, /await createProxyPreview/, 'A waiting request chains 150 ms per image');
   assert.match(
     proxy,
     /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
@@ -171,9 +167,9 @@ test('parts list against the database: pages, color filter and upper bound on bo
     assert.deepEqual(
       [rot.source, ...rot.parts.map(p => p.part_number).sort()],
       [weg, 'pp1', 'pp3'],
-      `${weg}: Farbe Rot`,
+      `${weg}: colour red`,
     );
-    assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: Obergrenze`);
+    assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: upper limit`);
   };
   await pruefe('db');
   // The set path may do more at once (a whole parts list), but not arbitrarily much.
@@ -219,19 +215,19 @@ test('loading more only happens in the visible parts tab', async () => {
   try {
     const seiten = () => aufrufe.filter(a => /\/api\/v2\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
     await reiter(w, 'parts');
-    assert.ok(await warte(() => seiten() >= 2), 'Die erste Seite füllt den Schirm nicht, die zweite kommt nicht');
+    assert.ok(await warte(() => seiten() >= 2), 'The first page does not fill the screen, the second does not come');
     await ruhig();
     const sichtbar = () => {
       for (const cb of observer) cb([{ isIntersecting: true }]);
     };
     const vorher = seiten();
     sichtbar();
-    assert.ok(await warte(() => seiten() === vorher + 1), 'Im sichtbaren Reiter lädt der Sentinel nicht nach');
+    assert.ok(await warte(() => seiten() === vorher + 1), 'In the visible tab the sentinel does not load more');
     await ruhig();
     await reiter(w, 'gallery');
     sichtbar();
     await ruhig();
-    assert.equal(seiten(), vorher + 1, 'Der Sentinel lädt im Hintergrund weiter');
+    assert.equal(seiten(), vorher + 1, 'The sentinel keeps loading in the background');
     assert.ok(d.querySelectorAll('#parts-main .part-card').length >= 300);
   } finally {
     w.close();
@@ -254,7 +250,7 @@ test('arguments from data-arg are treated as strings', async () => {
     await reiter(w, 'minifigs');
     assert.ok(await warte(() => d.querySelector('#manual-figs-list [data-click="openManDetail"]')));
     d.querySelector('#manual-figs-list [data-click="openManDetail"]').click();
-    assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'Kein Mengenknopf');
+    assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'no quantity button');
     assert.equal(d.getElementById('man-det-qty').value, '2');
     d.querySelector('[data-click="manQtyChange"][data-arg="1"]').click();
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/minifigs/fig-000001'))));
@@ -264,7 +260,7 @@ test('arguments from data-arg are treated as strings', async () => {
     await reiter(w, 'settings');
     assert.ok(await warte(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));

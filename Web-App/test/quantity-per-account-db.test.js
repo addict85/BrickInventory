@@ -56,13 +56,13 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     const vorher = await purchaseList(db, kid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1, owner_user_id: kid });
     assert.equal(await quantityOf(db, [kid], SN), 0);
-    assert.equal(await quantityOf(db, [uid], SN), 1, 'das eigene Exemplar blieb nicht');
+    assert.equal(await quantityOf(db, [uid], SN), 1, 'the own copy did not stay');
     assert.equal(r.quantity, 1);
     assert.deepEqual(
       r.dropped.map(e => [e.quantity, e.purchase_price, e.date]),
       [[1, 210, '2026-06-02']],
     );
-    assert.ok(r.trash, 'kein Papierkorb-Eintrag');
+    assert.ok(r.trash, 'no trash entry');
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
     assert.deepEqual(await purchaseList(db, kid, SN), vorher);
   });
@@ -79,7 +79,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
       (await purchaseList(db, uid, SN)).map(z => Number(z.purchase_price)),
       [199.99],
     );
-    assert.ok(r.trash, 'kein Papierkorb-Eintrag');
+    assert.ok(r.trash, 'no trash entry');
     assert.equal((await pk.listTrash([uid])).find(e => e.id === r.trash)?.count, 1);
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
     assert.deepEqual(await purchaseList(db, uid, SN), vorher);

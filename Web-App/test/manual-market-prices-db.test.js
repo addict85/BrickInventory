@@ -58,10 +58,10 @@ test('manual lists carry the market price from the cache', async t => {
     // the list failing instead of staying empty when a price is missing.
     const figsWithout = await MF.readManualMinifigs([U], U);
     const partsWithout = await H.manualPartsList([U], U);
-    assert.equal(figsWithout.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
-    assert.equal(partsWithout.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
-    assert.equal(figsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
-    assert.equal(partsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
+    assert.equal(figsWithout.length, 1, 'the figure must be in the list even without a price');
+    assert.equal(partsWithout.length, 1, 'the part must be in the list even without a price');
+    assert.equal(figsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
+    assert.equal(partsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
 
     // ── 1. WITH a cache entry ───────────────────────────────────────────────
     await db.run(
@@ -80,12 +80,12 @@ test('manual lists carry the market price from the cache', async t => {
     assert.equal(
       Number(figs[0].avg_price),
       12.5,
-      `der Marktpreis der Figur fehlt (avg_price=${JSON.stringify(figs[0].avg_price)}) — genau das war Marcos Befund`,
+      `the figure's market price is missing (avg_price=${JSON.stringify(figs[0].avg_price)}) — exactly what Marco reported`,
     );
     assert.equal(
       Number(parts[0].avg_price),
       0.75,
-      `der Marktpreis des Teils fehlt (avg_price=${JSON.stringify(parts[0].avg_price)})`,
+      `the part's market price is missing (avg_price=${JSON.stringify(parts[0].avg_price)})`,
     );
   } finally {
     await aufraeumen();

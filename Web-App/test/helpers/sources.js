@@ -40,7 +40,7 @@ const finanzQuelle = () => {
   // Self-proof: if the helper did not find the modules, the rules would only check the
   // facade and be silently green.
   if (parts.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${parts.length} Dateien gefunden — liegt src/finances/calculation/ noch da?`);
+    throw new Error(`finanzQuelle(): only ${parts.length} files found — is src/finances/calculation/ still there?`);
   }
   return parts.join('\n');
 };
@@ -113,7 +113,7 @@ const _ersatz = [];
 /** The services of this test file: buildServices(testAccess()) as in the server, once per file. */
 /** @returns {any} */
 function testServices() {
-  if (!_serviceFactory) throw new Error('testServices() erst nach buildAndRequire()');
+  if (!_serviceFactory) throw new Error('testServices() only after buildAndRequire()');
   if (!_builtOnce) {
     _builtOnce = _serviceFactory();
     for (const [b, e] of _ersatz) Object.assign(_builtOnce.d[b], e);
@@ -127,7 +127,7 @@ function testServices() {
 function testContext(bereich) {
   testServices();
   const k = _builtOnce.contexts[bereich];
-  if (!k) throw new Error(`kein Kontext für ${bereich}`);
+  if (!k) throw new Error(`no context for ${bereich}`);
   return k;
 }
 
@@ -356,7 +356,7 @@ function routerFrom(_req, rel) {
  *  use: for code under test that should query as the runtime role as in production.
  *  Only after buildAndRequire(). */
 function testAccess() {
-  if (!_accessFactory) throw new Error('testAccess() erst nach buildAndRequire()');
+  if (!_accessFactory) throw new Error('testAccess() only after buildAndRequire()');
   return _accessFactory();
 }
 
@@ -393,7 +393,7 @@ function testSources(t, ersatz) {
  *  a test creates rows of arbitrary accounts. Only built on first use so that a
  *  test file can still set the environment after the call. Only after buildAndRequire(). */
 function testData() {
-  if (!_dataFactory) throw new Error('testData() erst nach buildAndRequire()');
+  if (!_dataFactory) throw new Error('testData() only after buildAndRequire()');
   return _dataHandle;
 }
 const _dataHandle = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _dataFactory()[k] });
@@ -618,13 +618,13 @@ function coreSource() {
 function functionHeader(src, name) {
   // Also with type parameters (`function f<T>(`).
   const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
-  if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
+  if (i < 0) throw new Error(`function ${name} does not exist (any more)`);
   let depth = 0;
   for (let j = src.indexOf('(', i); j < src.length; j++) {
     if (src[j] === '(') depth++;
     else if (src[j] === ')' && --depth === 0) return src.slice(i, j + 1);
   }
-  throw new Error(`Parameterliste von ${name} ist nicht geschlossen`);
+  throw new Error(`parameter list of ${name} is not closed`);
 }
 
 /**
@@ -637,9 +637,9 @@ function functionBody(src, name) {
   const kopf = functionHeader(src, name);
   const afterHeader = src.indexOf(kopf) + kopf.length;
   const auf = src.indexOf('{', afterHeader);
-  if (auf < 0) throw new Error(`Rumpf von ${name} beginnt nicht mit {`);
+  if (auf < 0) throw new Error(`body of ${name} does not start with {`);
   const zu = src.indexOf('\n}', auf);
-  if (zu < 0) throw new Error(`Rumpf von ${name} ist nicht geschlossen`);
+  if (zu < 0) throw new Error(`body of ${name} is not closed`);
   return src.slice(auf + 1, zu);
 }
 
@@ -668,7 +668,7 @@ function checkParameter(src, name, params, hint = '') {
   let zuletzt = -1;
   for (const p of params) {
     const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
-    assert.ok(treffer, `${name} nimmt '${p}' nicht (mehr) entgegen${hint ? ' — ' + hint : ''}: ${kopf}`);
+    assert.ok(treffer, `${name} no longer accepts '${p}'${hint ? ' — ' + hint : ''}: ${kopf}`);
     zuletzt = zuletzt + 1 + treffer.index;
   }
 }
@@ -723,7 +723,7 @@ function routerMounts(o = {}) {
 function mounting(name) {
   const treffer = routerMounts().filter(r => r.name === name);
   if (treffer.length !== 1)
-    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in startup/app.ts — erwartet: genau einmal`);
+    throw new Error(`routes/${name}.ts is mounted ${treffer.length} times in startup/app.ts — expected: exactly once`);
   return treffer[0].mount;
 }
 
@@ -737,13 +737,13 @@ function abschnitt(source, ab, bis, purpose = '') {
   const i = String(source).indexOf(ab);
   if (i < 0)
     throw new Error(
-      `Ankertext nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
-        'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.',
+      `anchor text not found${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
+        'The excerpt would be empty, and assertions on it would check nothing.',
     );
   if (bis === undefined) return String(source).slice(i);
   const j = String(source).indexOf(bis, i);
   if (j < 0)
-    throw new Error(`Endanker nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+    throw new Error(`end anchor not found${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
   return String(source).slice(i, j);
 }
 

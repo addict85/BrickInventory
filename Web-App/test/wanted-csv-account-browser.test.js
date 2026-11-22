@@ -47,5 +47,9 @@ test('wishlist: CSV import into the selected account', { timeout: 120_000 }, asy
     feld.dispatchEvent(new Event('change', { bubbles: true }));
     return true; })()`);
   await bis(`window.__upload !== null`, 'Upload gesendet');
-  assert.deepEqual(await b.auswerten(`window.__upload`), { owner_user_id: String(kid) }, 'Zielkonto im Upload');
+  assert.deepEqual(
+    await b.auswerten(`window.__upload`),
+    { owner_user_id: String(kid) },
+    'target account in the upload',
+  );
 });

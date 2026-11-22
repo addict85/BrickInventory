@@ -74,6 +74,6 @@ test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_0
     const neu = await gespeichert();
     assert.ok(neu.startsWith(ARGON2_PREFIX), neu.slice(0, 40));
     assert.equal(await anmelden(PASS), 200);
-    assert.equal(await gespeichert(), neu, 'ein aktueller Hash bleibt stehen');
+    assert.equal(await gespeichert(), neu, 'a current hash stays');
   });
 });

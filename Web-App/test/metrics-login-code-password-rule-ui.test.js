@@ -38,7 +38,7 @@ test('M1 a set without a parts list: singular, explanation below the bar', async
     await warte(() => text(d.getElementById('bstat-sets')) === '1');
     assert.deepEqual(labels(d), ['Set', 'Teile', 'Minifigur', 'Anleitung']);
     assert.equal(text(d.getElementById('bstat-hint')), 'Teileliste für das Set fehlt noch');
-    assert.equal(d.querySelector('.bstat-erklaert'), null, 'die Kennzahl selbst wird nicht mehr umgebaut');
+    assert.equal(d.querySelector('.bstat-erklaert'), null, 'the metric itself is no longer rebuilt');
   } finally {
     w.close();
   }
@@ -82,11 +82,11 @@ test('M2 empty code in the second step: message at the field, no second request'
     assert.equal(status.getAttribute('role'), 'status');
     assert.equal(text(status), 'Passwort stimmt – jetzt den Code eingeben.');
     assert.match(d.getElementById('lc').getAttribute('aria-describedby') || '', /\blc-status\b/);
-    assert.equal(text(d.getElementById('lerr')), '', 'ohne Code noch keine Sammelmeldung');
+    assert.equal(text(d.getElementById('lerr')), '', 'without a code, no combined message yet');
 
     d.getElementById('btn-login').click();
     await takt(50);
-    assert.equal(logins(), 1, 'leerer Code ging an den Server');
+    assert.equal(logins(), 1, 'an empty code went to the server');
     assert.equal(text(d.getElementById('lc-error')), 'Bitte Code eingeben.');
     assert.equal(d.getElementById('lc').getAttribute('aria-invalid'), 'true');
     assert.equal(d.activeElement?.id, 'lc');
@@ -142,7 +142,11 @@ test('N6 change password: length and repetition reported at once', async () => {
     assert.match(text(d.getElementById('pw-n-error')), /mindestens \d+ Zeichen/);
     assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-n');
-    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Rückfrage trotz Fehler');
+    assert.equal(
+      d.getElementById('confirm-modal').style.display === 'flex',
+      false,
+      'confirmation prompt despite an error',
+    );
     assert.equal(aufrufe.filter(a => a.url.endsWith('/v2/auth/change-password')).length, 0);
 
     // Only the repetition wrong: only there a message, the old one at the first field is gone.
@@ -196,10 +200,10 @@ test('N7 finances: sum per area below the area, at the bottom only the grand tot
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#fin-tbl .dt-sum tfoot'));
-    assert.equal(d.querySelectorAll('#fin-tbl .dt-sum tbody tr').length, 0, 'Bereichssummen doppelt');
+    assert.equal(d.querySelectorAll('#fin-tbl .dt-sum tbody tr').length, 0, 'section totals twice');
     assert.match(text(d.querySelector('#fin-tbl .dt-sum tfoot')), /^Gesamt/);
-    assert.ok(d.querySelector('[data-fin-kind="sets"] tfoot'), 'Summe unter den Sets fehlt');
-    assert.ok(d.querySelector('[data-fin-kind="parts"] tfoot'), 'Summe unter den Teilen fehlt');
+    assert.ok(d.querySelector('[data-fin-kind="sets"] tfoot'), 'total below the sets is missing');
+    assert.ok(d.querySelector('[data-fin-kind="parts"] tfoot'), 'total below the parts is missing');
   } finally {
     w.close();
   }

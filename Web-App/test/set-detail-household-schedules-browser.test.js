@@ -65,7 +65,7 @@ async function setDetailInHousehold(_t, a) {
     await b.auswerten(text('#toasts')),
     new RegExp(`Kauf vom 02\\.06\\.2026 \\(210,00 €\\) entfernt · ${kind}`),
   );
-  assert.ok(await b.auswerten(`!!document.querySelector('#toasts .toast-action')`), 'kein Rückgängig');
+  assert.ok(await b.auswerten(`!!document.querySelector('#toasts .toast-action')`), 'no undo');
   // Without the child the set only belongs to the account: the one field again, the header without accounts.
   assert.deepEqual(await b.auswerten(zeilen), []);
   assert.equal(await b.auswerten(`document.getElementById('m-qty')?.value`), '1');
@@ -89,7 +89,7 @@ async function settingsOneLocation(_t, a) {
   const felder = await b.auswerten(
     `[...document.querySelectorAll('#tab-monitor :is(select, input, textarea)')].filter(e => e.checkVisibility()).map(e => e.id || e.className)`,
   );
-  assert.deepEqual(felder, [], 'Hintergrundarbeiten enthält noch Einstellungen');
+  assert.deepEqual(felder, [], 'background jobs still contains settings');
   await b.auswerten(`document.querySelector('#monitor-content .mon-plan ~ a').click(); true`);
   await bis(
     `document.getElementById('tab-settings').classList.contains('active') && document.getElementById('settings-background').classList.contains('settings-active')`,
@@ -122,14 +122,14 @@ async function phoneFirstCard(_t, a) {
     );
     await ruhig();
     const withBand = await b.auswerten(CARD_TOP);
-    assert.ok(withBand < 0.38, `erste Karte bei ${Math.round(withBand * 100)} % der Höhe (vorher 43 %)`);
+    assert.ok(withBand < 0.38, `first card at ${Math.round(withBand * 100)} % of the height (before 43 %)`);
     await b.auswerten(`document.querySelector('#rb-hint [data-click="dismissRbHint"]').click(); true`);
     await b.tab('Page.reload');
     await bis(`!!document.querySelector('#gallery .sc')`, 'nach dem Neuladen', 200);
     await ruhig();
-    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), true, 'Band nach Neuladen zurück');
+    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), true, 'band back after reload');
     const ohne = await b.auswerten(CARD_TOP);
-    assert.ok(ohne < 0.3, `ohne Band erste Karte bei ${Math.round(ohne * 100)} % der Höhe`);
+    assert.ok(ohne < 0.3, `without the band first card at ${Math.round(ohne * 100)} % of the height`);
   } finally {
     await groesse(1280, 900, false);
   }
@@ -140,7 +140,7 @@ async function pathTilesAxis(_t, a) {
   await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
   await bis(`document.getElementById('tab-parts').classList.contains('active')`, 'Teile');
   assert.equal(await b.auswerten(text('#tab-parts .breadcrumb')), 'Sammlung › Teile');
-  assert.ok(await b.auswerten(`document.querySelector('#tab-parts .breadcrumb').checkVisibility()`), 'Pfad unsichtbar');
+  assert.ok(await b.auswerten(`document.querySelector('#tab-parts .breadcrumb').checkVisibility()`), 'path invisible');
   await b.auswerten(`document.querySelector('#tab-parts .breadcrumb a').click(); true`);
   await bis(`document.getElementById('tab-gallery').classList.contains('active')`, 'Pfad führt zur Sammlung');
 
@@ -150,15 +150,15 @@ async function pathTilesAxis(_t, a) {
   // the tile. With a mouse it appears on hover; that cannot be emulated here, so it is shown for
   // size and contrast: symbol ≥ 16 px, in the dark ≥ 3:1 to the surface.
   const basket = `document.querySelector('#gallery [data-arg="21318-1"] .delbtn')`;
-  assert.equal(await b.auswerten(`matchMedia('(hover: none)').matches`), true, 'Testaufbau: Überfahren möglich');
-  assert.equal(await b.auswerten(`${basket}.checkVisibility()`), false, 'Papierkorb auf jeder Kachel');
+  assert.equal(await b.auswerten(`matchMedia('(hover: none)').matches`), true, 'test setup: hover possible');
+  assert.equal(await b.auswerten(`${basket}.checkVisibility()`), false, 'trash can on every tile');
   // Show and measure in one step: if the gallery redraws in between (job done,
   // status stream), the second access would be a new, hidden again element with 0 px.
   const breite = await b.auswerten(
     `(() => { const k = ${basket}; const c = k.parentElement; c.style.display = 'block'; c.style.opacity = '1';
       return k.querySelector('svg').getBoundingClientRect().width; })()`,
   );
-  assert.ok(breite >= 16, `Symbol zu klein (${breite} px)`);
+  assert.ok(breite >= 16, `icon too small (${breite} px)`);
   await b.auswerten(`document.documentElement.toggleAttribute('data-dark', true); true`);
   const kontrast = await b.auswerten(`(() => { const rgb = s => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
     const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -168,7 +168,7 @@ async function pathTilesAxis(_t, a) {
   await b.auswerten(
     `document.documentElement.toggleAttribute('data-dark', false); ${basket}.parentElement.removeAttribute('style'); true`,
   );
-  assert.ok(kontrast >= 3, `Papierkorb im Dunkeln ${kontrast.toFixed(2)}:1`);
+  assert.ok(kontrast >= 3, `trash can in the dark ${kontrast.toFixed(2)}:1`);
 
   await b.auswerten(`document.querySelector('#gallery [data-click="openModal"][data-arg="10294-1"]').click(); true`);
   await bis(`document.querySelectorAll('#m-sparkline-content svg text').length > 3`, 'Diagramm');
@@ -178,12 +178,12 @@ async function pathTilesAxis(_t, a) {
   );
   assert.ok(
     texte.some(t => /^\d{2}\.\d{2}\.$/.test(t)),
-    `keine Tagesbeschriftung wie „13.09.“: ${texte.join(' | ')}`,
+    `no day labels like „13.09.“: ${texte.join(' | ')}`,
   );
   assert.deepEqual(
     texte.filter(t => /\d\. ?[A-Za-zÄÖÜäöü]/.test(t)),
     [],
-    'Achse mit Monatsnamen',
+    'axis with month names',
   );
 }
 

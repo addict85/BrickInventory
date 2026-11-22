@@ -42,9 +42,9 @@ const PUBLISHED = fs
 function quickStart(datei, abschnitt) {
   const text = fs.readFileSync(datei, 'utf8');
   const ab = text.indexOf(`\n${abschnitt}\n`);
-  assert.ok(ab >= 0, `${path.basename(datei)}: Abschnitt „${abschnitt}“ fehlt`);
+  assert.ok(ab >= 0, `${path.basename(datei)}: section „${abschnitt}“ is missing`);
   const block = text.slice(ab).match(/```bash\n([\s\S]*?)```/)?.[1];
-  assert.ok(block, `${path.basename(datei)}: kein bash-Block im Schnellstart`);
+  assert.ok(block, `${path.basename(datei)}: no bash block in the quick start`);
   return block
     .split('\n')
     .map(z => z.replace(/\s+#.*$/, '').trim())
@@ -85,11 +85,11 @@ for (const { datei, abschnitt } of DOCS) {
   test(`${name}: the quick start matches compose.yaml`, t => {
     const probe = compose(path.join(ROOT), 'version');
     if (probe.error || probe.status !== 0) {
-      if (process.env.CI) assert.fail(`docker compose im CI-Lauf: ${probe.error?.message || probe.stderr}`);
+      if (process.env.CI) assert.fail(`docker compose in the CI run: ${probe.error?.message || probe.stderr}`);
       t.skip('no docker compose');
       return;
     }
-    assert.ok(PUBLISHED, 'IMAGE in docker-publish.yml nicht gefunden');
+    assert.ok(PUBLISHED, 'IMAGE not found in docker-publish.yml');
     const location = sandbox(t);
     const steps = quickStart(datei, abschnitt);
     const dockerRows = [];
@@ -110,18 +110,18 @@ for (const { datei, abschnitt } of DOCS) {
           CA_ORDNER: './caddy/ca',
         },
       });
-      assert.equal(r.status, 0, `Schritt scheitert: ${row}\n${r.stdout}${r.stderr}`);
+      assert.equal(r.status, 0, `step fails: ${row}\n${r.stdout}${r.stderr}`);
     }
     const pulled = fs.existsSync(path.join(location, 'docker.log'))
       ? fs.readFileSync(path.join(location, 'docker.log'), 'utf8')
       : '';
     assert.ok(
       dockerRows.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(pulled),
-      'der Schnellstart zieht das Image (docker compose pull)',
+      'the quick start pulls the image (docker compose pull)',
     );
     assert.ok(
       dockerRows.some(z => /^docker compose up -d\b/.test(z)),
-      'der Schnellstart startet (docker compose up -d)',
+      'the quick start starts (docker compose up -d)',
     );
 
     const k = compose(location, 'config', '--format', 'json');
@@ -132,63 +132,63 @@ for (const { datei, abschnitt } of DOCS) {
     // Every service named by a docker command of the quick start exists.
     for (const z of dockerRows) {
       const [, command, rest = ''] = z.match(/^docker compose (\w+)((?:\s+[\w-]+)*)/) || [];
-      assert.ok(command, `unbekannte Form: ${z}`);
+      assert.ok(command, `unknown form: ${z}`);
       const words = rest
         .trim()
         .split(/\s+/)
         .filter(w => w && !w.startsWith('-'));
       // With exec and run the command in the container follows the service.
       for (const d of ['exec', 'run'].includes(command) ? words.slice(0, 1) : words)
-        assert.ok(dienste.includes(d), `unbekannter Dienst ${d} in „${z}“`);
+        assert.ok(dienste.includes(d), `unknown service ${d} in „${z}“`);
     }
 
     // The steps have created every file that compose mounts as a secret.
     const need = new Set(
       Object.values(j.services).flatMap(d => (d.profiles ? [] : (d.secrets || []).map(s => s.source))),
     );
-    assert.ok(need.size >= 3, `nur ${need.size} Secrets — liest der Test die richtige Datei?`);
+    assert.ok(need.size >= 3, `only ${need.size} secrets — does the test read the right file?`);
     for (const s of need) {
       const f = j.secrets[s].file;
-      assert.ok(fs.existsSync(f), `Secret ${s}: ${path.relative(location, f)} fehlt`);
+      assert.ok(fs.existsSync(f), `secret ${s}: ${path.relative(location, f)} is missing`);
     }
     for (const s of ['session_secret', 'db_password', 'db_app_password'])
-      assert.ok(fs.statSync(j.secrets[s].file).size >= 16, `Secret ${s} ist leer`);
+      assert.ok(fs.statSync(j.secrets[s].file).size >= 16, `secret ${s} is empty`);
 
     // BRICK_HOST from .env arrives at Caddy, and Caddy finds its own CA
     // (its start script selects it at /ca-eigen/zwischen.key).
-    assert.match(j.services.caddy.environment.BRICK_HOST, /\S/, 'BRICK_HOST ist bei Caddy leer');
+    assert.match(j.services.caddy.environment.BRICK_HOST, /\S/, 'BRICK_HOST is empty for Caddy');
     const ca = j.services.caddy.volumes.find(v => v.target === '/ca-eigen');
     for (const f of ['zwischen.key', 'zwischen-kette.crt', 'root.crt'])
       assert.ok(
         fs.existsSync(path.join(ca.source, f)),
-        `Caddy findet ${f} nicht unter ${path.relative(location, ca.source)}`,
+        `Caddy does not find ${f} under ${path.relative(location, ca.source)}`,
       );
 
     // Reachable only via Caddy; app, jobs and schluessel share the published image.
-    assert.deepEqual(j.services.app.ports ?? [], [], 'app veröffentlicht keinen Port');
+    assert.deepEqual(j.services.app.ports ?? [], [], 'app publishes no port');
     assert.ok(
       j.services.caddy.ports.some(p => p.target === 443),
-      'Caddy veröffentlicht 443',
+      'Caddy publishes 443',
     );
     for (const d of ['app', 'jobs', 'schluessel'])
       assert.equal(
         j.services[d].image,
         `${PUBLISHED}@${DIGEST}`,
-        `${d} zieht das veröffentlichte Image als geprüften Digest`,
+        `${d} pulls the published image as a verified digest`,
       );
     assert.equal(
       new Set(['app', 'jobs', 'schluessel'].map(d => j.services[d].image)).size,
       1,
-      'ein Image für alle drei',
+      'one image for all three',
     );
     for (const d of ['caddy', 'caddy-rechte'])
       assert.equal(
         j.services[d].image,
         `${PUBLISHED}-caddy@${DIGEST}`,
-        `${d} zieht das signierte Caddy-Image als geprüften Digest`,
+        `${d} pulls the signed Caddy image as a verified digest`,
       );
     const gebaut = dienste.filter(d => j.services[d].build?.dockerfile === 'Dockerfile');
-    assert.deepEqual(gebaut, ['app'], 'genau ein Dienst baut das Dockerfile');
+    assert.deepEqual(gebaut, ['app'], 'exactly one service builds the Dockerfile');
   });
 }
 
@@ -216,7 +216,7 @@ function allFiles() {
 test('every named path to .ts, .sh, .yml and .yaml exists', () => {
   const dateien = allFiles();
   const pfade = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
-  assert.ok(pfade.length > 40, `nur ${pfade.length} Pfade gefunden — greift die Suche noch?`);
+  assert.ok(pfade.length > 40, `only ${pfade.length} paths found — does the search still work?`);
   const fehlt = pfade.filter(p => !dateien.some(d => d === p || d.endsWith('/' + p)));
   assert.deepEqual([...new Set(fehlt)], []);
 });
@@ -236,6 +236,6 @@ test('every named test exists', () => {
   const receipts = [...TEXT.matchAll(/ —\s+((?:`[a-z0-9-]+`(?:,\s*)?)+)/g)].flatMap(m =>
     [...m[1].matchAll(/`([a-z0-9-]+)`/g)].map(x => x[1]),
   );
-  assert.ok(receipts.length > 40, `nur ${receipts.length} Belege gefunden — greift die Suche noch?`);
+  assert.ok(receipts.length > 40, `only ${receipts.length} receipts found — does the search still work?`);
   assert.deepEqual([...new Set(receipts.filter(b => !tests.has(b)))], []);
 });

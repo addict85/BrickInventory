@@ -156,20 +156,21 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // brings a creator along. The decision "preview or for real"
     // is made by the route from `?write=1` — not by a default value here.
     const b = await importWantedList(1, xml, { preview: true });
-    assert.equal(b.preview, true, 'Mit vorschau: true muss es eine Vorschau sein');
-    assert.equal(b.created, 0, 'Eine Vorschau schreibt nichts');
+    assert.equal(b.preview, true, 'With vorschau: true it must be a preview');
+    assert.equal(b.created, 0, 'A preview writes nothing');
 
     const nach = new Map(b.items.map(p => [p.blId, p]));
     assert.equal(
       nach.get('3001').name,
       'Brick 2 x 4',
-      'Der Name aus part_catalog fehlt — dann zeigt die Vorschau nur Nummern, ' +
-        'und Marco kann an Posten 57 nicht erkennen, dass es der falsche Stein ist.',
+      'The name from part_catalog is missing — then the preview shows only numbers, ' +
+        'and Marco cannot tell at item 57 that it is the wrong brick.',
     );
     assert.equal(
       nach.get('3001').image,
       'https://cdn.example/3001-rot.png',
-      'Das Bild hängt an Teil UND Farbe (ein roter 2x4 sieht anders aus als ein ' + 'blauer). Hier fehlt das Farbbild.',
+      'The image depends on part AND colour (a red 2x4 looks different from a ' +
+        'blue one). The colour image is missing here.',
     );
     assert.equal(nach.get('3001').colorName, 'Red');
     assert.equal(nach.get('3001').colorHex, 'C91A09');
@@ -178,41 +179,37 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // The resolution therefore leaves it OPEN — stage 3 reads part_catalog, and
     // it should: it is a guess, and widening it to the 50,000 rows of
     // rb_parts would mean many more items on the strength of a guess …
-    assert.equal(
-      nach.get('3002').outcome,
-      'open',
-      'Stufe 3 liest part_catalog; 3002 steht dort nicht und bleibt offen',
-    );
+    assert.equal(nach.get('3002').outcome, 'open', 'Level 3 reads part_catalog; 3002 is not there and stays open');
     assert.equal(
       nach.get('3002').name,
       'Brick 2 x 2',
-      'Der Rückfall auf rb_parts (CSV-Abgleich) greift nicht — dann bleibt ' +
-        'jedes Teil namenlos, das noch in keinem Set war.',
+      'The fallback to rb_parts (CSV comparison) does not work — then every part ' +
+        'that has not been in any set yet stays nameless.',
     );
     assert.equal(
       nach.get('3002').image,
       'https://cdn.example/3002.png',
-      'Ohne Farbbild muss das allgemeine Teilebild einspringen',
+      'Without a colour image the general part image must step in',
     );
     assert.equal(
       nach.get('3002').nameGuessed,
       true,
-      'Der Name wurde unter der BrickLink-Nummer gefunden, nicht über eine ' +
-        'Abbildung. Ohne dieses Kennzeichen sieht die Zeile aus wie ein Treffer.',
+      'The name was found under the BrickLink number, not via a ' +
+        'mapping. Without this flag the row looks like a hit.',
     );
-    assert.equal(nach.get('3001').nameGuessed, false, '3001 ist abgebildet — da ist nichts geraten.');
+    assert.equal(nach.get('3001').nameGuessed, false, '3001 is mapped — nothing is guessed there.');
 
     // 9999 is in no catalog. Empty is the HONEST answer here.
     assert.equal(
       nach.get('9999').name ?? null,
       null,
-      `Für 9999 steht „${nach.get('9999').name}" da — das kennt kein Katalog ` +
-        'dieses Baums. Ein geratener Name ist schlimmer als eine leere Zelle.',
+      `For 9999 it says „${nach.get('9999').name}" — no catalogue in ` +
+        'this tree knows that. A guessed name is worse than an empty cell.',
     );
     assert.notEqual(
       nach.get('9999').nameGuessed,
       true,
-      'Eine leere Zeile „geraten" zu nennen wäre eine Behauptung über nichts',
+      'Calling an empty row „geraten“ would be a claim about nothing',
     );
   });
 
@@ -221,17 +218,21 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // cannot say which color was meant.
     const b = await importWantedList(1, liste(item('P', '3001', 85, 7)), { preview: true });
     const p = b.items[0];
-    assert.equal(p.blColor, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
+    assert.equal(p.blColor, 85, 'The BrickLink colour number from the file is missing');
     assert.equal(p.quantity, 7);
-    assert.equal(p.outcome, 'open', 'Farbe 85 ist nicht abbildbar — der Posten bleibt offen');
+    assert.equal(p.outcome, 'open', 'Colour 85 cannot be mapped — the item stays open');
     assert.match(p.reason || '', /BrickLink-Farbe 85/);
   });
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Asked for by Marco on 20.10.
     const ohne = await importWantedList(1, liste(item('P', '3001', 5, 1, 'X')), { preview: true });
-    assert.equal(ohne.defaultCondition, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
-    assert.equal(ohne.items[0].condition, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
+    assert.equal(
+      ohne.defaultCondition,
+      'N',
+      'Without a setting the default of the tree applies (userDefaultCondition)',
+    );
+    assert.equal(ohne.items[0].condition, null, 'The ITEM still carries what was in the file — not the default');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
@@ -246,12 +247,12 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       ),
       { preview: true },
     );
-    assert.equal(mit.defaultCondition, 'U', 'Die Einstellung des Kontos gewinnt');
+    assert.equal(mit.defaultCondition, 'U', 'The account setting wins');
     assert.deepEqual(
       mit.items.map(x => x.condition),
       ['N', 'U', null, null],
-      'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
-        'Die Vorschau setzt beides zusammen (row() in public/js/wanted-xml.js)',
+      'N and U stay, X stays null — the default does NOT replace them in the item. ' +
+        'The preview combines both (row() in public/js/wanted-xml.js)',
     );
     await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
   });
@@ -278,14 +279,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       zaehler.length,
       1,
-      `Der Anleger bekam ${zaehler.length} Posten. Genau EINER wurde korrigiert; ` +
-        'der andere hat weiterhin keine abbildbare Farbe und muss offen bleiben.',
+      `The creator got ${zaehler.length} items. Exactly ONE was corrected; ` +
+        'the other still has no mappable colour and must stay open.',
     );
     assert.equal(
       zaehler[0].quantity,
       5,
-      `Menge ${zaehler[0].quantity} — korrigiert war Index 1, also der Posten mit 5. ` +
-        'Trifft die Korrektur den ersten, zeigt sie auf die Nummer statt auf den Index.',
+      `quantity ${zaehler[0].quantity} — index 1 was corrected, i.e. the item with 5. ` +
+        'If the correction hits the first one, it points to the number instead of the index.',
     );
     assert.equal(zaehler[0].color_id, 7);
     // The COLOR NAME must be fetched afterwards: the resolution fetches it for the
@@ -293,15 +294,15 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       zaehler[0].color_name,
       'Blue',
-      'Ohne Nachtragen geht die eingetragene Farbe ohne Namen an den Anleger — ' +
-        'und das ist genau der Farbpunkt ohne Beschriftung vom 19.10.',
+      'Without filling in, the entered colour goes to the creator without a name — ' +
+        'and that is exactly the colour dot without a label from 19.10.',
     );
     assert.equal(zaehler[0].color_hex, '0055BF');
     assert.equal(
       b.items[1].confidence,
       'korrigiert',
-      'Eine eingetragene Nummer ist nicht „zuordnung" — der Bericht darf nicht ' +
-        'behaupten, der Katalog habe geliefert, was jemand getippt hat.',
+      'An entered number is not „zuordnung“ — the report must not ' +
+        'claim the catalogue supplied what someone typed.',
     );
   });
 
@@ -327,10 +328,10 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       b.corrections?.rejected.length,
       1,
-      'Die abgewiesene Korrektur muss im Bericht STEHEN — stillschweigend zu ' +
-        'übergehen heisst: Marco korrigiert, und nichts passiert.',
+      'The rejected correction must BE in the report — silently ' +
+        'skipping it means: Marco corrects, and nothing happens.',
     );
-    assert.equal(zaehler.length, 0, 'Der Posten hat weiterhin keine Farbe und bleibt offen');
+    assert.equal(zaehler.length, 0, 'The item still has no colour and stays open');
   });
 
   await t.test('5. only a REGISTERED number is remembered, no catalog hit', async () => {
@@ -355,9 +356,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.deepEqual(
       gemerkt,
       [{ kind: 'part', rbId: '3002', blId: '9999' }],
-      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Erwartet ist GENAU die ` +
-        'eingetragene Zuordnung 9999→3002. Steht 3001 mit dabei, wird ein ' +
-        'Katalogtreffer — also eine Vermutung — als Abbildung eingetragen.',
+      `Remembered was ${JSON.stringify(gemerkt)}. Expected is EXACTLY the ` +
+        'entered mapping 9999→3002. If 3001 is included, a ' +
+        'catalogue hit — i.e. a guess — is recorded as a mapping.',
     );
   });
 
@@ -379,14 +380,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.deepEqual(
       b.levels,
       { rebrickable: 1 },
-      'Der Posten muss ueber Rebrickable aufgeloest worden sein — sonst sagt ' + 'der Fall nichts ueber diese Stufe',
+      'The item must have been resolved via Rebrickable — otherwise ' + 'the case says nothing about this level',
     );
     assert.deepEqual(
       gemerkt,
       [{ kind: 'part', rbId: '12345', blId: '98765' }],
-      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Ohne diesen Eintrag fragt der ` +
-        'naechste Import dieselbe Nummer wieder bei Rebrickable — 1,5 Sekunden ' +
-        'und ein Abruf aus dem Tageskontingent je Posten, bei jedem Lauf',
+      `Remembered was ${JSON.stringify(gemerkt)}. Without this entry the ` +
+        'next import asks Rebrickable about the same number again — 1.5 seconds ' +
+        'and one fetch from the daily quota per item, on every run',
     );
   });
 
@@ -410,9 +411,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         gemerkt.push(a);
       },
     });
-    assert.equal(b.corrections?.applied, 1, 'Vorbedingung: die Korrektur muss greifen, sonst sagt der Fall nichts');
-    assert.equal(b.created, 0, 'Eine Vorschau legt nichts an');
-    assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
+    assert.equal(b.corrections?.applied, 1, 'precondition: the correction must apply, otherwise the case says nothing');
+    assert.equal(b.created, 0, 'A preview creates nothing');
+    assert.deepEqual(gemerkt, [], 'Nothing may be remembered in the preview');
   });
 
   await t.test('7. describeItem does not make one query per item', async () => {
@@ -437,8 +438,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       await describeItem(auf);
       assert.ok(
         queryList <= 4,
-        `${queryList} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
-          'Farbbilder, Figuren, Sets). Eine je Posten wären 100.',
+        `${queryList} queries for 100 items. At most 4 are allowed (parts, ` +
+          'colour images, figures, sets). One per item would be 100.',
       );
     } finally {
       db.pool.query = echt;
@@ -459,14 +460,13 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       b.items[0].outcome,
       'created',
-      'Der Posten muss wirklich geschrieben worden sein — sonst sagt der Fall ' +
-        'nichts über den Weg NACH dem Schreiben',
+      'The item must really have been written — otherwise the case says ' + 'nothing about the path AFTER writing',
     );
     assert.equal(b.items[0].name, 'Brick 2 x 4');
     assert.equal(
       b.items[0].image,
       'https://cdn.example/3001-rot.png',
-      'Ohne das zeichnet der Dialog nach dem Import leere Zellen — genau ' + 'Marcos Befund',
+      'Without it the dialog draws empty cells after the import — exactly ' + 'what Marco reported',
     );
   });
 
@@ -481,7 +481,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       vorher.items[0].image,
       null,
-      'In der Vorschau gibt es das Bild noch nicht — sonst sagt der Fall nichts',
+      'In the preview the image does not exist yet — otherwise the case says nothing',
     );
 
     const b = await importWantedList(1, liste(item('P', '7777', 5, 1)), {
@@ -501,7 +501,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(
       b.items[0].image,
       'https://cdn.example/7777.png',
-      'Das beim Anlegen geschriebene Bild muss im Bericht ankommen',
+      'The image written on creation must arrive in the report',
     );
   });
 });

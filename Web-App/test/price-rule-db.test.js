@@ -35,16 +35,16 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
     assert.equal(
       hatPrice({ avg_price: 0, qty_avg_price: 12.34 }),
       true,
-      'Der Mengenschnitt ist der Rückfall: 0 ist kein Preis, 12.34 schon',
+      'The quantity average is the fallback: 0 is not a price, 12.34 is',
     );
     assert.equal(hatPrice({ avg_price: null, qty_avg_price: null }), false);
-    assert.equal(hatPrice(null), false, 'kein Datensatz, kein Preis');
+    assert.equal(hatPrice(null), false, 'no record, no price');
     // Depending on the path numeric comes as text — the rule must tolerate both.
     assert.equal(hatPrice({ avg_price: '12.34' }), true);
     assert.equal(
       hatPrice({ avg_price: '0.00' }),
       false,
-      '"0.00" ist als Zeichenkette wahr — genau daran ist die Regel schon ' + 'einmal gescheitert',
+      '"0.00" is truthy as a string — exactly that is where the rule failed ' + 'once before',
     );
 
     // 2. The reader hands out no row that it does not itself recognize as a
@@ -56,15 +56,15 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
     );
     const { fetchPrice } = _req('src/finances/financeCalc.js');
     const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
-    assert.equal(pd.avg_price, 12.34, 'avg_price trägt den Marktpreis, hier den Mengenschnitt');
+    assert.equal(pd.avg_price, 12.34, 'avg_price carries the market price, here the quantity average');
     assert.ok(
       pd.no_price === true || Number(pd.avg_price) > 0,
-      'fetchPrice gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),
+      'fetchPrice returns a row that carries no displayable price: ' + JSON.stringify(pd),
     );
     assert.ok(
       !(Number(pd.avg_price) === 0 && Number(pd.qty_avg_price) > 0),
-      'avg_price = 0 neben qty_avg_price > 0 — genau die Form, die in der App ' +
-        'als „0.00" erscheint: ' +
+      'avg_price = 0 next to qty_avg_price > 0 — exactly the shape that shows in the app ' +
+        'as „0.00": ' +
         JSON.stringify(pd),
     );
 
@@ -96,17 +96,17 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
         assert.equal(
           erg.from_cache,
           true,
-          'Ein FRISCHER 0-Eintrag muss aus dem Cache beantwortet werden — sonst ' +
-            'fragt jede Ansicht eines preislosen Sets BrickLink erneut',
+          'A FRESH 0 entry must be answered from the cache — otherwise ' +
+            'every view of a priceless set asks BrickLink again',
         );
         assert.equal(erg.no_price, true);
       } else {
         assert.notEqual(
           erg.from_cache,
           true,
-          'Ein ALTER 0-Eintrag muss durchfallen und einen Neuabruf auslösen — ' +
-            'sonst bleibt ein einmal preisloses Set dauerhaft preislos, und der ' +
-            'sold→stock-Rückfall kommt nie zum Zug. Bekommen: ' +
+          'An OLD 0 entry must fall through and trigger a refetch — ' +
+            'otherwise a set that was priceless once stays priceless forever, and the ' +
+            'sold→stock fallback never gets its turn. Got: ' +
             JSON.stringify(erg),
         );
       }
@@ -127,8 +127,8 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
     assert.equal(
       Number(teil.qty_avg_price),
       7,
-      'qty_avg_price kommt aus avg_price statt aus der eigenen Spalte — der ' +
-        'mengengewichtete Schnitt ist dann still der einfache. Bekommen: ' +
+      'qty_avg_price comes from avg_price instead of its own column — the ' +
+        'quantity-weighted average is then silently the plain one. Got: ' +
         JSON.stringify(teil),
     );
 
@@ -164,7 +164,7 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
       assert.doesNotMatch(
         src,
         /qty_avg_price:\s*parseFloat\((\w+)\.avg_price\)/,
-        `${rel} füllt qty_avg_price aus avg_price — der mengengewichtete Schnitt ` + 'ist dann still der einfache',
+        `${rel} fills qty_avg_price from avg_price — the quantity-weighted average ` + 'is then silently the plain one',
       );
     }
   } finally {

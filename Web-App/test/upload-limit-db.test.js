@@ -143,7 +143,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       assert.equal(zweiter.status, 429, JSON.stringify(zweiter.body));
       assert.equal(zweiter.body.code, 'upload_running');
       const fremd = await uploadIt(b.base, await pdfWith(1));
-      assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
+      assert.notEqual(fremd.status, 429, 'another account is not affected');
     } finally {
       erster.ende(); // otherwise closing the server waits for it
       await erster.response;
@@ -171,7 +171,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       for (let i = 0; i < 7; i++) statuses.push(await stream());
       assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of open) r.destroy();
-      assert.ok(await bis(async () => (await stream()) === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
+      assert.ok(await bis(async () => (await stream()) === 200, 3000), 'closed streams free their slot');
     } finally {
       for (const r of open) r.destroy();
     }
@@ -208,6 +208,6 @@ test('the slot is free as soon as the response is handed over', () => {
   assert.equal(erste.weiter, true);
   erste.res.emit('finish');
   const zweite = anfrage();
-  assert.equal(zweite.weiter, true, `zweite Datei abgewiesen (${zweite.res.statusCode})`);
+  assert.equal(zweite.weiter, true, `second file rejected (${zweite.res.statusCode})`);
   zweite.res.emit('finish');
 });

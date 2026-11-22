@@ -40,7 +40,7 @@ function satz(contexts = undefined) {
   const stummel = {
     inTransaction: () => false,
     transaction: async () => {
-      throw new Error('Der Bau fragt nicht');
+      throw new Error('The build does not ask');
     },
   };
   return _req('startup/wiring.js').buildServices(stummel, { contexts });
@@ -105,30 +105,27 @@ test('service keys become fewer, never more, and each has a caller', () => {
   const contexts = {};
   const d = satz(contexts);
   const schluessel = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
-  assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
-  assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
-  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
+  assert.ok(Object.keys(d).length > 15, `only ${Object.keys(d).length} areas built`);
+  assert.ok(schluessel.length > 300, `only ${schluessel.length} service keys — does the count still work?`);
+  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'self-proof: sub-surfaces count per service');
 
   const LIMIT_NUMBER = 537;
-  assert.ok(
-    schluessel.length <= LIMIT_NUMBER,
-    `Zahl der Dienstschlüssel: ${schluessel.length}, erlaubt ${LIMIT_NUMBER}`,
-  );
+  assert.ok(schluessel.length <= LIMIT_NUMBER, `number of service keys: ${schluessel.length}, allowed ${LIMIT_NUMBER}`);
   if (schluessel.length < LIMIT_NUMBER)
-    console.log(`  ℹ Dienstschlüssel: ${schluessel.length} (Schranke ${LIMIT_NUMBER}) — nachziehen`);
+    console.log(`  ℹ service keys: ${schluessel.length} (limit ${LIMIT_NUMBER}) — tighten it`);
   const je = {};
   for (const s of schluessel) je[s.split('.')[0]] = (je[s.split('.')[0]] ?? 0) + 1;
   const toMuch = Object.entries(je)
     .filter(([b, n]) => !(b in JE_AREA) || n > JE_AREA[b])
     .map(([b, n]) => `${b} ${n}, erlaubt ${JE_AREA[b] ?? 'keine Schranke'}`);
-  assert.deepEqual(toMuch, [], 'Schlüssel je Bereich');
+  assert.deepEqual(toMuch, [], 'keys per area');
 
   // testArea() and every reader would otherwise take the service where the repository is meant.
   const gleich = schluessel.filter(s => {
     const [b = '', k = ''] = s.split('.');
     return typeof contexts[b]?.[k] === 'object' && contexts[b][k] !== null;
   });
-  assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
+  assert.deepEqual(gleich, [], 'service is named like a part of the context');
 
   // Called via the set (`d.account.…`, `k.konto.…`) or named in Pick<…>; the factory of the area does not count.
   const q = sources();
@@ -139,7 +136,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
     const factory = ['bereich.ts', 'area.ts'].map(f => `src/${b}/${f}`).find(f => q.has(f)) ?? `src/${b}/bereich.ts`;
     return ![...q].some(([datei, text]) => datei !== factory && muster.test(text));
   });
-  assert.deepEqual(ohne, [], 'Schlüssel ohne Aufrufer ausserhalb der Tests');
+  assert.deepEqual(ohne, [], 'keys without callers outside the tests');
 });
 
 /** Services that pass a repository through raw, with a reason; the list gets shorter, never longer. */
@@ -217,12 +214,8 @@ test('no service key passes a repository through raw', () => {
     }
     for (const s of boundRepositories(b, leavesOfArea, q)) roh.add(s);
   }
-  assert.ok(roh.has('jobQueue.readState') && roh.has('catalog.catalogStatus'), 'Selbstbeweis: beide Formen gefunden');
-  assert.deepEqual(
-    [...roh].sort(),
-    Object.keys(RAW_ALLOWED).sort(),
-    'Dienstschlüssel, die ein Repository roh weiterreichen',
-  );
+  assert.ok(roh.has('jobQueue.readState') && roh.has('catalog.catalogStatus'), 'self-proof: both forms found');
+  assert.deepEqual([...roh].sort(), Object.keys(RAW_ALLOWED).sort(), 'service keys that pass a repository on raw');
   const LIMIT_RAW = 21;
-  assert.ok(roh.size <= LIMIT_RAW, `${roh.size} rohe Weitergaben, erlaubt ${LIMIT_RAW}`);
+  assert.ok(roh.size <= LIMIT_RAW, `${roh.size} raw pass-throughs, allowed ${LIMIT_RAW}`);
 });

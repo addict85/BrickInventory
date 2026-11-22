@@ -43,9 +43,9 @@ test('the schema start reports no swallowed error', async t => {
   assert.deepEqual(
     gemeldet,
     [],
-    'Der Schemastart hat Fehler verschluckt und nur protokolliert:\n  ' +
+    'The schema start swallowed errors and only logged them:\n  ' +
       gemeldet.join('\n  ') +
-      '\nJede dieser Zeilen ist ein Schritt, der NICHT gelaufen ist — die ' +
-      'Datenbank steht danach anders da, als der Start behauptet.',
+      '\nEach of these lines is a step that did NOT run — the ' +
+      'database is afterwards in a different state than the start claims.',
   );
 });

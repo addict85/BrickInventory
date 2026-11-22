@@ -78,9 +78,9 @@ test('part and minifigure without a price in the selected condition take the oth
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
   const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
-  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState], [0.9, 'U'], 'der übernommene Preis fehlt');
+  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState], [0.9, 'U'], 'the adopted price is missing');
   const gleich = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
-  assert.deepEqual([gleich.effectivePurchasePrice, gleich.priceFromState], [0.9, null], 'ohne Rückfall keine Herkunft');
+  assert.deepEqual([gleich.effectivePurchasePrice, gleich.priceFromState], [0.9, null], 'without a fallback no origin');
 });
 
 test('a typed-in number has no origin', async t => {

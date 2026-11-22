@@ -60,13 +60,13 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
     await metric(1280, false);
     await toList();
     const m = await mass();
-    assert.ok(m.b >= 24 && m.h >= 24, `Rechner: X mindestens 24 px (${m.b} × ${m.h})`);
+    assert.ok(m.b >= 24 && m.h >= 24, `desktop: X at least 24 px (${m.b} × ${m.h})`);
     // Keyboard used last: then :focus-visible also applies to focus().
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Shift', code: 'ShiftLeft' });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Shift', code: 'ShiftLeft' });
     const f = await b.auswerten(`(() => { const x = ${X}; x.focus(); const s = getComputedStyle(x);
       return { sichtbar: x.matches(':focus-visible'), stil: s.outlineStyle, breite: parseFloat(s.outlineWidth) }; })()`);
-    assert.ok(f.sichtbar && f.stil !== 'none' && f.breite >= 2, `Rechner: sichtbarer Fokus ${JSON.stringify(f)}`);
+    assert.ok(f.sichtbar && f.stil !== 'none' && f.breite >= 2, `desktop: visible focus ${JSON.stringify(f)}`);
     await b.auswerten(`${X}.click(); true`);
     await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Rückfrage');
     assert.equal(
@@ -81,7 +81,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
     await metric(390, true);
     await toList();
     const m = await mass();
-    assert.ok(m.b >= 44 && m.h >= 44, `Telefon: X mindestens 44 px (${m.b} × ${m.h})`);
+    assert.ok(m.b >= 44 && m.h >= 44, `phone: X at least 44 px (${m.b} × ${m.h})`);
   });
 
   await t.test('320 px, 200 %: nothing sticks out of the card', async () => {
@@ -91,8 +91,8 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
       await toList();
       const m = await mass();
       assert.ok(m.b >= 44 && m.h >= 44, `${schrift || '100 %'}: X ${m.b} × ${m.h}`);
-      assert.equal(m.ragt, false, `${schrift || '100 %'}: der Chip ragt aus der Karte`);
-      assert.ok(m.seite <= m.fenster, `${schrift || '100 %'}: Seite ${m.seite} px breiter als ${m.fenster} px`);
+      assert.equal(m.ragt, false, `${schrift || '100 %'}: the chip sticks out of the card`);
+      assert.ok(m.seite <= m.fenster, `${schrift || '100 %'}: page ${m.seite} px wider than ${m.fenster} px`);
     }
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
   });

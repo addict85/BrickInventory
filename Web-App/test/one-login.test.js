@@ -42,7 +42,7 @@ function routesFiles(dir, praefix = '') {
 
 test('no handler asks the session for the user identifier itself', () => {
   const dateien = routesFiles(ROUTES);
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
+  assert.ok(dateien.length >= 10, `Only ${dateien.length} router files found — then the rest checks nothing.`);
 
   const violations = [];
   const gebraucht = new Set();
@@ -71,20 +71,20 @@ test('no handler asks the session for the user identifier itself', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
+    'These entries in ALLOWED no longer describe anything:\n  ' +
       veraltet.join('\n  ') +
-      '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.',
+      '\nThe file no longer reads the session directly — remove it.',
   );
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/userName():\n  ' +
+    'These places read the session directly instead of nutzerId()/istVerwalter()/userName():\n  ' +
       violations.join('\n  ') +
-      '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
-      'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +
-      'oder schlimmer, sie liefert stillschweigend die Ansicht eines ' +
-      'Nicht-Verwalters.',
+      "\nWith a bearer token — the app's only credential — that is always " +
+      'undefined. It does not show up as an error: the route answers with 401, ' +
+      'or worse, it silently returns the view of a ' +
+      'non-admin.',
   );
 });
 
@@ -106,10 +106,10 @@ test('no router brings its own guard', () => {
   assert.deepEqual(
     eigene,
     [],
-    'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' +
+    'These routers define their own login guard:\n  ' +
       eigene.join('\n  ') +
-      '\nEs gibt genau zwei: requireLoginOrToken (src/account/http/login.ts) und ' +
-      'requireApiAdmin (routes/api/middleware.ts). Beide nehmen Sitzung ODER ' +
-      'Token. Eine dritte Fassung sperrt zuverlässig die App aus.',
+      '\nThere are exactly two: requireLoginOrToken (src/account/http/login.ts) and ' +
+      'requireApiAdmin (routes/api/middleware.ts). Both accept session OR ' +
+      'token. A third version reliably locks out the app.',
   );
 });

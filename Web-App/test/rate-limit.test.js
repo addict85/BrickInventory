@@ -26,15 +26,15 @@ test('default daily limit is 25000 — in ONE place', () => {
   assert.match(
     fc,
     /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
-    'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen',
+    'The fallback value must be the shared constant, not a separate number next to it',
   );
-  assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
+  assert.doesNotMatch(fc, /rebrickable: \d+/, 'No second number for the same limit');
 });
 
 test('the daily quota counts for the installation, not per worker', () => {
   // Where this test comes from
   const rl = fs.readFileSync(path.join(ROOT, 'src/externalSources/rateLimiter.ts'), 'utf8');
-  assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
+  assert.match(rl, /async function consumeRebrickableDaily/, 'Consumption must go through the shared counter');
   assert.match(
     rl,
     /checkAndCountQuota\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
@@ -51,7 +51,7 @@ test('the daily quota counts for the installation, not per worker', () => {
     'src/catalog/csvSync.ts',
   ]) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    assert.doesNotMatch(src, /rebrickableDailyLimiter/, `${datei}: zählt noch am gemeinsamen Zähler vorbei`);
+    assert.doesNotMatch(src, /rebrickableDailyLimiter/, `${datei}: still counts past the shared counter`);
   }
 
   // And the reloading at startup is gone — the limit is read on every
@@ -61,7 +61,7 @@ test('the daily quota counts for the installation, not per worker', () => {
   const server = require('./helpers/sources')
     .serverAll()
     .replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/, 'Ein In-Memory-Limit muss nicht mehr geladen werden');
+  assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/, 'An in-memory limit no longer needs to be loaded');
 });
 
 test('a changed limit applies immediately in ALL workers', () => {
@@ -79,7 +79,7 @@ test('a changed limit applies immediately in ALL workers', () => {
   assert.match(
     fn,
     /await k\.settings\.globalValue\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
-    'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
+    'The limit must be read on every call, not come from process memory',
   );
 });
 
@@ -100,12 +100,12 @@ test('no more hard-coded limit numbers in messages and labels', () => {
     const vals = [
       ...i18n.matchAll(new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}':\\s*'([^']*)'`, 'g')),
     ].map(m => m[1]);
-    assert.ok(vals.length > 0, `${key} fehlt in i18n.js`);
+    assert.ok(vals.length > 0, `${key} is missing in i18n.js`);
     for (const v of vals) {
       assert.doesNotMatch(
         v,
         /\d+\s*\/\s*(Tag|day)/,
-        `${key} = "${v}" — die Zahl steht schon im Wert darüber und wird hier bei jeder Änderung falsch`,
+        `${key} = "${v}" — the number is already in the value above and becomes wrong here on every change`,
       );
     }
   }
@@ -114,8 +114,8 @@ test('no more hard-coded limit numbers in messages and labels', () => {
 test('the input field shows the same default', () => {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const field = html.slice(html.indexOf('id="lim-rb"') - 400, html.indexOf('id="lim-rb"') + 200);
-  assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value des Felds #lim-rb passt nicht zum Standard');
-  assert.match(field, new RegExp(`"n":"${EXPECTED}"`), 'Der Hinweis "(Standard: …)" passt nicht zum Standard');
+  assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value of the field #lim-rb does not match the default');
+  assert.match(field, new RegExp(`"n":"${EXPECTED}"`), 'The hint "(Standard: …)" does not match the default');
 });
 
 // ── Point 3: counters in the database ───────────────────────────────────────
@@ -123,16 +123,16 @@ test('the input field shows the same default', () => {
 test('the login counters are no longer in process memory', () => {
   // src/throttle writes the counters (owner of rate_limit_attempts), the login calls k.throttle.
   const src = fs.readFileSync(path.join(ROOT, 'src/throttle/repository.ts'), 'utf8');
-  assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
+  assert.match(src, /rate_limit_attempts/, 'With N cluster workers 5 failed attempts otherwise become N×5');
   assert.match(
     src,
     /ON CONFLICT \(key\) DO UPDATE/,
-    'Hochzählen muss atomar in einem Statement passieren, sonst lesen parallele Versuche denselben Stand',
+    'Incrementing must happen atomically in one statement, otherwise parallel attempts read the same state',
   );
   assert.match(
     src,
     /CASE WHEN rate_limit_attempts\.first_at < NOW\(\)/,
-    'Ein abgelaufenes Fenster muss im selben Statement neu starten',
+    'An expired window must restart in the same statement',
   );
 });
 
@@ -147,7 +147,7 @@ test('on DB outage the fallback kicks in', () => {
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
     );
   }
-  assert.match(src, /entries: new Map/, 'In-Memory-Rückfall fehlt');
+  assert.match(src, /entries: new Map/, 'in-memory fallback is missing');
 });
 
 test('the call sites wait for the result', () => {
@@ -181,13 +181,13 @@ test('the call sites wait for the result', () => {
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything.
-  assert.ok(found >= 3, `nur ${found} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
+  assert.ok(found >= 3, `only ${found} calls of the login counter found — pattern outdated?`);
   assert.deepEqual(
     withoutAwait,
     [],
-    'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
+    'These calls do not await the login counter:\n  ' +
       withoutAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt loginAllowed JEDEN Login.',
+      '\nA promise is always truthy — without await loginAllowed blocks EVERY login.',
   );
 });
 
@@ -200,21 +200,13 @@ test('jobs with an external quota have a cross-process lock', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
 
-  assert.match(
-    job,
-    /pg_try_advisory_lock/,
-    'Ohne prozessübergreifende Sperre schützt state.running nur den eigenen Worker',
-  );
+  assert.match(job, /pg_try_advisory_lock/, 'Without a cross-process lock state.running only protects its own worker');
   // Own connection, not transaction-bound: the run takes minutes.
-  assert.match(
-    job,
-    /(?:db|access)\.pool\.connect\(\)/,
-    'Die Sperre muss über die ganze Laufzeit gehalten werden — eigene Verbindung',
-  );
+  assert.match(job, /(?:db|access)\.pool\.connect\(\)/, 'The lock must be held for the whole run — own connection');
   assert.doesNotMatch(
     job,
     /pg_try_advisory_xact_lock/,
-    'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg',
+    'Keeping a transaction open for minutes would be the wrong way',
   );
   // Release in finally — otherwise a crashed run blocks all following ones.
   const fn = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function rememberStatus'));
@@ -236,9 +228,9 @@ test('jobs with an external quota have a cross-process lock', () => {
   assert.match(
     route,
     /await d\.management\.runPriceJobNow\(\)/,
-    'routes/api/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
+    'routes/api/admin.ts: without await the route reports a promise as „gestartet“',
   );
 
   // The namespace comes from the shared list.
-  assert.match(job, /LOCKS\.PRICE_JOB/, 'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
+  assert.match(job, /LOCKS\.PRICE_JOB/, 'The namespace belongs in src/infra/lockNamespaces.ts, not typed in');
 });

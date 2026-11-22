@@ -90,11 +90,11 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
     const { valueSets } = _req('src/finances/financeCalc.js');
     const r = await valueSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
-    assert.equal(set.total_avg, '361.00', '120,3333 × 3 ist 361,00');
+    assert.equal(set.total_avg, '361.00', '120.3333 × 3 is 361.00');
     assert.equal(set.value_total, 361);
     assert.equal(r.totals.avg, '361.00');
-    assert.equal(r.foreign_currency_purchases, 1, 'ein Kaufpreis in EUR wird gezählt');
-    assert.equal(set.purchase_price, 100, 'der EUR-Kaufpreis geht nicht in den Schnitt');
+    assert.equal(r.foreign_currency_purchases, 1, 'a purchase price in EUR is counted');
+    assert.equal(set.purchase_price, 100, 'the EUR purchase price does not go into the average');
     assert.equal(set.pnl_percent, 20.3);
     assert.equal(set.pnl_pct, '20.3');
     assert.equal(r.cache_ttl_hours, Number(r.ttl_hours));

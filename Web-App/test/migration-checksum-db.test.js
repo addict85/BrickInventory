@@ -42,7 +42,7 @@ test('checksums of the migrations', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const echt = await summe();
-  assert.match(echt, /^[0-9a-f]{64}$/, 'die Migration trägt eine SHA-256-Summe');
+  assert.match(echt, /^[0-9a-f]{64}$/, 'the migration carries a SHA-256 sum');
 
   await t.test('a missing sum is filled in', async () => {
     await c.query('UPDATE schema_migrations SET pruefsumme = NULL WHERE name = $1', [PROBE]);

@@ -63,7 +63,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
         k.db.transaction(async () => {}),
         dbModule.UnboundQuery,
       );
-      assert.equal((await tt.db.get(PID)).p, eigene, 'die Transaktion bleibt benutzbar');
+      assert.equal((await tt.db.get(PID)).p, eigene, 'the transaction stays usable');
     });
     // Afterwards k is free again.
     assert.ok((await k.db.get(PID)).p > 0);
@@ -161,7 +161,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const onSmaller = await waitsOn(`${uid}|x`);
     erste.frei();
     await Promise.all([erste.fertig, zweite]);
-    assert.equal(onSmaller, true, 'die zweite wartet auf die Sperre des kleineren Kontos');
+    assert.equal(onSmaller, true, 'the second waits for the lock of the smaller account');
   });
 
   await t.test('a service in the system context inside a transaction without it throws', async () => {

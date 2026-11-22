@@ -25,7 +25,7 @@ async function store(w, d) {
   assert.equal(
     d.querySelectorAll('#tab-profile input[type="password"][autocomplete="current-password"]').length,
     0,
-    'kein Feld „Aktuelles Passwort“ mehr auf der Seite',
+    'no „Aktuelles Passwort“ field on the page any more',
   );
   d.getElementById('prof-user').value = 'anna2';
   d.getElementById('btn-sav-prof').click();
@@ -36,10 +36,10 @@ test('without a password no request goes out', async () => {
   const { w, d, aufrufe } = await openUi(PROFILE);
   try {
     await store(w, d);
-    assert.deepEqual(putCalls(aufrufe), [], 'vor der Bestätigung');
+    assert.deepEqual(putCalls(aufrufe), [], 'before the confirmation');
     d.getElementById('cd-cancel').click();
     await warte(() => !openDialog(d));
-    assert.deepEqual(putCalls(aufrufe), [], 'nach Abbrechen');
+    assert.deepEqual(putCalls(aufrufe), [], 'after cancelling');
   } finally {
     w.close();
   }
@@ -55,7 +55,7 @@ test('with a password it goes along, even with a mere name change', async () => 
     const rumpf = JSON.parse(putCalls(aufrufe)[0].body);
     assert.equal(rumpf.username, 'anna2');
     assert.equal(rumpf.password_current, 'Mein-Passwort-1');
-    assert.equal(d.getElementById('cd-pw').value, '', 'das Passwort bleibt nicht im Feld stehen');
+    assert.equal(d.getElementById('cd-pw').value, '', 'the password does not stay in the field');
   } finally {
     w.close();
   }

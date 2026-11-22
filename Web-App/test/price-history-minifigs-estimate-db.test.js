@@ -165,7 +165,7 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
       'SELECT estimated AS geschaetzt, coverage AS abdeckung FROM minifig_price_cache WHERE fig_number = $1',
       [FIGURE],
     );
-    assert.equal(row.geschaetzt, false, 'der echte Preis trägt noch die Schätzmarke');
+    assert.equal(row.geschaetzt, false, 'the real price still carries the estimate marker');
     assert.equal(row.abdeckung, null);
   });
 

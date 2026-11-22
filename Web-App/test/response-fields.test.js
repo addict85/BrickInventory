@@ -31,8 +31,7 @@ test('no response field without a consumer', () => {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
-      `${e.stdout || ''}${e.stderr || ''}`.trim() ||
-        'check-response-fields.js ist fehlgeschlagen, ohne etwas zu melden',
+      `${e.stdout || ''}${e.stderr || ''}`.trim() || 'check-response-fields.js failed without reporting anything',
     );
   }
 });

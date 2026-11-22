@@ -39,13 +39,13 @@ test('the startup loads the gallery once, and the same language rebuilds nothing
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
-    assert.equal(setsCalls(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'the gallery was loaded several times at start');
     const vorher = kachel(d);
     const wahl = d.getElementById('lang-select');
     wahl.value = 'de';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     await ruhig();
-    assert.equal(kachel(d), vorher, 'gleiche Sprache hat die Kacheln neu gezeichnet');
+    assert.equal(kachel(d), vorher, 'the same language redrew the tiles');
     assert.equal(setsCalls(aufrufe), 1);
   } finally {
     w.close();
@@ -61,9 +61,9 @@ test('a real language change redraws the gallery without reloading it', async ()
     const wahl = d.getElementById('lang-select');
     wahl.value = 'en';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'Kacheln nicht neu gezeichnet');
+    assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'tiles not redrawn');
     await ruhig();
-    assert.equal(setsCalls(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'a language switch reloaded the gallery');
   } finally {
     w.close();
   }
@@ -80,8 +80,8 @@ test('refreshing leaves the tiles standing until the new response is there', asy
     assert.ok(await warte(() => kachel(d)));
     d.getElementById('gsort').value = 'name_asc';
     d.getElementById('gsort').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => n === 2), 'kein zweiter Abruf');
-    assert.ok(kachel(d), 'die Kacheln wurden durch eine Ladeanzeige ersetzt');
+    assert.ok(await warte(() => n === 2), 'no second fetch');
+    assert.ok(kachel(d), 'the tiles were replaced by a loading indicator');
     assert.equal(d.querySelector('#gallery .skeleton-grid'), null);
     los();
     assert.ok(await warte(() => kachel(d)));
@@ -100,13 +100,13 @@ test('the import query does not run unthrottled and not before login', () => {
   assert.match(
     fn,
     /if \(!loggedInAccount( \|\| document\.hidden)?\) return;/,
-    'Ohne Anmeldung gibt es nichts zu prüfen',
+    'Without login there is nothing to check',
   );
-  assert.match(fn, /ct\.includes\('application\/json'\)/, 'Die Antwort muss vor dem Parsen geprüft werden');
-  assert.match(fn, /setInterval\(doCheck, 30000\)/, 'Nach mehreren Fehlschlägen muss die Abfrage langsamer werden');
+  assert.match(fn, /ct\.includes\('application\/json'\)/, 'The response must be checked before parsing');
+  assert.match(fn, /setInterval\(doCheck, 30000\)/, 'After several failures the polling must slow down');
   assert.doesNotMatch(
     fn,
     /\.then\(r=>r\.json\(\)\)/,
-    'Direktes json() ohne Statusprüfung erzeugt bei HTML-Antworten einen Parsefehler',
+    'A direct json() without a status check produces a parse error on HTML responses',
   );
 });

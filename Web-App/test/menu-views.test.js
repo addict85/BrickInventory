@@ -45,7 +45,7 @@ test('every menu entry opens its area and loads it', async () => {
   try {
     await o.ruhig();
     const namen = entries(o.d).map(e => e.dataset.arg);
-    assert.equal(namen.length, 7, `${namen.length} Sichten im Menü statt sieben`);
+    assert.equal(namen.length, 7, `${namen.length} views in the menu instead of seven`);
     const error = [];
     for (const name of namen) {
       const vorher = o.aufrufe.length;
@@ -59,7 +59,7 @@ test('every menu entry opens its area and loads it', async () => {
     assert.deepEqual(
       o.error.map(e => e.message),
       [],
-      'ein Lader ist gescheitert',
+      'a loader failed',
     );
   } finally {
     o.w.close();
@@ -72,11 +72,11 @@ test('every view without a tab is reachable via the menu', async () => {
     const reiter = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
     const inMenu = new Set(entries(o.d).map(e => e.dataset.arg));
     const surfaces = [...o.d.querySelectorAll('.tab[id^="tab-"]')].map(t => t.id.slice(4));
-    assert.ok(surfaces.length >= 14, `nur ${surfaces.length} Flächen gefunden`);
+    assert.ok(surfaces.length >= 14, `only ${surfaces.length} surfaces found`);
     assert.deepEqual(
       surfaces.filter(n => !reiter.has(n) && !inMenu.has(n)),
       [],
-      'Diese Flächen öffnet weder ein Reiter noch das Menü',
+      'Neither a tab nor the menu opens these surfaces',
     );
   } finally {
     o.w.close();
@@ -89,9 +89,9 @@ test('only an admin sees settings and background jobs', async () => {
     try {
       await o.ruhig();
       const sichtbar = el => el.style.display !== 'none';
-      assert.equal(sichtbar(o.d.getElementById('ntab-settings')), admin, `Reiter Einstellungen, Verwalter=${admin}`);
+      assert.equal(sichtbar(o.d.getElementById('ntab-settings')), admin, `settings tab, admin=${admin}`);
       for (const el of o.d.querySelectorAll('.umenu-item.admin-only'))
-        assert.equal(sichtbar(el), admin, `${el.dataset.arg} im Menü, Verwalter=${admin}`);
+        assert.equal(sichtbar(el), admin, `${el.dataset.arg} in the menu, admin=${admin}`);
     } finally {
       o.w.close();
     }
@@ -104,7 +104,7 @@ test('every menu entry keeps its icon, even after translating', async () => {
   try {
     await o.ruhig();
     const buttonList = [...o.d.querySelectorAll('#umenu-pop button')];
-    assert.equal(buttonList.length, 10, `${buttonList.length} Einträge statt zehn`);
+    assert.equal(buttonList.length, 10, `${buttonList.length} entries instead of ten`);
     const falsch = [];
     for (const k of buttonList) {
       const ziel = k.querySelector('svg.ico use')?.getAttribute('href');
@@ -126,16 +126,19 @@ test('logout stands once, in the drawer, and logs out', async () => {
     await o.ruhig();
     const knopf = o.d.querySelectorAll('#btn-logout');
     assert.equal(knopf.length, 1);
-    assert.ok(o.d.getElementById('umenu-pop').contains(knopf[0]), 'Abmelden steht nicht in der Klappe');
-    assert.ok(knopf[0].previousElementSibling?.matches('hr.umenu-divider'), 'vor Abmelden fehlt der Trenner');
+    assert.ok(o.d.getElementById('umenu-pop').contains(knopf[0]), '„Abmelden“ is not in the dropdown');
+    assert.ok(
+      knopf[0].previousElementSibling?.matches('hr.umenu-divider'),
+      'the separator before „Abmelden“ is missing',
+    );
     knopf[0].click();
     await takt(30);
     await o.ruhig();
     assert.ok(
       o.aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/logout')),
-      'kein Abmeldeaufruf',
+      'no logout call',
     );
-    assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'die Anmeldemaske erscheint nicht');
+    assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'the login form does not appear');
   } finally {
     o.w.close();
   }
@@ -146,6 +149,6 @@ test('the header bar keeps its deliberate height', () => {
   // UI; min-height 32 px is the compact button size.
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   assert.match(css, /\.umenu\{[^}]*--header-height:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
-  assert.match(css, /\.umenu \.ubadge\{height:var\(--header-height\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');
-  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` hat eine feste Höhe bekommen.');
+  assert.match(css, /\.umenu \.ubadge\{height:var\(--header-height\)\}/, 'The name button no longer takes the height.');
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` has been given a fixed height.');
 });

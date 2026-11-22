@@ -76,9 +76,9 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
       await bis(ready ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
       await ruhig();
       const r = await b.auswerten(CHECK);
-      assert.deepEqual(r.fremd, [], `${name}: Markup aus Daten im DOM`);
-      assert.equal(r.xss, null, `${name}: Nutzlast ausgeführt`);
-      assert.ok(r.alsText, `${name}: Nutzlast steht nicht als Text da — prüft der Test noch etwas?`);
+      assert.deepEqual(r.fremd, [], `${name}: markup from data in the DOM`);
+      assert.equal(r.xss, null, `${name}: payload executed`);
+      assert.ok(r.alsText, `${name}: payload is not shown as text — does the test still check anything?`);
     });
   };
   await ansicht(

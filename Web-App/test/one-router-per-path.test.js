@@ -28,7 +28,7 @@ function routen(router, praefix = '') {
         raus.push(`${m.toUpperCase()} ${praefix}${layer.route.path === '/' ? '' : layer.route.path}`);
     } else if (layer.handle && Array.isArray(layer.handle.stack)) {
       // A subrouter with its own path could not be resolved here.
-      assert.ok(layer.slash, `Unterrouter mit eigenem Pfad unter ${praefix || '/'} — bitte ohne Pfad einhängen`);
+      assert.ok(layer.slash, `Sub-router with its own path under ${praefix || '/'} — please mount it without a path`);
       raus.push(...routen(layer.handle, praefix));
     }
   }
@@ -48,7 +48,7 @@ test('one router per mount point', () => {
   const je = new Map();
   for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)(?:\(d\))?\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
-  assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in startup/app.ts gefunden`);
+  assert.ok(je.size >= 2, `only ${je.size} router mounts found in startup/app.ts`);
   // Health and start status answer BEFORE the entrance (loginAtInbox),
   // the router of the API behind it: two places in the stack, hence two routers.
   const BEFORE_THE_INBOX = new Set(['buildGesundheitRouter']);
@@ -65,10 +65,10 @@ test('every route exactly once', () => {
     const modul = require('./helpers/sources').routerFrom(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
     alle.push(...routen(modul.default || modul, e.mount));
   }
-  assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
+  assert.ok(alle.length > 150, `only ${alle.length} routes found — does the search still work?`);
   assert.ok(
     alle.includes('GET /api/v2/settings/theme') && alle.includes('GET /api/v2/settings'),
-    'die Einstellungen fehlen in der Liste',
+    'the settings are missing from the list',
   );
   const gesehen = new Set(),
     doppelt = [];

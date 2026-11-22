@@ -85,10 +85,10 @@ test('price alert against a real database', async t => {
   await t.test('the direction means what it says', () => {
     // The only place in the module where a sign error arises.
     assert.equal(A.crosses('below', 199, 200), true);
-    assert.equal(A.crosses('below', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
+    assert.equal(A.crosses('below', 200, 200), false, 'exactly at the threshold is not below');
     assert.equal(A.crosses('below', 201, 200), false);
     assert.equal(A.crosses('above', 201, 200), true);
-    assert.equal(A.crosses('above', 200, 200), false, 'genau auf der Schwelle ist nicht darüber');
+    assert.equal(A.crosses('above', 200, 200), false, 'exactly at the threshold is not above');
     assert.equal(A.crosses('above', 199, 200), false);
   });
 
@@ -109,7 +109,7 @@ test('price alert against a real database', async t => {
       await assert.rejects(
         () => A.setAlert(U.ich, SN, 'EUR', eingabe),
         (/** @type {any} */ e) => String(e.code || '').startsWith('alert_'),
-        `${field}=${wert} wurde angenommen`,
+        `${field}=${wert} was accepted`,
       );
     }
   });
@@ -119,29 +119,29 @@ test('price alert against a real database', async t => {
 
     // 1. Above the threshold — nothing to report.
     await setPrice(250);
-    assert.equal(await pruefe(SN), 0, 'über der Schwelle darf nichts kommen');
+    assert.equal(await pruefe(SN), 0, 'above the threshold nothing may come');
 
     // 2. Falling below — one message.
     await setPrice(180);
-    assert.equal(await pruefe(SN), 1, 'die Unterschreitung wurde nicht gemeldet');
+    assert.equal(await pruefe(SN), 1, 'going below was not reported');
     assert.match(sent.at(-1).subject, /10179-1/);
 
     // 3. Stays below — NO second message. Without this marker an hourly
     //    price run would produce a mail every hour.
     await setPrice(170);
-    assert.equal(await pruefe(SN), 0, 'zweite Meldung ohne neuen Übergang');
+    assert.equal(await pruefe(SN), 0, 'second message without a new transition');
 
     // 4. Back above — the marker falls.
     await setPrice(260);
     assert.equal(await pruefe(SN), 0);
     const nach = (await A.alertsFor(U.ich, SN))[0];
-    assert.equal(nach.triggered, false, 'der Merker wurde nicht zurückgesetzt');
+    assert.equal(nach.triggered, false, 'the marker was not reset');
 
     // 5. Below again — again a message. Exactly this is swallowed by a
     //    blocking period („at most once a week"), and exactly this is the
     //    case that is interesting again.
     await setPrice(150);
-    assert.equal(await pruefe(SN), 1, 'das zweite Unterschreiten wurde verschluckt');
+    assert.equal(await pruefe(SN), 1, 'the second drop below was swallowed');
   });
 
   await t.test('a new threshold is a new question', async () => {
@@ -150,7 +150,7 @@ test('price alert against a real database', async t => {
     await setPrice(150);
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 160, condition: 'N' });
     assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false);
-    assert.equal(await pruefe(SN), 1, 'nach dem Ändern wurde nicht neu gemeldet');
+    assert.equal(await pruefe(SN), 1, 'after the change it was not reported again');
   });
 
   await t.test('the currency belongs to the threshold', async () => {
@@ -159,7 +159,7 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await A.setAlert(U.ich, SN, 'CHF', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(10, 'N', 'EUR'); // cheap, but in the wrong currency
-    assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
+    assert.equal(await pruefe(SN), 0, 'a price in a foreign currency triggered');
     await setPrice(10, 'N', 'CHF');
     assert.equal(await pruefe(SN), 1);
   });
@@ -171,7 +171,7 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(50, 'U');
-    assert.equal(await pruefe(SN), 0, 'der gebrauchte Preis hat den Neu-Alarm ausgelöst');
+    assert.equal(await pruefe(SN), 0, 'the used price triggered the new-condition alert');
     await setPrice(150, 'N');
     assert.equal(await pruefe(SN), 1);
   });
@@ -182,8 +182,8 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_alerts', []);
     await A.setAlert(U.ohnemail, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 0, 'ohne Adresse darf nichts verschickt werden');
-    assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
+    assert.equal(await pruefe(SN), 0, 'without an address nothing may be sent');
+    assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'the marker must be set anyway');
   });
 
   await t.test('a failed send leaves the flag unset', async () => {
@@ -195,14 +195,10 @@ test('price alert against a real database', async t => {
     sendingError = 'SMTP weg';
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 0);
-    assert.equal(
-      (await A.alertsFor(U.ich, SN))[0].triggered,
-      false,
-      'nach einem gescheiterten Versand darf der Merker nicht stehen',
-    );
+    assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false, 'after a failed send the marker must not be set');
     sendingError = null;
     // And on the next run it is tried again.
-    assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
+    assert.equal(await pruefe(SN), 1, 'the second attempt did not happen');
   });
 
   await t.test('fetch: without a marker nothing comes back, only the timestamp', async () => {
@@ -217,8 +213,8 @@ test('price alert against a real database', async t => {
 
     for (const ohne of [undefined, null, '', '   ', 'kein Datum']) {
       const r = await A.triggeredSince(U.ich, ohne);
-      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} lieferte Meldungen`);
-      assert.ok(r.now instanceof Date, 'der Zeitpunkt des Servers fehlt');
+      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} returned messages`);
+      assert.ok(r.now instanceof Date, "the server's timestamp is missing");
     }
   });
 
@@ -241,7 +237,7 @@ test('price alert against a real database', async t => {
     assert.equal(
       erste.alerts.length,
       1,
-      'die ausgelöste Schwelle fehlt. ' +
+      'the triggered threshold is missing. ' +
         `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
         `last_triggered_at=${(await db.get('SELECT last_triggered_at FROM price_alerts'))?.last_triggered_at}`,
     );
@@ -263,7 +259,7 @@ test('price alert against a real database', async t => {
     assert.deepEqual(
       zweite.alerts,
       [],
-      'dieselbe Meldung kam ein zweites Mal. ' +
+      'the same message came a second time. ' +
         `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
         `last_triggered_at=${erste.alerts[0]?.last_triggered_at?.toISOString?.() ?? erste.alerts[0]?.last_triggered_at}, ` +
         `erste.now=${erste.now?.toISOString?.() ?? erste.now}`,
@@ -288,15 +284,15 @@ test('price alert against a real database', async t => {
     assert.deepEqual(
       r.alerts,
       [],
-      'Die Meldung kam ein zweites Mal: in der Datenbank steht ' +
-        `${WITH_MICRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
-        'Die Mikrosekunden entscheiden — sie dürfen es nicht.',
+      'The message came a second time: the database holds ' +
+        `${WITH_MICRO}, the marker carries ${NUR_MILLI.toISOString()}. ` +
+        'The microseconds decide — they must not.',
     );
 
     // And the opposite direction must keep working: a message from the
     // NEXT millisecond is really new and belongs delivered.
     const r2 = await A.triggeredSince(U.ich, new Date('2026-09-19T20:29:58.526Z'));
-    assert.equal(r2.alerts.length, 1, 'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
+    assert.equal(r2.alerts.length, 1, 'A message after the marker was swallowed — the truncation goes too far');
   });
 
   await t.test('fetch: every account sees only its own alerts', async () => {
@@ -312,7 +308,7 @@ test('price alert against a real database', async t => {
     assert.equal(await pruefe(SN), 1);
 
     assert.equal((await A.triggeredSince(U.ich, vorher)).alerts.length, 1);
-    assert.deepEqual((await A.triggeredSince(U.ohnemail, vorher)).alerts, [], 'ein fremdes Konto sah die Meldung');
+    assert.deepEqual((await A.triggeredSince(U.ohnemail, vorher)).alerts, [], 'a foreign account saw the message');
   });
 
   await t.test("Marco's four steps — the APP also gets exactly one per transition", async () => {
@@ -335,31 +331,31 @@ test('price alert against a real database', async t => {
     };
 
     // 1. The price falls below the threshold.
-    assert.deepEqual(await lauf(180), [1, 1], 'Schritt 1: Mail UND Meldung erwartet');
+    assert.deepEqual(await lauf(180), [1, 1], 'step 1: mail AND message expected');
 
     // 2. Next price run, still below.
-    assert.deepEqual(await lauf(170), [0, 0], 'Schritt 2: nichts erwartet — kein neuer Übergang');
+    assert.deepEqual(await lauf(170), [0, 0], 'step 2: nothing expected — no new transition');
 
     // And a third run stays silent too. Without this step it would remain open whether
     // step 2 only depended on the unchanged number.
-    assert.deepEqual(await lauf(165), [0, 0], 'Schritt 2b: auch beim dritten Lauf nichts');
+    assert.deepEqual(await lauf(165), [0, 0], 'step 2b: nothing on the third run either');
 
     // 3. The price rises above again.
-    assert.deepEqual(await lauf(260), [0, 0], 'Schritt 3: das Zurückkehren selbst meldet nichts');
+    assert.deepEqual(await lauf(260), [0, 0], 'step 3: returning itself reports nothing');
 
     // 4. And falls below again — both paths report again.
-    assert.deepEqual(await lauf(150), [1, 1], 'Schritt 4: das zweite Unterschreiten wurde verschluckt');
+    assert.deepEqual(await lauf(150), [1, 1], 'step 4: the second drop below was swallowed');
 
     // For completeness: whoever does NOT fetch misses nothing. The
     // message stays ready as long as the marker is older — the phone
     // may be off.
     const spaeter = await A.triggeredSince(U.ich, new Date(Date.now() - 60_000));
-    assert.equal(spaeter.alerts.length, 1, 'eine Meldung verfällt, wenn die App gerade nicht abholt');
+    assert.equal(spaeter.alerts.length, 1, 'a message expires when the app is not fetching right now');
   });
 
   await t.test('deleting without an alert is not an error', async () => {
     assert.equal(await A.deleteAlert(U.ich, SN, 'N'), 1);
-    assert.equal(await A.deleteAlert(U.ich, SN, 'N'), 0, 'der zweite Aufruf darf nicht werfen');
+    assert.equal(await A.deleteAlert(U.ich, SN, 'N'), 0, 'the second call must not throw');
   });
 
   await db.pool.end().catch(() => {});

@@ -46,7 +46,7 @@ test('without a Rebrickable key: collection with hint banner', async t => {
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), false);
       assert.ok(
         aufrufe.some(a => /\/v2\/sets(\?|$)/.test(a.url)),
-        'Sammlung nicht geladen',
+        'collection not loaded',
       );
     });
     await t.test('link leads to the field', async () => {
@@ -71,7 +71,7 @@ test('dismissed it stays away — even in a new session', async () => {
     band.querySelector('[data-click="dismissRbHint"]').click();
     assert.equal(band.hidden, true);
     gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
-    assert.ok(gemerkt, 'nichts in localStorage gemerkt');
+    assert.ok(gemerkt, 'nothing remembered in localStorage');
   } finally {
     erst.w.close();
   }
@@ -145,7 +145,7 @@ test('after “Später” in the wizard the banner appears', async () => {
   try {
     await warte(() => d.getElementById('setup-modal').classList.contains('open'));
     assert.ok(await ruhig());
-    assert.equal(d.getElementById('rb-hint').hidden, true, 'Band über dem Assistenten');
+    assert.equal(d.getElementById('rb-hint').hidden, true, 'band above the wizard');
     d.querySelector('#setup-modal [data-click="setupLater"]').click();
     await takt(20);
     assert.equal(d.getElementById('rb-hint').hidden, false);

@@ -68,10 +68,13 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
     );
 
   await t.test('the store gets the idle period', async () => {
-    assert.equal(await wer(), true, 'Vorbedingung: angemeldet');
+    assert.equal(await wer(), true, 'precondition: logged in');
     const z = await row();
-    assert.ok(z, 'keine Sitzung in user_sessions');
-    assert.ok(Math.abs(z.rest - SESSION_IDLE_SEC) < 120, `Restlaufzeit ${z.rest} s statt ${SESSION_IDLE_SEC} s`);
+    assert.ok(z, 'no session in user_sessions');
+    assert.ok(
+      Math.abs(z.rest - SESSION_IDLE_SEC) < 120,
+      `remaining lifetime ${z.rest} s instead of ${SESSION_IDLE_SEC} s`,
+    );
   });
 
   await t.test('the cookie does not survive the browser', () => {

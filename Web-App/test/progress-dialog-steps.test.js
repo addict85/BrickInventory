@@ -114,7 +114,7 @@ function reachableSteps() {
       const params = bracketContent(src, m.index + m[0].length - 1);
       if (params === null || !/\bsendProgress\b/.test(params)) continue;
       const idx = argList(params).findIndex(a => /^sendProgress\b/.test(a));
-      assert.notEqual(idx, -1, `${datei}: sendProgress-Parameter von ${name} nicht gefunden`);
+      assert.notEqual(idx, -1, `${datei}: sendProgress parameter of ${name} not found`);
 
       // Does this function report steps at all?
       const rumpf = bracketContent(src, src.indexOf('{', m.index + m[0].length)) ?? '';
@@ -150,17 +150,17 @@ test('every step in the progress dialog can also reach the browser', () => {
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
   const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
-  assert.ok(faelle.length >= 3, `handleSseEvent hat nur ${faelle.length} Fälle — Anker stimmt nicht mehr`);
+  assert.ok(faelle.length >= 3, `handleSseEvent has only ${faelle.length} cases — the anchor is no longer right`);
 
   const erreichbar = reachableSteps();
-  assert.ok(erreichbar.size >= 4, `nur ${erreichbar.size} erreichbare Schritte gefunden — Anker stimmt nicht mehr`);
+  assert.ok(erreichbar.size >= 4, `only ${erreichbar.size} reachable steps found — the anchor is no longer right`);
 
   const tot = faelle.filter(f => !erreichbar.has(f));
   assert.deepEqual(
     tot,
     [],
-    `Der Dialog behandelt Schritte, die keine Serverstelle mehr sendet: ${tot.join(', ')}. ` +
-      'Entweder sendet der Server sie wieder, oder der Fall gehört aus handleSseEvent entfernt.',
+    `The dialog handles steps that no server place sends any more: ${tot.join(', ')}. ` +
+      'Either the server sends them again, or the case should be removed from handleSseEvent.',
   );
 });
 
@@ -168,19 +168,19 @@ test('every addressed ps identifier also exists in the dialog', () => {
   const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
   // setStep() assembles the identifier from 'ps-' + name; collect both forms.
   for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
-  assert.ok(ids.size >= 2, `nur ${ids.size} ps-Kennungen gefunden — Anker stimmt nicht mehr`);
+  assert.ok(ids.size >= 2, `only ${ids.size} ps identifiers found — the anchor is no longer right`);
 
   const absent = [...ids].filter(id => !html.includes(`id="${id}"`));
-  assert.deepEqual(absent, [], `Frontend spricht Elemente an, die es in index.html nicht gibt: ${absent.join(', ')}`);
+  assert.deepEqual(absent, [], `The frontend addresses elements that do not exist in index.html: ${absent.join(', ')}`);
 });
 
 test('no language key for the removed steps remains', () => {
   for (const datei of ['de.js', 'en.js']) {
     const s = fs.readFileSync(path.join(ROOT, 'public', 'locales', datei), 'utf8');
     for (const key of ['prog.step_instr', 'prog.step_parts', 'prog.step_partimgs', 'prog.step_price']) {
-      assert.ok(!s.includes(`'${key}'`), `${datei}: ${key} gehört zu einem entfernten Schritt`);
+      assert.ok(!s.includes(`'${key}'`), `${datei}: ${key} belongs to a removed step`);
     }
-    assert.ok(s.includes("'prog.hint_background'"), `${datei}: Hinweis auf die Hintergrundarbeit fehlt`);
+    assert.ok(s.includes("'prog.hint_background'"), `${datei}: the hint about the background work is missing`);
   }
 });
 
@@ -202,7 +202,7 @@ test('after the last event no item hangs on “active”', () => {
       route.indexOf('async function supplementInStream('),
       route.indexOf('export function buildSetsImportRouter'),
     );
-  assert.ok(stream.includes('setSupplement('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
+  assert.ok(stream.includes('setSupplement('), 'acquisition stream not found — the anchor is no longer right');
   const erfassen = lies('src/sets/addSet.ts');
   const katalog = erfassen.slice(
     erfassen.indexOf('async function fetchCatalog('),
@@ -211,7 +211,7 @@ test('after the last event no item hangs on “active”', () => {
   const steps = t => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map(m => m[1]);
   const [ago, nach] = stream.split('setSupplement(');
   const sequence = [...steps(ago), ...steps(katalog), ...steps(nach)];
-  assert.ok(sequence.length >= 4, `der Strom meldet nur ${sequence.length} Schritte — Anker stimmt nicht mehr`);
+  assert.ok(sequence.length >= 4, `the stream reports only ${sequence.length} steps — the anchor is no longer right`);
 
   // ── Switching logic, as handleSseEvent() executes it ───────────────────────
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
@@ -235,19 +235,19 @@ test('after the last event no item hangs on “active”', () => {
   assert.deepEqual(
     haengt,
     [],
-    `Diese Punkte bleiben am Ende auf „aktiv" hängen: ${haengt.join(', ')}. ` +
-      'Entweder sendet der Server ein abschliessendes Ereignis dafür, oder der ' +
-      'Punkt gehört nicht in den Dialog — er zeigt sonst dauerhaft Arbeit an, ' +
-      'auf die niemand wartet.',
+    `These items stay stuck on „aktiv“ at the end: ${haengt.join(', ')}. ` +
+      'Either the server sends a final event for them, or the ' +
+      'item does not belong in the dialog — otherwise it permanently shows work ' +
+      'nobody is waiting for.',
   );
 
   // And every point that EXISTS in the dialog must also be reached by the flow.
   const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map(m => m[1]);
-  assert.ok(gezeigt.length >= 2, `nur ${gezeigt.length} Punkte im Dialog — Anker stimmt nicht mehr`);
+  assert.ok(gezeigt.length >= 2, `only ${gezeigt.length} items in the dialog — the anchor is no longer right`);
   const neverTouched = gezeigt.filter(g => !(g in condition));
   assert.deepEqual(
     neverTouched,
     [],
-    `Diese Punkte stehen im Dialog, werden aber nie geschaltet: ${neverTouched.join(', ')}`,
+    `These items are in the dialog but are never switched: ${neverTouched.join(', ')}`,
   );
 });

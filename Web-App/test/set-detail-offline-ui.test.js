@@ -42,9 +42,9 @@ test('offline: set detail from the loaded collection, details as pairs', async (
     assert.ok(d.getElementById('set-modal').classList.contains('open'), 'offline: Dialog zu');
     assert.ok([...d.querySelectorAll('#toasts .toast')].some(t => /zuletzt geladenen Stand/.test(t.textContent)));
     const liste = d.querySelector('#m-det dl');
-    assert.ok(liste, 'kein dl');
+    assert.ok(liste, 'no dl');
     const zeilen = liste.querySelectorAll(':scope > .dr');
-    assert.ok(zeilen.length >= 7, `nur ${zeilen.length} Zeilen`);
+    assert.ok(zeilen.length >= 7, `only ${zeilen.length} rows`);
     for (const z of zeilen)
       assert.deepEqual(
         [...z.children].map(k => k.tagName),
@@ -87,7 +87,7 @@ test('household: every quantity an output with the account in the name', async (
   try {
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.querySelectorAll('#m-quantity output.quantity-number').length === 2), 'Haushalt');
+    assert.ok(await warte(() => d.querySelectorAll('#m-quantity output.quantity-number').length === 2), 'household');
     const namen = [...d.querySelectorAll('#m-quantity output.quantity-number')].map(o => o.getAttribute('aria-label'));
     assert.equal(namen.length, 2);
     assert.match(namen.find(n => /lena/.test(n)) || '', /^Anzahl: lena/);

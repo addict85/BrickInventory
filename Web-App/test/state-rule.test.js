@@ -21,5 +21,5 @@ test('unknown values become the default', () => {
   assert.equal(condition('X'), 'N');
   assert.equal(condition(null, 'U'), 'U');
   assert.equal(condition('', 'U'), 'U');
-  assert.equal(condition('N', 'U'), 'N', 'eine gültige Angabe schlägt die Vorgabe');
+  assert.equal(condition('N', 'U'), 'N', 'a valid value beats the default');
 });

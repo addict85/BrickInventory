@@ -60,8 +60,8 @@ test('add set: comma, dot and thousands', async () => {
       ['  ', null],
     ]) {
       const r = await setAcquire(o, ein);
-      assert.equal(r.error, '', `„${ein}“ gemeldet: ${r.error}`);
-      assert.equal(r.wert, aus, `„${ein}“ ging als ${r.wert} hinaus`);
+      assert.equal(r.error, '', `„${ein}“ reported: ${r.error}`);
+      assert.equal(r.wert, aus, `„${ein}“ went out as ${r.wert}`);
     }
   } finally {
     o.w.close();
@@ -78,7 +78,7 @@ test('English: comma as thousands, dot as decimal', async () => {
       ['1,299.95', 1299.95],
     ]) {
       const r = await setAcquire(o, ein);
-      assert.equal(r.wert, aus, `„${ein}“ ging als ${r.wert} hinaus`);
+      assert.equal(r.wert, aus, `„${ein}“ went out as ${r.wert}`);
     }
   } finally {
     o.w.close();
@@ -90,7 +90,7 @@ test('nonsense is reported at the field and not sent', async () => {
   try {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
       const r = await setAcquire(o, ein);
-      assert.equal(r.gesendet, false, `„${ein}“ ging an den Server`);
+      assert.equal(r.gesendet, false, `„${ein}“ went to the server`);
       // Readable, only negative: own text (UX check 20).
       assert.match(r.error, ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/, `„${ein}“`);
       assert.equal(r.field.getAttribute('aria-invalid'), 'true');
@@ -146,13 +146,13 @@ test("purchase price dialog: display in the language's form, comma saved, marker
     await warte(() => o.d.getElementById('acq-price-7'));
     const field = o.d.getElementById('acq-price-7');
     assert.equal(field.value, '129,99');
-    assert.equal(o.d.getElementById('acq-ok-7').hidden, true, 'Marke vor dem Speichern sichtbar');
+    assert.equal(o.d.getElementById('acq-ok-7').hidden, true, 'marker visible before saving');
     field.value = '149,95';
     field.dispatchEvent(new o.w.FocusEvent('blur'));
     await warte(() => puts.length);
     assert.deepEqual(puts[0], { purchase_price: 149.95 });
     await warte(() => o.d.getElementById('acq-ok-7')?.hidden === false);
-    assert.equal(o.d.getElementById('acq-ok-7').hidden, false, 'keine Marke „Gespeichert“ nach dem Speichern');
+    assert.equal(o.d.getElementById('acq-ok-7').hidden, false, 'no „Gespeichert“ marker after saving');
     assert.match(o.d.getElementById('acq-ok-7').textContent, /Gespeichert/);
   } finally {
     o.w.close();

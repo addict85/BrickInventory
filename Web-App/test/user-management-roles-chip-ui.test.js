@@ -29,8 +29,8 @@ const row = (d, name) =>
   [...d.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === name);
 
 async function confirm(d) {
-  assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
-  assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
+  assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
+  assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
   const titel = d.getElementById('cd-title').textContent;
   d.getElementById('cd-pw').value = 'mein-passwort';
   d.getElementById('cd-confirm').click();
@@ -53,15 +53,15 @@ test('X on the administrator chip revokes after confirmation', async () => {
     await reiter(w, 'settings');
     await warte(() => row(d, 'carla'));
     const chip = row(d, 'carla').querySelector('.role-chip');
-    assert.equal(chip?.textContent.trim(), 'Administrator', 'Chip mit dem Wort');
+    assert.equal(chip?.textContent.trim(), 'Administrator', 'chip with the word');
     const x = chip.querySelector('button.chip-remove');
-    assert.ok(x, 'X im Chip');
+    assert.ok(x, 'X in the chip');
     assert.equal(x.getAttribute('aria-label'), 'Administratorrechte von carla entziehen');
     assert.equal(x.getAttribute('type'), 'button');
     assert.equal(
       row(d, 'carla').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'),
       null,
-      'kein Ernennen am Administrator',
+      'no promoting on the administrator',
     );
 
     x.click();
@@ -72,7 +72,7 @@ test('X on the administrator chip revokes after confirmation', async () => {
     // Against an administrator it only takes effect after 24 h; the list shows it.
     assert.ok(
       await warte(() => /Angekündigt: Administratorrechte entziehen ab/.test(row(d, 'carla')?.textContent || '')),
-      'Angekündigt fehlt nach der Antwort',
+      '„Angekündigt“ is missing after the response',
     );
     assert.match(d.getElementById('toasts').textContent, /Die Änderung gilt ab/);
   } finally {
@@ -90,9 +90,9 @@ test('default chip without X, + administrator appoints', async () => {
     await warte(() => row(d, 'ben'));
     const z = row(d, 'ben');
     assert.equal(z.querySelector('.rb.ru')?.textContent.trim(), 'Standard');
-    assert.equal(z.querySelector('.chip-remove'), null, 'Standard-Chip ohne X');
+    assert.equal(z.querySelector('.chip-remove'), null, 'standard chip without X');
     const k = z.querySelector('button[data-click="toggleAdmin"][data-arg2="0"]');
-    assert.ok(k, 'Knopf zum Ernennen');
+    assert.ok(k, 'button for promoting');
     assert.equal(k.textContent.trim(), 'Administrator');
     assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-plus');
     assert.equal(k.getAttribute('aria-label'), 'ben zum Administrator ernennen');
@@ -115,8 +115,8 @@ test('own account: chip without X', async () => {
     await warte(() => row(d, 'anna'));
     const z = row(d, 'anna');
     assert.equal(z.querySelector('.role-chip')?.textContent.trim(), 'Administrator');
-    assert.equal(z.querySelectorAll('button').length, 0, 'kein Knopf gegen das eigene Konto');
-    assert.ok(row(d, 'carla').querySelector('.chip-remove'), 'Testdaten: ein fremder Administrator hat das X');
+    assert.equal(z.querySelectorAll('button').length, 0, 'no button against the own account');
+    assert.ok(row(d, 'carla').querySelector('.chip-remove'), 'test data: a foreign administrator has the X');
   } finally {
     w.close();
   }
@@ -127,9 +127,9 @@ test('a single administrator: no X', async () => {
   try {
     await reiter(w, 'settings');
     await warte(() => row(d, 'ben'));
-    assert.equal(d.querySelectorAll('#users-tbl .role-chip').length, 1, 'Testdaten: ein Administrator-Chip');
-    assert.equal(d.querySelectorAll('#users-tbl .chip-remove').length, 0, 'den letzten Administrator entzieht kein X');
-    assert.ok(row(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'ernennen bleibt möglich');
+    assert.equal(d.querySelectorAll('#users-tbl .role-chip').length, 1, 'test data: an administrator chip');
+    assert.equal(d.querySelectorAll('#users-tbl .chip-remove').length, 0, 'no X revokes the last administrator');
+    assert.ok(row(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'promoting stays possible');
   } finally {
     w.close();
   }

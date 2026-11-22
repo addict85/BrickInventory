@@ -86,7 +86,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
       assert.equal(r.body.change_password, false);
       assert.deepEqual(r.body.sources, { rebrickable: false, brickset: false, bricklink: false });
       const n = await callFn(N, '/setup');
-      assert.equal(n.status, 403, 'Nicht-Verwalter sieht den Stand');
+      assert.equal(n.status, 403, 'a non-admin sees the state');
       assert.equal(n.body.code, 'admins_only');
     });
 
@@ -96,27 +96,27 @@ test('setup wizard', { concurrency: 1 }, async t => {
       const r = await callFn(V, '/setup');
       assert.equal(r.body.open, false);
       assert.equal(r.body.sources.rebrickable, true);
-      assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
+      assert.ok(!JSON.stringify(r.body).includes('abc'), 'The state gives out the key');
     });
 
     await t.test('“Fertig” closes it even if something is still missing', async () => {
       await db.run('DELETE FROM global_settings WHERE key = $1', ['rebrickable_api_key']);
       assert.equal((await callFn(V, '/setup')).body.open, true);
       assert.equal((await callFn(V, '/setup/complete', {})).status, 200);
-      assert.equal((await callFn(V, '/setup')).body.open, false, 'erscheint nach Fertig weiter');
+      assert.equal((await callFn(V, '/setup')).body.open, false, 'still appears after finishing');
     });
 
     await t.test('test button: only known sources, without a key an understandable refusal', async () => {
       for (const q of ['gibtsnicht', '__proto__', 'constructor']) {
         const r = await callFn(V, '/test-source', { source: q });
         assert.equal(r.status, 400, q);
-        assert.equal(r.body.code, 'source_unknown', `${q} gilt als Quelle`);
+        assert.equal(r.body.code, 'source_unknown', `${q} counts as a source`);
       }
       const bs = await callFn(V, '/test-source', { source: 'brickset' });
       assert.equal(bs.status, 400);
-      assert.equal(bs.body.code, 'source_without_key', 'fehlender Schlüssel in Klartext');
+      assert.equal(bs.body.code, 'source_without_key', 'missing key in plain text');
       assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
-      assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
+      assert.match(bs.body.details, /nicht konfiguriert/, 'the raw reason is under „Details“');
       const bl = await callFn(V, '/test-source', { source: 'bricklink' });
       assert.equal(bl.body.code, 'source_without_key');
       assert.match(bl.body.details, /nicht vollständig/);

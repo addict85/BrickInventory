@@ -62,7 +62,7 @@ test('MAIL_CONSOLE_WITH_TOKEN=1 in production: startup refused', { timeout: 50_0
   const r = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.equal(r.code, 1, r.log.slice(-400));
   assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
-  assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  assert.doesNotMatch(r.log, /Database initialisation failed/, 'the ban comes before the database');
   const draft = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1', NODE_ENV: 'development' });
   assert.doesNotMatch(draft.log, /MAIL_CONSOLE_WITH_TOKEN/);
   assert.match(draft.log, /Database initialisation failed/);
@@ -72,7 +72,7 @@ test('COOKIE_SECURE=0 in production: warning line at startup', { timeout: 50_000
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'http://lego.lan' };
   const mit = await starte({ ...db, COOKIE_SECURE: '0' });
   assert.match(mit.log, /⚠️ \[start\] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http/);
-  assert.match(mit.log, /Database initialisation failed/, 'nur eine Warnung, kein Verbot');
+  assert.match(mit.log, /Database initialisation failed/, 'only a warning, no ban');
   const ohne = await starte({ ...db, COOKIE_SECURE: '1' });
   assert.doesNotMatch(ohne.log, /COOKIE_SECURE/);
 });
@@ -90,7 +90,7 @@ test('remote database without verified TLS: warning', () => {
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
   assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);
   assert.deepEqual(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=verify-full' }), []);
-  assert.equal(tls({ PGHOST: '192.168.1.20' }).length, 1, 'eine Adresse im LAN');
+  assert.equal(tls({ PGHOST: '192.168.1.20' }).length, 1, 'an address in the LAN');
   for (const nah of [
     {},
     { PGHOST: 'postgres' },

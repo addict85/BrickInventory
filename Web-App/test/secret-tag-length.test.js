@@ -41,5 +41,5 @@ test('a 4-byte tag is not accepted, a full one is', () => {
   assert.equal(g.decrypt(`v2:${kurz.toString('base64')}`, k), null);
   assert.equal(g.decryptBuffer(Buffer.concat([Buffer.from('BIENC2\n'), kurz]), k), null);
   assert.equal(g.decrypt(g.encrypt('geheim', k), k), 'geheim');
-  assert.equal(g.decrypt(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'zu kurz');
+  assert.equal(g.decrypt(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'too short');
 });

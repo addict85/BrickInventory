@@ -24,7 +24,7 @@ const id = s => `"${String(s).replace(/"/g, '""')}"`;
       await c.query(`GRANT CONNECT, TEMPORARY ON DATABASE ${id(name)} TO ${id(r.app.name)}, ${id(r.system.name)}`);
       await c.query(`GRANT CONNECT ON DATABASE ${id(name)} TO ${id(r.systemweb.name)}`);
     } else if (was === 'loeschen') await c.query(`DROP DATABASE IF EXISTS ${id(name)} WITH (FORCE)`);
-    else throw new Error(`unbekannt: ${was}`);
+    else throw new Error(`unknown: ${was}`);
   } finally {
     await c.end();
   }

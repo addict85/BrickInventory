@@ -44,27 +44,27 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     const figList = await readManualMinifigs([uid], uid);
     const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === TEIL);
     const figur = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
-    assert.ok(teil, 'Das Teil steht nicht in der Liste');
-    assert.ok(figur, 'Die Figur steht nicht in der Liste');
+    assert.ok(teil, 'The part is not in the list');
+    assert.ok(figur, 'The figure is not in the list');
 
     // Without input nothing stands in „Preis/Stk" — for both.
-    assert.equal(teil.unit_price, null, 'Das Teil behauptet eine Preiseingabe');
-    assert.equal(figur.unit_price, null, 'Die Figur behauptet eine Preiseingabe');
+    assert.equal(teil.unit_price, null, 'The part claims a price input');
+    assert.equal(figur.unit_price, null, 'The figure claims a price input');
 
     // The actual finding: the display value carries 0, not NULL — and that
     // equally for both.
-    assert.equal(Number(teil.purchase_price), 0, `Das Teil hat ${teil.purchase_price} statt 0 im Kaufpreis`);
+    assert.equal(Number(teil.purchase_price), 0, `The part has ${teil.purchase_price} instead of 0 as purchase price`);
     assert.equal(
       Number(figur.purchase_price),
       0,
-      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. src/finances/financeCalc.ts ` +
-        'liest NULL als „kein Kaufpreis erfasst" und 0 als „0 erfasst" — die Figur ' +
-        'verhielte sich damit anders als das Teil daneben.',
+      `The figure has ${figur.purchase_price} instead of 0 as purchase price. src/finances/financeCalc.ts ` +
+        'reads NULL as „no purchase price recorded" and 0 as „0 recorded" — the figure ' +
+        'would thus behave differently from the part next to it.',
     );
     assert.equal(
       figur.purchase_price === null,
       teil.purchase_price === null,
-      'Teil und Figur sind sich uneins, ob ein unbekannter Marktpreis NULL oder 0 ist',
+      'Part and figure disagree whether an unknown market price is NULL or 0',
     );
 
     // And the finer half: the ACQUISITION holds NULL, not 0.
@@ -80,18 +80,18 @@ test('without market price: display value 0, acquisition NULL — for part AND f
       uid,
       FIG,
     ]);
-    assert.ok(teilErf, 'Zum Teil wurde keine Erfassung angelegt');
-    assert.ok(figErf, 'Zur Figur wurde keine Erfassung angelegt');
+    assert.ok(teilErf, 'No acquisition was created for the part');
+    assert.ok(figErf, 'No acquisition was created for the figure');
     assert.equal(
       teilErf.unit_price,
       null,
-      `Die Teil-Erfassung trägt ${teilErf.unit_price}; die 0 ist ein Anzeigewert ` + 'und gehört hier nicht hin',
+      `The part acquisition carries ${teilErf.unit_price}; the 0 is a display value ` + 'and does not belong here',
     );
     assert.equal(
       figErf.unit_price,
       null,
-      `Die Figuren-Erfassung trägt ${figErf.unit_price} statt NULL — die Umwandlung ` +
-        'stand in routes/minifigs.ts an einer von drei Schreibstellen',
+      `The figure acquisition carries ${figErf.unit_price} instead of NULL — the conversion ` +
+        'was in routes/minifigs.ts at one of three write sites',
     );
   } finally {
     await db.run('DELETE FROM part_acquisitions WHERE user_id=$1', [uid]).catch(() => {});

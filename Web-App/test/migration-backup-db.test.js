@@ -91,31 +91,31 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     assert.notEqual(
       (await client.query('SHOW statement_timeout')).rows[0].statement_timeout,
       '0',
-      'Die Verbindung hat keine Zeitgrenze — dann prüft die Probe nichts',
+      'The connection has no timeout — then the probe checks nothing',
     );
     const applied = await runMigrations(client, { sichern: true });
     assert.deepEqual(applied, [PROBE]);
     const neu = (await backups()).filter(s => !vorher.has(s));
-    assert.equal(neu.length, 1, 'keine Sicherung vor der Migration');
+    assert.equal(neu.length, 1, 'no backup before the migration');
     const kopie = await db.get(`SELECT username FROM ${neu[0]}.users WHERE username = $1`, [NAME]);
-    assert.ok(kopie, 'Die Sicherung enthält die Konten nicht');
+    assert.ok(kopie, 'The backup does not contain the accounts');
     const tabellen = (
       await db.all(`SELECT table_name FROM information_schema.tables WHERE table_schema = $1`, [neu[0]])
     ).map(r => r.table_name);
-    assert.ok(tabellen.includes('set_acquisitions'), `Tabellen mit user_id fehlen: ${tabellen.join(', ')}`);
-    assert.ok(!tabellen.includes('set_catalog'), 'Der Katalog gehört nicht in die Sicherung');
+    assert.ok(tabellen.includes('set_acquisitions'), `Tables with user_id are missing: ${tabellen.join(', ')}`);
+    assert.ok(!tabellen.includes('set_catalog'), 'The catalogue does not belong in the backup');
     for (const n of ['account_links', 'account_link_invites', 'household_former_links', 'admin_log'])
-      assert.ok(tabellen.includes(n), `${n} fehlt in der Sicherung`);
+      assert.ok(tabellen.includes(n), `${n} is missing in the backup`);
     assert.ok(
       await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),
-      'Die Haushaltsverknüpfung fehlt in der Sicherung',
+      'The household link is missing in the backup',
     );
     // The copy carries no policy: without RLS the runtime role would read hashes and tokens of all accounts.
     const open = await db.all(
       `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r' AND NOT relrowsecurity`,
       [neu[0]],
     );
-    assert.deepEqual(open, [], 'Kopien ohne Zeilenschutz');
+    assert.deepEqual(open, [], 'copies without row protection');
   });
 
   const SHORT = { fristMs: 200, versuche: 2 };
@@ -162,7 +162,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     const frei = await holdLock(TABLE_NAME);
     const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { sperre: SHORT }));
     await frei();
-    assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
+    assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
     assert.match(
       ergebnis.message,
       new RegExp(
@@ -171,14 +171,14 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     );
     assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
     assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [LOCK_PROBE]), undefined);
-    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [LOCK_PROBE], 'ohne Sperre läuft sie durch');
+    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [LOCK_PROBE], 'without a lock it runs through');
   });
 
   await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {
     const frei = await holdLock('users');
     const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { fristMs: 200, versuche: 1 }));
     await frei();
-    assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
+    assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
     assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
   });
 

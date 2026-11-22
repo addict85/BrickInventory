@@ -58,10 +58,10 @@ function checkAtomic(spur, ziel) {
   assert.equal(spur.length, 1, `${spur.length} Umbenennungen`);
   const [r] = spur;
   assert.equal(r.nach, ziel);
-  assert.match(r.von, /\.tmp\.jpg$/, 'der temporäre Name endet nicht auf .tmp.jpg');
-  assert.equal(path.dirname(r.von), path.dirname(ziel), 'temporär in einem anderen Ordner: rename wäre nicht atomar');
-  assert.equal(r.targetDa, false, 'die Vorschau lag schon vor dem Umbenennen unter ihrem Namen');
-  assert.equal(r.groesse, fs.statSync(ziel).size, 'umbenannt wurde eine unfertige Datei');
+  assert.match(r.von, /\.tmp\.jpg$/, 'the temporary name does not end in .tmp.jpg');
+  assert.equal(path.dirname(r.von), path.dirname(ziel), 'temporary in another folder: rename would not be atomic');
+  assert.equal(r.targetDa, false, 'the preview was already under its name before the rename');
+  assert.equal(r.groesse, fs.statSync(ziel).size, 'an unfinished file was renamed');
   assert.deepEqual(
     fs.readdirSync(path.dirname(ziel)).filter(f => f.endsWith('.tmp.jpg')),
     [],
@@ -143,8 +143,8 @@ test('an unusably small preview is discarded, the original is delivered', async 
     streamFileToResponse: (_r, datei) => geliefert.push(datei),
   });
   assert.equal(answered, true);
-  assert.deepEqual(geliefert, [cacheFile], 'nicht das Original ausgeliefert');
+  assert.deepEqual(geliefert, [cacheFile], 'the original was not served');
   assert.equal(kopf['content-length'], '5000');
-  assert.equal(fs.existsSync(thumbFile), false, 'die kaputte Vorschau liegt noch da');
-  assert.equal(noted, 1, 'die neue Vorschau ist nicht vorgemerkt');
+  assert.equal(fs.existsSync(thumbFile), false, 'the broken preview is still there');
+  assert.equal(noted, 1, 'the new preview is not queued');
 });

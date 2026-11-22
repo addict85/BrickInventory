@@ -45,15 +45,11 @@ test('rebuild gives way to a held account lock', async t => {
     await halter.query('BEGIN');
     await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, u]);
     await PS.rebuildSummary(u, { v: 7 });
-    assert.deepEqual(
-      await state(),
-      { zeilen: 1, version: null },
-      'Bei gehaltener Sperre darf nichts geschrieben werden',
-    );
+    assert.deepEqual(await state(), { zeilen: 1, version: null }, 'While the lock is held nothing may be written');
     await halter.query('COMMIT');
 
     await PS.rebuildSummary(u, { v: 7 });
-    assert.deepEqual(await state(), { zeilen: 0, version: 7 }, 'Ohne Sperre baut rebuild neu');
+    assert.deepEqual(await state(), { zeilen: 0, version: 7 }, 'Without a lock rebuild builds anew');
   } finally {
     await halter.query('ROLLBACK').catch(() => {});
     halter.release();

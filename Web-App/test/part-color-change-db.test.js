@@ -163,18 +163,18 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
 
     const a = await changeOne('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body.combined, false, 'Es gab keine Zielzeile — nichts zusammenzulegen');
+    assert.equal(a.body.combined, false, 'There was no target row — nothing to merge');
 
     assert.deepEqual(
       (await holding()).map(r => r.color_id),
       [4],
-      'Nach der Änderung muss GENAU EINE Zeile dastehen, und zwar in Farbe 4',
+      'After the change there must be EXACTLY ONE row, and in colour 4',
     );
     assert.deepEqual(
       await acqList(),
       [{ farbe: 4, quantity: 10, tag: (await acqList())[0].tag }],
-      'Die Erfassung muss mitgezogen sein — bleibt sie in Farbe 0 zurück, ist der ' +
-        'Kaufpreis vom Teil abgeschnitten und die Stückzahl der neuen Zeile null',
+      'The acquisition must have moved along — if it stays behind in colour 0, the ' +
+        'purchase price is cut off from the part and the quantity of the new row is zero',
     );
 
     // Color label and color code: without a catalog entry for (3001, 4) the
@@ -188,7 +188,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       kat?.color_name,
       'Red',
-      `Der Farbkatalog nennt die Farbe „${kat?.color_name}" — erwartet „Red" aus rb_colors`,
+      `The colour catalogue names the colour „${kat?.color_name}" — expected „Red" from rb_colors`,
     );
     assert.equal(kat?.color_hex, 'C91A09');
   });
@@ -215,14 +215,14 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       a.body.combined,
       true,
-      'Die Zielfarbe gab es schon — die Antwort muss das sagen, sonst hält der ' +
-        'Aufrufer eine Vereinigung für einen Umzug',
+      'The target colour already existed — the response must say so, otherwise the ' +
+        'caller mistakes a merge for a move',
     );
 
     assert.deepEqual(
       (await holding()).map(r => r.color_id),
       [4],
-      'Das Doppelte ist der ganze Grund für diese Funktion: Danach darf nur ' + 'die Zeile in Farbe 4 übrig sein',
+      'The duplicate is the whole reason for this function: afterwards only ' + 'the row in colour 4 may remain',
     );
     const erf = await acqList();
     assert.deepEqual(
@@ -231,9 +231,9 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         { farbe: 4, quantity: 7 },
         { farbe: 4, quantity: 10 },
       ],
-      `Beide Erfassungen müssen in Farbe 4 stehen und BEIDE erhalten bleiben — ` +
-        `da steht ${JSON.stringify(erf)}. Zusammen sind es 17 Stück, und keiner ` +
-        'der beiden Kaufpreise darf verschwinden.',
+      `Both acquisitions must be in colour 4 and BOTH must be kept — ` +
+        `there is ${JSON.stringify(erf)}. Together they are 17 pieces, and neither ` +
+        'of the two purchase prices may disappear.',
     );
   });
 
@@ -259,15 +259,15 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       a.status,
       200,
-      `Status ${a.status}: ${JSON.stringify(a.body)} — bricht die Anfrage am ` +
-        'eindeutigen Tagesindex ab, hängt die Korrektur von der Uhr ab.',
+      `status ${a.status}: ${JSON.stringify(a.body)} — if the request aborts on the ` +
+        'unique day index, the correction depends on the clock.',
     );
-    assert.equal(a.body.united, 1, 'Eine Erfassung musste addiert werden');
+    assert.equal(a.body.united, 1, 'An acquisition had to be added up');
     assert.deepEqual(
       (await acqList()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [{ farbe: 4, quantity: 17 }],
-      'Aus 7 und 10 vom gleichen Tag muss EINE Erfassung mit 17 werden — ' +
-        'verschwindet eine der beiden, fehlen Marco Stücke.',
+      '7 and 10 from the same day must become ONE acquisition with 17 — ' +
+        'if one of the two disappears, Marco is missing pieces.',
     );
   });
 
@@ -290,7 +290,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.deepEqual(
       (await acqList()).map(e => e.quantity).sort((x, y) => x - y),
       [7, 10],
-      'Seit Migration 0047 kein Mischpreis: zwei Käufe, zwei Zeilen, zusammen 17',
+      'Since migration 0047 no mixed price: two purchases, two rows, 17 in total',
     );
   });
 
@@ -310,7 +310,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       zeilen[0].storage_id,
       ORT,
-      '„Kiste 3" ist eine Angabe des Menschen und darf durch eine Farbkorrektur ' + 'nicht verschwinden',
+      '„Kiste 3“ is a human entry and must not disappear because of a colour ' + 'correction',
     );
   });
 
@@ -325,14 +325,14 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       a.status,
       400,
-      `Status ${a.status} — fehlt die Farbe, macht V.colorId() daraus eine 0, und ` +
-        '0 IST eine Farbe („ohne Angabe"). Das wäre ein stilles Leeren mit ' +
-        'Erfolgsmeldung.',
+      `status ${a.status} — if the colour is missing, V.colorId() turns it into 0, and ` +
+        '0 IS a colour („ohne Angabe“). That would be a silent clearing with a ' +
+        'success message.',
     );
     assert.deepEqual(
       (await holding()).map(r => r.color_id),
       [4],
-      'Die abgelehnte Anfrage darf nichts geändert haben',
+      'The rejected request must not have changed anything',
     );
   });
 
@@ -348,14 +348,14 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       a.status,
       404,
-      `Status ${a.status} — die Farbe eines Set-Teils kommt aus der Teileliste ` +
-        'von Rebrickable. Sie hier zu ändern hiesse, die Teileliste zu ' +
-        'bestreiten, und der nächste Set-Import setzte sie zurück.',
+      `status ${a.status} — the colour of a set part comes from the Rebrickable ` +
+        'parts list. Changing it here would mean disputing the parts list, ' +
+        'and the next set import would reset it.',
     );
     assert.deepEqual(
       (await holding()).map(r => r.color_id),
       [0],
-      'Das Set-Teil darf nicht angetastet worden sein',
+      'The set part must not have been touched',
     );
   });
 
@@ -380,12 +380,12 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.deepEqual(
       { v: a.body.moved, u: a.body.united, z: a.body.combined },
       { v: 0, u: 0, z: false },
-      'Gleiche Farbe heisst: nichts verschoben, nichts vereint, nichts zusammengelegt',
+      'Same colour means: nothing moved, nothing united, nothing merged',
     );
     assert.deepEqual(
       (await acqList()).map(e => e.quantity),
       [5],
-      'Die Erfassung muss unverändert dastehen',
+      'The acquisition must remain unchanged',
     );
   });
 
@@ -403,13 +403,13 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
 
     const a = await changeOne('3001', 4, { color_id: 7 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body.image, 'vorhanden', `Die Antwort sagt „${a.body.image}" — erwartet „vorhanden"`);
+    assert.equal(a.body.image, 'vorhanden', `The response says „${a.body.image}“ — expected „vorhanden“`);
     assert.equal(
       (await colorImage(7))?.image_url,
       'https://cdn.example/schon-da.jpg',
-      'Das dastehende Bild gilt. Es bei jeder Farbänderung zu ersetzen hiesse, ' +
-        'ein genau für diese Farbe geholtes Bild gegen das erste beliebige aus ' +
-        'einer Set-Teileliste zu tauschen.',
+      'The existing image counts. Replacing it on every colour change would mean ' +
+        'swapping an image fetched exactly for this colour for the first arbitrary one from ' +
+        'a set parts list.',
     );
   });
 
@@ -435,19 +435,19 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     assert.equal(
       a.body.image,
       null,
-      `Die Antwort sagt „${a.body.image}" — erwartet null. Ein geratenes ` +
-        '„vorhanden" würde die Oberfläche um ihren Hinweis bringen.',
+      `The response says „${a.body.image}“ — expected null. A guessed ` +
+        '„vorhanden“ would rob the interface of its hint.',
     );
     assert.deepEqual(
       (await holding()).map(r => r.color_id),
       [7],
-      'Die Farbe muss geändert sein, auch wenn kein Bild zu finden war — ' +
-        'ein fehlendes Bild ist kein Grund, die Korrektur zurückzunehmen',
+      'The colour must be changed even if no image was found — ' +
+        'a missing image is no reason to undo the correction',
     );
     assert.deepEqual(
       (await acqList()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [{ farbe: 7, quantity: 5 }],
-      'Die Erfassung zieht mit',
+      'The acquisition moves along',
     );
   });
 });

@@ -47,7 +47,7 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
     // is allowed; distances between wake times would not be, because a
     // late participant shortens the distance to the next punctual one.
     const tooEarly = times.filter((z, k) => z < k * GAP - 40);
-    assert.deepEqual(tooEarly, [], `Durchlässe nach Start: ${times.join(', ')} ms`);
+    assert.deepEqual(tooEarly, [], `passes after start: ${times.join(', ')} ms`);
   });
 
   await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);

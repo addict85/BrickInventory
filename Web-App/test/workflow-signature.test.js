@@ -39,7 +39,7 @@ const FROM_PUSH = `sha256:${crypto.createHash('sha256').update(INDEX).digest('he
 function script(id) {
   const zeilen = YML.split('\n');
   const ab = zeilen.indexOf(`        id: ${id}`);
-  assert.ok(ab >= 0, `Schritt ${id} nicht gefunden`);
+  assert.ok(ab >= 0, `step ${id} not found`);
   const start = zeilen.findIndex((z, i) => i > ab && z === '        run: |');
   const rumpf = [];
   for (const z of zeilen.slice(start + 1)) {
@@ -115,7 +115,7 @@ test('the digest from the push is signed, not the moved tag', t => {
     .split('\n')
     .filter(z => z.startsWith('cosign sign'));
   assert.deepEqual(signiert, [`cosign sign --yes --recursive ${IMAGE}@${FROM_PUSH}`]);
-  assert.equal(sig.aus.digest, FROM_PUSH, 'die Nachweise hängen am selben Digest');
+  assert.equal(sig.aus.digest, FROM_PUSH, 'the attestations hang on the same digest');
 });
 
 test('without a digest from the push the step aborts', t => {
@@ -128,7 +128,7 @@ test('without a digest from the push the step aborts', t => {
 /** The block of a step, looked up by its name, up to the next step. */
 function schritt(name) {
   const ab = YML.indexOf(`      - name: ${name}\n`);
-  assert.ok(ab >= 0, `Schritt „${name}“ nicht gefunden`);
+  assert.ok(ab >= 0, `step „${name}“ not found`);
   const ende = YML.indexOf('\n      - ', ab + 1);
   return YML.slice(ab, ende < 0 ? undefined : ende);
 }
@@ -168,7 +168,7 @@ test('Caddy is built, signed and attested like the app image, on the digest from
   assert.deepEqual(
     aufrufe().filter(z => z.startsWith('cosign sign')),
     [`cosign sign --yes --recursive ${CADDY}@${FROM_PUSH}`],
-    'signiert wird das Caddy-Image am Digest aus seinem Push',
+    'the Caddy image is signed at the digest from its push',
   );
   for (const name of ['Caddy-Herkunft bescheinigen', 'Caddy-Stückliste bescheinigen']) {
     const b = schritt(name);
@@ -176,7 +176,7 @@ test('Caddy is built, signed and attested like the app image, on the digest from
     assert.match(
       b,
       /subject-digest: \$\{\{ steps\.signatur-caddy\.outputs\.digest \}\}/,
-      `${name}: nicht am signierten Caddy-Digest`,
+      `${name}: not at the signed Caddy digest`,
     );
   }
   const bau = schritt('Caddy bauen und als Digest hochladen');
@@ -190,7 +190,7 @@ test('Caddy is built, signed and attested like the app image, on the digest from
   // The app manifest collects its digests via a pattern; the Caddy artifacts must not fall under it.
   const { muster, caddy: caddyName } = artifacts();
   assert.ok(muster && caddyName, `${muster} / ${caddyName}`);
-  assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, muster), false, 'das App-Manifest mischt die Caddy-Digests');
+  assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, muster), false, 'the app manifest mixes the Caddy digests');
   assert.equal(path.matchesGlob('digest-linux-amd64', muster), true);
 });
 
@@ -209,7 +209,7 @@ test('before the signature the image carries no tag', t => {
     const s = sandbox(t);
     const m = lauf(s, id, {}, { META: JSON.stringify({ tags: [`${img}:latest`] }) });
     assert.equal(m.code, 0, m.log);
-    assert.deepEqual(tagsInPush(s), [`${img}@${FROM_PUSH}`], `${id}: vor der Signatur trägt das Image keinen Tag`);
+    assert.deepEqual(tagsInPush(s), [`${img}@${FROM_PUSH}`], `${id}: before the signature the image carries no tag`);
   }
 });
 
@@ -217,7 +217,7 @@ test('a digest other than in the dry run aborts', t => {
   for (const id of ['manifest', 'manifest-caddy']) {
     const s = sandbox(t, true, { pushed: REASSIGNED });
     const m = lauf(s, id);
-    assert.equal(m.code, 1, `${id}: ein anderer Digest als im Probelauf bricht ab\n${m.log}`);
+    assert.equal(m.code, 1, `${id}: a digest different from the dry run aborts\n${m.log}`);
     assert.equal(m.aus.digest, undefined);
   }
 });
@@ -225,7 +225,7 @@ test('a digest other than in the dry run aborts', t => {
 /** Position of a step in the workflow, looked up via `id:` or `name:`. */
 const place = marke => {
   const i = YML.indexOf(marke);
-  assert.ok(i >= 0, `${marke} nicht gefunden`);
+  assert.ok(i >= 0, `${marke} not found`);
   return i;
 };
 
@@ -242,7 +242,7 @@ test('tags come after Trivy, signature and attestation', t => {
     for (const name of vorher)
       assert.ok(
         place(`        id: ${id}\n`) > place(`      - name: ${name}\n`),
-        `${id}: Tags kommen nach Trivy, Signatur und Bescheinigung (${name})`,
+        `${id}: tags come after Trivy, signature and attestation (${name})`,
       );
     const s = sandbox(t, true, { inspection: FROM_PUSH });
     const tags = [`${img}:latest`, `${img}:sha-1a2b3c4`];
@@ -261,7 +261,7 @@ test('a moved tag aborts', t => {
     { '${{ steps.signatur.outputs.digest }}': FROM_PUSH },
     { META: JSON.stringify({ tags: [`${IMAGE}:latest`] }) },
   );
-  assert.equal(r.code, 1, `ein umgehängter Tag bricht ab\n${r.log}`);
+  assert.equal(r.code, 1, `a moved tag aborts\n${r.log}`);
   assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
 
@@ -273,10 +273,14 @@ test('Docker Hub credentials only in jobs with the docker-hub environment', () =
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
   const blockList = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
   const withSecret = blockList.filter(b => /secrets\.DOCKERHUB_/.test(b));
-  assert.ok(withSecret.length >= 2, `zu wenige Jobs mit DOCKERHUB_* gefunden (${withSecret.length})`);
+  assert.ok(withSecret.length >= 2, `too few jobs with DOCKERHUB_* found (${withSecret.length})`);
   for (const b of withSecret) {
     const name = b.split(':')[0];
-    assert.match(b, /^ {4}environment: docker-hub\s*$/m, `${name} liest DOCKERHUB_* ohne Umgebung docker-hub`);
+    assert.match(
+      b,
+      /^ {4}environment: docker-hub\s*$/m,
+      `${name} reads DOCKERHUB_* without the docker-hub environment`,
+    );
   }
   const zeilen = YML.split('\n');
   const ab = zeilen.findIndex(z => z.trim() === '- name: Zugangsdaten vorhanden?');
@@ -289,8 +293,8 @@ test('Docker Hub credentials only in jobs with the docker-hub environment', () =
       encoding: 'utf8',
       env: { PATH: process.env.PATH, NUTZER: nutzer, TOKEN: token },
     });
-  assert.equal(pruefe('n', 't').status, 0, 'mit beiden Secrets geht es weiter');
+  assert.equal(pruefe('n', 't').status, 0, 'with both secrets it continues');
   const ohne = pruefe('', '');
-  assert.equal(ohne.status, 1, 'ohne Secrets bricht der Schritt ab');
-  assert.match(ohne.stdout, /Environments -> docker-hub/, 'die Meldung nennt die Environment-Secrets');
+  assert.equal(ohne.status, 1, 'without secrets the step aborts');
+  assert.match(ohne.stdout, /Environments -> docker-hub/, 'the message names the environment secrets');
 });

@@ -33,7 +33,7 @@ test('one data point: empty state instead of a line', async () => {
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart .chart-empty, #portfolio-chart svg'));
-    assert.equal(d.querySelector('#portfolio-chart svg'), null, 'Es steht eine Linie da');
+    assert.equal(d.querySelector('#portfolio-chart svg'), null, 'A line is drawn');
     assert.match(d.querySelector('#portfolio-chart .chart-empty').textContent, /Noch zu wenig Verlauf/);
     assert.equal(d.getElementById('portfolio-pnl').textContent.trim(), '');
   } finally {

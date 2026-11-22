@@ -148,7 +148,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
   // Inline only the one block of the start skeleton, via its hash — no 'unsafe-inline'.
-  assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
+  assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `The CSP allows inline styles: ${csp}`);
 
   const profileData = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
   // Chrome still writes into the profile when exiting; an error here would skip the
@@ -201,7 +201,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       .auswerten(`JSON.stringify({ v: window.__verstoesse,
       lerr: document.getElementById('lerr')?.textContent, text: document.body.innerText.slice(0, 300) })`)
       .catch(e => e.message);
-    assert.fail(`Zeitüberschreitung: ${was} — ${condition}`);
+    assert.fail(`timeout: ${was} — ${condition}`);
   };
   // Only click once the bundle has wired up the button — under load the
   // form already stands there before the script at the end of the page has run.
@@ -236,7 +236,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   await t.test('no CSP violations', () => assert.deepEqual(s.violations, []));
   await t.test('every data-style is applied', () => {
     assert.deepEqual(s.uebrig, []);
-    assert.ok(s.styleSet > 50, `nur ${s.styleSet} Elemente mit Stil`);
+    assert.ok(s.styleSet > 50, `only ${s.styleSet} elements with a style`);
   });
   await t.test('only approved values', () => assert.deepEqual(warnings, []));
 
@@ -247,7 +247,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     await b.auswerten(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);
     await b.auswerten(`document.getElementById('btn-cfg-export')?.click(); true`);
     await warte(800);
-    assert.deepEqual(await b.auswerten('window.__verstoesse'), [], 'Formular oder Download der App verletzt die CSP');
+    assert.deepEqual(await b.auswerten('window.__verstoesse'), [], 'form or download of the app violates the CSP');
     const verletzt = await b.auswerten(`new Promise(fertig => {
       const gesehen = new Set();
       document.addEventListener('securitypolicyviolation', e => gesehen.add(e.effectiveDirective));

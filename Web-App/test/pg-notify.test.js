@@ -56,18 +56,18 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   assert.throws(
     () => pgNotify.listen('kein kanal', () => {}),
     /Ungültiger Kanalname/,
-    'ein Kanalname mit Leerzeichen wird abgewiesen',
+    'a channel name with spaces is rejected',
   );
 
   pgNotify.listen(CHANNEL, payload => {
     bekommen.push(payload ?? null);
   });
   await waitOn(1);
-  assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');
+  assert.deepEqual(bekommen, [null], 'on connecting, the handler asks once on its own');
 
   await pgNotify.notify(CHANNEL, 'hallo');
   await waitOn(2);
-  assert.deepEqual(bekommen, [null, 'hallo'], 'das Signal kommt an');
+  assert.deepEqual(bekommen, [null, 'hallo'], 'the signal arrives');
 
   // Tear down the listening connection: a signal in the gap would be
   // lost, hence the handler catches up when reconnecting.
@@ -77,14 +77,14 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
     [`LISTEN "${CHANNEL}"%`],
   );
   await waitOn(3);
-  assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
+  assert.deepEqual(bekommen, [null, 'hallo', null], 'after reconnecting the handler catches up');
 });
 
 test('when sending, the channel is bound, not inserted', () => {
   assert.match(
     NOTIFY,
     /pg_notify\(\$1, \$2\)/,
-    'Beim Senden lässt sich der Kanal binden — dort gehört kein String-Bau hin',
+    'When sending, the channel can be bound — no string building belongs there',
   );
 });
 
@@ -93,6 +93,6 @@ test('own connection, with capped reconnect', () => {
   assert.match(
     NOTIFY,
     /Math\.min\(30_000, (?:this\.)?_retryMs \* 2\)/,
-    'Reconnect ohne Deckelung und Backoff hämmert bei DB-Ausfall dagegen',
+    'A reconnect without a cap and backoff hammers the DB during an outage',
   );
 });

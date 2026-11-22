@@ -70,9 +70,9 @@ test('app.account cannot be switched unnoticed within a request', { concurrency:
       FORGED,
     );
     // Row security followed the forged setting inside, but nothing of it got out or stayed.
-    assert.deepEqual(gesehen, [B], 'Vorbedingung: die Abfrage lief unter dem gefälschten Konto');
-    assert.deepEqual(await setsOf(B), ['10001-1'], 'die Zeile für B ist zurückgerollt');
-    assert.deepEqual(ids(await als(A, () => app.all('SELECT user_id FROM sets'))), [A], 'die Verbindung danach: A');
+    assert.deepEqual(gesehen, [B], 'precondition: the query ran under the forged account');
+    assert.deepEqual(await setsOf(B), ['10001-1'], 'the row for B is rolled back');
+    assert.deepEqual(ids(await als(A, () => app.all('SELECT user_id FROM sets'))), [A], 'the connection afterwards: A');
   });
 
   await t.test('a single query that switches the account gets no rows', async () => {
@@ -91,7 +91,7 @@ test('app.account cannot be switched unnoticed within a request', { concurrency:
       als(A, () => app.run(`SELECT set_config('app.account', '${B}', false)`)),
       FORGED,
     );
-    assert.deepEqual(await app.all('SELECT user_id FROM sets'), [], 'ohne Konto sieht die nächste Anfrage nichts');
+    assert.deepEqual(await app.all('SELECT user_id FROM sets'), [], 'without an account the next request sees nothing');
   });
 
   await t.test('switching the account through the app (asRequest) stays allowed', async () => {

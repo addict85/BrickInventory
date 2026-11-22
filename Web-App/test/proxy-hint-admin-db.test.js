@@ -63,7 +63,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
       const ip = '::ffff:172.28.73.20';
       mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
     }
-    assert.equal(meldungen.length, 1, 'Hinweis im Protokoll');
+    assert.equal(meldungen.length, 1, 'hint in the log');
     const h = (await jobs()).proxy_hint;
     assert.deepEqual([h?.kind, h?.vars?.ip], ['single_address', '172.28.73.20'], JSON.stringify(h));
     assert.ok(h.vars.minutes >= 60 && h.vars.count >= EINE_ADDRESS.anfragen, JSON.stringify(h));

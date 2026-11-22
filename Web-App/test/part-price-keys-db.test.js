@@ -55,21 +55,21 @@ test('prices are under the BrickLink number, acquisitions under the Rebrickable 
 
   const r = await ph.priceHistoryPart([u.id], '31000', 1, 'CHF');
 
-  assert.ok(r.by_condition.U, 'Für den erfassten Zustand fehlt die Zeile ganz');
+  assert.ok(r.by_condition.U, 'The row for the recorded condition is missing entirely');
   assert.equal(
     r.by_condition.U.market_price,
     0.13,
-    'Der Marktpreis kommt nicht an — die Abfrage sucht ihn unter der ' +
-      'Rebrickable-Nummer, geschrieben wurde er unter der BrickLink-Nummer.',
+    'The market price does not arrive — the query looks for it under the ' +
+      'Rebrickable number, but it was written under the BrickLink number.',
   );
   assert.equal(
     r.by_condition.U.purchase_price,
     0.11,
-    'Der Kaufpreis kommt nicht an — die Erfassung steht unter der ' +
-      'Rebrickable-Nummer und darf NICHT mit übersetzt werden.',
+    'The purchase price does not arrive — the acquisition is stored under the ' +
+      'Rebrickable number and must NOT be translated as well.',
   );
   assert.equal(r.by_condition.U.pnl_percent, 18.2);
-  assert.equal(r.by_condition.U.pnl_pct, '18.2', 'der Text wie in allen anderen Antworten (veraltet)');
+  assert.equal(r.by_condition.U.pnl_pct, '18.2', 'the text as in all other responses (deprecated)');
 
   await db.run('DELETE FROM part_acquisitions WHERE user_id = $1', [u.id]);
   await db.pool.end().catch(() => {});

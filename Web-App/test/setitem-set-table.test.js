@@ -50,12 +50,12 @@ test('the web app shows the sets as a table with image, number and name, below t
       ],
     );
     const image = zeilen[0].cells[0].querySelector('img');
-    assert.ok(image, 'das erste Set hat kein Bild');
-    assert.match(image.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'das lokale Bild fehlt');
-    assert.match(image.dataset.orig ?? '', /10305-1\.jpg/, 'ohne data-orig kein Rückfall auf das CDN-Bild');
-    assert.ok(zeilen[1].cells[0].querySelector('.image-ph'), 'ein Set ohne Bild zeigt keinen Platzhalter');
+    assert.ok(image, 'the first set has no image');
+    assert.match(image.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'the local image is missing');
+    assert.match(image.dataset.orig ?? '', /10305-1\.jpg/, 'without data-orig no fallback to the CDN image');
+    assert.ok(zeilen[1].cells[0].querySelector('.image-ph'), 'a set without an image shows no placeholder');
     const row = tabelle.closest('.dr');
-    assert.equal(row.style.flexDirection, 'column', 'die Tabelle steht neben der Beschriftung');
+    assert.equal(row.style.flexDirection, 'column', 'the table is next to the label');
   } finally {
     o.w.close();
   }

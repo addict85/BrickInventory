@@ -41,6 +41,6 @@ test('a run inside a run does not build', { timeout: 120_000 }, t => {
     timeout: 100_000,
   });
   assert.equal(r.status, 0, (r.stdout + r.stderr).slice(-2000));
-  assert.deepEqual(times(), vorher, 'dist/ und Bündel bleiben unberührt');
-  assert.equal(fs.readFileSync(output, 'utf8'), '1', 'die Kinder erben die Marke');
+  assert.deepEqual(times(), vorher, 'dist/ and bundles stay untouched');
+  assert.equal(fs.readFileSync(output, 'utf8'), '1', 'the children inherit the marker');
 });

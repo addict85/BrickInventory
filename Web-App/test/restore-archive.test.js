@@ -122,6 +122,6 @@ for (const [fall, bauen] of Object.entries(BOESE)) {
       /FEHLER: .*Abbruch, nichts verändert/,
       `${fall}: erreicht die Rückfrage nicht — Ausgabe: ${r.aus}`,
     );
-    assert.doesNotMatch(r.aus, /Fortfahren\?/, `${fall}: erreicht die Rückfrage nicht`);
+    assert.doesNotMatch(r.aus, /Fortfahren\?/, `${fall}: does not reach the confirmation prompt`);
   });
 }

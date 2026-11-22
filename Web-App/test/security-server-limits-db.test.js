@@ -184,14 +184,14 @@ test('server limits: slow requests, error texts, foreign hosts', {
       for (const ende = Date.now() + 14_000; ohne.zu === null && Date.now() < ende; ) await warte(200);
       assert.ok(
         ohne.zu !== null && ohne.zu < 13_000,
-        `ein stockender Rumpf ohne Anmeldung wird beendet (nach ${ohne.zu} ms)`,
+        `a stalling body without login is terminated (after ${ohne.zu} ms)`,
       );
       assert.match(ohne.response, /^HTTP\/1\.1 408 [\s\S]*request_too_slow/, ohne.response);
       await warte(1500);
-      assert.equal(mit.zu, null, 'ein stockender Rumpf mit Anmeldung (Upload) läuft weiter: ' + mit.response);
+      assert.equal(mit.zu, null, 'a stalling body with login (upload) keeps running: ' + mit.response);
       assert.equal(mit.response, '');
       for (const ende = Date.now() + 8_000; kopf.zu === null && Date.now() < ende; ) await warte(200);
-      assert.ok(kopf.zu !== null && kopf.zu < 18_000, `ein stockender Kopf wird beendet (nach ${kopf.zu} ms)`);
+      assert.ok(kopf.zu !== null && kopf.zu < 18_000, `a stalling header is terminated (after ${kopf.zu} ms)`);
       const r = await fetch(`${basis}/api/v2/health/live`);
       assert.equal(r.status, 200);
     } finally {
@@ -218,7 +218,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
       body: JSON.stringify({ part_number: '!!', quantity: 1 }),
     });
     assert.equal(eigen.status, 400);
-    assert.match((await eigen.json()).error, /part_number darf nur Buchstaben/, 'ein eigener Satz erreicht den Nutzer');
+    assert.match((await eigen.json()).error, /part_number darf nur Buchstaben/, 'an own sentence reaches the user');
   });
 
   await t.test('a foreign entry responds like a missing one', async () => {
@@ -249,7 +249,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
 
   await t.test('a foreign Host header is rejected, the own one is not', async () => {
     const fremd = await withHost(port, 'boese.example', '/api/v2/auth/me');
-    assert.equal(fremd.status, 421, 'ein fremder Host-Kopf wird abgewiesen');
+    assert.equal(fremd.status, 421, 'a foreign Host header is rejected');
     assert.equal(JSON.parse(fremd.text).code, 'foreign_host');
     assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v2/auth/me')).status, 200);
     assert.equal((await withHost(port, 'nas.example.lan', '/api/v2/auth/me')).status, 200);
@@ -258,19 +258,19 @@ test('server limits: slow requests, error texts, foreign hosts', {
     assert.equal(
       (await withHost(port, 'boese.example', '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
       421,
-      'ein Bearer-Kopf öffnet einen fremden Namen nicht',
+      'a bearer header does not open a foreign name',
     );
     for (const ip of [`192.168.1.20:${port}`, '10.0.0.5', '[fe80::1]:8080']) {
       assert.equal(
         (await withHost(port, ip, '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
         401,
-        `ein IP-Host (${ip}) geht an die Anmeldung`,
+        `an IP host (${ip}) goes to the login`,
       );
     }
     assert.equal(
       (await withHost(port, '1.2.3.4.boese.example', '/api/v2/auth/me')).status,
       421,
-      'ein Name mit Ziffern ist keine Adresse',
+      'a name with digits is no address',
     );
   });
 
@@ -278,7 +278,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
     // A link from an older mail (?token=) becomes a fragment before the page loads.
     const alt = await fetch(`${basis}/verify?token=${MAIL_TOKEN}`, { redirect: 'manual' });
-    assert.equal(alt.status, 303, 'ein alter Link mit ?token= wird umgeleitet');
+    assert.equal(alt.status, 303, 'an old link with ?token= is redirected');
     assert.equal(alt.headers.get('location'), `/verify#token=${MAIL_TOKEN}`);
     assert.equal(alt.headers.get('cache-control'), 'no-store');
     const seite = await fetch(`${basis}/verify`, { redirect: 'manual' });
@@ -288,7 +288,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
     assert.match(await seite.text(), /id="panel-verify"/);
     const state = async () =>
       (await db.get('SELECT email_verified FROM users WHERE id = $1', [unconfirmed])).email_verified;
-    assert.equal(await state(), false, 'der Link allein bestätigt nichts');
+    assert.equal(await state(), false, 'the link alone confirms nothing');
     const confirm = token =>
       fetch(`${basis}/api/v2/auth/confirm-email`, {
         method: 'POST',
@@ -298,6 +298,6 @@ test('server limits: slow requests, error texts, foreign hosts', {
     assert.deepEqual((await confirm('falsch'))[1].code, 'confirmation_link_invalid');
     assert.deepEqual(await confirm(MAIL_TOKEN), [200, { success: true }]);
     assert.equal(await state(), true);
-    assert.equal((await confirm(MAIL_TOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
+    assert.equal((await confirm(MAIL_TOKEN))[0], 400, 'a second click reports no second success');
   });
 });

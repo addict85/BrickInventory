@@ -69,7 +69,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
   const secret = await zf.beginSetup(uid);
   const schluessel = zf.fromBase32(secret);
   const codes = await zf.confirmSetup(uid, zf.hotp(schluessel, zf.timeStep() - 1));
-  assert.equal(codes?.length, 10, 'Einrichtung');
+  assert.equal(codes?.length, 10, 'setup');
   const s = zf.timeStep();
   const gueltig = [-1, 0, 1].map(v => zf.hotp(schluessel, s + v));
   const WRONG = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
@@ -82,13 +82,13 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
   await t.test('up to the limit: wrong code', async () => {
     for (let i = 1; i < lim.MAX_FACTOR_LOGIN_JE_ACCOUNT; i++) {
       const r = await anmelden(WRONG);
-      assert.equal(r.absage?.code, 'second_factor_wrong', `Versuch ${i}`);
+      assert.equal(r.absage?.code, 'second_factor_wrong', `attempt ${i}`);
     }
     const r = await anmelden(WRONG);
-    assert.equal(r.absage?.code, 'second_factor_locked', 'der 20. falsche Code erreicht die Schranke');
-    assert.equal(r.absage?.zweiterFaktor, true, 'das Codefeld bleibt offen');
+    assert.equal(r.absage?.code, 'second_factor_locked', 'the 20th wrong code reaches the limit');
+    assert.equal(r.absage?.zweiterFaktor, true, 'the code field stays open');
     const row = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`faktor-anmeldung-konto|${uid}`]);
-    assert.equal(Number(row?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'gezählt in der Datenbank');
+    assert.equal(Number(row?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'counted in the database');
   });
 
   await t.test('the owner learns of it immediately, once', async () => {
@@ -103,7 +103,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
 
   await t.test('above the limit even a correct one-time code does not apply', async () => {
     const r = await anmelden(zf.hotp(schluessel, zf.timeStep()));
-    assert.equal(r.ok, false, 'richtiger Einmalcode über der Schranke angenommen');
+    assert.equal(r.ok, false, 'correct one-time code accepted above the limit');
     assert.equal(r.absage?.code, 'second_factor_locked');
   });
 

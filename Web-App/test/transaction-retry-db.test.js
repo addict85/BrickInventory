@@ -77,7 +77,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     const k = cross(MIT);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
-    assert.equal(k.versuche(), 3, 'genau ein Gegenspieler wurde abgebrochen und lief neu');
+    assert.equal(k.versuche(), 3, 'exactly one opponent was aborted and ran again');
     // Every transaction has increased both rows once; the aborted attempt does not count.
     assert.deepEqual(
       (await db.all(`SELECT n FROM ${TABLE_NAME} ORDER BY id`)).map(z => z.n),
@@ -111,7 +111,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
       }, MIT),
       { code: '40001' },
     );
-    assert.equal(m, 3, 'ein Versuch und zwei Wiederholungen');
+    assert.equal(m, 3, 'one attempt and two retries');
   });
 
   await t.test('other errors and missing option are not retried', async () => {
@@ -224,7 +224,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
       const ids = (await db.all('SELECT id FROM set_acquisitions WHERE user_id = $1', [von])).map(z => z.id);
       const r = await moveSet(von, '10179-1', von, nach, ids);
       assert.equal(r.quantity, 2);
-      assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
+      assert.equal(await probe.aufrufe(), 2, 'first attempt failed, second went through');
       assert.equal(await quantityOf(db, nach, '10179-1'), 2);
       assert.equal(await quantityOf(db, von, '10179-1'), 0);
     } finally {
@@ -241,7 +241,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     const probe = await onceError('set_acquisitions', 'UPDATE', `NEW.user_id = ${u}`);
     try {
       assert.equal(await setEstimatedPrice('set', id, 42), true);
-      assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
+      assert.equal(await probe.aufrufe(), 2, 'first attempt failed, second went through');
       const z = await db.get('SELECT purchase_price::float AS p, price_estimated FROM set_acquisitions WHERE id = $1', [
         id,
       ]);

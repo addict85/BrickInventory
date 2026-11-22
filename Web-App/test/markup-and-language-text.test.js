@@ -31,7 +31,7 @@ test('every fallback text shows what the language text says', () => {
   const placeList = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Self-proof: MEASURED there are over 200. If the derivation finds nothing,
   // the loop would be silently green.
-  assert.ok(placeList.length > 150, `Nur ${placeList.length} Stellen abgeleitet — greift die Suche noch?`);
+  assert.ok(placeList.length > 150, `Only ${placeList.length} places derived — does the search still work?`);
 
   const deviating = [];
   let geprueft = 0;
@@ -43,15 +43,15 @@ test('every fallback text shows what the language text says', () => {
     geprueft++;
     if (escHtml(soll) !== text.trim()) deviating.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
   }
-  assert.ok(geprueft > 100, `Nur ${geprueft} Stellen wirklich geprüft — greifen die Ausnahmen zu breit?`);
+  assert.ok(geprueft > 100, `Only ${geprueft} places actually checked — are the exceptions too broad?`);
   assert.deepEqual(
     deviating,
     [],
-    `${deviating.length} Rückfalltexte weichen vom Sprachtext ab:\n  ` +
+    `${deviating.length} fallback texts differ from the language text:\n  ` +
       deviating.join('\n  ') +
-      '\n\nSichtbar ist der SPRACHTEXT. Der Text im Markup ist nur der Rückfall ' +
-      'für den Augenblick vor dem Übersetzen — laufen sie auseinander, sieht man ' +
-      'beim Entwickeln das eine und im Betrieb das andere.',
+      '\n\nWhat is visible is the LANGUAGE TEXT. The text in the markup is only the fallback ' +
+      'for the moment before translating — if they drift apart, you see ' +
+      'one thing while developing and another in production.',
   );
 });
 
@@ -84,9 +84,9 @@ test('no element with data-i18n has child elements', () => {
   assert.deepEqual(
     bad,
     [],
-    'Diese Elemente tragen `data-i18n` UND Kind-Elemente:\n  ' +
+    'These elements carry `data-i18n` AND child elements:\n  ' +
       bad.join('\n  ') +
-      '\n\n`textContent` ersetzt den GANZEN Inhalt — die Kinder sind beim ersten ' +
-      'Übersetzen weg. Den Schlüssel an ein inneres Feld hängen.',
+      '\n\n`textContent` replaces the WHOLE content — the children are gone after the first ' +
+      'translation. Attach the key to an inner field.',
   );
 });

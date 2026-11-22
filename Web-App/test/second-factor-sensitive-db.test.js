@@ -61,7 +61,7 @@ async function withFactor(uid) {
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const code = zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep());
   const codes = await zf.confirmSetup(uid, code);
-  assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor active');
+  assert.ok(Array.isArray(codes) && codes.length >= 3, 'precondition: factor active');
   return codes;
 }
 
@@ -102,7 +102,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       current: PASS,
       newPassword: 'Neues-Passwort-22',
     });
-    assert.equal(withoutCode.body.code, 'second_factor_required', 'Passwortwechsel ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'password change without a code');
     assert.equal(withoutCode.status, 400);
     const falsch = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
@@ -129,8 +129,8 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       )
     ).id;
     const withoutCode = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
-    assert.equal(withoutCode.body.code, 'second_factor_required', 'Passkey löschen ohne Code');
-    assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'der Passkey steht noch');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'deleting a passkey without a code');
+    assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'the passkey is still there');
     const gut = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
     assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
   });
@@ -141,7 +141,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       email: `${NAME}@neu.example`,
       password_current: PASS,
     });
-    assert.equal(withoutCode.body.code, 'second_factor_required', 'E-Mail ändern ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'changing the email without a code');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
     const gut = await callFn(basis, 'PUT', '/profile', {
       username: NAME,
@@ -164,7 +164,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       newPassword: 'Neues-Passwort-33',
       code: codes[3],
     });
-    assert.equal(gut.status, 200, `fehlender Code zählt nicht in der Bremse: ${JSON.stringify(gut.body)}`);
+    assert.equal(gut.status, 200, `a missing code does not count in the throttle: ${JSON.stringify(gut.body)}`);
   });
 
   await t.test('without second factor as before', async () => {
@@ -186,7 +186,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
     assert.deepEqual(
       [z.email, z.new_email],
       [`${CHEF}@alt.example`, `${CHEF}@neu.example`],
-      'Verwalter-Adresse gilt erst nach dem Link',
+      'the admin address only applies after the link',
     );
   });
 });

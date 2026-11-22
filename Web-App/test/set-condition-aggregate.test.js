@@ -20,7 +20,7 @@ const { openUi, warte } = require('./helpers/ui');
 
 test('the aggregate rule now exists in only one place', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function conditionAggregate/, 'Der gemeinsame Helfer fehlt');
+  assert.match(h, /function conditionAggregate/, 'The shared helper is missing');
   // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
   // on their own — it stands in conditionFromAcquisitions().
   // Two parameters, not three: the third was the stored condition of the
@@ -37,7 +37,7 @@ test('the aggregate rule now exists in only one place', () => {
   assert.equal(
     inlineRules.length,
     1,
-    `Die Regel steht ${inlineRules.length}× im Code — sie gehört genau einmal in conditionFromAcquisitions()`,
+    `The rule appears ${inlineRules.length}× in the code — it belongs exactly once in conditionFromAcquisitions()`,
   );
 });
 
@@ -54,13 +54,9 @@ test('an unknown theme value resets nothing', () => {
   w.fetch = () => new Promise(() => {});
   w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
   for (const wert of [undefined, null, '', 'gibtsnicht']) {
-    assert.equal(w.__bimApplyTheme(wert), null, `${wert} wurde als Design angenommen`);
-    assert.equal(
-      w.document.documentElement.getAttribute('data-theme'),
-      'brick',
-      `${wert} hat das Design zurückgesetzt`,
-    );
-    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} hat den Cache überschrieben`);
+    assert.equal(w.__bimApplyTheme(wert), null, `${wert} was accepted as a design`);
+    assert.equal(w.document.documentElement.getAttribute('data-theme'), 'brick', `${wert} reset the design`);
+    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} overwrote the cache`);
   }
   w.close();
 });
@@ -88,10 +84,10 @@ test('a manually entered part gets market price and entry', () => {
   assert.equal(
     withoutState.length,
     0,
-    'Diese Aufrufe holen den Marktpreis OHNE Zustand:\n  ' +
+    'These calls fetch the market price WITHOUT a condition:\n  ' +
       withoutState.map(m => m[0]).join('\n  ') +
-      '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
-      'als gebraucht erfasstes Teil bekommt den Neupreis.',
+      '\nThen the lookup falls back internally to the default condition, and a ' +
+      'part recorded as used gets the new price.',
   );
   // Self-proof: without occurrences an empty list says nothing.
   const allCalls = [
@@ -99,7 +95,7 @@ test('a manually entered part gets market price and entry', () => {
       /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
     ),
   ];
-  assert.ok(allCalls.length >= 4, `Nur ${allCalls.length} Vorkommen von currentPartMarketPrice( — Muster veraltet?`);
+  assert.ok(allCalls.length >= 4, `Only ${allCalls.length} occurrences of currentPartMarketPrice( — pattern outdated?`);
   // Two paths: newly created and captured again — BOTH need an
   // acquisition. The second used to end with `return { action: 'updated' }`
   // without creating one; a differing acquisition date got lost in the process.
@@ -114,24 +110,24 @@ test('a manually entered part gets market price and entry', () => {
   assert.equal(
     writes.length,
     2,
-    `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
+    `${writes.length} instead of 2 acquisition writes — creation and second acquisition need one each`,
   );
-  assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
+  assert.match(fn, /createdAt: acquiredAt/, 'The acquisition date must be taken over');
   // The rule, not its notation
   assert.match(
     fn,
     /price: erfassungsPreis/,
-    'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
-      '(src/finances/priceRule.ts, acquisitionPrice) — in der Erfassung hiesse eine 0 ' +
-      '„für null Franken gekauft"',
+    'The acquisition does not take the price that is NULL without a market price ' +
+      '(src/finances/priceRule.ts, acquisitionPrice) — in the acquisition a 0 would mean ' +
+      '„für null Franken gekauft“',
   );
   const regel = fs.readFileSync(path.join(ROOT, 'src/finances/priceRule.ts'), 'utf8');
   assert.match(
     regel,
     /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
-    'src/finances/priceRule.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung',
+    'src/finances/priceRule.ts no longer converts the 0 of the master row into NULL for the acquisition',
   );
-  assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
+  assert.match(fn, /condition: effectiveCondition/, 'The acquisition needs the condition');
 });
 
 test('the minifigure market price asks BrickLink even without a separate BL number', () => {
@@ -149,9 +145,9 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
     src.indexOf('async function figMarketPriceWithOrigin'),
     src.indexOf('async function manuellerFigurenkauf'),
   );
-  assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
+  assert.ok(fn.length > 0, 'The minifigure price fetch can no longer be found');
 
-  assert.match(fn, /for \(const num of \[blFigNumber, figNumber\]\)/, 'Beide Nummern müssen versucht werden');
+  assert.match(fn, /for \(const num of \[blFigNumber, figNumber\]\)/, 'Both numbers must be tried');
   assert.doesNotMatch(
     fn,
     /if \(blFigNumber\) \{\s*const priceData/,
@@ -161,7 +157,7 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
   // Order: BrickLink first, parts estimate only as a fallback
   const iLoop = fn.indexOf('for (const num of');
   const iEst = fn.indexOf('estimateMinifigsPrice');
-  assert.ok(iLoop > 0 && iEst > iLoop, 'Die Teile-Schätzung gehört hinter den BrickLink-Abruf');
+  assert.ok(iLoop > 0 && iEst > iLoop, 'The parts estimate belongs after the BrickLink fetch');
 
   // And it estimates in the DETERMINED condition, not in the default condition: without
   // a BrickLink number the estimate is the only price there is — if it
@@ -171,7 +167,7 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
   assert.match(
     fn,
     /estimateMinifigsPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?figNumber, userId, effCond\)/,
-    'Der ermittelte Zustand muss in die Schätzung',
+    'The determined condition must go into the estimate',
   );
 
   const est = src.slice(
@@ -218,7 +214,7 @@ test('the parts estimate lands in cache and history', () => {
 
   // Cache and history per condition are checked by test/minifigs-estimate-store-db.test.js.
   // Only with a real price: a zero point would look like a crash in the chart.
-  assert.match(est, /if \(priced === 0\) return null;/, 'Ohne bepreiste Teile darf nichts geschrieben werden');
+  assert.match(est, /if \(priced === 0\) return null;/, 'Without priced parts nothing may be written');
 
   // And when creating, the determined price must go into the acquisition
   // Since the date adoption created_at belongs to the column list.
@@ -229,7 +225,7 @@ test('the parts estimate lands in cache and history', () => {
       /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
     ),
   ];
-  assert.equal(acqList.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
+  assert.equal(acqList.length, 2, 'The acquisition must carry the purchase price actually used');
 });
 
 test('manual minifigures also create a row on every entry', () => {
@@ -250,9 +246,9 @@ test('manual minifigures also create a row on every entry', () => {
   assert.equal(
     writes.length,
     2,
-    `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
+    `${writes.length} instead of 2 acquisition writes — creation and second acquisition need one each`,
   );
-  assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
+  assert.match(fn, /createdAt: acquiredAt/, 'The acquisition date must be taken over');
   // The second capture must determine the price via the same function
   assert.match(
     fn,
@@ -279,7 +275,7 @@ test('entries without a purchase price are filled in', () => {
   assert.match(
     job,
     /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
-    'Der Nachtrag muss alle preislosen Erfassungen finden',
+    'The backfill must find all acquisitions without a price',
   );
   // The condition of the ACQUISITION determines the price, not that of the set
   assert.match(
@@ -294,7 +290,7 @@ test('entries without a purchase price are filled in', () => {
     'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
       'Migration 0032 weder Kaufpreis noch Zustand',
   );
-  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
+  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'The pass is not hooked in');
 
   // And the import itself should end without a price less often
   // The set service reads the market price from cache and history via finanzen (owner of price_history).
@@ -315,13 +311,13 @@ test('new sets fetch the right condition, not the default', () => {
   // new price as purchase price, because the subsequent price query for 'U' still …
   const job = fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
-  assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
+  assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'The hint parameter is missing');
   assert.match(
     job,
     /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) own\.add\(hintCondition\);/,
-    'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen',
+    'The hint must flow into the list of conditions to fetch',
   );
-  assert.ok(hatParameter(job, 'fetchPriceForSet', 'hintCondition', true), 'fetchPriceForSet muss den Hinweis annehmen');
+  assert.ok(hatParameter(job, 'fetchPriceForSet', 'hintCondition', true), 'fetchPriceForSet must accept the hint');
   assert.match(
     job,
     /conditionsNeededFor\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?setNumber, userId, hintCondition\)/,
@@ -334,7 +330,7 @@ test('new sets fetch the right condition, not the default', () => {
   assert.match(
     preis,
     /fetchPriceForSet\(k, setNumber, userId, condition\)/,
-    'aktuellerMarktpreis muss den angefragten Zustand als Hinweis übergeben',
+    'aktuellerMarktpreis must pass the requested condition as a hint',
   );
 });
 
@@ -351,7 +347,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   assert.match(
     fc,
     /export async function conditionOfSet\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
-    'Der Helfer muss exportiert sein',
+    'The helper must be exported',
   );
 
   // Both callers must really import it, not put an own
@@ -373,7 +369,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   // price, not a history) — exactly one occurrence.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
   const uses = (apiV1.match(/sk\.finances\.setState\(scope, sn\)/g) || []).length;
-  assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
+  assert.equal(uses, 1, 'The /price route must use it; the history goes via priceHistory.ts');
 });
 
 // The database lock of the rebuild is checked by test/parts-summary-lock-db.test.js.
@@ -413,7 +409,7 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
       ['get', 4],
     ],
   );
-  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
+  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'the pool of image CDNs does not force IPv4');
 });
 
 test('the background job for parts and minifigures now creates preview images', () => {
@@ -431,7 +427,7 @@ test('the background job for parts and minifigures now creates preview images', 
   //     const { vorschauErzeugenAus } = require('./src/images/thumbs');
   // When converting the late require() into real import statements it became
   // an import at the file head — the check turned red without its …
-  assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
+  assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus is no longer available in server.ts');
   assert.match(
     partsLoop,
     /(?:vorschauErzeugenAus|\w+\.images\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
@@ -466,8 +462,8 @@ test('mixed entries result in TWO badges', () => {
 });
 
 test('only one condition results in one badge', () => {
-  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'alle Erfassungen neu → nur Neu');
-  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'alle Erfassungen gebraucht → nur Gebraucht');
+  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'all acquisitions new → only new');
+  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'all acquisitions used → only used');
 });
 
 test('without entries “Neu” applies', () => {
@@ -488,26 +484,22 @@ test('the order is fixed: new before used', () => {
 
 test('the tiles do not compute the badges themselves', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
-  assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
+  assert.match(gal, /export function condBadges/, 'One shared version for set, part and minifigure tiles');
   // One badge, no copies with hard-coded colors instead of the CSS classes:
   // no row may carry a condition label AND an own color.
   for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
-    assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
+    assert.equal(inline.length, 0, `${f}: condition colours belong in the CSS classes cond-new/cond-used`);
   }
 });
 
 test('the purchase price on the tile is quantity-weighted, not the maximum', () => {
   // MAX(purchase_price) showed the value 160 for 2x100 and 1x160.
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
+  assert.match(h, /avg_purchase_price/, 'The weighted purchase price is missing in the aggregate');
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
-  assert.match(
-    gal,
-    /s\.avg_purchase_price \?\? s\.max_purchase_price/,
-    'Die Kachel muss den gewichteten Wert bevorzugen',
-  );
+  assert.match(gal, /s\.avg_purchase_price \?\? s\.max_purchase_price/, 'The tile must prefer the weighted value');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -523,7 +515,7 @@ test('the login name may be an e-mail address', () => {
   // allowed characters in the username.
   assert.ok(loginNameValid('marco@example.com'));
   assert.ok(loginNameValid('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(loginNameValid('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(loginNameValid('marco'), 'A user name must still work');
   assert.ok(loginNameValid('mar_co.1-x'));
 });
 
@@ -539,7 +531,7 @@ test('obvious nonsense still does not reach the query', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(loginNameValid(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(loginNameValid(bad), false, `\`${bad}\` should be rejected`);
   }
 });
 
@@ -570,12 +562,12 @@ test('both login paths check the same', async () => {
       return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
     });
   const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src'))];
-  assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+  assert.ok(alle.length >= 30, `only ${alle.length} files searched — paths outdated?`);
 
   const kopien = alle
     .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/.test(fs.readFileSync(f, 'utf8')))
     .map(f => path.relative(ROOT, f));
-  assert.deepEqual(kopien, [], `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
+  assert.deepEqual(kopien, [], `own copy of the user name pattern instead of USERNAME_RE: ${kopien.join(', ')}`);
 });
 
 test('the tile takes the condition from the server response', async () => {
@@ -608,18 +600,18 @@ test('the tile takes the condition from the server response', async () => {
   });
   const badges = () => d.querySelector('#gallery .sc .sbadges')?.textContent ?? '';
   try {
-    assert.ok(await warte(() => /Neu/.test(badges())), `vorher: ${badges()}`);
+    assert.ok(await warte(() => /Neu/.test(badges())), `before: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
     d.querySelector('[data-click="openAcqModal"]').click();
     assert.ok(
       await warte(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
-      'Keine Zustandswahl',
+      'no condition choice',
     );
     const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
     wahl.value = 'U';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `nachher: ${badges()}`);
+    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `after: ${badges()}`);
   } finally {
     w.close();
   }

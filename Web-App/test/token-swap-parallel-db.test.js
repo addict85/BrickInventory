@@ -71,19 +71,19 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
       state,
     );
     tokenCache.emptyTokenCache();
-    assert.equal((await callFn('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
+    assert.equal((await callFn('/stats', neu[0].body.token)).status, 200, 'the issued token is valid');
   });
 
   await t.test('a second exchange from another network ends the family', async () => {
     const alt = await auth.createToken(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
     const erster = await auth.rotateToken(alt, '10.1.2.77');
-    assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');
+    assert.ok(erster && typeof erster === 'object', 'precondition: the first swap succeeds');
     await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
       auth.tokenDigest(erster.token),
     ]);
     assert.equal(await auth.rotateToken(alt, '192.0.2.5'), null);
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.userForToken(erster.token), null, 'der Nachfolger ist weg');
-    assert.equal(await auth.userForToken(alt), null, 'der alte ist weg');
+    assert.equal(await auth.userForToken(erster.token), null, 'the successor is gone');
+    assert.equal(await auth.userForToken(alt), null, 'the old one is gone');
   });
 });

@@ -53,7 +53,7 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
     assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
     const parsed = await settings.readSettings(uid, true);
-    assert.equal(parsed.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
+    assert.equal(parsed.brickset_api_key, '\u2022'.repeat(12), 'the mask only says „gesetzt“');
   });
 
   await t.test('voucher PIN', async () => {
@@ -65,13 +65,13 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
     });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
-    assert.equal(b.voucher.pin, '•••', 'nach aussen nur die Maske');
+    assert.equal(b.voucher.pin, '•••', 'only the mask to the outside');
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
     assert.equal(
       (await require('./helpers/sources').testArea('vouchers').vouchers.voucher(uid, b.voucher.id)).pin,
       '8642',
-      'entschlüsselt lesbar',
+      'readable when decrypted',
     );
   });
 

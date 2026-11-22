@@ -76,7 +76,7 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     const sichtbar = await b.auswerten(
       `[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length && e.getBoundingClientRect().width > 0).length`,
     );
-    assert.ok(sichtbar >= 2, `nur ${sichtbar} Kacheln sichtbar`);
+    assert.ok(sichtbar >= 2, `only ${sichtbar} tiles visible`);
     await bis(
       `!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-cost-basis').textContent)`,
       'Finanzkacheln',
@@ -105,7 +105,7 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     const merk = await b.auswerten(
       ueber(`document.querySelector('.mk-row .delbtn')`, `document.querySelector('.mk-row .mk-price')`),
     );
-    assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'überdeckte Fläche in px²');
+    assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'covered area in px²');
   });
 
   await t.test('Stein: key figures compact', async () => {
@@ -116,9 +116,9 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
       const r = document.querySelector('#tab-gallery .brick-stats');
       return { reihen: new Set(k).size, hoehe: Math.round(r.getBoundingClientRect().height), rollt: r.scrollWidth > r.clientWidth + 1 }; })()`);
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'classic'); true`);
-    assert.ok(m.reihen <= 2, `Kennzahlen in ${m.reihen} Reihen`);
-    assert.equal(m.rollt, false, 'Kennzahlen rollen waagrecht');
-    assert.ok(m.hoehe <= 140, `Kennzahlen ${m.hoehe} px hoch`);
+    assert.ok(m.reihen <= 2, `metrics in ${m.reihen} rows`);
+    assert.equal(m.rollt, false, 'metrics scroll horizontally');
+    assert.ok(m.hoehe <= 140, `metrics ${m.hoehe} px high`);
   });
 
   await t.test('Noppe: bottom bar at least 4.5:1', async () => {
@@ -153,12 +153,9 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     }
     const ring = await b.auswerten(`(() => { const e = document.activeElement, s = getComputedStyle(e);
       return { reiter: e.classList.contains('ntab'), breite: parseFloat(s.outlineWidth), abstand: parseFloat(s.outlineOffset), stil: s.outlineStyle }; })()`);
-    assert.equal(ring.reiter, true, `Tab erreicht keinen Reiter: ${weg.join(' → ')}`);
-    assert.ok(ring.stil !== 'none' && ring.breite >= 2, `kein Ring: ${JSON.stringify(ring)}`);
-    assert.ok(
-      ring.abstand + ring.breite <= 0,
-      `der Ring ragt ${ring.abstand + ring.breite} px hinaus und wird abgeschnitten`,
-    );
+    assert.equal(ring.reiter, true, `Tab reaches no tab: ${weg.join(' → ')}`);
+    assert.ok(ring.stil !== 'none' && ring.breite >= 2, `no ring: ${JSON.stringify(ring)}`);
+    assert.ok(ring.abstand + ring.breite <= 0, `the ring sticks out ${ring.abstand + ring.breite} px and is clipped`);
   });
 
   await t.test('desktop: numbers right-aligned', async () => {

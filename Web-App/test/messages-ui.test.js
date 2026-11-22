@@ -48,11 +48,11 @@ test('errors and button messages do not expire', async () => {
     const meldung = d.querySelector('#toasts .toast.error');
     assert.match(meldung.textContent, /Merkliste kaputt/);
     for (const z of caughtOne) z.fn();
-    assert.ok(meldung.isConnected, 'der Fehler lief nach seiner Frist ab');
+    assert.ok(meldung.isConnected, 'the error expired after its timeout');
     const zu = meldung.querySelector('.toast-close');
     assert.equal(zu.getAttribute('aria-label'), 'Schliessen');
     zu.click();
-    assert.equal(meldung.isConnected, false, 'das ✕ schliesst');
+    assert.equal(meldung.isConnected, false, 'the ✕ closes');
   } finally {
     w.close();
   }
@@ -81,10 +81,10 @@ test('the mouse on the message stops the deadline', async () => {
     const meldung = d.querySelector('#toasts .toast.success');
     meldung.dispatchEvent(new w.MouseEvent('mouseenter'));
     for (const fn of [...open.values()]) fn();
-    assert.ok(meldung.isConnected, 'die Frist lief unter der Maus ab');
+    assert.ok(meldung.isConnected, 'the timeout expired under the mouse');
     meldung.dispatchEvent(new w.MouseEvent('mouseleave'));
     for (const fn of [...open.values()]) fn();
-    assert.equal(meldung.isConnected, false, 'nach dem Verlassen läuft die Frist wieder');
+    assert.equal(meldung.isConnected, false, 'after leaving, the timeout runs again');
   } finally {
     w.close();
   }
@@ -99,7 +99,7 @@ test('identical errors do not stack', async () => {
     }
     await warte(() => d.querySelector('#toasts .toast-count:not([hidden])')?.textContent === '×3', 1000);
     const meldungen = d.querySelectorAll('#toasts .toast.error');
-    assert.equal(meldungen.length, 1, `${meldungen.length} Meldungen`);
+    assert.equal(meldungen.length, 1, `${meldungen.length} messages`);
     assert.equal(meldungen[0].querySelector('.toast-count').textContent, '×3');
   } finally {
     w.close();

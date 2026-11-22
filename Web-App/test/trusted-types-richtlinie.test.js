@@ -49,7 +49,7 @@ test('a string arrives escaped as text', async () => {
 test('a replicated SafeHtml without a brand is escaped', async () => {
   const { asHtml, SafeHtml } = await laden();
   const falsch = Object.assign(Object.create(SafeHtml.prototype), { text: '<script>x</script>' });
-  assert.ok(falsch instanceof SafeHtml, 'Vorbedingung: instanceof liesse es durch');
+  assert.ok(falsch instanceof SafeHtml, 'precondition: instanceof would let it through');
   assert.deepEqual(asHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
 });
 

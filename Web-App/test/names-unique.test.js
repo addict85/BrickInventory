@@ -44,7 +44,7 @@ test('a function name means one thing', () => {
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 60, `Only ${dateien.length} source files found — the search no longer works`);
 
   const wo = new Map();
   let found = 0;
@@ -62,7 +62,7 @@ test('a function name means one thing', () => {
     }
   }
   // Self-proof: if the search found hardly any functions, the rule would be vacuously true.
-  assert.ok(found >= 300, `Nur ${found} Funktionen gefunden — die Suche greift nicht mehr`);
+  assert.ok(found >= 300, `Only ${found} functions found — the search no longer works`);
 
   const doppelt = [];
   const gebraucht = new Set();
@@ -82,16 +82,16 @@ test('a function name means one thing', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ALLOWED beschreiben keine Doppelung mehr:\n  ' +
+    'These entries in ALLOWED no longer describe a duplicate:\n  ' +
       veraltet.join('\n  ') +
-      '\nDer Name steht nur noch an einer Stelle — raus damit.',
+      '\nThe name is only in one place now — remove it.',
   );
   assert.deepEqual(
     doppelt.sort(),
     [],
-    'Diese Namen stehen in mehreren Dateien. Entweder meinen sie dasselbe — dann ' +
-      'gehoeren sie in eine gemeinsame Funktion —, oder sie meinen VERSCHIEDENES, ' +
-      'dann braucht einer einen anderen Namen. Ist beides nicht der Fall, in ALLOWED ' +
-      'eintragen, mit dem Grund',
+    'These names are in several files. Either they mean the same thing — then ' +
+      'they belong in a shared function —, or they mean DIFFERENT things, ' +
+      'then one needs a different name. If neither is the case, add it to ALLOWED ' +
+      'with the reason',
   );
 });

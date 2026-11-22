@@ -76,7 +76,7 @@ test('startup skeleton follows the device setting and the design', async t => {
       assert.deepEqual(
         m.leiste,
         fall.dunkel ? ['#14181d', '#14181d'] : ['#f8fafc', '#f8fafc'],
-        'Farbe der Browserleiste (theme-color)',
+        'colour of the browser bar (theme-color)',
       );
       assert.equal(
         m.kopf,

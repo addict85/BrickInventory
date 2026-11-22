@@ -45,7 +45,7 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
         const r = await put(kaputt);
         assert.equal(r.status, 400, JSON.stringify(kaputt));
       }
-      assert.equal(await quantityOf(db, uid, SN), 2, 'der Bestand ist unverändert');
+      assert.equal(await quantityOf(db, uid, SN), 2, 'the stock is unchanged');
     });
 
     await t.test('a valid quantity as text is accepted', async () => {
@@ -59,7 +59,7 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
       assert.equal(r.status, 200);
       const j = await r.json();
       assert.equal(j.quantity, 0);
-      assert.ok(j.trash, 'die Antwort nennt den Papierkorb-Eintrag');
+      assert.ok(j.trash, 'the response names the trash entry');
       const entryRow = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.trash, uid]);
       assert.equal(entryRow?.number, SN);
       assert.equal(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]), undefined);

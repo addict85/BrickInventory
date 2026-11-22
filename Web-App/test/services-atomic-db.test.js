@@ -143,7 +143,7 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
       limit = null;
     }
     const now = await G.voucherPlaintext(nutzer, z.id);
-    assert.equal(Number(now.amount), 42, 'der Betrag der ersten Änderung ging verloren');
+    assert.equal(Number(now.amount), 42, 'the amount of the first change got lost');
     assert.equal(now.pin, '999');
     assert.equal(now.number, '6000444455556666');
   });

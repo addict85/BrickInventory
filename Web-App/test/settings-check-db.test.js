@@ -72,7 +72,7 @@ test('settings: validation of the values and export per role', { concurrency: 1 
       const r = await send({ currency: '<img src=x>' });
       assert.equal(r.status, 400);
       assert.equal((await r.json()).code, 'value_invalid');
-      assert.equal(await wert('currency'), 'CHF', 'der alte Wert bleibt');
+      assert.equal(await wert('currency'), 'CHF', 'the old value stays');
       assert.equal((await send({ language: 'xx' })).status, 400);
       assert.equal((await send({ user_default_condition: 'Z' })).status, 400);
     });
@@ -86,9 +86,9 @@ test('settings: validation of the values and export per role', { concurrency: 1 
     await t.test('a non-administrator does not export SMTP data', async () => {
       const j = await (await fetch(url(nutzer, '/export'))).json();
       assert.deepEqual(j.global, {});
-      assert.equal(j.user_settings.currency, 'CHF', 'die eigenen Einstellungen sind dabei');
+      assert.equal(j.user_settings.currency, 'CHF', 'the own settings are included');
       const v = await (await fetch(url(verwalter, '/export'))).json();
-      assert.equal(v.global.smtp_host, 'mail.intern.example', 'der Verwalter bekommt sie');
+      assert.equal(v.global.smtp_host, 'mail.intern.example', 'the admin gets them');
     });
   } finally {
     if (smtpBefore === null) await db.run(`DELETE FROM global_settings WHERE key='smtp_host'`);

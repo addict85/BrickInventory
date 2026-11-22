@@ -68,14 +68,14 @@ test('the catalog answers the same no matter how the number is written', { concu
       assert.equal(
         r,
         'skipped_gear',
-        `„${number}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
-          'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen',
+        `„${number}": the job asks BrickLink although the catalogue says there is ` +
+          'no price — and counts the result as an error instead of as skipped',
       );
       assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
 
       fetches = [];
       const p = await fetchPrice(number, 'N', 'sold', 'EUR', 24);
-      assert.equal(p.no_price, true, `„${number}": Der Anfrageweg meldet keinen preislosen Eintrag`);
+      assert.equal(p.no_price, true, `„${number}": the request path reports no priceless entry`);
       assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
     }
   } finally {
@@ -97,7 +97,7 @@ test('the spelling is not computed again anywhere', () => {
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
 
   const eigene = [],
     prechecker = [];
@@ -124,12 +124,12 @@ test('the spelling is not computed again anywhere', () => {
   assert.deepEqual(
     eigene,
     ['src/infra/setNumber.ts'],
-    'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
-      'zwei Stellen auseinander, die dasselbe meinen',
+    'The spelling is computed once more elsewhere — that is exactly how ' +
+      'two places that mean the same thing drift apart',
   );
   assert.deepEqual(
     prechecker,
     ['src/catalog/repository/catalogCache.ts'],
-    'Der Katalog wird an mehr als einer Stelle gelesen',
+    'The catalogue is read in more than one place',
   );
 });

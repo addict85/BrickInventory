@@ -86,7 +86,7 @@ test('wishlist: market price from the cache', async t => {
     // compare text, and that would otherwise only show up when sorting.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const neu = liste.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(typeof neu.market_price, 'number', `marktpreis ist ${typeof neu.market_price}`);
+    assert.equal(typeof neu.market_price, 'number', `marktpreis is ${typeof neu.market_price}`);
     assert.equal(neu.market_price, 500);
     assert.equal(neu.currency, 'EUR');
   });
@@ -98,13 +98,13 @@ test('wishlist: market price from the cache', async t => {
     const karte = Object.fromEntries(
       liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.market_price]),
     );
-    assert.deepEqual(karte, { N: 500, U: 300 }, 'Der gebrauchte Merkposten zeigt nicht den Gebrauchtpreis.');
+    assert.deepEqual(karte, { N: 500, U: 300 }, 'The used wanted item does not show the used price.');
   });
 
   await t.test("3. the reader's currency decides", async () => {
     const chf = await M.wantedItemsOf([U.ich], undefined, 'CHF');
     const neu = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(neu.market_price, 999, 'Der Preis stammt aus der falschen Währung.');
+    assert.equal(neu.market_price, 999, 'The price comes from the wrong currency.');
     assert.equal(neu.currency, 'CHF');
   });
 
@@ -123,7 +123,7 @@ test('wishlist: market price from the cache', async t => {
     // would arise, and it would be silent: Postgres would get the currency as
     // set number and return nothing.
     const eins = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
-    assert.equal(eins.length, 2, `${eins.length} Zeilen statt 2 — Parameterfolge verrutscht?`);
+    assert.equal(eins.length, 2, `${eins.length} rows instead of 2 — parameter order shifted?`);
     assert.ok(eins.every(w => w.set_number === '10179-1'));
     assert.equal(eins.find(w => w.condition === 'U').market_price, 300);
   });

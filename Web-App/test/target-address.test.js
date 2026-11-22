@@ -52,7 +52,7 @@ async function reason(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
+    assert.ok(e instanceof FetchError, `no AbrufFehler: ${e}`);
     return e.reason;
   }
   return 'kein Fehler';
@@ -112,7 +112,7 @@ test('the mail server may be in the own network, just not in that of the contain
   assert.deepEqual(
     ['127.0.0.1', '172.28.73.20', '169.254.169.254', 'fe80::1'].map(withoutContainer),
     [true, true, false, false],
-    'ohne Container ist Loopback ein lokaler Mailserver',
+    'without a container loopback is a local mail server',
   );
 });
 
@@ -167,14 +167,14 @@ test('NAT64 and IPv4-mapped addresses: the IPv4 address inside counts', () => {
     assert.equal(Z.normalized(ip), v4, ip);
   for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalized(ip), ip);
   for (const ip of ['64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b::a9fe:a9fe', '::ffff:192.168.1.1'])
-    assert.equal(Z.publicAddress(ip), false, `NAT64 zählt wie die IPv4-Adresse darin: ${ip}`);
+    assert.equal(Z.publicAddress(ip), false, `NAT64 counts like the IPv4 address inside it: ${ip}`);
   // Behind DNS64 a pure IPv4 service gets a NAT64 address; it stays reachable.
   assert.equal(Z.publicAddress('64:ff9b::808:808'), true);
 });
 
 test('6to4 and Teredo are never public', () => {
   for (const ip of ['2002:a00:1::1', '2002:7f00:1::', '2001:0:4136:e378::1'])
-    assert.equal(Z.publicAddress(ip), false, `6to4 und Teredo: ${ip}`);
+    assert.equal(Z.publicAddress(ip), false, `6to4 and Teredo: ${ip}`);
 });
 
 test('the mail server does not reach the container network via NAT64 either', () => {
@@ -182,23 +182,23 @@ test('the mail server does not reach the container network via NAT64 either', ()
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
   const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.equal(pruefe('64:ff9b::172.28.73.20'), false, 'Container-Netz auch über NAT64');
+  assert.equal(pruefe('64:ff9b::172.28.73.20'), false, 'container network via NAT64 too');
   assert.equal(pruefe('::ffff:172.28.73.20'), false);
-  assert.equal(pruefe('64:ff9b::7f00:1'), false, 'Loopback über NAT64');
-  assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'ein Mailserver im eigenen LAN bleibt erlaubt');
+  assert.equal(pruefe('64:ff9b::7f00:1'), false, 'loopback via NAT64');
+  assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'a mail server in the own LAN stays allowed');
 });
 
 test('IPv4-compatible addresses (::a.b.c.d) count like the IPv4 address inside', () => {
   assert.equal(Z.normalized('::127.0.0.1'), '127.0.0.1');
   assert.equal(Z.normalized('::a9fe:a9fe'), '169.254.169.254');
-  for (const ip of ['::', '::1']) assert.equal(Z.normalized(ip), ip, `${ip} bleibt IPv6`);
+  for (const ip of ['::', '::1']) assert.equal(Z.normalized(ip), ip, `${ip} stays IPv6`);
   for (const ip of ['::127.0.0.1', '::7f00:1', '::10.0.0.1', '::a9fe:a9fe', '64:ff9b::7f00:1'])
     assert.equal(Z.publicAddress(ip), false, ip);
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
   const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.equal(pruefe('::127.0.0.1'), false, 'Loopback über ::/96');
-  assert.equal(pruefe('::172.28.73.20'), false, 'Container-Netz über ::/96');
-  assert.equal(Z.mailServerAddress('::1', { imContainer: false, interfaces }), true, '::1 ohne Container');
+  assert.equal(pruefe('::127.0.0.1'), false, 'loopback via ::/96');
+  assert.equal(pruefe('::172.28.73.20'), false, 'container network via ::/96');
+  assert.equal(Z.mailServerAddress('::1', { imContainer: false, interfaces }), true, '::1 without a container');
 });

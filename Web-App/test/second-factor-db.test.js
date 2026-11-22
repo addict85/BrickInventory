@@ -129,13 +129,13 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal(
       (await callFn('/second-factor/setup', { password: 'falsch' }, token)).status,
       400,
-      'Einrichten ohne richtiges Passwort',
+      'setup without the right password',
     );
     const e = await callFn('/second-factor/setup', { password: PASS }, token);
     assert.equal(e.status, 200, JSON.stringify(e.body));
     assert.match(e.body.otpauth, /^otpauth:\/\/totp\/BrickInventory%3A/);
     // Before the confirmation the factor does not apply: logging in still works without a code.
-    assert.equal((await anmelden(name)).status, 200, 'unbestätigte Einrichtung sperrt schon');
+    assert.equal((await anmelden(name)).status, 200, 'an unconfirmed setup already locks');
     assert.equal((await callFn('/second-factor/confirm', { code: '000000' }, token)).status, 400);
     const b = await callFn('/second-factor/confirm', { code: await codeFor(name, -1) }, token);
     assert.equal(b.status, 200, JSON.stringify(b.body));
@@ -150,7 +150,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal(
       (await callFn('/second-factor', null, alt)).status,
       401,
-      'Ein Token von vor dem Einschalten gilt weiter — ein Eindringling bliebe drin',
+      'A token from before enabling stays valid — an intruder would stay in',
     );
     assert.deepEqual((await callFn('/second-factor', null, token)).body, {
       success: true,
@@ -160,25 +160,25 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       old_codes_until: null,
     });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM second_factor_codes'));
-    assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
+    assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'recovery codes are stored in plain text');
     // 80 bits: 16 Base32 characters in groups of four; stored as HMAC, not as bare SHA-256.
     for (const c of codes) assert.match(c, /^[a-z2-7]{4}(-[a-z2-7]{4}){3}$/);
     const sha = c => require('node:crypto').createHash('sha256').update(c.replace(/-/g, '')).digest('hex');
-    assert.ok(!codes.some(c => roh.includes(sha(c))), 'Wiederherstellungscodes als ungesalzenes SHA-256 gespeichert');
+    assert.ok(!codes.some(c => roh.includes(sha(c))), 'recovery codes stored as unsalted SHA-256');
     // A code of the old form (10 characters, SHA-256) applies until its deadline (0122), once.
     const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
     await db.run(
       `INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
       [uid, sha('abcde23456')],
     );
-    assert.equal(await zf.checkCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
-    assert.equal(await zf.checkCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
+    assert.equal(await zf.checkCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'old code no longer valid');
+    assert.equal(await zf.checkCode(uid, 'abcde-23456'), null, 'old code valid twice');
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND consumed_at IS NOT NULL', [uid]);
 
     // Without a code: refusal with a hint, no token.
     const ohne = await anmelden(NAME);
     assert.equal(ohne.status, 401);
-    assert.equal(ohne.body.second_factor, true, 'ohne Code angemeldet');
+    assert.equal(ohne.body.second_factor, true, 'logged in without a code');
     assert.equal(ohne.body.code, 'second_factor_required');
     assert.equal(ohne.body.token, undefined);
 
@@ -188,12 +188,12 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
     assert.ok(mit.body.token);
     const nochmal = await anmelden(NAME, code);
-    assert.equal(nochmal.status, 401, 'derselbe Code zweimal');
+    assert.equal(nochmal.status, 401, 'the same code twice');
     assert.equal(nochmal.body.code, 'second_factor_wrong');
 
     // Recovery code: applies once, even with a different notation.
     assert.equal((await anmelden(NAME, codes[0].toUpperCase().replace('-', ' '))).status, 200);
-    assert.equal((await anmelden(NAME, codes[0])).status, 401, 'Wiederherstellungscode gilt zweimal');
+    assert.equal((await anmelden(NAME, codes[0])).status, 401, 'recovery code valid twice');
     assert.equal((await callFn('/second-factor', null, token)).body.codes_left, 9);
 
     // Switching off requires password AND code.
@@ -201,9 +201,9 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal((await callFn('/second-factor/disable', { password: 'falsch', code: codes[1] }, token)).status, 400);
     // And on password change: a 401 would mean „logged out" for web and app.
     const pw = await callFn('/change-password', { current: 'falsch', newPassword: 'neuesPasswort123' }, token);
-    assert.equal(pw.status, 400, 'falsches aktuelles Passwort beim Wechsel ist ein 401 — die Clients melden dann ab');
+    assert.equal(pw.status, 400, 'a wrong current password on change is a 401 — the clients then log out');
     assert.equal((await callFn('/second-factor/disable', { password: PASS, code: codes[1] }, token)).status, 200);
-    assert.equal((await anmelden(NAME)).status, 200, 'nach dem Abschalten wieder ohne Code');
+    assert.equal((await anmelden(NAME)).status, 200, 'after disabling, without a code again');
     assert.equal(
       (
         await db.get(
@@ -218,18 +218,18 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     const { token: tS, codes: cS } = await setUpAccount(SPERRE);
     for (let i = 0; i < 5; i++) await anmelden(SPERRE, String(100000 + i));
     const gesperrt = await anmelden(SPERRE, await codeFor(SPERRE));
-    assert.equal(gesperrt.status, 429, `keine Sperre nach fünf falschen Codes: ${JSON.stringify(gesperrt.body)}`);
+    assert.equal(gesperrt.status, 429, `no lock after five wrong codes: ${JSON.stringify(gesperrt.body)}`);
 
     // The same when switching off: with a known password the code could be
     // guessed arbitrarily often, because the right password reset the counter.
     for (let i = 0; i < 5; i++)
       await callFn('/second-factor/disable', { password: PASS, code: String(200000 + i) }, tS);
     const geraten = await callFn('/second-factor/disable', { password: PASS, code: cS[0] }, tS);
-    assert.equal(geraten.status, 429, `Code beim Abschalten beliebig oft ratbar: ${geraten.status}`);
+    assert.equal(geraten.status, 429, `code can be guessed any number of times when disabling: ${geraten.status}`);
     assert.equal(
       (await callFn('/second-factor/codes', { code: cS[1] }, tS)).status,
       429,
-      'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein',
+      'Renewing the recovery codes must be locked as well',
     );
 
     // Confirming the setup throttles just the same.
@@ -272,10 +272,10 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.deepEqual(
       [eigen.status, eigen.body?.code],
       [400, 'own_second_factor'],
-      'eigener Faktor nur mit Passwort entfernt',
+      'own factor removed only with a password',
     );
     assert.equal(await zf.isActive(idV), true);
-    assert.equal((await entfernen(idS)).status, 200, 'fremder Faktor lässt sich nicht mehr entfernen');
+    assert.equal((await entfernen(idS)).status, 200, 'a foreign factor can no longer be removed');
     // Announced like every takeover (src/account/adminActions.ts); effective in the cleanup run.
     assert.equal(await zf.isActive(idS), true);
     assert.equal(await require('./helpers/admin').takeoverNow(_req, db, idS), 1);

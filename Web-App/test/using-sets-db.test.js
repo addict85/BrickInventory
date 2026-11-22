@@ -94,7 +94,7 @@ test('the list of using sets follows the viewport', async t => {
   assert.deepEqual(
     inHousehold.map(s => s.set_number),
     ['10305-1', '21058-1', '75192-1'],
-    `Erwartet drei Sets in Nummernfolge, bekam ${JSON.stringify(inHousehold.map(s => s.set_number))}`,
+    `Expected three sets in number order, got ${JSON.stringify(inHousehold.map(s => s.set_number))}`,
   );
 
   // ── A second row for the same key is rejected ──────────
@@ -111,31 +111,31 @@ test('the list of using sets follows the viewport', async t => {
         [haupt],
       ),
     /idx_parts_unique|duplicate key/,
-    'Eine zweite parts-Zeile fuer dasselbe Konto, Set, Teil und dieselbe Farbe ' +
-      'wurde angenommen — dann gibt es die Stueckzahl wieder zweimal',
+    'A second parts row for the same account, set, part and colour ' +
+      'was accepted — then the piece count exists twice again',
   );
 
   const nach = Object.fromEntries(inHousehold.map(s => [s.set_number, s]));
-  assert.equal(nach['75192-1'].quantity, 15, 'Die Stückzahl eines Set-Teils ist die Katalogzahl des Sets');
+  assert.equal(nach['75192-1'].quantity, 15, 'The piece count of a set part is the catalogue number of the set');
   assert.equal(nach['10305-1'].quantity, 7);
   assert.equal(nach['21058-1'].quantity, 3);
   assert.equal(
     nach['21058-1'].owner_user_id,
     kind,
-    'Der Besitzer muss mitkommen — im Haushalt steht sonst nicht da, wem das Set gehört',
+    'The owner must come along — otherwise the household view does not show whom the set belongs to',
   );
-  assert.equal(nach['75192-1'].set_name, 'Millennium Falcon', 'Ohne den Namen steht im Dialog nur eine Nummer');
+  assert.equal(nach['75192-1'].set_name, 'Millennium Falcon', 'Without the name the dialog only shows a number');
 
   // The manual position (42 pieces, without a set) must be in no sum.
   const summe = inHousehold.reduce((n, s) => n + s.quantity, 0);
-  assert.equal(summe, 25, `Summe ${summe} — die manuell erfasste Zeile ist mitgezählt worden`);
+  assert.equal(summe, 25, `total ${summe} — the manually recorded row was counted as well`);
 
   // ── The COLOR separates ─────────────────────────────────────────────────────
   const blau = (await usingSets([haupt, kind], 'parts', { part_number: '3001', color_id: 1 })).sets;
   assert.deepEqual(
     blau.map(s => [s.set_number, s.quantity]),
     [['75192-1', 99]],
-    'Die Farbe wird nicht unterschieden — dann zeigt der Dialog fremde Bestände',
+    'The colour is not distinguished — then the dialog shows foreign stock',
   );
 
   // ── A single account sees only its own set ───────────────────────────────
@@ -143,7 +143,7 @@ test('the list of using sets follows the viewport', async t => {
   assert.deepEqual(
     nurKind.map(s => s.set_number),
     ['21058-1'],
-    'Ohne Haushalt darf nur das eigene Set erscheinen',
+    'Without a household only the own set may appear',
   );
 
   // ── Figures: the same function, the same rules ─────────────────────────
@@ -154,7 +154,7 @@ test('the list of using sets follows the viewport', async t => {
       ['21058-1', 1],
       ['75192-1', 2],
     ],
-    'Für Figuren gilt dasselbe — inklusive: die manuell erfasste zählt nicht mit',
+    'The same applies to figures — including: the manually recorded one does not count',
   );
 
   // ── The header of the dialog comes from THE SAME rows ─────────────────────
@@ -168,12 +168,12 @@ test('the list of using sets follows the viewport', async t => {
   assert.equal(
     item.total_quantity,
     25,
-    'Die Gesamtmenge muss die Summe der Sets sein — und die manuelle Zeile NICHT enthalten',
+    'The total quantity must be the sum of the sets — and NOT contain the manual row',
   );
   assert.equal(
     item.is_spare,
     false,
-    'is_spare kommt als INTEGER; "0" ist in JavaScript WAHR — hier muss ein echter Wahrheitswert stehen',
+    'is_spare arrives as INTEGER; "0" is TRUTHY in JavaScript — a real boolean must be here',
   );
 
   assert.equal(figItem.number, 'sw0001');
@@ -181,14 +181,14 @@ test('the list of using sets follows the viewport', async t => {
   assert.equal(
     figItem.color_name,
     null,
-    'Figuren haben keine Farbe — das Feld muss trotzdem dastehen, damit beide Antworten dieselbe Form haben',
+    'Figures have no colour — the field must be there anyway so that both responses have the same shape',
   );
   assert.equal(figItem.total_quantity, 3);
 
   // Self-proof: if the query were broken and delivered nothing at all, all the
   // deepEqual above would have run against empty lists — the first would have reported it.
   // This line additionally records that BOTH sides delivered something.
-  assert.ok(inHousehold.length >= 3 && minifigs.length >= 2, 'Eine der beiden Abfragen hat nichts geliefert');
+  assert.ok(inHousehold.length >= 3 && minifigs.length >= 2, 'One of the two queries returned nothing');
 });
 
 test('a disallowed column is rejected', async t => {
@@ -203,6 +203,6 @@ test('a disallowed column is rejected', async t => {
   await assert.rejects(
     () => usingSets([1], 'parts', { 'part_number; DROP TABLE parts': 'x' }),
     /unerlaubte Spalte/,
-    'Ein beliebiger Spaltenname ging durch',
+    'An arbitrary column name got through',
   );
 });

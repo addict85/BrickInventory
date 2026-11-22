@@ -47,12 +47,12 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
 
   await t.test('a new installation has no money column as REAL', async () => {
     const spalten = await db.all(MONEY_COLUMNS);
-    assert.ok(spalten.length > 15, `nur ${spalten.length} Geldspalten gefunden — die Prüfung liefe ins Leere`);
+    assert.ok(spalten.length > 15, `only ${spalten.length} money columns found — the check would test nothing`);
     const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
     assert.deepEqual(
       real.map(s => s.spalte),
       [],
-      'Gleitkomma für Geld — Summen driften und die Anzeige bekommt Nachkomma-Schwänze',
+      'Floating point for money — totals drift and the display gets trailing decimals',
     );
   });
 
@@ -77,7 +77,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(vorher.data_type, 'real', 'Vorbedingung: Spalte ist wieder REAL');
+    assert.equal(vorher.data_type, 'real', 'precondition: column is REAL again');
 
     const c2 = await db.pool.connect();
     try {
@@ -90,7 +90,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
+    assert.equal(nachher.data_type, 'numeric', 'The migration did not convert the column');
 
     // And restore the final state
     for (const [tab, sp] of [
@@ -111,7 +111,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       'utf8',
     );
     const index = /CREATE UNIQUE INDEX idx_set_acq_erfassungstag[^;]+;/.exec(mig);
-    assert.ok(index, 'Tagesindex in 0070 nicht gefunden');
+    assert.ok(index, 'Day index not found in 0070');
     await db.run('DROP INDEX IF EXISTS idx_set_acq_acquisition_day');
     // 0070 still knows the column and the index under their old names (before 0124 and 0127).
     await db.run(
@@ -132,7 +132,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     );
 
     const summe = await db.get(`SELECT SUM(purchase_price) AS s FROM set_acquisitions WHERE user_id=$1`, [uid]);
-    assert.equal(Number(summe.s), 70, `Summe ${summe.s} statt exakt 70`);
+    assert.equal(Number(summe.s), 70, `total ${summe.s} instead of exactly 70`);
   });
 
   await t.test('a stored purchase price comes back unchanged', async () => {
@@ -147,7 +147,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     const { readSets } = require('./helpers/sources').handlerModule(_req);
     const r = await readSets([uid], { search: '99002' });
     const satz = r.sets.find(s => s.set_number === '99002-1');
-    assert.ok(satz, 'Set nicht gefunden');
+    assert.ok(satz, 'set not found');
 
     // `purchase_price` stood here in the list too. Since migration 0032 the set response
     // no longer carries the field (the column is gone); the purchase price
@@ -155,7 +155,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     // the loop checked a missing field and reported `NaN !== 49.9`.
     for (const field of ['avg_purchase_price', 'max_purchase_price']) {
       const wert = Number(satz[field]);
-      assert.equal(wert, 49.9, `${field} = ${satz[field]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);
+      assert.equal(wert, 49.9, `${field} = ${satz[field]} — exactly this floating-point tail used to go to the client`);
       // And the value survives the way through JSON in the same form.
       assert.equal(JSON.parse(JSON.stringify({ v: wert })).v, 49.9);
     }
@@ -173,7 +173,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     assert.equal(
       typeof row.purchase_price,
       'number',
-      `purchase_price kommt als ${typeof row.purchase_price} — der Typ-Parser fehlt`,
+      `purchase_price arrives as ${typeof row.purchase_price} — the type parser is missing`,
     );
   });
 

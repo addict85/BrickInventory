@@ -32,7 +32,7 @@ function withoutModule(src) {
  */
 function runFrom(functionName, environment) {
   const start = QUELLE.indexOf(`function ${functionName}(`);
-  assert.ok(start > 0, `${functionName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
+  assert.ok(start > 0, `${functionName}() is no longer in the files of the „einstellungen“ view`);
   // Up to the bracket in column 0 — that is how these files are written.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = withoutModule(QUELLE.slice(start, ende));
@@ -59,14 +59,14 @@ function rack(dom, targetId) {
 test('spacing between invitation code and link button', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
-  assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
+  assert.ok(knopf, 'The link button can no longer be found');
   // Since UI check 22 it stands in the footer of the menu pages (.account-footer, margin-top:.75rem).
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  assert.ok(knopf.parentElement?.classList.contains('account-footer'), 'Der Knopf steht nicht in .account-footer');
+  assert.ok(knopf.parentElement?.classList.contains('account-footer'), 'The button is not in .account-footer');
   assert.match(
     css,
     /\.account-footer\{[^}]*margin-top:\.?\d/,
-    'Die Fusszeile trägt keinen oberen Abstand; der Knopf klebte dann am Eingabefeld darüber — Marcos Bild.',
+    "The footer has no top margin; the button then stuck to the input field above — Marco's screenshot.",
   );
 });
 
@@ -89,32 +89,31 @@ test('the linked accounts are in two columns, not new per row', () => {
   runFrom('renderHousehold', env);
 
   const liste = dom.window.document.querySelector('#household-state ul');
-  assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
+  assert.ok(liste, 'The list of linked accounts was not created');
   // The grid stands in styles.css (.household-list); minmax(0, …) lets the
   // columns shrink at large font sizes instead of widening the page.
-  assert.ok(liste.classList.contains('household-list'), 'Die Liste trägt die Klasse household-list nicht');
+  assert.ok(liste.classList.contains('household-list'), 'The list does not carry the class household-list');
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   const stil = (css.match(/\n\.household-list\{([^}]*)\}/) || [])[1] || '';
   assert.match(
     stil,
     /display\s*:\s*grid/,
-    `Die LISTE trägt kein Raster („${stil}“) — dann richtet sich jede Zeile ` +
-      'für sich aus, und die Knöpfe stehen versetzt.',
+    `The LIST carries no grid („${stil}“) — then every row aligns ` + 'on its own, and the buttons are staggered.',
   );
   assert.match(
     stil,
     /grid-template-columns\s*:\s*minmax\(0,\s*max-content\)\s+minmax\(0,\s*max-content\)/,
-    'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' + 'keine gemeinsame Breite',
+    'The list does not have two content columns — without them the rows share ' + 'no common width',
   );
 
   const zeilen = [...liste.querySelectorAll('li')];
-  assert.equal(zeilen.length, 3, `${zeilen.length} Zeilen statt 3`);
+  assert.equal(zeilen.length, 3, `${zeilen.length} rows instead of 3`);
   for (const li of zeilen) {
     assert.match(
       li.getAttribute('data-style') || '',
       /display\s*:\s*contents/,
-      'Eine Zeile erzeugt einen eigenen Kasten — damit liegen ihre Zellen NICHT ' +
-        'in den Spalten der Liste, und die Ausrichtung ist wieder dahin',
+      'A row creates a box of its own — then its cells are NOT ' +
+        'in the columns of the list, and the alignment is gone again',
     );
   }
   // And every row delivers exactly two cells — otherwise the columns shift
@@ -123,14 +122,14 @@ test('the linked accounts are in two columns, not new per row', () => {
     assert.equal(
       li.children.length,
       2,
-      `Eine Zeile hat ${li.children.length} Zellen statt 2 — bei display:contents ` +
-        'zählt jede Zelle einzeln ins Raster, eine zu viel verschiebt alles danach',
+      `A row has ${li.children.length} cells instead of 2 — with display:contents ` +
+        'every cell counts separately in the grid, one too many shifts everything after it',
     );
   }
   assert.equal(
     liste.querySelectorAll('[data-click="unlinkHousehold"]').length,
     3,
-    'Nicht jede Zeile hat ihren Entfernen-Knopf',
+    'Not every row has its remove button',
   );
 });
 
@@ -144,7 +143,7 @@ test('the storage locations are laid out like a table', () => {
   const source = QUELLE.slice(QUELLE.indexOf('export async function loadLocationManagement'));
   const ende = source.indexOf('\n}\n') + 3;
   const rumpf = source.slice(0, ende);
-  assert.match(rumpf, /storage-list/, 'Der Abschnitt wurde nicht gefunden');
+  assert.match(rumpf, /storage-list/, 'The section was not found');
 
   const sandbox = {
     document: d,
@@ -186,29 +185,28 @@ test('the storage locations are laid out like a table', () => {
     const raster = d.querySelector('#storage-list > div[data-style*="grid"]');
     assert.ok(
       raster,
-      'Es gibt keinen Rasterbehälter — dann richtet sich jede Zeile ' +
-        'für sich aus, und die Eingabefelder sind verschieden lang',
+      'There is no grid container — then every row aligns ' + 'on its own, and the input fields have different lengths',
     );
     const stil = raster.getAttribute('data-style');
     assert.match(
       stil,
       /grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+max-content\s+max-content\s+max-content/,
-      `Das Raster hat nicht die vier erwarteten Spalten (data-style="${stil}"). minmax(0,1fr) ` +
-        'und nicht 1fr: Ein langer Ortsname sprengte sonst die Spalte.',
+      `The grid does not have the four expected columns (data-style="${stil}"). minmax(0,1fr) ` +
+        'and not 1fr: a long location name would otherwise burst the column.',
     );
 
     const zeilen = [...raster.children];
-    assert.equal(zeilen.length, 4, `${zeilen.length} Zeilen statt 4`);
+    assert.equal(zeilen.length, 4, `${zeilen.length} rows instead of 4`);
     for (const z of zeilen) {
       assert.match(
         z.getAttribute('data-style') || '',
         /display\s*:\s*contents/,
-        'Eine Lagerortzeile erzeugt einen eigenen Kasten — damit hat sie wieder ' + 'ihre eigenen Spaltenbreiten',
+        'A location row creates a box of its own — then it has ' + 'its own column widths again',
       );
       assert.equal(
         z.children.length,
         4,
-        `Eine Zeile hat ${z.children.length} Zellen statt 4 (Feld, Belegung, Stern, Papierkorb)`,
+        `A row has ${z.children.length} cells instead of 4 (field, usage, star, trash can)`,
       );
     }
     // The separator line sat on the row; a display:contents element cannot
@@ -217,8 +215,8 @@ test('the storage locations are laid out like a table', () => {
       assert.match(
         zelle.getAttribute('data-style') || '',
         /border-bottom/,
-        'Eine Zelle trägt keinen Trennstrich — bei display:contents ist die Linie ' +
-          'sonst verschwunden, weil die Zeile keinen Kasten mehr hat',
+        'A cell carries no divider — with display:contents the line ' +
+          'is otherwise gone, because the row no longer has a box',
       );
     }
   });

@@ -63,9 +63,9 @@ test('the name lookup under /api/v2/sets is unambiguous', { concurrency: 1 }, as
     });
     await t.test('an own placeholder and a catalog entry apply', async () => {
       const e = await info(eigen);
-      assert.deepEqual([e.name, e.in_catalog], [`Set ${eigen}`, true], 'ein eigener Platzhalter …');
+      assert.deepEqual([e.name, e.in_catalog], [`Set ${eigen}`, true], 'an own placeholder …');
       const k = await info(`${process.pid}-1`);
-      assert.deepEqual([k.name, k.in_catalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'ein Katalogeintrag …');
+      assert.deepEqual([k.name, k.in_catalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'a catalogue entry …');
     });
   } finally {
     await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [nummern]);

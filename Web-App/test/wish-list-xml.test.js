@@ -42,16 +42,13 @@ test('the schedule inserts server values escaped', async () => {
       await warte(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
       'Hintergrundarbeiten',
     );
-    assert.equal(o.d.getElementById('eingeschleust'), null, 'Hintergrundarbeiten: ein Wert wurde zu Markup');
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'background jobs: a value became markup');
     assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(BOESE));
     await reiter(o.w, 'settings');
-    assert.ok(
-      await warte(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2),
-      'Einstellungen',
-    );
-    assert.equal(o.d.getElementById('eingeschleust'), null, 'Einstellungen: ein Wert wurde zu Markup');
+    assert.ok(await warte(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2), 'settings');
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'settings: a value became markup');
     assert.equal(o.d.querySelector('.mon-minutes').value, '15');
-    assert.equal(o.d.querySelector('.mon-time').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
+    assert.equal(o.d.querySelector('.mon-time').value, BOESE, 'the value did not arrive unchanged in the field');
     assert.equal(o.d.querySelector('.mon-time').dataset.arg, 'priceJob');
   } finally {
     o.w.close();

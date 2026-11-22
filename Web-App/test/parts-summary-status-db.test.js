@@ -46,7 +46,7 @@ test('parts summary: state', { concurrency: 1 }, async t => {
   try {
     await t.test('a renamed storage location invalidates the summary', async () => {
       await PS.rebuildNow(uid);
-      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'precondition: fresh');
       await db.run(`UPDATE storage_locations SET name = 'Regal B' WHERE id = $1`, [location]);
       assert.equal(await PS.summaryFresh(uid, { strict: true }), false);
       await PS.rebuildNow(uid);
@@ -56,9 +56,9 @@ test('parts summary: state', { concurrency: 1 }, async t => {
 
     await t.test('a changed part name is updated immediately', async () => {
       await PS.rebuildNow(uid);
-      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'precondition: fresh');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);
-      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'der Nachzug läuft in summaryFresh');
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'the catch-up runs in summaryFresh');
       assert.equal(
         (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name,
         'Neuer Name',

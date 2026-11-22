@@ -107,8 +107,8 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
   for (const tab of ['parts', 'minifigs']) {
     assert.ok(
       !(await columnsOf(tab)).includes('quantity'),
-      `${tab}.quantity ist nach allen Migrationen noch da — Migration 0038 hat ` +
-        `nicht geloescht, oder etwas legt die Spalte danach wieder an.`,
+      `${tab}.quantity is still there after all migrations — migration 0038 did ` +
+        `not delete it, or something creates the column again afterwards.`,
     );
   }
 
@@ -116,7 +116,7 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
   // set, at THAT place, in THAT condition.
   const parts = await columnsOf('parts');
   for (const sp of ['id', 'user_id', 'part_number', 'color_id', 'set_number', 'source', 'storage_id']) {
-    assert.ok(parts.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
+    assert.ok(parts.includes(sp), `parts.${sp} is missing — the column belongs to the stock`);
   }
 
   // Not disappeared but moved — and to TWO places, depending
@@ -127,7 +127,10 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
     ['part_acquisitions', 'quantity'],
     ['minifig_acquisitions', 'quantity'],
   ]) {
-    assert.ok((await columnsOf(tab)).includes(sp), `${tab}.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
+    assert.ok(
+      (await columnsOf(tab)).includes(sp),
+      `${tab}.${sp} is missing — then the piece count exists nowhere any more`,
+    );
   }
 
   // The four indexes from steps 5 and 6. The two unique ones are not
@@ -141,7 +144,7 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
     'idx_part_acq_acquisition_day',
     'idx_minifig_acq_acquisition_day',
   ]) {
-    assert.ok(ix.includes(name), `${name} fehlt (Migration 0038, Schritt 5/6)`);
+    assert.ok(ix.includes(name), `${name} is missing (migration 0038, step 5/6)`);
   }
 
   // And they really are UNIQUE — an index with the same name but
@@ -152,7 +155,7 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
         WHERE c.relname = $1`,
       [name],
     );
-    assert.equal(r?.indisunique, true, `${name} ist nicht eindeutig`);
+    assert.equal(r?.indisunique, true, `${name} is not unique`);
   }
 });
 
@@ -178,7 +181,7 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     if (fs.existsSync(v)) lauf(v);
   }
   dateien.push(path.join(ROOT, 'server.ts'));
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — der Pfad stimmt nicht`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} source files found — the path is wrong`);
 
   // Lines without comments: an explanatory text that QUOTES a statement is
   // not a write access. Exactly this trap has already made a rule in this tree
@@ -219,11 +222,11 @@ test('nobody writes the piece count of a part or a figure any more', () => {
   assert.deepEqual(
     placeList,
     [],
-    'Diese Stellen schreiben die Stueckzahl eines Teils oder einer Figur:\n  ' +
+    'These places write the piece count of a part or a figure:\n  ' +
       placeList.join('\n  ') +
-      '\nSie steht seit Migration 0038 im Set-Katalog (fuer source=set) bzw. in den ' +
-      'Erfassungen (fuer source=manual). Eine Abschrift daneben laeuft auseinander — ' +
-      'genau das war bei sets.quantity gemessen worden: 10 bei drei Erfassungen mit Summe 7.',
+      '\nSince migration 0038 it lives in the set catalogue (for source=set) or in the ' +
+      'acquisitions (for source=manual). A copy next to it drifts apart — ' +
+      'exactly that had been measured for sets.quantity: 10 with three acquisitions summing to 7.',
   );
 
   // Selbstbeweis
@@ -245,7 +248,7 @@ test('nobody writes the piece count of a part or a figure any more', () => {
   ];
   for (const [row, name] of probeList) {
     const m = muster.find(([was]) => was === name)[1];
-    assert.ok(m.test(row), `Das Muster „${name}" greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
+    assert.ok(m.test(row), `The pattern „${name}" no longer fires on its own probe: ${row.slice(0, 60)}`);
   }
   // And the opposite direction: what is allowed must NOT trigger. Without this
   // half a pattern that fits every line would be green too.
@@ -257,7 +260,7 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     'UPDATE sets SET storage_id = $1 WHERE id=$2',
   ]) {
     for (const [was, m] of muster) {
-      assert.ok(!m.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.trim().slice(0, 70)}`);
+      assert.ok(!m.test(row), `The pattern „${was}" reports an allowed line: ${row.trim().slice(0, 70)}`);
     }
   }
 });
@@ -354,12 +357,12 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(
     Number(st1.total_parts),
     17,
-    `Ein Konto: 6 im Set × 2 Exemplare + 5 manuell = 17, bekam ${st1.total_parts}`,
+    `One account: 6 in the set × 2 copies + 5 manual = 17, got ${st1.total_parts}`,
   );
   assert.equal(
     Number(st1.total_minifigs),
     4,
-    `Ein Konto: 1 im Set × 2 Exemplare + 2 manuell = 4, bekam ${st1.total_minifigs}`,
+    `One account: 1 in the set × 2 copies + 2 manual = 4, got ${st1.total_minifigs}`,
   );
 
   // ── Metrics, household ─────────────────────────────────────────────────
@@ -369,8 +372,8 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   // account carried its own copy, and two copies of the same number
   // can drift apart.
   const st2 = await S.getStats([haupt, kind]);
-  assert.equal(Number(st2.total_parts), 23, `Haushalt: 12 + 5 + 6 = 23, bekam ${st2.total_parts}`);
-  assert.equal(Number(st2.total_minifigs), 5, `Haushalt: 2 + 2 + 1 = 5, bekam ${st2.total_minifigs}`);
+  assert.equal(Number(st2.total_parts), 23, `household: 12 + 5 + 6 = 23, got ${st2.total_parts}`);
+  assert.equal(Number(st2.total_minifigs), 5, `household: 2 + 2 + 1 = 5, got ${st2.total_minifigs}`);
 
   // ── The lists ───────────────────────────────────────────────────────────
   const liste = await P.partsQuery([haupt], { page_size: 60 });
@@ -378,40 +381,32 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(
     Number(rowOf(liste, '3001').total_quantity),
     12,
-    'Die Teileliste multipliziert die Katalogzahl nicht mit der Setmenge',
+    'The parts list does not multiply the catalogue number by the set quantity',
   );
   assert.equal(
     Number(rowOf(liste, '3070b').total_quantity),
     5,
-    'Die Teileliste liest die manuelle Position nicht aus den Erfassungen',
+    'The parts list does not read the manual item from the acquisitions',
   );
   // The driver delivers BIGINT as a STRING. Without the ::int cast the
   // JSON type depends on which branch answered — exactly this error
   // already surfaced once in src/parts/queries.ts.
-  assert.equal(
-    typeof rowOf(liste, '3001').total_quantity,
-    'number',
-    'total_quantity muss eine Zahl sein, keine Zeichenkette',
-  );
+  assert.equal(typeof rowOf(liste, '3001').total_quantity, 'number', 'total_quantity must be a number, not a string');
 
   const figList = await M.readMinifigs([haupt], { page_size: 60 });
   const figOf = (l, nr) => (l.figs || []).find(x => x.fig_number === nr);
   assert.equal(
     Number(figOf(figList, 'sw0001').total_quantity),
     2,
-    'Die Figurenliste multipliziert nicht mit der Setmenge',
+    'The figure list does not multiply by the set quantity',
   );
   assert.equal(
     Number(figOf(figList, 'fig-m').total_quantity),
     2,
-    'Die Figurenliste liest die manuelle Figur nicht aus den Erfassungen',
+    'The figure list does not read the manual figure from the acquisitions',
   );
 
-  assert.equal(
-    Number((await M.computeMinifigStats([haupt])).total_quantity),
-    4,
-    'Die Figuren-Kennzahl rechnet nicht mit',
-  );
+  assert.equal(Number((await M.computeMinifigStats([haupt])).total_quantity), 4, 'The figure metric does not count it');
   // partStatsQuery DELIBERATELY counts only set parts — manually captured ones have
   // their own area in the UI (the filter stands in
   // src/parts/summary.ts and in the fallback below it). So 12, not 17. This
@@ -419,17 +414,17 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(
     Number((await P.partStatsQuery([haupt])).total_parts),
     12,
-    'Die Teile-Kennzahl zaehlt nur Set-Teile: 6 × 2 Exemplare = 12',
+    'The parts metric counts only set parts: 6 × 2 copies = 12',
   );
 
   // ── The lists of the MANUAL positions ─────────────────────────────────
   const man = await P.manualPartsList([haupt], haupt, { page_size: 60 });
   const manRow = man.find(x => x.part_number === '3070b');
-  assert.ok(manRow, 'Die manuelle Position fehlt in der Liste');
-  assert.equal(Number(manRow.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manRow.quantity}`);
+  assert.ok(manRow, 'The manual item is missing in the list');
+  assert.equal(Number(manRow.quantity), 5, `Manual parts list: 2 + 3 = 5, got ${manRow.quantity}`);
   const manFig = (await M.readManualMinifigs([haupt], haupt, { page_size: 60 })).find(x => x.fig_number === 'fig-m');
-  assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');
-  assert.equal(Number(manFig.quantity), 2, `Manuelle Figurenliste: 2, bekam ${manFig.quantity}`);
+  assert.ok(manFig, 'The manual figure is missing in the list');
+  assert.equal(Number(manFig.quantity), 2, `Manual figure list: 2, got ${manFig.quantity}`);
 
   // ── „Can I build this?" ───────────────────────────────────────────────
   //
@@ -444,9 +439,9 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     ],
   );
   assert.equal(besitz['3001|4']?.total, 12, 'Set-Teil: 6 × 2 Exemplare');
-  assert.equal(besitz['3001|4']?.loose, 0, 'Ein Teil im Set ist nicht lose');
-  assert.equal(besitz['3070b|0']?.total, 5, 'Manuelle Position: 2 + 3');
-  assert.equal(besitz['3070b|0']?.loose, 5, 'Eine manuelle Position ist lose');
+  assert.equal(besitz['3001|4']?.loose, 0, 'A part in a set is not loose');
+  assert.equal(besitz['3070b|0']?.total, 5, 'manual item: 2 + 3');
+  assert.equal(besitz['3070b|0']?.loose, 5, 'A manual item is loose');
 
   // ── The dialog „which sets is it in?" ────────────────────────────
   //
@@ -454,16 +449,16 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   // one set, ONE number — namely the one PER COPY, without multiplication, because
   // the dialog shows the set, not the stock.
   const verw = await SH.usingSets([haupt, kind], 'parts', { part_number: '3001', color_id: 4 });
-  assert.equal(verw.sets.length, 2, `Beide Konten halten das Set, erwartet zwei Zeilen, bekam ${verw.sets.length}`);
+  assert.equal(verw.sets.length, 2, `Both accounts hold the set, expected two rows, got ${verw.sets.length}`);
   for (const s of verw.sets) {
-    assert.equal(Number(s.quantity), 6, `Jede Zeile muss die Katalogzahl 6 tragen, bekam ${s.quantity}`);
+    assert.equal(Number(s.quantity), 6, `Each row must carry the catalogue number 6, got ${s.quantity}`);
   }
 
   // ── Colors and summary ──────────────────────────────────────────
   const farben = await P.partColorsQuery([haupt]);
   assert.ok(
     Array.isArray(farben) && farben.length > 0,
-    'Die Farbliste ist leer — sie zaehlt mit subsetFrom() und muesste zwei Farben haben',
+    'The colour list is empty — it counts with subsetFrom() and should have two colours',
   );
 
   // rebuildNow() and not rebuild(): the list calls above have already triggered
@@ -473,29 +468,28 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   const { rebuildNow } = _req('src/parts/summary.js');
   await rebuildNow(haupt);
   const zus = await db.get(`SELECT total_quantity FROM parts_summary WHERE user_id=$1 AND part_number='3001'`, [haupt]);
-  assert.ok(zus, 'Die Zusammenfassung hat das Set-Teil nicht aufgenommen');
-  assert.equal(Number(zus.total_quantity), 12, `Die vorberechnete Zahl ist 6 × 2 = 12, bekam ${zus.total_quantity}`);
+  assert.ok(zus, 'The summary did not pick up the set part');
+  assert.equal(Number(zus.total_quantity), 12, `The precomputed number is 6 × 2 = 12, got ${zus.total_quantity}`);
 
   // valuation and CSV
   const B = _req('src/finances/calculation/valuation.js');
   const valP = await B.valueParts(haupt, [haupt]);
   const valRow = (valP.parts || []).find(x => x.part_number === '3070b');
-  assert.ok(valRow, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(valP).slice(0, 200)}`);
-  assert.equal(Number(valRow.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${valRow.quantity}`);
+  assert.ok(valRow, `The parts valuation does not know the manual item: ${JSON.stringify(valP).slice(0, 200)}`);
+  assert.equal(Number(valRow.quantity), 5, `The valuation reads 2 + 3 = 5, got ${valRow.quantity}`);
   assert.ok(
     !(valP.parts || []).some(x => x.part_number === '3001'),
-    'Das Set-Teil steht in der Teile-Bewertung — dann wird es zweimal bewertet, ' +
-      'einmal hier und einmal ueber sein Set',
+    'The set part is in the parts valuation — then it is valued twice, ' + 'once here and once via its set',
   );
   const valM = await B.valueMinifigs(haupt, [haupt]);
   const valFig = (valM.figs || []).find(x => x.fig_number === 'fig-m');
-  assert.ok(valFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(valM).slice(0, 200)}`);
-  assert.equal(Number(valFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${valFig.quantity}`);
+  assert.ok(valFig, `The figure valuation does not know the manual figure: ${JSON.stringify(valM).slice(0, 200)}`);
+  assert.equal(Number(valFig.quantity), 2, `The figure valuation reads 2, got ${valFig.quantity}`);
 
   const csvP = await _req('src/inventory/inventoryExport.js').partsCsv(haupt);
-  assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
+  assert.match(csvP, /3070b/, 'The parts export leaves out the manual item');
   const csvM = await _req('src/inventory/inventoryExport.js').minifigsCsv(haupt);
-  assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
+  assert.match(csvM, /fig-m/, 'The figure export leaves out the manual figure');
 
   // ── COUNTER-CHECK 1: change the CATALOG NUMBER ────────────────────────────────
   //
@@ -511,18 +505,18 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(
     Number((await S.getStats([haupt])).total_parts),
     23,
-    'Nach 6 → 9 muss ein Konto 9 × 2 + 5 = 23 zaehlen — dann liest die Kennzahl ' +
-      'die Zahl nicht aus set_parts_catalog',
+    'After 6 → 9 one account must count 9 × 2 + 5 = 23 — otherwise the metric does not read ' +
+      'the number from set_parts_catalog',
   );
   assert.equal(
     Number((await S.getStats([kind])).total_parts),
     9,
-    'Das Kind muss der GEMEINSAMEN Katalogzahl ebenso folgen: 9 × 1 = 9',
+    'The child must follow the SHARED catalogue number as well: 9 × 1 = 9',
   );
   assert.equal(
     Number(rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3001').total_quantity),
     18,
-    'Die Liste folgt der Katalogzahl nicht: 9 × 2 = 18',
+    'The list does not follow the catalogue number: 9 × 2 = 18',
   );
 
   // ── COUNTER-CHECK 2: change an ACQUISITION ─────────────────────────────────
@@ -539,7 +533,7 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(
     Number(rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b').total_quantity),
     10,
-    'Nach 2 → 7 muss die manuelle Position 10 sein (7 + 3) — dann liest die Liste ' + 'sie nicht aus part_acquisitions',
+    'After 2 → 7 the manual item must be 10 (7 + 3) — otherwise the list does not read ' + 'it from part_acquisitions',
   );
 
   // ── And without an acquisition the quantity is 0, not 1 ─────────────────────────
@@ -552,13 +546,13 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   const leer = rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b');
   assert.ok(
     leer,
-    'Die Zeile ohne Erfassung ist aus der Liste verschwunden — ein ' +
-      'INNER JOIN statt LEFT JOIN leert den Bestand, statt 0 zu zeigen',
+    'The row without an acquisition disappeared from the list — an ' +
+      'INNER JOIN instead of LEFT JOIN empties the stock instead of showing 0',
   );
   assert.equal(
     Number(leer.total_quantity),
     0,
-    `Ohne Erfassung sind es 0 Stueck, nicht ${leer.total_quantity} — der ` +
-      'Rueckfallwert 1 gilt nur fuer den SET-Zweig (ein Set-Teil steckt mindestens einmal drin)',
+    `Without an acquisition it is 0 pieces, not ${leer.total_quantity} — the ` +
+      'fallback value 1 applies only to the SET branch (a set part is in it at least once)',
   );
 });

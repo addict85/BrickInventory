@@ -88,7 +88,7 @@ function webMenu() {
   const auf = html.indexOf('<div class="umenu-pop"');
   // Up to behind logout: the drawer is divided into groups, its first </div> only closes the first one.
   const zu = html.indexOf('</button>', html.indexOf('id="btn-logout"', auf)) + '</button>'.length;
-  assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden.');
+  assert.ok(auf > 0 && zu > auf, 'The menu dropdown can no longer be found.');
   return [...html.slice(auf, zu).matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map(m => ({
     schluessel: (/data-i18n="([^"]+)"/.exec(m[1]) || [])[1],
     symbol: (/<use href="#([\w-]+)"/.exec(m[1]) || [])[1],
@@ -98,15 +98,15 @@ function webMenu() {
 test('every menu entry is assigned', () => {
   const web = webMenu();
   // Self-proof: if the derivation finds nothing, the loops would be silently green.
-  assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
+  assert.equal(web.length, 10, `${web.length} web entries derived instead of ten — does the derivation still work?`);
 
   const webTo = new Set(MAPPING.map(z => z.web));
   const openWeb = web.filter(e => !webTo.has(e.schluessel) && !(e.schluessel in NUR_WEB));
   assert.deepEqual(
     openWeb.map(e => e.schluessel),
     [],
-    'Diese Web-Einträge sind weder zugeordnet noch als „nur Web" begründet. ' +
-      'Ein neuer Eintrag ohne Gegenstück ist eine Entscheidung — sie gehört in die Tabelle.',
+    'These web entries are neither mapped nor justified as „nur Web". ' +
+      'A new entry without a counterpart is a decision — it belongs in the table.',
   );
 });
 
@@ -121,7 +121,7 @@ test('every entry carries its icon', () => {
     const symbol = web.get(z.web);
     if (symbol !== z.symbol) falsch.push(`${z.web} (${z.sinnbild}): Web zeigt #${symbol} statt #${z.symbol}`);
   }
-  assert.deepEqual(falsch, [], 'Das Menü zeigt nicht mehr, was die Tabelle sagt:\n  ' + falsch.join('\n  '));
+  assert.deepEqual(falsch, [], 'The menu no longer shows what the table says:\n  ' + falsch.join('\n  '));
 });
 
 test('no icon stands for two things', () => {
@@ -142,7 +142,6 @@ test('no icon stands for two things', () => {
   assert.deepEqual(
     [w].filter(Boolean),
     [],
-    'Ein Sinnbild steht für zwei verschiedene Dinge. Wer es sieht, kann die ' +
-      'beiden Einträge nicht auseinanderhalten.',
+    'One icon stands for two different things. Whoever sees it cannot tell the ' + 'two entries apart.',
   );
 });

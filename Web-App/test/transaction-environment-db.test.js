@@ -63,7 +63,7 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
       /zurück/,
     );
     assert.equal(gesehen, 'eins');
-    assert.equal(await getGlobalSetting(`${S}a`), null, 'mit der Transaktion zurückgerollt');
+    assert.equal(await getGlobalSetting(`${S}a`), null, 'rolled back with the transaction');
   });
 
   await t.test('a failed inner transaction lets the outer one continue', async () => {
@@ -71,7 +71,11 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
         tx.db.transaction(async inner => {
-          assert.equal(await in_(inner).globalValue(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
+          assert.equal(
+            await in_(inner).globalValue(`${S}b`),
+            'aussen',
+            'the inner one sees the state of the outer one',
+          );
           await schreibe(inner, 'c', 'innen');
           throw new Error('innen kaputt');
         }),
@@ -96,6 +100,6 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
       ]);
     });
     assert.equal(inside, true);
-    assert.deepEqual(await spaeter, [false, { x: 1 }], 'ein Nachzügler läuft über den Pool');
+    assert.deepEqual(await spaeter, [false, { x: 1 }], 'a straggler runs via the pool');
   });
 });

@@ -57,13 +57,13 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       (await statesJeSet(a, ['10305-1'])).get('10305-1'),
       ['N'],
-      'ein Merkposten auf ein NEUES Set muss als neu geholt werden — vorher ergab die ' +
-        'Vorgabe DEFAULT_PRICE_CONDITION hier still ein "U"',
+      'a wanted item for a NEW set must be fetched as new — before, the ' +
+        'default DEFAULT_PRICE_CONDITION silently yielded a "U" here',
     );
     assert.deepEqual(
       (await statesJeSet(b, ['10305-1'])).get('10305-1'),
       ['U'],
-      'und der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht',
+      'and the wanted item for the same set at another user as used',
     );
 
     // ── Both conditions wanted: both prices are needed ──────────────────────
@@ -73,7 +73,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       sortedList((await statesJeSet(a, ['21318-1'])).get('21318-1')),
       ['N', 'U'],
-      'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis',
+      'new and used are two wanted items — the detail needs a price for both',
     );
 
     // Holding without a wishlist item: the condition comes from the acquisition
@@ -85,7 +85,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       (await statesJeSet(a, ['75192-1'])).get('75192-1'),
       ['U'],
-      'der Zustand der Erfassung eines eigenen Sets entscheidet',
+      'the condition of the acquisition of an own set decides',
     );
 
     // ── Holding AND wishlist item in the other condition: both ────────────────
@@ -100,7 +100,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       sortedList((await statesJeSet(a, ['42100-1'])).get('42100-1')),
       ['N', 'U'],
-      'Bestand und Merkposten in verschiedenen Zuständen ergeben beide Abrufe',
+      'stock and wanted item in different conditions yield both fetches',
     );
 
     // ── The condition comes from the acquisition ────────────────────────────
@@ -117,7 +117,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       (await statesJeSet(a, ['10276-1'])).get('10276-1'),
       ['U'],
-      'die Erfassung entscheidet ueber den zu holenden Preis',
+      'the acquisition decides the price to fetch',
     );
 
     // ── And a set row WITHOUT an acquisition falls back to 'N' ──────────────
@@ -130,15 +130,15 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       (await statesJeSet(a, ['31203-1'])).get('31203-1'),
       ['N'],
-      'ohne Erfassung bleibt es beim Neu-Preis — eine leere Liste hiesse, ' +
-        'dass fuer dieses Set gar kein Preis geholt wird',
+      'without an acquisition it stays at the new price — an empty list would mean ' +
+        'that no price at all is fetched for this set',
     );
 
     // ── A set this user keeps nowhere ───────────────────────────────────────
     assert.deepEqual(
       (await statesJeSet(b, ['75192-1'])).get('75192-1'),
       ['N'],
-      'was dieser Nutzer weder besitzt noch wünscht, fällt auf "neu" zurück',
+      'what this user neither owns nor wants falls back to "neu"',
     );
 
     // ── Bundled and single are the SAME rule ────────────────────────────────
@@ -148,7 +148,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       assert.deepEqual(
         sortedList(await conditionsNeededFor(sn, a)),
         sortedList((await statesJeSet(a, [sn])).get(sn)),
-        `conditionsNeededFor(${sn}) muss dasselbe sagen wie der Lauf`,
+        `conditionsNeededFor(${sn}) must say the same as the run`,
       );
     }
 
@@ -156,20 +156,20 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     assert.deepEqual(
       sortedList(await conditionsNeededFor('99999-1', a, 'U')),
       ['U'],
-      'ohne Bestand entscheidet der Hinweis — sonst bekäme ein als gebraucht ' +
-        'erfasstes Set den Neupreis als Kaufpreis',
+      'without stock the hint decides — otherwise a set recorded ' +
+        'as used would get the new price as purchase price',
     );
     assert.deepEqual(
       sortedList(await conditionsNeededFor('10276-1', a, 'N')),
       ['N', 'U'],
-      'der Hinweis tritt neben die vorhandenen Erfassungen, er ersetzt sie nicht',
+      'the hint joins the existing acquisitions, it does not replace them',
     );
 
     // ── An empty list does not query ────────────────────────────────────────
     assert.equal(
       (await statesJeSet(a, [])).size,
       0,
-      'ohne Sets darf keine Abfrage laufen — der Lauf ruft das für jeden Nutzer auf',
+      'without sets no query may run — the run calls this for every user',
     );
   } finally {
     for (const uid of [a, b]) {

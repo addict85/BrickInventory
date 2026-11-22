@@ -26,9 +26,9 @@ const ROOT = path.join(__dirname, '..');
 test('the project has no install script', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   for (const s of ['preinstall', 'install', 'postinstall', 'prepare'])
-    assert.equal(pkg.scripts[s], undefined, `package.json hat ${s}`);
+    assert.equal(pkg.scripts[s], undefined, `package.json has ${s}`);
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
-  assert.equal(lock.packages[''].hasInstallScript, undefined, 'die Lockfile kennt noch ein Install-Skript');
+  assert.equal(lock.packages[''].hasInstallScript, undefined, 'the lockfile still knows an install script');
 });
 
 test('a build argument takes precedence, otherwise Git', () => {
@@ -57,7 +57,7 @@ test('the server reports the built version', () => {
     const { appVersion } = _req('src/infra/appVersion.js');
     assert.equal(appVersion(), gebaut);
     environment({ APP_VERSION: 'laufzeit-1' });
-    assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION zur Laufzeit geht vor');
+    assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION at runtime takes precedence');
   } finally {
     if (alt === undefined) environment({ APP_VERSION: undefined });
     else environment({ APP_VERSION: alt });

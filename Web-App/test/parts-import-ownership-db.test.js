@@ -121,11 +121,11 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
   await t.test('at most 30 imports per hour per account', async () => {
     const status = [];
     for (let i = 0; i < 30; i++) status.push((await importIt(U, UNTER)).status);
-    assert.deepEqual([...new Set(status)], [200], 'bis zur Grenze geht jeder durch');
+    assert.deepEqual([...new Set(status)], [200], 'up to the limit every one goes through');
     const toMuch = await importIt(U, UNTER);
     assert.equal(toMuch.status, 429);
     assert.equal(toMuch.body.code, 'too_many_requests');
-    assert.equal((await importIt(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
+    assert.equal((await importIt(F, FREMD)).status, 200, 'another account counts on its own');
   });
 
   await t.test('an empty response is remembered', async () => {
@@ -133,6 +133,6 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
     const leer = `TIL${P}-1`;
     assert.deepEqual(await allPartsOfSet(leer), []);
     assert.deepEqual(await allPartsOfSet(leer), []);
-    assert.deepEqual(fetches, [leer], 'die zweite Frage ging wieder an Rebrickable');
+    assert.deepEqual(fetches, [leer], 'the second question went to Rebrickable again');
   });
 });

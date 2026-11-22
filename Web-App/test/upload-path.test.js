@@ -23,7 +23,7 @@ test('an upload below the storage stays, everything else is rejected', () => {
   assert.throws(
     () => belowRoot(WURZEL, `${WURZEL}-alt${path.sep}a.pdf`),
     /ausserhalb/,
-    'Nachbarordner mit gleichem Anfang',
+    'neighbour folder with the same prefix',
   );
-  assert.throws(() => belowRoot(WURZEL, WURZEL), /ausserhalb/, 'die Wurzel selbst ist keine Datei darin');
+  assert.throws(() => belowRoot(WURZEL, WURZEL), /ausserhalb/, 'the root itself is no file inside it');
 });

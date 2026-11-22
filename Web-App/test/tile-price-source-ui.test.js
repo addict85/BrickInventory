@@ -50,7 +50,11 @@ test('tile price: market and purchase price labeled as the server delivers them'
   try {
     await warte(() => /preis/.test(text(d.querySelector('[data-price-for="21318-1"] .price-kind'))));
     await warte(() => d.querySelector('[data-price-for="42115-1"] .price-kind'));
-    assert.equal(text(d.querySelector('[data-price-for="42115-1"] .price-kind')), 'Kaufpreis', 'ohne Marktpreis');
+    assert.equal(
+      text(d.querySelector('[data-price-for="42115-1"] .price-kind')),
+      'Kaufpreis',
+      'without a market price',
+    );
     assert.equal(text(d.querySelector('[data-price-for="21318-1"] .price-kind')), 'Marktpreis');
   } finally {
     w.close();

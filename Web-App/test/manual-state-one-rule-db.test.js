@@ -92,7 +92,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
       ['/minifigs/manual', figList],
       ['minifigs-valuation', bewertung.parts],
     ])
-      assert.equal(l.length, faelle.length, `${was}: ${l.length} statt ${faelle.length} Einträgen`);
+      assert.equal(l.length, faelle.length, `${was}: ${l.length} instead of ${faelle.length} entries`);
 
     const condition = (liste, schluessel, wert) => liste.find(x => x[schluessel] === wert)?.condition;
 
@@ -105,20 +105,20 @@ test('manual parts and figures: list and valuation state the same condition', { 
       assert.equal(
         fromList,
         fromValuation,
-        `${beschreibung}: /parts/manual sagt ${fromList}, die Bewertung sagt ${fromValuation}. ` +
-          'Die Webapp liest die eine Antwort, die App die andere — dasselbe Teil ' +
-          'trüge in den beiden Oberflächen verschiedene Plaketten.',
+        `${beschreibung}: /parts/manual says ${fromList}, the valuation says ${fromValuation}. ` +
+          'The web app reads one answer, the app the other — the same part ' +
+          'would carry different badges in the two interfaces.',
       );
-      assert.equal(fromList, f.erwartet, `${beschreibung}: erwartet ${f.erwartet}, bekommen ${fromList}`);
+      assert.equal(fromList, f.erwartet, `${beschreibung}: expected ${f.erwartet}, got ${fromList}`);
 
       const figFromList = condition(figList, 'fig_number', 'fig' + f.nr);
       const figFromValuation = condition(figValuation.figs, 'fig_number', 'fig' + f.nr);
       assert.equal(
         figFromList,
         figFromValuation,
-        `Figur fig${f.nr}: /minifigs/manual sagt ${figFromList}, die Bewertung sagt ${figFromValuation}`,
+        `figure fig${f.nr}: /minifigs/manual says ${figFromList}, the valuation says ${figFromValuation}`,
       );
-      assert.equal(figFromList, f.erwartet, `Figur fig${f.nr}: erwartet ${f.erwartet}, bekommen ${figFromList}`);
+      assert.equal(figFromList, f.erwartet, `figure fig${f.nr}: expected ${f.erwartet}, got ${figFromList}`);
     }
 
     // And the envelope of the two valuations is shaped the same. The topmost
@@ -157,6 +157,6 @@ test('the app fetches the manual pieces from their own address', () => {
       .appRoutes(_req)
       .map(r => `${r.methode} ${r.path}`),
   );
-  assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'Die App ruft /parts/manual nicht');
-  assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'Die App ruft /minifigs/manual nicht');
+  assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'The app does not call /parts/manual');
+  assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'The app does not call /minifigs/manual');
 });

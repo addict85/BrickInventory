@@ -57,17 +57,17 @@ test('color and category list see the same inventory in the household', { concur
     for (const modus of ['all', 'own']) {
       const farben = await hole(`/api/v2/parts/colors?accounts=${modus}`);
       const kats = await hole(`/api/v2/parts/categories?accounts=${modus}`);
-      assert.ok(farben.success, `Farben (${modus}): ${JSON.stringify(farben)}`);
-      assert.ok(kats.success, `Kategorien (${modus}): ${JSON.stringify(kats)}`);
+      assert.ok(farben.success, `colours (${modus}): ${JSON.stringify(farben)}`);
+      assert.ok(kats.success, `categories (${modus}): ${JSON.stringify(kats)}`);
 
       const summe = (l, f) => l.reduce((a, x) => a + Number(x[f] || 0), 0);
       assert.equal(
         summe(kats.categories, 'unique_parts'),
         summe(farben.colors, 'unique_parts'),
-        `${modus}: Farb- und Kategorienliste zaehlen verschieden viele Teile — ` +
-          `sie lesen dann verschiedene Blickfelder.\n` +
-          `Farben: ${JSON.stringify(farben.colors)}\n` +
-          `Kategorien: ${JSON.stringify(kats.categories)}`,
+        `${modus}: colour and category lists count different numbers of parts — ` +
+          `they then read different scopes.\n` +
+          `colours: ${JSON.stringify(farben.colors)}\n` +
+          `categories: ${JSON.stringify(kats.categories)}`,
       );
     }
 
@@ -77,8 +77,8 @@ test('color and category list see the same inventory in the household', { concur
     const eigen = await hole('/api/v2/parts/categories?accounts=own');
     assert.ok(
       alle.categories.length > eigen.categories.length,
-      'Mit dem Haushalt muessen mehr Kategorien da sein als ohne — sonst greift ' +
-        '`accounts` gar nicht und der Vergleich darueber ist wertlos',
+      'With the household there must be more categories than without — otherwise ' +
+        '`accounts` has no effect and the comparison above is worthless',
     );
   } finally {
     await db.run('DELETE FROM parts WHERE user_id = ANY($1)', [[haupt, kind]]).catch(() => {});

@@ -90,20 +90,20 @@ test('after the whole chain sets carries no quantity anymore', { concurrency: 1 
   const nachher = await columnsOf('sets');
   assert.ok(
     !nachher.includes('quantity'),
-    'sets.quantity ist nach allen Migrationen noch da — Migration 0036 hat nicht ' +
-      'geloescht, oder etwas legt die Spalte danach wieder an.',
+    'sets.quantity is still there after all migrations — migration 0036 did not ' +
+      'delete it, or something creates the column again afterwards.',
   );
 
   // And what `sets` still is: THIS account holds THIS set, since THEN, at THAT
   // place. Marco's list.
   for (const sp of ['id', 'user_id', 'set_number', 'storage_id', 'added_at', 'updated_at']) {
-    assert.ok(nachher.includes(sp), `sets.${sp} fehlt — die Spalte gehoert zum Bestand`);
+    assert.ok(nachher.includes(sp), `sets.${sp} is missing — the column belongs to the stock`);
   }
 
   // Not disappeared but moved.
   const erf = await columnsOf('set_acquisitions');
   for (const sp of ['user_id', 'set_number', 'quantity', 'purchase_price', 'condition', 'created_at']) {
-    assert.ok(erf.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
+    assert.ok(erf.includes(sp), `set_acquisitions.${sp} is missing — then the piece count exists nowhere any more`);
   }
 });
 
@@ -128,7 +128,7 @@ test('nobody writes the item count of a set anymore', () => {
     if (fs.existsSync(v)) lauf(v);
   }
   dateien.push(path.join(ROOT, 'server.ts'));
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — der Pfad stimmt nicht`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} source files found — the path is wrong`);
 
   /** Lines without comments — an explanatory text that QUOTES a statement is
    *  not a write access. Exactly this trap has already made a rule in this tree
@@ -171,11 +171,11 @@ test('nobody writes the item count of a set anymore', () => {
   assert.deepEqual(
     placeList,
     [],
-    'Diese Stellen schreiben die Stückzahl eines Sets:\n  ' +
+    'These places write the piece count of a set:\n  ' +
       placeList.join('\n  ') +
-      '\nSie steht seit Migration 0036 ausschliesslich in set_acquisitions. Genau die ' +
-      'zweite Schreibrichtung ist auseinandergelaufen: sets.quantity = 10 bei drei ' +
-      'Erfassungen mit Summe 7.',
+      '\nSince migration 0036 it lives exclusively in set_acquisitions. Exactly the ' +
+      'second write direction drifted apart: sets.quantity = 10 with three ' +
+      'acquisitions summing to 7.',
   );
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ test('nobody writes the item count of a set anymore', () => {
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
   for (const [row, muster] of /** @type {[string, RegExp][]} */ (probeList)) {
-    assert.ok(muster.test(row), `Das Muster greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
+    assert.ok(muster.test(row), `The pattern no longer fires on its own probe: ${row.slice(0, 60)}`);
   }
   // And the opposite direction: what is allowed must NOT trigger.
   for (const row of [
@@ -208,7 +208,7 @@ test('nobody writes the item count of a set anymore', () => {
       ['bei Konflikt', onConflict],
       ['legt an', legtAn],
     ])) {
-      assert.ok(!muster.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.slice(0, 70)}`);
+      assert.ok(!muster.test(row), `The pattern „${was}" reports an allowed line: ${row.slice(0, 70)}`);
     }
   }
 });
@@ -245,32 +245,32 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   // ── One account ────────────────────────────────────────────────────────────
   const eins = await H.readSets([haupt.id], { page_size: 60 });
   const kachel = eins.sets.find(s => s.set_number === SN);
-  assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
-  assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
+  assert.ok(kachel, `The set is missing in the response: ${JSON.stringify(eins.sets).slice(0, 300)}`);
+  assert.equal(Number(kachel.quantity), 3, `One account, acquisitions 2+1: expected 3, got ${kachel.quantity}`);
   // The driver delivers BIGINT as a STRING. Without the ::int cast in
   // db/stockQuantity.ts the JSON type depends on which branch answered
   // — exactly this error already surfaced in src/parts/queries.ts.
   assert.equal(
     typeof kachel.quantity,
     'number',
-    `quantity muss eine Zahl sein, war ${typeof kachel.quantity} (${kachel.quantity})`,
+    `quantity must be a number, was ${typeof kachel.quantity} (${kachel.quantity})`,
   );
 
   // ── Household ─────────────────────────────────────────────────────────────
   const bothOnes = await H.readSets([haupt.id, kind.id], { page_size: 60 });
   const zusammen = bothOnes.sets.find(s => s.set_number === SN);
-  assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
-  assert.equal(Number(zusammen.quantity), 6, `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
+  assert.ok(zusammen, 'The set is missing in the household response');
+  assert.equal(Number(zusammen.quantity), 6, `household, acquisitions 2+1+3: expected 6, got ${zusammen.quantity}`);
   assert.deepEqual(
     [...(zusammen.owner_ids || [])].map(Number).sort((a, b) => a - b),
     [haupt.id, kind.id].sort((a, b) => a - b),
-    'Beide Konten halten Exemplare und müssen beide als Besitzer erscheinen',
+    'Both accounts hold copies and must both appear as owners',
   );
 
   // ── Detail ───────────────────────────────────────────────────────────────
   const detail = await H.readSet(haupt.id, SN);
-  assert.ok(detail, 'Das Set-Detail antwortet nicht');
-  assert.equal(Number(detail.quantity), 3, `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
+  assert.ok(detail, 'The set detail does not answer');
+  assert.equal(Number(detail.quantity), 3, `detail of one account: expected 3, got ${detail.quantity}`);
 
   // ── COUNTER-CHECK: change an acquisition ────────────────────────────────────
   //
@@ -290,12 +290,12 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   assert.equal(
     Number(neu.quantity),
     8,
-    `Nach 2 → 7 muss die Summe 8 sein (7+1), bekam ${neu.quantity}. Dann liest die ` +
-      'Liste die Menge nicht aus set_acquisitions.',
+    `After 2 → 7 the total must be 8 (7+1), got ${neu.quantity}. Then the ` +
+      'list does not read the quantity from set_acquisitions.',
   );
 
   const detail2 = await H.readSet(haupt.id, SN);
-  assert.equal(Number(detail2.quantity), 8, `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
+  assert.equal(Number(detail2.quantity), 8, `The detail does not follow the change: ${detail2.quantity} instead of 8`);
 
   // ── And without an acquisition the quantity is 0, not 1 ──────────────────────────
   //
@@ -308,8 +308,12 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   const zeroPieces = leer.sets.find(s => s.set_number === SN);
   assert.ok(
     zeroPieces,
-    'Ohne Erfassung ist das Set aus der Liste gefallen — der JOIN muss ein LEFT JOIN ' +
-      'sein, sonst verschwinden genau die Zeilen, denen etwas fehlt',
+    'Without an acquisition the set dropped out of the list — the JOIN must be a LEFT JOIN, ' +
+      'otherwise exactly the rows that lack something disappear',
   );
-  assert.equal(Number(zeroPieces.quantity), 0, `Ohne Erfassung muss die Menge 0 sein, nicht ${zeroPieces.quantity}`);
+  assert.equal(
+    Number(zeroPieces.quantity),
+    0,
+    `Without an acquisition the quantity must be 0, not ${zeroPieces.quantity}`,
+  );
 });

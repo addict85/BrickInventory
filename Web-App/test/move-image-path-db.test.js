@@ -82,29 +82,29 @@ test('a moved set takes the image paths of all its components along', { concurre
       [nachId, FN],
     );
 
-    assert.ok(teil, 'Das Teil ist im Zielkonto gar nicht angekommen');
-    assert.ok(figur, 'Die Minifigur ist im Zielkonto gar nicht angekommen');
+    assert.ok(teil, 'The part never arrived in the target account');
+    assert.ok(figur, 'The minifigure never arrived in the target account');
 
     assert.equal(
       figur.image_local,
       PATH_MINIFIG,
-      `Die verschobene Minifigur hat image_local=${figur.image_local} statt "${PATH_MINIFIG}". ` +
-        'Das Figurenbild ist im Zielkonto nicht sichtbar, und bis zum nächsten ' +
-        'Serverstart kommt es wieder über den Proxy vom CDN.',
+      `The moved minifigure has image_local=${figur.image_local} instead of "${PATH_MINIFIG}". ` +
+        'The figure image is not visible in the target account, and until the next ' +
+        'server start it comes from the CDN through the proxy again.',
     );
     assert.equal(
       teil.image_local,
       PATH_PART,
-      `Das verschobene Teil hat image_local=${teil.image_local} statt "${PATH_PART}".`,
+      `The moved part has image_local=${teil.image_local} instead of "${PATH_PART}".`,
     );
 
     // The actual rule: both branches deliver the same result.
     assert.deepEqual(
       { teil: teil.image_local !== null, figur: figur.image_local !== null },
       { teil: true, figur: true },
-      'Teile und Minifiguren kommen beim Verschieben verschieden heraus — ' +
-        'copyContents() kopiert zwei Tabellen mit derselben Absicht, und bei ' +
-        'einer davon fehlt hinterher das Bild.',
+      'Parts and minifigures come out differently when moved — ' +
+        'copyContents() copies two tables with the same intent, and in ' +
+        'one of them the image is missing afterwards.',
     );
   } finally {
     for (const uid of [ofId, nachId]) {

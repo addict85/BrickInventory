@@ -73,7 +73,7 @@ test('initial password in a file instead of the log', async t => {
   await t.test('the log names the path, not the password', () => {
     const log = output.join('\n');
     assert.ok(log.includes(datei), log);
-    assert.ok(!log.includes(passwort), 'Passwort im Log');
+    assert.ok(!log.includes(passwort), 'password in the log');
   });
   await t.test('the first password change deletes the file', async () => {
     await _req('src/account/accounts.js').changeOwnPassword(admin.id, 'ein-neues-langes-Passwort-42');

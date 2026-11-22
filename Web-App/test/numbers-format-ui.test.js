@@ -51,9 +51,9 @@ for (const [language, browser, preis, guv] of [
     try {
       await warte(() => d.querySelector('[data-price-for="10300-1"] .pnl-pos'));
       const field = d.querySelector('[data-price-for="10300-1"]');
-      assert.ok(field, 'Keine Preiszeile auf der Kachel');
+      assert.ok(field, 'No price row on the tile');
       const text = field.textContent.replace(/ /g, ' ');
-      assert.ok(text.includes(preis), `Preis: „${text}“`);
+      assert.ok(text.includes(preis), `price: „${text}“`);
       assert.equal(field.querySelector('.pnl-pos').textContent.replace(/ /g, ' '), guv);
     } finally {
       w.close();

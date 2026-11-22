@@ -58,7 +58,7 @@ test('de: set number without hyphen, as in the Android app', async () => {
         e => `${e.getAttribute('placeholder') ?? ''} ${e.getAttribute('aria-label') ?? ''}`,
       ),
     ].join('\n');
-    assert.match(texte, /Setnummer/, 'die Oberfläche nennt die Setnummer gar nicht');
+    assert.match(texte, /Setnummer/, 'the interface does not name the set number at all');
     assert.doesNotMatch(texte, /Set-Nummer/);
     assert.equal(d.querySelector('label[for="add-num"]').textContent.trim(), 'Setnummer *');
   } finally {

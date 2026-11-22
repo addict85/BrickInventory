@@ -70,15 +70,15 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('an empty database gets base, defaults and an administrator', async () => {
     await db.initSchemaOnce();
     const konto = await db.get(`SELECT is_admin, is_active FROM users WHERE username = 'admin'`);
-    assert.equal(Number(konto?.is_admin), 1, 'kein Administrator angelegt');
+    assert.equal(Number(konto?.is_admin), 1, 'no administrator created');
     const preset = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
-    assert.equal(preset?.value, '4000', 'die Vorgabewerte fehlen');
+    assert.equal(preset?.value, '4000', 'the default values are missing');
     const rb = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_rebrickable'`);
-    assert.equal(rb?.value, '25000', 'das Rebrickable-Tageslimit einer Neuinstallation muss 25000 sein');
+    assert.equal(rb?.value, '25000', 'the Rebrickable daily limit of a new installation must be 25000');
     const pk = await db.get(`SELECT a.attname FROM pg_index i
       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
       WHERE i.indrelid = 'rate_limit_attempts'::regclass AND i.indisprimary`);
-    assert.equal(pk?.attname, 'key', 'die Anmeldezähler brauchen ihren Schlüssel als Primärschlüssel');
+    assert.equal(pk?.attname, 'key', 'the login counters need their key as primary key');
     const dateien = fs
       .readdirSync(path.join(ROOT, 'db/migrations'))
       .filter(f => f.endsWith('.sql'))
@@ -87,19 +87,19 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
     assert.deepEqual(
       dateien.filter(f => !applied.includes(f)),
       [],
-      'nicht jede Migration gilt als angewandt',
+      'not every migration counts as applied',
     );
   });
 
   await t.test('an existing database stays as it is', async () => {
     await db.run(`UPDATE users SET is_active = false WHERE username = 'admin'`);
     await db.run(`UPDATE global_settings SET value = '123' WHERE key = 'api_limit_bricklink'`);
-    assert.equal(await db.initSchema(), false, 'die Basis wurde erneut eingespielt');
+    assert.equal(await db.initSchema(), false, 'the base was loaded again');
     await db.initSchemaOnce();
     assert.equal(
       Number((await db.get(`SELECT is_active FROM users WHERE username = 'admin'`)).is_active),
       0,
-      'ein abgeschaltetes Administratorkonto wurde wieder freigeschaltet',
+      'a disabled administrator account was enabled again',
     );
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`)).value, '123');
   });
@@ -114,7 +114,7 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
     } finally {
       c.release();
     }
-    assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 nicht nachgeholt');
+    assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 not caught up');
   });
 
   // A state before 0050 would have to catch up on the removed start stages; the start
@@ -122,18 +122,18 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('a database older than 0050 stops the start and stays untouched', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name >= '0050'`);
     const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
-    assert.ok(vorher > 0, 'die Probe braucht Migrationen vor 0050');
+    assert.ok(vorher > 0, 'the probe needs migrations before 0050');
     await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050.*UPGRADE\.md/s);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n,
       vorher,
-      'auf dem zu alten Stand lief eine Migration',
+      'a migration ran on the too old state',
     );
     await db.run('DROP TABLE schema_migrations');
     await assert.rejects(
       db.initSchemaOnce(),
       /älter als Migration 0050/,
-      'ohne Migrationstabelle gilt die Datenbank als zu alt',
+      'without a migrations table the database counts as too old',
     );
   });
 });
@@ -167,12 +167,8 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
       .readdirSync(path.join(ROOT, 'db/migrations'))
       .filter(f => f.endsWith('.sql'))
       .sort();
-    assert.ok(inBasis.length > 50, `nur ${inBasis.length} Migrationen in der Basis`);
-    assert.deepEqual(
-      inBasis,
-      dateien.slice(0, inBasis.length),
-      'Die Basis ist ein Abbild der ersten N Migrationsdateien',
-    );
+    assert.ok(inBasis.length > 50, `only ${inBasis.length} migrations in the base`);
+    assert.deepEqual(inBasis, dateien.slice(0, inBasis.length), 'The base is an image of the first N migration files');
   });
 
   await t.test('db/base.sql is an unchanged image of the database it creates', async tt => {
@@ -192,7 +188,7 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
     assert.equal(
       sk.basisText(target2.toString()),
       datei,
-      'db/base.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:snapshot',
+      'db/base.sql differs from the generated output — do not edit by hand, regenerate: npm run build && npm run schema:snapshot',
     );
   });
 });

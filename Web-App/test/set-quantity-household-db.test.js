@@ -74,30 +74,31 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       assert.equal(
         d.quantity,
         1,
-        'Das Detail zeigt die Zeile eines einzelnen Kontos statt der Summe — genau ' + 'so entstand Marcos „Anzahl 0"',
+        "The detail shows a single account's row instead of the total — that is exactly " +
+          "how Marco's „Anzahl 0“ came about",
       );
     });
 
     await t.test('increasing creates in the OWN account, with market price', async () => {
       const r = await setzen(2);
       assert.equal(r.status, 200);
-      assert.equal(await quantity(mainId), 1, 'die Differenz gehört dem eigenen Konto');
-      assert.equal(await quantity(subId), 1, 'der fremde Bestand bleibt unberührt');
+      assert.equal(await quantity(mainId), 1, 'the difference belongs to the own account');
+      assert.equal(await quantity(subId), 1, 'the foreign stock stays untouched');
       const acq = await db.get(
         `SELECT quantity, purchase_price, condition FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2`,
         [mainId, SN],
       );
-      assert.ok(acq, 'im eigenen Konto ist keine Erfassung entstanden');
+      assert.ok(acq, 'no acquisition was created in the own account');
       assert.equal(acq.quantity, 1);
       assert.equal(
         Number(acq.purchase_price),
         3.94,
-        'die Erfassung braucht den MARKTPREIS — „analog der bestehenden Logik"',
+        'the acquisition needs the MARKET PRICE — „analog der bestehenden Logik“',
       );
-      assert.equal(acq.condition, 'U', 'der Zustand kommt aus derselben Ermittlung wie beim Erfassen');
+      assert.equal(acq.condition, 'U', 'the condition comes from the same determination as when recording');
       assert.equal((await detail()).quantity, 2);
-      assert.equal(r.body.quantity, 2, 'die Antwort trägt die neue Gesamtmenge');
+      assert.equal(r.body.quantity, 2, 'the response carries the new total quantity');
     });
 
     await t.test('increasing again merges on the same day', async () => {
@@ -107,18 +108,18 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
         mainId,
         SN,
       ]);
-      assert.equal(zeilen.length, 1, `${zeilen.length} Erfassungen — die Tagesregel greift nicht`);
+      assert.equal(zeilen.length, 1, `${zeilen.length} acquisitions — the per-day rule does not apply`);
       assert.equal(zeilen[0].quantity, 3);
       assert.equal(await quantity(mainId), 3);
     });
 
     await t.test('decreasing takes the own copies first', async () => {
       await setzen(1);
-      assert.equal(await quantity(mainId), 0, 'die eigenen Exemplare gehen zuerst');
-      assert.equal(await quantity(subId), 1, 'das fremde bleibt');
+      assert.equal(await quantity(mainId), 0, 'the own copies go first');
+      assert.equal(await quantity(subId), 1, 'the foreign one stays');
       // If nothing remains, the own row disappears entirely.
       const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
-      assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
+      assert.equal(eigene.c, 0, 'an own row with quantity 0 stays behind');
     });
 
     await t.test('it cannot go below the own stock', async () => {
@@ -126,8 +127,8 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       // them away, the server caps — and says in the response what
       // actually applies.
       const r = await setzen(0);
-      assert.equal(await quantity(subId), 1, 'das fremde Exemplar wurde weggenommen');
-      assert.equal(r.body.quantity, 1, 'die Antwort muss die WIRKLICHE Menge nennen, nicht die gesendete');
+      assert.equal(await quantity(subId), 1, 'the foreign copy was taken away');
+      assert.equal(r.body.quantity, 1, 'the response must name the REAL quantity, not the one sent');
     });
   } finally {
     await aufraeumen();

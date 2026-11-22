@@ -48,7 +48,7 @@ function kopfleiste() {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const auf = html.indexOf('<header');
   const zu = html.indexOf('</header>');
-  assert.ok(auf > 0 && zu > auf, 'Kein <header> in index.html — greift die Suche noch?');
+  assert.ok(auf > 0 && zu > auf, 'No <header> in index.html — does the search still work?');
   return new JSDOM('<!doctype html><html><body>' + html.slice(auf, zu + 9) + '</body></html>');
 }
 
@@ -57,7 +57,7 @@ function kopfleiste() {
  */
 function menuButton(document) {
   const knopf = document.querySelector('[data-click="userMenu"]');
-  assert.ok(knopf, 'Kein Element mit data-click="userMenu" in der Kopfleiste');
+  assert.ok(knopf, 'No element with data-click="userMenu" in the header bar');
   assert.equal(knopf.tagName, 'BUTTON');
   return knopf;
 }
@@ -66,30 +66,30 @@ test('the lines sit in the button, not next to it', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
-  assert.ok(dashes(knopf), 'Die drei Striche stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?');
+  assert.ok(dashes(knopf), 'The three bars are not in the menu button — are they a separate element next to it again?');
 
   // And the name stands in the SAME button. Exactly that is „integrating": not
   // two elements that lie side by side, but one.
   const name = document.getElementById('ubadge');
-  assert.ok(name, 'Kein #ubadge in der Kopfleiste');
-  assert.ok(knopf.contains(name), 'Der Namenszug liegt nicht im Menüknopf — Name und Striche sind wieder getrennt');
+  assert.ok(name, 'No #ubadge in the header bar');
+  assert.ok(knopf.contains(name), 'The name label is not in the menu button — name and bars are separated again');
 });
 
 test('the lines survive the username', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
   const name = document.getElementById('ubadge');
-  assert.ok(name, 'Kein #ubadge — konto.js schreibt den Namen genau dorthin');
+  assert.ok(name, 'No #ubadge — konto.js writes the name exactly there');
 
   // Exactly what konto.js does in showApp().
   name.textContent = 'marco';
 
   assert.ok(
     dashes(knopf),
-    'Die drei Striche sind nach dem Setzen des Namens verschwunden — ' +
-      'liegt `id="ubadge"` am Knopf statt am inneren Feld?',
+    'The three bars disappeared after setting the name — ' +
+      'is `id="ubadge"` on the button instead of on the inner field?',
   );
-  assert.ok(knopf.textContent.includes('marco'), 'Der Benutzername steht nach dem Setzen nicht im Knopf');
+  assert.ok(knopf.textContent.includes('marco'), 'The user name is not in the button after setting it');
 });
 
 test('the button tells a screen reader that it is a menu', () => {
@@ -101,14 +101,14 @@ test('the button tells a screen reader that it is a menu', () => {
   assert.equal(
     knopf.id,
     'btn-umenu',
-    'Der Menüknopf heißt nicht mehr `btn-umenu` — sammlung.js führt `aria-expanded` darüber mit',
+    'The menu button is no longer called `btn-umenu` — sammlung.js keeps `aria-expanded` up to date through it',
   );
 
   assert.equal(knopf.getAttribute('aria-haspopup'), 'true');
   assert.equal(
     knopf.getAttribute('aria-expanded'),
     'false',
-    'Zu Beginn ist das Menü zu — `aria-expanded` muss das sagen',
+    'At the start the menu is closed — `aria-expanded` must say so',
   );
   assert.equal(knopf.getAttribute('aria-controls'), 'umenu-pop');
 
@@ -118,22 +118,22 @@ test('the button tells a screen reader that it is a menu', () => {
   assert.equal(
     knopf.getAttribute('aria-label'),
     null,
-    'Ein `aria-label` am Knopf würde den Benutzernamen für Bildschirmleser verdecken',
+    'An `aria-label` on the button would hide the user name from screen readers',
   );
 
   const zusatz = knopf.querySelector('.vh');
   assert.ok(
     zusatz && zusatz.textContent.trim().length >= 2,
-    'Der vorgelesene Zusatz („Menü") fehlt — der Knopf hiesse dann nur „marco ☰"',
+    'The spoken addition („Menü“) is missing — the button would then only be called „marco ☰“',
   );
 
   // The lines themselves are worth nothing to a screen reader.
   const glyph = knopf.querySelector('.ubadge-stripes');
-  assert.ok(glyph, 'Kein .ubadge-stripes im Knopf');
+  assert.ok(glyph, 'No .ubadge-stripes in the button');
   assert.equal(
     glyph.getAttribute('aria-hidden'),
     'true',
-    '„☰" vorgelesen ergibt nichts — die Glyphe gehört versteckt',
+    '„☰" read aloud yields nothing — the glyph should be hidden',
   );
 });
 
@@ -148,17 +148,17 @@ test('the signature carries the administrator hint, the tile is gone', () => {
   assert.equal(
     document.getElementById('abadge'),
     null,
-    'Die Admin-Plakette steht wieder in der Kopfleiste — dann sagt sie dasselbe ' +
-      'wie der Name daneben, und das Menü sitzt nicht mehr ganz rechts.',
+    'The admin badge is in the header bar again — then it says the same ' +
+      'as the name next to it, and the menu no longer sits at the far right.',
   );
 
   // The name button is the LAST element of the row.
   const rowList = document.querySelector('.umenu');
-  assert.ok(rowList, 'Keine .umenu in der Kopfleiste');
+  assert.ok(rowList, 'No .umenu in the header bar');
   const lastOne = [...rowList.children].at(-1);
   assert.ok(
     lastOne.contains(document.getElementById('btn-umenu')),
-    'Nach dem Menüknopf steht noch etwas in der Reihe — dann ist er nicht ganz rechts.',
+    'There is still something in the row after the menu button — then it is not at the far right.',
   );
 });
 
@@ -198,7 +198,7 @@ test('with administrator rights (Administrator) follows, without only the name',
     d.getElementById('cd-confirm').click();
     assert.ok(
       await warte(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Administrator)'),
-      `nach dem Speichern: ${d.getElementById('ubadge').textContent}`,
+      `after saving: ${d.getElementById('ubadge').textContent}`,
     );
   } finally {
     w.close();

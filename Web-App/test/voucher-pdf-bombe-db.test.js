@@ -80,24 +80,24 @@ const BOMBE = pdfFrom([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 test('1. a stream that unpacks beyond the limit is rejected', () => {
   assert.ok(BOMBE.length < 100 * 1024, `Vorbedingung: Bombe wiegt ${BOMBE.length} Bytes`);
   const { error } = duration(() => pdfText(BOMBE));
-  assert.ok(error instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${error}`);
+  assert.ok(error instanceof PdfTooLarge, `expected PdfTooLarge, got ${error}`);
 });
 
 test('2. many streams just below the limit add up', () => {
   const fast = zlib.deflateSync(Buffer.alloc(STREAM_MAX_BYTES - 1024));
   const n = Math.ceil(UNPACKED_MAX_BYTES / STREAM_MAX_BYTES) + 1;
   const { error } = duration(() => pdfText(pdfFrom(Array(n).fill(fast))));
-  assert.ok(error instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${error}`);
+  assert.ok(error instanceof PdfTooLarge, `${n} streams: expected PdfTooLarge, got ${error}`);
 });
 
 test('3. more streams than allowed are rejected', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
   const { error } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
-  assert.ok(error instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${error}`);
+  assert.ok(error instanceof PdfTooLarge, `expected PdfTooLarge, got ${error}`);
   assert.equal(
     pdfText(pdfFrom(Array(10).fill(klein))).split('\n').length,
     10,
-    'Zehn kleine Ströme sind erlaubt und werden gelesen',
+    'Ten small streams are allowed and are read',
   );
 });
 
@@ -112,7 +112,7 @@ test('4. open beginnings cost no quadratic computing time', () => {
   for (const [name, pdf] of Object.entries(faelle)) {
     const { error, ms } = duration(() => valuesFromPdf(pdf));
     assert.equal(error, null, `${name}: ${error}`);
-    assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Lesen ist nicht linear`);
+    assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — reading is not linear`);
   }
 });
 
@@ -132,7 +132,7 @@ test('5. valid text operators are still read', () => {
   assert.deepEqual(
     valuesFromPdf(pdfFrom([Buffer.from(inhalt, 'latin1')])),
     { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' },
-    'Auch unkomprimiert',
+    'uncompressed as well',
   );
 });
 
@@ -169,14 +169,14 @@ test('6. when replacing, the last font BEFORE the operator counts', async () => 
     await twoFonts('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.equal(uncertain.data, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
+  assert.equal(uncertain.data, null, 'The amount in the custom encoding was replaced');
   assert.equal(uncertain.rejected, 1);
 
   const sicher = await replaceAmount(
     await twoFonts('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.ok(sicher.data, `WinAnsi abgelehnt: ${sicher.reason}`);
+  assert.ok(sicher.data, `WinAnsi rejected: ${sicher.reason}`);
   assert.equal(valuesFromPdf(sicher.data).amount, 250);
 });
 
@@ -218,7 +218,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
     const r = await uploadIt(BOMBE, '5045076374450099991');
     assert.equal(r.status, 422, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.code, 'pdf_unreadable');
-    assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
+    assert.equal(r.row, undefined, 'The voucher was created anyway');
   });
 
   await t.test('8. a PDF over 2 MB is not accepted', async () => {
@@ -229,10 +229,10 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
     ]);
     const r = await uploadIt(gross, '5045076374450099992');
     assert.ok(r.status >= 400, `Status ${r.status}: ${JSON.stringify(r.body)}`);
-    assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
+    assert.equal(r.row, undefined, 'The voucher was created anyway');
 
     const klein = await uploadIt(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
     assert.ok(klein.status < 300, `kleines PDF: ${klein.status} ${JSON.stringify(klein.body)}`);
-    assert.ok(klein.row, 'Vorbedingung: Mit getippten Werten wird ein kleines PDF abgelegt');
+    assert.ok(klein.row, 'precondition: with typed values a small PDF is stored');
   });
 });

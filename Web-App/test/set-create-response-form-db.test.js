@@ -80,11 +80,11 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     // „exists" branch runs purely on the database and needs no network.
     const { acquireSet } = require('./helpers/sources').areaPage('sets');
     const echt = await acquireSet({ requester: uid, setNumber: DA });
-    assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
+    assert.equal(echt.action, 'exists', 'the setup of the test is no longer right');
     assert.equal(
       'success' in echt,
       false,
-      'acquireSet() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen',
+      'acquireSet() now returns a success itself — then this test no longer says anything about the routes',
     );
 
     // ── 2. The stream: the `done` event ───────────────────────────────────
@@ -110,12 +110,12 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.match(
       stream.headers.get('content-type') || '',
       /text\/event-stream/,
-      'fuer ein neues Set muss es der Ereignisstrom sein, nicht die JSON-Form',
+      'for a new set it must be the event stream, not the JSON form',
     );
     const roh = await stream.text();
     assert.ok(
       positionCalled > vorher,
-      'acquireSet() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
+      'acquireSet() was not called — the stub does not apply, the test checks nothing',
     );
 
     const eventList = roh
@@ -130,7 +130,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       })
       .filter(Boolean);
     const fertig = eventList.find(e => e.step === 'done');
-    assert.ok(fertig, `kein done-Ereignis im Strom: ${roh}`);
+    assert.ok(fertig, `no done event in the stream: ${roh}`);
 
     // THE assertion. `=== true` and not `.ok()`: a missing field is
     // `undefined` and would have slipped through with a soft check — exactly
@@ -138,8 +138,8 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.equal(
       fertig.success,
       true,
-      'das done-Ereignis traegt kein success:true — die Android-App bricht damit ' +
-        'beim Anlegen JEDES neuen Sets ab, obwohl das Set angelegt ist',
+      'the done event carries no success:true — the Android app then aborts ' +
+        'when creating EVERY new set, although the set was created',
     );
     assert.equal(fertig.action, 'added');
     assert.equal(fertig.set_number, NEW_A);
@@ -153,7 +153,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     });
     assert.equal(token.status, 200);
     const tb = await token.json();
-    assert.ok(positionCalled > before2, 'acquireSet() wurde auf der Token-Route nicht gerufen');
+    assert.ok(positionCalled > before2, 'acquireSet() was not called on the token route');
     assert.equal(tb.success, true);
 
     // ── 4. One response, one form ──────────────────────────────────────────
@@ -168,14 +168,14 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.deepEqual(
       felder(fertig),
       felder(tb),
-      `Strom ${JSON.stringify(felder(fertig))} gegen Token-Route ` +
-        `${JSON.stringify(felder(tb))} — dieselbe Auskunft in zwei Formen`,
+      `stream ${JSON.stringify(felder(fertig))} versus token route ` +
+        `${JSON.stringify(felder(tb))} — the same information in two shapes`,
     );
 
     // 5. The app demands nothing that the server does not send: the required fields of its
     // model (shared/app-schnittstelle.json, generated from its source text).
     const model = require('./helpers/contract').appInterface().modelle.AddSetResponse;
-    assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
+    assert.ok(model && model.felder.length >= 5, 'model AddSetResponse not found — renamed?');
     const zeilen = model.felder.map(name => ({
       name,
       required: model[require('./helpers/contract').APP_KEYS.required].includes(name),
@@ -188,12 +188,12 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.deepEqual(
       requiredAndMissing,
       [],
-      'AddSetResponse verlangt Felder, die beim Anlegen eines neuen Sets nicht ' +
-        'ankommen:\n  ' +
+      'AddSetResponse requires fields that do not arrive when a new set is ' +
+        'created:\n  ' +
         requiredAndMissing.join('\n  ') +
-        '\nkotlinx.serialization bricht dann ab, und die App meldet einen Fehler ' +
-        'fuer ein Set, das angelegt ist. Entweder schickt der Server das Feld, ' +
-        'oder es bekommt einen Vorgabewert — „Feld fehlt" ist keine Aussage.',
+        '\nkotlinx.serialization then aborts, and the app reports an error ' +
+        'for a set that was created. Either the server sends the field, ' +
+        'or it gets a default value — „field missing" is not a statement.',
     );
   } finally {
     posedAddSet = null;

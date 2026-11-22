@@ -79,7 +79,7 @@ test('move set', { concurrency: 1 }, async t => {
     assert.deepEqual(
       parallel,
       [],
-      'pg meldet parallele Abfragen auf einer Verbindung — ab pg 9 ist das ein Fehler, nicht nur ein Hinweis',
+      'pg reports parallel queries on one connection — from pg 9 on that is an error, not just a warning',
     );
   });
 
@@ -87,9 +87,9 @@ test('move set', { concurrency: 1 }, async t => {
     await createInventory('10002-1', 4, 1);
     const r = await setEntriesReassign('10002-1', a, b);
 
-    assert.equal(r.parts, 4, `${r.parts} statt 4 Teile gemeldet`);
-    assert.equal(r.minifigs, 1, `${r.minifigs} statt 1 Minifigur gemeldet`);
-    assert.equal(r.source_emptied, true, 'das letzte Exemplar ist weg — der Absender muss leer sein');
+    assert.equal(r.parts, 4, `${r.parts} instead of 4 parts reported`);
+    assert.equal(r.minifigs, 1, `${r.minifigs} instead of 1 minifigure reported`);
+    assert.equal(r.source_emptied, true, 'the last copy is gone — the sender must be empty');
 
     const onTarget = await db.get(
       `SELECT (SELECT COUNT(*)::int FROM parts    WHERE user_id=$1 AND set_number='10002-1') AS parts,
@@ -99,7 +99,7 @@ test('move set', { concurrency: 1 }, async t => {
     assert.equal(onTarget.parts, 4);
     assert.equal(onTarget.minifigs, 1);
     const onSender = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number='10002-1'`, [a]);
-    assert.equal(onSender.c, 0, 'beim Absender blieben Teile ohne Set zurück');
+    assert.equal(onSender.c, 0, 'parts without a set stayed behind at the sender');
   });
 
   await t.test('without contents 0 parts is the right answer, not an error', async () => {
@@ -110,16 +110,16 @@ test('move set', { concurrency: 1 }, async t => {
     const r = await setEntriesReassign('10003-1', a, b);
     assert.equal(r.parts, 0);
     assert.equal(r.minifigs, 0);
-    assert.equal(r.quantity, 1, 'das Exemplar selbst muss trotzdem gewandert sein');
+    assert.equal(r.quantity, 1, 'the copy itself must have moved anyway');
   });
 
   await t.test('if the target already has parts, nothing is copied twice', async () => {
     await createInventory('10004-1', 2, 0);
     await holdsPart(db, b, '3000', { setNumber: '10004-1', quantity: 2, colorId: 4 });
     const r = await setEntriesReassign('10004-1', a, b);
-    assert.equal(r.parts, 0, 'Teile wurden trotz vorhandener Zeilen erneut kopiert');
+    assert.equal(r.parts, 0, 'parts were copied again although rows existed');
     const n = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number='10004-1'`, [b]);
-    assert.equal(n.c, 1, 'doppelte Zeilen — die Zusammenfassung zählte die Menge zweimal');
+    assert.equal(n.c, 1, 'duplicate rows — the summary counted the quantity twice');
   });
 
   await t.test('part move leaves everything to the sender; manual parts stay even with the last copy', async () => {

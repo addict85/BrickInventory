@@ -28,7 +28,7 @@ test('the file has its own copy of the template', async t => {
   try {
     const r = await c.query(`SELECT to_regclass('public.users') IS NOT NULL AS schema,
                                     (SELECT count(*)::int FROM schema_migrations) AS migrationen`);
-    assert.equal(r.rows[0].schema, true, 'die Kopie trägt das Schema der Vorlage');
+    assert.equal(r.rows[0].schema, true, 'the copy carries the schema of the template');
     assert.ok(r.rows[0].migrationen > 50);
   } finally {
     await c.end();

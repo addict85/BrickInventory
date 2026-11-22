@@ -59,7 +59,7 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
         ).rowCount > 0,
       8000,
     );
-    assert.ok(waiting, `abgebrochen: ${ergebnis?.code ?? ergebnis} ${ergebnis?.message ?? ''}`);
+    assert.ok(waiting, `aborted: ${ergebnis?.code ?? ergebnis} ${ergebnis?.message ?? ''}`);
     await fremder.query('SELECT pg_advisory_unlock($1)', [LOCKS.SCHEMA_INIT]);
     await start;
     assert.equal(ergebnis, 'fertig', String(ergebnis?.message ?? ergebnis));

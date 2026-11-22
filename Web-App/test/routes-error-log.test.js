@@ -36,7 +36,7 @@ function logWithLevel(error, req) {
   } finally {
     Object.assign(console, echt);
   }
-  assert.equal(zeilen.length, 1, 'Es soll genau eine Zeile geschrieben werden');
+  assert.equal(zeilen.length, 1, 'Exactly one line should be written');
   return zeilen[0];
 }
 const logIt = (error, req) => logWithLevel(error, req).row;
@@ -50,7 +50,7 @@ test('the error line names method and path', () => {
   assert.match(
     row,
     /\[route-warnung\] PUT \/api\/v2\/parts\/3001\/5\/acquisitions\/42 404:/,
-    `Ohne Methode und Pfad ist die Zeile nicht zuzuordnen — dastand: ${row}`,
+    `Without method and path the line cannot be attributed — it read: ${row}`,
   );
 });
 
@@ -60,12 +60,12 @@ test('the question mark part stays outside', () => {
     method: 'GET',
     originalUrl: '/api/v2/sets?accounts=alle&geheim=abc',
   });
-  assert.ok(row.includes('GET /api/v2/sets '), `Pfad fehlt: ${row}`);
+  assert.ok(row.includes('GET /api/v2/sets '), `path missing: ${row}`);
   assert.ok(
     !row.includes('geheim'),
-    'Die Abfrage steht mit im Protokoll — was dort stehen darf, ist nicht Sache ' + `des Protokolls: ${row}`,
+    'The query is in the log as well — what may be in there is not the business ' + `of the log: ${row}`,
   );
-  assert.ok(!row.includes('accounts'), `Die Abfrage steht mit im Protokoll: ${row}`);
+  assert.ok(!row.includes('accounts'), `The query is in the log as well: ${row}`);
 });
 
 test('without a request the line stays as before', () => {
@@ -73,7 +73,7 @@ test('without a request the line stays as before', () => {
   // must not turn into „undefined undefined" there.
   const row = logIt(new Error('kaputt'), undefined);
   assert.match(row, /\[route-error\] 500:/, `Unerwartete Form: ${row}`);
-  assert.ok(!row.includes('undefined'), `„undefined" in der Zeile: ${row}`);
+  assert.ok(!row.includes('undefined'), `„undefined" in the line: ${row}`);
 });
 
 test('a 4xx is a warning without a stack, a 5xx an error with a stack', () => {
@@ -83,9 +83,9 @@ test('a 4xx is a warning without a stack, a 5xx an error with a stack', () => {
   });
   assert.equal(nicht.stufe, 'warn');
   assert.match(nicht.row, /Nicht gefunden/);
-  assert.ok(!/\n\s+at /.test(nicht.row), `Stack in einer 4xx-Zeile: ${nicht.row}`);
+  assert.ok(!/\n\s+at /.test(nicht.row), `stack in a 4xx line: ${nicht.row}`);
 
   const kaputt = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v2/sets' });
   assert.equal(kaputt.stufe, 'error');
-  assert.match(kaputt.row, /\n\s+at /, 'ein 5xx trägt seinen Stack');
+  assert.match(kaputt.row, /\n\s+at /, 'a 5xx carries its stack');
 });

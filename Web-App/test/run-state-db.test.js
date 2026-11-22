@@ -88,7 +88,7 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
     assert.deepEqual(
       { status: k.status, progress: k.progress, total: k.total, sub: k.sub },
       { status: 'running', progress: 3, total: 9, sub: '10001-1' },
-      'die Kachel zeigt den laufenden Auftrag',
+      'the tile shows the running job',
     );
     await db.run("DELETE FROM jobs WHERE type = 'prices'");
   });
@@ -98,6 +98,6 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
     await Promise.all(Array.from({ length: 20 }, () => imgDlAdd(1)));
     assert.equal(await jm.imgDlPending(), 20);
     await imgDlAdd(-50);
-    assert.equal(await jm.imgDlPending(), 0, 'nie unter 0');
+    assert.equal(await jm.imgDlPending(), 0, 'never below 0');
   });
 });

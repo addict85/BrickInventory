@@ -28,6 +28,6 @@ test('the services of a scope show no internals', () => {
     { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
   );
   const meldungen = `${r.stdout}${r.stderr}`.split('\n').filter(z => /error TS\d+/.test(z));
-  assert.deepEqual(meldungen, [], 'Ein Bereich gibt Innenleben heraus, oder ein Dienst fehlt');
+  assert.deepEqual(meldungen, [], 'An area exposes its internals, or a service is missing');
   assert.equal(r.status, 0);
 });

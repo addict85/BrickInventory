@@ -39,7 +39,7 @@ test('JSDoc end moves to the last content line, tags stay', () => {
 test('comments that only carried the reference disappear entirely', () => {
   assert.equal(removeReferences(`/** ${V} */\nf();`), 'f();');
   assert.equal(removeReferences(`/**\n * ${V}\n */\nf();`), 'f();');
-  assert.equal(removeReferences(`a();\n\n//\n// ${V}\n\nb();`), 'a();\n\nb();', 'allein zwischen Leerzeilen');
+  assert.equal(removeReferences(`a();\n\n//\n// ${V}\n\nb();`), 'a();\n\nb();', 'alone between blank lines');
 });
 
 test('HTML comment ends on the content line', () => {
@@ -69,13 +69,13 @@ test('the script cleans a tree and leaves node_modules and foreign files alone',
     const check = script('--pruefen');
     assert.equal(check.status, 1);
     assert.match(check.stdout, /1 Dateien mit Verweisen\nbaum[\\/]a\.ts/);
-    assert.equal(lies('baum/a.ts'), `// Warum.\n// ${V}\n`, '--pruefen schreibt nicht');
+    assert.equal(lies('baum/a.ts'), `// Warum.\n// ${V}\n`, '--pruefen does not write');
     assert.equal(script().status, 0);
     assert.equal(lies('baum/a.ts'), '// Warum.\n');
     assert.equal(lies('node_modules/b.js'), `// ${V}\n`);
     assert.equal(lies('baum/c.md'), `${V}\n`);
     const nochmal = script('--pruefen');
-    assert.equal(nochmal.status, 0, 'ein zweiter Lauf findet nichts');
+    assert.equal(nochmal.status, 0, 'a second run finds nothing');
     assert.match(nochmal.stdout, /0 Dateien mit Verweisen/);
   } finally {
     fs.rmSync(wurzel, { recursive: true, force: true });

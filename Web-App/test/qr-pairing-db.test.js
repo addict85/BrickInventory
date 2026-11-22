@@ -83,7 +83,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
   await t.test('without confirmation no token, afterwards exactly one', async () => {
     const qr = await newCode();
     const m = await melde(qr);
-    assert.equal(m.token, undefined, 'Der Scan allein gibt keinen Token');
+    assert.equal(m.token, undefined, 'The scan alone gives no token');
     assert.match(m.code, /^\d{6}$/);
     const vorher = await abholen(m);
     assert.deepEqual([vorher.status, vorher.body.waiting, vorher.body.token], [200, true, undefined]);
@@ -101,7 +101,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
       _req('src/account/deviceToken.js').tokenDigest(da.body.token),
     ]);
     assert.equal(row.label, 'Pixel Probe');
-    assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
+    assert.equal((await abholen(m)).status, 401, 'A second pickup gives no second token');
   });
 
   await t.test('the preview names the account, the token only comes with the yes', async () => {
@@ -155,7 +155,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     const falsch = m.code === '000000' ? '111111' : '000000';
     for (let i = 0; i < 2; i++) assert.deepEqual([(await confirm(qr, falsch)).body.code], ['qr_code_wrong']);
     assert.equal((await confirm(qr, falsch)).body.code, 'qr_rejected');
-    assert.equal((await confirm(qr, m.code)).status, 409, 'Nach der Ablehnung hilft auch der richtige Code nicht');
+    assert.equal((await confirm(qr, m.code)).status, 409, 'After the rejection even the right code does not help');
     const r = await abholen(m);
     assert.deepEqual([r.status, r.body.code], [403, 'qr_rejected']);
   });

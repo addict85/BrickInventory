@@ -26,7 +26,7 @@ const MAILER = lies('src/mail/mailer.ts');
 /** The body of a function — from its head up to the next one at the start of a column. */
 function rumpf(source, kopf) {
   const i = source.indexOf(kopf);
-  assert.ok(i >= 0, `${kopf} nicht gefunden — umbenannt?`);
+  assert.ok(i >= 0, `${kopf} not found — renamed?`);
   const rest = source.slice(i + kopf.length);
   const m = rest.search(/\n(?:export )?(?:async )?function |\nexport \{/);
   return m >= 0 ? rest.slice(0, m) : rest;
@@ -38,7 +38,7 @@ test('1. every mail function accepts the language', () => {
   const namen = [...MAILER.matchAll(/async function (send\w*Mail|build\w*Mail)\s*\(/g)]
     .map(m => m[1])
     .filter(n => n !== 'sendMail'); // the sending itself phrases nothing
-  assert.ok(namen.length >= 3, `Nur ${namen.length} Mail-Funktionen gefunden (gemessen waren es 3) — umbenannt?`);
+  assert.ok(namen.length >= 3, `Only ${namen.length} mail functions found (there were 3 when measured) — renamed?`);
 
   for (const n of namen) {
     const kopf = MAILER.slice(MAILER.indexOf(`async function ${n}(`));
@@ -58,7 +58,7 @@ test('1. every mail function accepts the language', () => {
             MAILER.slice(MAILER.indexOf(`interface ${typ} {`)).indexOf('}'),
           ),
         ));
-    assert.ok(carriesLang, `${n}() kennt die Sprache des Empfängers nicht — sie ginge immer in der Vorgabe hinaus.`);
+    assert.ok(carriesLang, `${n}() does not know the recipient's language — it would always go out in the default.`);
   }
 });
 
@@ -71,11 +71,11 @@ test('2. and really masters both languages', () => {
     ['buildAlertMail', 'async function buildAlertMail('],
   ]) {
     const body = rumpf(MAILER, kopf);
-    assert.match(body, /lang (?:!==|===) 'en'/, `${n}() verzweigt nicht nach der Sprache.`);
+    assert.match(body, /lang (?:!==|===) 'en'/, `${n}() does not branch on the language.`);
     // An English sentence that is not merely a keyword.
     assert.ok(
       /Hello |Hi |Reset |Confirm |Price alert/.test(body),
-      `${n}() hat keinen englischen Text — der Parameter wäre Dekoration.`,
+      `${n}() has no English text — the parameter would be decoration.`,
     );
   }
 });
@@ -133,7 +133,7 @@ test("3. and every caller passes it along — the mail is in the account's langu
       body: JSON.stringify({ email }),
     });
   const mailTo = async address => {
-    assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `keine Mail an ${address}`);
+    assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `no mail to ${address}`);
     return gesendet.find(m => m.to === address);
   };
   // The request comes in German; what counts is the language of the recipient.
@@ -175,7 +175,7 @@ test('4. the alert mail carries the same envelope as the others', async t => {
   assert.match(mail.subject, /^Price alert: 10294-1 is below EUR 650\.00/);
   assert.notEqual(mail.html, mail.text);
   const huelle = emailTemplate('x', 'y', 'z').slice(0, 60);
-  assert.ok(mail.html.startsWith(huelle), 'Die Alarmmail läuft nicht durch emailTemplate()');
+  assert.ok(mail.html.startsWith(huelle), 'The alert mail does not go through emailTemplate()');
 });
 
 test.after(() =>

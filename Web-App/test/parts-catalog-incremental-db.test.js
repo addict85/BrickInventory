@@ -89,7 +89,7 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
   const equalFullSetup = async uid => {
     const nach = await zeilen(uid);
     await als(uid, () => PS.rebuildNow(uid));
-    assert.deepEqual(nach, await zeilen(uid), 'Nachzug und voller Neuaufbau ergeben dieselben Zeilen');
+    assert.deepEqual(nach, await zeilen(uid), 'catch-up and full rebuild yield the same rows');
   };
 
   await t.test('a changed part name is there without a rebuild', async () => {
@@ -107,12 +107,12 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     assert.equal(
       (await db.get('SELECT storage FROM parts_summary WHERE user_id=$1', [b])).storage,
       'Marke',
-      'Konto B wurde neu gebaut',
+      'account B was rebuilt',
     );
     assert.equal(
       (await db.get('SELECT storage FROM parts_summary WHERE user_id=$1 AND part_number=$2', [a, Z])).storage,
       'Marke',
-      'die Gruppe Z in Konto A wurde neu gebaut',
+      'group Z in account A was rebuilt',
     );
     await db.run(`UPDATE parts_summary SET storage = NULL WHERE storage = 'Marke' AND user_id = ANY($1)`, [[a, b]]);
     await equalFullSetup(a);

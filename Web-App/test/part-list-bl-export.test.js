@@ -67,11 +67,11 @@ async function operate(o, dateien) {
   o.d.querySelector('[data-click="plAddSet"]').click();
   await warte(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
   o.d.getElementById('btn-pl-gen').click();
-  assert.ok(await warte(() => o.d.querySelector('.pl-have-input'), 3000), 'Liste erstellt');
+  assert.ok(await warte(() => o.d.querySelector('.pl-have-input'), 3000), 'list created');
   o.d.getElementById('btn-pl-bl').click();
   assert.ok(
     await warte(() => dateien.length === 1 && o.d.querySelectorAll('#toasts .toast').length >= 2, 3000),
-    'Kein Export',
+    'no export',
   );
   const xml = await dateien[0].text();
   const meldungen = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ kind: t.className, text: t.textContent }));
@@ -83,7 +83,7 @@ test('no Rebrickable color number goes out as a BrickLink color — items withou
   try {
     // Without an XML declaration: BrickLink rejects a file with one (bricklink-wanted-xml.test.js checks the building block).
     assert.ok(xml.startsWith('<INVENTORY>'), xml.slice(0, 60));
-    assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'Die BrickLink-Farbe aus der Zuordnung');
+    assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'The BrickLink colour from the mapping');
     assert.doesNotMatch(xml, /3002|<COLOR>999<\/COLOR>|<COLOR>4<\/COLOR>/, xml);
     assert.equal((xml.match(/<ITEM>/g) || []).length, 1);
     const error = meldungen.find(m => /error/.test(m.kind));

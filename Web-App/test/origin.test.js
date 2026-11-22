@@ -50,7 +50,7 @@ test('origin of writing requests', async t => {
   });
   await t.test('the own site', async () => {
     assert.equal(await callFn('POST', { 'sec-fetch-site': 'same-origin' }), 200);
-    assert.equal(await callFn('POST', { 'sec-fetch-site': 'none' }), 200, 'vom Nutzer selbst eingegeben');
+    assert.equal(await callFn('POST', { 'sec-fetch-site': 'none' }), 200, 'entered by the user themselves');
   });
   await t.test('without header and without session: app, scripts', async () => {
     assert.equal(await callFn('POST'), 200);
@@ -61,13 +61,13 @@ test('origin of writing requests', async t => {
   await t.test('a cookie session without any origin information', async () => {
     assert.equal(await callFn('POST', SESSION), 403);
     assert.equal(await callFn('DELETE', SESSION), 403);
-    assert.equal(await callFn('GET', SESSION), 200, 'lesend bleibt erlaubt');
+    assert.equal(await callFn('GET', SESSION), 200, 'reading stays allowed');
   });
   await t.test('an old browser without Sec-Fetch-Site, from a foreign site', async () => {
     assert.equal(await callFn('POST', { ...SESSION, origin: 'https://boese.example' }), 403);
-    assert.equal(await callFn('POST', { ...SESSION, origin: 'null' }), 403, 'Origin „null" (Sandbox, Datei)');
+    assert.equal(await callFn('POST', { ...SESSION, origin: 'null' }), 403, 'Origin „null" (sandbox, file)');
     assert.equal(await callFn('POST', { ...SESSION, referer: 'https://boese.example/seite' }), 403);
-    assert.equal(await callFn('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
+    assert.equal(await callFn('POST', { origin: 'https://boese.example' }), 403, 'also without a session (login CSRF)');
   });
   await t.test('a host that only starts like the own one', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
@@ -136,9 +136,9 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
   const fremd = await withHost('boese.example');
   assert.equal(fremd.status, 421);
   assert.equal(JSON.parse(fremd.text).code, 'foreign_host');
-  assert.match(JSON.parse(fremd.text).error, /127\.0\.0\.1/, 'die Absage nennt die eigene Adresse');
+  assert.match(JSON.parse(fremd.text).error, /127\.0\.0\.1/, 'the rejection names the own address');
   assert.equal((await withHost('nas.local:3000')).status, 421);
   for (const h of ['localhost:3000', '127.0.0.1', '192.168.1.20:3000', '[fe80::1]:8080'])
     assert.equal((await withHost(h)).status, 200, h);
-  assert.equal((await withHost('boese.example', '/api/v2/health')).status, 200, 'Gesundheit bleibt frei');
+  assert.equal((await withHost('boese.example', '/api/v2/health')).status, 200, 'health stays free');
 });

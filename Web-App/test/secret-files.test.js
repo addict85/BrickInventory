@@ -36,7 +36,7 @@ test('the session secret comes from the file', () => {
   const k = loadConfig(env);
   assert.equal(k.sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
   assert.equal(k.adminPassword, 'Verwalter-aus-Datei-1');
-  assert.equal(env.SESSION_SECRET_FILE, undefined, 'X_FILE bleibt stehen, ein zweiter Lauf meldete „beide gesetzt"');
+  assert.equal(env.SESSION_SECRET_FILE, undefined, 'X_FILE stays, a second run reported „beide gesetzt“');
   assert.equal(loadConfig(env).sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
 });
 

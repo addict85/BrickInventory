@@ -99,34 +99,34 @@ test('browser without token', { concurrency: 1 }, async t => {
   await t.test('no token for the browser', async () => {
     const r = await anmelden({ without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.token, undefined, 'Der Browser bekommt einen Token, den ein Skript lesen könnte');
+    assert.equal(r.body.token, undefined, 'The browser gets a token that a script could read');
     assert.equal(await tokens(), 0);
-    assert.ok(r.cookie.startsWith(`${KEKS}=`), 'Ohne Token muss die Sitzung tragen');
+    assert.ok(r.cookie.startsWith(`${KEKS}=`), 'Without a token the session must carry');
     eigene = r.cookie;
   });
 
   await t.test('the app gets its token and no session', async () => {
     const vorher = await sitzungen();
     const r = await anmelden({ label: 'Android App', never_expires: true });
-    assert.ok(r.body.token, 'Die App kann ohne Token nichts');
+    assert.ok(r.body.token, 'The app can do nothing without a token');
     assert.equal(r.body.token_info?.scope, 'app');
     assert.equal(await tokens(), 1);
-    assert.equal(r.cookie, '', 'Neben dem Token ein Sitzungskeks mit den vollen Rechten des Kontos');
-    assert.equal(await sitzungen(), vorher, 'Die Token-Anmeldung legt eine Sitzung an');
+    assert.equal(r.cookie, '', "Next to the token a session cookie with the account's full rights");
+    assert.equal(await sitzungen(), vorher, 'The token login creates a session');
     const profileData = await fetch(basis + '/auth/profile', { headers: { authorization: `Bearer ${r.body.token}` } });
-    assert.equal(profileData.status, 200, 'Der Token allein trägt die App');
+    assert.equal(profileData.status, 200, 'The token alone carries the app');
   });
 
   await t.test('the own session stays', async () => {
     await anmelden({ without_token: true }); // a second browser
-    assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
+    assert.equal(await sitzungen(), 2, 'precondition: two sessions (two browsers; the app has none)');
     const ohne = await callFn('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
       body: { password: 'falsch-1234' },
     });
     assert.deepEqual([ohne.status, ohne.body?.code], [400, 'current_password_wrong']);
-    assert.equal(await sitzungen(), 2, 'ohne richtiges Passwort wurden Sitzungen beendet');
+    assert.equal(await sitzungen(), 2, 'sessions were ended without the right password');
     const r = await callFn('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
@@ -135,10 +135,6 @@ test('browser without token', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 1);
     assert.equal(await sitzungen(), 1);
-    assert.equal(
-      (await callFn('/auth/profile', { cookie: eigene })).status,
-      200,
-      'Die eigene Sitzung wurde mit beendet',
-    );
+    assert.equal((await callFn('/auth/profile', { cookie: eigene })).status, 200, 'The own session was ended as well');
   });
 });

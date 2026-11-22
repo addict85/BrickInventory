@@ -40,7 +40,7 @@ const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEac
 async function vorgelesen(b, sel) {
   const { root } = await b.tab('DOM.getDocument', { depth: 0 });
   const { nodeId } = await b.tab('DOM.querySelector', { nodeId: root.nodeId, selector: sel });
-  assert.ok(nodeId, `${sel} fehlt`);
+  assert.ok(nodeId, `${sel} is missing`);
   const { nodes } = await b.tab('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
   return { name: nodes[0].name?.value || '', beschreibung: nodes[0].description?.value || '' };
 }
@@ -100,7 +100,7 @@ async function wantedUnknown(_t, a) {
   const catalogRequests = b.eventList
     .slice(vorher)
     .filter(e => e.method === 'Network.requestWillBeSent' && /\/catalog\/sets\/10276-1/.test(e.params.request.url));
-  assert.equal(catalogRequests.length, 0, 'Anfrage an den Katalog, die mit 404 endet');
+  assert.equal(catalogRequests.length, 0, 'request to the catalogue that ends with 404');
   await b.auswerten(CLOSE);
 }
 
@@ -119,7 +119,7 @@ async function kontoangaben(_t, a, name) {
   const schrift = await b.auswerten(`({ kopf: getComputedStyle(document.getElementById('m-subtitle')).fontFamily,
     nr: getComputedStyle(document.querySelector('#m-subtitle .setnr')).fontFamily,
     mono: getComputedStyle(document.documentElement).getPropertyValue('--mono') })`);
-  assert.notEqual(schrift.kopf, schrift.nr, 'Konten in Festbreite');
+  assert.notEqual(schrift.kopf, schrift.nr, 'accounts in monospace');
   await b.auswerten(CLOSE);
 }
 
@@ -131,8 +131,8 @@ async function preiskasten(_t, a) {
       p: c.querySelector('.price-badge:not([hidden])')?.getBoundingClientRect().bottom }));
     const zeile = k.filter(x => x.oben === k[0].oben && x.p);
     return zeile.map(x => Math.round(x.p)); })()`);
-  assert.ok(unten.length >= 3, `zu wenige Kacheln in der ersten Zeile: ${unten}`);
-  assert.equal(new Set(unten).size, 1, `Preiskästen auf verschiedenen Höhen: ${unten}`);
+  assert.ok(unten.length >= 3, `too few tiles in the first row: ${unten}`);
+  assert.equal(new Set(unten).size, 1, `price boxes at different heights: ${unten}`);
 }
 
 async function lagerorte(_t, a) {
@@ -141,7 +141,7 @@ async function lagerorte(_t, a) {
   const cells = await b.auswerten(`[...document.querySelector('#storage-list .location-grid > div').children]
     .map(z => { const r = z.getBoundingClientRect(); return [r.left, r.right, getComputedStyle(z).borderBottomWidth]; })`);
   for (let i = 1; i < cells.length; i++)
-    assert.ok(Math.abs(cells[i][0] - cells[i - 1][1]) < 1, `Lücke in der Trennlinie: ${JSON.stringify(cells)}`);
+    assert.ok(Math.abs(cells[i][0] - cells[i - 1][1]) < 1, `gap in the divider: ${JSON.stringify(cells)}`);
   assert.equal(
     await b.auswerten(`document.querySelector('#storage-list .location-input').getAttribute('aria-label')`),
     'Lagerort umbenennen: Regal',
@@ -159,14 +159,14 @@ async function menueseiten(_t, a) {
     await geh(a, hash, `document.querySelector('${sel}').classList.contains('active')`, hash);
     const ohne = await b.auswerten(`[...document.querySelectorAll('${sel} h2.stit')].filter(h => h.checkVisibility())
       .filter(h => !h.querySelector('svg')).map(h => h.textContent.trim())`);
-    assert.deepEqual(ohne, [], `${hash}: Kartenüberschrift ohne Symbol`);
+    assert.deepEqual(ohne, [], `${hash}: card heading without an icon`);
   }
   // The main button stands at the bottom right of the form.
   await geh(a, '#/gutscheine', `!!document.querySelector('[data-click="saveVoucher"]')?.checkVisibility()`, 'Voucher');
   const rechts = await b.auswerten(`(() => { const k = document.querySelector('[data-click="saveVoucher"]');
     const f = document.getElementById('v-number').getBoundingClientRect();
     return [k.getBoundingClientRect().right, document.getElementById('v-number').closest('.sform, .ssec').getBoundingClientRect().right, f.right]; })()`);
-  assert.ok(rechts[0] > rechts[2] - 2 || rechts[1] - rechts[0] < 40, `Speichern nicht rechts: ${rechts}`);
+  assert.ok(rechts[0] > rechts[2] - 2 || rechts[1] - rechts[0] < 40, `save not on the right: ${rechts}`);
   // Amount and currency of the price alert on one line, even when narrow.
   await groesse(b, 320, 700, true);
   try {
@@ -177,9 +177,9 @@ async function menueseiten(_t, a) {
       return { fieldTop: f.top, fieldBottom: f.bottom, wMiddle: (w.top + w.bottom) / 2, wLinks: w.left, fieldRight: f.right }; })()`);
     assert.ok(
       situation.wMiddle > situation.fieldTop && situation.wMiddle < situation.fieldBottom,
-      `EUR nicht neben dem Feld: ${JSON.stringify(situation)}`,
+      `EUR not next to the field: ${JSON.stringify(situation)}`,
     );
-    assert.ok(situation.wLinks >= situation.fieldRight, 'EUR nicht rechts vom Feld');
+    assert.ok(situation.wLinks >= situation.fieldRight, 'EUR not to the right of the field');
   } finally {
     await groesse(b, 1280, 900, false);
   }
@@ -191,9 +191,9 @@ async function bauliste(_t, a) {
     `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hint_dismissed')) localStorage.removeItem(k); return true; })()`,
   );
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), true, 'Band fehlt');
+  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), true, 'band is missing');
   await geh(a, '#/finanzen', `document.getElementById('tab-finance').classList.contains('active')`, 'Finanzen');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), false, 'Band in Finanzen');
+  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), false, 'band in finances');
 }
 
 async function largeFont(_t, a) {
@@ -204,8 +204,8 @@ async function largeFont(_t, a) {
     await a.ruhig(2000);
     const m = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect();
       return { kopf: r('header').bottom, knopf: r('.ubadge-button').bottom, buttonTop: r('.ubadge-button').top, nav: r('nav').top }; })()`);
-    assert.ok(m.knopf <= m.kopf && m.buttonTop >= 0, `Kontoknopf ragt aus dem Kopf: ${JSON.stringify(m)}`);
-    assert.ok(Math.abs(m.nav - m.kopf) < 1, `Reiterleiste nicht unter dem Kopf: ${JSON.stringify(m)}`);
+    assert.ok(m.knopf <= m.kopf && m.buttonTop >= 0, `account button sticks out of the header: ${JSON.stringify(m)}`);
+    assert.ok(Math.abs(m.nav - m.kopf) < 1, `tab bar not below the header: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
   }
@@ -225,9 +225,9 @@ async function setDetail(_t, a) {
       const zeilen = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
       return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), letzte: zeilen.at(-1) }; })()`);
     if (!telefon) {
-      assert.ok(l.chart.right <= l.det.left, `Preisverlauf nicht in der linken Spalte: ${JSON.stringify(l)}`);
-      assert.ok(l.chart.top >= l.image.bottom, 'Preisverlauf nicht unter dem Bild');
-    } else assert.ok(l.chart.top >= l.letzte.bottom, 'Telefon: Preisverlauf nicht am Ende');
+      assert.ok(l.chart.right <= l.det.left, `price history not in the left column: ${JSON.stringify(l)}`);
+      assert.ok(l.chart.top >= l.image.bottom, 'price history not below the image');
+    } else assert.ok(l.chart.top >= l.letzte.bottom, 'phone: price history not at the end');
     await b.auswerten(CLOSE);
   }
   await groesse(b, 1280, 900, false);
@@ -243,20 +243,20 @@ async function telefon(_t, a) {
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
     await bis(`document.querySelector('${knopf}').getAttribute('aria-expanded') === 'true'`, 'Filter offen');
     const open = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
-    assert.notEqual(open, zu, 'Filterknopf offen sieht aus wie zu');
+    assert.notEqual(open, zu, 'filter button open looks like closed');
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
 
     // Number row on one baseline.
     const oben =
       await b.auswerten(`[...document.querySelectorAll('#tab-gallery .bstat')].filter(x => x.checkVisibility())
       .map(x => Math.round(x.querySelector('.bstat-v').getBoundingClientRect().bottom))`);
-    assert.equal(new Set(oben).size, 1, `Kennzahlen versetzt: ${oben}`);
+    assert.equal(new Set(oben).size, 1, `metrics staggered: ${oben}`);
 
     // Parts and figures in as many columns as the sets.
     await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
     const spalten = await b.auswerten(`new Set([...document.querySelectorAll('#tab-parts .parts-grid')].at(-1)
       .querySelectorAll('.part-card').values().map(k => Math.round(k.getBoundingClientRect().left))).size`);
-    assert.equal(spalten, 2, 'Teile nicht zweispaltig');
+    assert.equal(spalten, 2, 'parts not in two columns');
 
     // Background jobs: if the heading only sticks out a few pixels below the header, the
     // title does not additionally stand in the header.
@@ -268,12 +268,12 @@ async function telefon(_t, a) {
     const doppelt = await b.auswerten(`(() => { const k = document.getElementById('header-view');
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
       return { kopf: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
-    assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `Titel doppelt: ${JSON.stringify(doppelt)}`);
+    assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `title twice: ${JSON.stringify(doppelt)}`);
     await bis(`!!document.querySelector('#jobs-card .mon-single > summary')`, 'Einzelne Aufträge');
     const zeichen =
       await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#jobs-card .mon-single > summary'), '::before');
       return { inhalt: v.content, breite: parseFloat(v.width) }; })()`);
-    assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `kein Aufklappzeichen (${JSON.stringify(zeichen)})`);
+    assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `no expand marker (${JSON.stringify(zeichen)})`);
   } finally {
     await groesse(b, 1280, 900, false);
   }

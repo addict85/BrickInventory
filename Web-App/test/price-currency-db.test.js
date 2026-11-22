@@ -56,9 +56,9 @@ test("the app's currency parameter does NOT override the user setting", { concur
     // The error case from before: the app sends its start value EUR along. The
     // response must nevertheless be the CHF price of the user setting.
     let j = await hole('?currency=EUR');
-    assert.equal(j.currency, 'CHF', 'die Antwortwährung ist die Nutzereinstellung, nicht der Parameter');
-    assert.equal(parseFloat(j.avg_price), 629.9, 'der Preis kommt aus dem Cache der Nutzereinstellung');
-    assert.ok(!j.no_price, 'kein no_price — genau das war die leere Kachel');
+    assert.equal(j.currency, 'CHF', "the response currency is the user's setting, not the parameter");
+    assert.equal(parseFloat(j.avg_price), 629.9, "the price comes from the cache of the user's setting");
+    assert.ok(!j.no_price, 'no no_price — exactly that was the empty tile');
 
     // Without a parameter (web app, future app versions): identical result.
     j = await hole('');

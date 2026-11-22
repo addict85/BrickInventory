@@ -122,8 +122,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     const probe = await fetch(`${basis}/api/v2/vouchers`, { headers: { cookie: keks } });
     if (!r.ok || !keks || probe.status !== 200)
       assert.fail(
-        `Anmeldung als ${id} trägt nicht: ${r.status} ${rumpf}, Keks ${keks ? 'da' : 'missing'}, ` +
-          `Probe ${probe.status} ${await probe.text()}`,
+        `login as ${id} does not carry: ${r.status} ${rumpf}, cookie ${keks ? 'present' : 'missing'}, ` +
+          `probe ${probe.status} ${await probe.text()}`,
       );
     return keks;
   };
@@ -154,14 +154,14 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.number, '…1166');
       assert.equal(b.voucher.pin, '•••');
-      assert.equal(b.voucher.amount, 400, 'der Betrag kommt als ZAHL zurueck, nicht als Zeichenkette');
+      assert.equal(b.voucher.amount, 400, 'the amount comes back as a NUMBER, not as a string');
       assert.equal(b.voucher.currency, 'CHF');
       assert.equal(b.voucher.has_pdf, false);
       grandparentsVoucher = b.voucher.id;
 
       // And really exact — NUMERIC, not floating point.
       const row = await db.get('SELECT amount::text AS a FROM vouchers WHERE id=$1', [grandparentsVoucher]);
-      assert.equal(Number(row.a), 400, 'der Betrag steht exakt in der Datenbank');
+      assert.equal(Number(row.a), 400, 'the amount is stored exactly in the database');
     });
 
     await t.test('the same card a second time gives 409, not silently nothing', async () => {
@@ -184,8 +184,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       ];
       for (const [koerper, code] of faelle) {
         const r = await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', koerper);
-        assert.equal(r.status, 400, `${JSON.stringify(koerper)} haette abgewiesen werden muessen`);
-        assert.equal((await r.json()).code, code, `falscher Grund fuer ${JSON.stringify(koerper)}`);
+        assert.equal(r.status, 400, `${JSON.stringify(koerper)} should have been rejected`);
+        assert.equal((await r.json()).code, code, `wrong reason for ${JSON.stringify(koerper)}`);
       }
     });
 
@@ -196,7 +196,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', { number: '9999999999999', amount: '' });
       const nachher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
-      assert.equal(nachher, vorher, 'es darf keine Zeile dazugekommen sein');
+      assert.equal(nachher, vorher, 'no row may have been added');
     });
 
     // ── The demarcation: ONLY the owner ─────────────────────────────────
@@ -206,7 +206,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       // enkel see opa's voucher, nor opa one of enkel's.
       const r = await hole('/api/v2/vouchers', cookieGrandchild);
       const b = await r.json();
-      assert.deepEqual(b.vouchers, [], 'die Liste eines anderen Kontos muss leer sein');
+      assert.deepEqual(b.vouchers, [], "another account's list must be empty");
     });
 
     await t.test('a foreign account cannot read, change or delete the voucher', async () => {
@@ -222,11 +222,11 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
           methode === 'GET'
             ? await hole(path, keks)
             : await jsonTo(path, keks, methode, methode === 'PUT' ? { amount: 1 } : { password: PASS });
-        assert.equal(r.status, 404, `${wer} durfte ${methode} ${path} nicht`);
+        assert.equal(r.status, 404, `${wer} was not allowed to ${methode} ${path}`);
       }
       // And the row still stands.
       const n = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [grandparentsVoucher])).n;
-      assert.equal(n, 1, 'der Gutschein muss die Versuche ueberlebt haben');
+      assert.equal(n, 1, 'the voucher must have survived the attempts');
     });
 
     await t.test('without login nothing works at all', async () => {
@@ -245,20 +245,20 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(b.voucher.number, '…9999');
       assert.equal(b.voucher.pin, '•••');
       assert.equal(b.voucher.amount, 250);
-      assert.equal(b.voucher.has_pdf, true, 'der Gutschein muss sein PDF behalten');
-      assert.equal(b.parsed.number, '5045076374450019999', 'was gelesen wurde, kommt mit zurueck');
+      assert.equal(b.voucher.has_pdf, true, 'the voucher must keep its PDF');
+      assert.equal(b.parsed.number, '5045076374450019999', 'what was read comes back along');
 
       // The file lies under data/vouchers/<uid>/ and NOT under uploads/.
       const row = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [b.voucher.id]);
       assert.equal(row.pdf_path, `${U.grandparent}/${b.voucher.id}.pdf`);
       const datei = path.join(VOUCHER_DIR, row.pdf_path);
-      assert.ok(fs.existsSync(datei), `die PDF-Datei fehlt: ${datei}`);
+      assert.ok(fs.existsSync(datei), `the PDF file is missing: ${datei}`);
     });
 
     await t.test('the PDF comes out again — for viewing and downloading', async () => {
       const liste = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.has_pdf);
-      assert.ok(withPdf, 'Vorbedingung: ein Gutschein mit PDF');
+      assert.ok(withPdf, 'precondition: a voucher with a PDF');
 
       const ticket = async () =>
         (
@@ -272,15 +272,15 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.match(
         show.headers.get('content-disposition') || '',
         /^inline/,
-        'ohne ?download=1 soll das PDF im Fenster erscheinen, nicht im Download-Ordner',
+        'without ?download=1 the PDF should appear in the window, not in the download folder',
       );
       assert.equal(
         show.headers.get('content-security-policy'),
         "sandbox; default-src 'none'",
-        'ein hochgeladenes PDF läuft auch inline nicht unter der Herkunft der App',
+        "an uploaded PDF does not run under the app's origin even inline",
       );
       const bytes = Buffer.from(await show.arrayBuffer());
-      assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'es muss wirklich ein PDF zurueckkommen');
+      assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'a PDF must really come back');
 
       const laden = await hole(
         `/api/v2/vouchers/${withPdf.id}/pdf?download=1&ticket=${await ticket()}`,
@@ -290,7 +290,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(
         laden.headers.get('content-disposition'),
         `attachment; filename="gutschein-${withPdf.id}.pdf"`,
-        'der Dateiname trägt die id, nicht die Kartennummer',
+        'the file name carries the id, not the card number',
       );
     });
 
@@ -309,13 +309,13 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual(
         [withoutTicket.status, (await withoutTicket.json()).code],
         [403, 'pdf_grant_required'],
-        'ohne Ticket kein PDF',
+        'without a ticket no PDF',
       );
       const withoutPw = await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
         [withoutPw.status, (await withoutPw.json()).code],
         [400, 'current_password_wrong'],
-        'Freigabe nur mit Passwort',
+        'approval only with a password',
       );
       await db.run("DELETE FROM admin_log WHERE action IN ('voucher_pdf', 'voucher_export')");
       const f = await (
@@ -326,7 +326,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(
         (await hole(`/api/v2/vouchers/${grandparentsVoucher}/pdf?ticket=${f.ticket}`, cookieGrandparent)).status,
         403,
-        'ein Ticket gilt nur für sein PDF',
+        'a ticket is valid only for its PDF',
       );
       const f2 = await (
         await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
@@ -334,7 +334,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(
         (await hole(`/api/v2/vouchers/${withPdf.id}/pdf?ticket=${f2.ticket}`, cookieGrandchild)).status,
         403,
-        'ein Ticket gilt nur für sein Konto',
+        'a ticket is valid only for its account',
       );
       const f3 = await (
         await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
@@ -342,14 +342,14 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const erst = await pdf(f3.ticket);
       assert.equal(erst.status, 200);
       await erst.arrayBuffer();
-      assert.equal((await pdf(f3.ticket)).status, 403, 'ein Ticket gilt einmal');
+      assert.equal((await pdf(f3.ticket)).status, 403, 'a ticket is valid once');
       const alt = await (
         await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       const realTime = Date.now;
       Date.now = () => realTime() + 61_000;
       try {
-        assert.equal((await pdf(alt.ticket)).status, 403, 'ein Ticket gilt 60 Sekunden');
+        assert.equal((await pdf(alt.ticket)).status, 403, 'a ticket is valid for 60 seconds');
       } finally {
         Date.now = realTime;
       }
@@ -358,12 +358,12 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(
         (await hole('/api/v2/vouchers/export/pdf', cookieGrandparent)).status,
         403,
-        'der Export ohne Ticket',
+        'the export without a ticket',
       );
       assert.equal(
         (await hole(`/api/v2/vouchers/${withPdf.id}/pdf?ticket=${exTicket}`, cookieGrandparent)).status,
         403,
-        'das Export-Ticket öffnet kein einzelnes PDF',
+        'the export ticket does not open a single PDF',
       );
       assert.deepEqual(
         (
@@ -372,7 +372,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
           )
         ).map(z => z.action),
         ['voucher_pdf', 'voucher_pdf', 'voucher_pdf', 'voucher_pdf', 'voucher_export'],
-        'die Freigabe steht im Protokoll',
+        'the approval is in the log',
       );
     });
 
@@ -384,9 +384,9 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const r = await hole('/api/v2/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       const b = await r.json();
-      assert.equal(b.parsed.number, null, 'die Oberflaeche erfaehrt, dass nichts gelesen wurde');
+      assert.equal(b.parsed.number, null, 'the interface learns that nothing was read');
       const nachher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
-      assert.equal(nachher, vorher, 'ein unlesbares PDF darf keine Zeile anlegen');
+      assert.equal(nachher, vorher, 'an unreadable PDF must not create a row');
     });
 
     await t.test('missing values may be completed by hand — the same route', async () => {
@@ -404,8 +404,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const r = await hole('/api/v2/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.equal(b.parsed.number, '5045076374450017777', 'die Nummer kam aus dem PDF');
-      assert.equal(b.voucher.amount, 125, 'der Betrag kam von Hand');
+      assert.equal(b.parsed.number, '5045076374450017777', 'the number came from the PDF');
+      assert.equal(b.voucher.amount, 125, 'the amount came from manual input');
       assert.equal(b.voucher.currency, 'EUR');
     });
 
@@ -416,7 +416,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       // Read completely: until the session is stored, the server holds the end of the
       // response and thus the account's upload slot; the next case would get 429.
       await r.arrayBuffer();
-      assert.notEqual(r.status, 200, 'eine Textdatei darf nicht als Gutschein durchgehen');
+      assert.notEqual(r.status, 200, 'a text file must not pass as a voucher');
     });
 
     // Counter-check (measured on 28.10.2026): the refusal at `!istPdf` removed in
@@ -449,11 +449,11 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const r = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.equal(b.voucher.amount, 350, 'der neue Betrag');
+      assert.equal(b.voucher.amount, 350, 'the new amount');
       const k = await (
         await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
-      assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'Nummer und PIN dürfen nicht verschwinden');
+      assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'number and PIN must not disappear');
     });
 
     // Counter-check (measured 03.11.2026): the mask not recognized in PUT → red
@@ -478,21 +478,21 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     await t.test('the list shows only the end, plain text only with password, and it is in the log', async () => {
       const liste = (await (await hole('/api/v2/vouchers', cookieGrandparent)).json()).vouchers;
       const withPin = liste.find(v => v.id === grandparentsVoucher);
-      assert.deepEqual([withPin.number, withPin.pin], ['…1166', '•••'], 'die Liste zeigt nur das Ende');
+      assert.deepEqual([withPin.number, withPin.pin], ['…1166', '•••'], 'the list shows only the end');
       assert.ok(
         !JSON.stringify(liste).includes('5045076374450011166') && !JSON.stringify(liste).includes('5225'),
-        'Nummer oder PIN im Klartext in der Liste',
+        'number or PIN in plain text in the list',
       );
       const ohne = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
         [ohne.status, (await ohne.json()).code],
         [400, 'current_password_wrong'],
-        'Klartext nur mit Passwort',
+        'plain text only with a password',
       );
       const fremd = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandchild, 'POST', {
         password: PASS,
       });
-      assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
+      assert.equal(fremd.status, 404, 'a foreign account reads the plain text');
       await db.run("DELETE FROM admin_log WHERE action = 'voucher_plaintext'");
       const k = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {
         password: PASS,
@@ -506,7 +506,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual(
         await db.all("SELECT admin_id, target_id, details FROM admin_log WHERE action = 'voucher_plaintext'"),
         [{ admin_id: U.grandparent, target_id: U.grandparent, details: '…1166' }],
-        'der Abruf steht im Protokoll',
+        'the fetch is in the log',
       );
     });
 
@@ -533,7 +533,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.ok(b.vouchers.length >= 2, 'die App sieht dieselben Gutscheine wie die Webapp');
+      assert.ok(b.vouchers.length >= 2, 'the app sees the same vouchers as the web app');
 
       // And the demarcation applies here too: a token of the grandchild sees nothing.
       await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1,$2, NOW() + INTERVAL '1 day')`, [
@@ -554,19 +554,19 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const withPdf = liste.vouchers.find(v => v.has_pdf);
       const row = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [withPdf.id]);
       const datei = path.join(VOUCHER_DIR, row.pdf_path);
-      assert.ok(fs.existsSync(datei), 'Vorbedingung: die Datei liegt da');
+      assert.ok(fs.existsSync(datei), 'precondition: the file is there');
 
       const ohne = await hole(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, { method: 'DELETE' });
       assert.deepEqual(
         [ohne.status, (await ohne.json()).code],
         [400, 'current_password_wrong'],
-        'löschen ohne Passwort',
+        'deleting without a password',
       );
-      assert.ok(fs.existsSync(datei), 'ohne Passwort ist die Datei weg');
+      assert.ok(fs.existsSync(datei), 'without a password the file is gone');
       const r = await jsonTo(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
       assert.equal(r.status, 200);
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [withPdf.id])).n, 0);
-      assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');
+      assert.ok(!fs.existsSync(datei), 'the file must disappear with the row');
     });
 
     await t.test('the note column no longer exists', async () => {
@@ -579,7 +579,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         `SELECT column_name FROM information_schema.columns
           WHERE table_schema='public' AND table_name='vouchers' AND column_name='note'`,
       );
-      assert.equal(spalte, undefined, 'die Spalte `note` steht noch in der Tabelle');
+      assert.equal(spalte, undefined, 'the column `note` is still in the table');
     });
 
     await t.test('with the account its vouchers disappear too', async () => {
@@ -625,19 +625,19 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     // wie es in der Android-App umgesetzt ist."
     assert.match(js, /openPdfViewer\(/, 'der Betrachter wird nicht benutzt');
     assert.ok(!/window\.open\(/.test(js), 'es wird noch ein neues Fenster geoeffnet');
-    assert.ok(!/download=1/.test(js), 'der zweite Knopf ist noch da — der Betrachter traegt seinen Download selbst');
+    assert.ok(!/download=1/.test(js), 'the second button is still there — the viewer brings its own download');
   });
 
   await t.test('number and PIN each have a copy button', () => {
     // „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
     // einen Kopieren Button einfügen (mit einem Icon)."
     const treffer = js.match(/data-click="copyVoucher"/g) || [];
-    assert.equal(treffer.length, 2, `erwartet 2 Kopieren-Knoepfe, gefunden ${treffer.length}`);
-    assert.match(js, /COPY_ICON_SVG/, 'der Knopf traegt kein Symbol');
+    assert.equal(treffer.length, 2, `expected 2 copy buttons, found ${treffer.length}`);
+    assert.match(js, /COPY_ICON_SVG/, 'the button carries no icon');
     // The RAW number is copied: the groups of four are a reading aid,
     // a payment field does not accept them.
     const kopierBody = js.slice(js.indexOf('function copyVoucher'));
-    assert.match(kopierBody.slice(0, 400), /String\(k\.number\)/, 'in copyVoucher wird nicht die rohe Nummer genommen');
+    assert.match(kopierBody.slice(0, 400), /String\(k\.number\)/, 'copyVoucher does not take the raw number');
     assert.ok(
       !/\.replace\(\/\(\.\{4\}\)\//.test(kopierBody.slice(0, 400)),
       'die Kopierfunktion gruppiert die Nummer — ein Bezahlfeld nimmt das nicht an',
@@ -650,7 +650,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
       ['index.html', html],
       ['styles.css', css],
     ]) {
-      assert.ok(!/v-note|vouchers\.note|voucher-note/.test(inhalt), `${name} nennt die Notiz noch`);
+      assert.ok(!/v-note|vouchers\.note|voucher-note/.test(inhalt), `${name} still mentions the note`);
     }
   });
 
@@ -660,8 +660,8 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     assert.match(
       html,
       /<label class="btn bs cursor-pointer">[\s\S]*?<input type="file" id="v-pdf"[^>]*class="file-hidden"/,
-      'die Dateiwahl der Gutscheine ist kein Knopf mit verstecktem Feld',
+      'the file picker of the vouchers is not a button with a hidden field',
     );
-    assert.ok(!/\.voucher-upload input\[type=file\]/.test(css), 'die Regel fuer das native Feld steht noch da');
+    assert.ok(!/\.voucher-upload input\[type=file\]/.test(css), 'the rule for the native field is still there');
   });
 });

@@ -110,16 +110,16 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
 
     await t.test('a foreign job cannot — and with the same 404', async () => {
       const s = await fetchIt(`status/${jobA}`, tokB);
-      assert.equal(s.status, 404, 'fremder Auftragsstatus war lesbar');
+      assert.equal(s.status, 404, "a foreign job's status was readable");
 
       const d = await fetchIt(`download/${jobA}`, tokB);
       assert.equal(d.status, 404, 'fremdes PDF war herunterladbar');
-      assert.doesNotMatch(await d.text(), /PDF/, 'die Antwort enthielt PDF-Inhalt');
+      assert.doesNotMatch(await d.text(), /PDF/, 'the response contained PDF content');
 
       // Important: the failed attempt must not damage the job — the
       // download deletes the file after delivering it.
       const s2 = await fetchIt(`status/${jobA}`, tokA);
-      assert.equal(s2.status, 200, 'der eigene Auftrag ist durch den Fremdzugriff verschwunden');
+      assert.equal(s2.status, 200, 'the own job disappeared because of the foreign access');
     });
 
     await t.test('the cap applies at the third concurrent job', async () => {
@@ -133,7 +133,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r.status, 429, `dritter Auftrag wurde angenommen (${r.status})`);
+      assert.equal(r.status, 429, `third job was accepted (${r.status})`);
 
       // The second user is not affected by it.
       const r2 = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
@@ -141,7 +141,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         headers: { Authorization: `Bearer ${tokB}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r2.status, 200, `fremder Deckel hat den zweiten Benutzer gebremst (${r2.status})`);
+      assert.equal(r2.status, 200, `a foreign cap slowed down the second user (${r2.status})`);
     });
 
     await t.test('expired runs do not lock anyone out permanently', async () => {
@@ -159,7 +159,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r.status, 200, 'ein hängengebliebener Lauf sperrt den Benutzer für immer aus');
+      assert.equal(r.status, 200, 'a stuck run locks the user out forever');
     });
 
     await t.test('the status stream reports the end immediately', async () => {
@@ -195,8 +195,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         text += dec.decode(value);
       }
       ctrl.abort();
-      assert.match(text, /"done"/, `kein Ende im Strom: ${text}`);
-      assert.ok(Date.now() - start < 5000, `erst nach ${Date.now() - start} ms`);
+      assert.match(text, /"done"/, `no end in the stream: ${text}`);
+      assert.ok(Date.now() - start < 5000, `only after ${Date.now() - start} ms`);
     });
 
     await t.test('the parts list is checked before a job arises', async () => {
@@ -224,7 +224,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
         assert.equal(r.body.code, 'input_invalid', fall);
       }
-      assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
+      assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'a job despite 400');
 
       const ok = await starte({
         sets: [{ set_number: '10001-1', name: 'Probe' }],
@@ -234,15 +234,15 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       const payload = (await db.get(`SELECT payload FROM jobs WHERE type = 'pdf'`)).payload;
       assert.equal(payload.parts.length, 5000);
       assert.equal(payload.parts[0].quantity, '12');
-      assert.ok(!('boese' in payload.parts[0]), 'unbekannte Felder gehen in den Auftrag');
+      assert.ok(!('boese' in payload.parts[0]), 'unknown fields go into the job');
     });
 
     await t.test('the job identifier comes from cryptographic randomness', () => {
       const ids = new Set(Array.from({ length: 200 }, () => jobs.newJobId(Date.now())));
-      assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
-      for (const id of ids) assert.ok(jobs.validJobId(id), `eigene Kennung ist ungültig: ${id}`);
+      assert.equal(ids.size, 200, 'identifiers repeat');
+      for (const id of ids) assert.ok(jobs.validJobId(id), `own identifier is invalid: ${id}`);
       const randomPart = [...ids][0].split('-')[1];
-      assert.match(randomPart, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
+      assert.match(randomPart, /^[0-9a-f]{12}$/, 'no 6-byte hex — does the identifier still come from Math.random()?');
     });
   } finally {
     srv.close();

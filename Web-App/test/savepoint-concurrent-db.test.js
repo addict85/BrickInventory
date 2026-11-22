@@ -70,10 +70,10 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
       ]);
     });
     assert.equal(results[0].status, 'rejected');
-    assert.equal(results[1].status, 'rejected', 'die zweite wird abgewiesen, statt Erfolg zu melden');
+    assert.equal(results[1].status, 'rejected', 'the second is rejected instead of reporting success');
     assert.ok(results[1].reason instanceof modul.ConcurrentSavepoint, String(results[1].reason));
     assert.match(results[1].reason.message, /sp_\d+ derselben Transaktion noch läuft.*nacheinander ausführen/);
-    assert.deepEqual(await values(), ['aussen'], 'was gemeldet wurde, gilt');
+    assert.deepEqual(await values(), ['aussen'], 'what was reported holds');
   });
 
   await t.test('… also in a savepoint', async () => {

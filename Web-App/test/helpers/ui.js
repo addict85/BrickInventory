@@ -189,7 +189,7 @@ function checkResponse(methode, url, daten) {
   const r = schema.safeParse(wert);
   if (!r.success) {
     throw new Error(
-      `Testantwort verletzt den Vertrag: ${methode} ${path} (${status}): ` +
+      `Test response violates the contract: ${methode} ${path} (${status}): ` +
         r.error.issues
           .slice(0, 6)
           .map(i => `${i.path.join('.') || '$'}: ${i.message}`)

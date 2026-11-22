@@ -34,7 +34,7 @@ function checkScript() {
   const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
   const start = zeilen.indexOf('        run: |');
-  assert.ok(start >= 0, 'run-Block des Prüfschritts nicht gefunden');
+  assert.ok(start >= 0, 'run block of the check step not found');
   const rumpf = [];
   for (const z of zeilen.slice(start + 1)) {
     if (z.trim() && !z.startsWith('          ')) break;
@@ -83,10 +83,10 @@ esac
 test('valid tags go on as output', () => {
   for (const tag of ['2026.11.01', 'v1_2-rc.3', '']) {
     const r = lauf(tag);
-    assert.equal(r.status, 0, `„${tag}" abgewiesen`);
+    assert.equal(r.status, 0, `„${tag}" rejected`);
     assert.match(r.output, new RegExp(`^tag=${tag.replace(/\./g, '\\.')}$`, 'm'));
     assert.match(r.output, /^bauen=true$/m);
-    assert.match(r.output, /^kurz=a1a1a1a$/m, 'der Commit kommt aus git rev-parse');
+    assert.match(r.output, /^kurz=a1a1a1a$/m, 'the commit comes from git rev-parse');
   }
 });
 
@@ -102,7 +102,7 @@ const BOESE = {
 for (const [fall, tag] of Object.entries(BOESE)) {
   test(`rejected: ${fall}`, () => {
     const r = lauf(tag);
-    assert.notEqual(r.status, 0, `abgewiesen: ${fall}`);
+    assert.notEqual(r.status, 0, `rejected: ${fall}`);
     assert.doesNotMatch(r.output, /^tag=/m);
   });
 }
@@ -114,7 +114,7 @@ test('without green CI no image', () => {
     ['Unsinn', 'x'],
   ]) {
     const r = lauf('', { gruen });
-    assert.notEqual(r.status, 0, `ohne grüne CI kein Image: ${fall}`);
+    assert.notEqual(r.status, 0, `without green CI no image: ${fall}`);
     assert.doesNotMatch(r.output, /^bauen=true$/m, fall);
   }
 });
@@ -133,7 +133,7 @@ test('inputs.tag is only in env', () => {
   assert.deepEqual(
     placeList.map(s => s.trim()),
     ['TAG_EINGABE: ${{ inputs.tag }}'],
-    'inputs.tag steht nur in env',
+    'inputs.tag is only in env',
   );
   assert.match(ohneKommentare, /APP_VERSION=\$\{\{ needs\.pruefen\.outputs\.tag/);
   assert.match(ohneKommentare, /type=raw,value=\$\{\{ needs\.pruefen\.outputs\.tag \}\}/);

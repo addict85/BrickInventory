@@ -67,24 +67,24 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
 
   try {
     const frist = _req('src/infra/config.js').config().tokenIdleDays;
-    assert.equal(frist, 23, 'die Frist kommt aus TOKEN_IDLE_DAYS');
+    assert.equal(frist, 23, 'the period comes from TOKEN_IDLE_DAYS');
 
     // ── 1. The app token ────────────────────────────────────────────────────
     const appA = await callFn(AUTH + '/login', {
       method: 'POST',
       body: { username: NAME, password: PASS, label: 'Android App', never_expires: true },
     });
-    assert.equal(appA.status, 200, `Anmeldung scheiterte: ${JSON.stringify(appA.body)}`);
+    assert.equal(appA.status, 200, `login failed: ${JSON.stringify(appA.body)}`);
     const appToken = appA.body.token;
     const appRow = await row(appToken);
-    assert.equal(appRow.sliding, true, 'Der App-Token muss als gleitend markiert sein');
+    assert.equal(appRow.sliding, true, 'The app token must be marked as sliding');
     // Exact to the day instead of to the millisecond: between the INSERT and
     // this line real time passes, and NOW() is that of the database.
     const daysUntil = d => Math.round((new Date(d).getTime() - Date.now()) / TAG);
     assert.equal(
       daysUntil(appRow.expires_at),
       frist,
-      `Der App-Token muss ${frist} Tage laufen — die Frist steht in TOKEN_IDLE_DAYS`,
+      `The app token must run for ${frist} days — the period is in TOKEN_IDLE_DAYS`,
     );
 
     // ── 2. The browser token does not slide ──────────────────────────────────
@@ -93,9 +93,9 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     assert.equal(
       webRow.sliding,
       false,
-      'Der Token im sessionStorage darf NICHT gleiten — sonst haelt ihn ein Angreifer durch Benutzung am Leben',
+      'The token in sessionStorage must NOT slide — otherwise an attacker keeps it alive by using it',
     );
-    assert.equal(daysUntil(webRow.expires_at), 7, 'Die sieben festen Tage des Browsers bleiben');
+    assert.equal(daysUntil(webRow.expires_at), 7, "The browser's seven fixed days stay");
 
     // 3. The silent renewal
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
@@ -103,7 +103,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     ]);
     tokenCache.emptyTokenCache();
     const wer = await callFn(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
-    assert.equal(wer.body?.user?.id, uid, 'Vorbedingung: Die Anfrage muss ueberhaupt durchgehen');
+    assert.equal(wer.body?.user?.id, uid, 'precondition: the request must get through at all');
 
     // The UPDATE runs without await in the request path (fire-and-forget, so that
     // auth does not cost two DB rounds). Hence we wait instead of guess —
@@ -112,8 +112,8 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     assert.equal(
       daysUntil((await row(appToken)).expires_at),
       frist,
-      'Die Benutzung muss das Ablaufdatum wieder auf die volle Frist schieben — sonst ' +
-        'sperrt sich ein taeglich benutztes Telefon nach 90 Tagen selbst aus',
+      'Use must push the expiry date back to the full period — otherwise ' +
+        'a phone used daily locks itself out after 90 days',
     );
 
     // Counter-check in the same situation: the browser token is used just the same and
@@ -130,12 +130,12 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
           (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.tokenDigest(webA.body.token)]))
             ?.last_used,
       ),
-      'die Benutzung wurde nicht vermerkt',
+      'the use was not recorded',
     );
     assert.equal(
       daysUntil((await row(webA.body.token)).expires_at),
       3,
-      'Der Browser-Token darf durch Benutzung nicht laenger werden',
+      'The browser token must not get longer through use',
     );
 
     // 4. Update legacy rows
@@ -148,12 +148,12 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     );
     await auth.tokensCleanup();
     const followedUp = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [alt]);
-    assert.ok(followedUp, 'Die Altzeile darf nicht geloescht werden — sie ist noch gueltig');
-    assert.equal(followedUp.sliding, true, 'Eine Altzeile ohne Datum war ein App-/QR-Token und gleitet');
+    assert.ok(followedUp, 'The legacy row must not be deleted — it is still valid');
+    assert.equal(followedUp.sliding, true, 'A legacy row without a date was an app/QR token and slides');
     assert.equal(
       Math.round((new Date(followedUp.expires_at).getTime() - Date.now()) / TAG),
       frist - 10,
-      'Nachgezogen wird ab der letzten Nutzung, nicht ab jetzt — sonst verlaengert die Umstellung jede Altzeile',
+      'It is extended from the last use, not from now — otherwise the migration extends every legacy row',
     );
 
     // 5. A legacy row that was never used counts from its creation and falls.
@@ -166,11 +166,11 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
        VALUES ($1,$2,'Nie benutzt',NULL, NOW() - INTERVAL '40 days', NULL)`,
       [nie, uid],
     );
-    assert.ok((await auth.tokensCleanup()) >= 1, 'das Aufräumen zählt, was es entfernt');
+    assert.ok((await auth.tokensCleanup()) >= 1, 'the cleanup counts what it removes');
     assert.equal(
       await db.get('SELECT 1 FROM api_tokens WHERE token = $1', [nie]),
       undefined,
-      'eine nie benutzte Altzeile ist nach 40 Tagen über der Frist von 23',
+      'a never-used legacy row is past the period of 23 after 40 days',
     );
   } finally {
     // Both AWAITED, and the pool is closed: without that the

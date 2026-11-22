@@ -145,20 +145,20 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
 
   await t.test('1. merkliste.csv is in the ZIP of the data export', async () => {
     const r = await fetch(`${srv.base}/api/v2/settings/export/data`);
-    assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
+    assert.equal(r.status, 200, `The export answered with ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
-    assert.equal(buf.slice(0, 2).toString(), 'PK', 'Das ist kein ZIP-Archiv');
+    assert.equal(buf.slice(0, 2).toString(), 'PK', 'That is not a ZIP archive');
 
     csvText = fromZip(buf, 'merkliste.csv');
     assert.ok(
       csvText !== null,
-      'merkliste.csv liegt NICHT im Archiv. Marcos Vorgabe war „analog den anderen ' +
-        'Seiten" — die drei anderen liegen dort, diese muss es auch.',
+      'merkliste.csv is NOT in the archive. Marco asked for „analog den anderen ' +
+        'Seiten" — the three others are there, this one must be too.',
     );
     // And the three existing ones are still there: an export that brings the new
     // file along and loses an old one is no progress.
     for (const n of ['sets.csv', 'teile.csv', 'minifiguren.csv']) {
-      assert.ok(fromZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
+      assert.ok(fromZip(buf, n) !== null, `${n} has disappeared from the archive`);
     }
   });
 
@@ -167,34 +167,34 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     assert.equal(
       zeilen.length,
       ITEM.length,
-      `${zeilen.length} Zeilen statt ${ITEM.length} — exportiert wird die ganze Liste`,
+      `${zeilen.length} rows instead of ${ITEM.length} — the whole list is exported`,
     );
     for (const p of ITEM) {
       const z = zeilen.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(
         z,
-        `(${p.sn}, ${p.c}) fehlt im Export. Ohne den Zustand in der Datei ` +
-          'fallen „neu" und „gebraucht" desselben Sets zu einer Zeile zusammen.',
+        `(${p.sn}, ${p.c}) is missing in the export. Without the condition in the file ` +
+          '„neu“ and „gebraucht“ of the same set collapse into one row.',
       );
       assert.equal(
         z.created_at,
         p.am,
-        `Das Aufnahmedatum von (${p.sn}, ${p.c}) kam als „${z.created_at}" heraus, ` + `erwartet ${p.am}`,
+        `The date added of (${p.sn}, ${p.c}) came out as „${z.created_at}", ` + `expected ${p.am}`,
       );
     }
   });
 
   await t.test('3. the same file restores the emptied list — including date', async () => {
     await db.run('DELETE FROM wanted');
-    assert.equal((await db.get('SELECT COUNT(*)::int c FROM wanted')).c, 0, 'Vorbedingung: die Liste ist leer');
+    assert.equal((await db.get('SELECT COUNT(*)::int c FROM wanted')).c, 0, 'precondition: the list is empty');
 
     const fd = new FormData();
     fd.append('file', new Blob([csvText], { type: 'text/csv' }), 'merkliste.csv');
     const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
-    assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
-    assert.equal(b.added, ITEM.length, `${b.added} angelegt statt ${ITEM.length}`);
-    assert.equal(b.errors, 0, `${b.errors} Fehler: ${JSON.stringify(b.results)}`);
+    assert.equal(r.status, 200, `The import answered with ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(b.added, ITEM.length, `${b.added} created instead of ${ITEM.length}`);
+    assert.equal(b.errors, 0, `${b.errors} errors: ${JSON.stringify(b.results)}`);
 
     const wieder = await db.all(
       `SELECT set_number, condition,
@@ -202,10 +202,10 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
          FROM wanted WHERE user_id=$1 ORDER BY set_number, condition`,
       [MAIN],
     );
-    assert.equal(wieder.length, ITEM.length, 'Nicht alle Merkposten sind zurück');
+    assert.equal(wieder.length, ITEM.length, 'Not all wanted items are back');
     for (const p of ITEM) {
       const z = wieder.find(x => x.set_number === p.sn && x.condition === p.c);
-      assert.ok(z, `(${p.sn}, ${p.c}) kam nicht zurück`);
+      assert.ok(z, `(${p.sn}, ${p.c}) did not come back`);
       // The core of point 3: the date is the OLD one, not today. „Auf der
       // Liste seit" is the only statement a wishlist item makes about
       // itself — an import that sets it to today loses it for
@@ -213,8 +213,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
       assert.equal(
         z.am,
         p.am,
-        `(${p.sn}, ${p.c}) liegt jetzt auf „${z.am}" statt auf ${p.am} — das ` +
-          'Aufnahmedatum wurde beim Import überschrieben',
+        `(${p.sn}, ${p.c}) is now at „${z.am}" instead of ${p.am} — the ` + 'date added was overwritten on import',
       );
     }
   });
@@ -231,15 +230,15 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     };
     await db.run('DELETE FROM wanted');
     const erst = await readIn();
-    assert.equal(erst.added, ITEM.length, `Vorbedingung: der erste Import legt ${ITEM.length} an, bekam ${erst.added}`);
+    assert.equal(erst.added, ITEM.length, `precondition: the first import creates ${ITEM.length}, got ${erst.added}`);
 
     const b = await readIn();
-    assert.equal(b.added, 0, `${b.added} neu angelegt — die Posten gab es schon alle`);
-    assert.equal(b.updated, ITEM.length, `${b.updated} als bestehend gemeldet statt ${ITEM.length}`);
+    assert.equal(b.added, 0, `${b.added} newly created — all items already existed`);
+    assert.equal(b.updated, ITEM.length, `${b.updated} reported as existing instead of ${ITEM.length}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted')).c,
       ITEM.length,
-      'Die Liste hat sich verdoppelt — ON CONFLICT greift nicht',
+      'The list doubled — ON CONFLICT does not apply',
     );
   });
 
@@ -251,11 +250,11 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd.append('owner_user_id', String(FREMD));
     const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
-    assert.equal(r.status, 403, `Erwartet 403, bekam ${r.status}`);
+    assert.equal(r.status, 403, `expected 403, got ${r.status}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted WHERE user_id=$1', [FREMD])).c,
       0,
-      'Das fremde Konto hat trotz Ablehnung Merkposten bekommen',
+      'The foreign account got wanted items despite the rejection',
     );
 
     // Opposite direction: importing into one's own SUB-account is allowed. Without
@@ -265,11 +264,11 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     fd2.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd2.append('owner_user_id', String(KIND));
     const r2 = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd2 });
-    assert.equal(r2.status, 200, `Der Import für das Unterkonto antwortete mit ${r2.status}`);
+    assert.equal(r2.status, 200, `The import for the sub-account answered with ${r2.status}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted WHERE user_id=$1', [KIND])).c,
       ITEM.length,
-      'Das Unterkonto hat die Liste nicht bekommen',
+      'The sub-account did not get the list',
     );
   });
 
@@ -289,13 +288,13 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     fd.append('file', new Blob(['set_number\n21309-1\n'], { type: 'text/csv' }), 'ohne.csv');
     const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
-    assert.equal(b.added, 1, `${b.added} angelegt statt 1: ${JSON.stringify(b.results)}`);
+    assert.equal(b.added, 1, `${b.added} created instead of 1: ${JSON.stringify(b.results)}`);
     const z = await db.get('SELECT condition FROM wanted WHERE user_id=$1 AND set_number=$2', [MAIN, '21309-1']);
     assert.equal(
       z?.condition,
       'U',
-      `Der Zustand wurde „${z?.condition}" statt „U". Dann setzt die Route eine eigene ` +
-        'Vorgabe statt der Einstellung des Kontos — eine zweite Wahrheit über denselben Wert.',
+      `The condition became „${z?.condition}" instead of „U". Then the route sets its own ` +
+        'default instead of the account setting — a second truth about the same value.',
     );
   });
 });

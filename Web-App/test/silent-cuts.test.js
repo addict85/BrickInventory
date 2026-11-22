@@ -17,7 +17,7 @@ test('no snippet with only negative assertions is unsecured', () => {
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))
     .sort();
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien — Ordner umbenannt?`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} test files — folder renamed?`);
 
   const still = [];
   let geprueft = 0;
@@ -50,14 +50,14 @@ test('no snippet with only negative assertions is unsecured', () => {
   // Self-proof: if the search finds no cuts, the assertion below would be
   // silently green — the same kind of error this test is built
   // against. MEASURED there are 102.
-  assert.ok(geprueft > 50, `Nur ${geprueft} Schnitte gefunden (gemessen: 102) — das Suchmuster ist veraltet.`);
+  assert.ok(geprueft > 50, `Only ${geprueft} cuts found (measured: 102) — the search pattern is outdated.`);
 
   assert.deepEqual(
     still,
     [],
-    'Auf diesen Ausschnitten stehen NUR verneinende Zusicherungen, und der Schnitt ' +
-      'ist ungesichert. Zeigt der Ankertext eines Tages ins Leere, bleibt der Test ' +
-      'gruen und prueft nichts mehr. Bitte abschnitt() aus test/helpers/sources.js ' +
-      'benutzen — das wirft, wenn der Anker fehlt.',
+    'These excerpts carry ONLY negative assertions, and the cut ' +
+      'is unguarded. If the anchor text points into nothing one day, the test stays ' +
+      'green and checks nothing any more. Please use abschnitt() from test/helpers/sources.js ' +
+      '— it throws when the anchor is missing.',
   );
 });

@@ -114,11 +114,11 @@ test('1. the amount is replaced in the original — three notations', async () =
     const original = await buildVoucher(geschrieben, NR, '5225', null);
     const vorher = valuesFromPdf(original);
     const r = await replaceAmount(original, neu);
-    assert.ok(r.data, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.reason}`);
+    assert.ok(r.data, `„${geschrieben}" → ${neu} was rejected: ${r.reason}`);
     const nachher = valuesFromPdf(r.data);
-    assert.equal(nachher.amount, neu, `Aus „${geschrieben}" wurde ${nachher.amount} statt ${neu}`);
-    assert.equal(nachher.number, vorher.number, 'Die Kartennummer hat sich verändert');
-    assert.equal(nachher.pin, vorher.pin, 'Die PIN hat sich verändert');
+    assert.equal(nachher.amount, neu, `„${geschrieben}" became ${nachher.amount} instead of ${neu}`);
+    assert.equal(nachher.number, vorher.number, 'The card number changed');
+    assert.equal(nachher.pin, vorher.pin, 'The PIN changed');
   }
 });
 
@@ -128,24 +128,20 @@ test('2. an already correct amount stays untouched', async () => {
   // even if there is nothing to change.
   const original = await buildVoucher('400', NR, '5225', null);
   const r = await replaceAmount(original, 400);
-  assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.reason}`);
-  assert.equal(r.hits, 0, `${r.hits} Operatoren geändert, erwartet 0`);
-  assert.equal(r.data, original, 'Es kam ein neues PDF zurück statt des Originals');
+  assert.ok(r.data, `Rejected although there was nothing to do: ${r.reason}`);
+  assert.equal(r.hits, 0, `${r.hits} operators changed, expected 0`);
+  assert.equal(r.data, original, 'A new PDF came back instead of the original');
 });
 
 test('3. a PDF without a readable amount is rejected, not guessed', async () => {
   const original = await buildVoucher('400', NR, '5225', TTF); // Identity-H
-  assert.equal(
-    valuesFromPdf(original).amount,
-    null,
-    'Vorbedingung: der Leser findet in einer eingebetteten Schrift keinen Betrag',
-  );
+  assert.equal(valuesFromPdf(original).amount, null, 'precondition: the reader finds no amount in an embedded font');
   const r = await replaceAmount(original, 250);
-  assert.equal(r.data, null, 'Es wurde etwas ersetzt, obwohl kein Betrag zu finden war');
+  assert.equal(r.data, null, 'Something was replaced although no amount could be found');
   assert.match(
     String(r.reason),
     /No amount/,
-    `Der Grund lautet „${r.reason}" — er soll sagen, dass nichts zu finden war`,
+    `The reason reads „${r.reason}" — it should say that nothing could be found`,
   );
 });
 
@@ -180,29 +176,29 @@ test('5. three vouchers become ONE PDF and all come back', async () => {
   ];
   const { pdf, results } = await combineVouchers(g);
 
-  assert.equal((await PL.PDFDocument.load(pdf)).getPageCount(), 3, 'Es sind nicht drei Seiten geworden');
+  assert.equal((await PL.PDFDocument.load(pdf)).getPageCount(), 3, 'It did not become three pages');
   assert.deepEqual(
     results.map(b => b.kind),
     ['ersetzt', 'unveraendert', 'erzeugt'],
-    `Die Befunde lauten ${JSON.stringify(results.map(b => b.kind))}`,
+    `The findings read ${JSON.stringify(results.map(b => b.kind))}`,
   );
-  assert.ok(results[1].reason, 'Zum unveränderten Gutschein steht kein Grund dabei');
+  assert.ok(results[1].reason, 'No reason is given for the unchanged voucher');
 
   // ── The round trip ───────────────────────────────────────────────────────
   const zurueck = await readPageByPage(pdf);
-  assert.equal(zurueck.length, 3, `${zurueck.length} Gutscheine gelesen statt 3`);
+  assert.equal(zurueck.length, 3, `${zurueck.length} vouchers read instead of 3`);
   for (const x of g) {
     const w = zurueck.find(z => z.number === x.number);
-    assert.ok(w, `${x.number} kam nicht zurück`);
+    assert.ok(w, `${x.number} did not come back`);
     // The APP amount, not the printed one. For voucher 2 the
     // replacement FAILED — and still 150 comes back, because the marker
     // carries it. That is exactly what it is there for.
     assert.equal(
       w.amount,
       x.amount,
-      `${x.number}: ${w.amount} statt ${x.amount} — der Import muss den Stand der App lesen`,
+      `${x.number}: ${w.amount} instead of ${x.amount} — the import must read the state of the app`,
     );
-    assert.equal(w.pin, x.pin, `${x.number}: PIN ${w.pin} statt ${x.pin}`);
+    assert.equal(w.pin, x.pin, `${x.number}: PIN ${w.pin} instead of ${x.pin}`);
   }
 });
 
@@ -211,28 +207,28 @@ test('6. a font with its own encoding is NOT touched', async () => {
   // of the amount font, and in BOTH the reader reads 400.
   const sicher = await buildWithEncoding(false);
   const uncertain = await buildWithEncoding(true);
-  assert.equal(valuesFromPdf(sicher).amount, 400, 'Vorbedingung: WinAnsi ist lesbar');
+  assert.equal(valuesFromPdf(sicher).amount, 400, 'precondition: WinAnsi is readable');
   assert.equal(
     valuesFromPdf(uncertain).amount,
     400,
-    'Vorbedingung: auch mit eigener Kodierung liest der Leser den Betrag — ' +
-      'genau deshalb reicht eine Nachprüfung über den Text NICHT',
+    'precondition: even with a custom encoding the reader reads the amount — ' +
+      'that is exactly why a re-check via the text is NOT enough',
   );
 
   const a = await replaceAmount(sicher, 250);
-  assert.ok(a.data, `WinAnsi wurde abgelehnt: ${a.reason}`);
+  assert.ok(a.data, `WinAnsi was rejected: ${a.reason}`);
   assert.equal(valuesFromPdf(a.data).amount, 250);
 
   const b = await replaceAmount(uncertain, 250);
   assert.equal(
     b.data,
     null,
-    'Eine Schrift mit eigener Kodierung wurde ersetzt. Die Zeichenkette LIEST sich ' +
-      'dann als 250 und DRUCKT sich als Zeichensalat — und keine Nachprüfung über den ' +
-      'Text würde das melden.',
+    'A font with a custom encoding was replaced. The string then READS ' +
+      'as 250 and PRINTS as garbled characters — and no re-check via the ' +
+      'text would report it.',
   );
-  assert.ok(b.rejected >= 1, `abgelehnt=${b.rejected}, erwartet mindestens 1`);
-  assert.match(String(b.reason), /own encoding/, `Der Grund lautet „${b.reason}"`);
+  assert.ok(b.rejected >= 1, `rejected=${b.rejected}, expected at least 1`);
+  assert.match(String(b.reason), /own encoding/, `The reason reads „${b.reason}"`);
 });
 
 test('7. a foreign PDF without a marker is guessed page by page', async () => {
@@ -252,7 +248,7 @@ test('7. a foreign PDF without a marker is guessed page by page', async () => {
   assert.equal((await PL.PDFDocument.load(stapel)).getPageCount(), 2);
 
   const zurueck = await readPageByPage(stapel);
-  assert.equal(zurueck.length, 2, `${zurueck.length} Gutscheine aus zwei Seiten — ohne Zerlegen wäre es einer`);
+  assert.equal(zurueck.length, 2, `${zurueck.length} vouchers from two pages — without splitting it would be one`);
   assert.deepEqual(zurueck.map(w => w.number).sort(), [NR, '5045076374450022277'].sort());
   assert.deepEqual(
     zurueck.map(w => w.amount).sort((a, b) => a - b),
@@ -270,8 +266,7 @@ test('8. the same card twice in the batch yields ONE entry', async () => {
   assert.equal(
     zurueck.length,
     1,
-    `${zurueck.length} Einträge für dieselbe Karte — ein Stapel mit einer Dublette ` +
-      'soll keinen zweiten Eintrag ergeben',
+    `${zurueck.length} entries for the same card — a batch with a duplicate ` + 'should not yield a second entry',
   );
 });
 
@@ -280,8 +275,8 @@ test('9. the verification catches a replacement that hits the card number', asyn
   const numberWith400 = '5045076374400011166';
   const original = await buildVoucher('400', numberWith400, '5225', null);
   const vorher = valuesFromPdf(original);
-  assert.equal(vorher.number, numberWith400, 'Vorbedingung: die Nummer wird gelesen');
-  assert.ok(numberWith400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
+  assert.equal(vorher.number, numberWith400, 'precondition: the number is read');
+  assert.ok(numberWith400.includes('400'), 'precondition: the amount appears as a substring of the number');
 
   const r = await replaceAmount(original, 250);
   if (r.data) {
@@ -291,15 +286,14 @@ test('9. the verification catches a replacement that hits the card number', asyn
     assert.equal(
       nachher.number,
       vorher.number,
-      `Die Kartennummer wurde zu ${nachher.number} verändert, und das PDF kam ` +
-        'trotzdem zurück. Die Nachprüfung hat nicht gegriffen.',
+      `The card number was changed to ${nachher.number}, and the PDF came ` + 'back anyway. The re-check did not work.',
     );
     assert.equal(nachher.amount, 250);
   } else {
     assert.match(
       String(r.reason),
       /Number|PIN|amount/i,
-      `Abgelehnt mit „${r.reason}" — der Grund soll sagen, was nicht stimmte`,
+      `Rejected with „${r.reason}" — the reason should say what was wrong`,
     );
   }
 });

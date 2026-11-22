@@ -37,12 +37,12 @@ test('server: empty catalog', { concurrency: 1 }, async t => {
   const frage = async nr => (await fetch(`${base}/api/v2/catalog/sets/${nr}`)).json();
 
   await db.run('TRUNCATE rb_sets CASCADE');
-  assert.equal((await frage('10294-1')).code, 'catalog_not_loaded', 'leerer Katalog');
+  assert.equal((await frage('10294-1')).code, 'catalog_not_loaded', 'empty catalogue');
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts) VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541)`,
   );
-  assert.equal((await frage('10294-1')).code, 'set_not_in_catalog', 'geladener Katalog ohne die Nummer');
-  assert.equal((await frage('75192-1')).success, true, 'bekannte Nummer');
+  assert.equal((await frage('10294-1')).code, 'set_not_in_catalog', 'loaded catalogue without the number');
+  assert.equal((await frage('75192-1')).success, true, 'known number');
 });
 
 /** Opens „Set hinzufügen“, enters the number and delivers the hint below it. */
@@ -80,16 +80,12 @@ test('UI: set already in the collection', async () => {
     assert.equal(
       aufrufe.some(a => a.url.includes('add-stream')),
       false,
-      'trotzdem angelegt',
+      'created anyway',
     );
     // A button „Set öffnen“ (UI check 17, N2): the main button.
     d.getElementById('btn-add').click();
-    assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'das Set öffnet sich');
-    assert.equal(
-      d.getElementById('add-set-modal').classList.contains('open'),
-      false,
-      'der Erfassen-Dialog bleibt offen',
-    );
+    assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'the set opens');
+    assert.equal(d.getElementById('add-set-modal').classList.contains('open'), false, 'the add dialog stays open');
   } finally {
     w.close();
   }

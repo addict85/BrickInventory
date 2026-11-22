@@ -36,12 +36,12 @@ test('the suite separates the roles as in production, exceptions become fewer', 
   assert.deepEqual(
     (await zugang.pool.query(ROLE)).rows[0],
     { super: false, bypass: false, eigentum: false },
-    'die App fragt als Laufzeitrolle',
+    'the app queries as runtime role',
   );
   assert.deepEqual(
     (await zugang.systemPool.query(ROLE)).rows[0],
     { super: false, bypass: true, eigentum: false },
-    'der Systemrahmen fragt als Systemrolle',
+    'the system frame queries as system role',
   );
   const k = dbConfigFromEnvironment();
   const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
@@ -49,7 +49,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
     assert.deepEqual(
       (await eigen.pool.query(ROLE)).rows[0],
       { super: false, bypass: false, eigentum: true },
-      'Testdaten schreibt die Eigentümerin',
+      'the owner role writes the test data',
     );
   } finally {
     await eigen.pool.end();
@@ -63,9 +63,9 @@ test('the suite separates the roles as in production, exceptions become fewer', 
     superuser: dateien.filter(n => asSuperuser(source(n))).length,
     systemFrame: dateien.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
   };
-  assert.ok(dateien.length > 500, `nur ${dateien.length} Testdateien — greift die Suche noch?`);
+  assert.ok(dateien.length > 500, `only ${dateien.length} test files — does the search still work?`);
   for (const [kind, s] of Object.entries(LIMIT)) {
-    assert.ok((ist[kind] ?? 0) <= s, `${ist[kind]} Testdateien mit ${kind}, erlaubt sind ${s}`);
-    if ((ist[kind] ?? 0) < s) console.log(`  ℹ Testdateien mit ${kind}: ${ist[kind]} (Schranke ${s}) — nachziehen`);
+    assert.ok((ist[kind] ?? 0) <= s, `${ist[kind]} test files with ${kind}, allowed are ${s}`);
+    if ((ist[kind] ?? 0) < s) console.log(`  ℹ test files with ${kind}: ${ist[kind]} (limit ${s}) — tighten it`);
   }
 });

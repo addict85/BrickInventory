@@ -35,9 +35,9 @@ test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t =>
       });
       await ruhig();
       const h = await b.auswerten(`Math.round(document.getElementById('rb-hint').getBoundingClientRect().height)`);
-      assert.ok(h <= 56, `Band bei ${breite} px ${h} px hoch`);
+      assert.ok(h <= 56, `band at ${breite} px is ${h} px high`);
       const overflow = await b.auswerten(`document.documentElement.scrollWidth > innerWidth`);
-      assert.equal(overflow, false, `Band schiebt die Seite bei ${breite} px auf`);
+      assert.equal(overflow, false, `band pushes the page wider at ${breite} px`);
     }
   });
 

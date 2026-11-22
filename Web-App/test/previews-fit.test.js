@@ -65,11 +65,11 @@ test('cropped previews are refitted once', async t => {
 
   await t.test('replaces only cropped ones', async () => {
     assert.equal(await fitTailoredPreviews(k, lokale, proxy), 2);
-    assert.deepEqual(await masse(preview(quer)), [200, 100], 'eigene Vorschau neu eingepasst');
-    assert.equal(fs.statSync(preview(quadrat)).mtimeMs, quadratBefore, 'quadratisches Bild blieb nicht unberührt');
-    assert.equal(fs.existsSync(path.join(proxy, `${'a'.repeat(40)}_thumb.jpg`)), false, 'Proxy-Vorschau bleibt');
-    assert.ok(fs.existsSync(path.join(proxy, `${'b'.repeat(40)}_thumb.jpg`)), 'richtige Proxy-Vorschau gelöscht');
-    assert.ok(condition.get(FITTED_MARKER), 'Merker fehlt');
+    assert.deepEqual(await masse(preview(quer)), [200, 100], 'own preview refitted');
+    assert.equal(fs.statSync(preview(quadrat)).mtimeMs, quadratBefore, 'square image was not left untouched');
+    assert.equal(fs.existsSync(path.join(proxy, `${'a'.repeat(40)}_thumb.jpg`)), false, 'proxy preview stays');
+    assert.ok(fs.existsSync(path.join(proxy, `${'b'.repeat(40)}_thumb.jpg`)), 'correct proxy preview deleted');
+    assert.ok(condition.get(FITTED_MARKER), 'marker is missing');
   });
 
   await t.test('runs only once', async () => {

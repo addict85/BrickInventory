@@ -80,7 +80,7 @@ function routerServer(_req, { sitzung = {}, apiAccount, routen, t }) {
  * @param {{ address(): string | import('node:net').AddressInfo | null }} srv @returns {number} */
 function portOf(srv) {
   const a = srv.address();
-  if (!a || typeof a === 'string') throw new Error('Server lauscht nicht auf einem TCP-Port');
+  if (!a || typeof a === 'string') throw new Error('Server is not listening on a TCP port');
   return a.port;
 }
 

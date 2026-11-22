@@ -28,7 +28,7 @@ function quellFiles() {
 
 test('no server module fetches another one via late require()', () => {
   const dateien = quellFiles();
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} source files found — the check would test nothing`);
   const treffer = [];
   for (const datei of dateien) {
     // `import x = require('./y')` is an import (TypeScript checks it), not a late call.
@@ -39,7 +39,7 @@ test('no server module fetches another one via late require()', () => {
     for (const m of src.matchAll(/\brequire\(\s*['"](\.[^'"]*)['"]/g))
       treffer.push(`${path.relative(ROOT, datei)}: require('${m[1]}')`);
   }
-  assert.deepEqual(treffer, [], 'Statt require() einen Import benutzen — Pfad und Name prüft dann tsc.');
+  assert.deepEqual(treffer, [], 'Use an import instead of require() — then tsc checks path and name.');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,6 +67,6 @@ test('no test fetches a module from dist/ that does not exist', () => {
 
   // Lower limit for the same reason as above: if the search pattern breaks, this
   // rule would silently check nothing any more.
-  assert.ok(geprueft > 10, `Nur ${geprueft} Modulpfade gefunden — das Muster greift nicht mehr`);
-  assert.deepEqual(absent, [], `Test holt ein Modul, das es in dist/ nicht gibt:\n  ${absent.join('\n  ')}`);
+  assert.ok(geprueft > 10, `Only ${geprueft} module paths found — the pattern no longer matches`);
+  assert.deepEqual(absent, [], `Test requires a module that does not exist in dist/:\n  ${absent.join('\n  ')}`);
 });

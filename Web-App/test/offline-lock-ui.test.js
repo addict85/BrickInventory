@@ -31,20 +31,16 @@ test('offline: writing buttons locked', async t => {
       assert.equal(d.getElementById('offline-band').hidden, false);
       assert.equal(add.disabled, true);
       assert.match(add.getAttribute('aria-describedby') || '', /offline-band/);
-      assert.equal(filter.disabled, false, 'Lesen bleibt möglich');
+      assert.equal(filter.disabled, false, 'reading stays possible');
       assert.match(d.getElementById('offline-band').textContent, /gesperrt/);
     });
     await t.test('all writing controls, reading stays free', async () => {
       const import_ = d.querySelector('#tab-gallery .import-menu > summary');
       assert.equal(import_.getAttribute('aria-disabled'), 'true', 'Importieren');
       import_.click();
-      assert.equal(import_.parentElement.open, false, 'Importieren öffnet trotzdem');
-      assert.equal(
-        d.querySelector('#rb-hint .btn.bp').disabled,
-        false,
-        'Schlüssel eintragen führt nur zu den Einstellungen',
-      );
-      assert.equal(d.querySelector('#rb-hint .hint-close').disabled, false, 'Hinweis schliessen');
+      assert.equal(import_.parentElement.open, false, 'import opens anyway');
+      assert.equal(d.querySelector('#rb-hint .btn.bp').disabled, false, 'entering the key only leads to the settings');
+      assert.equal(d.querySelector('#rb-hint .hint-close').disabled, false, 'close the hint');
       const dateien = [...d.querySelectorAll('input[type=file]')];
       assert.ok(dateien.length >= 3 && dateien.every(f => f.disabled), 'Datei-Wahl');
       const div = d.createElement('div');

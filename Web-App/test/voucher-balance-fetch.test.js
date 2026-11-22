@@ -145,7 +145,7 @@ test('a redirect to a foreign host is not followed', async () => {
     G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
     (/** @type {any} */ e) => e instanceof FetchError && e.reason === 'umleitung',
   );
-  assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
+  assert.ok(gesehen.length >= 1, 'the test server was not asked');
   assert.deepEqual(
     gesehen.filter(a => a.host !== 'www.lego.com'),
     [],

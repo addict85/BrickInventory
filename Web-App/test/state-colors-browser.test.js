@@ -78,18 +78,15 @@ test('condition colors in all designs', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(e.length, DESIGNS.length);
   const blau = h => h >= 190 && h <= 250,
     bernstein = h => h >= 20 && h <= 55;
   for (const d of e) {
-    assert.ok(blau(d.neu), `${d.design}: Neu ist nicht blau (Farbton ${d.neu})`);
-    assert.ok(blau(d.linieNeu), `${d.design}: Diagrammlinie Neu ist nicht blau (Farbton ${d.linieNeu})`);
-    assert.ok(bernstein(d.gebr), `${d.design}: Gebraucht ist nicht bernstein (Farbton ${d.gebr})`);
-    assert.ok(
-      bernstein(d.linieGebr),
-      `${d.design}: Diagrammlinie Gebraucht ist nicht bernstein (Farbton ${d.linieGebr})`,
-    );
+    assert.ok(blau(d.neu), `${d.design}: new is not blue (hue ${d.neu})`);
+    assert.ok(blau(d.linieNeu), `${d.design}: chart line for new is not blue (hue ${d.linieNeu})`);
+    assert.ok(bernstein(d.gebr), `${d.design}: used is not amber (hue ${d.gebr})`);
+    assert.ok(bernstein(d.linieGebr), `${d.design}: chart line for used is not amber (hue ${d.linieGebr})`);
   }
 });
