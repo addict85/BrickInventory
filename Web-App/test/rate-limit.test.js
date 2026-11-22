@@ -2,6 +2,8 @@
  * Daily limit for Rebrickable API calls.
  *
  * Counter-check: REBRICKABLE_DEFAULT_DAILY in src/externalSources/apiQuota.ts set to 4000 → red “default daily limit is 25000 — in ONE place”.
+ * Counter-check (22.11.2026): value="4000" on #lim-rb in index.html → red “the input field shows the same default”.
+ * Shared counters and limits across workers: rate-limit-shared-db.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,58 +31,6 @@ test('default daily limit is 25000 — in ONE place', () => {
     'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen',
   );
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
-});
-
-test('the daily quota counts for the installation, not per worker', () => {
-  // Where this test comes from
-  const rl = fs.readFileSync(path.join(ROOT, 'src/externalSources/rateLimiter.ts'), 'utf8');
-  assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
-  assert.match(
-    rl,
-    /checkAndCountQuota\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
-    'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
-  );
-  assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');
-
-  // All call sites go via the shared path.
-  for (const datei of [
-    'clients/rebrickable.ts',
-    'src/catalog/partsImport.ts',
-    'src/sets/barcode.ts',
-    'src/catalog/partsEnrichment.ts',
-    'src/catalog/csvSync.ts',
-  ]) {
-    const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    assert.doesNotMatch(src, /rebrickableDailyLimiter/, `${datei}: zählt noch am gemeinsamen Zähler vorbei`);
-  }
-
-  // And the reloading at startup is gone — the limit is read on every
-  // call instead of being copied into a process memory.
-  // Comments out: the note at the old place still names the name
-  // (it explains why nothing stands there any more) — without hiding it …
-  const server = require('./helpers/sources')
-    .serverAll()
-    .replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/, 'Ein In-Memory-Limit muss nicht mehr geladen werden');
-});
-
-test('a changed limit applies immediately in ALL workers', () => {
-  // Before: PUT /api/v2/admin/api-limits called setMax() — that only applied in the
-  // worker that handled the request. The others kept running with the old value
-  // until a restart, and at startup
-  // loadDailyLimitsFromDb() had to copy the value into every process.
-  const admin = fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
-  // Comments out before the span is measured: the explanatory block in
-  // limitTheSource is longer than any reasonable character window, and a
-  // test that fails on a growing comment checks the wrong thing.
-  const fc = fs.readFileSync(path.join(ROOT, 'src/externalSources/apiQuota.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const fn = fc.slice(fc.indexOf('async function limitTheSource'), fc.indexOf('const limitJeAccount'));
-  assert.match(
-    fn,
-    /await k\.settings\.globalValue\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
-    'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
-  );
 });
 
 test('no more hard-coded limit numbers in messages and labels', () => {
@@ -111,44 +61,20 @@ test('no more hard-coded limit numbers in messages and labels', () => {
   }
 });
 
-test('the input field shows the same default', () => {
-  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const field = html.slice(html.indexOf('id="lim-rb"') - 400, html.indexOf('id="lim-rb"') + 200);
-  assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value des Felds #lim-rb passt nicht zum Standard');
-  assert.match(field, new RegExp(`"n":"${EXPECTED}"`), 'Der Hinweis "(Standard: …)" passt nicht zum Standard');
+test('the input field shows the same default', async () => {
+  // Before the server's limits arrive, the field and its hint show the default the server applies.
+  const { openUi } = require('./helpers/ui');
+  const { w, d } = await openUi();
+  try {
+    assert.equal(d.getElementById('lim-rb').value, String(REBRICKABLE_DEFAULT_DAILY));
+    const label = d.querySelector('label[for="lim-rb"]').textContent;
+    assert.ok(label.includes(String(REBRICKABLE_DEFAULT_DAILY)), label);
+  } finally {
+    w.close();
+  }
 });
 
 // ── Point 3: counters in the database ───────────────────────────────────────
-
-test('the login counters are no longer in process memory', () => {
-  // src/throttle writes the counters (owner of rate_limit_attempts), the login calls k.throttle.
-  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/repository.ts'), 'utf8');
-  assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
-  assert.match(
-    src,
-    /ON CONFLICT \(key\) DO UPDATE/,
-    'Hochzählen muss atomar in einem Statement passieren, sonst lesen parallele Versuche denselben Stand',
-  );
-  assert.match(
-    src,
-    /CASE WHEN rate_limit_attempts\.first_at < NOW\(\)/,
-    'Ein abgelaufenes Fenster muss im selben Statement neu starten',
-  );
-});
-
-test('on DB outage the fallback kicks in', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/counter.ts'), 'utf8');
-  for (const fn of ['counterState', 'countAttempt', 'forgetCounter']) {
-    const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
-    // The fallback reports itself (inMemory); the name of the error variable does not count.
-    assert.match(
-      body,
-      /catch \(\w+\) \{\s*inMemory\(/,
-      `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
-    );
-  }
-  assert.match(src, /entries: new Map/, 'In-Memory-Rückfall fehlt');
-});
 
 test('the call sites wait for the result', () => {
   // loginAllowed is asynchronous since the switch — a forgotten
