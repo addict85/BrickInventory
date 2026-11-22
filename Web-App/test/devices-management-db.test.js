@@ -39,7 +39,9 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,

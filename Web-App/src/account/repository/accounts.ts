@@ -543,9 +543,9 @@ export async function deleteOtherAccesses(db: DbInterface, uid: number, eigener:
   return r?.n ?? 0;
 }
 
-export async function deleteOtherSessions(db: DbInterface, uid: number, ownSid: string): Promise<number> {
+export async function deleteOtherSessions(db: DbInterface, uid: number, ownSidHash: string): Promise<number> {
   return (
-    await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), ownSid])
+    await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), ownSidHash])
   ).changes;
 }
 

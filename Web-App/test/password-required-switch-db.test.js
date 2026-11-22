@@ -48,7 +48,9 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -108,7 +110,9 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   });
 
   await t.test('a session from before the field asks the database', async () => {
-    const sid = decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
+    const sid = _req('src/account/sessionStore.js').sessionDigest(
+      decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0],
+    );
     await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mussPasswortAendern')::json WHERE sid = $1`, [sid]);
     assert.equal((await ruf('/settings/tokens', { cookie })).status, 403);
   });

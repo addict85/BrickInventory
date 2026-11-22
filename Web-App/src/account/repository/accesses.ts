@@ -234,7 +234,7 @@ export async function deleteTokensOfAccount(
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
-/** Keeps the `behalten` most recently used besides `eigene`; the others fall. */
+/** Keeps the `behalten` most recently used besides `eigene` (the hash of the id); the others fall. */
 export async function capSessions(db: DbInterface, userId: number, eigene: string, behalten: number): Promise<number> {
   return (
     (
