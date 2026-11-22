@@ -3,11 +3,11 @@ package ch.brickinventoryapp.state
 import ch.brickinventoryapp.contract.LoginResponse
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.session.adoptAccount
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

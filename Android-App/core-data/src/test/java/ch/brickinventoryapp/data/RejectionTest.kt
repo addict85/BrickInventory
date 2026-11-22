@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.withRepo
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.withRepo
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test

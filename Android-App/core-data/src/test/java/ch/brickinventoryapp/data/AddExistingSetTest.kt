@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testSetCatalogRepository
 import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testSetCatalogRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test

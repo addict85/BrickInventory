@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.testAccountRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType

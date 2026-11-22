@@ -2,14 +2,14 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testCatalogRepository
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After

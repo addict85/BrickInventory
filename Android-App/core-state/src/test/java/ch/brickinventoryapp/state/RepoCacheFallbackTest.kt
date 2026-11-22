@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.model.domain.CatalogMetaView
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testCatalogRepository
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

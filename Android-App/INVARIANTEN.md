@@ -65,7 +65,7 @@ Tests: `ServerSwitchTest`, `TokenSwapTest`, `RedirectTest`, `BasePathTest`,
 Servers und geht nur als Kette hinaus; jede Absage (auch 404) hält an, es gibt keinen
 blossen Schlüssel und keinen Rückfall auf die Prüfung im Gerät. Erzeugt zuerst im
 StrongBox, nur ohne Chip im TEE (`strongBoxFirst`).
-Dateien: `ui/components/KeyBinding.kt`, `data/repository/StepBindingImpl.kt`,
+Dateien: `ui/components/KeyBinding.kt`, `data/account/StepBindingImpl.kt`,
 `ui/components/StrongBoxFirst.kt` · Tests: `KeyBindingTest`, `StepBindingTest`,
 `StrongBoxFirstTest`
 
@@ -113,10 +113,10 @@ checkt das Schema unter `core-offline/schemas` ein. Test: `StockMigrationTest`
 ## Zustand und Module
 
 **Zustand nach Domänen.** `AppUiState` hält nur die Sitzung, jeder Bereich hat seinen Fluss;
-wer nur einen Teil braucht, leitet ihn mit `abgeleitet { }` ab. Jede Feature-Datei schreibt
-nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden leert jeden Bereich.
-Dateien: `session/AppUiState.kt`, `session/AbgeleiteterCondition.kt` · Tests:
-`StateFlowWidthTest`, `DerivedStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
+wer nur einen Teil braucht, leitet ihn mit `map`/`combine` und `stateIn` im viewModelScope ab.
+Jede Feature-Datei schreibt nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden
+leert jeden Bereich. Dateien: `session/AppUiState.kt`, `session/Session.kt` · Tests:
+`StateFlowWidthTest`, `SessionStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
 
 **Modulkanten.** app → feature-* → core-*, kein Bereich kennt einen anderen; die Kernmodule
 in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter ohne Compose

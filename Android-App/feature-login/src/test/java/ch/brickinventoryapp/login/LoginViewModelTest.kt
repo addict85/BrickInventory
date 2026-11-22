@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.login
 
 import ch.brickinventoryapp.data.LoginStore
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult
 import ch.brickinventoryapp.login.ui.QrAccount
@@ -12,16 +17,11 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.security.PinStore
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.state.testing.StorageStore
+import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.FilterStore
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.ui.ScopeService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -140,7 +140,7 @@ class LoginViewModelTest {
         val viewStore = object : FilterStore by StorageStore() {
             override suspend fun forgetAll() { store.log += "filter-leer" }
         }
-        val viewport = Scope(viewStore,
+        val viewport = ScopeService(viewStore,
             testHouseholdRepository(t.api),
             testPartsRepository(t.api))
         val logout = SessionFake { store.log += "abmelden" }

@@ -15,6 +15,9 @@ import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerkpostenAntwort
 import ch.brickinventoryapp.contract.PreisalarmRequest
 import ch.brickinventoryapp.contract.PreisalarmResponse
+import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.Condition
@@ -25,11 +28,8 @@ import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.NumbersTexts
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel

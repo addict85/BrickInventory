@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.account.AccountRepositoryImpl
+import ch.brickinventoryapp.data.account.AdminRepositoryImpl
+import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
+import ch.brickinventoryapp.data.account.StepBindingImpl
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.CatalogApi
 import ch.brickinventoryapp.data.api.DeviceApi
@@ -12,19 +16,15 @@ import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.PartsQueryApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.VouchersApi
-import ch.brickinventoryapp.data.repository.AccountRepositoryImpl
-import ch.brickinventoryapp.data.repository.AdminRepositoryImpl
-import ch.brickinventoryapp.data.repository.CatalogRepositoryImpl
-import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
-import ch.brickinventoryapp.data.repository.FinancesRepositoryImpl
-import ch.brickinventoryapp.data.repository.HouseholdRepositoryImpl
-import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
-import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.StepBindingImpl
-import ch.brickinventoryapp.data.repository.VouchersRepositoryImpl
+import ch.brickinventoryapp.data.catalog.CatalogRepositoryImpl
+import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
+import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
+import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
+import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.TestApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType

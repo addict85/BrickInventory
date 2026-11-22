@@ -34,7 +34,8 @@ object ModuleEdges {
         "core-state" to setOf("core-model", "core-resources", "core-network", "core-data", "core-security", "core-session"),
         // The environment of the areas (NavController, images, snackbar) above the state.
         "core-navigation" to setOf("core-model", "core-session", "core-state"),
-        "core-testing" to setOf("core-state", "core-session", "core-data", "core-security", "core-offline"),
+        // Only the source reader: fixtures that need a module live in its testFixtures.
+        "core-testing" to emptySet(),
     )
 
     /**
@@ -85,12 +86,28 @@ object ModuleEdges {
         (found.toSet() - stateViewModels.keys).map { "$it liegt in core-state ohne Grund in ModuleEdges.stateViewModels" } +
             (stateViewModels.keys - found.toSet()).map { "$it steht in ModuleEdges.stateViewModels, liegt aber nicht in core-state" }
 
+    /** Everything [module] builds on, directly or through other core modules. */
+    fun below(module: String): Set<String> {
+        val seen = mutableSetOf<String>()
+        val open = ArrayDeque(cores[module].orEmpty())
+        while (open.isNotEmpty()) open.removeFirst().let { if (seen.add(it)) open += cores[it].orEmpty() }
+        return seen
+    }
+
+    /**
+     * A test that needs a module built on its own module checks the layer above, not its own:
+     * it belongs there. Areas and app are above every core module.
+     */
+    private fun reverseTest(k: ModuleEdge): Boolean = k.of.startsWith("core-") &&
+        (k.after.startsWith("feature-") || k.after == "app" || k.of in below(k.after))
+
     /** The violations among [edges], each as a sentence; empty if all are allowed. */
     fun violations(edges: Collection<ModuleEdge>): List<String> = edges.mapNotNull { k ->
         when {
             // api passes a module on to everyone who knows this one; only core-model is a common language.
             k.configuration == "api" && k.after != "core-model" ->
                 "Modulkanten per api nur zu core-model: ${k.of} → ${k.after}"
+            k.onlyTest && reverseTest(k) -> "${k.of} testet mit ${k.after}, das auf ${k.of} aufbaut: der Test gehört nach ${k.after}"
             k.onlyTest -> null
             k.after == "core-contract" && k.of !in wireMarker ->
                 "${k.of} kennt das Wire-Format: Nur ${wireMarker.sorted().joinToString(" und ")} bildet es ab"

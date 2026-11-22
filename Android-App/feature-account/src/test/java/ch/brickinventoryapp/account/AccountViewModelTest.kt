@@ -2,17 +2,17 @@ package ch.brickinventoryapp.account
 
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.RowsServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.testing.RowsServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.session.testing.testSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -95,7 +95,7 @@ class AccountViewModelTest {
         cacheDir.mkdirs()
         channel = MessageChannel()
         vm = AccountViewModel(testAccountRepository(server.api, tick), channel,
-                            Session(), SessionFake { loggedOut = true })
+                            testSession(), SessionFake { loggedOut = true })
     }
 
     @After

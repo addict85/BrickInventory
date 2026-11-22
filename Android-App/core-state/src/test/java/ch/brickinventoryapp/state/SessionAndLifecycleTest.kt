@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testFinancesRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

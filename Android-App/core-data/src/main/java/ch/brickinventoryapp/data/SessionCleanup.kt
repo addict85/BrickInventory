@@ -2,9 +2,9 @@ package ch.brickinventoryapp.data
 
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
+import ch.brickinventoryapp.data.account.AccountDataDeleter
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.di.ImageClient
-import ch.brickinventoryapp.data.repository.AccountDataDeleter
 import ch.brickinventoryapp.data.util.cleanUpAccountFiles
 import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
 import ch.brickinventoryapp.data.util.cleanUpInstructions

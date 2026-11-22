@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.services.service
 
 import android.content.Context
+import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetFilesRepository
 import ch.brickinventoryapp.data.service.PdfFailure
 import ch.brickinventoryapp.data.service.PdfJobStream
 import ch.brickinventoryapp.data.util.PartListVault

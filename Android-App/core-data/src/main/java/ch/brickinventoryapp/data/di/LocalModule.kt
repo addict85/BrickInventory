@@ -17,14 +17,11 @@ import ch.brickinventoryapp.data.InstructionRepository
 import ch.brickinventoryapp.data.LanguageStore
 import ch.brickinventoryapp.data.LoginState
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.MessageQueue
 import ch.brickinventoryapp.data.NetworkTrust
 import ch.brickinventoryapp.data.PasswordRequired
-import ch.brickinventoryapp.data.PasswordRequiredState
 import ch.brickinventoryapp.data.RedemptionLog
 import ch.brickinventoryapp.data.RedemptionPlanner
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.data.SecondFactorState
 import ch.brickinventoryapp.data.SessionCleanup
 import ch.brickinventoryapp.data.SessionEnd
 import ch.brickinventoryapp.data.SessionStore
@@ -98,11 +95,12 @@ internal abstract class LocalModule {
     @Binds abstract fun csvImport(b: CsvImportObserver): CsvImportRepository
     @Binds abstract fun cleanup(b: DevicesCleanup): SessionCleanup
     @Binds abstract fun previewStore(v: PreviewMemory): PreviewStore
-    @Binds abstract fun messages(m: MessageQueue): MessageChannel
-    @Binds abstract fun passwordRequired(p: PasswordRequiredState): PasswordRequired
-    @Binds abstract fun factorRequired(z: SecondFactorState): SecondFactorRequired
 
     companion object {
+        @Provides @Singleton fun messages(): MessageChannel = MessageChannel()
+        @Provides @Singleton fun passwordRequired(): PasswordRequired = PasswordRequired()
+        @Provides @Singleton fun factorRequired(): SecondFactorRequired = SecondFactorRequired()
+
         /**
          * The area comes from the signed-in account, hashed: asked now for writing,
          * as the session's StateFlow for observing. On the first build it clears the former

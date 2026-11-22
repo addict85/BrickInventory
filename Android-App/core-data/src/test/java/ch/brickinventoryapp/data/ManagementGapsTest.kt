@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.JobsResponse
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testManagementRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -3,8 +3,8 @@ package ch.brickinventoryapp.management.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.ManagementRepository
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.model.domain.ApiLimitsView

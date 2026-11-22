@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.collection.ui.PriceAlarmInput
 import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
 import ch.brickinventoryapp.collection.ui.WantedUiState
+import ch.brickinventoryapp.data.account.AccountView
 import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.AccountView
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.FinancesRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.collection.WantedRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
@@ -23,7 +23,6 @@ import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.derived
 import ch.brickinventoryapp.state.ui.errorClass
 import ch.brickinventoryapp.state.ui.errorMessage
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
@@ -41,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -111,17 +111,19 @@ class WantedListViewModel @Inject constructor(
      * The list shows only the source — the store, or, over selected accounts, the account view —,
      * including what was added or deleted offline, right away. The item pending deletion is missing from it.
      */
-    val wantedState: StateFlow<WantedUiState> = _wantedState
-        .derived(list) { st, l ->
-            if (l?.state != null) st.copy(wantedItem = l.list) else st
-        }
-        .derived(_reserved) { st, v ->
-            if (v == null) st else st.copy(wantedItem = st.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
-        }
+    private val wantedObserved = Observed(combine(_wantedState, list, _reserved, ::shown)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, shown(_wantedState.value, list.value, _reserved.value)))
+    val wantedState: StateFlow<WantedUiState> = wantedObserved
+
+    private fun shown(st: WantedUiState, l: Local<WantedItemView>?, v: ReservedWantedItem?): WantedUiState {
+        val listed = if (l?.state != null) st.copy(wantedItem = l.list) else st
+        return if (v == null) listed
+        else listed.copy(wantedItem = listed.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
+    }
 
     init {
         // Whoever shows the list gets it fresh; the source after that follows the store itself.
-        observeLoadOn(_wantedState) { loadWanted() }
+        observeLoadOn(wantedObserved) { loadWanted() }
     }
 
     private val _wantedItemDetailState = MutableStateFlow(WantedItemDetailUiState())

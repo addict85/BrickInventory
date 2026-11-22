@@ -3,10 +3,10 @@ package ch.brickinventoryapp.parts.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.repository.AccountView
-import ch.brickinventoryapp.data.repository.MinifigsRepository
+import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.local.StockReconciliation
+import ch.brickinventoryapp.data.parts.MinifigsRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.FigureEntry
@@ -19,9 +19,9 @@ import ch.brickinventoryapp.parts.ui.MinifigsUiState
 import ch.brickinventoryapp.parts.ui.PartsSessionUiState
 import ch.brickinventoryapp.parts.ui.SetItemFlow
 import ch.brickinventoryapp.parts.ui.SetItemUiState
+import ch.brickinventoryapp.parts.ui.partsSession
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.derived
 import ch.brickinventoryapp.state.ui.viewmodel.DeletionMark
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
@@ -30,7 +30,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -51,7 +55,7 @@ class MinifigsViewModel @Inject constructor(
 ) : ViewModel(), FilterChoice by filter, FiguresActions, WithSetItem {
 
     internal val sessionValues: StateFlow<PartsSessionUiState> =
-        session.state.derived { PartsSessionUiState(it.serverUrl, it.currency, it.userDefaultCondition) }
+        session.state.map(::partsSession).stateIn(viewModelScope, SharingStarted.Eagerly, partsSession(session.state.value))
 
     init {
         logoutSequence(session) { reset() }
@@ -98,12 +102,15 @@ class MinifigsViewModel @Inject constructor(
 
     private val order = MutableStateFlow(wanted[F_ORDER] ?: FigureOrder.DEFAULT)
 
-    private val minifigsObserved = Observed(list.uiState
-        .derived(order) { st, o -> st.copy(minifigs = o.sort(st.minifigs), order = o) }
-        .derived(delete.value) { st, v ->
-            if (v == null) st else st.copy(manualFigs = st.manualFigs?.filterNot {
-                it.figNumber == v.figNumber && (v.owner == null || it.userId == v.owner) })
-        })
+    private val minifigsObserved = Observed(combine(list.uiState, order, delete.value, ::shown)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, shown(list.uiState.value, order.value, delete.value.value)))
+
+    /** The list in the chosen order, without the figure pending deletion. */
+    private fun shown(st: MinifigsUiState, o: FigureOrder, v: ReservedMinifig?): MinifigsUiState {
+        val sorted = st.copy(minifigs = o.sort(st.minifigs), order = o)
+        return if (v == null) sorted else sorted.copy(manualFigs = sorted.manualFigs?.filterNot {
+            it.figNumber == v.figNumber && (v.owner == null || it.userId == v.owner) })
+    }
     val minifigsState: StateFlow<MinifigsUiState> = minifigsObserved
 
     private val inSets = SetItemFlow(viewModelScope, ItemKind.FIG,

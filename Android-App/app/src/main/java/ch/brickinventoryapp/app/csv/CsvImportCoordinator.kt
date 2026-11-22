@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.repository.StockReconciliation
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.model.ui.running

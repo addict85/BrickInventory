@@ -6,10 +6,10 @@ import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.ManagementRepository
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.ManagementRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.network.util.NetworkPolicy

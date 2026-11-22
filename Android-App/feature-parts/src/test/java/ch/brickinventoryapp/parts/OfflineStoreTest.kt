@@ -1,14 +1,11 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.contract.Gutschein
 import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.data.repository.VouchersRepositoryImpl
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PartEntry
 import ch.brickinventoryapp.model.domain.QuantityChange
 import ch.brickinventoryapp.model.domain.WantedRequest
@@ -36,8 +33,6 @@ import org.junit.Test
  *      shows up in the list right away”
  *   C  in StorageInventory.cleanOther the filter reversed → red “a different
  *      account sees none of it”
- *   D  in VouchersRepository.withoutSecret `pin = null` removed → red
- *      “a voucher lies without PIN and full number”
  */
 class OfflineStoreTest {
 
@@ -111,13 +106,5 @@ class OfflineStoreTest {
         store.empty()
         assertEquals(emptyList<SetItem>(), store.read(Slots.SETS)!!.list)
         assertNull(outbox.first("a"))
-    }
-
-    @Test
-    fun `a voucher lies without PIN and full number`() {
-        val g = VouchersRepositoryImpl.withoutSecret(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0).asView())
-        assertEquals("…3456", g.number)
-        assertNull(g.pin)
-        assertEquals(Money.from(50.0), g.amount)
     }
 }

@@ -22,6 +22,8 @@ import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
@@ -39,8 +41,6 @@ import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorTextId
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.Flow

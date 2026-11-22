@@ -62,6 +62,8 @@ import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.finances.ui.inGroupsOfFour
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
@@ -76,8 +78,6 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
 import ch.brickinventoryapp.ui.components.SegmentChoice

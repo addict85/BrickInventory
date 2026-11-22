@@ -8,11 +8,11 @@ import ch.brickinventoryapp.collection.ui.Entry
 import ch.brickinventoryapp.collection.ui.EntryUiState
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.catalog.SetCatalogRepository
+import ch.brickinventoryapp.data.collection.SetsRepository
+import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetCatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.ErrorCode

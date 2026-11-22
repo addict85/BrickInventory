@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.RowsServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.RowsServer
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.NumbersTexts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineScheduler

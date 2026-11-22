@@ -10,9 +10,9 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetFilesRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.util.catchUnlessCancelled

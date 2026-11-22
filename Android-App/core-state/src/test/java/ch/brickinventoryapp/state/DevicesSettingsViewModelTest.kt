@@ -5,11 +5,11 @@ import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.data.cache.PreviewMemory
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
-import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

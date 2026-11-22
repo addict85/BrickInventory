@@ -24,4 +24,5 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
 
     testImplementation(project(":core-testing"))
+    testImplementation(testFixtures(project(":core-state")))
 }

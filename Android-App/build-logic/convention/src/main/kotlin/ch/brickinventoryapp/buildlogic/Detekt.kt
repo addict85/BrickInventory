@@ -16,7 +16,7 @@ import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
 /**
- * Task `detekt`: checks src/main and src/test of the module against config/detekt/detekt.yml
+ * Task `detekt`: checks src/main, src/test and src/testFixtures of the module against config/detekt/detekt.yml
  * and fails on every finding that is not in config/detekt/baseline.xml. The
  * baseline only records length and branching; tools/detekt-limit.txt lets it shrink. The command line instead of the Gradle plugin:
  * it only needs the source folders and brings its own Kotlin, the plugin would have to
@@ -31,7 +31,7 @@ class DetektConvention : Plugin<Project> {
         target.dependencies.add(ruleset.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$version")
 
         val sources = target.files(
-            listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin").map { target.file(it) },
+            listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin", "src/testFixtures/java").map { target.file(it) },
         ).filter { it.isDirectory }
         val report = target.layout.buildDirectory.file("reports/detekt/detekt.txt")
         val detekt = target.tasks.register("detekt", JavaExec::class.java) { task ->

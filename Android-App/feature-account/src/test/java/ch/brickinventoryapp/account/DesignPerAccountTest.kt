@@ -2,13 +2,13 @@ package ch.brickinventoryapp.account
 
 import ch.brickinventoryapp.account.ui.DesignChoice
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.session.loadSettings
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking

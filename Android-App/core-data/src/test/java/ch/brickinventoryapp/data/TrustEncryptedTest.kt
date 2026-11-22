@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.security.TrustCipher
-import ch.brickinventoryapp.testing.testTrustCipher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

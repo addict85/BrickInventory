@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.parts
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
@@ -11,9 +13,8 @@ import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.testing.newProcess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

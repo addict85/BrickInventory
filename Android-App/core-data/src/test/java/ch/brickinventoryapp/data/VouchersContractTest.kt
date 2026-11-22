@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.VouchersRepository
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.VoucherInfo
-import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testVouchersRepository
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -61,7 +61,7 @@ class VouchersContractTest {
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
-    private val repo by lazy { code(read("data/repository/VouchersRepositoryImpl.kt")) }
+    private val repo by lazy { code(read("data/finances/VouchersRepositoryImpl.kt")) }
     private val feature by lazy { code(read("finances/ui/viewmodel/VoucherViewModel.kt")) }
     // The card including its sibling files: list, form and single card.
     private val card by lazy {

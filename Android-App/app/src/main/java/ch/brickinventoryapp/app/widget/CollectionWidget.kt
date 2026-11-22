@@ -36,7 +36,7 @@ import ch.brickinventoryapp.app.MainActivity
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.WidgetStatusStore
-import ch.brickinventoryapp.data.repository.FinancesRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.json.BrickJson

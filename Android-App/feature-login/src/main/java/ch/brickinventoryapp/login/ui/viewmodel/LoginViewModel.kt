@@ -3,7 +3,7 @@ package ch.brickinventoryapp.login.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.LoginStore
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.LoginUiState

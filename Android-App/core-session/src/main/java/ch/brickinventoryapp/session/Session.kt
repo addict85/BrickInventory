@@ -1,16 +1,21 @@
 package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.ui.theme.Design
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import java.time.Instant
 import javax.inject.Inject
@@ -63,21 +68,28 @@ interface Session {
     fun loggedOut()
 }
 
-/** For tests and previews without Hilt. */
-fun Session(values: AccountValues = StorageAccountValues()): Session = SessionState(values)
-
 /**
  * A singleton and not a field of a ViewModel, because every screen reads the
  * session, but every scope ViewModel only lives as long as its target. It derives
  * currency and theme from [AccountValues]; it holds no copy of its own.
  */
 @Singleton
-class SessionState @Inject constructor(private val values: AccountValues) : Session {
+class SessionState @Inject constructor(
+    private val values: AccountValues,
+    @ApplicationScope scope: CoroutineScope,
+) : Session {
 
-    private val _state = MutableStateFlow(AppUiState())
-    override val state: StateFlow<AppUiState> = _state
-        .derived(values.currency) { s, w -> s.copy(currency = w) }
-        .derived(values.design) { s, d -> s.copy(appTheme = d) }
+    private val _state = MutableStateFlow(AppUiState(currency = values.currency.value, appTheme = values.design.value))
+
+    // The session's own steps update the state at once; only currency and theme arrive
+    // from the store, which writes asynchronously anyway.
+    override val state: StateFlow<AppUiState> = _state.asStateFlow()
+
+    init {
+        combine(values.currency, values.design, ::Pair)
+            .onEach { (currency, theme) -> _state.update { it.copy(currency = currency, appTheme = theme) } }
+            .launchIn(scope)
+    }
 
     private val _logouts = MutableStateFlow(0L)
     override val logouts: StateFlow<Long> = _logouts.asStateFlow()
@@ -115,7 +127,7 @@ class SessionState @Inject constructor(private val values: AccountValues) : Sess
     /** The account's currency no longer applies; the theme stays until the server's default arrives. */
     override fun loggedOut() {
         values.setCurrency(AppUiState().currency)
-        _state.update { AppUiState(serverUrl = it.serverUrl) }
+        _state.update { AppUiState(serverUrl = it.serverUrl, currency = values.currency.value, appTheme = it.appTheme) }
         _logouts.update { it + 1 }
     }
 }

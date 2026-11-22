@@ -3,10 +3,10 @@ package ch.brickinventoryapp.account.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.account.ui.HouseholdUiState
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.HouseholdRepository
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.HouseholdRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message

@@ -2,6 +2,11 @@ package ch.brickinventoryapp.account
 
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
@@ -11,12 +16,7 @@ import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first

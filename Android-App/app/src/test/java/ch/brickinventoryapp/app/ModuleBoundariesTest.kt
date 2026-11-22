@@ -40,6 +40,9 @@ import java.time.LocalDate
  *   H a `PdfRenderer(` in PdfPage.kt →
  *      red “PdfRenderer lives only in the isolated render service“; likewise
  *      counter-checks/pdf-bitmap-aus-dem-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
+ *   M  `internal` removed from `class SetsRepositoryImpl` → red „SetsRepositoryImpl ist
+ *      öffentlich“ (layering of the core modules); likewise an import of data.parts.PartsRepositoryImpl
+ *      in collection/SetsRepositoryImpl.kt → red „kennt parts.PartsRepositoryImpl“
  *   L  counter-checks/netz-haengt-an-ablage.patch: core-network includes Room →
  *      red „core-network hängt an Ablage oder DI“ (layering of the core modules);
  *      only CI measures it, locally there is no Gradle
@@ -95,7 +98,7 @@ class ModuleBoundariesTest {
         dependencies(build).map { ModuleEdge(name, it.configuration, it.target) }
 
     private fun dependencies(build: String): List<Dependency> =
-        Regex("""^\s*(\w+)\(project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(build)
+        Regex("""^\s*(\w+)\((?:testFixtures\()?project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(build)
             .map { Dependency(it.groupValues[1], it.groupValues[2]) }.toList()
 
     /** What applies in the shipped code; test configurations do not count. */
@@ -128,10 +131,23 @@ class ModuleBoundariesTest {
             "feature-account" to "account", "feature-management" to "management", "core-ui-inventory" to "shared",
         )
         assertEquals("kein Stamm ist doppelt vergeben", master.size, master.values.toSet().size)
+        val wrong = filesOutsidePackageRoot(master)
+        assertTrue("Dateien außerhalb des Paketstamms ihres Moduls:\n  " + wrong.joinToString("\n  "), wrong.isEmpty())
+    }
+
+    /**
+     * The Kotlin files outside their module's package root. Test fixtures sit in a
+     * `.testing` package of their module, so a test's import names whose fixture it uses.
+     */
+    private fun inRoot(rel: String, pkg: String?, should: String?, fixtures: Boolean): Boolean =
+        should != null && pkg == rel.substringBeforeLast('/').replace('/', '.') &&
+            (pkg == should || pkg.startsWith("$should.")) && (!fixtures || pkg.endsWith(".testing"))
+
+    private fun filesOutsidePackageRoot(master: Map<String, String>): List<String> {
         val packageRow = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
         val wrong = mutableListOf<String>()
         var n = 0
-        for (m in Sources.module) for (sentence in listOf("main", "test")) {
+        for (m in Sources.module) for (sentence in listOf("main", "test", "testFixtures")) {
             val basis = File(m, "src/$sentence/java")
             if (!basis.isDirectory) continue
             for (f in basis.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
@@ -139,14 +155,13 @@ class ModuleBoundariesTest {
                 val rel = f.relativeTo(basis).invariantSeparatorsPath
                 val pkg = packageRow.find(f.readText())?.groupValues?.get(1)
                 val should = master[m.name]?.let { "ch.brickinventoryapp.$it" }
-                val folderPackage = rel.substringBeforeLast('/').replace('/', '.')
-                if (should == null || pkg != folderPackage || !(pkg == should || pkg.startsWith("$should."))) {
+                if (!inRoot(rel, pkg, should, fixtures = sentence == "testFixtures")) {
                     wrong += "${m.name}/src/$sentence: $rel (package $pkg, Stamm ${should ?: "fehlt"})"
                 }
             }
         }
         assertTrue("Nur $n Kotlin-Dateien gefunden — Suche veraltet?", n >= 500)
-        assertTrue("Dateien außerhalb des Paketstamms ihres Moduls:\n  " + wrong.joinToString("\n  "), wrong.isEmpty())
+        return wrong
     }
 
     @Test
@@ -203,6 +218,35 @@ class ModuleBoundariesTest {
         val foreign = imports.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|android\.content|ch\.brickinventoryapp\.data\.(repository|local|cache))\b""").containsMatchIn(it) }
         assertTrue("core-network importiert Ablage, Repositories, DI oder Android-Oberfläche: $foreign", foreign.isEmpty())
         checkUiWithoutDomainKnowledge()
+        checkDataAreas()
+    }
+
+    /**
+     * core-data is cut by area (catalog, collection, parts, finances, account): each shows
+     * its repositories as interfaces, the implementations are internal and only Hilt binds them.
+     * The shared kernel (repository: Outcome, fetch helpers) knows no area.
+     */
+    private fun checkDataAreas() {
+        val root = File(project, "core-data/src/main/java/ch/brickinventoryapp/data")
+        val areas = listOf("catalog", "collection", "parts", "finances", "account")
+        val importRow = Regex("""^import ch\.brickinventoryapp\.data\.(\w+)\.(\w+)""", RegexOption.MULTILINE)
+        val findings = mutableListOf<String>()
+        for (f in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val text = Sources.withoutComments(f.readText())
+            val area = f.parentFile.name
+            Regex("""^(\w+\s+)*class\s+(\w+Impl)\b""", RegexOption.MULTILINE).findAll(text)
+                .filter { "internal" !in it.value && "private" !in it.value }.forEach { findings += "${f.name}: ${it.groupValues[2]} ist öffentlich" }
+            for (m in importRow.findAll(text)) {
+                val (from, name) = m.destructured
+                if (area == "repository" && from in areas) findings += "${f.name}: der Kern kennt den Bereich $from"
+                if (area in areas && from in areas && from != area && name.endsWith("Impl")) findings += "${f.name}: kennt $from.$name"
+            }
+        }
+        val interfaces = areas.associateWith { a ->
+            File(root, a).listFiles().orEmpty().count { Regex("""^interface\s+\w+Repository\b""", RegexOption.MULTILINE).containsMatchIn(it.readText()) }
+        }
+        assertTrue("Bereiche ohne öffentliche Repository-Schnittstelle: $interfaces", interfaces.values.all { it > 0 })
+        assertTrue("Schichtung in core-data:\n  " + findings.joinToString("\n  "), findings.isEmpty())
     }
 
     /**
@@ -234,6 +278,8 @@ class ModuleBoundariesTest {
      *
      *   in uiViolation `module in withoutUi &&` deleted → red here (core-navigation)
      *   counter-checks/zustand-darf-oberflaeche.patch: core-state missing in withoutUi → red here
+ *   the line `k.onlyTest && reverseTest(k)` in ModuleEdges.violations deleted → red here
+ *      (core-data testet mit core-state … missing)
      */
     @Test
     fun `the edge rule forbids area to area, wrong layering, api and core-testing in main code`() {
@@ -258,6 +304,15 @@ class ModuleBoundariesTest {
         assertEquals(emptyList<String>(), check("feature-parts", "testImplementation", "core-testing"))
         assertEquals(emptyList<String>(), check("feature-login", "implementation", "core-security"))
         assertEquals(emptyList<String>(), check("feature-account", "testImplementation", "core-security"))
+        assertEquals(emptyList<String>(), check("core-state", "testImplementation", "core-data"))
+        assertEquals(emptyList<String>(), check("core-offline", "testImplementation", "core-contract"))
+        // A test that needs the layer above belongs there; fixtures of one module only see what lies below.
+        assertEquals(listOf("core-data testet mit core-state, das auf core-data aufbaut: der Test gehört nach core-state"),
+            check("core-data", "testImplementation", "core-state"))
+        assertEquals(listOf("core-model testet mit core-contract, das auf core-model aufbaut: der Test gehört nach core-contract"),
+            check("core-model", "testImplementation", "core-contract"))
+        assertEquals(listOf("core-ui testet mit feature-parts, das auf core-ui aufbaut: der Test gehört nach feature-parts"),
+            check("core-ui", "testFixturesImplementation", "feature-parts"))
         assertEquals(emptyList<String>(), check("core-state", "testImplementation", "core-ui"))
         assertEquals(emptyList<String>(), check("app", "implementation", "feature-parts"))
         assertEquals(emptyList<String>(), check("core-data", "api", "core-model"))

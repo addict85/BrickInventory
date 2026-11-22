@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
+import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.PartInventory
 import ch.brickinventoryapp.model.domain.PartialKey
@@ -11,7 +12,6 @@ import ch.brickinventoryapp.model.domain.Recorded
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

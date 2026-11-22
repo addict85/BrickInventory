@@ -2,11 +2,11 @@ package ch.brickinventoryapp.management
 
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals

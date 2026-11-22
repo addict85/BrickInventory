@@ -16,8 +16,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.data.TokenStore
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.security.TokenEncryption
-import ch.brickinventoryapp.testing.testTrustCipher
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.PrivacyShield

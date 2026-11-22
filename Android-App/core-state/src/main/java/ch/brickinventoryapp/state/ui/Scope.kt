@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.state.ui
 
 import ch.brickinventoryapp.data.ScopeFilterStorage
-import ch.brickinventoryapp.data.repository.HouseholdRepository
+import ch.brickinventoryapp.data.account.HouseholdRepository
+import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.accountOptions
@@ -54,13 +54,6 @@ interface Scope : FilterSource {
     suspend fun loginBegins()
     fun reset()
 }
-
-/** For tests without Hilt. */
-fun Scope(
-    store: FilterStore,
-    household: HouseholdRepository,
-    parts: PartsRepository,
-): Scope = ScopeService(store, household, parts)
 
 @Singleton
 class ScopeService @Inject constructor(

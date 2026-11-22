@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.repository.AccountView
+import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
+import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.SetSort
@@ -11,7 +12,6 @@ import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first

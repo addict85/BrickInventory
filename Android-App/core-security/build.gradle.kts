@@ -20,7 +20,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
 
-    testImplementation(project(":core-testing"))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
 }

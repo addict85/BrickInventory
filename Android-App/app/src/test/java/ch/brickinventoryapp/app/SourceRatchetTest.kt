@@ -460,7 +460,7 @@ class SourceRatchetTest {
         // run in ticks (PathServer.onTick, test dispatcher); counted is what still waits.
         val SLEEP = 2
         val WAIT = 13
-        val files = (Sources.tests.walkTopDown() + File(Sources.project, "core-testing/src/main").walkTopDown())
+        val files = (Sources.tests.walkTopDown() + Sources.module.asSequence().flatMap { File(it, "src/testFixtures").walkTopDown() })
             .filter { it.isFile && it.extension == "kt" }.toList()
         val texts = files.map { code(it.readText()) }
         val sleep = texts.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
@@ -490,7 +490,7 @@ class SourceRatchetTest {
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
         // Among them UPDATE_FOLDER: public because core-data and core-update share it.
-        val LIMIT_AREAS = 222
+        val LIMIT_AREAS = 209
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
@@ -653,7 +653,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 187
+        val MAIN = 180
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->

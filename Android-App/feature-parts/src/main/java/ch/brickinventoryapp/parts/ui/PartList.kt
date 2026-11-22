@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts.ui
 
+import ch.brickinventoryapp.data.catalog.SetCatalogRepository
+import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.SetCatalogRepository
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView

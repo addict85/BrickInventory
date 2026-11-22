@@ -6,6 +6,7 @@ import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.testing.testSession
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -58,7 +59,7 @@ class StateDomainBoundaryTest {
         assertEquals(allowed.keys, steps.keys)
         val error = mutableListOf<String>()
         for ((name, step) in steps) {
-            val session = Session()
+            val session = testSession()
             val before = session.state.value
             step(session)
             val after = session.state.value

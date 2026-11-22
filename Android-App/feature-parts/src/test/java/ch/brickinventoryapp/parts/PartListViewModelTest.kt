@@ -6,6 +6,8 @@ import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
@@ -17,9 +19,7 @@ import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.finances
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

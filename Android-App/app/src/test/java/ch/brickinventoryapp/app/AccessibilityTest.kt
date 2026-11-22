@@ -70,6 +70,9 @@ import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.catalog.ui.screens.ThemeRow
 import ch.brickinventoryapp.collection.ui.screens.SetCard
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.SetView
@@ -84,9 +87,6 @@ import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.FilterChoice
 import ch.brickinventoryapp.shared.ui.FilterSection
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.ui.components.ExplainText
 import ch.brickinventoryapp.ui.components.LoadCircle
 import ch.brickinventoryapp.ui.components.Prompt

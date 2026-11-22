@@ -23,6 +23,7 @@ import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.session.AppUiState
 import java.io.Serializable
 
 /**
@@ -150,3 +151,5 @@ internal data class PartsSessionUiState(
     val currency: CurrencyCode = CurrencyCode.EUR,
     val userDefaultCondition: Condition? = null,
 )
+
+internal fun partsSession(s: AppUiState) = PartsSessionUiState(s.serverUrl, s.currency, s.userDefaultCondition)

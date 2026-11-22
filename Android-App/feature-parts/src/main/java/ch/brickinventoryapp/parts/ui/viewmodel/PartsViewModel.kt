@@ -3,11 +3,11 @@ package ch.brickinventoryapp.parts.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.data.account.AccountView
 import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.AccountView
+import ch.brickinventoryapp.data.local.StockReconciliation
+import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
@@ -25,9 +25,9 @@ import ch.brickinventoryapp.parts.ui.PartsSource
 import ch.brickinventoryapp.parts.ui.PartsUiState
 import ch.brickinventoryapp.parts.ui.SetItemFlow
 import ch.brickinventoryapp.parts.ui.SetItemUiState
+import ch.brickinventoryapp.parts.ui.partsSession
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.derived
 import ch.brickinventoryapp.state.ui.viewmodel.DeletionMark
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
@@ -37,7 +37,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,7 +65,7 @@ class PartsViewModel @Inject constructor(
 ) : ViewModel(), FilterChoice by filter, PartsActions, WithSetItem {
 
     internal val state: StateFlow<PartsSessionUiState> =
-        session.state.derived { PartsSessionUiState(it.serverUrl, it.currency, it.userDefaultCondition) }
+        session.state.map(::partsSession).stateIn(viewModelScope, SharingStarted.Eagerly, partsSession(session.state.value))
 
     init {
         logoutSequence(session) { reset() }
@@ -135,10 +139,12 @@ class PartsViewModel @Inject constructor(
         if (r is Outcome.Failure) messages.show(messages.messageForSnackbar(r))
     }
 
-    private val partsObserved = Observed(parts.state.derived(delete.value) { st, v ->
+    private val partsObserved = Observed(combine(parts.state, delete.value, ::withoutReserved)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, withoutReserved(parts.state.value, delete.value.value)))
+
+    private fun withoutReserved(st: PartsUiState, v: ReservedPart?): PartsUiState =
         if (v == null) st else st.copy(manualParts = st.manualParts?.filterNot {
             it.partNumber == v.partNumber && it.colorId == v.colorId && (v.owner == null || it.userId == v.owner) })
-    })
     val partsState: StateFlow<PartsUiState> = partsObserved
 
     private val inSets = SetItemFlow(viewModelScope, ItemKind.PART,

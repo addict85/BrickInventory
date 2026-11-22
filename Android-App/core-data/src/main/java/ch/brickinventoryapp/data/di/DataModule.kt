@@ -12,8 +12,8 @@ import ch.brickinventoryapp.data.RedemptionSource
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.TokenStore
 import ch.brickinventoryapp.data.TokenSwap
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.cache.CacheOwner
-import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.security.DeviceLock

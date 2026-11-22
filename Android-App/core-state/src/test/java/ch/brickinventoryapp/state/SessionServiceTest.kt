@@ -9,8 +9,13 @@ import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.data.testing.StorageSessionStore
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
@@ -19,16 +24,11 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AccountValues
 import ch.brickinventoryapp.session.LogoutProcess
-import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionService
 import ch.brickinventoryapp.session.WarmUp
+import ch.brickinventoryapp.session.testing.testSession
 import ch.brickinventoryapp.session.tokenEndsSoon
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -90,7 +90,7 @@ class SessionServiceTest {
     }
 
     /** Currency and theme from the same store, like StoreAccountValues on the device. */
-    private val session = Session(object : AccountValues {
+    private val session = testSession(object : AccountValues {
         override val currency: StateFlow<CurrencyCode> = store.currencyState
         override val design: StateFlow<Design> = store.design
         override fun setCurrency(w: CurrencyCode) { store.currencyState.value = w }

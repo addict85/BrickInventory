@@ -4,13 +4,13 @@ import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.local.Baseline
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
 import ch.brickinventoryapp.data.local.ReconcileEvent
+import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.data.testing.TestStore
+import ch.brickinventoryapp.data.testing.testStockReconciliation
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.OutboxNotifier
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.TestStore
-import ch.brickinventoryapp.testing.testStockReconciliation
+import ch.brickinventoryapp.state.ui.InitialObserver
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +62,7 @@ class OutboxNotifierTest {
         val situation = State()
         val fake = FakeApi()
         val channel = MessageChannel()
-        val notifier = OutboxNotifier(situation, testStockReconciliation(fake.api, TestStore()), channel)
+        val notifier = InitialObserver(situation, testStockReconciliation(fake.api, TestStore()), channel)
         notifier.launch(backgroundScope)
         runCurrent()
         assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, situation.scheduled)
@@ -92,7 +92,7 @@ class OutboxNotifierTest {
         val first = DiscardedChange("k1", "10001-1", "gibt es nicht", 404)
         val second = DiscardedChange("k2", "10002-1", "gibt es auch nicht", 404)
         situation.discarded.value = listOf(first, second)
-        OutboxNotifier(situation, testStockReconciliation(FakeApi().api, TestStore()), channel).launch(backgroundScope)
+        InitialObserver(situation, testStockReconciliation(FakeApi().api, TestStore()), channel).launch(backgroundScope)
         runCurrent()
         assertEquals(Message.Resource(R.string.offline_discarded, listOf("10001-1", "gibt es nicht")), channel.message.value)
         assertEquals("noch nicht gesehen: bleibt in der Ablage", listOf(first, second), situation.discarded.value)
@@ -107,7 +107,7 @@ class OutboxNotifierTest {
         val situation = State()
         val channel = MessageChannel()
         situation.discarded.value = listOf(DiscardedChange("k1", "10001-1", "", null, unreadable = true))
-        OutboxNotifier(situation, testStockReconciliation(FakeApi().api, TestStore()), channel).launch(backgroundScope)
+        InitialObserver(situation, testStockReconciliation(FakeApi().api, TestStore()), channel).launch(backgroundScope)
         runCurrent()
         assertEquals("an item unreadable after the update is reported as such",
             Message.Resource(R.string.offline_discarded, listOf("10001-1", Message.Resource(R.string.offline_discarded_unreadable))),
@@ -118,7 +118,7 @@ class OutboxNotifierTest {
     fun `a second start does not follow the outbox twice`() = runTest {
         val situation = State()
         val channel = MessageChannel()
-        val notifier = OutboxNotifier(situation, testStockReconciliation(FakeApi().api, TestStore()), channel)
+        val notifier = InitialObserver(situation, testStockReconciliation(FakeApi().api, TestStore()), channel)
         notifier.launch(backgroundScope)
         notifier.launch(backgroundScope)
         runCurrent()

@@ -2,6 +2,8 @@ package ch.brickinventoryapp.collection
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
@@ -10,9 +12,8 @@ import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetTotals
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore.FollowUp
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.testing.newProcess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

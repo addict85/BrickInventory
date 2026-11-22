@@ -4,8 +4,6 @@ import ch.brickinventoryapp.model.ui.Message
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * One path for transient messages — the snackbar has exactly one place on the
@@ -21,14 +19,13 @@ interface MessageChannel {
     fun show(text: String?) = show(text?.let(Message::Text))
     fun acknowledge()
 
-    /** For tests without Hilt. */
+    /** The one way to build it, for Hilt and tests alike; the implementation stays internal. */
     companion object {
         operator fun invoke(): MessageChannel = MessageQueue()
     }
 }
 
-@Singleton
-internal class MessageQueue @Inject constructor() : MessageChannel {
+internal class MessageQueue : MessageChannel {
 
     private val _message = MutableStateFlow<Message?>(null)
     private val queue = ArrayDeque<Message>()

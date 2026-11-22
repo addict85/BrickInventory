@@ -2,6 +2,9 @@ package ch.brickinventoryapp.management
 
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.json.BrickJson
@@ -9,9 +12,6 @@ import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType

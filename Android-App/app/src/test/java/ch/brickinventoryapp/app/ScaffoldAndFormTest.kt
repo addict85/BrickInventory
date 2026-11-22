@@ -66,6 +66,9 @@ import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
@@ -86,9 +89,6 @@ import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.StatChipV2
 import ch.brickinventoryapp.shared.ui.partsBreakdown
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.ui.components.AddFab
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK

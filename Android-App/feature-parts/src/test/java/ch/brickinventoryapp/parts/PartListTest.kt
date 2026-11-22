@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.parts
 
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetCatalogRepository
 import ch.brickinventoryapp.parts.ui.PartList
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testSetCatalogRepository
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

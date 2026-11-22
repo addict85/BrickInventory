@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.parts
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.sorted
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.testing.newProcess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineScheduler

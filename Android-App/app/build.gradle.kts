@@ -238,6 +238,7 @@ dependencies {
     implementation(project(":feature-account"))
     implementation(project(":feature-management"))
     testImplementation(project(":core-testing"))
+    testImplementation(testFixtures(project(":core-state")))
     // The test servers respond in wire format.
     testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)

@@ -3,8 +3,8 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.VouchersRepository
 import ch.brickinventoryapp.finances.ui.BalanceRun
 import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation

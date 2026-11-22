@@ -7,10 +7,10 @@ import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.WantedRequest
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.WantedItemView

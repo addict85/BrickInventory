@@ -4,14 +4,15 @@ import android.Manifest
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.account.AccountDataDeletion
 import ch.brickinventoryapp.data.cache.PreviewMemory
-import ch.brickinventoryapp.data.repository.AccountDataDeletion
+import ch.brickinventoryapp.data.testing.TestStore
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.offline.Editing
@@ -19,17 +20,6 @@ import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.security.StoreKey
 import ch.brickinventoryapp.security.TokenEncryption
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.Logout
-import ch.brickinventoryapp.state.ui.LogoutHook
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.TestStore
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testTrustCipher
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import kotlinx.coroutines.CoroutineScope
@@ -60,10 +50,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * After signing out nothing of the account remains: Abmelden.execute() with the real
- * DevicesCleanup and real stores, each filled before, empty afterwards — and what lay
- * encrypted with the old store key is no longer readable. Here in core-data,
- * because the cleanup is module-internal; a dummy stands in for the widget hook.
+ * After signing out nothing of the account remains on the device: the real DevicesCleanup
+ * with real stores, each filled before, empty afterwards — and what lay encrypted with
+ * the old store key is no longer readable. Here in core-data, because the cleanup is
+ * module-internal; the order around it (server, widget, session) is LogoutOrderTest in core-state.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
  *   abmelden-laesst-vorschau     vorschau.clearAll() removed → red „… Vorschau“
@@ -101,11 +91,10 @@ class LogoutCleansEverythingTest {
 
     private fun file(basis: File, path: String) = File(basis, path).apply { parentFile?.mkdirs(); writeText("inhalt") }
 
-    /** Parts list, update APK, instruction, widget numbers and a price alert notification. */
+    /** Parts list, update APK, instruction and a price alert notification. */
     private fun createFilesAndMessage(): Triple<File, File, File> {
         val files = Triple(file(ctx.filesDir, "pdf/teileliste.bin"), file(ctx.filesDir, "update/BrickInventory.apk"),
             file(ctx.cacheDir, "anleitung_x.bin"))
-        ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putString("zahlen", "geheim").commit()
         shadowOf(ctx).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel("preisalarm", "Preisalarm", NotificationManager.IMPORTANCE_DEFAULT))
@@ -127,7 +116,6 @@ class LogoutCleansEverythingTest {
 
         val storeKey = StoreKey(File(ctx.noBackupFilesDir, "test.key"), PlainVault)
         val secret = StoreCipher { storeKey.forTarget("x") }.encrypt("Sammlung von marco".toByteArray(), "x/1")
-        val api = TestApi.forTarget(server)
         val offline = TestStore()
         offline.adopt(Slots.SETS, listOf(SetItem(setNumber = "10294-1")).map { it.asView() })
         offline.adopt(Slots.METRICS, listOf(MetricsView(totalSets = 1, totalQuantity = 1, totalInstructions = 0, totalParts = 0, totalMinifigs = 0)))
@@ -145,17 +133,11 @@ class LogoutCleansEverythingTest {
         assertEquals("Vorbedingung: eine Meldung steht da", 1, messages.allNotifications.size)
         assertTrue("Vorbedingung: Bildcache gefüllt", imageClient.cache!!.urls().hasNext())
         assertTrue("Vorbedingung: Vorschau abgelegt", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
-        val session = Session().apply { loggedIn(admin = false) }
         val oldKey = storeKey.fetch().copyOf()
 
         val cleanup = DevicesCleanup(ctx, prefs, AccountDataDeletion(offline), PasswordRequired(),
             SecondFactorRequired(), imageClient, preview, loader, Dispatchers.IO, storeKey)
-        // The real hook (AppModule) clears the widget numbers; it lives in the app.
-        val widget = LogoutHook { ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().clear().commit() }
-        val logout = Logout(cleanup, widget, session,
-            Scope(StorageStore(), testHouseholdRepository(api), testPartsRepository(api)),
-            LogoutState(testAccountRepository(api), prefs) { })
-        assertEquals(LogoutPath.IMMEDIATE, logout.execute())
+        cleanup.cleanUp()
 
         val plate = store.data.first()
         assertEquals("Token", "", prefs.tokenNow())
@@ -172,7 +154,6 @@ class LogoutCleansEverythingTest {
         assertFalse("PartList", partList.exists())
         assertFalse("Update-APK", update.exists())
         assertFalse("Anleitung", instruction.exists())
-        assertNull("Widget-Zahlen", ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).getString("zahlen", null))
         assertEquals("Preisalarm-Meldung", 0, messages.allNotifications.size)
         assertNotEquals("Der Ablageschlüssel ist noch der alte", oldKey.toList(), storeKey.fetch().toList())
         assertNull("Mit dem alten Schlüssel verschlüsselte Reste sind lesbar",

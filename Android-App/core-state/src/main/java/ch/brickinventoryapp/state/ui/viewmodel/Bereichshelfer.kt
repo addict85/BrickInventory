@@ -35,9 +35,6 @@ interface Messages : Texts {
     fun acknowledge()
 }
 
-/** For tests without Hilt. */
-fun Messages(channel: MessageChannel, texts: Texts): Messages = AppMessages(channel, texts)
-
 class AppMessages @Inject constructor(
     private val channel: MessageChannel,
     texts: Texts,
@@ -79,9 +76,6 @@ interface FilterChoice {
     suspend fun fetchStorageLocations()
     suspend fun ownLocationsNew()
 }
-
-/** For tests without Hilt. */
-fun FilterChoice(service: Scope, area: CoroutineScope): FilterChoice = AreaFilter(service, area)
 
 /**
  * In the app's scope: a filter that someone set is remembered, even if

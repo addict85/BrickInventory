@@ -2,6 +2,7 @@ package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
+import java.io.File
 
 /**
  * Error messages arise in ONE place, and that place can translate.
@@ -12,25 +13,12 @@ import org.junit.Test
  */
 class ErrorMessageLayerTest {
 
-    private val dataLayer = listOf(
-        // All files of the data layer — previously only the one.
-        "data/repository/Outcome.kt",
-        "data/repository/Fetch.kt",
-        "data/repository/SetsRepositoryImpl.kt",
-        "data/repository/WantedListRepositoryImpl.kt",
-        "data/repository/AlarmRepositoryImpl.kt",
-        "data/repository/SetCatalogRepository.kt",
-        "data/repository/SetFilesRepository.kt",
-        "data/repository/PartsRepositoryImpl.kt",
-        "data/repository/FinancesRepositoryImpl.kt",
-        "data/repository/HouseholdRepositoryImpl.kt",
-        "data/repository/FiguresRepositoryImpl.kt",
-        "data/repository/AccountRepositoryImpl.kt",
-        "data/repository/AdminRepositoryImpl.kt",
-        "data/repository/CatalogRepositoryImpl.kt",
-        "data/repository/VouchersRepositoryImpl.kt",
-        "data/CsvImportSseClient.kt",
-    )
+    /** The repositories of every area, the shared kernel and the import stream. */
+    private val dataLayer: List<String> by lazy {
+        listOf("repository", "catalog", "collection", "parts", "finances", "account").flatMap { area ->
+            File(Sources.root, "data/$area").listFiles().orEmpty().filter { it.extension == "kt" }.map { "data/$area/${it.name}" }
+        }.sorted() + "data/CsvImportSseClient.kt"
+    }
 
     @Test
     fun `the data layer builds no message for the user`() {
@@ -39,6 +27,7 @@ class ErrorMessageLayerTest {
         // decides — or a passed-through server message (a variable).
         val sentence = Regex("""Outcome\.Failure\.(?:Rejected\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val error = mutableListOf<String>()
+        assert(dataLayer.size >= 20) { "Nur ${dataLayer.size} Dateien der Datenschicht — greift die Suche noch?" }
         for (rel in dataLayer) {
             val s = Sources.withoutComments(Sources.read(rel))
             sentence.findAll(s).forEach { m ->

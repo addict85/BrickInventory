@@ -9,6 +9,8 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.state"
+    // The scope ViewModels' shared services (TestServices) for the areas' tests.
+    testFixtures.enable = true
 }
 
 dependencies {
@@ -26,6 +28,11 @@ dependencies {
     // extends them or starts them in a test needs ViewModel and viewModelScope.
     api(libs.androidx.lifecycle.viewmodel)
 
+    testFixturesApi(testFixtures(project(":core-data")))
+    testFixturesApi(testFixtures(project(":core-session")))
+    testFixturesImplementation(project(":core-data"))
+    testFixturesImplementation(project(":core-session"))
+    testFixturesImplementation(project(":core-offline"))
     testImplementation(project(":core-testing"))
     // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))

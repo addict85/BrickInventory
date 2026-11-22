@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.CsvUploadUiState
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.ManagementRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
+import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CsvImportKind
@@ -25,7 +25,6 @@ import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.derived
 import ch.brickinventoryapp.session.loadSettings
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.state.ui.failed
@@ -40,9 +39,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -80,9 +82,11 @@ class SettingsViewModel @Inject constructor(
     val locationRoute = DeletionMark<LocationEntryView>(viewModelScope) { deleteLocation(it.id) }
 
     /** The storage-locations page reads it; whoever opens it gets their own locations fresh. */
-    private val storageObserved = Observed(filter.storageState.derived(locationRoute.value) { st, gone ->
+    private val storageObserved = Observed(combine(filter.storageState, locationRoute.value, ::withoutGone)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, withoutGone(filter.storageState.value, locationRoute.value.value)))
+
+    private fun withoutGone(st: StorageUiState, gone: LocationEntryView?): StorageUiState =
         if (gone == null) st else st.copy(own = st.own.filterNot { it.id == gone.id })
-    })
     override val storageState: StateFlow<StorageUiState> = storageObserved
 
     init {

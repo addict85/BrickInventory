@@ -2,16 +2,16 @@ package ch.brickinventoryapp.management
 
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.management.ui.screens.jobKindText
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.domain.JobStatus
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel

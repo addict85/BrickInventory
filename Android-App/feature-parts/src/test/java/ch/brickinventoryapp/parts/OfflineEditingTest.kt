@@ -4,6 +4,12 @@ import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.ServerSender
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.data.testing.testWantedRepository
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.offline.Editing
@@ -11,12 +17,6 @@ import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testWantedRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

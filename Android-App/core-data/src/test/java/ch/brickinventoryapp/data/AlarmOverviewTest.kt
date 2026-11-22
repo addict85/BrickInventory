@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAlarmRepository
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testAlarmRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

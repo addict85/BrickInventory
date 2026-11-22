@@ -2,7 +2,7 @@ package ch.brickinventoryapp.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.testing.testSession
 import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +46,7 @@ class LoadOnObserveTest {
 
     @Test
     fun `loadJeServer loads once per address as long as someone observes`() {
-        val session = Session()
+        val session = testSession()
         val condition = MutableStateFlow(0)
         var loaded = 0
         vm.loadPerServer(session, condition) { loaded++ }

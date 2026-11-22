@@ -7,12 +7,14 @@ import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.derived
 import ch.brickinventoryapp.state.ui.WidgetKick
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,7 +34,8 @@ class AppearanceViewModel @Inject constructor(
      * Only the theme, so MainActivity doesn't recompose on every state change.
      * The first value comes from the store's synchronous mirror (Kontowerte), before the first frame.
      */
-    val appTheme: StateFlow<Design> = session.state.derived { it.appTheme }
+    val appTheme: StateFlow<Design> =
+        session.state.map { it.appTheme }.stateIn(viewModelScope, SharingStarted.Eagerly, session.state.value.appTheme)
 
     private val _brightness = MutableStateFlow(prefs.brightness())
     val brightness: StateFlow<String> = _brightness.asStateFlow()
