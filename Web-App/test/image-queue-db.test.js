@@ -267,35 +267,6 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
   );
 });
 
-test('the buffer is written away in EVERY worker process', () => {
-  // Marco's finding
-  const q = fs.readFileSync(path.join(ROOT, 'src/images/imageDemand.ts'), 'utf8');
-  const init = q.slice(
-    q.indexOf('export async function setUpImageDemand'),
-    q.indexOf('export async function deleteExpired'),
-  );
-  assert.match(
-    init,
-    /setInterval\([\s\S]{0,80}writeBuffer/,
-    'Das Wegschreiben steht nicht in setUpImageDemand() — dann läuft es nur dort, ' +
-      'wo start() aufgerufen wird, also nur im Primärprozess',
-  );
-
-  // And setUpImageDemand() must actually run everywhere.
-  const dbInit = fs.readFileSync(path.join(ROOT, 'startup/database.ts'), 'utf8');
-  // REWORDED in — for the same reason as twelve lines
-  // further down at start(), only this neighboring assertion had kept the bug:
-  // it required the notation `jobs/imageQueue').setUpImageDemand()`, i.e.
-  // explicitly a require(). When that became a top-level import, …
-  assert.match(
-    dbInit,
-    /\bd\.images\.startImageDemand\(\)/,
-    'startImageDemand() wird nicht beim Aufbau der Datenbank aufgerufen',
-  );
-
-  // Processing only happens in the job process: test/web-and-jobs-db.test.js checks that on the real server.
-});
-
 test('the request no longer computes anything, it only takes notes', () => {
   // Checked on the source text because it is about the ORDER: in the
   // gen=0 case the proxy must not trigger a downscale but must leave

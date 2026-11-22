@@ -3,6 +3,8 @@
  *
  * Counter-check (performed): the hint block for “preview missing" removed →
  * substep A turns red.
+ * Counter-checks (22.11.2026, each alone): in downloadSetImage the line for a non-200 status, for a failed
+ * fetch, or for a too small answer removed → red “the set image download reports every failure”.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
@@ -102,22 +104,34 @@ test('the image diagnostics describe every situation in plain text', { concurren
   }
 });
 
-test('the set image download reports every failure', () => {
-  // Until an earlier round there was exactly ONE log line (the size limit from 47);
-  // status code, network error, dwarf response and the enclosing catch
-  // all ended in a silent `return null`. Exactly this silence stretched
-  // the image debugging over five addenda.
-  const src = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
-  const start = src.indexOf('async function downloadSetImage');
-  const fn = src
-    .slice(start, src.indexOf('\n}\n', start))
-    .split('\n')
-    .filter(l => !l.trim().startsWith('//'))
-    .join('\n');
-  const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
-  assert.ok(
-    meldungen >= 4,
-    `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
-      'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
-  );
+test('the set image download reports every failure', async t => {
+  // Every way to fail leaves a line with set number and reason; the fetch is replaced at the wiring.
+  const { FetchError } = _req('src/infra/fetch.js');
+  /** @type {Record<string, () => Promise<any>>} */
+  const answers = {
+    'http-403': async () => ({ status: 403 }),
+    'http-404': async () => ({ status: 404 }),
+    netz: async () => {
+      throw new Error('ECONNRESET');
+    },
+    gross: async () => {
+      throw new FetchError('zu-gross', 'zu gross');
+    },
+    klein: async () => ({ status: 200, koerper: Buffer.from('<html>') }),
+  };
+  let current = 'netz';
+  require('./helpers/sources').testSources(t, { fetchImage: async () => answers[current]() });
+  const lines = [];
+  t.mock.method(console, 'error', (...a) => lines.push(a.join(' ')));
+  t.mock.method(console, 'warn', (...a) => lines.push(a.join(' ')));
+  const { downloadSetImage } = _req('src/images/setImages.js');
+  const reasons = {};
+  for (const kind of Object.keys(answers)) {
+    current = kind;
+    const sn = `zzdiag-${kind}-${process.pid}`;
+    lines.length = 0;
+    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com/media/sets/${sn}.jpg`, sn), null, kind);
+    reasons[kind] = lines.filter(l => l.includes(sn)).length;
+  }
+  assert.deepEqual(reasons, { 'http-403': 1, 'http-404': 1, netz: 1, gross: 1, klein: 1 });
 });
