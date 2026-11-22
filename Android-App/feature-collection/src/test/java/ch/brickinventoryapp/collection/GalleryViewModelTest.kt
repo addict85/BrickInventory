@@ -45,6 +45,7 @@ import org.junit.Test
  *      → red “an added part loads the key figures …” and “a deleted set …”
  *   F  forgetScroll on "parts" instead of "gallery" → red “a filter change
  *      forgets the scroll position of the gallery and only that one”
+ *   G  forgetScroll() removed from setSearch or from setSort in Gallery.kt → red, the same test
  *   G  tilePrices() without kachel_preis/kachel_pnl_pct → red “the
  *      key figures bring price and P&L …” (800.0 instead of 812.5)
  *   G  in loadStats() loadPrices() removed → red “the key figures bring
@@ -285,12 +286,15 @@ class GalleryViewModelTest {
     fun `a filter change forgets the scroll position of the gallery and only that`() {
         // The remembered position otherwise pointed at sets that stand
         // elsewhere or not at all in the new list.
-        t.scrollMemory.track("gallery", 40, 3)
-        t.scrollMemory.track("parts", 7, 0)
         val vm = vm()
-        vm.setGalleryTheme("Technic")
-        assertEquals(0 to 0, t.scrollMemory.read("gallery"))
-        assertEquals(7 to 0, t.scrollMemory.read("parts"))
+        for ((change, apply) in listOf<Pair<String, () -> Unit>>("theme" to { vm.setGalleryTheme("Technic") },
+            "search" to { vm.setGalleryQuery("Falcon") }, "sort" to { vm.setGallerySort(SetSort.NAME) })) {
+            t.scrollMemory.track("gallery", 40, 3)
+            t.scrollMemory.track("parts", 7, 0)
+            apply()
+            assertEquals("after the $change", 0 to 0, t.scrollMemory.read("gallery"))
+            assertEquals(7 to 0, t.scrollMemory.read("parts"))
+        }
     }
 
     @Test

@@ -4,7 +4,6 @@ import ch.brickinventoryapp.catalog.ui.CatalogYearMath
 import ch.brickinventoryapp.catalog.ui.viewmodel.VIEWPORT_REST_MS
 import ch.brickinventoryapp.catalog.ui.viewmodel.ViewportLoader
 import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
-import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -47,7 +46,7 @@ import org.junit.Test
  * ── How it's checked ───────────────────────────────────────────────────────
  * The stillness lives in the ViewModel (Sichtfensterlader) and runs
  * here with StandardTestDispatcher: one drag with a hundred windows, virtual time,
- * counted fetches. That the bar itself doesn't load stays a source-text check.
+ * counted fetches. That the bar itself only scrolls runs in CatalogGridTest.
  *
  * Counter-checks:
  *   A  `collectLatest` replaced by `collect`
@@ -115,28 +114,5 @@ class CatalogJumpDebouncedTest {
         advanceUntilIdle()
         assertEquals(listOf(1, 2), loaded)
         area.cancel()
-    }
-
-    @Test
-    fun `the bar only scrolls and does not load itself`() {
-        val src = Sources.withoutComments(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
-
-        val ab = src.indexOf("onScrollTo = ")
-        assert(ab > 0) { "the year bar's callback can no longer be found" }
-        val callback = src.substring(ab, minOf(ab + 200, src.length))
-        assert(!callback.contains("onEnsurePage")) {
-            "The bar loads on EVERY touch point again. That is over " +
-                "a hundred fetches per drag (see the measurement in the first test)."
-        }
-
-        // And no second, separate jump fetch next to it: that used to sit here
-        // once (`zielSeite` with its own LaunchedEffect) and was the
-        // fix at the wrong layer — it took the fetch away from the callback
-        // but left the viewport loader running unchanged.
-        // Two versions of the same rule also drift apart.
-        assert(!src.contains("zielSeite")) {
-            "The own jump fetch is back. It is superfluous since the " +
-                "quiet sits in the viewport loader — BOTH ways end there."
-        }
     }
 }

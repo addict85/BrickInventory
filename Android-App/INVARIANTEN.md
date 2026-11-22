@@ -150,7 +150,7 @@ Listenzustand liegt oberhalb des NavHost. Im Helfer: Merker `remember`, nie
 der Katalog merkt sich seine Position selbst (`CatalogScreen.kt`).
 Dateien: `ui/ScrollMemory.kt`, `AppNavigation.kt`, `MainScaffold.kt`,
 `collection/ui/CollectionGraph.kt`, `parts/ui/PartsGraph.kt`, `finances/ui/FinancesGraph.kt` ·
-Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
+Tests: `ListScrollPositionTest`, `TabScrollPositionTest`, `TabOpensAtTopTest`
 
 **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
 Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.

@@ -22,6 +22,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -162,6 +163,7 @@ private fun BoxScope.ScrubberHandle(thumbOffsetY: Int, dragging: Boolean) {
         modifier = Modifier
             .align(Alignment.TopEnd)
             .offset { IntOffset(0, thumbOffsetY) }
+            .testTag(HANDLE_TAG)
     ) {
         Box(Modifier.width(HANDLE_WIDTH).height(HANDLE_HEIGHT), Alignment.Center) {
             if (LocalIsBrickTheme.current) {
@@ -216,3 +218,6 @@ internal val TRACK_WIDTH = 48.dp
 
 private val HANDLE_WIDTH = 24.dp
 private val HANDLE_HEIGHT = 48.dp
+
+/** Where the handle stands is what the bar says; the tests read it by this name. */
+internal const val HANDLE_TAG = "catalog-year-handle"

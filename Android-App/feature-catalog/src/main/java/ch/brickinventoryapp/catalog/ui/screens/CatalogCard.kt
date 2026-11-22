@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -198,6 +199,9 @@ internal fun CatalogPlaceholderCard() {
     Card(
         shape = Shapes.bar,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        modifier = Modifier.fillMaxWidth().height(200.dp)
+        modifier = Modifier.fillMaxWidth().height(200.dp).testTag(PLACEHOLDER_TAG)
     ) {}
 }
+
+/** A slot without its set yet; the tests compare its height with a tile's. */
+internal const val PLACEHOLDER_TAG = "catalog-placeholder"

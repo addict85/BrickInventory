@@ -22,6 +22,7 @@ import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.services.service.CsvImportRunner
@@ -62,7 +63,13 @@ import java.util.Base64
  * destination's ViewModel from [Examples.World] via `hiltViewModel()`. Signed in on [SERVER]; the
  * update check finds what [updates] offers. Tests drive it like a user, through the bar and the rows.
  */
-class TestApp(texts: Texts = NumbersTexts, val images: ImageLoader = noImages(), val updates: TestUpdates = TestUpdates()) : AutoCloseable {
+class TestApp(
+    texts: Texts = NumbersTexts,
+    val images: ImageLoader = noImages(),
+    val updates: TestUpdates = TestUpdates(),
+    /** Name and parts per set number for the parts list. */
+    partLists: (String) -> Pair<String, List<PlPart>> = { error("no parts list in this test") },
+) : AutoCloseable {
     val world = Examples.World(texts)
     private val t = world.t
 
@@ -87,7 +94,7 @@ class TestApp(texts: Texts = NumbersTexts, val images: ImageLoader = noImages(),
             put { world.wantedList(it) }
             put { world.parts(it) }
             put { world.figures(it) }
-            put<PartListViewModel> { world.buildList(it) }
+            put<PartListViewModel> { world.buildList(it, partLists) }
             put { world.finances(it) }
             put<VoucherViewModel> { world.vouchers() }
             put<SettingsViewModel> { world.settings() }
