@@ -9,10 +9,10 @@ import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
  * VouchersRepository.pdfRelease() and is valid for one fetch.
  */
 internal fun voucherPdfAddress(serverUrl: String, id: Int, ticket: String? = null): String =
-    withTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf", ticket)
+    withTicket(serverUrl.trimEnd('/') + "/api/v2/vouchers/" + id + "/pdf", ticket)
 
 internal fun voucherExportAddress(serverUrl: String, ticket: String? = null): String =
-    withTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf", ticket)
+    withTicket(serverUrl.trimEnd('/') + "/api/v2/vouchers/export/pdf", ticket)
 
 internal fun voucherPdfAddress(serverUrl: String, target: VoucherPdfTarget): String =
     if (target.id == null) voucherExportAddress(serverUrl, target.ticket) else voucherPdfAddress(serverUrl, target.id, target.ticket)
@@ -28,13 +28,13 @@ private fun withTicket(address: String, ticket: String?): String =
 /**
  * Does the viewer show a voucher's number and PIN? Then the same
  * visual protection applies as on the vouchers page (ui/components/PrivacyShield.kt). By
- * path, not as a substring: Express treats `/API/v1/Vouchers` and `%76ouchers`
- * the same; whatever cannot be read counts as confidential.
+ * path, not as a substring: Express treats `/API/v2/Vouchers` and `%76ouchers`
+ * the same; whatever cannot be read counts as confidential. The v1 alias serves the same PDFs.
  */
 internal fun showsVouchers(pdfUrl: String): Boolean {
     val path = runCatching { java.net.URI(pdfUrl.trim()).path }.getOrNull() ?: return true
     val parts = path.split('/').filter { it.isNotEmpty() }.map { it.lowercase() }
-    return parts.windowed(3).any { it == listOf("api", "v1", "vouchers") }
+    return parts.windowed(3).any { it[0] == "api" && it[1] in API_VERSIONS && it[2] == "vouchers" }
 }
 
 /**
@@ -43,3 +43,5 @@ internal fun showsVouchers(pdfUrl: String): Boolean {
  * reads and which survives signing out — the wrong place for a number and PIN.
  */
 internal fun pdfMaySavedBecome(pdfUrl: String): Boolean = !showsVouchers(pdfUrl)
+
+private val API_VERSIONS = setOf("v1", "v2")

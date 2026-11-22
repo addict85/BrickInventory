@@ -2575,3 +2575,19 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Lesezeichen** der Sammlung mit `sortierung=kauf_desc` fallen auf die Standardsortierung
   zurück.
 - Sonst nichts von Hand zu tun.
+
+## 74. Android-App spricht API v2
+
+- **Die App ruft `/api/v2`** mit den englischen Feldern, Werten und Fehlercodes; nur der
+  Bild-Proxy bleibt `/api/v1/img-proxy` (gespeicherte Bildadressen zeigen dorthin). Ältere
+  App-Versionen laufen über den v1-Alias weiter bis zum Sunset am 30.06.2027 — deshalb
+  bleiben `docs/openapi.json` und der Alias unverändert.
+- **Wartende Änderungen** (Ausgang der App ohne Netz) gehen nach dem Update über v2 hinaus:
+  Der Ausgang speichert Fachwerte in seiner eingefrorenen Form 1, die Anfrage entsteht erst
+  beim Senden. Nichts von Hand zu tun.
+- **`shared/app-schnittstelle.json` heisst jetzt `shared/app-interface.json`** und hat
+  englische Schlüssel (`routes`, `method`, `path`, `query`, `body_fields`, `without_token`,
+  `response_fields`, `models`). Eigene Werkzeuge, die die Datei lesen, entsprechend anpassen.
+- Die erzeugten Kotlin-Typen stehen in `core-contract/…/contract/Contract.kt` (aus
+  `docs/openapi-v2.json`, `npm run contract:kotlin`); `Vertrag.kt` und die Brücken
+  `ContractNames.kt` sind entfernt.

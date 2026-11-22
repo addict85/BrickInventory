@@ -46,7 +46,7 @@ class InstructionCacheBudgetTest {
 
     private fun load(): File {
         val target = File(ctx.cacheDir, "${INSTRUCTION_PREFIX}10294$INSTRUCTION_EXTENSION")
-        runBlocking { download.load("https://nas.example/api/v1/instructions/10294-1.pdf", target, once = false) { _, _ -> } }
+        runBlocking { download.load("https://nas.example/api/v2/instructions/10294-1.pdf", target, once = false) { _, _ -> } }
         return target
     }
 

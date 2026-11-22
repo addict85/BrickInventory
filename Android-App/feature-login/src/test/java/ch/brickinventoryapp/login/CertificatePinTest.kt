@@ -195,7 +195,7 @@ class CertificatePinTest {
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
         return try {
-            c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).execute().use { it.isSuccessful }
+            c.newCall(Request.Builder().url(server.url("/api/v2/sets")).build()).execute().use { it.isSuccessful }
         } catch (_: IOException) { false }
     }
 
@@ -631,7 +631,7 @@ class CertificatePinTest {
         val c = OkHttpClient.Builder().sslSocketFactory(factory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
         fun fetch() = try {
-            c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).execute().use { it.isSuccessful }
+            c.newCall(Request.Builder().url(server.url("/api/v2/sets")).build()).execute().use { it.isSuccessful }
         } catch (_: IOException) { false }
         assertTrue(fetch())
         c.connectionPool.evictAll()

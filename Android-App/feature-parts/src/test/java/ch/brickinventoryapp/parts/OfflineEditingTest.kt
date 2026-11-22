@@ -76,15 +76,15 @@ class OfflineEditingTest {
                     key += "${request.method} $path" to request.getHeader("Idempotency-Key")
                     codes["${request.method} $path"]?.let { (c, r) -> return TestApi.response(r, c) }
                     return when {
-                        request.method == "GET" && path == "/api/v1/sets" -> TestApi.response(
+                        request.method == "GET" && path == "/api/v2/sets" -> TestApi.response(
                             """{"success":true,"count":1,"total":1,"themes":[],"sets":[{"set_number":"10001-1","name":"Haus","quantity":1}]}""")
-                        request.method == "GET" && path == "/api/v1/parts/manual" -> TestApi.response(
+                        request.method == "GET" && path == "/api/v2/parts/manual" -> TestApi.response(
                             """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":5,"user_id":7},
                                {"part_number":"3002","color_id":1,"quantity":1,"user_id":7}]}""")
-                        request.method == "GET" && path == "/api/v1/minifigs/manual" -> TestApi.response(
+                        request.method == "GET" && path == "/api/v2/minifigs/manual" -> TestApi.response(
                             """{"success":true,"figs":[{"fig_number":"sw0001","quantity":2,"user_id":7}]}""")
-                        request.method == "GET" && path == "/api/v1/wanted" -> TestApi.response(
-                            """{"success":true,"merkposten":[{"set_number":"20001-1","condition":"N","user_id":7}]}""")
+                        request.method == "GET" && path == "/api/v2/wanted" -> TestApi.response(
+                            """{"success":true,"item":[{"set_number":"20001-1","condition":"N","user_id":7}]}""")
                         else -> TestApi.response("""{"success":true}""")
                     }
                 }
@@ -136,7 +136,7 @@ class OfflineEditingTest {
         assertEquals(ReconcileOutcome.LATER, sync.send())
         s.offline = false
         assertEquals(ReconcileOutcome.DONE, sync.send())
-        assertEquals(listOf("PUT /api/v1/sets/10001-1 {\"quantity_delta\":1}"), s.requests.filter { it.startsWith("PUT") })
+        assertEquals(listOf("PUT /api/v2/sets/10001-1 {\"quantity_delta\":1}"), s.requests.filter { it.startsWith("PUT") })
         assertEquals(0, outbox.all("konto").size)
     }
 
@@ -164,7 +164,7 @@ class OfflineEditingTest {
         assertTrue(r is Outcome.Success && r.buffered)
         assertEquals(emptyList<String>(), s.requests.filter { it.startsWith("PUT") })
         sync.send()
-        assertEquals(2, s.requests.count { it.startsWith("PUT /api/v1/sets/10001-1") })
+        assertEquals(2, s.requests.count { it.startsWith("PUT /api/v2/sets/10001-1") })
     }
 
     @Test
@@ -180,7 +180,7 @@ class OfflineEditingTest {
     fun `if the server rejects, it is discarded and reported`() = runBlocking {
         s.offline = true
         repo.addSet("99999-1")
-        s.codes["POST /api/v1/sets"] = 404 to """{"success":false,"error":"Set unbekannt"}"""
+        s.codes["POST /api/v2/sets"] = 404 to """{"success":false,"error":"Set unbekannt"}"""
         s.offline = false
         assertEquals(ReconcileOutcome.DONE, sync.send())
         val v = sync.discarded().first().single()
@@ -196,7 +196,7 @@ class OfflineEditingTest {
         val r = repo.changeQuantityBy("10001-1", 1)
         assertTrue("Expected: buffered after a lost response, got $r", r is Outcome.Success && r.buffered)
         assertEquals(ReconcileOutcome.DONE, sync.send())
-        val puts = s.key.filter { it.first == "PUT /api/v1/sets/10001-1" }.map { it.second }
+        val puts = s.key.filter { it.first == "PUT /api/v2/sets/10001-1" }.map { it.second }
         assertEquals(2, puts.size)
         assertTrue("without key: $puts", !puts[0].isNullOrBlank())
         assertEquals("the server must be able to recognize the repetition", puts[0], puts[1])
@@ -218,7 +218,7 @@ class OfflineEditingTest {
         s.offline = false
         assertEquals(ReconcileOutcome.DONE, sync.send())
         val deleted = s.key.filter { it.first.startsWith("DELETE") }
-        assertEquals(listOf("DELETE /api/v1/parts/3001/5", "DELETE /api/v1/minifigs/sw0001", "DELETE /api/v1/wanted/20001-1/N"),
+        assertEquals(listOf("DELETE /api/v2/parts/3001/5", "DELETE /api/v2/minifigs/sw0001", "DELETE /api/v2/wanted/20001-1/N"),
             deleted.map { it.first })
         assertTrue("each with its own key: $deleted", deleted.mapNotNull { it.second }.toSet().size == 3)
         assertEquals(0, outbox.all("konto").size)
@@ -229,7 +229,7 @@ class OfflineEditingTest {
         parts.refreshParts()
         s.offline = true
         parts.deletePart("3001", 5)
-        s.codes["DELETE /api/v1/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
+        s.codes["DELETE /api/v2/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
         s.offline = false
         assertEquals(ReconcileOutcome.DONE, sync.send())
         assertEquals(emptyList<String>(), sync.discarded().first().map { it.target })
@@ -241,9 +241,9 @@ class OfflineEditingTest {
         parts.refreshParts(); figures.refreshMinifigs()
         assertTrue(parts.updatePart("3001", 5, quantity = 7, unitPrice = null) is Outcome.Success)
         assertTrue(figures.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Outcome.Success)
-        val part = s.requests.single { it.startsWith("PUT /api/v1/parts/3001/5") }
+        val part = s.requests.single { it.startsWith("PUT /api/v2/parts/3001/5") }
         assertTrue(part, "\"quantity\":7" in part && "\"quantity_delta\":2" in part)
-        val figure = s.requests.single { it.startsWith("PUT /api/v1/minifigs/sw0001") }
+        val figure = s.requests.single { it.startsWith("PUT /api/v2/minifigs/sw0001") }
         assertTrue(figure, "\"quantity\":1" in figure && "\"quantity_delta\":-1" in figure)
         assertEquals("the local list shows the new quantity", 7,
             store.read(Slots.MANUAL_PARTS)!!.list.first { it.partNumber == "3001" }.quantity)

@@ -68,7 +68,7 @@ class VoucherPlaintextTest {
 
     /** This is how the server answers: only the mask. */
     private val masked = """{"success":true,"vouchers":[
-        {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","hat_pdf":true}]}"""
+        {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","has_pdf":true}]}"""
     private val plaintext = """{"success":true,"id":1,"number":"6000111122223333","pin":"1234"}"""
 
     @Before
@@ -103,12 +103,12 @@ class VoucherPlaintextTest {
         assertEquals(VoucherStep.PIN_SHOW, vm.state.value.confirmation?.step)
         assertEquals("no request before the password", 1, server.requestCount)
 
-        server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
+        server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"second_factor_required"}""", 400))
         vm.confirm("geheim", null)
         pollUntil("Codefeld") { vm.state.value.confirmation?.let { it.codeNeeded && !it.operation.running } == true }
         assertTrue(vm.state.value.pinVisible.isEmpty())
         val first = server.takeRequest()
-        assertEquals("POST /api/v1/vouchers/1/klartext", "${first.method} ${first.path}")
+        assertEquals("POST /api/v2/vouchers/1/plaintext", "${first.method} ${first.path}")
         assertEquals("geheim", JSONObject(first.body.readUtf8()).getString("password"))
 
         server.enqueue(response(plaintext))
@@ -142,7 +142,7 @@ class VoucherPlaintextTest {
         vm.confirm("geheim", "654321")
         pollUntil("gelöscht") { vm.state.value.vouchers.isEmpty() }
         val r = server.takeRequest()
-        assertEquals("DELETE /api/v1/vouchers/1", "${r.method} ${r.path}")
+        assertEquals("DELETE /api/v2/vouchers/1", "${r.method} ${r.path}")
         val body = JSONObject(r.body.readUtf8())
         assertEquals("geheim", body.getString("password"))
         assertEquals("654321", body.getString("code"))
@@ -164,23 +164,23 @@ class VoucherPlaintextTest {
     fun `PDF and export only with a ticket`() {
         vm.openVoucherPdf(1)
         assertNull("without a password no destination", vm.state.value.pdfTarget)
-        server.enqueue(response("""{"success":true,"ticket":"t/1+","gueltig_sek":60}"""))
+        server.enqueue(response("""{"success":true,"ticket":"t/1+","valid_seconds":60}"""))
         vm.confirm("geheim", null)
         pollUntil("Ticket") { vm.state.value.pdfTarget != null }
         assertEquals(VoucherPdfTarget(1, "t/1+"), vm.state.value.pdfTarget)
-        assertEquals("POST /api/v1/vouchers/1/pdf-freigabe", server.takeRequest().let { "${it.method} ${it.path}" })
-        assertEquals("https://brick.example/api/v1/vouchers/1/pdf?ticket=t%2F1%2B",
+        assertEquals("POST /api/v2/vouchers/1/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
+        assertEquals("https://brick.example/api/v2/vouchers/1/pdf?ticket=t%2F1%2B",
             voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!))
         assertTrue(pdfWithOnceTicket(voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!)))
-        assertFalse(pdfWithOnceTicket("https://brick.example/api/v1/instructions/4/file"))
+        assertFalse(pdfWithOnceTicket("https://brick.example/api/v2/instructions/4/file"))
         vm.voucherPdfAcknowledge()
 
         vm.openVoucherExport()
-        server.enqueue(response("""{"success":true,"ticket":"x","gueltig_sek":60}"""))
+        server.enqueue(response("""{"success":true,"ticket":"x","valid_seconds":60}"""))
         vm.confirm("geheim", null)
         pollUntil("Ticket") { vm.state.value.pdfTarget != null }
-        assertEquals("POST /api/v1/vouchers/export/pdf-freigabe", server.takeRequest().let { "${it.method} ${it.path}" })
-        assertEquals("https://brick.example/api/v1/vouchers/export/pdf?ticket=x",
+        assertEquals("POST /api/v2/vouchers/export/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
+        assertEquals("https://brick.example/api/v2/vouchers/export/pdf?ticket=x",
             voucherPdfAddress("https://brick.example", vm.state.value.pdfTarget!!))
     }
 
@@ -190,12 +190,12 @@ class VoucherPlaintextTest {
         assertEquals("…3333", vm.state.value.number)
         assertEquals("•••", vm.state.value.pin)
         vm.setVoucherField(amount = "60")
-        server.enqueue(response("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","hat_pdf":true}}"""))
+        server.enqueue(response("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","has_pdf":true}}"""))
         server.enqueue(response(masked))
         vm.persist(null)
         pollUntil("gespeichert") { server.requestCount >= 3 && !vm.state.value.save.running }
         val r = server.takeRequest()
-        assertEquals("PUT /api/v1/vouchers/1", "${r.method} ${r.path}")
+        assertEquals("PUT /api/v2/vouchers/1", "${r.method} ${r.path}")
         val body = JSONObject(r.body.readUtf8())
         assertEquals("…3333", body.getString("number"))
         assertEquals("•••", body.getString("pin"))

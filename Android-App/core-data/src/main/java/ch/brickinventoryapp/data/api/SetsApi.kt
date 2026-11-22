@@ -6,33 +6,33 @@ import ch.brickinventoryapp.contract.BarcodeResponse
 import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.contract.GenericAdminResponse
 import ch.brickinventoryapp.contract.GenericResponse
-import ch.brickinventoryapp.contract.LagerortRequest
-import ch.brickinventoryapp.contract.LagerortResponse
-import ch.brickinventoryapp.contract.MengeGeaendert
-import ch.brickinventoryapp.contract.MerklisteResponse
-import ch.brickinventoryapp.contract.MerkpostenAntwort
-import ch.brickinventoryapp.contract.MerkpostenInhaberAntwort
-import ch.brickinventoryapp.contract.MerkpostenInhaberRequest
-import ch.brickinventoryapp.contract.MerkpostenPreiseResponse
-import ch.brickinventoryapp.contract.MerkpostenRequest
-import ch.brickinventoryapp.contract.MerkpostenUebernahmeRequest
-import ch.brickinventoryapp.contract.MerkpostenUebernahmeResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.MoveSetRequest
 import ch.brickinventoryapp.contract.MoveSetResponse
 import ch.brickinventoryapp.contract.PartsResponse
-import ch.brickinventoryapp.contract.PdfAuftragAnfrage
-import ch.brickinventoryapp.contract.PdfAuftragAntwort
-import ch.brickinventoryapp.contract.PdfAuftragStand
+import ch.brickinventoryapp.contract.PdfJobRequest
+import ch.brickinventoryapp.contract.PdfJobResponse
+import ch.brickinventoryapp.contract.PdfJobState
 import ch.brickinventoryapp.contract.PendingAlertsResponse
-import ch.brickinventoryapp.contract.PreisalarmRequest
-import ch.brickinventoryapp.contract.PreisalarmResponse
-import ch.brickinventoryapp.contract.PreisalarmeResponse
+import ch.brickinventoryapp.contract.PriceAlertRequest
+import ch.brickinventoryapp.contract.PriceAlertResponse
+import ch.brickinventoryapp.contract.PriceAlertsResponse
+import ch.brickinventoryapp.contract.QuantityChanged
 import ch.brickinventoryapp.contract.SetExistsResponse
 import ch.brickinventoryapp.contract.SetInfoResponse
 import ch.brickinventoryapp.contract.SetResponse
 import ch.brickinventoryapp.contract.SetsResponse
+import ch.brickinventoryapp.contract.StorageRequest
+import ch.brickinventoryapp.contract.StorageResponse
 import ch.brickinventoryapp.contract.UpdateQuantityRequest
+import ch.brickinventoryapp.contract.WantedItemOwnerReply
+import ch.brickinventoryapp.contract.WantedItemOwnerRequest
+import ch.brickinventoryapp.contract.WantedItemPricesResponse
+import ch.brickinventoryapp.contract.WantedItemReply
+import ch.brickinventoryapp.contract.WantedItemRequest
+import ch.brickinventoryapp.contract.WantedItemTakeoverRequest
+import ch.brickinventoryapp.contract.WantedItemTakeoverResponse
+import ch.brickinventoryapp.contract.WantedListResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -51,10 +51,10 @@ import retrofit2.http.Query
  */
 interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
-    // Moved to /api/v1: since the merge there is only ONE
+    // Moved to /api/v2: since the merge there is only ONE
     // address space. The router behind it is the same as before — only the address
     // has changed (see `server.ts`).
-    @GET("api/v1/sets/import/csv/status")
+    @GET("api/v2/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<CsvImportStatus>
 
     /**
@@ -62,7 +62,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * created sets stay — cancelled means „no further from here“, not
      * „undo“, as in the web app.
      */
-    @POST("api/v1/sets/import/csv/cancel")
+    @POST("api/v2/sets/import/csv/cancel")
     suspend fun cancelCsvImport(): Response<GenericAdminResponse>
 
     // ── Instructions: add and remove ──
@@ -71,14 +71,14 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     // reported type — hence the type comes from the file picker and is not
     // guessed.
     @Multipart
-    @POST("api/v1/sets/{setNumber}/instructions/upload")
+    @POST("api/v2/sets/{setNumber}/instructions/upload")
     suspend fun uploadInstruction(
         @Path("setNumber") setNumber: String,
         @retrofit2.http.Part file: okhttp3.MultipartBody.Part,
         @retrofit2.http.Part("description") description: okhttp3.RequestBody,
     ): Response<GenericResponse>
 
-    @DELETE("api/v1/sets/{setNumber}/instructions/{instrId}")
+    @DELETE("api/v2/sets/{setNumber}/instructions/{instrId}")
     suspend fun deleteInstructionNow(
         @Path("setNumber") setNumber: String,
         @Path("instrId") instrId: Int,
@@ -88,12 +88,12 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * Only the name, from the common catalog. Separate from getSetDetail: „What is
      * this set called?“ exists for foreign sets too, „what do I have of it?“ does not.
      */
-    @GET("api/v1/sets/info/{setNumber}")
+    @GET("api/v2/sets/info/{setNumber}")
     suspend fun getSetInfo(
         @Path("setNumber") setNumber: String
     ): Response<SetInfoResponse>
 
-    @GET("api/v1/sets/{setNumber}")
+    @GET("api/v2/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
     ): Response<SetResponse>
@@ -104,7 +104,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     // translates it into account IDs so that list, total, key figures and sums arise from
     // the same set — filtered on the device the numbers did not match. null =
     // omit.
-    @GET("api/v1/sets")
+    @GET("api/v2/sets")
     /**
      * Gallery — filtered, sorted and paged on the server, with the same
      * rule as the web app (`utils/handlers.ts`, getSets); an own search on the device
@@ -121,25 +121,25 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Query("storage") storage: String? = null
     ): Response<SetsResponse>
 
-    @GET("api/v1/sets/{setNumber}")
+    @GET("api/v2/sets/{setNumber}")
     suspend fun getSet(
         @Path("setNumber") setNumber: String
     ): Response<SetResponse>
 
-    @POST("api/v1/sets")
+    @POST("api/v2/sets")
     suspend fun addSet(
         @Body request: AddSetRequest,
         @Header("Idempotency-Key") key: String? = null,
     ): Response<AddSetResponse>
 
-    @PUT("api/v1/sets/{setNumber}")
+    @PUT("api/v2/sets/{setNumber}")
     suspend fun updateSetQuantity(
         @Path("setNumber") setNumber: String,
         @Body request: UpdateQuantityRequest,
         @Header("Idempotency-Key") key: String? = null,
-    ): Response<MengeGeaendert>
+    ): Response<QuantityChanged>
 
-    @DELETE("api/v1/sets/{setNumber}")
+    @DELETE("api/v2/sets/{setNumber}")
     suspend fun deleteSet(
         @Path("setNumber") setNumber: String
     ): Response<GenericResponse>
@@ -158,7 +158,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * What has triggered since `since`. Without `since` the server delivers nothing
      * but the point in time — the first call sets the mark.
      */
-    @GET("api/v1/alerts/pending")
+    @GET("api/v2/alerts/pending")
     suspend fun getPendingAlerts(
         @Query("since") since: String? = null,
     ): Response<PendingAlertsResponse>
@@ -167,33 +167,33 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * All alerts of the account for the overview — the same response form as the
      * single route, so that it stays one model.
      */
-    @GET("api/v1/alerts")
-    suspend fun getAllAlerts(): Response<PreisalarmeResponse>
+    @GET("api/v2/alerts")
+    suspend fun getAllAlerts(): Response<PriceAlertsResponse>
 
-    @GET("api/v1/sets/{setNumber}/alert")
+    @GET("api/v2/sets/{setNumber}/alert")
     suspend fun getPriceAlarms(
         @Path("setNumber") setNumber: String,
-    ): Response<PreisalarmeResponse>
+    ): Response<PriceAlertsResponse>
 
-    @PUT("api/v1/sets/{setNumber}/alert")
+    @PUT("api/v2/sets/{setNumber}/alert")
     suspend fun setPriceAlarm(
         @Path("setNumber") setNumber: String,
-        @Body request: PreisalarmRequest,
-    ): Response<PreisalarmResponse>
+        @Body request: PriceAlertRequest,
+    ): Response<PriceAlertResponse>
 
-    @DELETE("api/v1/sets/{setNumber}/alert")
+    @DELETE("api/v2/sets/{setNumber}/alert")
     suspend fun deletePriceAlert(
         @Path("setNumber") setNumber: String,
         @Query("condition") condition: String = "N",
-    ): Response<PreisalarmResponse>
+    ): Response<PriceAlertResponse>
 
     // ── Storage location per set (for parts and figures see PartsApi) ──
 
-    @PUT("api/v1/sets/{setNumber}/storage")
+    @PUT("api/v2/sets/{setNumber}/storage")
     suspend fun setSetStorage(
         @Path("setNumber") setNumber: String,
-        @Body request: LagerortRequest,
-    ): Response<LagerortResponse>
+        @Body request: StorageRequest,
+    ): Response<StorageResponse>
 
     // ── Wishlist ──
     //
@@ -205,32 +205,32 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * names as for getSets(). All optional, so that a call without filters gives the same
      * address.
      */
-    @GET("api/v1/wanted")
+    @GET("api/v2/wanted")
     suspend fun getWantedList(
         @Query("search") search: String? = null,
         @Query("condition") condition: String? = null,
         @Query("sort") sort: String? = null,
         @Query("accounts") accounts: String? = null,
-    ): Response<MerklisteResponse>
+    ): Response<WantedListResponse>
 
-    @POST("api/v1/wanted")
+    @POST("api/v2/wanted")
     suspend fun createWantedItem(
-        @Body request: MerkpostenRequest,
+        @Body request: WantedItemRequest,
         @Header("Idempotency-Key") key: String? = null,
-    ): Response<MerkpostenAntwort>
+    ): Response<WantedItemReply>
 
     /**
      * Change the owner of a wishlist item. PUT because nothing new arises; the
      * rule (date added stays, alert moves along) stands in `utils/merkliste.ts`.
      */
-    @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
+    @PUT("api/v2/wanted/{setNumber}/{condition}/owner")
     suspend fun moveWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
-        @Body request: MerkpostenInhaberRequest,
-    ): Response<MerkpostenInhaberAntwort>
+        @Body request: WantedItemOwnerRequest,
+    ): Response<WantedItemOwnerReply>
 
-    @DELETE("api/v1/wanted/{setNumber}/{condition}")
+    @DELETE("api/v2/wanted/{setNumber}/{condition}")
     suspend fun deleteWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
@@ -243,49 +243,49 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * answers 404 if the set does not belong to one — for a wishlist item the
      * normal case.
      */
-    @GET("api/v1/wanted/{setNumber}/preise")
+    @GET("api/v2/wanted/{setNumber}/prices")
     suspend fun getWantedItemPrices(
         @Path("setNumber") setNumber: String,
-    ): Response<MerkpostenPreiseResponse>
+    ): Response<WantedItemPricesResponse>
 
-    @POST("api/v1/wanted/{setNumber}/{condition}/uebernehmen")
+    @POST("api/v2/wanted/{setNumber}/{condition}/take-over")
     suspend fun adoptWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
-        @Body request: MerkpostenUebernahmeRequest,
-    ): Response<MerkpostenUebernahmeResponse>
+        @Body request: WantedItemTakeoverRequest,
+    ): Response<WantedItemTakeoverResponse>
 
-    @POST("api/v1/sets/partslist-pdf")
+    @POST("api/v2/sets/partslist-pdf")
     suspend fun startPdfJob(
-        @Body job: PdfAuftragAnfrage
-    ): Response<PdfAuftragAntwort>
+        @Body job: PdfJobRequest
+    ): Response<PdfJobResponse>
 
-    @GET("api/v1/sets/partslist-pdf/status/{jobId}")
+    @GET("api/v2/sets/partslist-pdf/status/{jobId}")
     suspend fun getPdfJobStatus(
         @Path("jobId") jobId: String
-    ): Response<PdfAuftragStand>
+    ): Response<PdfJobState>
 
-    @GET("api/v1/sets/partslist-pdf/download/{jobId}")
+    @GET("api/v2/sets/partslist-pdf/download/{jobId}")
     suspend fun downloadPdf(
         @Path("jobId") jobId: String
     ): retrofit2.Response<okhttp3.ResponseBody>
 
-    @GET("api/v1/sets/{setNumber}/parts-list")
+    @GET("api/v2/sets/{setNumber}/parts-list")
     suspend fun getSetPartsList(
         @Path("setNumber") setNumber: String
     ): Response<PartsResponse>
 
-    @GET("api/v1/sets/{setNumber}/minifigs-list")
+    @GET("api/v2/sets/{setNumber}/minifigs-list")
     suspend fun getSetMinifigsList(
         @Path("setNumber") setNumber: String
     ): Response<MinifigsResponse>
 
-    @GET("api/v1/sets/exists/{setNumber}")
+    @GET("api/v2/sets/exists/{setNumber}")
     suspend fun getSetExists(
         @Path("setNumber") setNumber: String
     ): Response<SetExistsResponse>
 
-    @GET("api/v1/sets/barcode/{barcode}")
+    @GET("api/v2/sets/barcode/{barcode}")
     suspend fun getBarcodeSet(
         @Path("barcode") barcode: String
     ): Response<BarcodeResponse>
@@ -294,7 +294,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * Move a set or individual purchase prices into another account; `acquisition_ids`
      * empty = the whole set. What moves along is decided by the server (`utils/setMove.ts`).
      */
-    @POST("api/v1/sets/{setNumber}/move")
+    @POST("api/v2/sets/{setNumber}/move")
     suspend fun moveSet(
         @Path("setNumber") setNumber: String,
         @Body body: MoveSetRequest

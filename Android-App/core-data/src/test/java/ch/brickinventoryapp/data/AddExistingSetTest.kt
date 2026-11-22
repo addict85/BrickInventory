@@ -30,11 +30,11 @@ class AddExistingSetTest {
      */
     @Test
     fun `the existence check sends no account filter`() {
-        val paths = PathServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
+        val paths = PathServer("/api/v2/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
             val sets = testSetCatalogRepository(TestApi.forTarget(paths.server))
             runBlocking { sets.getSetExists("75192-1") }
-            assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), paths.requests.toList())
+            assertEquals(listOf("GET /api/v2/sets/exists/75192-1"), paths.requests.toList())
         } finally {
             paths.server.shutdown()
         }

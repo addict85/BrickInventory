@@ -146,8 +146,8 @@ class MessageChannelTest {
     fun `two areas report into the same channel`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val paths = PathServer()
-        paths.codes["/api/v1/sets/75192-1"] = 500
-        paths.codes["/api/v1/parts/3001/5/color"] = 500
+        paths.codes["/api/v2/sets/75192-1"] = 500
+        paths.codes["/api/v2/parts/3001/5/color"] = 500
         val t = TestServices(paths.onTick(), io = Dispatchers.Main)
         try {
             val gallery = t.track(GalleryViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testSetsRepository(t.api),

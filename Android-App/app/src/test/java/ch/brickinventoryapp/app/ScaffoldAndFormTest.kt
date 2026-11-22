@@ -250,8 +250,8 @@ class ScaffoldAndFormTest {
     fun `price alerts show the threshold as an amount and the direction in the choice`() {
         val world = Examples.World(ContextTexts())
         try {
-            world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","direction":"ueber","threshold":750.0,"currency_code":"CHF"}]}"""
+            world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+                {"set_number":"75192-1","condition":"N","direction":"above","threshold":750.0,"currency_code":"CHF"}]}"""
             val vm = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
                 testAccountRepository(world.t.api, world.t.io),
                 testManagementRepository(world.t.api), world.t.alerts(),
@@ -334,8 +334,8 @@ class ScaffoldAndFormTest {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.World(ContextTexts())
         try {
-            world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+            world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+                {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
                 testAccountRepository(world.t.api, world.t.io),
                 testManagementRepository(world.t.api), world.t.alerts(),

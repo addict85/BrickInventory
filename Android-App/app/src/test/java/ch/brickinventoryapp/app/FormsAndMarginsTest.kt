@@ -291,12 +291,12 @@ class FormsAndMarginsTest {
 
     @Test
     fun `background work with a title, flush cards, own display and switches`() {
-        world.paths.responses["/api/v1/admin/auftraege"] = """{"success":true,
-            "auftraege":[{"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,
+        world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,
+            "jobs":[{"id":"17","type":"images","status":"running","attempts":1,"max_attempts":5,
                "due_at":"2026-10-30T10:00:00Z","deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:59:00Z",
-               "updated_at":null,"progress":null,"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
-            "zusammenfassung":[],"pausen":[],"bildbedarf":0,
-            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+               "updated_at":null,"progress":null,"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"}],
+            "summary":[],"pauses":[],"image_demand":0,
+            "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val networks = mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false)
@@ -398,8 +398,8 @@ class FormsAndMarginsTest {
 
     @Test
     fun `price alerts name the direction once and end at the edge of the card`() {
-        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}]}"""
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"}]}"""
         val vm = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
             testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api), world.t.alerts(), testPartsRepository(world.t.api),
             object : FileReader {

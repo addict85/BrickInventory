@@ -26,9 +26,9 @@ import java.io.File
 class MonitoringReloadTest {
 
     private val paths = PathServer(
-        "/api/v1/admin/job-schedule" to """{"success":true}""",
-        "/api/v1/admin/jobs" to """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""",
-        "/api/v1/admin/cache-clear" to """{"success":true}""",
+        "/api/v2/admin/job-schedule" to """{"success":true}""",
+        "/api/v2/admin/jobs" to """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""",
+        "/api/v2/admin/cache-clear" to """{"success":true}""",
     )
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-mon-nach-${System.nanoTime()}").apply { mkdirs() }
     private val api = TestApi.forTarget(paths.server)
@@ -43,7 +43,7 @@ class MonitoringReloadTest {
     @Test
     fun `after setting a schedule what the server makes of it applies`() = runTest {
         assertTrue(vm.setJobSchedule("prices", "7:5", null) is Outcome.Success)
-        assertEquals(listOf("POST /api/v1/admin/job-schedule", "GET /api/v1/admin/jobs"), paths.requests.toList())
+        assertEquals(listOf("POST /api/v2/admin/job-schedule", "GET /api/v2/admin/jobs"), paths.requests.toList())
         assertEquals("07:05", vm.state.value.jobSchedules["prices"]?.time)
     }
 
@@ -51,7 +51,7 @@ class MonitoringReloadTest {
     fun `after clearing the cache the numbers come anew`() = runTest {
         assertTrue(vm.emptyCache(everything = true) is Outcome.Success)
         val after = paths.requests.toList().drop(1)
-        assertEquals("POST /api/v1/admin/cache-clear", paths.requests.first())
-        assertTrue("the cache figures are not fetched again: $after", "GET /api/v1/admin/cache-stats" in after)
+        assertEquals("POST /api/v2/admin/cache-clear", paths.requests.first())
+        assertTrue("the cache figures are not fetched again: $after", "GET /api/v2/admin/cache-stats" in after)
     }
 }

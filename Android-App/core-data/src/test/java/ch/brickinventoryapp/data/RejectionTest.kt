@@ -18,14 +18,14 @@ class RejectionTest {
 
     @Test
     fun `a refusal of the server is an error`() = withRepo(::testManagementRepository) { paths, admin ->
-        paths.responses["/api/v1/admin/logs"] = """{"success":false}"""
+        paths.responses["/api/v2/admin/logs"] = """{"success":false}"""
         val r = runBlocking { admin.getLog(15) }
         assertEquals(Outcome.Failure.Refusal(), r)
     }
 
     @Test
     fun `an acceptance comes as a view`() = withRepo(::testManagementRepository) { paths, admin ->
-        paths.responses["/api/v1/admin/logs"] =
+        paths.responses["/api/v2/admin/logs"] =
             """{"success":true,"logs":[{"id":7,"level":"warn","message":"voll","logged_at":"2026-11-14"}]}"""
         val r = runBlocking { admin.getLog(15) }
         assertEquals(listOf("voll"), (r as Outcome.Success).data.map { it.message })

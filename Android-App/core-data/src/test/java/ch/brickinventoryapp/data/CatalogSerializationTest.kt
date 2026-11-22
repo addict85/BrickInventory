@@ -14,7 +14,7 @@ import org.junit.Test
 
 /**
  * Client-side API contract: the catalog models must parse real
- * server responses of the /api/v1/catalog endpoints — including unknown
+ * server responses of the /api/v2/catalog endpoints — including unknown
  * extra fields (the server may extend without breaking the app) and
  * missing optional fields. The JSON payloads match the format
  * that the server's integration test (test/catalog-api.test.js in the

@@ -1,18 +1,18 @@
-// Generated from Web-App/docs/openapi.json by Web-App/scripts/contract-kotlin-dtos.js.
-// Do not edit by hand: npm run vertrag:kotlin (in the Web-App folder).
+// Generated from Web-App/docs/openapi-v2.json by Web-App/scripts/contract-kotlin-dtos.js.
+// Do not edit by hand: npm run contract:kotlin (in the Web-App folder).
 @file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package ch.brickinventoryapp.contract
 
-import ch.brickinventoryapp.model.domain.Alarmrichtung
-import ch.brickinventoryapp.model.domain.KEINE_FARBE
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.domain.Waehrung
-import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.theme.DesignOderNichts
+import ch.brickinventoryapp.model.ui.theme.DesignOrNothing
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -22,17 +22,54 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
+data class AccountActive(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("is_active") val isActive: Boolean = false,
+    @SerialName("effective_at") val effectiveAt: String = "",
+)
+
+@Serializable
+data class AccountInList(
+    @SerialName("id") val id: Int = 0,
+    @SerialName("username") val username: String = "",
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    @SerialName("is_active") val isActive: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("second_factor") val secondFactor: Boolean = false,
+    @SerialName("awaiting_confirmation") val awaitingConfirmation: Boolean = false,
+    @SerialName("announced") val announced: List<AccountInListAnnouncedEntry> = emptyList(),
+)
+
+@Serializable
+data class AccountInListAnnouncedEntry(
+    @SerialName("type") val type: String = "",
+    @SerialName("effective_at") val effectiveAt: String = "",
+)
+
+@Serializable
+data class AccountList(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("users") val users: List<AccountInList> = emptyList(),
+)
+
+@Serializable
+data class AccountName(
+    @SerialName("id") val id: Int = 0,
+    @SerialName("username") val username: String = "",
+)
+
+@Serializable
 data class Acquisition(
     @SerialName("id") val id: Int,
     @SerialName("quantity") val quantity: Int,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int = 0,
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
-    @SerialName("currency") val currency: Waehrung? = null,
-    @SerialName("preis_konto") val preisKonto: Double? = null,
+    @SerialName("currency") val currency: CurrencyCode? = null,
+    @SerialName("account_price") val accountPrice: Double? = null,
 )
 
 @Serializable
@@ -41,7 +78,7 @@ data class AcquisitionTotals(
     @SerialName("amount") val amount: Double? = null,
     @SerialName("priced_rows") val pricedRows: Int = 0,
     @SerialName("currency") val currency: String = "",
-    @SerialName("ohne_kurs") val ohneKurs: Int = 0,
+    @SerialName("without_rate") val withoutRate: Int = 0,
 )
 
 @Serializable
@@ -50,14 +87,14 @@ data class AcquisitionsResponse(
     @SerialName("owner_user_id") val ownerUserId: Int = 0,
     @SerialName("acquisitions") val acquisitions: List<Acquisition> = emptyList(),
     @SerialName("totals") val totals: AcquisitionTotals = AcquisitionTotals(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
 )
 
 @Serializable
 data class AddMinifigRequest(
     @SerialName("fig_number") val figNumber: String,
     @SerialName("quantity") val quantity: Int = 1,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("fig_name") @EncodeDefault(EncodeDefault.Mode.NEVER) val figName: String? = null,
     @SerialName("image_url") @EncodeDefault(EncodeDefault.Mode.NEVER) val imageUrl: String? = null,
@@ -73,17 +110,17 @@ data class AddMinifigResponse(
     @SerialName("action") val action: String = "",
     @SerialName("fig_number") val figNumber: String = "",
     @SerialName("fig_name") val figName: String? = null,
-    @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
+    @SerialName("price_from_condition") val priceFromCondition: Condition? = null,
 )
 
 @Serializable
 data class AddPartRequest(
     @SerialName("part_number") val partNumber: String,
-    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
+    @SerialName("color_id") val colorId: Int = NO_COLOR,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     @SerialName("quantity") val quantity: Int = 1,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("part_name") @EncodeDefault(EncodeDefault.Mode.NEVER) val partName: String? = null,
     @SerialName("image_url") @EncodeDefault(EncodeDefault.Mode.NEVER) val imageUrl: String? = null,
@@ -99,7 +136,7 @@ data class AddPartResponse(
     @SerialName("action") val action: String = "",
     @SerialName("part_number") val partNumber: String = "",
     @SerialName("part_name") val partName: String? = null,
-    @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
+    @SerialName("price_from_condition") val priceFromCondition: Condition? = null,
 )
 
 @Serializable
@@ -107,7 +144,7 @@ data class AddSetRequest(
     @SerialName("set_number") val setNumber: String,
     @SerialName("quantity") val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     @SerialName("storage") val storage: String? = null,
     @SerialName("currency") @EncodeDefault(EncodeDefault.Mode.NEVER) val currency: String? = null,
@@ -120,40 +157,10 @@ data class AddSetResponse(
     @SerialName("action") val action: String = "",
     @SerialName("set_number") val setNumber: String = "",
     @SerialName("name") val name: String? = null,
-    @SerialName("katalog_offen") val katalogOffen: Boolean = false,
-    @SerialName("ergaenzung") val ergaenzung: String? = null,
+    @SerialName("catalog_pending") val catalogPending: Boolean = false,
+    @SerialName("supplement") val supplement: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int = 0,
     @SerialName("is_self") val isSelf: Boolean = false,
-)
-
-@Serializable
-data class AndereBeendenAnfrage(
-    @SerialName("zugaenge") val zugaenge: Boolean = true,
-    @SerialName("password") val password: String? = null,
-    @SerialName("code") val code: String? = null,
-    @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
-)
-
-@Serializable
-data class AndereBeendet(
-    @SerialName("success") val success: Boolean,
-    @SerialName("deleted") val deleted: Int = 0,
-    @SerialName("zugaenge") val zugaenge: Int = 0,
-)
-
-@Serializable
-data class AnleitungHochgeladenInstruction(
-    @SerialName("url") val url: String = "",
-    @SerialName("description") val description: String? = null,
-    @SerialName("local_path") val localPath: String = "",
-)
-
-@Serializable
-data class AnleitungenGeladen(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("count") val count: Int = 0,
-    @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
-    @SerialName("auftrag_id") val auftragId: String? = null,
 )
 
 @Serializable
@@ -172,9 +179,9 @@ data class ApiLimitsResponse(
 @Serializable
 data class AppThemeResponse(
     @SerialName("success") val success: Boolean = false,
-    @Serializable(with = DesignOderNichts::class) @SerialName("theme") val theme: Design? = null,
-    @Serializable(with = DesignOderNichts::class) @SerialName("vorgabe") val vorgabe: Design? = null,
-    @Serializable(with = DesignOderNichts::class) @SerialName("eigenes") val eigenes: Design? = null,
+    @Serializable(with = DesignOrNothing::class) @SerialName("theme") val theme: Design? = null,
+    @Serializable(with = DesignOrNothing::class) @SerialName("preset") val preset: Design? = null,
+    @Serializable(with = DesignOrNothing::class) @SerialName("own") val own: Design? = null,
 )
 
 @Serializable
@@ -185,7 +192,7 @@ data class AppToken(
     @SerialName("last_used") val lastUsed: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("never_expires") val neverExpires: Boolean = false,
-    @SerialName("aktuell") val aktuell: Boolean = false,
+    @SerialName("current") val current: Boolean = false,
     @SerialName("token_prefix") val tokenPrefix: String? = null,
     @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
     @SerialName("scope") val scope: String = "",
@@ -194,74 +201,32 @@ data class AppToken(
 )
 
 @Serializable
-data class AuftraegeResponse(
-    @SerialName("success") val success: Boolean,
-    @SerialName("auftraege") val auftraege: List<Auftrag>,
-    @SerialName("zusammenfassung") val zusammenfassung: List<AuftragZaehler>,
-    @SerialName("pausen") val pausen: List<AuftragPause>,
-    @SerialName("bildbedarf") val bildbedarf: Int,
-    @SerialName("job_prozess") val jobProzess: JobProzess,
+data class Backup(
+    @SerialName("version") val version: String = "",
+    @SerialName("exported_at") val exportedAt: String = "",
+    @SerialName("exported_by") val exportedBy: String? = null,
+    @SerialName("global") val global: Map<String, String> = emptyMap(),
+    @SerialName("user_settings") val userSettings: Map<String, String> = emptyMap(),
 )
 
 @Serializable
-data class Auftrag(
-    @SerialName("id") val id: String,
-    @SerialName("type") val type: String,
-    @SerialName("status") val status: String,
-    @SerialName("attempts") val attempts: Int,
-    @SerialName("max_attempts") val maxAttempts: Int,
-    @SerialName("due_at") val dueAt: String?,
-    @SerialName("deadline_at") val deadlineAt: String?,
-    @SerialName("started_at") val startedAt: String?,
-    @SerialName("created_at") val createdAt: String?,
-    @SerialName("updated_at") val updatedAt: String?,
-    @SerialName("progress") val progress: AuftragFortschritt?,
-    @SerialName("error_message") val errorMessage: String?,
-    @SerialName("geplant") val geplant: Boolean,
-    @SerialName("waiting") val waiting: Boolean = false,
-    @SerialName("set_number") val setNumber: String?,
+data class BackupRestored(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("imported") val imported: Int = 0,
+    @SerialName("note") val note: String = "",
+    @SerialName("smtp_skipped") val smtpSkipped: List<String> = emptyList(),
 )
 
 @Serializable
-data class AuftragAenderung(
-    @SerialName("success") val success: Boolean,
-    @SerialName("id") val id: String,
-    @SerialName("status") val status: String,
-)
-
-@Serializable
-data class AuftragFortschritt(
-    @SerialName("erledigt") val erledigt: Int? = null,
-    @SerialName("gesamt") val gesamt: Int? = null,
-    @SerialName("text") val text: String? = null,
-)
-
-@Serializable
-data class AuftragPause(
-    @SerialName("type") val type: String,
-    @SerialName("until_at") val untilAt: String?,
-    @SerialName("reason") val reason: String?,
-)
-
-@Serializable
-data class AuftragZaehler(
-    @SerialName("type") val type: String,
-    @SerialName("status") val status: String,
-    @SerialName("anzahl") val anzahl: Int,
-)
-
-@Serializable
-data class AuftragsArtLeerung(
-    @SerialName("success") val success: Boolean,
-    @SerialName("art") val art: String,
-    @SerialName("entfernt") val entfernt: Int,
-)
-
-@Serializable
-data class AuftragsArtStart(
-    @SerialName("success") val success: Boolean,
-    @SerialName("art") val art: String,
-    @SerialName("gestartet") val gestartet: Boolean,
+data class BalanceReply(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("voucher") val voucher: Voucher? = null,
+    @SerialName("displayed") val displayed: String? = null,
+    @SerialName("currency_changed") val currencyChanged: Boolean = false,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("waitSeconds") val waitSeconds: Int? = null,
+    @SerialName("error") val error: String? = null,
+    @SerialName("code") val code: String? = null,
 )
 
 @Serializable
@@ -276,121 +241,15 @@ data class BarcodeResponse(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("source") val source: String? = null,
-    @SerialName("unsicher") val unsicher: Boolean = false,
+    @SerialName("uncertain") val uncertain: Boolean = false,
 )
 
 @Serializable
-data class BestandEintrag(
-    @SerialName("gesamt") val gesamt: Int = 0,
-    @SerialName("lose") val lose: Int = 0,
-)
-
-@Serializable
-data class BestandGeleert(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("sets") val sets: Int = 0,
-    @SerialName("teile") val teile: Int = 0,
-    @SerialName("figuren") val figuren: Int = 0,
-    @SerialName("papierkorb") val papierkorb: List<Int> = emptyList(),
-)
-
-@Serializable
-data class BestandRequest(
-    @SerialName("teile") val teile: List<BestandTeil>,
-)
-
-@Serializable
-data class BestandResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("bestand") val bestand: Map<String, BestandEintrag> = emptyMap(),
-)
-
-@Serializable
-data class BestandTeil(
-    @SerialName("part_number") val partNumber: String,
-    @SerialName("color_id") val colorId: Int,
-)
-
-@Serializable
-data class BestandteilKopf(
-    @SerialName("nummer") val nummer: String,
-    @SerialName("name") val name: String? = null,
-    @SerialName("color_id") val colorId: Int? = null,
-    @SerialName("color_name") val colorName: String? = null,
-    @SerialName("color_hex") val colorHex: String? = null,
-    @SerialName("category_name") val categoryName: String? = null,
-    @SerialName("image_local") val imageLocal: String? = null,
-    @SerialName("image_url") val imageUrl: String? = null,
-    @SerialName("is_spare") val isSpare: Boolean = false,
-    @SerialName("storage") val storage: String? = null,
-    @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
-    @SerialName("total_quantity") val totalQuantity: Int = 0,
-)
-
-@Serializable
-data class BildDiagnose(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("set_number") val setNumber: String = "",
-    @SerialName("hinweise") val hinweise: List<String> = emptyList(),
-    @SerialName("datenbank") val datenbank: BildDiagnoseDatenbank = BildDiagnoseDatenbank(),
-    @SerialName("lokal") val lokal: BildDiagnoseLokal = BildDiagnoseLokal(),
-    @SerialName("proxy") val proxy: BildDiagnoseProxy = BildDiagnoseProxy(),
-    @SerialName("merker") val merker: BildDiagnoseMerker? = null,
-)
-
-@Serializable
-data class BildDiagnoseDatenbank(
-    @SerialName("anzahl_konten") val anzahlKonten: Int = 0,
-    @SerialName("image_local") val imageLocal: String? = null,
-    @SerialName("image_url") val imageUrl: String? = null,
-    @SerialName("katalog_bild") val katalogBild: String? = null,
-)
-
-@Serializable
-data class BildDiagnoseLokal(
-    @SerialName("original") val original: BildDiagnoseLokalOriginal = BildDiagnoseLokalOriginal(),
-    @SerialName("vorschau") val vorschau: BildDiagnoseLokalVorschau = BildDiagnoseLokalVorschau(),
-)
-
-@Serializable
-data class BildDiagnoseLokalOriginal(
-    @SerialName("vorhanden") val vorhanden: Boolean = false,
-    @SerialName("bytes") val bytes: Int = 0,
-    @SerialName("geaendert") val geaendert: String? = null,
-)
-
-@Serializable
-data class BildDiagnoseLokalVorschau(
-    @SerialName("vorhanden") val vorhanden: Boolean = false,
-    @SerialName("bytes") val bytes: Int = 0,
-    @SerialName("geaendert") val geaendert: String? = null,
-)
-
-@Serializable
-data class BildDiagnoseMerker(
-    @SerialName("seit") val seit: String? = null,
-    @SerialName("grund") val grund: String? = null,
-)
-
-@Serializable
-data class BildDiagnoseProxy(
-    @SerialName("gecacht") val gecacht: Boolean = false,
-    @SerialName("adresse") val adresse: String? = null,
-)
-
-@Serializable
-data class BildMerkerVergessen(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("entfernt") val entfernt: Int = 0,
-    @SerialName("hinweis") val hinweis: String = "",
-)
-
-@Serializable
-data class BlFarbTabelle(
+data class BlColorTable(
     @SerialName("success") val success: Boolean = false,
     @SerialName("source") val source: String = "",
     @SerialName("map") val map: JsonObject = JsonObject(emptyMap()),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
 )
 
 @Serializable
@@ -416,7 +275,7 @@ data class BrickLinkRef(
 )
 
 @Serializable
-data class BricklinkVerweise(
+data class BricklinkLinks(
     @SerialName("success") val success: Boolean = false,
     @SerialName("links") val links: JsonObject = JsonObject(emptyMap()),
 )
@@ -450,7 +309,7 @@ data class CacheStatsResponse(
     @SerialName("catalog") val catalog: Int = 0,
     @SerialName("price_stale") val priceStale: Int = 0,
     @SerialName("rate_limits") val rateLimits: RateLimits? = null,
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
 )
 
 @Serializable
@@ -482,7 +341,7 @@ data class CatalogSetDetail(
     @SerialName("owned") val owned: Boolean = false,
     @SerialName("owned_quantity") val ownedQuantity: Int = 0,
     @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
-    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
+    @SerialName("price_comparison_url") val priceComparisonUrl: String? = null,
 )
 
 @Serializable
@@ -529,9 +388,9 @@ data class CatalogYearCount(
 )
 
 @Serializable
-data class CatalogYearVerteilungResponse(
+data class CatalogYearDistributionResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("years") val years: List<JahrAnzahl> = emptyList(),
+    @SerialName("years") val years: List<YearCount> = emptyList(),
 )
 
 @Serializable
@@ -549,35 +408,81 @@ data class ChartYAxis(
 )
 
 @Serializable
+data class ComponentHeader(
+    @SerialName("number") val number: String,
+    @SerialName("name") val name: String? = null,
+    @SerialName("color_id") val colorId: Int? = null,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+    @SerialName("category_name") val categoryName: String? = null,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_spare") val isSpare: Boolean = false,
+    @SerialName("storage") val storage: String? = null,
+    @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
+    @SerialName("total_quantity") val totalQuantity: Int = 0,
+)
+
+@Serializable
 data class ConditionValuation(
     @SerialName("market_price") val marketPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("pnl_pct") val pnlPctText: String? = null,
-    @SerialName("pnl_prozent") val pnlPct: Double? = null,
+    @SerialName("pnl_percent") val pnlPct: Double? = null,
 )
 
 @Serializable
-data class CsvImportErgebnis(
+data class ConfigExport(
+    @SerialName("version") val version: String = "",
+    @SerialName("exported_at") val exportedAt: String = "",
+    @SerialName("exported_by") val exportedBy: String? = null,
+    @SerialName("global") val global: JsonObject = JsonObject(emptyMap()),
+    @SerialName("user_settings") val userSettings: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class CsvImportResult(
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
     @SerialName("added") val added: Int = 0,
     @SerialName("updated") val updated: Int = 0,
     @SerialName("errors") val errors: Int = 0,
-    @SerialName("results") val results: List<CsvImportZeile> = emptyList(),
+    @SerialName("results") val results: List<CsvImportRow> = emptyList(),
     @SerialName("skipped") val skipped: Int = 0,
     @SerialName("skipped_hint") val skippedHint: String = "",
-    @SerialName("waehrung_hinweis") val waehrungHinweis: String? = null,
-    @SerialName("gestartet") val gestartet: Boolean = false,
-    @SerialName("vorhanden") val vorhanden: Int = 0,
-    @SerialName("vorhanden_nummern") val vorhandenNummern: List<String> = emptyList(),
+    @SerialName("currency_note") val currencyNote: String? = null,
+    @SerialName("started") val started: Boolean = false,
+    @SerialName("existing") val existing: Int = 0,
+    @SerialName("existing_numbers") val existingNumbers: List<String> = emptyList(),
+)
+
+@Serializable
+data class CsvImportRow(
+    @SerialName("set_number") val setNumber: String = "",
+    @SerialName("row") val row: Int = 0,
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("action") val action: String = "",
+    @SerialName("isWarning") val isWarning: Boolean = false,
+    @SerialName("error") val error: String? = null,
+    @SerialName("code") val code: String = "",
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("catalog_pending") val catalogPending: Boolean = false,
+    @SerialName("part_number") val partNumber: String = "",
+    @SerialName("fig_number") val figNumber: String = "",
+    @SerialName("fig_name") val figName: String? = null,
+    @SerialName("condition") val condition: String = "",
+    @SerialName("vars") val vars: JsonObject = JsonObject(emptyMap()),
+    @SerialName("currency_adjusted") val currencyAdjusted: Boolean = false,
+    @SerialName("file_currency") val fileCurrency: String = "",
+    @SerialName("account_currency") val accountCurrency: String = "",
 )
 
 @Serializable
 data class CsvImportStatus(
     @SerialName("code") val code: String? = null,
-    @SerialName("results") val results: List<CsvImportZeile> = emptyList(),
+    @SerialName("results") val results: List<CsvImportRow> = emptyList(),
     @SerialName("success") val success: Boolean = false,
-    @SerialName("status") val status: Laufstatus = Laufstatus.UNBEKANNT,
+    @SerialName("status") val status: RunStatus = RunStatus.UNKNOWN,
     @SerialName("total") val total: Int = 0,
     @SerialName("done") val done: Int = 0,
     @SerialName("current") val current: String? = null,
@@ -585,28 +490,7 @@ data class CsvImportStatus(
     @SerialName("warn") val warn: Int = 0,
     @SerialName("err") val err: Int = 0,
     @SerialName("error") val error: String? = null,
-    @SerialName("beendet_am") val beendetAm: String = "",
-)
-
-@Serializable
-data class CsvImportZeile(
-    @SerialName("set_number") val setNumber: String = "",
-    @SerialName("zeile") val zeile: Int = 0,
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("action") val action: String = "",
-    @SerialName("isWarning") val isWarning: Boolean = false,
-    @SerialName("error") val error: String? = null,
-    @SerialName("code") val code: String = "",
-    @SerialName("menge") val menge: Int = 0,
-    @SerialName("katalog_offen") val katalogOffen: Boolean = false,
-    @SerialName("part_number") val partNumber: String = "",
-    @SerialName("fig_number") val figNumber: String = "",
-    @SerialName("fig_name") val figName: String? = null,
-    @SerialName("condition") val condition: String = "",
-    @SerialName("vars") val vars: JsonObject = JsonObject(emptyMap()),
-    @SerialName("waehrung_angepasst") val waehrungAngepasst: Boolean = false,
-    @SerialName("waehrung_datei") val waehrungDatei: String = "",
-    @SerialName("waehrung_konto") val waehrungKonto: String = "",
+    @SerialName("finished_at") val finishedAt: String = "",
 )
 
 @Serializable
@@ -617,7 +501,7 @@ data class CurrentByCondition(
 
 @Serializable
 data class CurrentPrice(
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -642,7 +526,7 @@ data class DashboardStats(
 @Serializable
 data class DefaultConditionResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
 )
 
 @Serializable
@@ -652,59 +536,41 @@ data class DeleteWithQuantityResponse(
 )
 
 @Serializable
-class Diagnose
-
-@Serializable
-data class Einrichtung(
+data class Deleted(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("offen") val offen: Boolean = false,
-    @SerialName("passwort_aendern") val passwortAendern: Boolean = false,
-    @SerialName("quellen") val quellen: EinrichtungQuellen = EinrichtungQuellen(),
+    @SerialName("deleted") val deleted: Int = 0,
 )
 
 @Serializable
-data class EinrichtungQuellen(
-    @SerialName("rebrickable") val rebrickable: Boolean = false,
-    @SerialName("bricklink") val bricklink: Boolean = false,
-    @SerialName("brickset") val brickset: Boolean = false,
+data class DeviceKeyRequest(
+    @SerialName("public_key") @EncodeDefault(EncodeDefault.Mode.NEVER) val publicKey: String? = null,
+    @SerialName("chain") val chain: List<String>,
 )
 
 @Serializable
-data class EinrichtungStand(
+class Diagnosis
+
+@Serializable
+data class Done(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("erledigt") val erledigt: Boolean = false,
-    @SerialName("konfiguriert") val konfiguriert: Boolean = false,
-    @SerialName("schritte") val schritte: List<EinrichtungStandSchritteEintrag> = emptyList(),
-    @SerialName("ca") val ca: EinrichtungStandCa = EinrichtungStandCa(),
-    @SerialName("basis_url") val basisUrl: String? = null,
-    @SerialName("https") val https: Boolean = false,
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
 )
 
 @Serializable
-data class EinrichtungStandCa(
-    @SerialName("vorhanden") val vorhanden: Boolean = false,
-    @SerialName("fp_hex") val fpHex: String = "",
-    @SerialName("zert_sha256") val zertSha256: String = "",
-    @SerialName("gueltig_bis") val gueltigBis: String = "",
-    @SerialName("download") val download: String = "",
-)
-
-@Serializable
-data class EinrichtungStandSchritteEintrag(
-    @SerialName("id") val id: String = "",
-    @SerialName("ok") val ok: Boolean = false,
-    @SerialName("pflicht") val pflicht: Boolean = false,
-)
-
-@Serializable
-data class EmailVorschau(
+data class EmailPreview(
     @SerialName("success") val success: Boolean = false,
     @SerialName("username") val username: String = "",
 )
 
 @Serializable
-data class Endpunkte(
+data class EndOthersRequest(
+    @SerialName("accesses") val accesses: Boolean = true,
+    @SerialName("password") val password: String? = null,
+    @SerialName("code") val code: String? = null,
+    @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
+)
+
+@Serializable
+data class Endpoints(
     @SerialName("auth") val auth: JsonObject = JsonObject(emptyMap()),
     @SerialName("api") val api: String = "",
     @SerialName("version") val version: String = "",
@@ -712,12 +578,7 @@ data class Endpunkte(
 )
 
 @Serializable
-data class Erledigt(
-    @SerialName("success") val success: Boolean = false,
-)
-
-@Serializable
-data class Fehler(
+data class ErrorResponse(
     @SerialName("success") val success: Boolean = false,
     @SerialName("error") val error: String = "",
     @SerialName("code") val code: String = "",
@@ -731,26 +592,26 @@ data class FigValuationItem(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
-    @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
+    @SerialName("condition") val condition: Condition? = null,
+    @SerialName("conditions") val conditions: List<Condition> = emptyList(),
     @SerialName("user_id") val userId: Int? = null,
-    @SerialName("owners") val owners: List<KontoName> = emptyList(),
+    @SerialName("owners") val owners: List<AccountName> = emptyList(),
     @SerialName("fig_number") val figNumber: String = "",
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
     @SerialName("fig_name") val figName: String? = null,
     @SerialName("set_number") val setNumber: String? = null,
     @SerialName("source") val source: String? = null,
     @SerialName("storage_id") val storageId: Int? = null,
-    @SerialName("ausstehend") val ausstehend: Boolean = false,
+    @SerialName("pending") val pending: Boolean = false,
     @SerialName("from_cache") val fromCache: Boolean = false,
     @SerialName("max_price") val maxPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
     @SerialName("display_value") val displayValue: String? = null,
     @SerialName("total_value") val totalValue: String = "",
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
+    @SerialName("value_total") val valueTotal: Double? = null,
     @SerialName("acquisitions") val acquisitions: List<ValuationAcquisition> = emptyList(),
     @SerialName("acq_count") val acqCount: Int? = null,
     @SerialName("used_count") val usedCount: Int? = null,
@@ -761,24 +622,17 @@ data class FigValuationItem(
 
 @Serializable
 data class FigsValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
+    @SerialName("converted_purchase_prices") val convertedPurchasePrices: Int = 0,
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
     @SerialName("figs") val figs: List<FigValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    @SerialName("preise_ausstehend") val preiseAusstehend: Int = 0,
-    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
-)
-
-@Serializable
-data class FigurTeile(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("source") val source: String = "",
-    @SerialName("parts") val parts: List<JsonObject> = emptyList(),
+    @SerialName("value_total") val valueTotal: Double? = null,
+    @SerialName("prices_pending") val pricesPending: Int = 0,
+    @SerialName("foreign_currency_purchases") val foreignCurrencyPurchases: Int = 0,
 )
 
 @Serializable
@@ -794,42 +648,26 @@ data class ForgotPasswordResponse(
 )
 
 @Serializable
-data class GelesenerGutschein(
-    @SerialName("number") val number: String? = null,
-    @SerialName("pin") val pin: String? = null,
-    @SerialName("amount") val amount: Double? = null,
-    @SerialName("currency") val currency: Waehrung? = null,
-)
-
-@Serializable
-data class Geloescht(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("deleted") val deleted: Int = 0,
-)
-
-@Serializable
 data class GenericAdminResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("enqueued") val enqueued: Int = 0,
+    @SerialName("condition") val condition: String? = null,
     @SerialName("message") val message: String = "",
+    @SerialName("set_number") val setNumber: String = "",
+    @SerialName("started") val started: Boolean = false,
+    @SerialName("theme") val theme: String = "",
+    @SerialName("ttl") val ttl: JsonElement = JsonNull,
     @SerialName("queued") val queued: Int = 0,
     @SerialName("pending") val pending: Int = 0,
     @SerialName("skipped") val skipped: Int = 0,
-    @SerialName("verworfen") val verworfen: Int = 0,
-    @SerialName("dauer_minuten") val dauerMinuten: Int = 0,
-    @SerialName("theme") val theme: String = "",
-    @SerialName("started") val started: Boolean = false,
-    @SerialName("set_number") val setNumber: String = "",
-    @SerialName("ttl") val ttl: JsonElement = JsonNull,
-    @SerialName("condition") val condition: String? = null,
+    @SerialName("discarded") val discarded: Int = 0,
+    @SerialName("duration_minutes") val durationMinutes: Int = 0,
+    @SerialName("enqueued") val enqueued: Int = 0,
 )
 
 @Serializable
 data class GenericResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("instruction") val instruction: AnleitungHochgeladenInstruction = AnleitungHochgeladenInstruction(),
-    @SerialName("papierkorb") val papierkorb: List<Int> = emptyList(),
-    @SerialName("updated") val updated: Int = 0,
+    @SerialName("trash") val trash: List<Int> = emptyList(),
     @SerialName("new_quantity") val newQuantity: Int = 0,
     @SerialName("from_user_id") val fromUserId: Int = 0,
     @SerialName("to_user_id") val toUserId: Int = 0,
@@ -842,20 +680,16 @@ data class GenericResponse(
     @SerialName("minifigs") val minifigs: Int = 0,
     @SerialName("source_emptied") val sourceEmptied: Boolean = false,
     @SerialName("quantity") val quantity: Int? = null,
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
-    @SerialName("linked_to") val linkedTo: KontoName = KontoName(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+    @SerialName("linked_to") val linkedTo: AccountName = AccountName(),
     @SerialName("removed") val removed: Int = 0,
-    @SerialName("geloescht") val geloescht: Int = 0,
+    @SerialName("instruction") val instruction: InstructionUploadedInstruction = InstructionUploadedInstruction(),
+    @SerialName("updated") val updated: Int = 0,
+    @SerialName("deleted") val deleted: Int = 0,
 )
 
 @Serializable
-data class GeraeteSchluesselAnfrage(
-    @SerialName("oeffentlich") @EncodeDefault(EncodeDefault.Mode.NEVER) val oeffentlich: String? = null,
-    @SerialName("kette") val kette: List<String>,
-)
-
-@Serializable
-data class Gesundheit(
+data class Health(
     @SerialName("status") val status: String = "",
     @SerialName("startup") val startup: StartupStatus = StartupStatus(),
     @SerialName("db_pool") val dbPool: JsonObject = JsonObject(emptyMap()),
@@ -863,86 +697,40 @@ data class Gesundheit(
 )
 
 @Serializable
-data class GetrenntesKonto(
-    @SerialName("id") val id: Int,
-    @SerialName("username") val username: String = "",
-    @SerialName("via") val via: String? = null,
+data class Heartbeat(
+    @SerialName("status") val status: String = "",
 )
 
 @Serializable
-data class GuthabenAntwort(
+data class HoldingCleared(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("voucher") val voucher: Gutschein? = null,
-    @SerialName("angezeigt") val angezeigt: String? = null,
-    @SerialName("waehrung_geaendert") val waehrungGeaendert: Boolean = false,
-    @SerialName("grund") val grund: String? = null,
-    @SerialName("wartenSek") val wartenSek: Int? = null,
-    @SerialName("error") val error: String? = null,
-    @SerialName("code") val code: String? = null,
+    @SerialName("sets") val sets: Int = 0,
+    @SerialName("parts") val parts: Int = 0,
+    @SerialName("minifigs") val minifigs: Int = 0,
+    @SerialName("trash") val trash: List<Int> = emptyList(),
 )
 
 @Serializable
-data class Gutschein(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("number") val number: String = "",
-    @SerialName("pin") val pin: String? = null,
-    @SerialName("amount") val amount: Double = 0.0,
-    @SerialName("currency") val currency: Waehrung = Waehrung.CHF,
-    @SerialName("hat_pdf") val hatPdf: Boolean = false,
-    @SerialName("created_at") val createdAt: String = "",
-    @SerialName("updated_at") val updatedAt: String = "",
-    @SerialName("guthaben_geprueft_am") val guthabenGeprueftAm: String? = null,
-)
-
-@Serializable
-data class GutscheinAntwort(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("voucher") val voucher: Gutschein? = null,
-    @SerialName("mehrere") val mehrere: GutscheinStapel? = null,
-    @SerialName("gelesen") val gelesen: GelesenerGutschein? = null,
-    @SerialName("error") val error: String? = null,
-    @SerialName("code") val code: String? = null,
-)
-
-@Serializable
-data class GutscheinKlartext(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("id") val id: Int = 0,
-    @SerialName("number") val number: String = "",
-    @SerialName("pin") val pin: String? = null,
-)
-
-@Serializable
-data class GutscheinListe(
-    @SerialName("success") val success: Boolean = true,
+data class HoldingEntry(
     @SerialName("total") val total: Int = 0,
-    @SerialName("page") val page: Int = 0,
-    @SerialName("page_size") val pageSize: Int = 0,
-    @SerialName("vouchers") val vouchers: List<Gutschein> = emptyList(),
+    @SerialName("loose") val loose: Int = 0,
 )
 
 @Serializable
-data class GutscheinPdfFreigabe(
+data class HoldingPart(
+    @SerialName("part_number") val partNumber: String,
+    @SerialName("color_id") val colorId: Int,
+)
+
+@Serializable
+data class HoldingRequest(
+    @SerialName("parts") val parts: List<HoldingPart>,
+)
+
+@Serializable
+data class HoldingResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("ticket") val ticket: String = "",
-    @SerialName("gueltig_sek") val gueltigSek: Int = 0,
-)
-
-@Serializable
-data class GutscheinRequest(
-    @SerialName("number") val number: String,
-    @SerialName("pin") val pin: String? = null,
-    @SerialName("amount") val amount: Double,
-    @SerialName("currency") val currency: Waehrung = Waehrung.CHF,
-)
-
-@Serializable
-data class GutscheinStapel(
-    @SerialName("results") val results: List<JsonElement?> = emptyList(),
-    @SerialName("added") val added: Int = 0,
-    @SerialName("updated") val updated: Int = 0,
-    @SerialName("errors") val errors: Int = 0,
-    @SerialName("total") val total: Int = 0,
+    @SerialName("holding") val holding: Map<String, HoldingEntry> = emptyMap(),
 )
 
 @Serializable
@@ -966,7 +754,7 @@ data class HouseholdInviteResponse(
 
 @Serializable
 data class HouseholdMember(
-    @SerialName("tiefe") val tiefe: Int = 0,
+    @SerialName("depth") val depth: Int = 0,
     @SerialName("id") val id: Int = 0,
     @SerialName("username") val username: String = "",
     @SerialName("is_self") val isSelf: Boolean = false,
@@ -980,17 +768,75 @@ data class HouseholdMembersResponse(
 
 @Serializable
 data class HouseholdStatusResponse(
-    @SerialName("blickfeld") val blickfeld: List<HouseholdMember> = emptyList(),
+    @SerialName("view") val view: List<HouseholdMember> = emptyList(),
     @SerialName("success") val success: Boolean = false,
     @SerialName("is_main") val isMain: Boolean = false,
     @SerialName("is_sub") val isSub: Boolean = false,
-    @SerialName("currency") val currency: Waehrung = Waehrung.KEINE,
-    @SerialName("linked_to") val linkedTo: KontoName? = null,
-    @SerialName("parents") val parents: List<KontoName> = emptyList(),
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.NONE,
+    @SerialName("linked_to") val linkedTo: AccountName? = null,
+    @SerialName("parents") val parents: List<AccountName> = emptyList(),
     @SerialName("sub_accounts") val subAccounts: List<HouseholdMember> = emptyList(),
     @SerialName("open_invites") val openInvites: Int = 0,
-    @SerialName("former_links") val formerLinks: List<GetrenntesKonto> = emptyList(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("former_links") val formerLinks: List<SeparatedAccount> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+)
+
+@Serializable
+data class ImageDiagnosis(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("set_number") val setNumber: String = "",
+    @SerialName("hints") val hints: List<String> = emptyList(),
+    @SerialName("database") val database: ImageDiagnosisDatabase = ImageDiagnosisDatabase(),
+    @SerialName("local") val local: ImageDiagnosisLocal = ImageDiagnosisLocal(),
+    @SerialName("proxy") val proxy: ImageDiagnosisProxy = ImageDiagnosisProxy(),
+    @SerialName("marker") val marker: ImageDiagnosisMarker? = null,
+)
+
+@Serializable
+data class ImageDiagnosisDatabase(
+    @SerialName("account_count") val accountCount: Int = 0,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("catalog_image") val catalogImage: String? = null,
+)
+
+@Serializable
+data class ImageDiagnosisLocal(
+    @SerialName("original") val original: ImageDiagnosisLocalOriginal = ImageDiagnosisLocalOriginal(),
+    @SerialName("preview") val preview: ImageDiagnosisLocalPreview = ImageDiagnosisLocalPreview(),
+)
+
+@Serializable
+data class ImageDiagnosisLocalOriginal(
+    @SerialName("existing") val existing: Boolean = false,
+    @SerialName("bytes") val bytes: Int = 0,
+    @SerialName("changed") val changed: String? = null,
+)
+
+@Serializable
+data class ImageDiagnosisLocalPreview(
+    @SerialName("existing") val existing: Boolean = false,
+    @SerialName("bytes") val bytes: Int = 0,
+    @SerialName("changed") val changed: String? = null,
+)
+
+@Serializable
+data class ImageDiagnosisMarker(
+    @SerialName("since") val since: String? = null,
+    @SerialName("reason") val reason: String? = null,
+)
+
+@Serializable
+data class ImageDiagnosisProxy(
+    @SerialName("cached") val cached: Boolean = false,
+    @SerialName("address") val address: String? = null,
+)
+
+@Serializable
+data class ImageMarkerForgotten(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("removed") val removed: Int = 0,
+    @SerialName("hint") val hint: String = "",
 )
 
 @Serializable
@@ -1007,16 +853,96 @@ data class Instruction(
 )
 
 @Serializable
-data class JahrAnzahl(
-    @SerialName("year") val year: Int? = null,
-    @SerialName("n") val n: Int = 0,
+data class InstructionUploadedInstruction(
+    @SerialName("url") val url: String = "",
+    @SerialName("description") val description: String? = null,
+    @SerialName("local_path") val localPath: String = "",
 )
 
 @Serializable
-data class JobProzess(
-    @SerialName("lebenszeichen") val lebenszeichen: String?,
-    @SerialName("alter_sekunden") val alterSekunden: Int?,
-    @SerialName("laeuft") val laeuft: Boolean,
+data class InstructionsLoaded(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("count") val count: Int = 0,
+    @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
+    @SerialName("job_id") val jobId: String? = null,
+)
+
+@Serializable
+data class Job(
+    @SerialName("id") val id: String,
+    @SerialName("type") val type: String,
+    @SerialName("status") val status: String,
+    @SerialName("attempts") val attempts: Int,
+    @SerialName("max_attempts") val maxAttempts: Int,
+    @SerialName("due_at") val dueAt: String?,
+    @SerialName("deadline_at") val deadlineAt: String?,
+    @SerialName("started_at") val startedAt: String?,
+    @SerialName("created_at") val createdAt: String?,
+    @SerialName("updated_at") val updatedAt: String?,
+    @SerialName("progress") val progress: JobProgress?,
+    @SerialName("error_message") val errorMessage: String?,
+    @SerialName("scheduled") val scheduled: Boolean,
+    @SerialName("waiting") val waiting: Boolean = false,
+    @SerialName("set_number") val setNumber: String?,
+)
+
+@Serializable
+data class JobChange(
+    @SerialName("success") val success: Boolean,
+    @SerialName("id") val id: String,
+    @SerialName("status") val status: String,
+)
+
+@Serializable
+data class JobCounter(
+    @SerialName("type") val type: String,
+    @SerialName("status") val status: String,
+    @SerialName("count") val count: Int,
+)
+
+@Serializable
+data class JobKindDrain(
+    @SerialName("success") val success: Boolean,
+    @SerialName("kind") val kind: String,
+    @SerialName("removed") val removed: Int,
+)
+
+@Serializable
+data class JobKindStart(
+    @SerialName("success") val success: Boolean,
+    @SerialName("kind") val kind: String,
+    @SerialName("started") val started: Boolean,
+)
+
+@Serializable
+data class JobPause(
+    @SerialName("type") val type: String,
+    @SerialName("until_at") val untilAt: String?,
+    @SerialName("reason") val reason: String?,
+)
+
+@Serializable
+data class JobProcess(
+    @SerialName("heartbeat") val heartbeat: String?,
+    @SerialName("age_seconds") val ageSeconds: Int?,
+    @SerialName("running") val running: Boolean,
+)
+
+@Serializable
+data class JobProgress(
+    @SerialName("done") val done: Int? = null,
+    @SerialName("total") val total: Int? = null,
+    @SerialName("text") val text: String? = null,
+)
+
+@Serializable
+data class JobQueueResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("jobs") val jobs: List<Job>,
+    @SerialName("summary") val summary: List<JobCounter>,
+    @SerialName("pauses") val pauses: List<JobPause>,
+    @SerialName("image_demand") val imageDemand: Int,
+    @SerialName("job_process") val jobProcess: JobProcess,
 )
 
 @Serializable
@@ -1033,18 +959,18 @@ data class JobStatus(
     @SerialName("queue") val queue: Int? = null,
     @SerialName("queueLastRun") val queueLastRun: JsonElement? = null,
     @SerialName("label") val label: String = "",
-    @SerialName("status") val status: Laufstatus = Laufstatus.RUHT,
+    @SerialName("status") val status: RunStatus = RunStatus.IDLE,
     @SerialName("progress") val progress: Int = 0,
     @SerialName("total") val total: Int = 0,
     @SerialName("sub") val sub: String? = null,
-    @SerialName("sub_teile") val subTeile: List<JobStatusSubTeileEintrag> = emptyList(),
+    @SerialName("sub_parts") val subParts: List<JobStatusSubPartsEntry> = emptyList(),
 )
 
 @Serializable
-data class JobStatusSubTeileEintrag(
+data class JobStatusSubPartsEntry(
     @SerialName("code") val code: String = "",
-    @SerialName("werte") val werte: JsonObject = JsonObject(emptyMap()),
-    @SerialName("vor") val vor: String = "",
+    @SerialName("values") val values: JsonObject = JsonObject(emptyMap()),
+    @SerialName("ago") val ago: String = "",
 )
 
 @Serializable
@@ -1053,135 +979,49 @@ data class JobsResponse(
     @SerialName("success") val success: Boolean,
     @SerialName("jobs") val jobs: Map<String, JobStatus> = emptyMap(),
     @SerialName("schedules") val schedules: Map<String, JobSchedule> = emptyMap(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
-    @SerialName("proxy_hinweis") val proxyHinweis: JobsResponseProxyHinweis? = null,
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+    @SerialName("proxy_hint") val proxyHint: JobsResponseProxyHint? = null,
 )
 
 @Serializable
-data class JobsResponseProxyHinweis(
-    @SerialName("art") val art: String = "",
-    @SerialName("vars") val vars: JobsResponseProxyHinweisVars = JobsResponseProxyHinweisVars(),
+data class JobsResponseProxyHint(
+    @SerialName("kind") val kind: String = "",
+    @SerialName("vars") val vars: JobsResponseProxyHintVars = JobsResponseProxyHintVars(),
 )
 
 @Serializable
-data class JobsResponseProxyHinweisVars(
+data class JobsResponseProxyHintVars(
     @SerialName("ip") val ip: String = "",
-    @SerialName("minuten") val minuten: Int = 0,
-    @SerialName("anzahl") val anzahl: Int = 0,
+    @SerialName("minutes") val minutes: Int = 0,
+    @SerialName("count") val count: Int = 0,
 )
 
 @Serializable
-data class KonfigExport(
-    @SerialName("version") val version: String = "",
-    @SerialName("exported_at") val exportedAt: String = "",
-    @SerialName("exported_by") val exportedBy: String? = null,
-    @SerialName("global") val global: JsonObject = JsonObject(emptyMap()),
-    @SerialName("user_settings") val userSettings: JsonObject = JsonObject(emptyMap()),
+data class KeyNonceResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("nonce") val nonce: String,
 )
 
 @Serializable
-data class KontenListe(
+data class LogEntries(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("users") val users: List<KontoInListe> = emptyList(),
+    @SerialName("entries") val entries: List<JsonObject> = emptyList(),
 )
 
 @Serializable
-data class KontoAktiv(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("is_active") val isActive: Boolean = false,
-    @SerialName("effective_at") val effectiveAt: String = "",
+data class LogResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("minutes") val minutes: Int = 0,
+    @SerialName("count") val count: Int = 0,
+    @SerialName("logs") val logs: List<LogRow> = emptyList(),
 )
 
 @Serializable
-data class KontoInListe(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("username") val username: String = "",
-    @SerialName("is_admin") val isAdmin: Boolean = false,
-    @SerialName("is_active") val isActive: Boolean = false,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
-    @SerialName("wartet_auf_bestaetigung") val wartetAufBestaetigung: Boolean = false,
-    @SerialName("angekuendigt") val angekuendigt: List<KontoInListeAngekuendigtEintrag> = emptyList(),
-)
-
-@Serializable
-data class KontoInListeAngekuendigtEintrag(
-    @SerialName("type") val type: String = "",
-    @SerialName("effective_at") val effectiveAt: String = "",
-)
-
-@Serializable
-data class KontoName(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("username") val username: String = "",
-)
-
-@Serializable
-data class Lagerort(
-    @SerialName("figuren") val figuren: Int? = null,
-    @SerialName("ort") val ort: String,
-    @SerialName("sets") val sets: Int = 0,
-    @SerialName("teile") val teile: Int = 0,
-)
-
-@Serializable
-data class LagerortEintrag(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("user_id") val userId: Int = 0,
-    @SerialName("name") val name: String = "",
-)
-
-@Serializable
-data class LagerortEintragResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("ort") val ort: LagerortEintrag? = null,
-)
-
-@Serializable
-data class LagerortNameRequest(
-    @SerialName("name") val name: String,
-    @SerialName("owner") @EncodeDefault(EncodeDefault.Mode.NEVER) val owner: JsonElement? = null,
-)
-
-@Serializable
-data class LagerortRequest(
-    @SerialName("storage") val storage: String,
-)
-
-@Serializable
-data class LagerortResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("storage") val storage: String? = null,
-    @SerialName("changed") val changed: Int = 0,
-)
-
-@Serializable
-data class LagerortVorgabeRequest(
+data class LogRow(
     @SerialName("id") val id: Int? = null,
-)
-
-@Serializable
-data class LagerortVorgabeResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("vorgabe") val vorgabe: LagerortEintrag? = null,
-)
-
-@Serializable
-data class LagerortVorratResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("orte") val orte: List<LagerortEintrag> = emptyList(),
-    @SerialName("vorgabe") val vorgabe: LagerortEintrag? = null,
-)
-
-@Serializable
-data class LagerorteResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("orte") val orte: List<Lagerort> = emptyList(),
-)
-
-@Serializable
-data class Lebenszeichen(
-    @SerialName("status") val status: String = "",
+    @SerialName("level") val level: String? = null,
+    @SerialName("message") val message: String? = null,
+    @SerialName("logged_at") val loggedAt: String? = null,
 )
 
 @Serializable
@@ -1189,7 +1029,7 @@ data class LoginRequest(
     @SerialName("username") val username: String,
     @SerialName("password") val password: String,
     @SerialName("code") @EncodeDefault(EncodeDefault.Mode.NEVER) val code: String? = null,
-    @SerialName("ohne_token") @EncodeDefault(EncodeDefault.Mode.NEVER) val ohneToken: Boolean? = null,
+    @SerialName("without_token") @EncodeDefault(EncodeDefault.Mode.NEVER) val withoutToken: Boolean? = null,
     @SerialName("label") val label: String = "Android App",
     @SerialName("never_expires") val neverExpires: Boolean = false,
     @SerialName("scope") val scope: String = TOKEN_SCOPE_APP,
@@ -1202,10 +1042,10 @@ data class LoginResponse(
     @SerialName("token") val token: String? = null,
     @SerialName("user") val user: User? = null,
     @SerialName("error") val error: String? = null,
-    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
+    @SerialName("second_factor") val secondFactor: Boolean = false,
     @SerialName("never_expires") val neverExpires: Boolean = false,
     @SerialName("token_info") val tokenInfo: TokenInfo? = null,
-    @SerialName("keks_fehlt") val keksFehlt: Boolean = false,
+    @SerialName("cookie_missing") val cookieMissing: Boolean = false,
 )
 
 @Serializable
@@ -1215,7 +1055,7 @@ data class ManualFigsResponse(
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
     @SerialName("figs") val figs: List<FigValuationItem> = emptyList(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
 )
 
 @Serializable
@@ -1225,7 +1065,7 @@ data class ManualPartsResponse(
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
     @SerialName("parts") val parts: List<PartValuationItem> = emptyList(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
 )
 
 @Serializable
@@ -1239,116 +1079,6 @@ data class MeResponse(
 )
 
 @Serializable
-data class MengeGeaendert(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("quantity") val quantity: Int? = null,
-    @SerialName("papierkorb") val papierkorb: Int = 0,
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
-    @SerialName("entfallen") val entfallen: List<MengeGeaendertEntfallenEintrag> = emptyList(),
-)
-
-@Serializable
-data class MengeGeaendertEntfallenEintrag(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("quantity") val quantity: Int = 0,
-    @SerialName("purchase_price") val purchasePrice: Double? = null,
-    @SerialName("currency") val currency: String? = null,
-    @SerialName("price_estimated") val priceEstimated: Boolean = false,
-    @SerialName("condition") val condition: String = "",
-    @SerialName("date") val date: String? = null,
-)
-
-@Serializable
-data class MerklisteResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("total") val total: Int = 0,
-    @SerialName("page") val page: Int = 0,
-    @SerialName("page_size") val pageSize: Int = 0,
-    @SerialName("merkposten") val merkposten: List<Merkposten> = emptyList(),
-)
-
-@Serializable
-data class Merkposten(
-    @SerialName("theme_id") val themeId: Int? = null,
-    @SerialName("set_number") val setNumber: String = "",
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("created_at") val createdAt: String = "",
-    @SerialName("user_id") val userId: Int = 0,
-    @SerialName("name") val name: String? = null,
-    @SerialName("year") val year: Int? = null,
-    @SerialName("num_parts") val numParts: Int? = null,
-    @SerialName("image_url") val imageUrl: String? = null,
-    @SerialName("image_local") val imageLocal: String? = null,
-    @SerialName("marktpreis") val marktpreis: Double? = null,
-    @SerialName("waehrung") val waehrung: Waehrung = Waehrung.EUR,
-    @SerialName("owned") val owned: Boolean = false,
-    @SerialName("alarm") val alarm: MerkpostenAlarm? = null,
-    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
-)
-
-@Serializable
-data class MerkpostenAlarm(
-    @SerialName("direction") val direction: Alarmrichtung = Alarmrichtung.UNTER,
-    @SerialName("threshold") val threshold: Double = 0.0,
-    @SerialName("triggered") val triggered: Boolean = false,
-)
-
-@Serializable
-data class MerkpostenAntwort(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("war_neu") val warNeu: Boolean = false,
-    @SerialName("merkposten") val merkposten: Merkposten? = null,
-)
-
-@Serializable
-data class MerkpostenInhaberAntwort(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("verschoben") val verschoben: Boolean = false,
-    @SerialName("zusammengefuehrt") val zusammengefuehrt: Boolean = false,
-    @SerialName("owner_user_id") val ownerUserId: Int? = null,
-)
-
-@Serializable
-data class MerkpostenInhaberRequest(
-    @SerialName("owner_user_id") val ownerUserId: Int,
-    @SerialName("neuer_inhaber") val neuerInhaber: Int,
-)
-
-@Serializable
-data class MerkpostenPreiseResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("set_number") val setNumber: String = "",
-    @SerialName("currency") val currency: Waehrung = Waehrung.KEINE,
-    @SerialName("current") val current: CurrentByCondition = CurrentByCondition(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
-)
-
-@Serializable
-data class MerkpostenRequest(
-    @SerialName("set_number") val setNumber: String,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("owner_user_id") val ownerUserId: Int? = null,
-)
-
-@Serializable
-data class MerkpostenUebernahmeRequest(
-    @SerialName("quantity") val quantity: Int = 1,
-    @SerialName("purchase_price") val purchasePrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
-    @SerialName("owner_user_id") val ownerUserId: Int? = null,
-    @SerialName("storage") val storage: String? = null,
-)
-
-@Serializable
-data class MerkpostenUebernahmeResponse(
-    @SerialName("katalog_offen") val katalogOffen: Boolean = false,
-    @SerialName("name") val name: String? = null,
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("action") val action: String? = null,
-    @SerialName("set_number") val setNumber: String? = null,
-)
-
-@Serializable
 data class Minifig(
     @SerialName("id") val id: Int? = null,
     @SerialName("in_sets") val inSets: String? = null,
@@ -1356,9 +1086,9 @@ data class Minifig(
     @SerialName("storage") val storage: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("fig_number") val figNumber: String,
-    @SerialName("condition") val condition: Zustand? = null,
-    @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
-    @SerialName("owners") val owners: List<KontoName> = emptyList(),
+    @SerialName("condition") val condition: Condition? = null,
+    @SerialName("conditions") val conditions: List<Condition> = emptyList(),
+    @SerialName("owners") val owners: List<AccountName> = emptyList(),
     @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("fig_name") val figName: String? = null,
@@ -1368,6 +1098,13 @@ data class Minifig(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("source") val source: String = "set",
     @SerialName("set_added_at") val setAddedAt: String? = null,
+)
+
+@Serializable
+data class MinifigParts(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("source") val source: String = "",
+    @SerialName("parts") val parts: List<JsonObject> = emptyList(),
 )
 
 @Serializable
@@ -1416,28 +1153,18 @@ data class MoveSetResponse(
 )
 
 @Serializable
-data class Papierkorb(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("eintraege") val eintraege: List<PapierkorbEintrag> = emptyList(),
+data class OthersEnded(
+    @SerialName("success") val success: Boolean,
+    @SerialName("deleted") val deleted: Int = 0,
+    @SerialName("accesses") val accesses: Int = 0,
 )
 
 @Serializable
-data class PapierkorbEintrag(
-    @SerialName("id") val id: Int = 0,
-    @SerialName("type") val type: String = "",
-    @SerialName("number") val number: String = "",
-    @SerialName("color_id") val colorId: Int? = null,
-    @SerialName("label") val label: String? = null,
-    @SerialName("anzahl") val anzahl: Int = 0,
-    @SerialName("user_id") val userId: Int = 0,
-    @SerialName("deleted_at") val deletedAt: String = "",
-    @SerialName("endgueltig_am") val endgueltigAm: String = "",
-)
-
-@Serializable
-data class PapierkorbGeleert(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("entfernt") val entfernt: Int = 0,
+data class ParsedVoucher(
+    @SerialName("number") val number: String? = null,
+    @SerialName("pin") val pin: String? = null,
+    @SerialName("amount") val amount: Double? = null,
+    @SerialName("currency") val currency: CurrencyCode? = null,
 )
 
 @Serializable
@@ -1445,7 +1172,7 @@ data class Part(
     @SerialName("part_number") val partNumber: String,
     @SerialName("bl_part_number") val blPartNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
-    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
+    @SerialName("color_id") val colorId: Int = NO_COLOR,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
@@ -1460,6 +1187,22 @@ data class Part(
 )
 
 @Serializable
+data class PartColorRequest(
+    @SerialName("color_id") val colorId: Int,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+)
+
+@Serializable
+data class PartColorResponse(
+    @SerialName("image") val image: String? = null,
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("combined") val combined: Boolean = false,
+    @SerialName("moved") val moved: Int = 0,
+    @SerialName("united") val united: Int = 0,
+)
+
+@Serializable
 data class PartValuationItem(
     @SerialName("id") val id: Int? = null,
     @SerialName("quantity") val quantity: Int = 1,
@@ -1467,14 +1210,14 @@ data class PartValuationItem(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
-    @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
+    @SerialName("condition") val condition: Condition? = null,
+    @SerialName("conditions") val conditions: List<Condition> = emptyList(),
     @SerialName("user_id") val userId: Int? = null,
-    @SerialName("owners") val owners: List<KontoName> = emptyList(),
+    @SerialName("owners") val owners: List<AccountName> = emptyList(),
     @SerialName("part_number") val partNumber: String = "",
     @SerialName("bl_part_number") val blPartNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
-    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
+    @SerialName("color_id") val colorId: Int = NO_COLOR,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
@@ -1485,16 +1228,16 @@ data class PartValuationItem(
     @SerialName("category_name") val categoryName: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("source") val source: String? = null,
-    @SerialName("ausstehend") val ausstehend: Boolean = false,
+    @SerialName("pending") val pending: Boolean = false,
     @SerialName("from_cache") val fromCache: Boolean = false,
     @SerialName("max_price") val maxPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
     @SerialName("display_value") val displayValue: String? = null,
     @SerialName("total_value") val totalValue: String = "",
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
+    @SerialName("value_total") val valueTotal: Double? = null,
     @SerialName("acquisitions") val acquisitions: List<ValuationAcquisition> = emptyList(),
 )
 
@@ -1527,6 +1270,12 @@ data class PartsFilterColorsResponse(
 )
 
 @Serializable
+data class PartsLoaded(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("count") val count: Int = 0,
+)
+
+@Serializable
 data class PartsResponse(
     @SerialName("source") val source: String? = null,
     @SerialName("success") val success: Boolean,
@@ -1534,7 +1283,7 @@ data class PartsResponse(
     @SerialName("page") val page: Int = 1,
     @SerialName("page_size") val pageSize: Int = 100,
     @SerialName("parts") val parts: List<Part> = emptyList(),
-    @SerialName("degradiert") val degradiert: List<String> = emptyList(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
     @SerialName("error") val error: String = "",
 )
 
@@ -1554,17 +1303,17 @@ data class PartsStatsResponse(
 
 @Serializable
 data class PartsValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
+    @SerialName("converted_purchase_prices") val convertedPurchasePrices: Int = 0,
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
     @SerialName("parts") val parts: List<PartValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    @SerialName("preise_ausstehend") val preiseAusstehend: Int = 0,
-    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
+    @SerialName("value_total") val valueTotal: Double? = null,
+    @SerialName("prices_pending") val pricesPending: Int = 0,
+    @SerialName("foreign_currency_purchases") val foreignCurrencyPurchases: Int = 0,
 )
 
 @Serializable
@@ -1577,108 +1326,67 @@ data class Passkey(
 )
 
 @Serializable
-data class PasskeyAngelegt(
+data class PasskeyCreated(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("passkey") val passkey: PasskeyAngelegtPasskey = PasskeyAngelegtPasskey(),
+    @SerialName("passkey") val passkey: PasskeyCreatedPasskey = PasskeyCreatedPasskey(),
 )
 
 @Serializable
-data class PasskeyAngelegtPasskey(
+data class PasskeyCreatedPasskey(
     @SerialName("id") val id: Int = 0,
     @SerialName("name") val name: String = "",
 )
 
 @Serializable
-data class PasskeyAnmeldungAnfrage(
-    @SerialName("antwort") @EncodeDefault(EncodeDefault.Mode.NEVER) val antwort: JsonObject? = null,
-    @SerialName("mit_token") val mitToken: Boolean = true,
+data class PasskeyList(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("available") val available: Boolean = false,
+    @SerialName("passkeys") val passkeys: List<Passkey> = emptyList(),
+)
+
+@Serializable
+data class PasskeyLoginRequest(
+    @SerialName("response") @EncodeDefault(EncodeDefault.Mode.NEVER) val response: JsonObject? = null,
+    @SerialName("with_token") val withToken: Boolean = true,
     @SerialName("label") val label: String = "Android App",
     @SerialName("never_expires") val neverExpires: Boolean = false,
     @SerialName("scope") val scope: String = TOKEN_SCOPE_APP,
 )
 
 @Serializable
-data class PasskeyListe(
+data class PasskeyOptions(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("verfuegbar") val verfuegbar: Boolean = false,
-    @SerialName("passkeys") val passkeys: List<Passkey> = emptyList(),
+    @SerialName("options") val options: JsonObject = JsonObject(emptyMap()),
 )
 
 @Serializable
-data class PasskeyOptionen(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("optionen") val optionen: JsonObject = JsonObject(emptyMap()),
+data class PasskeyOptionsRequest(
+    @SerialName("purpose") val purpose: String,
 )
 
 @Serializable
-data class PasskeyOptionenAnfrage(
-    @SerialName("zweck") val zweck: String,
-)
-
-@Serializable
-data class PasswortAenderung(
+data class PasswordChange(
     @SerialName("newPassword") val newPassword: String,
-    @SerialName("passkeys_widerrufen") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkeysWiderrufen: Boolean? = null,
+    @SerialName("passkeys_revoked") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkeysRevoked: Boolean? = null,
     @SerialName("current") val current: String,
     @SerialName("code") val code: String? = null,
     @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
 )
 
 @Serializable
-data class PasswortGesetzt(
+data class PasswordSet(
     @SerialName("success") val success: Boolean = false,
     @SerialName("effective_at") val effectiveAt: String = "",
 )
 
 @Serializable
-data class PdfAuftragAnfrage(
-    @SerialName("sets") val sets: List<PdfAuftragSet> = emptyList(),
-    @SerialName("parts") val parts: List<PdfAuftragTeil> = emptyList(),
+data class PdfInput(
+    @SerialName("sets") val sets: List<PdfInputSetsEntry> = emptyList(),
+    @SerialName("parts") val parts: List<PdfInputPartsEntry> = emptyList(),
 )
 
 @Serializable
-data class PdfAuftragAntwort(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("jobId") val jobId: String = "",
-)
-
-@Serializable
-data class PdfAuftragSet(
-    @SerialName("set_number") val setNumber: String,
-    @SerialName("name") val name: String? = null,
-)
-
-@Serializable
-data class PdfAuftragStand(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("status") val status: Laufstatus = Laufstatus.UNBEKANNT,
-    @SerialName("error") val error: String? = null,
-    @SerialName("etaSeconds") val etaSeconds: Double? = null,
-    @SerialName("missingImages") val missingImages: JsonElement? = null,
-)
-
-@Serializable
-data class PdfAuftragTeil(
-    @SerialName("part_number") val partNumber: String,
-    @SerialName("bl_part_number") val blPartNumber: String? = null,
-    @SerialName("part_name") val partName: String? = null,
-    @SerialName("color_name") val colorName: String? = null,
-    @SerialName("color_hex") val colorHex: String? = null,
-    @SerialName("color_id") val colorId: Int? = null,
-    @SerialName("quantity") val quantity: Int,
-    @SerialName("is_fig") val isFig: Boolean = false,
-    @SerialName("image_url") val imageUrl: String? = null,
-    @SerialName("image_local") val imageLocal: String? = null,
-)
-
-@Serializable
-data class PdfEingabe(
-    @SerialName("sets") val sets: List<PdfEingabeSetsEintrag> = emptyList(),
-    @SerialName("parts") val parts: List<PdfEingabePartsEintrag> = emptyList(),
-)
-
-@Serializable
-data class PdfEingabePartsEintrag(
+data class PdfInputPartsEntry(
     @SerialName("part_number") val partNumber: String = "",
     @SerialName("bl_part_number") val blPartNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
@@ -1692,15 +1400,56 @@ data class PdfEingabePartsEintrag(
 )
 
 @Serializable
-data class PdfEingabeSetsEintrag(
+data class PdfInputSetsEntry(
     @SerialName("set_number") val setNumber: String = "",
     @SerialName("name") val name: String? = null,
 )
 
 @Serializable
+data class PdfJobPart(
+    @SerialName("part_number") val partNumber: String,
+    @SerialName("bl_part_number") val blPartNumber: String? = null,
+    @SerialName("part_name") val partName: String? = null,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+    @SerialName("color_id") val colorId: Int? = null,
+    @SerialName("quantity") val quantity: Int,
+    @SerialName("is_fig") val isFig: Boolean = false,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("image_local") val imageLocal: String? = null,
+)
+
+@Serializable
+data class PdfJobRequest(
+    @SerialName("sets") val sets: List<PdfJobSet> = emptyList(),
+    @SerialName("parts") val parts: List<PdfJobPart> = emptyList(),
+)
+
+@Serializable
+data class PdfJobResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("jobId") val jobId: String = "",
+)
+
+@Serializable
+data class PdfJobSet(
+    @SerialName("set_number") val setNumber: String,
+    @SerialName("name") val name: String? = null,
+)
+
+@Serializable
+data class PdfJobState(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("status") val status: RunStatus = RunStatus.UNKNOWN,
+    @SerialName("error") val error: String? = null,
+    @SerialName("etaSeconds") val etaSeconds: Double? = null,
+    @SerialName("missingImages") val missingImages: JsonElement? = null,
+)
+
+@Serializable
 data class PendingAlertsResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("alerts") val alerts: List<Preisalarm> = emptyList(),
+    @SerialName("alerts") val alerts: List<PriceAlert> = emptyList(),
     @SerialName("now") val now: String? = null,
 )
 
@@ -1710,13 +1459,13 @@ data class PnlResponse(
     @SerialName("total") val total: Int = 0,
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
     @SerialName("totals") val totals: PnlTotals,
-    @SerialName("sets") val sets: List<PnlSetZeile> = emptyList(),
+    @SerialName("sets") val sets: List<PnlSetRow> = emptyList(),
 )
 
 @Serializable
-data class PnlSetZeile(
+data class PnlSetRow(
     @SerialName("added_at") val addedAt: String? = null,
     @SerialName("condition") val condition: String = "",
     @SerialName("image_local") val imageLocal: String? = null,
@@ -1731,45 +1480,45 @@ data class PnlSetZeile(
     @SerialName("baseline_price") val baselinePrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
     @SerialName("baseline_pnl_pct") val baselinePnlPct: String? = null,
-    @SerialName("pnl_betrag") val pnlBetrag: Double? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
-    @SerialName("baseline_pnl_prozent") val baselinePnlProzent: Double? = null,
-    @SerialName("kachel_preis") val kachelPreis: Double? = null,
-    @SerialName("kachel_pnl_pct") val kachelPnlPct: Double? = null,
-    @SerialName("kachel_quelle") val kachelQuelle: String? = null,
+    @SerialName("pnl_amount") val pnlAmount: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
+    @SerialName("baseline_pnl_percent") val baselinePnlPercent: Double? = null,
+    @SerialName("tile_price") val tilePrice: Double? = null,
+    @SerialName("tile_pnl_pct") val tilePnlPct: Double? = null,
+    @SerialName("tile_source") val tileSource: String? = null,
 )
 
 @Serializable
 data class PnlTotals(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
+    @SerialName("converted_purchase_prices") val convertedPurchasePrices: Int = 0,
     @SerialName("pnl_current") val pnlCurrent: JsonElement? = null,
     @SerialName("pnl_purchase") val pnlPurchase: JsonElement? = null,
     @SerialName("purchase") val purchase: String,
     @SerialName("current") val current: String,
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
-    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
+    @SerialName("foreign_currency_purchases") val foreignCurrencyPurchases: Int = 0,
     @SerialName("sets_purchase") val setsPurchase: String = "",
     @SerialName("parts_purchase") val partsPurchase: String = "",
     @SerialName("figs_purchase") val figsPurchase: String = "",
     @SerialName("grand_total") val grandTotal: String = "",
-    @SerialName("positionen") val positionen: Int? = null,
-    @SerialName("positionen_bewertet") val positionenBewertet: Int? = null,
-    @SerialName("positionen_ohne_marktpreis") val positionenOhneMarktpreis: Int? = null,
-    @SerialName("positionen_ohne_kaufpreis") val positionenOhneKaufpreis: Int? = null,
-    @SerialName("basis_einstand") val basisEinstand: String? = null,
-    @SerialName("basis_marktwert") val basisMarktwert: String? = null,
-    @SerialName("basis_guv_betrag") val basisGuvBetrag: String? = null,
-    @SerialName("ohne_marktpreis_einstand") val ohneMarktpreisEinstand: String? = null,
-    @SerialName("ohne_kaufpreis_marktwert") val ohneKaufpreisMarktwert: String? = null,
+    @SerialName("positions") val positions: Int? = null,
+    @SerialName("positions_valued") val positionsValued: Int? = null,
+    @SerialName("positions_without_market_price") val positionsWithoutMarketPrice: Int? = null,
+    @SerialName("positions_without_purchase_price") val positionsWithoutPurchasePrice: Int? = null,
+    @SerialName("baseline_cost") val baselineCost: String? = null,
+    @SerialName("baseline_market_value") val baselineMarketValue: String? = null,
+    @SerialName("baseline_pnl_amount") val baselinePnlAmount: String? = null,
+    @SerialName("cost_without_market_price") val costWithoutMarketPrice: String? = null,
+    @SerialName("market_value_without_purchase_price") val marketValueWithoutPurchasePrice: String? = null,
 )
 
 @Serializable
 data class PortfolioHistoryResponse(
     @SerialName("chart") val chart: PriceChartData? = null,
-    @SerialName("messpunkte") val messpunkte: Int? = null,
+    @SerialName("data_points") val dataPoints: Int? = null,
     @SerialName("success") val success: Boolean,
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
     @SerialName("period") val period: String = "week",
     @SerialName("points") val points: List<ChartPoint> = emptyList(),
     @SerialName("y_axis") val yAxis: List<ChartYAxis> = emptyList(),
@@ -1778,46 +1527,12 @@ data class PortfolioHistoryResponse(
 )
 
 @Serializable
-data class PreisJobStand(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("job") val job: PreisJobStandJob = PreisJobStandJob(),
-    @SerialName("rate_limit") val rateLimit: PreisJobStandRateLimit = PreisJobStandRateLimit(),
-)
-
-@Serializable
-data class PreisJobStandJob(
-    @SerialName("running") val running: Boolean = false,
-    @SerialName("lastRun") val lastRun: String? = null,
-    @SerialName("nextRun") val nextRun: String? = null,
-    @SerialName("lastErrors") val lastErrors: Int = 0,
-    @SerialName("log") val log: List<JsonElement?> = emptyList(),
-    @SerialName("lastDuration") val lastDuration: Double? = null,
-    @SerialName("lastUpdated") val lastUpdated: Double? = null,
-    @SerialName("progress") val progress: PreisJobStandJobProgress? = null,
-)
-
-@Serializable
-data class PreisJobStandJobProgress(
-    @SerialName("current") val current: JsonElement? = null,
-    @SerialName("total") val total: JsonElement? = null,
-    @SerialName("set") val set: JsonElement? = null,
-)
-
-@Serializable
-data class PreisJobStandRateLimit(
-    @SerialName("count") val count: Int = 0,
-    @SerialName("limit") val limit: Int = 0,
-    @SerialName("remaining") val remaining: Int = 0,
-    @SerialName("date") val date: String? = null,
-)
-
-@Serializable
-data class Preisalarm(
+data class PriceAlert(
     @SerialName("set_number") val setNumber: String = "",
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("direction") val direction: Alarmrichtung = Alarmrichtung.UNTER,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
+    @SerialName("direction") val direction: AlarmDirection = AlarmDirection.BELOW,
     @SerialName("threshold") val threshold: Double = 0.0,
-    @SerialName("currency_code") val currencyCode: Waehrung = Waehrung.KEINE,
+    @SerialName("currency_code") val currencyCode: CurrencyCode = CurrencyCode.NONE,
     @SerialName("triggered") val triggered: Boolean = false,
     @SerialName("last_triggered_at") val lastTriggeredAt: String? = null,
     @SerialName("last_price") val lastPrice: Double? = null,
@@ -1825,27 +1540,27 @@ data class Preisalarm(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("set_img_url") val setImgUrl: String? = null,
-    @SerialName("besitzt") val besitzt: Boolean = true,
+    @SerialName("owns") val owns: Boolean = true,
 )
 
 @Serializable
-data class PreisalarmRequest(
-    @SerialName("direction") val direction: Alarmrichtung,
+data class PriceAlertRequest(
+    @SerialName("direction") val direction: AlarmDirection,
     @SerialName("threshold") val threshold: Double,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
 )
 
 @Serializable
-data class PreisalarmResponse(
+data class PriceAlertResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("alert") val alert: Preisalarm? = null,
+    @SerialName("alert") val alert: PriceAlert? = null,
     @SerialName("removed") val removed: Int = 0,
 )
 
 @Serializable
-data class PreisalarmeResponse(
+data class PriceAlertsResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("alerts") val alerts: List<Preisalarm> = emptyList(),
+    @SerialName("alerts") val alerts: List<PriceAlert> = emptyList(),
 )
 
 @Serializable
@@ -1889,18 +1604,52 @@ data class PriceHistoryResponse(
     @SerialName("current") val current: JsonElement? = null,
     @SerialName("success") val success: Boolean,
     @SerialName("set_number") val setNumber: String = "",
-    @SerialName("currency") val currency: Waehrung = Waehrung.KEINE,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.NONE,
     @SerialName("history_new") val historyNew: List<PriceHistoryPoint> = emptyList(),
     @SerialName("history_used") val historyUsed: List<PriceHistoryPoint> = emptyList(),
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
     @SerialName("chart") val chart: PriceChartData = PriceChartData(),
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
 )
 
 @Serializable
-data class Profil(
+data class PriceJobState(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("job") val job: PriceJobStateJob = PriceJobStateJob(),
+    @SerialName("rate_limit") val rateLimit: PriceJobStateRateLimit = PriceJobStateRateLimit(),
+)
+
+@Serializable
+data class PriceJobStateJob(
+    @SerialName("running") val running: Boolean = false,
+    @SerialName("lastRun") val lastRun: String? = null,
+    @SerialName("nextRun") val nextRun: String? = null,
+    @SerialName("lastErrors") val lastErrors: Int = 0,
+    @SerialName("log") val log: List<JsonElement?> = emptyList(),
+    @SerialName("lastDuration") val lastDuration: Double? = null,
+    @SerialName("lastUpdated") val lastUpdated: Double? = null,
+    @SerialName("progress") val progress: PriceJobStateJobProgress? = null,
+)
+
+@Serializable
+data class PriceJobStateJobProgress(
+    @SerialName("current") val current: JsonElement? = null,
+    @SerialName("total") val total: JsonElement? = null,
+    @SerialName("set") val set: JsonElement? = null,
+)
+
+@Serializable
+data class PriceJobStateRateLimit(
+    @SerialName("count") val count: Int = 0,
+    @SerialName("limit") val limit: Int = 0,
+    @SerialName("remaining") val remaining: Int = 0,
+    @SerialName("date") val date: String? = null,
+)
+
+@Serializable
+data class Profile(
     @SerialName("id") val id: Int,
     @SerialName("username") val username: String,
     @SerialName("email") val email: String? = null,
@@ -1911,7 +1660,7 @@ data class Profil(
 )
 
 @Serializable
-data class ProfilAenderung(
+data class ProfileRequest(
     @SerialName("username") val username: String,
     @SerialName("email") val email: String,
     @SerialName("first_name") val firstName: String? = null,
@@ -1923,70 +1672,28 @@ data class ProfilAenderung(
 )
 
 @Serializable
-data class ProfilGespeichert(
+data class ProfileResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("user") val user: Profile? = null,
+    @SerialName("error") val error: String? = null,
+)
+
+@Serializable
+data class ProfileSavedResponse(
     @SerialName("success") val success: Boolean,
     @SerialName("emailChanged") val emailChanged: Boolean? = null,
     @SerialName("emailSent") val emailSent: Boolean? = null,
 )
 
 @Serializable
-data class ProfilResponse(
-    @SerialName("success") val success: Boolean,
-    @SerialName("user") val user: Profil? = null,
-    @SerialName("error") val error: String? = null,
+data class QrCollectRequest(
+    @SerialName("pickup") val pickup: String,
+    @SerialName("preview") val preview: Boolean = false,
 )
 
 @Serializable
-data class ProtokollEintraege(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("eintraege") val eintraege: List<JsonObject> = emptyList(),
-)
-
-@Serializable
-data class ProtokollResponse(
-    @SerialName("success") val success: Boolean,
-    @SerialName("minutes") val minutes: Int = 0,
-    @SerialName("count") val count: Int = 0,
-    @SerialName("logs") val logs: List<ProtokollZeile> = emptyList(),
-)
-
-@Serializable
-data class ProtokollZeile(
-    @SerialName("id") val id: Int? = null,
-    @SerialName("level") val level: String? = null,
-    @SerialName("message") val message: String? = null,
-    @SerialName("logged_at") val loggedAt: String? = null,
-)
-
-@Serializable
-data class QrAbholRequest(
-    @SerialName("abholung") val abholung: String,
-    @SerialName("vorschau") val vorschau: Boolean = false,
-)
-
-@Serializable
-data class QrAbholung(
-    @SerialName("success") val success: Boolean,
-    @SerialName("token") val token: String? = null,
-    @SerialName("user") val user: User? = null,
-    @SerialName("error") val error: String? = null,
-    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
-    @SerialName("never_expires") val neverExpires: Boolean = false,
-    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
-    @SerialName("wartet") val wartet: Boolean = false,
-    @SerialName("username") val username: String? = null,
-    @SerialName("isAdmin") val isAdmin: Boolean = false,
-    @SerialName("userId") val userId: Int = 0,
-    @SerialName("vorschau") val vorschau: Boolean = false,
-    @SerialName("schluessel_nonce") val schluesselNonce: String? = null,
-)
-
-@Serializable
-data class QrKopplungStand(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("stand") val stand: String = "",
-    @SerialName("geraet") val geraet: String? = null,
-    @SerialName("ip_range") val ipRange: String? = null,
+data class QrDiscard(
+    @SerialName("pickup") val pickup: String,
 )
 
 @Serializable
@@ -1996,29 +1703,69 @@ data class QrLoginRequest(
 )
 
 @Serializable
-data class QrMeldung(
+data class QrMessage(
     @SerialName("success") val success: Boolean,
-    @SerialName("wartet") val wartet: Boolean = false,
-    @SerialName("abholung") val abholung: String = "",
+    @SerialName("waiting") val waiting: Boolean = false,
+    @SerialName("pickup") val pickup: String = "",
     @SerialName("code") val code: String = "",
     @SerialName("expires_in") val expiresIn: Int = 300,
+)
+
+@Serializable
+data class QrPairingState(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("state") val state: String = "",
+    @SerialName("device") val device: String? = null,
+    @SerialName("ip_range") val ipRange: String? = null,
+)
+
+@Serializable
+data class QrPickup(
+    @SerialName("success") val success: Boolean,
+    @SerialName("token") val token: String? = null,
+    @SerialName("user") val user: User? = null,
+    @SerialName("error") val error: String? = null,
+    @SerialName("second_factor") val secondFactor: Boolean = false,
+    @SerialName("never_expires") val neverExpires: Boolean = false,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("waiting") val waiting: Boolean = false,
+    @SerialName("username") val username: String? = null,
+    @SerialName("isAdmin") val isAdmin: Boolean = false,
+    @SerialName("userId") val userId: Int = 0,
+    @SerialName("preview") val preview: Boolean = false,
+    @SerialName("key_nonce") val keyNonce: String? = null,
 )
 
 @Serializable
 data class QrToken(
     @SerialName("success") val success: Boolean = false,
     @SerialName("token") val token: String = "",
-    @SerialName("kopplung") val kopplung: Int = 0,
+    @SerialName("pairing") val pairing: Int = 0,
     @SerialName("expires_in") val expiresIn: Int = 0,
     @SerialName("url") val url: String = "",
     @SerialName("token_days") val tokenDays: Int? = null,
     @SerialName("fp") val fp: String = "",
-    @SerialName("zert_sha256") val zertSha256: String = "",
+    @SerialName("cert_sha256") val certSha256: String = "",
 )
 
 @Serializable
-data class QrVerwerfen(
-    @SerialName("abholung") val abholung: String,
+data class QuantityChanged(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("quantity") val quantity: Int? = null,
+    @SerialName("trash") val trash: Int = 0,
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+    @SerialName("dropped") val dropped: List<QuantityChangedDroppedEntry> = emptyList(),
+)
+
+@Serializable
+data class QuantityChangedDroppedEntry(
+    @SerialName("id") val id: Int = 0,
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("purchase_price") val purchasePrice: Double? = null,
+    @SerialName("currency") val currency: String? = null,
+    @SerialName("price_estimated") val priceEstimated: Boolean = false,
+    @SerialName("condition") val condition: String = "",
+    @SerialName("date") val date: String? = null,
 )
 
 @Serializable
@@ -2034,6 +1781,12 @@ data class RateLimits(
     @SerialName("bricklink") val bricklink: RateLimit = RateLimit(),
     @SerialName("rebrickable") val rebrickable: RateLimit = RateLimit(),
     @SerialName("brickset") val brickset: RateLimit = RateLimit(),
+)
+
+@Serializable
+data class RawSettings(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("settings") val settings: Map<String, String> = emptyMap(),
 )
 
 @Serializable
@@ -2059,55 +1812,63 @@ data class RegisterResponse(
 data class RegistrationStatusResponse(
     @SerialName("enabled") val enabled: Boolean = false,
     @SerialName("passkey") val passkey: Boolean = false,
-    @SerialName("passwort_vergessen") val passwortVergessen: Boolean = false,
-    @SerialName("mail_versand") val mailVersand: Boolean = false,
+    @SerialName("forgot_password") val forgotPassword: Boolean = false,
+    @SerialName("mail_delivery") val mailDelivery: Boolean = false,
 )
 
 @Serializable
-data class RoheEinstellungen(
+data class Restored(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("settings") val settings: Map<String, String> = emptyMap(),
+    @SerialName("type") val type: String = "",
+    @SerialName("number") val number: String = "",
+    @SerialName("user_id") val userId: Int = 0,
 )
 
 @Serializable
-data class SchluesselNonce(
+data class SecondFactorCodes(
     @SerialName("success") val success: Boolean,
-    @SerialName("nonce") val nonce: String,
+    @SerialName("codes") val codes: List<String> = emptyList(),
+    @SerialName("error") val error: String? = null,
 )
 
 @Serializable
-data class SchrittChallenge(
+data class SecondFactorRequest(
+    @SerialName("password") val password: String? = null,
+    @SerialName("code") val code: String? = null,
+    @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
+)
+
+@Serializable
+data class SecondFactorSetupResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("challenge") val challenge: String,
-    @SerialName("nachricht") val nachricht: String,
-    @SerialName("gueltig_bis") val gueltigBis: String,
+    @SerialName("secret") val secret: String? = null,
+    @SerialName("otpauth") val otpauth: String? = null,
+    @SerialName("error") val error: String? = null,
 )
 
 @Serializable
-data class SchrittChallengeAnfrage(
-    @SerialName("aktion") val aktion: String,
-)
-
-@Serializable
-data class SchrittFreigabe(
+data class SecondFactorStateResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("aktion") val aktion: String,
-    @SerialName("gueltig_bis") val gueltigBis: String,
+    @SerialName("active") val active: Boolean = false,
+    @SerialName("codes_left") val codesLeft: Int = 0,
+    @SerialName("old_codes_until") val oldCodesUntil: String? = null,
+    @SerialName("error") val error: String? = null,
 )
 
 @Serializable
-data class SchrittFreigabeAnfrage(
-    @SerialName("challenge") val challenge: String,
-    @SerialName("signatur") val signatur: String,
+data class SeparatedAccount(
+    @SerialName("id") val id: Int,
+    @SerialName("username") val username: String = "",
+    @SerialName("via") val via: String? = null,
 )
 
 @Serializable
 data class SetAggregate(
     @SerialName("set_number") val setNumber: String = "",
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
     @SerialName("acq_count") val acqCount: Int = 0,
     @SerialName("used_count") val usedCount: Int = 0,
-    @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
+    @SerialName("conditions") val conditions: List<Condition> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
 )
@@ -2132,13 +1893,13 @@ data class SetInfoResponse(
     @SerialName("success") val success: Boolean = false,
     @SerialName("set_number") val setNumber: String = "",
     @SerialName("name") val name: String? = null,
-    @SerialName("im_katalog") val imKatalog: Boolean = false,
+    @SerialName("in_catalog") val inCatalog: Boolean = false,
 )
 
 @Serializable
 data class SetItem(
     @SerialName("acq_count") val acqCount: Int = 0,
-    @SerialName("letzter_kauf") val letzterKauf: String? = null,
+    @SerialName("last_purchase") val lastPurchase: String? = null,
     @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
     @SerialName("id") val id: Int = 0,
     @SerialName("storage_id") val storageId: Int? = null,
@@ -2154,17 +1915,17 @@ data class SetItem(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("added_at") val addedAt: String? = null,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("storage") val storage: String? = null,
-    @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
-    @SerialName("owners") val owners: List<KontoName> = emptyList(),
+    @SerialName("conditions") val conditions: List<Condition> = emptyList(),
+    @SerialName("owners") val owners: List<AccountName> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
-    @SerialName("kaufpreis_geschaetzt") val kaufpreisGeschaetzt: Boolean? = null,
+    @SerialName("purchase_price_estimated") val purchasePriceEstimated: Boolean? = null,
     @SerialName("used_count") val usedCount: Int = 0,
     @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
     @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
-    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
+    @SerialName("price_comparison_url") val priceComparisonUrl: String? = null,
 )
 
 @Serializable
@@ -2172,7 +1933,7 @@ data class SetPriceResponse(
     @SerialName("from_cache") val fromCache: Boolean = false,
     @SerialName("success") val success: Boolean,
     @SerialName("set_number") val setNumber: String = "",
-    @SerialName("currency") val currency: Waehrung = Waehrung.KEINE,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.NONE,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -2203,20 +1964,46 @@ data class SettingsResponse(
 )
 
 @Serializable
-data class Sicherung(
-    @SerialName("version") val version: String = "",
-    @SerialName("exported_at") val exportedAt: String = "",
-    @SerialName("exported_by") val exportedBy: String? = null,
-    @SerialName("global") val global: Map<String, String> = emptyMap(),
-    @SerialName("user_settings") val userSettings: Map<String, String> = emptyMap(),
+data class Setup(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("open") val open: Boolean = false,
+    @SerialName("change_password") val changePassword: Boolean = false,
+    @SerialName("sources") val sources: SetupSources = SetupSources(),
 )
 
 @Serializable
-data class SicherungEingespielt(
+data class SetupSources(
+    @SerialName("rebrickable") val rebrickable: Boolean = false,
+    @SerialName("bricklink") val bricklink: Boolean = false,
+    @SerialName("brickset") val brickset: Boolean = false,
+)
+
+@Serializable
+data class SetupState(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("imported") val imported: Int = 0,
-    @SerialName("note") val note: String = "",
-    @SerialName("smtp_uebergangen") val smtpUebergangen: List<String> = emptyList(),
+    @SerialName("done") val done: Boolean = false,
+    @SerialName("configured") val configured: Boolean = false,
+    @SerialName("steps") val steps: List<SetupStateStepsEntry> = emptyList(),
+    @SerialName("ca") val ca: SetupStateCa = SetupStateCa(),
+    @SerialName("base_url") val baseUrl: String? = null,
+    @SerialName("https") val https: Boolean = false,
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+)
+
+@Serializable
+data class SetupStateCa(
+    @SerialName("existing") val existing: Boolean = false,
+    @SerialName("fp_hex") val fpHex: String = "",
+    @SerialName("cert_sha256") val certSha256: String = "",
+    @SerialName("valid_until") val validUntil: String = "",
+    @SerialName("download") val download: String = "",
+)
+
+@Serializable
+data class SetupStateStepsEntry(
+    @SerialName("id") val id: String = "",
+    @SerialName("ok") val ok: Boolean = false,
+    @SerialName("required") val required: Boolean = false,
 )
 
 @Serializable
@@ -2227,8 +2014,8 @@ data class SmtpProbe(
 
 @Serializable
 data class StartupStatus(
-    @SerialName("fehler") val fehler: String? = null,
-    @SerialName("pfad") val pfad: String? = null,
+    @SerialName("error") val error: String? = null,
+    @SerialName("path") val path: String? = null,
     @SerialName("ready") val ready: Boolean = false,
     @SerialName("step") val step: String? = null,
     @SerialName("progress") val progress: Double = 0.0,
@@ -2243,41 +2030,108 @@ data class StatsResponse(
 )
 
 @Serializable
-data class TeilFarbeRequest(
-    @SerialName("color_id") val colorId: Int,
-    @SerialName("color_name") val colorName: String? = null,
-    @SerialName("color_hex") val colorHex: String? = null,
+data class StepApprovalRequest(
+    @SerialName("challenge") val challenge: String,
+    @SerialName("signature") val signature: String,
 )
 
 @Serializable
-data class TeilFarbeResponse(
-    @SerialName("bild") val bild: String? = null,
+data class StepApprovalResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("action") val action: String,
+    @SerialName("valid_until") val validUntil: String,
+)
+
+@Serializable
+data class StepChallengeRequest(
+    @SerialName("action") val action: String,
+)
+
+@Serializable
+data class StepChallengeResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("challenge") val challenge: String,
+    @SerialName("message") val message: String,
+    @SerialName("valid_until") val validUntil: String,
+)
+
+@Serializable
+data class Storage(
+    @SerialName("minifigs") val minifigs: Int? = null,
+    @SerialName("location") val location: String,
+    @SerialName("sets") val sets: Int = 0,
+    @SerialName("parts") val parts: Int = 0,
+)
+
+@Serializable
+data class StorageDefaultRequest(
+    @SerialName("id") val id: Int? = null,
+)
+
+@Serializable
+data class StorageDefaultResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("zusammengelegt") val zusammengelegt: Boolean = false,
-    @SerialName("verschoben") val verschoben: Int = 0,
-    @SerialName("vereint") val vereint: Int = 0,
+    @SerialName("preset") val preset: StorageEntry? = null,
 )
 
 @Serializable
-data class TeileGeladen(
+data class StorageEntry(
+    @SerialName("id") val id: Int = 0,
+    @SerialName("user_id") val userId: Int = 0,
+    @SerialName("name") val name: String = "",
+)
+
+@Serializable
+data class StorageEntryResponse(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("count") val count: Int = 0,
+    @SerialName("location") val location: StorageEntry? = null,
 )
 
 @Serializable
-data class TlsStand(
+data class StorageNameRequest(
+    @SerialName("name") val name: String,
+    @SerialName("owner") @EncodeDefault(EncodeDefault.Mode.NEVER) val owner: JsonElement? = null,
+)
+
+@Serializable
+data class StorageRequest(
+    @SerialName("storage") val storage: String,
+)
+
+@Serializable
+data class StorageResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("storage") val storage: String? = null,
+    @SerialName("changed") val changed: Int = 0,
+)
+
+@Serializable
+data class StorageStockResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("locations") val locations: List<StorageEntry> = emptyList(),
+    @SerialName("preset") val preset: StorageEntry? = null,
+)
+
+@Serializable
+data class StoragesResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("locations") val locations: List<Storage> = emptyList(),
+)
+
+@Serializable
+data class TlsState(
     @SerialName("success") val success: Boolean = false,
     @SerialName("https") val https: Boolean = false,
     @SerialName("fp") val fp: String? = null,
     @SerialName("fp_hex") val fpHex: String = "",
-    @SerialName("zert_sha256") val zertSha256: String = "",
+    @SerialName("cert_sha256") val certSha256: String = "",
     @SerialName("subject") val subject: String = "",
-    @SerialName("gueltig_bis") val gueltigBis: String = "",
+    @SerialName("valid_until") val validUntil: String = "",
     @SerialName("download") val download: String = "",
 )
 
 @Serializable
-data class TokenErstellt(
+data class TokenCreated(
     @SerialName("success") val success: Boolean = false,
     @SerialName("token") val token: String = "",
     @SerialName("label") val label: String? = null,
@@ -2292,7 +2146,13 @@ data class TokenInfo(
     @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
     @SerialName("never_expires") val neverExpires: Boolean,
     @SerialName("rotated_at") val rotatedAt: String? = null,
-    @SerialName("rotation_faellig") val rotationFaellig: Boolean = false,
+    @SerialName("rotation_due") val rotationDue: Boolean = false,
+)
+
+@Serializable
+data class TokenRevocation(
+    @SerialName("success") val success: Boolean,
+    @SerialName("deleted") val deleted: Int = 0,
 )
 
 @Serializable
@@ -2300,14 +2160,8 @@ data class TokenRotation(
     @SerialName("success") val success: Boolean,
     @SerialName("token") val token: String? = null,
     @SerialName("token_info") val tokenInfo: TokenInfo? = null,
-    @SerialName("alt_gueltig_bis") val altGueltigBis: String? = null,
-    @SerialName("ueberlappung_sek") val ueberlappungSek: Int? = null,
-)
-
-@Serializable
-data class TokenWiderruf(
-    @SerialName("success") val success: Boolean,
-    @SerialName("deleted") val deleted: Int = 0,
+    @SerialName("old_valid_until") val oldValidUntil: String? = null,
+    @SerialName("overlap_seconds") val overlapSeconds: Int? = null,
 )
 
 @Serializable
@@ -2326,11 +2180,36 @@ data class Totals(
 )
 
 @Serializable
+data class Trash(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("entries") val entries: List<TrashEntry> = emptyList(),
+)
+
+@Serializable
+data class TrashEmptied(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("removed") val removed: Int = 0,
+)
+
+@Serializable
+data class TrashEntry(
+    @SerialName("id") val id: Int = 0,
+    @SerialName("type") val type: String = "",
+    @SerialName("number") val number: String = "",
+    @SerialName("color_id") val colorId: Int? = null,
+    @SerialName("label") val label: String? = null,
+    @SerialName("count") val count: Int = 0,
+    @SerialName("user_id") val userId: Int = 0,
+    @SerialName("deleted_at") val deletedAt: String = "",
+    @SerialName("purge_at") val purgeAt: String = "",
+)
+
+@Serializable
 data class UpdateAcquisitionRequest(
     @SerialName("quantity") val quantity: Int? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("date") val date: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     @SerialName("from_user_id") @EncodeDefault(EncodeDefault.Mode.NEVER) val fromUserId: JsonElement? = null,
@@ -2341,7 +2220,7 @@ data class UpdateManualItemRequest(
     @SerialName("quantity") val quantity: Int,
     @SerialName("quantity_delta") @EncodeDefault(EncodeDefault.Mode.NEVER) val quantityDelta: Int? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
-    @SerialName("condition") val condition: Zustand? = null,
+    @SerialName("condition") val condition: Condition? = null,
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
 )
 
@@ -2350,7 +2229,7 @@ data class UpdateQuantityRequest(
     @SerialName("quantity") @EncodeDefault(EncodeDefault.Mode.NEVER) val quantity: Int? = null,
     @SerialName("quantity_delta") @EncodeDefault(EncodeDefault.Mode.NEVER) val quantityDelta: Int? = null,
     @SerialName("purchase_price") @EncodeDefault(EncodeDefault.Mode.NEVER) val purchasePrice: Double? = null,
-    @SerialName("condition") @EncodeDefault(EncodeDefault.Mode.NEVER) val condition: Zustand? = null,
+    @SerialName("condition") @EncodeDefault(EncodeDefault.Mode.NEVER) val condition: Condition? = null,
     @SerialName("owner_user_id") @EncodeDefault(EncodeDefault.Mode.NEVER) val ownerUserId: JsonElement? = null,
 )
 
@@ -2360,40 +2239,57 @@ data class User(
     @SerialName("username") val username: String,
     @SerialName("is_admin") val isAdmin: Boolean = false,
     @SerialName("mustChangePassword") val mustChangePassword: Boolean = false,
-    @SerialName("zweiterFaktorPflicht") val zweiterFaktorPflicht: Boolean = false,
+    @SerialName("secondFactorRequired") val secondFactorRequired: Boolean = false,
 )
 
 @Serializable
 data class UserSettings(
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
-    @SerialName("price_condition") val priceCondition: Zustand = Zustand.NEU,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
+    @SerialName("price_condition") val priceCondition: Condition = Condition.NEW,
     @SerialName("price_cache_ttl") val priceCacheTtl: String = "24",
-    @SerialName("default_price_condition") val defaultPriceCondition: Zustand = Zustand.NEU,
-    @SerialName("user_default_condition") val userDefaultCondition: Zustand? = null,
-    @SerialName("effective_condition") val effectiveCondition: Zustand = Zustand.NEU,
-    @Serializable(with = DesignOderNichts::class) @SerialName("app_theme") val appTheme: Design? = null,
+    @SerialName("default_price_condition") val defaultPriceCondition: Condition = Condition.NEW,
+    @SerialName("user_default_condition") val userDefaultCondition: Condition? = null,
+    @SerialName("effective_condition") val effectiveCondition: Condition = Condition.NEW,
+    @Serializable(with = DesignOrNothing::class) @SerialName("app_theme") val appTheme: Design? = null,
+)
+
+@Serializable
+data class UsingSet(
+    @SerialName("set_number") val setNumber: String,
+    @SerialName("set_name") val setName: String? = null,
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int = 0,
+)
+
+@Serializable
+data class UsingSetsResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("item") val item: ComponentHeader? = null,
+    @SerialName("sets") val sets: List<UsingSet> = emptyList(),
 )
 
 @Serializable
 data class ValuationAcquisition(
     @SerialName("id") val id: Int = 0,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
     @SerialName("quantity") val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("total_avg") val totalAvg: String? = null,
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
+    @SerialName("value_total") val valueTotal: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("kaufpreis_original") val kaufpreisOriginal: Double = 0.0,
-    @SerialName("kaufpreis_waehrung") val kaufpreisWaehrung: String = "",
+    @SerialName("original_purchase_price") val originalPurchasePrice: Double = 0.0,
+    @SerialName("purchase_currency") val purchaseCurrency: String = "",
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
 )
 
 @Serializable
 data class ValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
+    @SerialName("converted_purchase_prices") val convertedPurchasePrices: Int = 0,
     @SerialName("guide_type") val guideType: String = "",
     @SerialName("ttl_hours") val ttlHours: JsonElement? = null,
     @SerialName("success") val success: Boolean,
@@ -2401,19 +2297,19 @@ data class ValuationResponse(
     @SerialName("page") val page: Int = 0,
     @SerialName("page_size") val pageSize: Int = 0,
     @SerialName("total_value") val totalValue: String = "",
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    @SerialName("preise_ausstehend") val preiseAusstehend: Int = 0,
-    @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
-    @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("ttl_stunden") val ttlStunden: Int = 0,
-    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
+    @SerialName("value_total") val valueTotal: Double? = null,
+    @SerialName("prices_pending") val pricesPending: Int = 0,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
+    @SerialName("cache_ttl_hours") val cacheTtlHours: Int = 0,
+    @SerialName("foreign_currency_purchases") val foreignCurrencyPurchases: Int = 0,
     @SerialName("sets") val sets: List<ValuationSet> = emptyList(),
     @SerialName("totals") val totals: Totals = Totals(),
 )
 
 @Serializable
 data class ValuationSet(
-    @SerialName("bl_unbekannt") val blUnbekannt: Boolean = false,
+    @SerialName("bl_unknown") val blUnknown: Boolean = false,
     @SerialName("condition") val condition: String = "",
     @SerialName("conditions") val conditions: List<String> = emptyList(),
     @SerialName("error_code") val errorCode: String? = null,
@@ -2431,135 +2327,239 @@ data class ValuationSet(
     @SerialName("max_price") val maxPrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("total_qty_avg") val totalQtyAvg: String? = null,
-    @SerialName("preis_ausstehend") val preisAusstehend: Boolean = false,
+    @SerialName("price_pending") val pricePending: Boolean = false,
     @SerialName("total_avg") val totalAvg: String? = null,
-    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("value_total") val valueTotal: Double? = null,
+    @SerialName("pnl_percent") val pnlPercent: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("from_cache") val fromCache: Boolean = true,
     @SerialName("is_fallback") val isFallback: Boolean = false,
-    @SerialName("condition_used") val conditionUsed: Zustand? = null,
+    @SerialName("condition_used") val conditionUsed: Condition? = null,
     @SerialName("no_price") val noPrice: Boolean = false,
     @SerialName("acquisitions") val acquisitions: List<ValuationAcquisition> = emptyList(),
     @SerialName("mixed") val mixed: Boolean = false,
-    @SerialName("owners") val owners: List<KontoName> = emptyList(),
+    @SerialName("owners") val owners: List<AccountName> = emptyList(),
     @SerialName("error") val error: String? = null,
 )
 
 @Serializable
-data class VerwendendeSetsResponse(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("item") val item: BestandteilKopf? = null,
-    @SerialName("sets") val sets: List<VerwendendesSet> = emptyList(),
-)
-
-@Serializable
-data class VerwendendesSet(
-    @SerialName("set_number") val setNumber: String,
-    @SerialName("set_name") val setName: String? = null,
-    @SerialName("quantity") val quantity: Int = 0,
-    @SerialName("image_local") val imageLocal: String? = null,
-    @SerialName("image_url") val imageUrl: String? = null,
-    @SerialName("owner_user_id") val ownerUserId: Int = 0,
-)
-
-@Serializable
-data class WantedXmlErgebnis(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("vorschau") val vorschau: Boolean = false,
-    @SerialName("gelesen") val gelesen: Int = 0,
-    @SerialName("angelegt") val angelegt: Int = 0,
-    @SerialName("aufgestockt") val aufgestockt: Int = 0,
-    @SerialName("fehler") val fehler: Int = 0,
-    @SerialName("posten") val posten: List<WantedXmlErgebnisPostenEintrag> = emptyList(),
-    @SerialName("offen") val offen: List<WantedXmlErgebnisOffenEintrag> = emptyList(),
-    @SerialName("fremdeArten") val fremdeArten: Map<String, Int> = emptyMap(),
-    @SerialName("ohneNummer") val ohneNummer: Int = 0,
-    @SerialName("stufen") val stufen: Map<String, Int> = emptyMap(),
-    @SerialName("farbeOffen") val farbeOffen: Int = 0,
-    @SerialName("standardZustand") val standardZustand: String = "",
-    @SerialName("abgebrochen") val abgebrochen: Boolean = false,
-    @SerialName("korrekturen") val korrekturen: WantedXmlErgebnisKorrekturen = WantedXmlErgebnisKorrekturen(),
-    @SerialName("rebrickable") val rebrickable: WantedXmlErgebnisRebrickable = WantedXmlErgebnisRebrickable(),
-)
-
-@Serializable
-data class WantedXmlErgebnisKorrekturen(
-    @SerialName("angewandt") val angewandt: Int = 0,
-    @SerialName("abgewiesen") val abgewiesen: List<JsonElement?> = emptyList(),
-)
-
-@Serializable
-data class WantedXmlErgebnisOffenEintrag(
-    @SerialName("art") val art: String = "",
-    @SerialName("blId") val blId: String = "",
-    @SerialName("blFarbe") val blFarbe: Int? = null,
-)
-
-@Serializable
-data class WantedXmlErgebnisPostenEintrag(
-    @SerialName("art") val art: String = "",
-    @SerialName("blId") val blId: String = "",
-    @SerialName("menge") val menge: Int = 0,
-    @SerialName("ausgang") val ausgang: String = "",
-    @SerialName("blFarbe") val blFarbe: Int? = null,
-    @SerialName("rbId") val rbId: String? = null,
-    @SerialName("rbFarbe") val rbFarbe: Int? = null,
-    @SerialName("farbName") val farbName: String? = null,
-    @SerialName("farbHex") val farbHex: String? = null,
-    @SerialName("sicherheit") val sicherheit: String? = null,
-    @SerialName("zustand") val zustand: String? = null,
-    @SerialName("maxPreis") val maxPreis: Double? = null,
-    @SerialName("name") val name: String? = null,
-    @SerialName("nameGeraten") val nameGeraten: Boolean = false,
-    @SerialName("bild") val bild: String? = null,
-    @SerialName("grund") val grund: String? = null,
-    @SerialName("grundCode") val grundCode: String? = null,
-)
-
-@Serializable
-data class WantedXmlErgebnisRebrickable(
-    @SerialName("gefragt") val gefragt: Int = 0,
-    @SerialName("gefunden") val gefunden: Int = 0,
-    @SerialName("filterWirkungslos") val filterWirkungslos: Boolean = false,
-    @SerialName("abgebrochen") val abgebrochen: String = "",
-)
-
-@Serializable
-data class Wiederhergestellt(
-    @SerialName("success") val success: Boolean = false,
-    @SerialName("type") val type: String = "",
+data class Voucher(
+    @SerialName("id") val id: Int = 0,
     @SerialName("number") val number: String = "",
-    @SerialName("user_id") val userId: Int = 0,
+    @SerialName("pin") val pin: String? = null,
+    @SerialName("amount") val amount: Double = 0.0,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.CHF,
+    @SerialName("has_pdf") val hasPdf: Boolean = false,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("balance_checked_at") val balanceCheckedAt: String? = null,
 )
 
 @Serializable
-data class ZweiterFaktorAnfrage(
-    @SerialName("password") val password: String? = null,
+data class VoucherBatch(
+    @SerialName("results") val results: List<JsonElement?> = emptyList(),
+    @SerialName("added") val added: Int = 0,
+    @SerialName("updated") val updated: Int = 0,
+    @SerialName("errors") val errors: Int = 0,
+    @SerialName("total") val total: Int = 0,
+)
+
+@Serializable
+data class VoucherList(
+    @SerialName("success") val success: Boolean = true,
+    @SerialName("total") val total: Int = 0,
+    @SerialName("page") val page: Int = 0,
+    @SerialName("page_size") val pageSize: Int = 0,
+    @SerialName("vouchers") val vouchers: List<Voucher> = emptyList(),
+)
+
+@Serializable
+data class VoucherPdfGrant(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("ticket") val ticket: String = "",
+    @SerialName("valid_seconds") val validSeconds: Int = 0,
+)
+
+@Serializable
+data class VoucherPlaintext(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("id") val id: Int = 0,
+    @SerialName("number") val number: String = "",
+    @SerialName("pin") val pin: String? = null,
+)
+
+@Serializable
+data class VoucherReply(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("voucher") val voucher: Voucher? = null,
+    @SerialName("multiple") val multiple: VoucherBatch? = null,
+    @SerialName("parsed") val parsed: ParsedVoucher? = null,
+    @SerialName("error") val error: String? = null,
     @SerialName("code") val code: String? = null,
-    @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
 )
 
 @Serializable
-data class ZweiterFaktorCodes(
-    @SerialName("success") val success: Boolean,
-    @SerialName("codes") val codes: List<String> = emptyList(),
-    @SerialName("error") val error: String? = null,
+data class VoucherRequest(
+    @SerialName("number") val number: String,
+    @SerialName("pin") val pin: String? = null,
+    @SerialName("amount") val amount: Double,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.CHF,
 )
 
 @Serializable
-data class ZweiterFaktorEinrichtung(
-    @SerialName("success") val success: Boolean,
-    @SerialName("geheimnis") val geheimnis: String? = null,
-    @SerialName("otpauth") val otpauth: String? = null,
-    @SerialName("error") val error: String? = null,
+data class WantedItem(
+    @SerialName("theme_id") val themeId: Int? = null,
+    @SerialName("set_number") val setNumber: String = "",
+    @SerialName("condition") val condition: Condition = Condition.NEW,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("user_id") val userId: Int = 0,
+    @SerialName("name") val name: String? = null,
+    @SerialName("year") val year: Int? = null,
+    @SerialName("num_parts") val numParts: Int? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("market_price") val marketPrice: Double? = null,
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.EUR,
+    @SerialName("owned") val owned: Boolean = false,
+    @SerialName("alarm") val alarm: WantedItemAlert? = null,
+    @SerialName("price_comparison_url") val priceComparisonUrl: String? = null,
 )
 
 @Serializable
-data class ZweiterFaktorStand(
-    @SerialName("success") val success: Boolean,
-    @SerialName("aktiv") val aktiv: Boolean = false,
-    @SerialName("codes_uebrig") val codesUebrig: Int = 0,
-    @SerialName("alte_codes_bis") val alteCodesBis: String? = null,
-    @SerialName("error") val error: String? = null,
+data class WantedItemAlert(
+    @SerialName("direction") val direction: AlarmDirection = AlarmDirection.BELOW,
+    @SerialName("threshold") val threshold: Double = 0.0,
+    @SerialName("triggered") val triggered: Boolean = false,
+)
+
+@Serializable
+data class WantedItemOwnerReply(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("moved") val moved: Boolean = false,
+    @SerialName("merged") val merged: Boolean = false,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+)
+
+@Serializable
+data class WantedItemOwnerRequest(
+    @SerialName("owner_user_id") val ownerUserId: Int,
+    @SerialName("new_owner") val newOwner: Int,
+)
+
+@Serializable
+data class WantedItemPricesResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("set_number") val setNumber: String = "",
+    @SerialName("currency") val currency: CurrencyCode = CurrencyCode.NONE,
+    @SerialName("current") val current: CurrentByCondition = CurrentByCondition(),
+    @SerialName("degraded") val degraded: List<String> = emptyList(),
+)
+
+@Serializable
+data class WantedItemReply(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("was_new") val wasNew: Boolean = false,
+    @SerialName("item") val item: WantedItem? = null,
+)
+
+@Serializable
+data class WantedItemRequest(
+    @SerialName("set_number") val setNumber: String,
+    @SerialName("condition") val condition: Condition = Condition.NEW,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+)
+
+@Serializable
+data class WantedItemTakeoverRequest(
+    @SerialName("quantity") val quantity: Int = 1,
+    @SerialName("purchase_price") val purchasePrice: Double? = null,
+    @SerialName("condition") val condition: Condition? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+    @SerialName("storage") val storage: String? = null,
+)
+
+@Serializable
+data class WantedItemTakeoverResponse(
+    @SerialName("catalog_pending") val catalogPending: Boolean = false,
+    @SerialName("name") val name: String? = null,
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("action") val action: String? = null,
+    @SerialName("set_number") val setNumber: String? = null,
+)
+
+@Serializable
+data class WantedListResponse(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("total") val total: Int = 0,
+    @SerialName("page") val page: Int = 0,
+    @SerialName("page_size") val pageSize: Int = 0,
+    @SerialName("item") val item: List<WantedItem> = emptyList(),
+)
+
+@Serializable
+data class WantedXmlResult(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("preview") val preview: Boolean = false,
+    @SerialName("parsed") val parsed: Int = 0,
+    @SerialName("created") val created: Int = 0,
+    @SerialName("topped_up") val toppedUp: Int = 0,
+    @SerialName("failed") val failed: Int = 0,
+    @SerialName("items") val items: List<WantedXmlResultItemsEntry> = emptyList(),
+    @SerialName("open") val open: List<WantedXmlResultOpenEntry> = emptyList(),
+    @SerialName("foreignTypes") val foreignTypes: Map<String, Int> = emptyMap(),
+    @SerialName("withoutNumber") val withoutNumber: Int = 0,
+    @SerialName("levels") val levels: Map<String, Int> = emptyMap(),
+    @SerialName("colorPending") val colorPending: Int = 0,
+    @SerialName("defaultCondition") val defaultCondition: String = "",
+    @SerialName("aborted") val aborted: Boolean = false,
+    @SerialName("corrections") val corrections: WantedXmlResultCorrections = WantedXmlResultCorrections(),
+    @SerialName("rebrickable") val rebrickable: WantedXmlResultRebrickable = WantedXmlResultRebrickable(),
+)
+
+@Serializable
+data class WantedXmlResultCorrections(
+    @SerialName("applied") val applied: Int = 0,
+    @SerialName("rejected") val rejected: List<JsonElement?> = emptyList(),
+)
+
+@Serializable
+data class WantedXmlResultItemsEntry(
+    @SerialName("kind") val kind: String = "",
+    @SerialName("blId") val blId: String = "",
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("outcome") val outcome: String = "",
+    @SerialName("blColor") val blColor: Int? = null,
+    @SerialName("rbId") val rbId: String? = null,
+    @SerialName("rbColor") val rbColor: Int? = null,
+    @SerialName("colorName") val colorName: String? = null,
+    @SerialName("colorHex") val colorHex: String? = null,
+    @SerialName("confidence") val confidence: String? = null,
+    @SerialName("condition") val condition: String? = null,
+    @SerialName("maxPrice") val maxPrice: Double? = null,
+    @SerialName("name") val name: String? = null,
+    @SerialName("nameGuessed") val nameGuessed: Boolean = false,
+    @SerialName("image") val image: String? = null,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("reasonCode") val reasonCode: String? = null,
+)
+
+@Serializable
+data class WantedXmlResultOpenEntry(
+    @SerialName("kind") val kind: String = "",
+    @SerialName("blId") val blId: String = "",
+    @SerialName("blColor") val blColor: Int? = null,
+)
+
+@Serializable
+data class WantedXmlResultRebrickable(
+    @SerialName("asked") val asked: Int = 0,
+    @SerialName("found") val found: Int = 0,
+    @SerialName("filterIneffective") val filterIneffective: Boolean = false,
+    @SerialName("aborted") val aborted: String = "",
+)
+
+@Serializable
+data class YearCount(
+    @SerialName("year") val year: Int? = null,
+    @SerialName("n") val n: Int = 0,
 )

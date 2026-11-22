@@ -109,7 +109,7 @@ class RedemptionTest {
         assertEquals(RedemptionOutcome.REDEEMED, redeemer.redeem(basis, "altes-token"))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
         assertEquals("POST", a.method)
-        assertEquals("/brick/api/v1/auth/logout", a.path)
+        assertEquals("/brick/api/v2/auth/logout", a.path)
         assertEquals("Bearer altes-token", a.getHeader("Authorization"))
 
         server.enqueue(MockResponse().setResponseCode(401))

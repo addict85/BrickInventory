@@ -181,7 +181,7 @@ class SubpagesTest {
 
     @Test
     fun `storage locations stand as rows with a menu and delete only after confirmation`() {
-        world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[
+        world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
         val message = SnackbarHostState()
@@ -219,7 +219,7 @@ class SubpagesTest {
 
     @Test
     fun `household structures inviting and accepting and removes only after confirmation`() {
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
@@ -285,7 +285,7 @@ class SubpagesTest {
 
     @Test
     fun `the default star is a switch with the name of the location`() {
-        world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
+        world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[{"id":3,"name":"Keller"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         wait("storage locations") { vm.storageState.value.own.size == 1 }
@@ -295,7 +295,7 @@ class SubpagesTest {
 
     @Test
     fun `removing names the account in the household`() {
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
@@ -310,8 +310,8 @@ class SubpagesTest {
 
     @Test
     fun `price alerts name the name first and in the confirmation`() {
-        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
         val vm = settings()
         show {
             PriceAlarmsRoute(vm = vm,
@@ -329,7 +329,7 @@ class SubpagesTest {
 
     @Test
     fun `account changes the password only with a matching repetition and marks it otherwise`() {
-        world.paths.responses["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+        world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val account = world.t.track(AccountViewModel(
             testAccountRepository(world.t.api, world.t.io),
@@ -360,7 +360,7 @@ class SubpagesTest {
     /** A new address applies only after the link: the field shows the current one, below it the requested one. */
     @Test
     fun `account names the requested e-mail below the field`() {
-        world.paths.responses["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+        world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "new_email":"neu@example.org"}}"""
         val account = world.t.track(AccountViewModel(
@@ -379,7 +379,7 @@ class SubpagesTest {
     /** Changed via the text action, not by typing: no focused field. */
     @Test
     fun `account asks for the password when saving the profile`() {
-        world.paths.responses["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+        world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val account = world.t.track(AccountViewModel(
             testAccountRepository(world.t.api, world.t.io),

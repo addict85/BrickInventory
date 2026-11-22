@@ -49,7 +49,7 @@ class AccountViewTest {
     private var area: String? = "a"
     private val store = OfflineStore(StorageInventory(), OutboxStorage(), { area })
     private val paths = PathServer(
-        "/api/v1/sets" to """{"success":true,"total":2,"sets":[{"set_number":"10-1","name":"Haus"},{"set_number":"11-1","name":"Burg"}]}""",
+        "/api/v2/sets" to """{"success":true,"total":2,"sets":[{"set_number":"10-1","name":"Haus"},{"set_number":"11-1","name":"Burg"}]}""",
     )
     private val api = paths.onTick()
     private val view = AccountView(api, api, api, store, RetryPolicy.ONCE)
@@ -64,7 +64,7 @@ class AccountViewTest {
     @Test
     fun `every filter of the account view is in the request`() = runBlocking {
         view.gallery.refresh(query())
-        val path = paths.requestsTo("GET /api/v1/sets?").single()
+        val path = paths.requestsTo("GET /api/v2/sets?").single()
         for (part in listOf("accounts=7", "search=falcon", "theme=Star%20Wars", "sort=price_desc", "storage=Regal%202")) {
             assertTrue("$part missing: $path", part in path)
         }
@@ -87,13 +87,13 @@ class AccountViewTest {
         }
         view.gallery.refresh(query())
         assertEquals(listOf("10-1", "11-1", "12-1"), view.gallery.observe(query()).first().list.map { it.setNumber })
-        assertEquals(2, paths.requestsTo("GET /api/v1/sets?").size)
+        assertEquals(2, paths.requestsTo("GET /api/v2/sets?").size)
     }
 
     @Test
     fun `a write shows up in the account view too`() = runBlocking {
         view.gallery.refresh(query())
-        val before = paths.requestsTo("GET /api/v1/sets?").size
+        val before = paths.requestsTo("GET /api/v2/sets?").size
         val seen = CompletableDeferred<Unit>()
         val observer = launch { view.gallery.observe(query()).collect { seen.complete(Unit) } }
         // Only once the view observes does the change count: veraendert() leaves out the first state.
@@ -102,9 +102,9 @@ class AccountViewTest {
         // What a repository applies changes the store — the account view asks anew.
         store.applyChange(Editing.RecordSet(EntryRequest(setNumber = "12-1")))
         // The new request runs via the test server, thus on a foreign thread.
-        withTimeoutOrNull(5_000) { while (paths.requestsTo("GET /api/v1/sets?").size <= before) delay(10) }
+        withTimeoutOrNull(5_000) { while (paths.requestsTo("GET /api/v2/sets?").size <= before) delay(10) }
         observer.cancel()
-        assertEquals("asked anew", before + 1, paths.requestsTo("GET /api/v1/sets?").size)
+        assertEquals("asked anew", before + 1, paths.requestsTo("GET /api/v2/sets?").size)
     }
 
     @Test
@@ -119,9 +119,9 @@ class AccountViewTest {
     @Test
     fun `the full view is in the store and carries through a network outage`() = runBlocking {
         assertTrue(sets.refreshSets() is Outcome.Success)
-        val fetch = paths.requestsTo("GET /api/v1/sets?").single()
+        val fetch = paths.requestsTo("GET /api/v2/sets?").single()
         assertTrue("ungefiltert: $fetch", "search=" !in fetch && "accounts=" !in fetch)
-        paths.codes["/api/v1/sets"] = 500
+        paths.codes["/api/v2/sets"] = 500
         assertTrue(sets.refreshSets() is Outcome.Failure)
         val stored = sets.observeSets(theme = null).first()
         assertTrue("with state", stored.state != null)

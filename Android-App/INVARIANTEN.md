@@ -124,7 +124,7 @@ in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter oh
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-state (`zustandsViewModels`).
 Das Wire-Format liegt in core-contract (kennt core-model, nicht umgekehrt), als ein Satz
-Typen, erzeugt aus `Web-App/docs/openapi.json` (`contract/Vertrag.kt`, nie von Hand; Namen und
+Typen, erzeugt aus `Web-App/docs/openapi-v2.json` (`contract/Contract.kt`, nie von Hand; Namen und
 Fachtypen in `Web-App/scripts/contract-kotlin-mapping.js`). Nur core-data bindet
 es ein (`implementation`, `Modulkanten.wireKenner`), die Ablage hält Fachtypen; jedes Repository gibt Fachtypen (`model.fach`)
 zurück, ein `success: false` ist eine `Absage`.
@@ -224,7 +224,7 @@ Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finances/ui/screens/FinanceScreen.kt`,
-`contract/Vertrag.kt` · Test: `PriceHistorySerializationTest`
+`contract/Contract.kt` · Test: `PriceHistorySerializationTest`
 
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als

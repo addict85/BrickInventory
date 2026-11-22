@@ -114,7 +114,7 @@ class AccountView @Inject constructor(
     val wantedList = ServerView<RememberQuery, WantedItemView>(store, arrayOf(Slots.WANTED_LIST)) { a ->
         retry.retry {
             safeCall { sets.getWantedList(a.search, a.condition?.identifier, a.sort?.identifier, a.accounts.request) }
-        }.mapData { r -> r.merkposten.map { it.asView() } }
+        }.mapData { r -> r.item.map { it.asView() } }
     }
 
     val partList = ServerView<PartsQuery, PartView>(store, arrayOf(Slots.PARTS)) { a ->

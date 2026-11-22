@@ -67,17 +67,17 @@ class TabScrollPositionTest {
 
     private fun responses() {
         val r = app.world.paths.responses
-        r["/api/v1/sets"] = """{"success":true,"total":$COUNT,"sets":[""" + (0 until COUNT).joinToString(",") {
+        r["/api/v2/sets"] = """{"success":true,"total":$COUNT,"sets":[""" + (0 until COUNT).joinToString(",") {
             """{"set_number":"9$it-1","name":"Set $it","year":2020,"theme":"Icons","quantity":1,"num_parts":100}"""
         } + "]}"
         // Manually added parts and figures open their own page; set parts only a sheet over the list.
-        r["/api/v1/parts/manual"] = """{"success":true,"parts":[""" + (0 until COUNT).joinToString(",") {
+        r["/api/v2/parts/manual"] = """{"success":true,"parts":[""" + (0 until COUNT).joinToString(",") {
             """{"id":$it,"part_number":"p$it","part_name":"Part $it","color_id":5,"quantity":1}"""
         } + "]}"
-        r["/api/v1/minifigs/manual"] = """{"success":true,"figs":[""" + (0 until COUNT).joinToString(",") {
+        r["/api/v2/minifigs/manual"] = """{"success":true,"figs":[""" + (0 until COUNT).joinToString(",") {
             """{"id":$it,"fig_number":"f$it","fig_name":"Figure $it","quantity":1}"""
         } + "]}"
-        r["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[""" + (0 until COUNT).joinToString(",") {
+        r["/api/v2/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[""" + (0 until COUNT).joinToString(",") {
             """{"set_number":"9$it-1","name":"Set $it","quantity":1,"purchase_price":10.0,"no_price":true,
                "acquisitions":[{"id":$it,"condition":"N","quantity":1,"purchase_price":10.0}]}"""
         } + """],"totals":{"min":"0.00","avg":"0.00","max":"0.00","qty_avg":"0.00"}}"""
@@ -196,11 +196,11 @@ class TabScrollPositionTest {
 
     @Test
     fun `parts wait for the manually added ones before they jump back`() =
-        waitsForManual("parts", R.string.nav_parts, "parts", "/api/v1/parts/manual")
+        waitsForManual("parts", R.string.nav_parts, "parts", "/api/v2/parts/manual")
 
     @Test
     fun `figures wait for the manually added ones before they jump back`() =
-        waitsForManual("figures", R.string.nav_minifigs, "minifigs", "/api/v1/minifigs/manual")
+        waitsForManual("figures", R.string.nav_minifigs, "minifigs", "/api/v2/minifigs/manual")
 
     private companion object {
         const val COUNT = 50

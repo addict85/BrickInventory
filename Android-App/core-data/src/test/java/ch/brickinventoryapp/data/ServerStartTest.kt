@@ -11,12 +11,12 @@ import org.junit.Test
  * While the server starts, the app shows the progress — no error. The first
  * start of a new installation fetches the Rebrickable catalog and takes minutes; a
  * network message would make app or server look broken. Like the web app via
- * /v1/startup-status.
+ * /v2/startup-status.
  *
  * The query runs against a test server; the evaluation in AppViewModel is executed by
  * AppViewModelTest, the display by ServerStartLoginTest (feature-login).
  *
- * Counter-check: in ManagementApi `@GET("api/v1/startup-status")`
+ * Counter-check: in ManagementApi `@GET("api/v2/startup-status")`
  * to "…/startstatus" → red “the app queries the startup state”.
  * Counter-check: counter-checks/startstatus-ganzzahl.patch
  * makes progress an Int again → red “a progress with share is read”.
@@ -26,13 +26,13 @@ class ServerStartTest {
     @Test
     fun `the app queries the startup state`() = withRepo(::testManagementRepository) { paths, admin ->
         runBlocking { admin.getStartupStatus() }
-        assertEquals(listOf("GET /api/v1/startup-status"), paths.requests.toList())
+        assertEquals(listOf("GET /api/v2/startup-status"), paths.requests.toList())
     }
 
     @Test
     fun `a progress with share is read`() = withRepo(::testManagementRepository) { paths, admin ->
         // The server reports steps including the share of the running one (2.37 of 8).
-        paths.responses["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
+        paths.responses["/api/v2/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
         assert(r is Outcome.Success) { "Start state not read: $r" }
         assertEquals(2.37f / 8, (r as Outcome.Success).data.share!!, 0.0001f)

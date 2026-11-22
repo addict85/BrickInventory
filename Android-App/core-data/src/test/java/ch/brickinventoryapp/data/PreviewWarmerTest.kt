@@ -69,7 +69,7 @@ class PreviewWarmerTest {
     @After
     fun tearDown() { root.deleteRecursively() }
 
-    private fun preview(number: Int) = "https://brick.example/api/v1/images/set/$number-1?thumb=1"
+    private fun preview(number: Int) = "https://brick.example/api/v2/images/set/$number-1?thumb=1"
 
     /** Fills the store up to the prewarming limit without writing the bytes. */
     private fun fillUntilToLimit() {
@@ -82,7 +82,7 @@ class PreviewWarmerTest {
     fun `it fetches only missing thumbnails, each once, reading and marked`() = runTest {
         memory.write(preview(2), "liegt schon".toByteArray())
         prewarmer.prewarm(listOf(preview(3), preview(3), preview(2),
-            "https://brick.example/api/v1/images/set/4-1"))
+            "https://brick.example/api/v2/images/set/4-1"))
         assertEquals(listOf(preview(3)), posed.map { it.url.toString() })
         val request = posed.single()
         assertEquals("GET", request.method)

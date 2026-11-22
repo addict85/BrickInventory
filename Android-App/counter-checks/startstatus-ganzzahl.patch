@@ -3,11 +3,12 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.ServerStartTest
 Rot: a progress with share is read
 
-diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
---- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
-+++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
-@@ -2290,7 +2290,7 @@
-     @SerialName("pfad") val pfad: String? = null,
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+@@ -2018,7 +2018,7 @@
+     @SerialName("path") val path: String? = null,
      @SerialName("ready") val ready: Boolean = false,
      @SerialName("step") val step: String? = null,
 -    @SerialName("progress") val progress: Double = 0.0,
@@ -15,15 +16,15 @@ diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contra
      @SerialName("total") val total: Int = 0,
      @SerialName("sub") val sub: String? = null,
  )
-diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
---- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
-+++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt
 @@ -29,7 +29,7 @@
- fun CsvKind.alsAnsicht(): CsvImportKind = CsvImportKind.valueOf(name)
+ fun CsvKind.asView(): CsvImportKind = CsvImportKind.valueOf(name)
  
- fun StartupStatus.alsAnsicht() = StartStateView(bereit = ready, schritt = step, undercut = sub,
--    fortschritt = progress, gesamt = total)
-+    fortschritt = progress.toDouble(), gesamt = total)
+ fun StartupStatus.asView() = StartStateView(ready = ready, step = step, undercut = sub,
+-    progress = progress, total = total)
++    progress = progress.toDouble(), total = total)
  
- fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.asMoneyRequired(), yFrac)
+ fun ChartPoint.asView() = PricePoint(xLabel, value.asMoneyRequired(), yFrac)
  

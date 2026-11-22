@@ -79,13 +79,13 @@ class PartsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(tick)
         paths = PathServer(
-            "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"color_name":"Red"}]}""",
-            "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
-            "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
-            "/api/v1/parts/stats" to """{"success":true}""",
-            "/api/v1/parts/3001/5" to """{"success":true}""",
-            "/api/v1/parts/3001/5/storage" to """{"success":true,"storage":"Kiste 3"}""",
-            "/api/v1/parts/3001/5/sets" to """{"success":true,"item":{"nummer":"3001","color_id":5},
+            "/api/v2/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"color_name":"Red"}]}""",
+            "/api/v2/parts/manual" to """{"success":true,"parts":[]}""",
+            "/api/v2/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
+            "/api/v2/parts/stats" to """{"success":true}""",
+            "/api/v2/parts/3001/5" to """{"success":true}""",
+            "/api/v2/parts/3001/5/storage" to """{"success":true,"storage":"Kiste 3"}""",
+            "/api/v2/parts/3001/5/sets" to """{"success":true,"item":{"number":"3001","color_id":5},
                 "sets":[{"set_number":"75192-1","quantity":4}]}""",
         )
         t = TestServices(paths.onTick(), io = tick)
@@ -100,17 +100,17 @@ class PartsViewModelTest {
 
     @Test
     fun `a failed key-figure fetch keeps the list and offers a retry`() {
-        paths.codes["/api/v1/parts/stats"] = 500
+        paths.codes["/api/v2/parts/stats"] = 500
         val vm = vm()
         vm.loadParts()
         assertTrue("List loaded", vm.partsState.value.parts.isNotEmpty())
         assertTrue("Error in the state", vm.partsState.value.extrasFetch is Load.Failure)
 
-        paths.codes.remove("/api/v1/parts/stats")
-        paths.responses["/api/v1/parts/stats"] = """{"success":true,"stats":{"unique_parts":1,"unique_colors":1,"total_parts":4}}"""
-        val asked = paths.requestsTo("GET /api/v1/parts/stats").size
+        paths.codes.remove("/api/v2/parts/stats")
+        paths.responses["/api/v2/parts/stats"] = """{"success":true,"stats":{"unique_parts":1,"unique_colors":1,"total_parts":4}}"""
+        val asked = paths.requestsTo("GET /api/v2/parts/stats").size
         vm.retryExtras()
-        assertEquals("the metrics asked again", asked + 1, paths.requestsTo("GET /api/v1/parts/stats").size)
+        assertEquals("the metrics asked again", asked + 1, paths.requestsTo("GET /api/v2/parts/stats").size)
         assertTrue("Metrics there", vm.partsState.value.partsStats != null)
     }
 
@@ -125,7 +125,7 @@ class PartsViewModelTest {
         first.setPartsView(ListView.TABLE)
         first.setPartsOrder(PartsFilter.Order.QUANTITY)
         first.setPartsQuery("stein")
-        assertTrue("before with account", "accounts=own" in paths.requestsTo("GET /api/v1/parts?").last())
+        assertTrue("before with account", "accounts=own" in paths.requestsTo("GET /api/v2/parts?").last())
 
         paths.newProcess(io = tick) { paths, t ->
             val newValue = vm(wanted, t)
@@ -134,7 +134,7 @@ class PartsViewModelTest {
             assertNull("the account filter only lives in memory", newValue.accountFor(ScopeFilter.View.PARTS))
             newValue.loadParts()
             assertTrue("List loaded", newValue.partsState.value.parts.isNotEmpty())
-            val fetch = paths.requestsTo("GET /api/v1/parts?").single()
+            val fetch = paths.requestsTo("GET /api/v2/parts?").single()
             assertTrue(fetch, listOf("color=5", "category=11", "spare=1", "with_sets=1", "search=stein").all { it in fetch })
             assertTrue(fetch, "accounts=" !in fetch)
         }
@@ -160,20 +160,20 @@ class PartsViewModelTest {
         val vm = vm()
         val fig = minifigsVm()
         val before = CoroutineScope(tick).launch { vm.partsState.collect {} }
-        assertTrue("no fetch without a server", paths.requestsTo("GET /api/v1/parts").isEmpty())
+        assertTrue("no fetch without a server", paths.requestsTo("GET /api/v2/parts").isEmpty())
         before.cancel()
         t.session.loginChanged(paths.server.url("/").toString(), loggedIn = true)
-        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v1/parts").isEmpty())
+        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v2/parts").isEmpty())
         val page = CoroutineScope(tick).launch { vm.partsState.collect {} }
-        for (path in listOf("GET /api/v1/parts?", "GET /api/v1/parts/brick-colors", "GET /api/v1/parts/colors", "GET /api/v1/parts/categories"))
+        for (path in listOf("GET /api/v2/parts?", "GET /api/v2/parts/brick-colors", "GET /api/v2/parts/colors", "GET /api/v2/parts/categories"))
             assertTrue(path, paths.requestsTo(path).isNotEmpty())
         page.cancel()
 
         CoroutineScope(tick).launch { fig.minifigsState.collect {} }.cancel()
-        val minifigsFetches = paths.requestsTo("GET /api/v1/minifigs").size
+        val minifigsFetches = paths.requestsTo("GET /api/v2/minifigs").size
         assertTrue("the figures loaded", minifigsFetches > 0 && fig.minifigsState.value.minifigs.isNotEmpty())
         CoroutineScope(tick).launch { fig.minifigsState.collect {} }.cancel()
-        assertEquals("already there: not once more", minifigsFetches, paths.requestsTo("GET /api/v1/minifigs").size)
+        assertEquals("already there: not once more", minifigsFetches, paths.requestsTo("GET /api/v2/minifigs").size)
     }
 
     @Test
@@ -184,15 +184,15 @@ class PartsViewModelTest {
         vm.setStorageFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")
         vm.loadParts()
-        assertTrue("manual parts", paths.requestsTo("GET /api/v1/parts/manual?").any { "search=stein" in it })
-        val parts = paths.requestsTo("GET /api/v1/parts/manual?").last { "search=stein" in it }
+        assertTrue("manual parts", paths.requestsTo("GET /api/v2/parts/manual?").any { "search=stein" in it })
+        val parts = paths.requestsTo("GET /api/v2/parts/manual?").last { "search=stein" in it }
         assertTrue(parts, "storage=Keller" in parts)
 
         // Without an account filter, figure search searches the store; the fetch is unfiltered.
         val fig = minifigsVm()
         fig.setMinifigsQuery("han")
         fig.loadMinifigs()
-        val figures = paths.requestsTo("GET /api/v1/minifigs/manual")
+        val figures = paths.requestsTo("GET /api/v2/minifigs/manual")
         assertTrue("manual figures fetched: $figures", figures.isNotEmpty() && figures.none { "search=" in it })
     }
 
@@ -200,7 +200,7 @@ class PartsViewModelTest {
     fun `the account filter of the figures travels with list, key figures and manual figures`() {
         val vm = minifigsVm()
         vm.setScope(ScopeFilter.View.MINIFIGS, "own")
-        for (path in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
+        for (path in listOf("GET /api/v2/minifigs?", "GET /api/v2/minifigs/stats?", "GET /api/v2/minifigs/manual?")) {
             assertTrue(path, paths.requestsTo(path).any { "accounts=own" in it })
         }
     }
@@ -210,32 +210,32 @@ class PartsViewModelTest {
         val vm = vm()
         vm.setScope(ScopeFilter.View.PARTS, "own")
         assertTrue("List loaded", vm.partsState.value.parts.isNotEmpty())
-        assertTrue("accounts=own" in paths.requestsTo("GET /api/v1/parts?").last())
-        val before = paths.requestsTo("GET /api/v1/parts?").size
+        assertTrue("accounts=own" in paths.requestsTo("GET /api/v2/parts?").last())
+        val before = paths.requestsTo("GET /api/v2/parts?").size
         vm.setScope(ScopeFilter.View.GALLERY, "own")
-        assertEquals(before, paths.requestsTo("GET /api/v1/parts?").size)
+        assertEquals(before, paths.requestsTo("GET /api/v2/parts?").size)
     }
 
     @Test
     fun `a changed part is in the store without fetching the list again`() {
-        paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
+        paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
         val vm = vm()
         vm.loadParts()
         assertEquals(listOf(1), vm.partsState.value.manualParts?.map { it.quantity })
-        val fetches = paths.requestsTo("GET /api/v1/parts/manual").size
+        val fetches = paths.requestsTo("GET /api/v2/parts/manual").size
         vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
         assertEquals("the new quantity from the store", listOf(3), vm.partsState.value.manualParts?.map { it.quantity })
-        assertEquals("without a new fetch", fetches, paths.requestsTo("GET /api/v1/parts/manual").size)
+        assertEquals("without a new fetch", fetches, paths.requestsTo("GET /api/v2/parts/manual").size)
         assertEquals("t${R.string.vm_saved}", t.messages.text)
-        assertTrue(paths.requestsTo("PUT /api/v1/parts/3001/5").isNotEmpty())
+        assertTrue(paths.requestsTo("PUT /api/v2/parts/3001/5").isNotEmpty())
     }
 
     @Test
     fun `an error the session layer already reports stays silent`() {
-        paths.codes["/api/v1/parts/3001/5"] = 401
+        paths.codes["/api/v2/parts/3001/5"] = 401
         val vm = vm()
         vm.deletePart("3001", 5)
-        assertTrue("Response there", paths.requestsTo("DELETE /api/v1/parts/3001/5").isNotEmpty())
+        assertTrue("Response there", paths.requestsTo("DELETE /api/v2/parts/3001/5").isNotEmpty())
         assertNull("A 401 is already reported — no second, empty sentence here", t.messages.text)
     }
 
@@ -249,10 +249,10 @@ class PartsViewModelTest {
         vm.setPartLocation("3001", 5, "Ki")
         vm.setPartLocation("3001", 5, "Kiste 3")
         clock.advanceTimeBy(500)
-        assertTrue("Nothing goes out before the quiet period", paths.requestsTo("PUT /api/v1/parts/3001/5/storage").isEmpty())
+        assertTrue("Nothing goes out before the quiet period", paths.requestsTo("PUT /api/v2/parts/3001/5/storage").isEmpty())
         clock.advanceTimeBy(400)
         assertTrue("saved", vm.setItemState.value.header?.storage == "Kiste 3")
-        assertEquals(1, paths.requestsTo("PUT /api/v1/parts/3001/5/storage").size)
+        assertEquals(1, paths.requestsTo("PUT /api/v2/parts/3001/5/storage").size)
     }
 
     @Test

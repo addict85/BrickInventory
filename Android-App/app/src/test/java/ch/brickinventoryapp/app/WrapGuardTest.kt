@@ -238,9 +238,9 @@ class WrapGuardTest {
 
     /** One alert armed, one triggered with last price — the row that wrapped character by character. */
     private fun priceAlarms(font: Float) {
-        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"},
-            {"set_number":"10294-1","condition":"N","direction":"ueber","threshold":440.0,"currency_code":"CHF",
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"},
+            {"set_number":"10294-1","condition":"N","direction":"above","threshold":440.0,"currency_code":"CHF",
              "triggered":true,"last_triggered_at":"2026-10-30T09:00:00Z","last_price":449.95}]}"""
         val vm = settings().also { it.loadAlarmOverview() }
         check("price alerts $font", font, { vm.alarmOverview.value.loaded }) {
@@ -284,18 +284,18 @@ class WrapGuardTest {
      * which is why [check] measures the natural width here.
      */
     private fun setDetailNarrow(font: Float) {
-        world.paths.responses["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+        world.paths.responses["/api/v2/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
             "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
             "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
-        world.paths.responses["/api/v1/sets/75192-1/price"] =
+        world.paths.responses["/api/v2/sets/75192-1/price"] =
             """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":21249.9,"min_price":20180.0,"max_price":21320.0,"qty_avg_price":21249.9}"""
-        world.paths.responses["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+        world.paths.responses["/api/v2/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
-        world.paths.responses["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_prozent":19.2}},
+        world.paths.responses["/api/v2/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_percent":19.2}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-10-01"]},
-            "pnl_prozent":19.2,"purchase_price":1049.0}"""
+            "pnl_percent":19.2,"purchase_price":1049.0}"""
         val vm = world.setDetail()
         check("set detail narrow $font", font, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
@@ -312,13 +312,13 @@ class WrapGuardTest {
      * „Gebraucht“ also fits next to „Standard-Zustand“.
      */
     private fun backgroundWork(font: Float) {
-        world.paths.responses["/api/v1/admin/auftraege"] = """{"success":true,
-            "auftraege":[
-              {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+        world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,
+            "jobs":[
+              {"id":"17","type":"images","status":"running","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
                "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
-               "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
-            "zusammenfassung":[],"pausen":[],"bildbedarf":7,
-            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+               "progress":{"done":3,"total":12,"text":"Bilder"},"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"}],
+            "summary":[],"pauses":[],"image_demand":7,
+            "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })

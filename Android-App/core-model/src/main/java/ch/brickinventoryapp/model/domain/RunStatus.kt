@@ -27,11 +27,6 @@ enum class RunStatus(val identifier: String) {
     val running: Boolean get() = this == RUNNING || this == WAITING
 
     companion object {
-        /** Contract bridge until API v2: Vertrag.kt still names this value `UNBEKANNT`. */
-        val UNBEKANNT get() = UNKNOWN
-        /** Contract bridge until API v2: Vertrag.kt still names this value `RUHT`. */
-        val RUHT get() = IDLE
-
         fun from(identifier: String?): RunStatus = entries.firstOrNull { it != UNKNOWN && it.identifier == identifier } ?: UNKNOWN
     }
 }

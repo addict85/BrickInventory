@@ -27,13 +27,13 @@ import java.io.File
  *      counter-checks/gutschein-pdf-auf-platte.patch
  *   D  pdfMaySavedBecome() always true → red “a voucher PDF cannot be downloaded …”
  *   F  in pdfStore() back to `pdfUrl.hashCode()` as the name → red “the file name depends …”
- *   G  showsVouchers() back to `"/api/v1/vouchers/" in pdfUrl` → red “the path recognizes vouchers …”
+ *   G  showsVouchers() back to `"/api/v2/vouchers/" in pdfUrl` → red “the path recognizes vouchers …”
  */
 class VoucherPdfStoreTest {
 
     private val cache = File(System.getProperty("java.io.tmpdir"), "bim-pdf-${System.nanoTime()}").apply { mkdirs() }
     private val voucher = voucherPdfAddress("https://brick.example", 7)
-    private val instruction = "https://brick.example/api/v1/instructions/42/file"
+    private val instruction = "https://brick.example/api/v2/instructions/42/file"
 
     @After
     fun tearDown() { cache.deleteRecursively() }
@@ -50,8 +50,8 @@ class VoucherPdfStoreTest {
     /** Two addresses with the same hashCode() would otherwise have shared one file. */
     @Test
     fun `the file name depends on the whole address, not on 32 bits`() {
-        val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
-        val y = "https://brick.example/api/v1/vouchers/BB/pdf"
+        val x = "https://brick.example/api/v2/vouchers/Aa/pdf"
+        val y = "https://brick.example/api/v2/vouchers/BB/pdf"
         assertEquals("the probe needs two addresses with the same hashCode()", x.hashCode(), y.hashCode())
         assertTrue(pdfStore(cache, x, false) != pdfStore(cache, y, false))
         assertEquals("anleitung_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.bin", pdfStore(cache, "", false)?.name)
@@ -60,11 +60,11 @@ class VoucherPdfStoreTest {
     @Test
     fun `the path recognizes vouchers, also in a different spelling`() {
         assertTrue(showsVouchers("https://brick.example/API/v1/Vouchers/7/pdf"))
-        assertTrue(showsVouchers("https://brick.example/api/v1/%76ouchers/7/pdf"))
+        assertTrue(showsVouchers("https://brick.example/api/v2/%76ouchers/7/pdf"))
         assertTrue(showsVouchers("https://brick.example/brick/api//v1/vouchers/export/pdf"))
         assertTrue("what cannot be read counts as confidential", showsVouchers("https://brick example/x y"))
         assertFalse(showsVouchers(instruction))
-        assertFalse("the query is not a path", showsVouchers("$instruction?von=/api/v1/vouchers/7"))
+        assertFalse("the query is not a path", showsVouchers("$instruction?von=/api/v2/vouchers/7"))
     }
 
     /** Voucher PDFs that older versions placed in their own folder. */

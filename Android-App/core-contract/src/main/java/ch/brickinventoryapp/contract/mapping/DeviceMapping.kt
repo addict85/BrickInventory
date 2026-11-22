@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.util.parseInstant
 fun AppToken.asDevice(): DeviceView = DeviceView(
     tokenId = tokenId,
     name = label?.takeIf { it.isNotBlank() } ?: "—",
-    current = aktuell,
+    current = current,
     created = createdAt,
     lastlyUsed = lastUsed,
     // Of the sliding and the fixed deadline the earlier one counts.

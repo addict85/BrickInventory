@@ -166,7 +166,7 @@ class LoginViewModelTest {
 
     @Test
     fun `a sign-in empties the filters, stores the token and reports the session`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+        paths.responses["/api/v2/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"voll","never_expires":false}}"""
         val vm = vm()
         vm.setFullAccess(true)
@@ -186,7 +186,7 @@ class LoginViewModelTest {
      */
     @Test
     fun `admin account without the check mark signs in without admin rights`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+        paths.responses["/api/v2/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"app","never_expires":false}}"""
         val vm = vm()
         vm.login("marco", "geheim")
@@ -197,8 +197,8 @@ class LoginViewModelTest {
 
     @Test
     fun `the first time the second factor asks only for the code`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"error":"Code fehlt"}"""
-        paths.codes["/api/v1/auth/login"] = 401
+        paths.responses["/api/v2/auth/login"] = """{"success":false,"second_factor":true,"error":"Code fehlt"}"""
+        paths.codes["/api/v2/auth/login"] = 401
         val vm = vm()
         vm.login("marco", "geheim")
         assertTrue("Codefeld", vm.loginState.value.codeNeeded)
@@ -213,7 +213,7 @@ class LoginViewModelTest {
 
     @Test
     fun `a second QR attempt after a successful sign-in reports no error`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
         t.session.loggedIn(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://server/", "einmalig")
@@ -227,8 +227,8 @@ class LoginViewModelTest {
 
     @Test
     fun `a QR code with fingerprint holds the pin for the first request and remembers it only afterwards`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(roots = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerprint = fp)
         vm.decideQrAccount(true)
@@ -243,11 +243,11 @@ class LoginViewModelTest {
 
     /** The first qr-login's handshake asks for the certificate and aborts (503 instead of TLS). */
     private fun firstContactOnFirstQrLogin() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         var first = true
         paths.priority = { _, path ->
-            if (first && path == "/api/v1/auth/qr-login") {
+            if (first && path == "/api/v2/auth/qr-login") {
                 first = false
                 question.report(CertificateUnresolved("brick.example.org:443", fp, CertificateUnresolved.Kind.FIRST_CONTACT, ctForced = true))
                 503 to """{"success":false}"""
@@ -269,7 +269,7 @@ class LoginViewModelTest {
         assertNull(vm.loginState.value.login.errorMessage)
 
         assertTrue(question.confirm(pinsTheStore))
-        assertEquals("Second attempt", 2, paths.requests.count { it == "POST /api/v1/auth/qr-login" })
+        assertEquals("Second attempt", 2, paths.requests.count { it == "POST /api/v2/auth/qr-login" })
         vm.decideQrAccount(true)
         assertTrue("signed in: ${store.log}", t.session.state.value.isLoggedIn)
         assertNull(vm.loginState.value.login.errorMessage)
@@ -281,7 +281,7 @@ class LoginViewModelTest {
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
         question.discard()
-        assertEquals(1, paths.requests.count { it == "POST /api/v1/auth/qr-login" })
+        assertEquals(1, paths.requests.count { it == "POST /api/v2/auth/qr-login" })
         assertFalse(vm.loginState.value.login.running)
         assertNotNull(vm.loginState.value.login.errorMessage)
         assertFalse(t.session.state.value.isLoggedIn)
@@ -289,7 +289,7 @@ class LoginViewModelTest {
 
     @Test
     fun `a failed QR code leaves no pin`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
         val vm = vm(roots = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerprint = fp)
         assertTrue("Response", store.log.any { it.startsWith("vergiss:") })
@@ -301,8 +301,8 @@ class LoginViewModelTest {
 
     @Test
     fun `a QR code with a different key never silently replaces the pin`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         store.pins["brick.example.org:443"] = fpOld
         val vm = vm()
         assertEquals("The screen gets the previous one", fpOld, vm.previousPin("brick.example.org", fp))
@@ -335,8 +335,8 @@ class LoginViewModelTest {
 
     @Test
     fun `an own key from the QR code applies on the first setup only when typed`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(roots = setOf(fpOld))
         assertTrue("Own root: type off", vm.mustTypeIn("https://brick.example.org/", fp))
         assertFalse("System root: its chain must be publicly valid anyway", vm.mustTypeIn("https://brick.example.org/", fpOld))
@@ -361,7 +361,7 @@ class LoginViewModelTest {
 
     @Test
     fun `a token without expiry only via https`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
         store.url = "http://localhost:3000"
         vm().login("marco", "geheim")
         assertTrue("http sign-in", paths.requestsTo("/auth/login").size == 1)
@@ -375,7 +375,7 @@ class LoginViewModelTest {
 
     @Test
     fun `after sign-out the form is empty`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":false,"error":"Falsches Passwort"}"""
+        paths.responses["/api/v2/auth/login"] = """{"success":false,"error":"Falsches Passwort"}"""
         val vm = vm()
         vm.login("marco", "falsch")
         assertTrue("Error", vm.loginState.value.login.errorMessage != null)
@@ -396,8 +396,8 @@ class LoginViewModelTest {
 
     @Test
     fun `a QR code with an http address is not taken over and says why`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm()
         vm.loginWithQrToken("http://nas:3000", "bim:x")
         assertEquals("t${R.string.setup_qr_plaintext_declined}", vm.loginState.value.login.errorMessage.text)
@@ -431,8 +431,8 @@ class LoginViewModelTest {
      */
     @Test
     fun `a QR code for a different server signs out only after the yes to the account`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"neu","user":{"id":2,"username":"anna"}}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = """{"success":true,"waiting":false,"token":"neu","user":{"id":2,"username":"anna"}}"""
         t.session.loggedIn(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
@@ -449,9 +449,9 @@ class LoginViewModelTest {
 
     @Test
     fun `a no to the account of another server leaves the previous sign-in`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = previewResponse
-        paths.responses["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = previewResponse
+        paths.responses["/api/v2/auth/qr-login/discard"] = """{"success":true}"""
         t.session.loggedIn(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
@@ -465,8 +465,8 @@ class LoginViewModelTest {
 
     @Test
     fun `if pairing with another server fails, the error is shown and the sign-in stays`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen","code":"qr_abgelaufen"}"""
-        paths.codes["/api/v1/auth/qr-login"] = 410
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen","code":"qr_abgelaufen"}"""
+        paths.codes["/api/v2/auth/qr-login"] = 410
         t.session.loggedIn(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
@@ -475,23 +475,23 @@ class LoginViewModelTest {
         assertTrue(t.session.state.value.isLoggedIn)
     }
 
-    private val previewResponse = """{"success":true,"wartet":false,"vorschau":true,"username":"marco"}"""
+    private val previewResponse = """{"success":true,"waiting":false,"preview":true,"username":"marco"}"""
 
     @Test
     fun `a QR sign-in shows account and server and takes over the token only after the yes`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = previewResponse
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = previewResponse
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
         assertEquals(QrAccount("marco", "https://brick.example.org"), vm.loginState.value.qrAccount)
         assertTrue("No token before the yes: ${store.log}", store.log.none { it.startsWith("token:") })
         assertFalse(t.session.state.value.isLoggedIn)
-        assertTrue(paths.bodyBytes.last(), "\"vorschau\":true" in paths.bodyBytes.last())
+        assertTrue(paths.bodyBytes.last(), "\"preview\":true" in paths.bodyBytes.last())
 
-        paths.responses["/api/v1/auth/qr-login/abholen"] =
-            """{"success":true,"wartet":false,"token":"abc","username":"marco","user":{"id":1,"username":"marco"}}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] =
+            """{"success":true,"waiting":false,"token":"abc","username":"marco","user":{"id":1,"username":"marco"}}"""
         vm.decideQrAccount(true)
-        assertTrue(paths.bodyBytes.last(), "\"vorschau\":false" in paths.bodyBytes.last())
+        assertTrue(paths.bodyBytes.last(), "\"preview\":false" in paths.bodyBytes.last())
         assertTrue("signed in", t.session.state.value.isLoggedIn)
         assertTrue(store.log.toString(), store.log.containsAll(listOf("token:abc", "name:marco")))
         assertNull(vm.loginState.value.qrAccount)
@@ -500,16 +500,16 @@ class LoginViewModelTest {
 
     @Test
     fun `a no to the shown account discards the pairing and leaves nothing behind`() {
-        paths.responses["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
-        paths.responses["/api/v1/auth/qr-login/abholen"] = previewResponse
-        paths.responses["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
+        paths.responses["/api/v2/auth/qr-login"] = """{"success":true,"waiting":true,"pickup":"h","code":"123456","expires_in":300}"""
+        paths.responses["/api/v2/auth/qr-login/collect"] = previewResponse
+        paths.responses["/api/v2/auth/qr-login/discard"] = """{"success":true}"""
         val vm = vm(roots = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerprint = fp)
         assertEquals("marco", vm.loginState.value.qrAccount?.user)
         vm.decideQrAccount(false)
-        assertEquals(1, paths.requestsTo("qr-login/verwerfen").size)
-        assertEquals("""{"abholung":"h"}""", paths.bodyBytes.last())
-        assertEquals("Only the preview was fetched", 1, paths.requestsTo("qr-login/abholen").size)
+        assertEquals(1, paths.requestsTo("qr-login/discard").size)
+        assertEquals("""{"pickup":"h"}""", paths.bodyBytes.last())
+        assertEquals("Only the preview was fetched", 1, paths.requestsTo("qr-login/collect").size)
         assertTrue("No token, no pin: ${store.log}",
             store.log.none { it.startsWith("token:") || it.startsWith("pin:") })
         assertEquals("vergiss:brick.example.org:443", store.log.last())
@@ -525,12 +525,12 @@ class LoginViewModelTest {
     }
 
     private val passkeyResponse = PasskeyResult.Response("""{"id":"pk1","response":{"clientDataJSON":"cd"}}""")
-    private val optionsBody = """{"success":true,"optionen":{"challenge":"ch-123","rpId":"brick.example.org"}}"""
+    private val optionsBody = """{"success":true,"options":{"challenge":"ch-123","rpId":"brick.example.org"}}"""
 
     @Test
     fun `signing in with a passkey stores the token like the password`() {
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
-        paths.responses["/api/v1/auth/passkey/anmelden"] = """{"success":true,"token":"pk-token","user":{"id":1,"username":"marco","is_admin":true},
+        paths.responses["/api/v2/auth/passkey/login/options"] = optionsBody
+        paths.responses["/api/v2/auth/passkey/login"] = """{"success":true,"token":"pk-token","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"voll","never_expires":true}}"""
         store.url = "https://brick.example.org"
         val fake = FakePasskey(passkeyResponse)
@@ -540,36 +540,36 @@ class LoginViewModelTest {
         assertTrue("signed in", t.session.state.value.isLoggedIn)
         assertEquals(listOf("filter-leer", "token:pk-token", "name:marco"), store.log)
         assertTrue(fake.options.single(), "\"challenge\":\"ch-123\"" in fake.options.single())
-        val body = paths.bodyBytes[paths.requests.indexOf("POST /api/v1/auth/passkey/anmelden")]
-        assertTrue(body, "\"mit_token\":true" in body && "\"id\":\"pk1\"" in body && "\"scope\":\"voll\"" in body)
+        val body = paths.bodyBytes[paths.requests.indexOf("POST /api/v2/auth/passkey/login")]
+        assertTrue(body, "\"with_token\":true" in body && "\"id\":\"pk1\"" in body && "\"scope\":\"voll\"" in body)
         assertTrue(body, "\"never_expires\":true" in body)
-        assertTrue(paths.bodyBytes.first(), "\"zweck\":\"anmelden\"" in paths.bodyBytes.first())
+        assertTrue(paths.bodyBytes.first(), "\"purpose\":\"login\"" in paths.bodyBytes.first())
         assertTrue(t.session.state.value.isAdmin)
     }
 
     @Test
     fun `an aborted passkey dialog sends nothing and reports no error`() {
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
+        paths.responses["/api/v2/auth/passkey/login/options"] = optionsBody
         store.url = "https://brick.example.org"
         val vm = vm()
         vm.loginPasskey(FakePasskey(PasskeyResult.Cancelled))
-        assertTrue("Options fetched", paths.requestsTo("optionen").isNotEmpty() && !vm.loginState.value.login.running)
+        assertTrue("Options fetched", paths.requestsTo("options").isNotEmpty() && !vm.loginState.value.login.running)
         assertNull(vm.loginState.value.login.errorMessage)
-        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v1/auth/passkey/anmelden" })
+        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v2/auth/passkey/login" })
         assertFalse(t.session.state.value.isLoggedIn)
     }
 
     @Test
     fun `without a passkey on the device or without a domain the sign-in says why`() {
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
+        paths.responses["/api/v2/auth/passkey/login/options"] = optionsBody
         store.url = "https://brick.example.org"
         val vm = vm()
         vm.loginPasskey(FakePasskey(PasskeyResult.NoPasskey))
         assertTrue("Satz", vm.loginState.value.login.errorMessage != null)
         assertEquals("t${R.string.login_passkey_none}", vm.loginState.value.login.errorMessage.text)
 
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":false,"error":"Passkeys brauchen eine Domain"}"""
-        paths.codes["/api/v1/auth/passkey/anmelden/optionen"] = 503
+        paths.responses["/api/v2/auth/passkey/login/options"] = """{"success":false,"error":"Passkeys brauchen eine Domain"}"""
+        paths.codes["/api/v2/auth/passkey/login/options"] = 503
         val fake = FakePasskey(passkeyResponse)
         vm.loginPasskey(fake)
         // The server's sentence, from the error layer as with the password.
@@ -579,22 +579,22 @@ class LoginViewModelTest {
 
     @Test
     fun `the second factor takes the passkey if the server offers it, with name and password`() {
-        paths.responses["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"passkey":true,"error":"Code fehlt"}"""
-        paths.codes["/api/v1/auth/login"] = 401
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
+        paths.responses["/api/v2/auth/login"] = """{"success":false,"second_factor":true,"passkey":true,"error":"Code fehlt"}"""
+        paths.codes["/api/v2/auth/login"] = 401
+        paths.responses["/api/v2/auth/passkey/login/options"] = optionsBody
         store.url = "https://brick.example.org"
         val vm = vm()
         vm.login("marco", "geheim")
         assertTrue("Codefeld", vm.loginState.value.codeNeeded)
         assertTrue("The server offers the passkey", vm.loginState.value.passkeyInsteadOfCode)
 
-        paths.codes.remove("/api/v1/auth/login")
-        paths.responses["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        paths.codes.remove("/api/v2/auth/login")
+        paths.responses["/api/v2/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
         vm.passkeyInsteadOfCode("marco", "geheim", FakePasskey(passkeyResponse))
         assertTrue("signed in", t.session.state.value.isLoggedIn)
-        val options = paths.bodyBytes[paths.requests.indexOf("POST /api/v1/auth/passkey/anmelden/optionen")]
-        assertTrue(options, "\"zweck\":\"zweiter_faktor\"" in options)
-        val body = paths.bodyBytes[paths.requests.lastIndexOf("POST /api/v1/auth/login")]
+        val options = paths.bodyBytes[paths.requests.indexOf("POST /api/v2/auth/passkey/login/options")]
+        assertTrue(options, "\"purpose\":\"second_factor\"" in options)
+        val body = paths.bodyBytes[paths.requests.lastIndexOf("POST /api/v2/auth/login")]
         assertTrue(body, "\"passkey\":{\"id\":\"pk1\"" in body && "\"password\":\"geheim\"" in body && "\"code\"" !in body)
         assertFalse(vm.loginState.value.passkeyInsteadOfCode)
     }
@@ -602,7 +602,7 @@ class LoginViewModelTest {
     /** Options with [rpId] (null: without the field) for the address https://brick.example.org. */
     private fun foreignOptions(rpId: String?): FakePasskey {
         val field = rpId?.let { ",\"rpId\":\"$it\"" } ?: ""
-        paths.responses["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":true,"optionen":{"challenge":"ch-1"$field}}"""
+        paths.responses["/api/v2/auth/passkey/login/options"] = """{"success":true,"options":{"challenge":"ch-1"$field}}"""
         store.url = "https://brick.example.org"
         return FakePasskey(passkeyResponse)
     }
@@ -618,7 +618,7 @@ class LoginViewModelTest {
             assertTrue("$foreign reached the Credential Manager", fake.options.isEmpty())
             assertFalse(vm.loginState.value.login.running)
         }
-        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v1/auth/passkey/anmelden" })
+        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v2/auth/passkey/login" })
         assertFalse(t.session.state.value.isLoggedIn)
     }
 
@@ -634,7 +634,7 @@ class LoginViewModelTest {
         vm.passkeyInsteadOfCode("marco", "geheim", second)
         assertTrue("rejected", (vm.loginState.value.login.errorMessage as? Message.Resource)?.id == R.string.login_passkey_rpid_foreign)
         assertTrue(fake.options.isEmpty() && second.options.isEmpty())
-        assertTrue(paths.requests.toString(), paths.requests.none { it.startsWith("POST /api/v1/auth/login") })
+        assertTrue(paths.requests.toString(), paths.requests.none { it.startsWith("POST /api/v2/auth/login") })
     }
 
     @Test
@@ -645,6 +645,6 @@ class LoginViewModelTest {
         vm.loginPasskey(switch)
         assertTrue("rejected", vm.loginState.value.login.errorMessage != null)
         assertEquals("t${R.string.login_passkey_error}", vm.loginState.value.login.errorMessage.text)
-        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v1/auth/passkey/anmelden" })
+        assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v2/auth/passkey/login" })
     }
 }

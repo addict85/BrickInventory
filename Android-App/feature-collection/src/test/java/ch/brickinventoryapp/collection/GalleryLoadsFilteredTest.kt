@@ -30,9 +30,9 @@ class GalleryLoadsFilteredTest {
     @Test
     fun `every page of the account view carries view and filter`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        val paths = PathServer("/api/v1/sets" to """{"success":true,"total":2,"sets":[
+        val paths = PathServer("/api/v2/sets" to """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falke"},{"set_number":"10294-1","name":"Titanic"}]}""",
-            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":5,"total_quantity":5,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""")
+            "/api/v2/stats" to """{"success":true,"stats":{"total_sets":5,"total_quantity":5,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""")
         val t = TestServices(paths.onTick(), io = Dispatchers.Main)
         try {
             val wanted = SavedStateHandle(mapOf("galerie_suche" to "Falke",
@@ -41,7 +41,7 @@ class GalleryLoadsFilteredTest {
                 t.accountView, testFinancesRepository(t.api), wanted))
             vm.setScope(ScopeFilter.View.GALLERY, "own")
             assertEquals(listOf("75192-1", "10294-1"), vm.galleryState.value.sets.map { it.setNumber })
-            val fetches = paths.requestsTo("GET /api/v1/sets?")
+            val fetches = paths.requestsTo("GET /api/v2/sets?")
             assertTrue("no fetch", fetches.isNotEmpty())
             for (a in fetches) for (part in listOf("accounts=own", "search=Falke", "theme=Star%20Wars", "sort=year_desc")) {
                 assertTrue("$a without $part", part in a)

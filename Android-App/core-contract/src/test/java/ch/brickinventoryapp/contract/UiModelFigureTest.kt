@@ -34,14 +34,14 @@ import java.time.Instant
  *      the class folder → red „URI is not hierarchical“; with the list green
  *   E  „TeileAbbildungen“ deleted from Beispielfueller.ABBILDUNGSDATEIEN → red
  *      “every file with mappings is in the list“ and „Nur 48 Abbildungen“
- *   F  in Profil.asView `emailConfirmed = emailVerified` → `= !emailVerified`
+ *   F  in Profile.asView `emailConfirmed = emailVerified` → `= !emailVerified`
  *      → red “profile, household and CSV state …”; parent accounts from `parents` → red „ohne parents gilt linked_to“
  *   G  counter-checks/geld-auf-rappen-gerundet.patch: Geld.aus rounds to centimes instead of four places
  *      → red “amounts come as Money to four places …”
  *   H  counter-checks/kauf-ohne-zeitpunkt.patch: Acquisition.asView does not pass createdAt on → red, the same test
  *      and “every mapping carries every field of the same name unchanged“ not (filler values are no points in time)
  *   I  SampleFiller.instanceGetters without the static filter → red “the counterpart of a getter is never the
- *      static annotation holder” (Merkposten.getWaehrung-…$annotations is listed)
+ *      static annotation holder” (WantedItem.getCurrency-…$annotations is listed)
  */
 class UiModelFigureTest {
 
@@ -89,11 +89,11 @@ class UiModelFigureTest {
 
     @Test
     fun `price alert, voucher, chart and color carry their values`() {
-        val alarm = Preisalarm(setNumber = "75192-1", direction = AlarmDirection.BELOW, threshold = 500.0).asView()
+        val alarm = PriceAlert(setNumber = "75192-1", direction = AlarmDirection.BELOW, threshold = 500.0).asView()
         assertTrue(alarm.below)
-        assertFalse(Preisalarm(direction = AlarmDirection.OVER).asView().below)
+        assertFalse(PriceAlert(direction = AlarmDirection.OVER).asView().below)
         assertEquals(Money(5_000_000), alarm.threshold)
-        val g = Gutschein(id = 3, number = "6061", pin = "1", amount = 20.0, currency = CurrencyCode("CHF")).asView()
+        val g = Voucher(id = 3, number = "6061", pin = "1", amount = 20.0, currency = CurrencyCode("CHF")).asView()
         assertEquals(listOf(3, Money(200_000), CurrencyCode.CHF), listOf(g.id, g.amount, g.currency))
         val p = ChartPoint(xLabel = "1. Okt", value = 12.5, yFrac = 0.25).asView()
         assertEquals(Triple("1. Okt", Money(125_000), 0.25), Triple(p.xLabel, p.value, p.yFrac))
@@ -104,9 +104,9 @@ class UiModelFigureTest {
 
     @Test
     fun `profile, household and CSV state are prepared for the UI`() {
-        assertTrue(Profil(id = 1, username = "m", emailVerified = true).asView().emailConfirmed)
-        assertFalse("false means unconfirmed", Profil(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
-        val oldField = HouseholdStatusResponse(linkedTo = KontoName(id = 7, username = "haupt")).asView()
+        assertTrue(Profile(id = 1, username = "m", emailVerified = true).asView().emailConfirmed)
+        assertFalse("false means unconfirmed", Profile(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
+        val oldField = HouseholdStatusResponse(linkedTo = AccountName(id = 7, username = "haupt")).asView()
         assertEquals("without parents linked_to applies", listOf(AccountView(7, "haupt")), oldField.parentAccounts)
         val state = CsvImportStatus(status = RunStatus.RUNNING, current = "75192-1").asView()
         assertEquals(listOf(0, 0, 0, 0, 0), listOf(state.total, state.done, state.ok, state.warn, state.err))
@@ -115,7 +115,7 @@ class UiModelFigureTest {
 
     @Test
     fun `the usage of a part carries the item as header`() {
-        val v = VerwendendeSetsResponse(item = BestandteilKopf(nummer = "3001"), sets = listOf(VerwendendesSet(setNumber = "10294-1"))).asView()
+        val v = UsingSetsResponse(item = ComponentHeader(number = "3001"), sets = listOf(UsingSet(setNumber = "10294-1"))).asView()
         assertEquals("3001", v.header?.number)
         assertEquals(listOf("10294-1"), v.sets.map { it.setNumber })
     }
@@ -142,8 +142,8 @@ class UiModelFigureTest {
 
     @Test
     fun `the counterpart of a getter is never the static annotation holder`() {
-        val getters = SampleFiller.instanceGetters(Merkposten::class.java).map { it.name }
-        assertTrue("getWaehrung is missing: $getters", getters.any { it.startsWith("getWaehrung-") })
+        val getters = SampleFiller.instanceGetters(WantedItem::class.java).map { it.name }
+        assertTrue("getCurrency is missing: $getters", getters.any { it.startsWith("getCurrency-") })
         assertEquals("static holders listed", emptyList<String>(), getters.filter { it.endsWith("\$annotations") })
     }
 
@@ -159,16 +159,16 @@ class UiModelFigureTest {
 
     private companion object {
         /** Mappings with their own rule (status as enumeration), checked in BackgroundWorkTest. */
-        val OWN_RULES = setOf("Auftrag", "AuftraegeResponse")
+        val OWN_RULES = setOf("Job", "JobQueueResponse")
         /** Deliberately renamed or derived; checked in the individual tests above. */
         val WITHOUT_COUNTERPART = sortedSetOf(
             // Parts total and breakdown, checked in PartsTotalCountTest.
             "DashboardStats.getPartsFromSets", "DashboardStats.getPartsSingle",
             "PartsStats.getPartsFromSets", "PartsStats.getPartsSingle", "PartsStats.getPartsTotal",
-            "Preisalarm.getBelow", "Profil.getEmailConfirmed", "StartupStatus.getShare", "StartupStatus.getUndercut",
+            "PriceAlert.getBelow", "Profile.getEmailConfirmed", "StartupStatus.getShare", "StartupStatus.getUndercut",
             "PortfolioHistoryResponse.getDays", "PortfolioHistoryResponse.getChangePercent",
-            "VerwendendeSetsResponse.getHeader", "ValuationResponse.getCacheTtlHours",
-            "Preisalarm.getLastlyAt", "Preisalarm.getLastlyPrice-kb79XTw", "Profil.getEmailNew",
+            "UsingSetsResponse.getHeader",
+            "PriceAlert.getLastlyAt", "PriceAlert.getLastlyPrice-kb79XTw", "Profile.getEmailNew",
             // The amount is named in the domain type after what it is; checked above in “price alert, voucher, chart …”.
             "PriceChartPoint.getPrice-_jXMShk",
         )

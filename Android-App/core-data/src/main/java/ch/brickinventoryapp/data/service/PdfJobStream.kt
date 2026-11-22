@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.service
 
-import ch.brickinventoryapp.contract.PdfAuftragStand
+import ch.brickinventoryapp.contract.PdfJobState
 import ch.brickinventoryapp.data.SseEvent
 import ch.brickinventoryapp.data.collection.asStatus
 import ch.brickinventoryapp.data.di.SseClient
@@ -40,10 +40,10 @@ class PdfJobStream @Inject internal constructor(
 
     fun observe(jobId: String): Flow<Event> {
         val request = Request.Builder()
-            .url("${PLACEHOLDER_BASE}api/v1/sets/partslist-pdf/stream/$jobId")
+            .url("${PLACEHOLDER_BASE}api/v2/sets/partslist-pdf/stream/$jobId")
             .header("Accept", "text/event-stream")
             .build()
-        return sseStream(client, request) { json.decodeFromString(PdfAuftragStand.serializer(), it) }.map { e ->
+        return sseStream(client, request) { json.decodeFromString(PdfJobState.serializer(), it) }.map { e ->
             when (e) {
                 is SseEvent.Data -> Event.State(e.value.asStatus())
                 is SseEvent.Unreadable -> {

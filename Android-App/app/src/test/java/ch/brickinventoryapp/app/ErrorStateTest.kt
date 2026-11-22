@@ -98,7 +98,7 @@ class ErrorStateTest {
         assertEquals(Message.Resource(R.string.err_server, listOf(404)), vm.wantedState.value.fetch.errorMessage)
         assertEquals("404 without a body is a server error", ErrorClass.SERVER, vm.wantedState.value.fetch.errorKind)
 
-        paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
+        paths.responses["/api/v2/wanted"] = """{"success":true,"item":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.loadWanted()
         assertTrue("content", vm.wantedState.value.wantedItem.isNotEmpty())
         assertNull(vm.wantedState.value.fetch.errorMessage)
@@ -111,7 +111,7 @@ class ErrorStateTest {
         assertTrue("Error", vm.financeState.value.valuationLoad is Load.Failure)
         assertEquals(ErrorClass.SERVER, vm.financeState.value.valuationLoad.errorKind)
 
-        paths.responses["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
+        paths.responses["/api/v2/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
         assertTrue("rating", vm.financeState.value.valuation != null)
         assertNull(vm.financeState.value.valuationLoad.errorMessage)

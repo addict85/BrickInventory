@@ -74,7 +74,7 @@ class InstructionDownloadTest {
         val api = OkHttpClient.Builder().addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("Authorization", "Bearer token-marco").build())
         }.build()
-        val address = server.url("/api/v1/instructions/42/file").toString()
+        val address = server.url("/api/v2/instructions/42/file").toString()
         val target = pdfStore(ctx.cacheDir, address, false)!!
         val download = InstructionDownload(ctx, api, store, StandardTestDispatcher(testScheduler))
 

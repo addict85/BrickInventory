@@ -67,12 +67,12 @@ class PartsOrderTest {
     fun setUp() {
         Dispatchers.setMain(tick)
         paths = PathServer(
-            "/api/v1/parts" to """{"success":true,"total":3,"parts":[
+            "/api/v2/parts" to """{"success":true,"total":3,"parts":[
                 {"part_number":"3001","part_name":"Brick 2 x 4","color_id":15,"color_name":"White","total_quantity":10},
                 {"part_number":"3001","part_name":"Brick 2 x 4","color_id":19,"color_name":"Tan","total_quantity":5},
                 {"part_number":"3020","part_name":"Plate 2 x 4","color_id":1,"color_name":"Blue","total_quantity":50}]}""",
-            "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
-            "/api/v1/parts/stats" to """{"success":true}""",
+            "/api/v2/parts/manual" to """{"success":true,"parts":[]}""",
+            "/api/v2/parts/stats" to """{"success":true}""",
         )
         t = TestServices(paths.onTick(), io = tick)
     }
@@ -92,11 +92,11 @@ class PartsOrderTest {
         val vm = vm(wanted)
         vm.loadParts()
         assertEquals(listOf("3020/Blue", "3001/Tan", "3001/White"), vm.series())
-        val fetches = paths.requestsTo("GET /api/v1/parts?").size
+        val fetches = paths.requestsTo("GET /api/v2/parts?").size
 
         vm.setPartsOrder(PartsFilter.Order.QUANTITY)
         assertEquals(listOf("3020/Blue", "3001/White", "3001/Tan"), vm.series())
-        assertEquals("Re-sorting does not reload", fetches, paths.requestsTo("GET /api/v1/parts?").size)
+        assertEquals("Re-sorting does not reload", fetches, paths.requestsTo("GET /api/v2/parts?").size)
 
         paths.newProcess(io = tick) { _, t ->
             val newValue = vm(wanted, t)

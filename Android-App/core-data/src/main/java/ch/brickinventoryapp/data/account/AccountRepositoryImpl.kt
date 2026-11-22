@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.data.account
 
-import ch.brickinventoryapp.contract.AndereBeendenAnfrage
+import ch.brickinventoryapp.contract.EndOthersRequest
 import ch.brickinventoryapp.contract.ForgotPasswordRequest
 import ch.brickinventoryapp.contract.LoginRequest
 import ch.brickinventoryapp.contract.LoginResponse
-import ch.brickinventoryapp.contract.PasskeyAnmeldungAnfrage
-import ch.brickinventoryapp.contract.PasskeyOptionenAnfrage
-import ch.brickinventoryapp.contract.PasswortAenderung
-import ch.brickinventoryapp.contract.ProfilAenderung
-import ch.brickinventoryapp.contract.QrAbholRequest
+import ch.brickinventoryapp.contract.PasskeyLoginRequest
+import ch.brickinventoryapp.contract.PasskeyOptionsRequest
+import ch.brickinventoryapp.contract.PasswordChange
+import ch.brickinventoryapp.contract.ProfileRequest
+import ch.brickinventoryapp.contract.QrCollectRequest
+import ch.brickinventoryapp.contract.QrDiscard
 import ch.brickinventoryapp.contract.QrLoginRequest
-import ch.brickinventoryapp.contract.QrVerwerfen
 import ch.brickinventoryapp.contract.RegisterRequest
-import ch.brickinventoryapp.contract.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.contract.SecondFactorRequest
 import ch.brickinventoryapp.contract.mapping.admin
 import ch.brickinventoryapp.contract.mapping.asDevice
 import ch.brickinventoryapp.contract.mapping.asView
@@ -96,7 +96,7 @@ internal class AccountRepositoryImpl @Inject constructor(
                 val body = response.errorBody()?.string()
                 val parsed = body?.let { runCatching { json.decodeFromString<LoginResponse>(it) }.getOrNull() }
                 body?.let { runCatching { json.decodeFromString<SecondFactorRoutes>(it) }.getOrNull() }?.let { routes = it }
-                if (parsed?.zweiterFaktor == true) retrofit2.Response.success(parsed) else response
+                if (parsed?.secondFactor == true) retrofit2.Response.success(parsed) else response
             } else response
         }
         return when (r) {
@@ -107,36 +107,36 @@ internal class AccountRepositoryImpl @Inject constructor(
 
     /** The options for the Credential Manager; [purpose] like PASSKEY_SIGN_IN. */
     override suspend fun passkeyOptions(purpose: String): Outcome<JsonObject> =
-        safeCall { api.passkeyOptions(PasskeyOptionenAnfrage(zweck = purpose)) }.mapData { it.optionen }
+        safeCall { api.passkeyOptions(PasskeyOptionsRequest(purpose = purpose)) }.mapData { it.options }
 
     /** Without a password; the same token as with [login], with the same rules for expiry. */
     override suspend fun loginPasskey(serverUrl: String, response: JsonObject, scope: String): Outcome<Login> =
-        safeCall { api.loginPasskey(PasskeyAnmeldungAnfrage(antwort = response, scope = scope,
+        safeCall { api.loginPasskey(PasskeyLoginRequest(response = response, scope = scope,
             neverExpires = NetworkPolicy.isHttps(serverUrl))) }.mapData { it.asLogin() }
 
     override suspend fun qrLogin(token: String, label: String): Outcome<QrPairing> =
         safeCall { api.qrLogin(QrLoginRequest(token = token, label = label)) }
-            .promised({ it.success && it.abholung.isNotEmpty() && it.code.isNotEmpty() }, { null }) {
-                QrPairing(it.abholung, it.code, it.expiresIn)
+            .promised({ it.success && it.pickup.isNotEmpty() && it.code.isNotEmpty() }, { null }) {
+                QrPairing(it.pickup, it.code, it.expiresIn)
             }
 
     override suspend fun pickUpQr(pickup: String, preview: Boolean): Outcome<QrPickupState> =
-        safeCall { api.pickUpQr(QrAbholRequest(abholung = pickup, vorschau = preview)) }.mapData {
-            QrPickupState(token = it.token, user = it.username ?: it.user?.username, waiting = it.wartet,
-                preview = it.vorschau, error = it.error)
+        safeCall { api.pickUpQr(QrCollectRequest(pickup = pickup, preview = preview)) }.mapData {
+            QrPickupState(token = it.token, user = it.username ?: it.user?.username, waiting = it.waiting,
+                preview = it.preview, error = it.error)
         }
 
     override suspend fun discardQr(pickup: String): Outcome<Unit> =
-        safeCall { api.discardQr(QrVerwerfen(abholung = pickup)) }.withoutContent()
+        safeCall { api.discardQr(QrDiscard(pickup = pickup)) }.withoutContent()
 
     override suspend fun getMe(): Outcome<AccountOwner?> = safeCall { api.getMe() }.mapData { r ->
-        r.user?.let { AccountOwner(it.id, it.username, it.isAdmin, it.zweiterFaktorPflicht, parseInstant(r.tokenInfo?.hardExpiresAt)) }
+        r.user?.let { AccountOwner(it.id, it.username, it.isAdmin, it.secondFactorRequired, parseInstant(r.tokenInfo?.hardExpiresAt)) }
     }
 
     // Create account and forgot password — both without an existing sign-in.
     override suspend fun getRegistrationStatus(): Outcome<RegistrationState> =
         safeCall { api.getRegistrationStatus() }.mapData {
-            RegistrationState(it.enabled, it.passkey, it.passwortVergessen, it.mailVersand)
+            RegistrationState(it.enabled, it.passkey, it.forgotPassword, it.mailDelivery)
         }
 
     override suspend fun register(creation: AccountCreation): Outcome<Registration> =
@@ -152,29 +152,29 @@ internal class AccountRepositoryImpl @Inject constructor(
         safeCall { api.getProfile() }.promised({ it.user != null }, { it.error }) { it.user!!.asView() }
 
     override suspend fun secondFactorStatus(): Outcome<SecondFactorStatus> =
-        safeCall { api.secondFactorStatus() }.promised({ it.success }, { it.error }) { SecondFactorStatus(it.aktiv, it.codesUebrig) }
+        safeCall { api.secondFactorStatus() }.promised({ it.success }, { it.error }) { SecondFactorStatus(it.active, it.codesLeft) }
 
     override suspend fun setUpSecondFactor(password: String): Outcome<SecondFactorSetup> =
-        safeCall { api.setUpSecondFactor(ZweiterFaktorAnfrage(password = password)) }
-            .promised({ it.success }, { it.error }) { SecondFactorSetup(it.geheimnis, it.otpauth) }
+        safeCall { api.setUpSecondFactor(SecondFactorRequest(password = password)) }
+            .promised({ it.success }, { it.error }) { SecondFactorSetup(it.secret, it.otpauth) }
 
     override suspend fun secondFactorConfirm(code: String): Outcome<List<String>> =
-        safeCall { api.secondFactorConfirm(ZweiterFaktorAnfrage(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
+        safeCall { api.secondFactorConfirm(SecondFactorRequest(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
 
     override suspend fun disableSecondFactor(password: String, code: String): Outcome<Unit> =
-        safeCall { api.disableSecondFactor(ZweiterFaktorAnfrage(password = password, code = code)) }.done()
+        safeCall { api.disableSecondFactor(SecondFactorRequest(password = password, code = code)) }.done()
 
     override suspend fun secondFactorNewCodes(code: String): Outcome<List<String>> =
-        safeCall { api.secondFactorNewCodes(ZweiterFaktorAnfrage(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
+        safeCall { api.secondFactorNewCodes(SecondFactorRequest(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
 
     override suspend fun updateProfile(change: ProfileChange): Outcome<ProfileSaved> =
         safeCall {
-            api.updateProfile(ProfilAenderung(username = change.user, email = change.email, firstName = change.firstName,
+            api.updateProfile(ProfileRequest(username = change.user, email = change.email, firstName = change.firstName,
                 lastName = change.lastName, passwordCurrent = change.passwordCurrent, code = change.code))
         }.promised({ it.success }) { ProfileSaved(newAddress = it.emailChanged == true, mailSent = it.emailSent == true) }
 
     override suspend fun changePassword(current: String, newValue: String, code: String?): Outcome<Unit> =
-        safeCall { api.changePassword(PasswortAenderung(current = current, newPassword = newValue, code = code)) }.done()
+        safeCall { api.changePassword(PasswordChange(current = current, newPassword = newValue, code = code)) }.done()
 
     override suspend fun getTokens(): Outcome<List<DeviceView>> =
         safeCall { api.getTokens() }.promised({ it.success }, { it.error }) { r -> r.tokens.map { it.asDevice() } }
@@ -183,8 +183,8 @@ internal class AccountRepositoryImpl @Inject constructor(
         safeCall { api.revokeToken(tokenId, confirmation.asRequest()) }.mapData { it.deleted }
 
     override suspend fun endOther(confirmation: Confirmation): Outcome<Int> =
-        safeCall { api.endOther(AndereBeendenAnfrage(password = confirmation.password, code = confirmation.code)) }
-            .mapData { it.zugaenge }
+        safeCall { api.endOther(EndOthersRequest(password = confirmation.password, code = confirmation.code)) }
+            .mapData { it.accesses }
 
     /**
      * Swap the token; [oldToken] explicitly goes along (see data/TokenSwap).
@@ -230,12 +230,12 @@ internal class AccountRepositoryImpl @Inject constructor(
 
     /** The effective design: with a token the account's, otherwise the default. See AccountApi.getAppTheme. */
     override suspend fun getAppTheme(): Outcome<DesignState> =
-        safeCall { api.getAppTheme() }.promised({ it.success }) { DesignState(it.theme, it.vorgabe, it.eigenes) }
+        safeCall { api.getAppTheme() }.promised({ it.success }) { DesignState(it.theme, it.preset, it.own) }
 
     /** Set the own design; null resets to the admin's default ("" on the wire). */
     override suspend fun setOwnDesign(theme: Design?): Outcome<DesignState> =
         safeCall { api.setOwnDesign(mapOf("theme" to (theme?.identifier ?: ""))) }
-            .promised({ it.success }) { DesignState(it.theme, it.vorgabe, it.eigenes) }
+            .promised({ it.success }) { DesignState(it.theme, it.preset, it.own) }
 
     override suspend fun updateSettings(currency: CurrencyCode, condition: Condition): Outcome<Unit> =
         safeCall { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.identifier)) }.done()
@@ -253,9 +253,9 @@ data class LoginReply(val response: Login, val passkeyInsteadOfCode: Boolean = f
 
 private fun LoginResponse.asLogin() =
     Login(success = success, token = token, user = user?.username, admin = admin,
-        secondFactor = zweiterFaktor, error = error)
+        secondFactor = secondFactor, error = error)
 
-private fun Confirmation.asRequest() = ZweiterFaktorAnfrage(password = password, code = code)
+private fun Confirmation.asRequest() = SecondFactorRequest(password = password, code = code)
 
 /** From the 401 response to the second factor: does a passkey work instead of the code? Not in the contract (the error carries extra fields freely). */
 @Serializable

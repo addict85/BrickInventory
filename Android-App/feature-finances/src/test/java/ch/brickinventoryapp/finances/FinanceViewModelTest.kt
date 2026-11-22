@@ -51,13 +51,13 @@ class FinanceViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         paths = PathServer(
-            "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
+            "/api/v2/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
                 {"set_number":"75192-1","name":"Falke"}]}""",
-            "/api/v1/finance/portfolio-history" to """{"success":true,"period":"month","points":[]}""",
+            "/api/v2/finance/portfolio-history" to """{"success":true,"period":"month","points":[]}""",
             // Fully via DTO: if the parsing throws, Retrofit passes the error on via
             // Dispatchers.Default, and the test no longer runs in lockstep.
-            "/api/v1/finance/parts-valuation" to """{"success":true,"total_value":"0.00","parts":[]}""",
-            "/api/v1/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
+            "/api/v2/finance/parts-valuation" to """{"success":true,"total_value":"0.00","parts":[]}""",
+            "/api/v2/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -95,7 +95,7 @@ class FinanceViewModelTest {
 
     @Test
     fun `a change of the stock in the store reloads the valuation`() {
-        paths.responses["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}"""
+        paths.responses["/api/v2/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}"""
         val vm = vm()
         // A different area fetches the sets into the store; the valuation follows it.
         runBlocking { t.sets().refreshSets() }

@@ -48,7 +48,7 @@ interface RotationReason {
 }
 
 /** Path of the rotation itself: its own response triggers no further one. */
-private const val ROTATIONS_PATH = "/api/v1/auth/token-rotieren"
+private const val ROTATIONS_PATH = "/api/v2/auth/rotate-token"
 
 /**
  * A 401 with these codes means "confirmation wrong or missing", not "token

@@ -140,7 +140,7 @@ class ServerClientsTest {
     fun `if the server is unreachable, the image comes from the cache`() {
         server.enqueue(MockResponse().setHeader("Cache-Control", "max-age=0").setBody("bild-10179"))
         val image = imageClient()
-        val address = server.url("/api/v1/images/set/10179-1").toString()
+        val address = server.url("/api/v2/images/set/10179-1").toString()
         assertEquals(200 to "bild-10179", fetch(image, address))
         server.shutdown()
         assertEquals("Offline the tile stays empty", 200 to "bild-10179", fetch(image, address))
@@ -148,7 +148,7 @@ class ServerClientsTest {
 
     @Test
     fun `if the server is unreachable and the cache empty, a preview comes from the preview store`() {
-        val address = server.url("/api/v1/images/set/75192-1?thumb=1").toString()
+        val address = server.url("/api/v2/images/set/75192-1?thumb=1").toString()
         previews.write(address, "vorschau-75192".toByteArray())
         val image = imageClient()
         server.shutdown()
@@ -160,7 +160,7 @@ class ServerClientsTest {
         server.enqueue(MockResponse().setBody("kein Bild"))
         val loader = NetworkModule.provideImageLoader(ctx, imageClient())
         assertNull("Coil would hold the same bytes once more, in plaintext", loader.diskCache)
-        runBlocking { loader.execute(ImageRequest.Builder(ctx).data(server.url("/api/v1/images/set/1-1").toString()).build()) }
+        runBlocking { loader.execute(ImageRequest.Builder(ctx).data(server.url("/api/v2/images/set/1-1").toString()).build()) }
         val request = server.takeRequest(5, TimeUnit.SECONDS)
         assertNotNull("Coil requested nothing", request)
         assertNotNull("The request did not go through the image client's guard", request!!.getHeader("X-App-Api"))

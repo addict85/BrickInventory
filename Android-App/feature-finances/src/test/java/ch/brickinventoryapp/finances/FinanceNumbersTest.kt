@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.contract.FigsValuationResponse
-import ch.brickinventoryapp.contract.Gutschein
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
 import ch.brickinventoryapp.contract.PnlTotals
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.ValuationResponse
+import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.finances.ui.FinanceRow
 import ch.brickinventoryapp.finances.ui.financeHeader
@@ -54,18 +54,18 @@ import java.math.BigDecimal
 class FinanceNumbersTest {
 
     private val valuationLoad = BrickJson.decodeFromString(ValuationResponse.serializer(), """{
-        "success": true, "currency": "CHF", "ttl_stunden": 12, "kaufpreise_fremde_waehrung": 1,
+        "success": true, "currency": "CHF", "cache_ttl_hours": 12, "foreign_currency_purchases": 1,
         "totals": {"min": "0.10", "avg": "0.10", "max": "0.10", "qty_avg": "0.10"},
         "sets": [
-          {"set_number": "10294-1", "quantity": 2, "total_avg": "999.99", "wert_gesamt": 481.34,
-           "purchase_price": 150.0, "pnl_prozent": 60.4,
+          {"set_number": "10294-1", "quantity": 2, "total_avg": "999.99", "value_total": 481.34,
+           "purchase_price": 150.0, "pnl_percent": 60.4,
            "acquisitions": [
              {"id": 7, "condition": "N", "quantity": 1, "purchase_price": 100.0, "total_avg": "999.99",
-              "wert_gesamt": 240.67, "pnl_pct": "-50.0", "pnl_prozent": 140.7},
+              "value_total": 240.67, "pnl_pct": "-50.0", "pnl_percent": 140.7},
              {"id": 8, "condition": "U", "quantity": 1, "purchase_price": 200.0, "total_avg": "999.99",
-              "wert_gesamt": 240.67, "pnl_pct": "-50.0", "pnl_prozent": 20.3}]},
-          {"set_number": "75192-1", "quantity": 1, "total_avg": "999.99", "wert_gesamt": 812.5,
-           "purchase_price": 700.0, "pnl_prozent": 16.1, "acquisitions": []}
+              "value_total": 240.67, "pnl_pct": "-50.0", "pnl_percent": 20.3}]},
+          {"set_number": "75192-1", "quantity": 1, "total_avg": "999.99", "value_total": 812.5,
+           "purchase_price": 700.0, "pnl_percent": 16.1, "acquisitions": []}
         ]}""").asView()
 
     @Test
@@ -82,14 +82,14 @@ class FinanceNumbersTest {
     @Test
     fun `parts and figures read the same number fields`() {
         val parts = BrickJson.decodeFromString(PartsValuationResponse.serializer(), """{
-            "success": true, "total_value": "0.20", "kaufpreise_fremde_waehrung": 2,
+            "success": true, "total_value": "0.20", "foreign_currency_purchases": 2,
             "parts": [{"id": 3, "part_number": "3001", "quantity": 4, "display_value": "999.99",
-                       "wert_gesamt": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_prozent": 20.0}]}""").asView()
+                       "value_total": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_percent": 20.0}]}""").asView()
         val figures = BrickJson.decodeFromString(FigsValuationResponse.serializer(), """{
-            "success": true, "total_value": "0.00", "kaufpreise_fremde_waehrung": 1,
-            "figs": [{"id": 5, "fig_number": "sw0001", "display_value": "999.99", "wert_gesamt": 30.0,
+            "success": true, "total_value": "0.00", "foreign_currency_purchases": 1,
+            "figs": [{"id": 5, "fig_number": "sw0001", "display_value": "999.99", "value_total": 30.0,
                       "acquisitions": [{"id": 9, "condition": "U", "quantity": 1, "purchase_price": 20.0,
-                                        "wert_gesamt": 30.0, "pnl_prozent": 50.0}]}]}""").asView()
+                                        "value_total": 30.0, "pnl_percent": 50.0}]}]}""").asView()
         val t = partRows(parts.parts).single().second
         assertEquals(Money.from(1.2), t.value)
         assertEquals(20.0, t.pnlPercent!!, 0.0)
@@ -116,9 +116,9 @@ class FinanceNumbersTest {
     @Test
     fun `foreign purchase prices count pnl over all three kinds`() {
         val pnl = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
-            "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
-            "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_betrag": 9.0, "pnl_prozent": 3.4,
-                      "baseline_pnl_prozent": 3.4}]}""").asView()
+            "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_percent": 12.5, "foreign_currency_purchases": 4},
+            "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_amount": 9.0, "pnl_percent": 3.4,
+                      "baseline_pnl_percent": 3.4}]}""").asView()
         assertEquals(4, foreignPurchasePrices(valuationLoad, null, null, pnl))
         assertEquals(12.5, pnl.totals.pnlPercent!!, 0.0)
         assertEquals(Money.from(9.0), pnl.sets.single().pnlAmount)
@@ -128,15 +128,15 @@ class FinanceNumbersTest {
     @Test
     fun `the price history delivers the P&L as a number`() {
         val h = BrickJson.decodeFromString(PriceHistoryResponse.serializer(),
-            """{"success": true, "pnl_pct": "-50.0", "pnl_prozent": 16.1}""")
-        assertEquals(16.1, h.pnlProzent!!, 0.0)
+            """{"success": true, "pnl_pct": "-50.0", "pnl_percent": 16.1}""")
+        assertEquals(16.1, h.pnlPercent!!, 0.0)
     }
 
     @Test
     fun `vouchers in two currencies give no sum`() {
-        val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2)).map { it.asView() }
+        val chf = listOf(Voucher(id = 1, amount = 0.1), Voucher(id = 2, amount = 0.2)).map { it.asView() }
         assertEquals(BigDecimal("0.30") to CurrencyCode.CHF, voucherSum(chf))
-        assertNull(voucherSum(chf + Gutschein(id = 3, amount = 5.0, currency = CurrencyCode("EUR")).asView()))
+        assertNull(voucherSum(chf + Voucher(id = 3, amount = 5.0, currency = CurrencyCode("EUR")).asView()))
         assertNull(voucherSum(emptyList()))
     }
 
@@ -169,10 +169,10 @@ class FinanceNumbersTest {
     @Test
     fun `the header card computes on the server's basis`() {
         val k = financeHeader(valuationLoad, null, null, pnl("""{"purchase": "1680.00",
-            "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 14.2, "positionen": 3,
-            "positionen_bewertet": 2, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
-            "basis_einstand": "1500.00", "basis_marktwert": "1712.40", "basis_guv_betrag": "212.40",
-            "ohne_marktpreis_einstand": "180.00", "ohne_kaufpreis_marktwert": "0.00"}"""))
+            "current": "1712.40", "grand_total": "1712.40", "pnl_percent": 14.2, "positions": 3,
+            "positions_valued": 2, "positions_without_market_price": 1, "positions_without_purchase_price": 0,
+            "baseline_cost": "1500.00", "baseline_market_value": "1712.40", "baseline_pnl_amount": "212.40",
+            "cost_without_market_price": "180.00", "market_value_without_purchase_price": "0.00"}"""))
         assertEquals(0, BigDecimal("1500.00").compareTo(k.cost!!))
         assertEquals(0, BigDecimal("1712.40").compareTo(k.value))
         assertEquals(0, BigDecimal("212.40").compareTo(k.pnlAmount!!))
@@ -186,7 +186,7 @@ class FinanceNumbersTest {
     @Test
     fun `without basis fields the header card stays as before`() {
         val k = financeHeader(valuationLoad, null, null,
-            pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 1.9}"""))
+            pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_percent": 1.9}"""))
         assertEquals(false, k.baseKnown)
         assertNull("no cost basis: the old card showed none", k.cost)
         assertNull(k.pnlAmount)
@@ -199,10 +199,10 @@ class FinanceNumbersTest {
     @Test
     fun `without a valued position there is no P and L`() {
         val k = financeHeader(valuationLoad, null, null, pnl("""{"purchase": "180.00",
-            "current": "0.00", "grand_total": "0.00", "pnl_prozent": null, "positionen": 1,
-            "positionen_bewertet": 0, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
-            "basis_einstand": "0.00", "basis_marktwert": "0.00", "basis_guv_betrag": "0.00",
-            "ohne_marktpreis_einstand": "180.00", "ohne_kaufpreis_marktwert": "0.00"}"""))
+            "current": "0.00", "grand_total": "0.00", "pnl_percent": null, "positions": 1,
+            "positions_valued": 0, "positions_without_market_price": 1, "positions_without_purchase_price": 0,
+            "baseline_cost": "0.00", "baseline_market_value": "0.00", "baseline_pnl_amount": "0.00",
+            "cost_without_market_price": "180.00", "market_value_without_purchase_price": "0.00"}"""))
         assertEquals(false, k.withBase)
         assertEquals(0, BigDecimal("180.00").compareTo(k.cost!!))
         assertNull(k.pnlAmount)

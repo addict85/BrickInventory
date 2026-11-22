@@ -41,7 +41,7 @@ import java.io.File
  *
  * Counter-checks:
  *  - withoutSecret() returns the voucher unchanged → red “the stored list holds neither …”.
- *  - @PUT("api/v1/vouchers/{id}") to POST → red “the app calls the same addresses as the web app”.
+ *  - @PUT("api/v2/vouchers/{id}") to POST → red “the app calls the same addresses as the web app”.
  *  - deleting again as @DELETE without body (confirmation not sent along) → red
  *    “deleting, plaintext and PDF release carry password and code”.
  *  - pdfRelease() calls the route of the single PDF (with id 0) for id=null → red
@@ -69,7 +69,7 @@ class VouchersContractTest {
 
     /** Vouchers against a test server, on a store whose rows the test reads. */
     private fun <T> withServer(block: (PathServer, VouchersRepository, StorageInventory) -> T): T {
-        val paths = PathServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
+        val paths = PathServer("/api/v2/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
         val inventory = StorageInventory()
         val store = OfflineStore(inventory, OutboxStorage(), { "test" }, OutboxPlanner {})
@@ -86,7 +86,7 @@ class VouchersContractTest {
     }
 
     /**
-     * ONE service in the backend, both apps on it — the router `routes/api_v1/vouchers.ts`.
+     * ONE service in the backend, both apps on it — the router `routes/api/vouchers.ts`.
      * Other addresses would mean two implementations.
      */
     @Test
@@ -103,9 +103,9 @@ class VouchersContractTest {
             repo.pdfRelease(5, b)
             repo.pdfRelease(null, b)
         }
-        assertEquals(listOf("GET /api/v1/vouchers", "POST /api/v1/vouchers", "PUT /api/v1/vouchers/5",
-            "DELETE /api/v1/vouchers/5", "POST /api/v1/vouchers/pdf", "POST /api/v1/vouchers/5/klartext",
-            "POST /api/v1/vouchers/5/pdf-freigabe", "POST /api/v1/vouchers/export/pdf-freigabe"), paths.requests.toList())
+        assertEquals(listOf("GET /api/v2/vouchers", "POST /api/v2/vouchers", "PUT /api/v2/vouchers/5",
+            "DELETE /api/v2/vouchers/5", "POST /api/v2/vouchers/pdf", "POST /api/v2/vouchers/5/plaintext",
+            "POST /api/v2/vouchers/5/pdf-grant", "POST /api/v2/vouchers/export/pdf-grant"), paths.requests.toList())
     }
 
     /** Without a body the server answers with 400: deleting and plaintext require the confirmation. */
@@ -165,7 +165,7 @@ class VouchersContractTest {
         // this takeover the user would face empty fields although the
         // number was in the PDF after all — and would have to type nineteen digits
         // that the server already knows.
-        assert(feature.contains("VoucherStorage.Incomplete") && repo.contains("a.gelesen")) {
+        assert(feature.contains("VoucherStorage.Incomplete") && repo.contains("a.parsed")) {
             "The values read from the PDF are not taken over."
         }
         assert(repo.contains("422")) {

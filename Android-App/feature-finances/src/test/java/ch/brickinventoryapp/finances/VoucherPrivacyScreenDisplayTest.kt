@@ -72,7 +72,7 @@ class VoucherPrivacyScreenDisplayTest {
         compose.setContent { VoucherPdfProtection(address.value) }
         compose.waitForIdle()
         assertTrue("a voucher PDF would show in screenshots", guarded())
-        address.value = "https://brick.example/api/v1/instructions/42/file"
+        address.value = "https://brick.example/api/v2/instructions/42/file"
         compose.waitForIdle()
         assertFalse("a building manual needs no protection", guarded())
     }

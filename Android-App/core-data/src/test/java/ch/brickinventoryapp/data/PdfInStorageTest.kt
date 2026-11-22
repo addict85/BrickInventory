@@ -35,7 +35,7 @@ class PdfInStorageTest {
         server.enqueue(MockResponse().setBody(Buffer().write(pdf)))
         server.start()
         val state = mutableListOf<Pair<Long, Long>>()
-        val loaded = runBlocking { loadPdfIntoMemory(client, server.url("/api/v1/vouchers/7/pdf").toString()) { g, t -> state += g to t } }
+        val loaded = runBlocking { loadPdfIntoMemory(client, server.url("/api/v2/vouchers/7/pdf").toString()) { g, t -> state += g to t } }
         assertArrayEquals(pdf, loaded)
         assertEquals(pdf.size.toLong() to pdf.size.toLong(), state.last())
     }
@@ -45,7 +45,7 @@ class PdfInStorageTest {
         server.enqueue(MockResponse().setBody(Buffer().write(ByteArray(2000))))
         server.enqueue(MockResponse().setChunkedBody(Buffer().write(ByteArray(2000)), 100))
         server.start()
-        val address = server.url("/api/v1/vouchers/export/pdf").toString()
+        val address = server.url("/api/v2/vouchers/export/pdf").toString()
         val withLength = runCatching { runBlocking { loadPdfIntoMemory(client, address, limit = 1000) } }
         assertTrue("Content-Length above the limit", withLength.exceptionOrNull() is IOException)
         val withoutLength = runCatching { runBlocking { loadPdfIntoMemory(client, address, limit = 1000) } }
@@ -56,7 +56,7 @@ class PdfInStorageTest {
     fun `an error status is not a PDF`() {
         server.enqueue(MockResponse().setResponseCode(403).setBody("verboten"))
         server.start()
-        val r = runCatching { runBlocking { loadPdfIntoMemory(client, server.url("/api/v1/vouchers/7/pdf").toString()) } }
+        val r = runCatching { runBlocking { loadPdfIntoMemory(client, server.url("/api/v2/vouchers/7/pdf").toString()) } }
         assertTrue(r.exceptionOrNull() is IOException)
     }
 }

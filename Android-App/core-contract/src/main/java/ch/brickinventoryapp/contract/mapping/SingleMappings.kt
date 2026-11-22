@@ -4,9 +4,9 @@ import ch.brickinventoryapp.contract.BrickColor
 import ch.brickinventoryapp.contract.ChartPoint
 import ch.brickinventoryapp.contract.ChartYAxis
 import ch.brickinventoryapp.contract.CsvKind
-import ch.brickinventoryapp.contract.Gutschein
-import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.contract.PriceAlert
 import ch.brickinventoryapp.contract.StartupStatus
+import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.model.domain.ChartAxis
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.CsvImportKind
@@ -37,8 +37,8 @@ fun ChartYAxis.asView() = ChartAxis(label, value.asMoneyRequired(), frac)
 
 fun BrickColor.asView() = ColorView(id, name, hex)
 
-fun Gutschein.asView() = VoucherView(id, number, pin, amount.asMoneyRequired(), currency, hatPdf,
-    parseInstant(createdAt), parseInstant(guthabenGeprueftAm))
+fun Voucher.asView() = VoucherView(id, number, pin, amount.asMoneyRequired(), currency, hasPdf,
+    parseInstant(createdAt), parseInstant(balanceCheckedAt))
 
-fun Preisalarm.asView() = PriceAlertView(setNumber, condition, direction, threshold.asMoneyRequired(), currencyCode,
-    triggered, parseInstant(lastTriggeredAt), lastPrice.asMoney(), name, imageLocal, imageUrl, setImgUrl, besitzt)
+fun PriceAlert.asView() = PriceAlertView(setNumber, condition, direction, threshold.asMoneyRequired(), currencyCode,
+    triggered, parseInstant(lastTriggeredAt), lastPrice.asMoney(), name, imageLocal, imageUrl, setImgUrl, owns)

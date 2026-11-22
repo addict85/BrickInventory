@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.contract.mapping
 
-import ch.brickinventoryapp.contract.CsvImportErgebnis
+import ch.brickinventoryapp.contract.CsvImportResult
 import ch.brickinventoryapp.contract.CsvImportStatus
-import ch.brickinventoryapp.contract.GetrenntesKonto
 import ch.brickinventoryapp.contract.HouseholdStatusResponse
+import ch.brickinventoryapp.contract.LogRow
 import ch.brickinventoryapp.contract.LoginResponse
-import ch.brickinventoryapp.contract.Profil
-import ch.brickinventoryapp.contract.ProtokollZeile
+import ch.brickinventoryapp.contract.Profile
+import ch.brickinventoryapp.contract.SeparatedAccount
 import ch.brickinventoryapp.contract.newCreated
 import ch.brickinventoryapp.contract.parentAccounts
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
@@ -21,10 +21,10 @@ import ch.brickinventoryapp.model.util.parseInstant
 /** Admin rights only take effect with a full token: with "app" the server answers admin addresses with 403. */
 val LoginResponse.admin: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_FULL
 
-fun Profil.asView() =
+fun Profile.asView() =
     ProfileView(id, username, email, firstName, lastName, emailConfirmed = emailVerified, emailNew = newEmail?.ifBlank { null })
 
-fun GetrenntesKonto.asView() = SeparateAccountView(id, username, via)
+fun SeparatedAccount.asView() = SeparateAccountView(id, username, via)
 
 fun HouseholdStatusResponse.asView() = HouseholdStatusView(
     isMain = isMain,
@@ -36,9 +36,9 @@ fun HouseholdStatusResponse.asView() = HouseholdStatusView(
     formerLinks = formerLinks.map { it.asView() },
 )
 
-fun ProtokollZeile.asView() = LogRowView(id, level, message, parseInstant(loggedAt))
+fun LogRow.asView() = LogRowView(id, level, message, parseInstant(loggedAt))
 
-fun CsvImportErgebnis.asView() = CsvResultView(total, newCreated, updated, errors)
+fun CsvImportResult.asView() = CsvResultView(total, newCreated, updated, errors)
 
 fun CsvImportStatus.asView() = CsvImportStatusView(
     status = status,

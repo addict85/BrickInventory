@@ -99,13 +99,13 @@ class TokenRotationTest {
                 val bearer = request.getHeader("Authorization")?.removePrefix("Bearer ")
                 events += "$path $bearer"
                 return when {
-                    path == "/api/v1/auth/token-rotieren" && rotationMute != null -> rotationMute!!.invoke()
-                    path == "/api/v1/auth/token-rotieren" -> MockResponse().setBody(
+                    path == "/api/v2/auth/rotate-token" && rotationMute != null -> rotationMute!!.invoke()
+                    path == "/api/v2/auth/rotate-token" -> MockResponse().setBody(
                         """{"success":true,"token":"neu","token_info":{"scope":"app","never_expires":true,
-                           "rotation_faellig":false},"alt_gueltig_bis":"2026-10-30T12:05:00Z","ueberlappung_sek":300}""")
-                    path == "/api/v1/sets" && bearer == "alt" ->
-                        MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_rotation_noetig"}""")
-                    path == "/api/v1/parts" && bearer == "alt" ->
+                           "rotation_due":false},"old_valid_until":"2026-10-30T12:05:00Z","overlap_seconds":300}""")
+                    path == "/api/v2/sets" && bearer == "alt" ->
+                        MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_rotation_required"}""")
+                    path == "/api/v2/parts" && bearer == "alt" ->
                         MockResponse().setHeader("X-Token-Rotation", "faellig").setBody("""{"success":true}""")
                     else -> MockResponse().setBody("""{"success":true}""")
                 }
@@ -137,8 +137,8 @@ class TokenRotationTest {
 
     @Test
     fun `a rejected old token is swapped and the request retried`() {
-        assertEquals(200, fetch("/api/v1/sets"))
-        assertEquals(listOf("/api/v1/sets alt", "/api/v1/auth/token-rotieren alt", "speichere neu", "/api/v1/sets neu"),
+        assertEquals(200, fetch("/api/v2/sets"))
+        assertEquals(listOf("/api/v2/sets alt", "/api/v2/auth/rotate-token alt", "speichere neu", "/api/v2/sets neu"),
             events.toList())
         assertEquals("A switch is not an expired session", 0, expired)
     }
@@ -160,23 +160,23 @@ class TokenRotationTest {
             .build().create(AccountApi::class.java))
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
-            c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
+            c.newCall(Request.Builder().url(server.url("/api/v2/sets")).build()).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: IOException) { codes += -1 }
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use { codes += it.code } }
             })
         }
         TestApi.pollUntil("beide Antworten") { codes.size == 2 }
         assertEquals(listOf(200, 200), codes.toList())
-        assertEquals(1, events.count { it.startsWith("/api/v1/auth/token-rotieren") })
+        assertEquals(1, events.count { it.startsWith("/api/v2/auth/rotate-token") })
     }
 
     @Test
     fun `the header swaps in the background, once`() {
-        assertEquals(200, fetch("/api/v1/parts"))
-        assertEquals(200, fetch("/api/v1/parts"))
+        assertEquals(200, fetch("/api/v2/parts"))
+        assertEquals(200, fetch("/api/v2/parts"))
         TestApi.pollUntil("Tausch") { saved == "neu" }
         Thread.sleep(100)
-        assertEquals(1, events.count { it.startsWith("/api/v1/auth/token-rotieren") })
+        assertEquals(1, events.count { it.startsWith("/api/v2/auth/rotate-token") })
         assertEquals("speichere neu", events.last { it.startsWith("speichere") })
     }
 
@@ -205,7 +205,7 @@ class TokenRotationTest {
             }
             val outcome = kotlinx.coroutines.runBlocking { swapping.swap("alt") }
             assertEquals(ExchangeOutcome.DISCARDED, outcome)
-            assertTrue(events.any { it.startsWith("/api/v1/auth/token-rotieren alt") })
+            assertTrue(events.any { it.startsWith("/api/v2/auth/rotate-token alt") })
             assertEquals("The new server saw: $there", 0, there.size)
             assertEquals("", saved)
         } finally {
@@ -221,7 +221,7 @@ class TokenRotationTest {
         newer.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 there += request.getHeader("Authorization")
-                return MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_ungueltig"}""")
+                return MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_invalid"}""")
             }
         }
         newer.start()

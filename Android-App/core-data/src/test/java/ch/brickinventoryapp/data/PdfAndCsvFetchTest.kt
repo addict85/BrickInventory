@@ -81,6 +81,6 @@ class PdfAndCsvFetchTest {
         assertTrue("no job without a number", sets.startPdfJob(PartListJob(emptyList(), emptyList())) is Outcome.Failure.EmptyResponse)
 
         val paths = List(3) { server.takeRequest().path }
-        assertEquals(listOf("/api/v1/sets/partslist-pdf", "/api/v1/sets/partslist-pdf/status/j7", "/api/v1/sets/partslist-pdf"), paths)
+        assertEquals(listOf("/api/v2/sets/partslist-pdf", "/api/v2/sets/partslist-pdf/status/j7", "/api/v2/sets/partslist-pdf"), paths)
     }
 }

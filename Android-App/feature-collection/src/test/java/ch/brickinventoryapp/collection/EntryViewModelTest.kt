@@ -112,9 +112,9 @@ class EntryViewModelTest {
     fun setUp() {
         Dispatchers.setMain(tick)
         paths = PathServer(
-            "/api/v1/sets/barcode/5702016616316" to """{"success":true,"set_number":"75192-1","name":"Falke"}""",
-            "/api/v1/sets/exists/75192-1" to """{"success":true,"exists":true,"set_number":"75192-1"}""",
-            "/api/v1/wanted" to """{"success":true,"war_neu":true}""",
+            "/api/v2/sets/barcode/5702016616316" to """{"success":true,"set_number":"75192-1","name":"Falke"}""",
+            "/api/v2/sets/exists/75192-1" to """{"success":true,"exists":true,"set_number":"75192-1"}""",
+            "/api/v2/wanted" to """{"success":true,"was_new":true}""",
         )
         t = TestServices(paths.onTick(), TextsWithArguments, io = tick)
     }
@@ -137,8 +137,8 @@ class EntryViewModelTest {
 
     @Test
     fun `an unsuccessful scan opens manual adding and clears the check display`() {
-        paths.responses["/api/v1/sets/barcode/0000"] = """{"success":false,"code":"barcode_kein_set","error":"Kein Set"}"""
-        paths.codes["/api/v1/sets/barcode/0000"] = 404
+        paths.responses["/api/v2/sets/barcode/0000"] = """{"success":false,"code":"barcode_not_a_set","error":"Kein Set"}"""
+        paths.codes["/api/v2/sets/barcode/0000"] = 404
         val vm = vm()
         vm.resolveBarcode("0000")
         until("manuell") { vm.barcodeState.value.requestManualEntry }
@@ -148,8 +148,8 @@ class EntryViewModelTest {
 
     @Test
     fun `a server error during the scan does not mean the set does not exist`() {
-        paths.responses["/api/v1/sets/barcode/0001"] = """{"success":false,"code":"interner_fehler"}"""
-        paths.codes["/api/v1/sets/barcode/0001"] = 500
+        paths.responses["/api/v2/sets/barcode/0001"] = """{"success":false,"code":"internal_error"}"""
+        paths.codes["/api/v2/sets/barcode/0001"] = 500
         val vm = vm()
         vm.resolveBarcode("0001")
         until("manuell") { vm.barcodeState.value.requestManualEntry }
@@ -169,7 +169,7 @@ class EntryViewModelTest {
             creator.seen.take(3))
         assertEquals("t${R.string.vm_added}|75192-1", t.messages.text)
         // Name and image are known only to the server: the store fetches the gallery afterwards.
-        until("nachgezogen") { paths.requestsTo("GET /api/v1/sets?").isNotEmpty() }
+        until("nachgezogen") { paths.requestsTo("GET /api/v2/sets?").isNotEmpty() }
     }
 
     /**
@@ -190,7 +190,7 @@ class EntryViewModelTest {
         val vm = vm(Creator(listOf(SetCreateStep.Done(SetRecorded(number = "75192-1", present = true)))))
         vm.addSet(EntryRequest("75192-1"))
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
-        assertTrue("nothing created, nothing to follow up", paths.requestsTo("GET /api/v1/sets?").isEmpty())
+        assertTrue("nothing created, nothing to follow up", paths.requestsTo("GET /api/v2/sets?").isEmpty())
     }
 
     @Test
@@ -213,7 +213,7 @@ class EntryViewModelTest {
         val wantedList = runBlocking { t.wantedList().observeWanted().first().list }
         assertEquals("the watchlist item stands in the store", listOf("75192-1"), wantedList.map { it.setNumber })
         assertEquals("t${R.string.wanted_added}", t.messages.text)
-        assertTrue(paths.requestsTo("POST /api/v1/wanted").isNotEmpty())
+        assertTrue(paths.requestsTo("POST /api/v2/wanted").isNotEmpty())
         assertNull(vm.barcodeState.value.result)
     }
 
@@ -227,8 +227,8 @@ class EntryViewModelTest {
 
     @Test
     fun `a second click on confirm does not create the set twice`() {
-        paths.responses["/api/v1/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
-        paths.missing += "/api/v1/sets"
+        paths.responses["/api/v2/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
+        paths.missing += "/api/v2/sets"
         val vm = untilToDialog()
         vm.confirmAddBarcode(EntryRequest("75192-1", owner = 2))
         // The dialog closes right away, and creation happens in the background — without a check display.
@@ -238,14 +238,14 @@ class EntryViewModelTest {
         vm.confirmAddBarcode(EntryRequest("75192-1", owner = 2))
         paths.release()
         until("fertig") { !vm.barcodeState.value.add.running }
-        assertEquals(1, paths.requestsTo("POST /api/v1/sets").size)
-        val body = paths.bodyBytes[paths.requests.indexOf("POST /api/v1/sets")]
+        assertEquals(1, paths.requestsTo("POST /api/v2/sets").size)
+        val body = paths.bodyBytes[paths.requests.indexOf("POST /api/v2/sets")]
         assertTrue(body, "\"owner_user_id\":2" in body)
     }
 
     @Test
     fun `a failure on confirm names the set number and releases the button`() {
-        paths.codes["/api/v1/sets"] = 500
+        paths.codes["/api/v2/sets"] = 500
         val vm = untilToDialog()
         vm.confirmAddBarcode(EntryRequest("75192-1"))
         until("gemeldet") { t.messages.text?.startsWith("t${R.string.vm_add_failed}") == true }
@@ -262,12 +262,12 @@ class EntryViewModelTest {
         assertEquals("75192-1", vm.barcodeState.value.forPartList)
         assertNull(vm.barcodeState.value.result)
         clock.advanceUntilIdle()
-        assertTrue(paths.requestsTo("POST /api/v1/sets").isEmpty())
+        assertTrue(paths.requestsTo("POST /api/v2/sets").isEmpty())
     }
 
     @Test
     fun `text recognition asks the server, shows that and opens an existing set`() {
-        paths.missing += "/api/v1/sets/exists/75192-1"
+        paths.missing += "/api/v2/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertEquals(CheckPhase.STOCK, vm.entryState.value.check?.phase)
@@ -279,7 +279,7 @@ class EntryViewModelTest {
 
     @Test
     fun `an error of the pre-query aborts instead of guessing`() {
-        paths.codes["/api/v1/sets/exists/10294-1"] = 500
+        paths.codes["/api/v2/sets/exists/10294-1"] = 500
         val vm = vm()
         vm.useScannedSetNumber("10294")
         until("gemeldet") { t.messages.text == "fehler" }
@@ -290,15 +290,15 @@ class EntryViewModelTest {
 
     @Test
     fun `every unsuccessful path requests manual adding`() {
-        paths.responses["/api/v1/sets/barcode/111"] = """{"success":true,"set_number":""}"""
-        paths.responses["/api/v1/sets/exists/10294-1"] = """{"success":true,"exists":false,"set_number":"10294-1"}"""
-        paths.responses["/api/v1/catalog/sets/10294-1"] = """{"success":true}"""
+        paths.responses["/api/v2/sets/barcode/111"] = """{"success":true,"set_number":""}"""
+        paths.responses["/api/v2/sets/exists/10294-1"] = """{"success":true,"exists":false,"set_number":"10294-1"}"""
+        paths.responses["/api/v2/catalog/sets/10294-1"] = """{"success":true}"""
         val vm = vm()
         val routes = listOf<Pair<String, () -> Unit>>(
             "EAN ohne Setnummer" to { vm.resolveBarcode("111") },
             "Texterkennung ohne Katalogeintrag" to { vm.useScannedSetNumber("10294") },
             "Katalogabfrage gescheitert" to {
-                paths.codes["/api/v1/catalog/sets/10294-1"] = 500
+                paths.codes["/api/v2/catalog/sets/10294-1"] = 500
                 vm.useScannedSetNumber("10294")
             },
         )
@@ -312,7 +312,7 @@ class EntryViewModelTest {
 
     @Test
     fun `the abort ends the fetch and not only the display`() {
-        paths.missing += "/api/v1/sets/exists/75192-1"
+        paths.missing += "/api/v2/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertTrue(vm.entryState.value.check != null)
@@ -326,7 +326,7 @@ class EntryViewModelTest {
 
     @Test
     fun `sign-out also clears the check display`() {
-        paths.missing += "/api/v1/sets/exists/75192-1"
+        paths.missing += "/api/v2/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertTrue(vm.entryState.value.check != null)

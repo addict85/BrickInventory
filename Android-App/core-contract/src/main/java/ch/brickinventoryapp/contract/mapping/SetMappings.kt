@@ -2,9 +2,9 @@ package ch.brickinventoryapp.contract.mapping
 
 import ch.brickinventoryapp.contract.BrickLinkRef
 import ch.brickinventoryapp.contract.Instruction
-import ch.brickinventoryapp.contract.Merkposten
-import ch.brickinventoryapp.contract.MerkpostenAlarm
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.WantedItem
+import ch.brickinventoryapp.contract.WantedItemAlert
 import ch.brickinventoryapp.model.domain.BrickLinkView
 import ch.brickinventoryapp.model.domain.InstructionView
 import ch.brickinventoryapp.model.domain.SetView
@@ -34,7 +34,7 @@ fun SetItem.asView() = SetView(
     usedCount = usedCount,
     instructions = instructions.map { it.asView() },
     bricklink = bricklink?.asView(),
-    priceComparisonUrl = preisvergleichUrl,
+    priceComparisonUrl = priceComparisonUrl,
 )
 
 fun Instruction.asView() = InstructionView(
@@ -53,7 +53,7 @@ fun BrickLinkRef.asView() = BrickLinkView(
     resolved = resolved,
 )
 
-fun Merkposten.asView() = WantedItemView(
+fun WantedItem.asView() = WantedItemView(
     setNumber = setNumber,
     condition = condition,
     createdAt = parseInstant(createdAt),
@@ -63,14 +63,14 @@ fun Merkposten.asView() = WantedItemView(
     numParts = numParts,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    marketPrice = marktpreis.asMoney(),
-    currency = waehrung,
+    marketPrice = marketPrice.asMoney(),
+    currency = currency,
     owned = owned,
     alarm = alarm?.asView(),
-    priceComparisonUrl = preisvergleichUrl,
+    priceComparisonUrl = priceComparisonUrl,
 )
 
-fun MerkpostenAlarm.asView() = WantedItemAlarmView(
+fun WantedItemAlert.asView() = WantedItemAlarmView(
     direction = direction,
     threshold = threshold.asMoneyRequired(),
     triggered = triggered,

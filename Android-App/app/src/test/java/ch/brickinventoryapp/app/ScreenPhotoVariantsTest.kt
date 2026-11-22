@@ -347,18 +347,18 @@ class ScreenPhotoVariantsTest {
     // All numbers of a set fit together: market price 1’249.90, purchase price 1’049.00,
     // i.e. +19.2 %. Previously purchase price 700 and +16.1 % stood next to the expensive market price.
     private fun detailExpensivePhoto(name: String, font: Float) {
-        world.paths.responses["/api/v1/sets/75192-1/price"] =
+        world.paths.responses["/api/v2/sets/75192-1/price"] =
             """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
-        world.paths.responses["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+        world.paths.responses["/api/v2/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
-        world.paths.responses["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+        world.paths.responses["/api/v2/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
             "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
             "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
-        world.paths.responses["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_prozent":19.2}},
+        world.paths.responses["/api/v2/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_percent":19.2}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-09-01","y":1231.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
-            "pnl_prozent":19.2,"purchase_price":1049.0}"""
+            "pnl_percent":19.2,"purchase_price":1049.0}"""
         val vm = world.setDetail()
         show(name, device = "schmal", font = font, ready = detailDone(vm), condition = { vm.setDetailState.value }) { Detail(vm) }
         pause()
@@ -627,11 +627,11 @@ class ScreenPhotoVariantsTest {
     @Test
     fun wantedWithDetailTablet() {
         // The detail shows the same price as the row next to it (449.95), instead of „wird geladen“.
-        world.paths.responses["/api/v1/wanted/10294-1/preise"] = """{"success":true,"currency":"CHF",
+        world.paths.responses["/api/v2/wanted/10294-1/prices"] = """{"success":true,"currency":"CHF",
             "current":{"N":{"condition":"N","avg_price":449.95,"min_price":420.0,"max_price":480.0}}}"""
-        world.paths.responses["/api/v1/catalog/sets/10294-1"] = """{"success":true,"set":{"set_number":"10294-1",
+        world.paths.responses["/api/v2/catalog/sets/10294-1"] = """{"success":true,"set":{"set_number":"10294-1",
             "name":"Titanic","year":2021,"theme_name":"Icons","num_parts":9090,"image_local":"/beispiel/set2.png","minifigs":0}}"""
-        world.paths.responses["/api/v1/sets/10294-1/price-history"] = """{"success":true,"set_number":"10294-1","currency":"CHF",
+        world.paths.responses["/api/v2/sets/10294-1/price-history"] = """{"success":true,"set_number":"10294-1","currency":"CHF",
             "by_condition":{"N":{"market_price":449.95}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":431.0},{"x":"2026-09-01","y":440.0},{"x":"2026-10-01","y":449.95}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]}}"""
@@ -682,7 +682,7 @@ class ScreenPhotoVariantsTest {
     @Test fun locationsFont200() = locationsPhoto("lagerorte-schrift200", 2f)
 
     private fun locationsPhoto(name: String, font: Float) {
-        world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[
+        world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         // Load before showing: show() already waits for the data before setContent, and
         // without a call here only the screen itself would ask.
@@ -706,7 +706,7 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun household() {
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
@@ -810,7 +810,7 @@ class ScreenPhotoVariantsTest {
     @Test
     fun galleryLoads() {
         // The response stays away; the clock stands so that the loading animation gives a fixed image.
-        world.paths.missing += "/api/v1/sets"
+        world.paths.missing += "/api/v2/sets"
         val gallery = world.gallery().also { it.loadSets() }
         compose.mainClock.autoAdvance = false
         show("galerie-laedt", wait = false) { Gallery(gallery) }
@@ -830,7 +830,7 @@ class ScreenPhotoVariantsTest {
     @Test
     fun galleryError() {
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/sets"] = 500
+        world.paths.codes["/api/v2/sets"] = 500
         val gallery = world.gallery().also { it.loadSets() }
         show("galerie-fehler", ready = { gallery.galleryState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
             condition = { gallery.galleryState.value }) { Gallery(gallery) }
@@ -840,7 +840,7 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun wantedEmpty() {
-        world.paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
+        world.paths.responses["/api/v2/wanted"] = """{"success":true,"item":[]}"""
         val vm = world.wantedList().also { it.loadWanted() }
         show("merkliste-leer", dark = true, ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch !is Load.Failure } },
             condition = { vm.wantedState.value }) {
@@ -883,12 +883,12 @@ class ScreenPhotoVariantsTest {
     /** Account: profile, design, second factor and two signed-in devices; on request with a requested address. */
     private fun accountPhoto(dark: Boolean, device: String, name: String = "konto", emailNew: String? = null) {
         val newValue = emailNew?.let { ""","new_email":"$it"""" } ?: ""
-        world.paths.responses["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+        world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true$newValue}}"""
-        world.paths.responses["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
-        world.paths.responses["/api/v1/settings/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic"}"""
-        world.paths.responses["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
-            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
+        world.paths.responses["/api/v2/auth/second-factor"] = """{"success":true,"active":true,"codes_left":8}"""
+        world.paths.responses["/api/v2/settings/theme"] = """{"success":true,"theme":"classic","preset":"classic"}"""
+        world.paths.responses["/api/v2/settings/tokens"] = """{"success":true,"tokens":[
+            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","current":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val account = world.t.track(AccountViewModel(
             testAccountRepository(world.t.api, world.t.io),
@@ -908,12 +908,12 @@ class ScreenPhotoVariantsTest {
 
     /** Price alerts: one armed, one already triggered — in the normal case with name and image. */
     private fun priceAlertsPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "preisalarme") {
-        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF",
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF",
              "name":"Millennium Falcon","image_local":"/beispiel/set1.png"},
-            {"set_number":"10294-1","condition":"N","direction":"ueber","threshold":440.0,"currency_code":"CHF",
+            {"set_number":"10294-1","condition":"N","direction":"above","threshold":440.0,"currency_code":"CHF",
              "triggered":true,"last_triggered_at":"2026-10-30T09:00:00Z","last_price":449.95,
-             "name":"Titanic","image_local":"/beispiel/set2.png","besitzt":false}]}"""
+             "name":"Titanic","image_local":"/beispiel/set2.png","owns":false}]}"""
         val vm = settings()
         show(name, dark = dark, device = device, font = font) {
             PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = "",
@@ -930,8 +930,8 @@ class ScreenPhotoVariantsTest {
 
     /** Part from sets: on the tablet to the right of the list, on the phone as a dialog. */
     private fun partDetailPhoto(device: String, dark: Boolean) {
-        world.paths.responses["/api/v1/parts/3001/5/sets"] = """{"success":true,
-            "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
+        world.paths.responses["/api/v2/parts/3001/5/sets"] = """{"success":true,
+            "item":{"number":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
                     "image_local":"/beispiel/teil1.png","total_quantity":12},
             "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"image_local":"/beispiel/set1.png","owner_user_id":1},
                     {"set_number":"21318-1","set_name":"Baumhaus","quantity":4,"image_local":"/beispiel/set3.png","owner_user_id":1}]}"""
@@ -967,10 +967,10 @@ class ScreenPhotoVariantsTest {
      */
     @Test
     fun filterSheetGallery() {
-        world.paths.responses["/api/v1/sets"] = Examples.RESPONSES.first { it.first == "/api/v1/sets" }.second
+        world.paths.responses["/api/v2/sets"] = Examples.RESPONSES.first { it.first == "/api/v2/sets" }.second
             .replaceFirst("\"total\":3,", "\"total\":3,\"themes\":[\"Icons\",\"Ideas\",\"Star Wars\"],")
-        world.paths.responses["/api/v1/storage"] = """{"success":true,"orte":[
-            {"ort":"Keller","sets":2,"teile":40},{"ort":"Regal Wohnzimmer","sets":1,"teile":0}]}"""
+        world.paths.responses["/api/v2/storage"] = """{"success":true,"locations":[
+            {"location":"Keller","sets":2,"parts":40},{"location":"Regal Wohnzimmer","sets":1,"parts":0}]}"""
         val vm = world.gallery().also { it.refresh() }
         show("filter-galerie", ready = { galleryDone(vm)() && vm.storageState.value.locations.isNotEmpty() &&
             vm.galleryState.value.galleryThemes.isNotEmpty() }, condition = { vm.galleryState.value }) { Gallery(vm) }
@@ -1093,7 +1093,7 @@ class ScreenPhotoVariantsTest {
     @Test
     fun wantedError() {
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/wanted"] = 500
+        world.paths.codes["/api/v2/wanted"] = 500
         val vm = world.wantedList().also { it.loadWanted() }
         show("merkliste-fehler", ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
             condition = { vm.wantedState.value }) {
@@ -1105,7 +1105,7 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun partsEmpty() {
-        world.paths.responses["/api/v1/parts"] = """{"success":true,"total":0,"parts":[]}"""
+        world.paths.responses["/api/v2/parts"] = """{"success":true,"total":0,"parts":[]}"""
         val vm = world.parts().also { it.loadParts() }
         show("teile-leer", ready = { vm.partsState.value.let { it.partsFetch is Load.Data } },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
@@ -1116,7 +1116,7 @@ class ScreenPhotoVariantsTest {
     @Test
     fun partsError() {
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/parts"] = 500
+        world.paths.codes["/api/v2/parts"] = 500
         val vm = world.parts().also { it.loadParts() }
         show("teile-fehler", dark = true, ready = { vm.partsState.value.let { it.partsFetch is Load.Failure } },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
@@ -1127,7 +1127,7 @@ class ScreenPhotoVariantsTest {
     @Test
     fun financesError() {
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/finance/valuation"] = 500
+        world.paths.codes["/api/v2/finance/valuation"] = 500
         val vm = world.finances().also { it.loadValuation() }
         show("finanzen-fehler", ready = { vm.financeState.value.let { !it.valuationLoad.loading && !it.history.loading && it.valuationLoad is Load.Failure } },
             condition = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = images) }
@@ -1293,10 +1293,10 @@ class ScreenPhotoVariantsTest {
 
     // A manually added part with two purchases: the sample data has no manual parts.
     private fun singlePartPhoto(dark: Boolean, device: String) {
-        world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+        world.paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png",
             "avg_price":0.18,"avg_purchase_price":0.12}]}"""
-        world.paths.responses["/api/v1/parts/3001/5/acquisitions"] = """{"success":true,"acquisitions":[
+        world.paths.responses["/api/v2/parts/3001/5/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":21,"quantity":8,"purchase_price":0.96,"condition":"N","created_at":"2026-05-02T10:00:00Z"},
             {"id":22,"quantity":4,"purchase_price":0.48,"condition":"U","created_at":"2026-09-12T10:00:00Z"}],
             "totals":{"quantity":12,"amount":1.44,"priced_rows":2}}"""
@@ -1315,18 +1315,18 @@ class ScreenPhotoVariantsTest {
 
     // The same response as in BackgroundWorkTest: one running and one failed job.
     private fun backgroundPhoto(dark: Boolean, device: String) {
-        world.paths.responses["/api/v1/admin/auftraege"] = """{"success":true,
-            "auftraege":[
-              {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+        world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,
+            "jobs":[
+              {"id":"17","type":"images","status":"running","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
                "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
-               "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"},
-              {"id":"18","type":"preise","status":"fehler","attempts":3,"max_attempts":3,"due_at":"2026-10-30T11:00:00Z",
+               "progress":{"done":3,"total":12,"text":"Bilder"},"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"},
+              {"id":"18","type":"prices","status":"error","attempts":3,"max_attempts":3,"due_at":"2026-10-30T11:00:00Z",
                "deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:00:00Z","updated_at":null,
-               "progress":null,"error_message":"BrickLink antwortet nicht","user_id":null,"geplant":true,"set_number":null}],
-            "zusammenfassung":[{"type":"bilder","status":"laeuft","anzahl":1}],
-            "pausen":[{"type":"preise","until_at":"2026-10-30T12:00:00Z","reason":"Kontingent"}],
-            "bildbedarf":7,
-            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+               "progress":null,"error_message":"BrickLink antwortet nicht","user_id":null,"scheduled":true,"set_number":null}],
+            "summary":[{"type":"images","status":"running","count":1}],
+            "pauses":[{"type":"prices","until_at":"2026-10-30T12:00:00Z","reason":"Kontingent"}],
+            "image_demand":7,
+            "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val api = world.t.api
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
@@ -1346,7 +1346,7 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun voucherForm() {
-        world.paths.responses["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
+        world.paths.responses["/api/v2/vouchers"] = """{"success":true,"vouchers":[]}"""
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
@@ -1365,9 +1365,9 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun householdCode() {
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
-        world.paths.responses["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
+        world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
         show("haushalt-code", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
@@ -1474,12 +1474,12 @@ class ScreenPhotoVariantsTest {
 
     /** Account, scrolled to [section]: the list of devices or the second factor. */
     private fun accountSectionPhoto(name: String, section: Int, dark: Boolean, font: Float) {
-        world.paths.responses["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+        world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
-        world.paths.responses["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
-        world.paths.responses["/api/v1/settings/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic"}"""
-        world.paths.responses["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
-            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
+        world.paths.responses["/api/v2/auth/second-factor"] = """{"success":true,"active":true,"codes_left":8}"""
+        world.paths.responses["/api/v2/settings/theme"] = """{"success":true,"theme":"classic","preset":"classic"}"""
+        world.paths.responses["/api/v2/settings/tokens"] = """{"success":true,"tokens":[
+            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","current":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val account = world.t.track(AccountViewModel(testAccountRepository(world.t.api, world.t.io),
             world.t.messages, world.t.session, SessionFake()))
@@ -1503,11 +1503,11 @@ class ScreenPhotoVariantsTest {
 
     private fun financesEmptyPhoto(dark: Boolean, font: Float) {
         val name = level("finanzen-leer", font)
-        world.paths.responses["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[],
+        world.paths.responses["/api/v2/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[],
             "totals":{"min":"0.00","avg":"0.00","max":"0.00","qty_avg":"0.00"}}"""
-        world.paths.responses["/api/v1/finance/pnl"] = """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00",
-            "grand_total":"0.00","sets_purchase":"0.00","positionen":0,"positionen_bewertet":0},"sets":[]}"""
-        world.paths.responses["/api/v1/finance/portfolio-history"] = """{"success":true,"currency":"CHF","period":"week","points":[]}"""
+        world.paths.responses["/api/v2/finance/pnl"] = """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00",
+            "grand_total":"0.00","sets_purchase":"0.00","positions":0,"positions_valued":0},"sets":[]}"""
+        world.paths.responses["/api/v2/finance/portfolio-history"] = """{"success":true,"currency":"CHF","period":"week","points":[]}"""
         val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         show(name, dark = dark, font = font, ready = { vm.financeState.value.let { !it.valuationLoad.loading && !it.history.loading } },
             condition = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = images) }
@@ -1523,9 +1523,9 @@ class ScreenPhotoVariantsTest {
         val full = level(name, font)
         if (error) {
             loadGermanBeforeThe()
-            world.paths.codes["/api/v1/minifigs"] = 500
+            world.paths.codes["/api/v2/minifigs"] = 500
         } else {
-            world.paths.responses["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
+            world.paths.responses["/api/v2/minifigs"] = """{"success":true,"figs":[]}"""
         }
         val vm = world.figures().also { it.loadMinifigs() }
         show(full, dark = dark, font = font, ready = { !vm.minifigsState.value.minifigsFetch.loading },
@@ -1543,7 +1543,7 @@ class ScreenPhotoVariantsTest {
 
     private fun locationsEmptyPhoto(dark: Boolean, font: Float) {
         val name = level("lagerorte-leer", font)
-        world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[]}"""
+        world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show(name, dark = dark, font = font) { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         pause()
@@ -1556,7 +1556,7 @@ class ScreenPhotoVariantsTest {
 
     private fun priceAlertsEmptyPhoto(dark: Boolean, font: Float) {
         val name = level("preisalarme-leer", font)
-        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[]}"""
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[]}"""
         val vm = settings()
         show(name, dark = dark, font = font) {
             PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = "",
@@ -1573,7 +1573,7 @@ class ScreenPhotoVariantsTest {
     /** A main account without linked accounts and without an open invitation. */
     private fun householdEmptyPhoto(dark: Boolean, font: Float) {
         val name = level("haushalt-leer", font)
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[],"open_invites":0}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
@@ -1594,7 +1594,7 @@ class ScreenPhotoVariantsTest {
     private fun accountErrorPhoto(dark: Boolean, font: Float) {
         val name = level("konto-fehler", font)
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/auth/profile"] = 500
+        world.paths.codes["/api/v2/auth/profile"] = 500
         val account = world.t.track(AccountViewModel(testAccountRepository(world.t.api, world.t.io),
             world.t.messages, world.t.session, SessionFake()))
         show(name, dark = dark, font = font) {
@@ -1611,7 +1611,7 @@ class ScreenPhotoVariantsTest {
     private fun vouchersErrorPhoto(dark: Boolean, font: Float) {
         val name = level("gutscheine-fehler", font)
         loadGermanBeforeThe()
-        world.paths.codes["/api/v1/vouchers"] = 500
+        world.paths.codes["/api/v2/vouchers"] = 500
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null

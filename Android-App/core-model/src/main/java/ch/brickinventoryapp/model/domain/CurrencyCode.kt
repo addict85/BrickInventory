@@ -17,9 +17,6 @@ value class CurrencyCode(val code: String) {
     override fun toString(): String = code
 
     companion object {
-        /** Contract bridge until API v2: Vertrag.kt still names this value `KEINE`. */
-        val KEINE get() = NONE
-
         val EUR = CurrencyCode("EUR")
         val CHF = CurrencyCode("CHF")
         val NONE = CurrencyCode("")

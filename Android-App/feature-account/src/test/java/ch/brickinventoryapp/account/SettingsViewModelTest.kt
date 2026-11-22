@@ -68,14 +68,14 @@ class SettingsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         paths = PathServer(
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
-            "/api/v1/sets/75192-1/alert" to """{"success":true}""",
-            "/api/v1/storage/locations/3" to """{"success":true,"ort":{"id":3,"name":"Keller"}}""",
-            "/api/v1/storage/locations" to """{"success":true,"orte":[{"id":3,"name":"Keller"}]}""",
-            "/api/v1/settings" to """{"success":true}""",
-            "/api/v1/settings/household/redeem" to """{"success":true,"error":"Verknüpft mit marco"}""",
-            "/api/v1/settings/household" to """{"success":true,"is_sub":true}""",
-            "/api/v1/sets/household-members" to """{"success":true,"members":[{"id":1,"username":"marco","is_self":true},{"id":2,"username":"kind"}]}""",
+            "/api/v2/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
+            "/api/v2/sets/75192-1/alert" to """{"success":true}""",
+            "/api/v2/storage/locations/3" to """{"success":true,"location":{"id":3,"name":"Keller"}}""",
+            "/api/v2/storage/locations" to """{"success":true,"locations":[{"id":3,"name":"Keller"}]}""",
+            "/api/v2/settings" to """{"success":true}""",
+            "/api/v2/settings/household/redeem" to """{"success":true,"error":"Verknüpft mit marco"}""",
+            "/api/v2/settings/household" to """{"success":true,"is_sub":true}""",
+            "/api/v2/sets/household-members" to """{"success":true,"members":[{"id":1,"username":"marco","is_self":true},{"id":2,"username":"kind"}]}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -101,32 +101,32 @@ class SettingsViewModelTest {
         vm.loadAlarmOverview()
         assertTrue("overview", vm.alarmOverview.value.loaded)
         vm.changeAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, Money.from(450.0)!!)
-        assertEquals("reloaded", 2, paths.requestsTo("GET /api/v1/alerts").size)
-        assertTrue(paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
+        assertEquals("reloaded", 2, paths.requestsTo("GET /api/v2/alerts").size)
+        assertTrue(paths.requestsTo("PUT /api/v2/sets/75192-1/alert").isNotEmpty())
     }
 
     @Test
     fun `a renamed storage location also gets the new name on the sets in the store`() {
-        paths.responses["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","storage":"Kiste"}]}"""
-        paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Kiste"}]}"""
+        paths.responses["/api/v2/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","storage":"Kiste"}]}"""
+        paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[{"id":3,"name":"Kiste"}]}"""
         runBlocking { t.sets().refreshSets() }
         val vm = vm()
         vm.loadOwnLocations()
         assertEquals("Kiste", vm.storageState.value.own.single().name)
-        paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
+        paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[{"id":3,"name":"Keller"}]}"""
         vm.renameLocation(3, "Keller")
         assertEquals("the own locations anew", "Keller", vm.storageState.value.own.single().name)
         val stored = runBlocking { t.sets().observeSets().first().list.single() }
-        assertEquals("without fetching the stock again", 1, paths.requestsTo("GET /api/v1/sets?").size)
+        assertEquals("without fetching the stock again", 1, paths.requestsTo("GET /api/v2/sets?").size)
         assertEquals("Keller", stored.storage)
     }
 
     @Test
     fun `a storage location error without a sentence stays silent`() {
-        paths.codes["/api/v1/storage/locations/3"] = 401
+        paths.codes["/api/v2/storage/locations/3"] = 401
         val vm = vm()
         vm.deleteLocation(3)
-        assertTrue("Response", paths.requestsTo("DELETE /api/v1/storage/locations/3").isNotEmpty())
+        assertTrue("Response", paths.requestsTo("DELETE /api/v2/storage/locations/3").isNotEmpty())
         assertNull(t.messages.text)
     }
 
@@ -135,7 +135,7 @@ class SettingsViewModelTest {
         val vm = vm()
         vm.saveSettings(CurrencyCode.CHF, Condition.USED)
         // Every price changes: the cache refetches sets, parts and figures.
-        for (path in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
+        for (path in listOf("GET /api/v2/sets?", "GET /api/v2/parts?", "GET /api/v2/minifigs?")) {
             assertTrue(path, paths.requestsTo(path).isNotEmpty())
         }
         assertEquals(CurrencyCode.CHF, t.session.state.value.currency)
@@ -144,7 +144,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `the default condition reports the saving`() {
-        paths.responses["/api/v1/settings/user/default-condition"] = """{"success":true}"""
+        paths.responses["/api/v2/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
         vm.saveUserDefaultCondition(Condition.USED)
         assertTrue("message", t.messages.text != null)
@@ -158,7 +158,7 @@ class SettingsViewModelTest {
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         assertTrue("accounts there", t.viewport.accounts.value.householdMembers.size == 2)
         assertTrue("status there", vm.householdState.value.status?.isSub == true)
-        assertTrue(paths.requestsTo("POST /api/v1/settings/household/redeem").single().isNotEmpty())
+        assertTrue(paths.requestsTo("POST /api/v2/settings/household/redeem").single().isNotEmpty())
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
         assertEquals("""{"code":"ABC123","password":"geheim1234"}""", body)
         assertEquals(1, vm.householdState.value.redeemed)
@@ -166,9 +166,9 @@ class SettingsViewModelTest {
 
     @Test
     fun `a wrong password when redeeming marks the field`() {
-        paths.responses["/api/v1/settings/household/redeem"] =
-            """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
-        paths.codes["/api/v1/settings/household/redeem"] = 400
+        paths.responses["/api/v2/settings/household/redeem"] =
+            """{"success":false,"code":"current_password_wrong","error":"Aktuelles Passwort falsch"}"""
+        paths.codes["/api/v2/settings/household/redeem"] = 400
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
@@ -179,21 +179,21 @@ class SettingsViewModelTest {
 
     @Test
     fun `with an active second factor its code goes along when redeeming`() {
-        paths.responses["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
+        paths.responses["/api/v2/auth/second-factor"] = """{"success":true,"active":true,"codes_left":8}"""
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.loadHousehold()
         assertTrue("Codefeld", vm.householdState.value.factorNeeded)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
         assertTrue("redeemed", paths.requests.any { "household/redeem" in it })
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
-        assertEquals("""{"code":"ABC123","password":"geheim1234","faktor_code":"123456"}""", body)
+        assertEquals("""{"code":"ABC123","password":"geheim1234","factor_code":"123456"}""", body)
     }
 
     @Test
     fun `if the server requires the second factor's code, the field appears`() {
-        paths.responses["/api/v1/settings/household/redeem"] =
-            """{"success":false,"code":"zweiter_faktor_falsch","error":"Code falsch"}"""
-        paths.codes["/api/v1/settings/household/redeem"] = 400
+        paths.responses["/api/v2/settings/household/redeem"] =
+            """{"success":false,"code":"second_factor_wrong","error":"Code falsch"}"""
+        paths.codes["/api/v2/settings/household/redeem"] = 400
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         assertFalse(vm.householdState.value.factorNeeded)
         vm.redeemHouseholdInvite("ABC123", "geheim1234")
@@ -206,16 +206,16 @@ class SettingsViewModelTest {
 
     @Test
     fun `after too many failed attempts the server's sentence comes, without it an own one`() {
-        paths.responses["/api/v1/settings/household/redeem"] =
-            """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
-        paths.codes["/api/v1/settings/household/redeem"] = 429
+        paths.responses["/api/v2/settings/household/redeem"] =
+            """{"success":false,"code":"too_many_failed_attempts","error":"Bitte in 5 Min. erneut"}"""
+        paths.codes["/api/v2/settings/household/redeem"] = 429
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.fetch.errorMessage.text)
         assertFalse(vm.householdState.value.passwordWrong)
 
-        paths.responses["/api/v1/settings/household/redeem"] = """{"success":false}"""
+        paths.responses["/api/v2/settings/household/redeem"] = """{"success":false}"""
         vm.redeemHouseholdInvite("ABC123", "falsch")
         assertTrue("second answer", vm.householdState.value.fetch.errorMessage.text == "t${R.string.household_redeem_locked}")
     }

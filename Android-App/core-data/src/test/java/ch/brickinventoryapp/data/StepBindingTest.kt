@@ -49,17 +49,17 @@ class StepBindingTest {
 
     @Test
     fun `the server's challenge arrives with its message`() = runBlocking {
-        server.enqueue(TestApi.response("""{"success":true,"challenge":"c1","nachricht":"BrickInventory-Schritt/1\ngutschein\nc1","gueltig_bis":"2026-11-09T12:00:00Z"}"""))
+        server.enqueue(TestApi.response("""{"success":true,"challenge":"c1","message":"BrickInventory-Schritt/1\ngutschein\nc1","valid_until":"2026-11-09T12:00:00Z"}"""))
         val c = binding.challenge(StepAction.VOUCHER)
         assertEquals(StepResponse.Challenge("c1", "BrickInventory-Schritt/1\ngutschein\nc1"), c)
         val request = server.takeRequest()
-        assertEquals("/api/v1/geraet/schritt/challenge", request.path)
-        assertEquals("""{"aktion":"gutschein"}""", request.body.readUtf8())
+        assertEquals("/api/v2/device/step/challenge", request.path)
+        assertEquals("""{"action":"voucher"}""", request.body.readUtf8())
     }
 
     @Test
     fun `a refusal of the server stops`() = runBlocking {
-        server.enqueue(TestApi.response("""{"success":false,"code":"geraeteschluessel_fehlt","error":"Bitte neu anmelden."}""", 403))
+        server.enqueue(TestApi.response("""{"success":false,"code":"device_key_missing","error":"Bitte neu anmelden."}""", 403))
         assertEquals(StepResponse.Rejected("Bitte neu anmelden."), binding.challenge(StepAction.ADMIN))
     }
 
@@ -79,11 +79,11 @@ class StepBindingTest {
 
     @Test
     fun `the signature goes to the server as Base64`() = runBlocking {
-        server.enqueue(TestApi.response("""{"success":true,"aktion":"gutschein","gueltig_bis":"2026-11-09T12:05:00Z"}"""))
+        server.enqueue(TestApi.response("""{"success":true,"action":"voucher","valid_until":"2026-11-09T12:05:00Z"}"""))
         assertEquals(StepResponse.Free, binding.release("c1", byteArrayOf(1, 2, 3)))
         val body = server.takeRequest().body.readUtf8()
-        assertEquals("""{"challenge":"c1","signatur":"${Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))}"}""", body)
-        server.enqueue(TestApi.response("""{"success":false,"code":"schritt_signatur_ungueltig","error":"abgelehnt"}""", 400))
+        assertEquals("""{"challenge":"c1","signature":"${Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))}"}""", body)
+        server.enqueue(TestApi.response("""{"success":false,"code":"step_signature_invalid","error":"abgelehnt"}""", 400))
         assertEquals(StepResponse.Rejected("abgelehnt"), binding.release("c2", byteArrayOf(4)))
     }
 
@@ -91,10 +91,10 @@ class StepBindingTest {
     fun `the nonce arrives, a 404 and a refusal bring their sentence`() = runBlocking {
         server.enqueue(TestApi.response("""{"success":true,"nonce":"ab_-"}"""))
         assertEquals(KeyNonce.Nonce("ab_-"), binding.keyNonce())
-        assertEquals("/api/v1/geraet/schluessel/nonce", server.takeRequest().path)
+        assertEquals("/api/v2/device/key/nonce", server.takeRequest().path)
         server.enqueue(TestApi.response("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
         assertEquals(KeyNonce.Rejected("x"), binding.keyNonce())
-        server.enqueue(TestApi.response("""{"success":false,"code":"geraeteschluessel_frist","error":"Bitte neu anmelden."}""", 403))
+        server.enqueue(TestApi.response("""{"success":false,"code":"device_key_deadline","error":"Bitte neu anmelden."}""", 403))
         assertEquals(KeyNonce.Rejected("Bitte neu anmelden."), binding.keyNonce())
     }
 
@@ -104,9 +104,9 @@ class StepBindingTest {
         val chain = listOf(byteArrayOf(-5, -1), byteArrayOf(3))
         assertEquals(StepResponse.Free, binding.depositChain(chain))
         val request = server.takeRequest()
-        assertEquals("/api/v1/geraet/schluessel", request.path)
-        assertEquals("""{"kette":["+/8=","Aw=="]}""", request.body.readUtf8())
-        server.enqueue(TestApi.response("""{"success":false,"code":"geraeteschluessel_attestation","error":"nicht bestätigt"}""", 400))
+        assertEquals("/api/v2/device/key", request.path)
+        assertEquals("""{"chain":["+/8=","Aw=="]}""", request.body.readUtf8())
+        server.enqueue(TestApi.response("""{"success":false,"code":"device_key_attestation","error":"nicht bestätigt"}""", 400))
         assertEquals(StepResponse.Rejected("nicht bestätigt"), binding.depositChain(chain))
         server.shutdown()
         assertEquals("A network error is no notification", StepResponse.Rejected(null), binding.depositChain(chain))

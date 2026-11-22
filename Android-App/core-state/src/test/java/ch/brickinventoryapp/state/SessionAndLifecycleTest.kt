@@ -42,8 +42,8 @@ class SessionAndLifecycleTest {
     @Test
     fun `safeCall reports 401 as rejected`() {
         val paths = PathServer()
-        paths.codes["/api/v1/stats"] = 401
-        paths.codes["/api/v1/finance/pnl"] = 500
+        paths.codes["/api/v2/stats"] = 401
+        paths.codes["/api/v2/finance/pnl"] = 500
         try {
             val finances = testFinancesRepository(TestApi.forTarget(paths.server))
             val expired = runBlocking { finances.getStats() } as Outcome.Failure

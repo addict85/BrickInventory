@@ -51,7 +51,7 @@ class RedirectTest {
         a.shutdown(); b.shutdown()
     }
 
-    private fun logIn(): Int = client.newCall(Request.Builder().url(a.url("/api/v1/auth/login"))
+    private fun logIn(): Int = client.newCall(Request.Builder().url(a.url("/api/v2/auth/login"))
         .post("""{"password":"streng-geheim"}""".toRequestBody()).build()).execute().use { it.code }
 
     @Test
@@ -64,12 +64,12 @@ class RedirectTest {
 
     @Test
     fun `a redirect on the same server keeps method, body and token`() {
-        a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/api/v1/auth/login2"))
+        a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/api/v2/auth/login2"))
         a.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, logIn())
         a.takeRequest()
         val second = a.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/api/v1/auth/login2", second.path)
+        assertEquals("/api/v2/auth/login2", second.path)
         assertEquals("POST", second.method)
         assertEquals("""{"password":"streng-geheim"}""", second.body.readUtf8())
         assertEquals("Bearer geheim", second.getHeader("Authorization"))
@@ -77,7 +77,7 @@ class RedirectTest {
 
     @Test
     fun `after 303 it continues with GET without a body`() {
-        a.enqueue(MockResponse().setResponseCode(303).setHeader("Location", "/api/v1/ergebnis"))
+        a.enqueue(MockResponse().setResponseCode(303).setHeader("Location", "/api/v2/ergebnis"))
         a.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, logIn())
         a.takeRequest()

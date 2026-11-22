@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.contract.Gutschein
+import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.model.domain.Money
@@ -18,7 +18,7 @@ class VoucherWithoutSecretTest {
 
     @Test
     fun `a voucher lies without PIN and full number`() {
-        val g = VouchersRepositoryImpl.withoutSecret(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0).asView())
+        val g = VouchersRepositoryImpl.withoutSecret(Voucher(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0).asView())
         assertEquals("…3456", g.number)
         assertNull(g.pin)
         assertEquals(Money.from(50.0), g.amount)
