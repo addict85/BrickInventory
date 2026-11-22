@@ -39,7 +39,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { ROOT, buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 async function dbReachable() {
@@ -54,7 +54,7 @@ async function dbReachable() {
 test('catalog import swaps instead of clearing', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
 
@@ -97,7 +97,7 @@ test('catalog import swaps instead of clearing', async t => {
     const reader = await db.pool.connect();
     let minimum = Infinity;
     let running = true;
-    const beobachten = (async () => {
+    const observe = (async () => {
       while (running) {
         const { rows } = await reader.query('SELECT count(*)::int AS c FROM rb_colors');
         minimum = Math.min(minimum, rows[0].c);
@@ -109,7 +109,7 @@ test('catalog import swaps instead of clearing', async t => {
     const total = await worker.TASKS.colors();
 
     running = false;
-    await beobachten;
+    await observe;
     reader.release();
 
     assert.equal(total, 300);
@@ -280,7 +280,7 @@ test("the import process builds its access via createDb, without the requests' d
   try {
     row = (await zugang.systemPool.query('SHOW statement_timeout')).rows[0];
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   assert.notEqual(zugang.systemPool, zugang.pool, 'der Tausch braucht einen eigenen Pool');

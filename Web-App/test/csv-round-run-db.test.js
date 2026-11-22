@@ -70,7 +70,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
 
-  const erfassungen = (tabelle, number, farbe, u) =>
+  const acqList = (tabelle, number, farbe, u) =>
     db.all(
       `SELECT ${number}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
             condition, day::text AS tag
@@ -82,8 +82,8 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
     const r = await importPartsCsv(B, await partsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
-      await erfassungen('part_acquisitions', 'part_number', true, B),
-      await erfassungen('part_acquisitions', 'part_number', true, A),
+      await acqList('part_acquisitions', 'part_number', true, B),
+      await acqList('part_acquisitions', 'part_number', true, A),
     );
   });
 
@@ -91,8 +91,8 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
     const r = await importMinifigsCsv(B, await minifigsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
-      await erfassungen('minifig_acquisitions', 'fig_number', false, B),
-      await erfassungen('minifig_acquisitions', 'fig_number', false, A),
+      await acqList('minifig_acquisitions', 'fig_number', false, B),
+      await acqList('minifig_acquisitions', 'fig_number', false, A),
     );
   });
 

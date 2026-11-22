@@ -1,5 +1,7 @@
 /**
  * When topping up a set, price and noted condition must match TOGETHER.
+ *
+ * Counter-check: userDefaultCondition() (src/settings/settings.ts) ignores a stored 'U' → red “topping up without a condition follows the user's default”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -16,7 +18,7 @@ const { setUserSetting } = _req('src/settings/userSetting.js');
 const { acquireSet } = require('./helpers/sources').areaPage('sets');
 
 test("topping up without a condition follows the user's default", { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const name = `zst_${process.pid}`;
   const SET = `90${String(process.pid).slice(-4)}-1`;

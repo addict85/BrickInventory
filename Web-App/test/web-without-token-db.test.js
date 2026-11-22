@@ -75,7 +75,7 @@ test('browser without token', { concurrency: 1 }, async t => {
 
   /** @param {string} weg @param {{ method?: string, body?: unknown, cookie?: string }} [o] */
 
-  const ruf = async (weg, { method = 'GET', body, cookie } = {}) => {
+  const callFn = async (weg, { method = 'GET', body, cookie } = {}) => {
     const r = await fetch(basis + weg, {
       method,
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
@@ -88,7 +88,7 @@ test('browser without token', { concurrency: 1 }, async t => {
     };
   };
   const anmelden = zusatz =>
-    ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...zusatz } });
+    callFn('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...zusatz } });
   const tokens = async () => Number((await db.get('SELECT COUNT(*) AS n FROM api_tokens WHERE user_id = $1', [uid])).n);
   const sitzungen = async () =>
     Number(
@@ -113,21 +113,21 @@ test('browser without token', { concurrency: 1 }, async t => {
     assert.equal(await tokens(), 1);
     assert.equal(r.cookie, '', 'Neben dem Token ein Sitzungskeks mit den vollen Rechten des Kontos');
     assert.equal(await sitzungen(), vorher, 'Die Token-Anmeldung legt eine Sitzung an');
-    const profil = await fetch(basis + '/auth/profile', { headers: { authorization: `Bearer ${r.body.token}` } });
-    assert.equal(profil.status, 200, 'Der Token allein trägt die App');
+    const profileData = await fetch(basis + '/auth/profile', { headers: { authorization: `Bearer ${r.body.token}` } });
+    assert.equal(profileData.status, 200, 'Der Token allein trägt die App');
   });
 
   await t.test('the own session stays', async () => {
     await anmelden({ without_token: true }); // a second browser
     assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
-    const ohne = await ruf('/settings/sessions/end-others', {
+    const ohne = await callFn('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
       body: { password: 'falsch-1234' },
     });
     assert.deepEqual([ohne.status, ohne.body?.code], [400, 'current_password_wrong']);
     assert.equal(await sitzungen(), 2, 'ohne richtiges Passwort wurden Sitzungen beendet');
-    const r = await ruf('/settings/sessions/end-others', {
+    const r = await callFn('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
       body: { password: PASS },
@@ -135,6 +135,10 @@ test('browser without token', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 1);
     assert.equal(await sitzungen(), 1);
-    assert.equal((await ruf('/auth/profile', { cookie: eigene })).status, 200, 'Die eigene Sitzung wurde mit beendet');
+    assert.equal(
+      (await callFn('/auth/profile', { cookie: eigene })).status,
+      200,
+      'Die eigene Sitzung wurde mit beendet',
+    );
   });
 });

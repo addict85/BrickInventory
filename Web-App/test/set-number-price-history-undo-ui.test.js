@@ -193,9 +193,9 @@ test('create price alert in its view', async () => {
     d.getElementById('alert-new-price').value = '599,90';
     d.getElementById('alert-new-button').click();
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
-    const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
-    assert.match(ruf.url, /\/v2\/sets\/10294-1\/alert$/);
-    assert.deepEqual(JSON.parse(ruf.body), { direction: 'below', threshold: 599.9, condition: 'N' });
+    const callFn = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
+    assert.match(callFn.url, /\/v2\/sets\/10294-1\/alert$/);
+    assert.deepEqual(JSON.parse(callFn.body), { direction: 'below', threshold: 599.9, condition: 'N' });
   } finally {
     w.close();
   }

@@ -59,7 +59,7 @@ test('image proxy delivers existing set images from images/sets', async t => {
   };
 
   const ORIGINAL = Buffer.alloc(400, 2);
-  const VORSCHAU = Buffer.alloc(300, 3);
+  const PREVIEW = Buffer.alloc(300, 3);
   const CACHE = Buffer.alloc(500, 4);
 
   // As for the user: file and preview lie in images/sets, the proxy cache
@@ -67,7 +67,7 @@ test('image proxy delivers existing set images from images/sets', async t => {
   const withCache = `5${process.pid}-1`;
   const withCacheUrl = `https://cdn.rebrickable.com/media/sets/${withCache}.jpg`;
   put(path.join(SET_IMAGES_DIR, `${withCache}.jpg`), ORIGINAL);
-  put(path.join(SET_IMAGES_DIR, `${withCache}_thumb.jpg`), VORSCHAU);
+  put(path.join(SET_IMAGES_DIR, `${withCache}_thumb.jpg`), PREVIEW);
   const cacheFile = path.join(cacheDir, proxyCacheKey(proxyAddress(withCacheUrl) ?? withCacheUrl));
   put(cacheFile, CACHE);
   put(`${cacheFile}.ct`, Buffer.from('image/jpeg'));
@@ -81,7 +81,7 @@ test('image proxy delivers existing set images from images/sets', async t => {
   await t.test('with thumb=1 the local preview comes, without a note for the image job', async () => {
     const r = await hole(`url=${encodeURIComponent(withCacheUrl)}&thumb=1&gen=0`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, VORSCHAU);
+    assert.deepEqual(r.inhalt, PREVIEW);
     assert.deepEqual(notes, []);
   });
 
@@ -89,13 +89,13 @@ test('image proxy delivers existing set images from images/sets', async t => {
     const withoutCache = `4${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${withoutCache}.jpg`;
     put(path.join(SET_IMAGES_DIR, `${withoutCache}.jpg`), ORIGINAL);
-    put(path.join(SET_IMAGES_DIR, `${withoutCache}_thumb.jpg`), VORSCHAU);
+    put(path.join(SET_IMAGES_DIR, `${withoutCache}_thumb.jpg`), PREVIEW);
     const { countRequest } = _req('src/account/loginLimiter.js');
     await countRequest('bild-abruf', 'konto:1', 60_000);
     await countRequest('bild-abruf', 'konto:1', 60_000);
     const r = await hole(`url=${encodeURIComponent(url)}&thumb=1`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, VORSCHAU);
+    assert.deepEqual(r.inhalt, PREVIEW);
   });
 
   await t.test('if the preview is missing in images/sets, the previous path stays', async () => {

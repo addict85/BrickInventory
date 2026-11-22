@@ -23,7 +23,7 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the image diagnostics describe every situation in plain text', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');

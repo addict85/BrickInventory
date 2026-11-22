@@ -34,16 +34,16 @@ const ALLOWED = new Map([
 
 test('a function name means one thing', () => {
   const dateien = [];
-  const gehen = d => {
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts', 'public', '.git'].includes(e.name) || e.name.startsWith('.'))
         continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
+      if (e.isDirectory()) go(abs);
       else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const wo = new Map();

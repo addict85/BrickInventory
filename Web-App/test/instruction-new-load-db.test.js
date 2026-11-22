@@ -37,9 +37,9 @@ const { adminWithFactor } = require('./helpers/admin');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 // No fetch at the sources: the reload finds nothing here.
-const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
-const echt = require(anlPath);
-require.cache[anlPath].exports = Object.assign({}, echt, { loadSetInstructions: async () => [] });
+const instrPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
+const echt = require(instrPath);
+require.cache[instrPath].exports = Object.assign({}, echt, { loadSetInstructions: async () => [] });
 
 const db = testData();
 const SET = '99072-1',

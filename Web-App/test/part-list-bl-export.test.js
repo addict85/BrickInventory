@@ -36,7 +36,7 @@ const UNKNOWN = {
   quantity: 2,
 };
 
-async function exportiere(language) {
+async function exportIt(language) {
   const o = await openUi(
     {
       '/v2/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
@@ -54,14 +54,14 @@ async function exportiere(language) {
   o.w.URL.revokeObjectURL = () => {};
   o.w.open = () => ({});
   try {
-    return await bedienen(o, dateien);
+    return await operate(o, dateien);
   } catch (e) {
     o.w.close();
     throw e;
   }
 }
 
-async function bedienen(o, dateien) {
+async function operate(o, dateien) {
   await reiter(o.w, 'partslist');
   o.d.getElementById('pl-setnr').value = '10294';
   o.d.querySelector('[data-click="plAddSet"]').click();
@@ -79,7 +79,7 @@ async function bedienen(o, dateien) {
 }
 
 test('no Rebrickable color number goes out as a BrickLink color — items without one are named', async () => {
-  const { w, xml, meldungen } = await exportiere('de');
+  const { w, xml, meldungen } = await exportIt('de');
   try {
     // Without an XML declaration: BrickLink rejects a file with one (bricklink-wanted-xml.test.js checks the building block).
     assert.ok(xml.startsWith('<INVENTORY>'), xml.slice(0, 60));
@@ -98,7 +98,7 @@ test('no Rebrickable color number goes out as a BrickLink color — items withou
 });
 
 test('the messages are translated, not typed in', async () => {
-  const { w, meldungen } = await exportiere('en');
+  const { w, meldungen } = await exportIt('en');
   try {
     const texte = meldungen.map(m => m.text).join(' | ');
     assert.match(texte, /1 missing part types? exported/);

@@ -9,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 // Since migration 0036 a stock entry is TWO rows: one in `sets` („this
 // account holds this set") and one per purchase in `set_acquisitions`. holdsSet()
@@ -50,7 +50,7 @@ test('storage location: detail and stock against a real database', async t => {
   try {
     await db.get('SELECT 1 AS ok');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await seed();
@@ -203,7 +203,7 @@ test("the lists' storage location filter works via the route", async t => {
   try {
     await db.get('SELECT 1 AS ok');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await seed();

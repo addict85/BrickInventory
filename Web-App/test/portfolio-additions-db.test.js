@@ -20,7 +20,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the portfolio percentage measures prices, not additional purchases', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const NUTZER = `pfz-${process.pid}`;
   const PREFIX = `86${(process.pid % 900) + 100}`;

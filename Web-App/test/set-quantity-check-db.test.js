@@ -32,7 +32,7 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
   await holdsSet(db, uid, SN, 2, { preis: 40 });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const setze = quantity =>
+  const put = quantity =>
     fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -42,26 +42,26 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
   try {
     await t.test('a broken quantity is rejected', async () => {
       for (const kaputt of [{ a: 1 }, 'abc', -1, 1.5]) {
-        const r = await setze(kaputt);
+        const r = await put(kaputt);
         assert.equal(r.status, 400, JSON.stringify(kaputt));
       }
       assert.equal(await quantityOf(db, uid, SN), 2, 'der Bestand ist unverändert');
     });
 
     await t.test('a valid quantity as text is accepted', async () => {
-      const r = await setze('3');
+      const r = await put('3');
       assert.equal(r.status, 200);
       assert.equal(await quantityOf(db, uid, SN), 3);
     });
 
     await t.test('quantity 0 puts the set into the trash', async () => {
-      const r = await setze(0);
+      const r = await put(0);
       assert.equal(r.status, 200);
       const j = await r.json();
       assert.equal(j.quantity, 0);
       assert.ok(j.trash, 'die Antwort nennt den Papierkorb-Eintrag');
-      const eintrag = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.trash, uid]);
-      assert.equal(eintrag?.number, SN);
+      const entryRow = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.trash, uid]);
+      assert.equal(entryRow?.number, SN);
       assert.equal(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]), undefined);
     });
   } finally {

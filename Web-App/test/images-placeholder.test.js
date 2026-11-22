@@ -28,7 +28,7 @@ const SETS = [
     instructions: [],
   },
 ];
-const TEILE = [
+const PARTS = [
   {
     part_number: '3001',
     part_name: 'Brick 2 x 4',
@@ -63,7 +63,7 @@ const SET_PARTS = [
 
 const RESPONSES = {
   '/v2/sets': { success: true, sets: SETS, total: 1, themes: [] },
-  '/v2/parts/manual': { success: true, parts: TEILE },
+  '/v2/parts/manual': { success: true, parts: PARTS },
   '/v2/parts': { success: true, parts: SET_PARTS, total: 1 },
   '/v2/minifigs/manual': { success: true, figs: FIGUREN },
   '/v2/minifigs': { success: true, figs: [{ ...FIGUREN[0], source: 'set', total_quantity: 1 }], total: 1 },
@@ -73,7 +73,7 @@ const RESPONSES = {
     totals: { min: '0', avg: '0', max: '0' },
     sets: [{ ...SETS[0], purchase_price: 629, avg_price: 0, total_avg: '0' }],
   },
-  '/v2/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0', parts: TEILE },
+  '/v2/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0', parts: PARTS },
 };
 
 /** All <img> of an area that come from templates. */

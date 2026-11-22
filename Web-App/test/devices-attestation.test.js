@@ -213,30 +213,30 @@ function chainWithMiddleLink({ attestiert = false, ca = false, keyUsage } = {}) 
   const neu = () => generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const [zw, mittel, blatt] = [neu(), neu(), neu()];
   const att = confidence =>
-    T.seq(T.oid('1.3.6.1.4.1.11129.2.1.17'), T.oktette(T.beschreibung({ challenge: NONCE, confidence })));
+    T.seq(T.oid('1.3.6.1.4.1.11129.2.1.17'), T.octets(T.beschreibung({ challenge: NONCE, confidence })));
   const zThe = T.zertifikat({
     subject: 'Test-Zwischenstufe',
     aussteller: T.WURZEL.cn,
     public_key: zw.publicKey,
-    signierer: T.WURZEL.privateKey,
+    signer: T.WURZEL.privateKey,
     ca: true,
   });
   const mThe = T.zertifikat({
     subject: 'Android Keystore Key',
     aussteller: 'Test-Zwischenstufe',
     public_key: mittel.publicKey,
-    signierer: zw.privateKey,
+    signer: zw.privateKey,
     ca,
     extensions: [
       ...(attestiert ? [att(0)] : []),
-      ...(keyUsage ? [T.seq(T.oid('2.5.29.15'), T.oktette(T.tlv([0x03], keyUsage)))] : []),
+      ...(keyUsage ? [T.seq(T.oid('2.5.29.15'), T.octets(T.tlv([0x03], keyUsage)))] : []),
     ],
   });
   const bThe = T.zertifikat({
     subject: 'Gefälschter Schlüssel',
     aussteller: 'Android Keystore Key',
     public_key: blatt.publicKey,
-    signierer: mittel.privateKey,
+    signer: mittel.privateKey,
     extensions: [att(2)],
   });
   return { chain: [bThe, mThe, zThe, T.WURZEL.der].map(d => d.toString('base64')) };

@@ -22,7 +22,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { bis } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
@@ -41,7 +41,7 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const pgNotify = testAccess().notification;
@@ -59,8 +59,8 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
     'ein Kanalname mit Leerzeichen wird abgewiesen',
   );
 
-  pgNotify.listen(CHANNEL, nutzlast => {
-    bekommen.push(nutzlast ?? null);
+  pgNotify.listen(CHANNEL, payload => {
+    bekommen.push(payload ?? null);
   });
   await waitOn(1);
   assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');

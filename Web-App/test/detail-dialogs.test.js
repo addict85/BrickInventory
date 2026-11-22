@@ -113,11 +113,11 @@ test('title and footer bar stick — and can do so', () => {
     const abModal = rumpf.search(/<div class="modal/);
     assert.ok(abModal >= 0, `#${id}: kein .modal gefunden`);
     const untilHeader = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
-    const dazwischen = (untilHeader.match(/<div\b/g) || []).length - 1; // subtract the .modal itself
+    const between = (untilHeader.match(/<div\b/g) || []).length - 1; // subtract the .modal itself
     assert.equal(
-      dazwischen,
+      between,
       0,
-      `#${id}: zwischen .modal und .mhd liegen ${dazwischen} weitere <div>. ` +
+      `#${id}: zwischen .modal und .mhd liegen ${between} weitere <div>. ` +
         `position:sticky wirkt nur gegen den naechsten ROLLBEREICH, und das ist .modal ` +
         `(overflow-y:auto). Mit einem Element dazwischen hoert die Titelleiste ` +
         `stillschweigend auf zu kleben — kein Fehler, keine Warnung.`,
@@ -184,16 +184,16 @@ test('title and footer bar stick — and can do so', () => {
     );
 
   // ── 3. The phone version must not turn back the padding ───────────────────
-  const mobil = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
+  const mobileView = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
   assert.doesNotMatch(
-    mobil,
+    mobileView,
     /\.mhd\s*\{[^}]*position:\s*sticky/,
     'mobile.css setzt .mhd wieder selbst auf sticky. Diese Regel gab es dort schon ' +
       'einmal — mit top:0 und eigener Polsterung, wodurch die Leiste zu tief stand. ' +
       'Die Regel steht jetzt in styles.css fuer alle Breiten.',
   );
   assert.match(
-    mobil,
+    mobileView,
     /--modal-padx:/,
     'Die Handyfassung setzt ihre Polsterung nicht ueber die Variablen — dann sind die ' +
       'Leisten dort um die Differenz zu breit.',

@@ -1,5 +1,7 @@
 /**
  * Every key the UI calls also stands in the dictionary.
+ *
+ * Counter-check: `t('zz.missing.key')` appended to public/js/catalog.js → red “every called i18n key is in the dictionary”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,15 +71,15 @@ test('every called i18n key is in the dictionary', () => {
       'anderes zurückfallen.',
   );
 
-  const fehlend = [...gerufen]
+  const absent = [...gerufen]
     .filter(([k]) => !k.endsWith('.') && !existing.has(k))
     .map(([k, rel]) => `${k}   (${rel})`)
     .sort();
   assert.deepEqual(
-    fehlend,
+    absent,
     [],
     'Diese Schlüssel ruft die Oberfläche, aber es gibt sie nicht:\n  ' +
-      fehlend.join('\n  ') +
+      absent.join('\n  ') +
       '\nt() gibt dann den Schlüssel selbst aus — im Text sichtbar, im aria-label ' +
       'liest ihn der Bildschirmleser vor.',
   );
@@ -108,15 +110,15 @@ test('every data-i18n form is also evaluated by applyLang', () => {
   // MEASURED there are four forms, 386 occurrences.
   assert.ok(benutzt.size >= 2, `Nur ${benutzt.size} data-i18n-Formen im Markup gefunden`);
 
-  const wirkungslos = [...benutzt]
+  const ineffective = [...benutzt]
     .filter(([f]) => !erlaubt.has(f))
     .map(([f, rel]) => `${f}   (${rel})`)
     .sort();
   assert.deepEqual(
-    wirkungslos,
+    ineffective,
     [],
     'Diese data-i18n-Formen wertet applyLang() nicht aus:\n  ' +
-      wirkungslos.join('\n  ') +
+      ineffective.join('\n  ') +
       `\nAusgewertet werden nur: ${[...erlaubt].sort().join(', ')}. Ein Attribut, das ` +
       'keine davon ist, sieht nach Übersetzung aus und lässt den Text stehen, wie er ' +
       'im Quelltext steht — in jeder Sprache.',

@@ -39,12 +39,12 @@ function installation(t) {
   fs.mkdirSync(path.join(wurzel, 'data'));
   return wurzel;
 }
-const zufall = () => crypto.randomBytes(32).toString('base64');
+const randomValue = () => crypto.randomBytes(32).toString('base64');
 
 test('the key from DATA_KEY_FILE is used, nothing ends up in data/', t => {
   const wurzel = installation(t),
     datei = path.join(wurzel, 'geheim', 'k'),
-    k = zufall();
+    k = randomValue();
   fs.mkdirSync(path.dirname(datei));
   fs.writeFileSync(datei, k + '\n', { mode: 0o600 });
   const r = lade(wurzel, { DATA_KEY_FILE: datei });
@@ -65,7 +65,7 @@ test('without a key it is created under schluessel/, readable only by the owner'
 
 test('an old installation with data/.datenschluessel keeps running and is warned', t => {
   const wurzel = installation(t),
-    alt = zufall();
+    alt = randomValue();
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), alt, { mode: 0o600 });
   const neu = path.join(wurzel, 'schluessel', 'datenschluessel');
   const r = lade(wurzel, { DATA_KEY_FILE: neu });
@@ -82,9 +82,9 @@ test('an old installation with data/.datenschluessel keeps running and is warned
 
 test('two different keys stop the startup', t => {
   const wurzel = installation(t);
-  fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), zufall());
+  fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), randomValue());
   fs.mkdirSync(path.join(wurzel, 'schluessel'));
-  fs.writeFileSync(path.join(wurzel, 'schluessel', 'datenschluessel'), zufall());
+  fs.writeFileSync(path.join(wurzel, 'schluessel', 'datenschluessel'), randomValue());
   const r = lade(wurzel);
   assert.equal(r.schluessel, null);
   assert.match(r.error, /Zwei verschiedene Datenschlüssel/);

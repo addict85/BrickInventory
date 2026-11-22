@@ -79,7 +79,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   };
 
   /** Opens the stream and reads along until it ends. */
-  const oeffne = async kopf => {
+  const openIt = async kopf => {
     const abbruch = new AbortController();
     t.after(() => abbruch.abort());
     const r = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: kopf, signal: abbruch.signal });
@@ -97,7 +97,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     await bis(() => s.text.includes('data:'), 5000);
     return s;
   };
-  const endet = async (s, wie) => {
+  const ending = async (s, wie) => {
     await bis(() => s.zu, 3000).catch(() => {});
     assert.ok(s.zu, `${wie}: der Strom endet`);
     assert.match(s.text, /event: access_ended/, wie);
@@ -105,24 +105,24 @@ test('streams end with their access', { concurrency: 1 }, async t => {
 
   await t.test('token logged out: the stream ends', async () => {
     const kopf = await token();
-    const s = await oeffne(kopf);
-    const andere = await oeffne(await token());
+    const s = await openIt(kopf);
+    const andere = await openIt(await token());
     assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
-    await endet(s, 'Token abgemeldet');
+    await ending(s, 'Token abgemeldet');
     assert.equal(await bis(() => andere.zu, 300), false, 'der Strom eines anderen, gültigen Tokens bleibt offen');
   });
 
   await t.test('session logged out: the stream ends', async () => {
     const kopf = await sitzung();
-    const s = await oeffne(kopf);
+    const s = await openIt(kopf);
     assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
-    await endet(s, 'Sitzung abgemeldet');
+    await ending(s, 'Sitzung abgemeldet');
   });
 
   await t.test('all sessions ended (new session version): the stream ends', async () => {
-    const s = await oeffne(await sitzung());
+    const s = await openIt(await sitzung());
     await _req('src/account/accessEnd.js').endAllSessions(uid);
-    await endet(s, 'alle Sitzungen beendet');
+    await ending(s, 'alle Sitzungen beendet');
   });
 
   await t.test('without an event the stream ends on the tick', async () => {
@@ -130,8 +130,8 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     const watchViaAccess = (...a) =>
       _req('src/account/http/accessWatch.js').watchViaAccess(require('./helpers/sources').testServices().account, ...a);
     let beendet = 0;
-    const abmelden = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
-    t.after(abmelden);
+    const signOut = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
+    t.after(signOut);
     assert.equal(await bis(() => beendet > 0, 200), false, 'ein gültiger Token beendet nichts');
     // Revocation as from another process: only the row, no event here.
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);

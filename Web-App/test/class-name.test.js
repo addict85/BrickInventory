@@ -1,5 +1,7 @@
 /**
  * Every class name does something — it styles or it is a handle.
+ *
+ * Counter-check: an unstyled class added to the first class attribute of index.html → red “every class name styles something or is a handle”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,15 +84,15 @@ test('every class name styles something or is a handle', () => {
   // MEASURED there are 161.
   assert.ok(benutzt.size >= 100, `Nur ${benutzt.size} benutzte Klassennamen gefunden — Muster veraltet?`);
 
-  const wirkungslos = [...benutzt]
+  const ineffective = [...benutzt]
     .filter(([k]) => !definiert.has(k) && !griffe.has(k))
     .map(([k, rel]) => `${k}   (${rel})`)
     .sort();
   assert.deepEqual(
-    wirkungslos,
+    ineffective,
     [],
     'Diese Klassennamen kennt kein Stylesheet, und kein Skript sucht danach:\n  ' +
-      wirkungslos.join('\n  ') +
+      ineffective.join('\n  ') +
       '\nEntweder fehlt die Regel — dann sieht die Stelle anders aus als gemeint —, ' +
       'oder der Name ist übrig geblieben und gehört weg.',
   );

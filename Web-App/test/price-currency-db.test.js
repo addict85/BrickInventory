@@ -20,7 +20,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test("the app's currency parameter does NOT override the user setting", { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';

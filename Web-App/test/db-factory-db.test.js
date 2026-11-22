@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const DIST = require('./helpers/sources').DIST;
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('the import opens no pool', () => {
   // In its own process: here the test run has already used the access.
@@ -51,7 +51,7 @@ test('two accesses, two transactions', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const modul = require(path.join(DIST, 'db', 'database.js'));
@@ -63,21 +63,21 @@ test('two accesses, two transactions', async t => {
     await db.pool.end().catch(() => {});
   });
   assert.notEqual(a.pool, b.pool);
-  const SCHL = `fabrik-${process.pid}`;
-  await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
+  const SETTING_KEY = `fabrik-${process.pid}`;
+  await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
   await a.transaction(async tx => {
     assert.equal(a.inTransaction(), true);
     assert.equal(b.inTransaction(), false, 'die Transaktion von a gilt nicht für b');
-    await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SCHL, 'x']);
-    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'a sieht die eigene Zeile');
+    await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SETTING_KEY, 'x']);
+    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'a sieht die eigene Zeile');
     assert.equal(
-      await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]),
+      await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]),
       undefined,
       'b sieht nichts Unfertiges',
     );
   });
-  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'nach COMMIT sieht b sie');
-  await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
+  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'nach COMMIT sieht b sie');
+  await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
 });
 
 test('db/database keeps no access of the process', () => {

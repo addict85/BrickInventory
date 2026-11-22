@@ -43,7 +43,7 @@ test('every reference hits an anchor, no more section numbers; the startup messa
   assert.ok(ANKER.size >= 10, `nur ${ANKER.size} Anker in UPGRADE.md`);
   assert.deepEqual(references('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
 
-  const fehlend = [],
+  const absent = [],
     nummern = [];
   let found = 0;
   for (const f of dateien()) {
@@ -51,13 +51,13 @@ test('every reference hits an anchor, no more section numbers; the startup messa
     const rel = path.relative(WEB, f);
     for (const a of references(text)) {
       found++;
-      if (!ANKER.has(a)) fehlend.push(`${rel}: #${a}`);
+      if (!ANKER.has(a)) absent.push(`${rel}: #${a}`);
     }
     if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(sources.ohneKommentare(text)))
       nummern.push(rel);
   }
   assert.ok(found >= 20, `nur ${found} Verweise gefunden — greift die Suche noch?`);
-  assert.deepEqual(fehlend, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
+  assert.deepEqual(absent, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
   assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
 
   // The message the operator really sees at startup: superuser without a way out.

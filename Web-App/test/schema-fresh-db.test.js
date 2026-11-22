@@ -41,9 +41,9 @@ process.env.DATABASE_URL = ziel.toString();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
-const KONTOSPALTEN = ['user_id', 'main_user_id', 'sub_user_id'];
+const ACCOUNT_COLUMNS = ['user_id', 'main_user_id', 'sub_user_id'];
 /** Deliberately without a key — with a reason. */
 const WITHOUT_KEY = new Map([
   ['parts_version_user.user_id', 'Die Zähltrigger schreiben dort auch beim kaskadierten Löschen eines Kontos'],
@@ -65,7 +65,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   try {
     await admin.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await cleanRemainder(admin, 'schema_frisch');
@@ -98,7 +98,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
               AND k.confrelid = 'users'::regclass
               AND (SELECT attname FROM pg_attribute WHERE attrelid = k.conrelid AND attnum = k.conkey[1]) = c.column_name)
        ORDER BY 1`,
-      [KONTOSPALTEN],
+      [ACCOUNT_COLUMNS],
     );
     assert.deepEqual(
       open.map(r => r.spalte).filter(s => !WITHOUT_KEY.has(s)),
@@ -107,7 +107,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
     const alle = await db.get(
       `SELECT COUNT(*)::int AS n FROM information_schema.columns
                                 WHERE table_schema = 'public' AND column_name = ANY($1)`,
-      [KONTOSPALTEN],
+      [ACCOUNT_COLUMNS],
     );
     assert.ok(alle.n >= 20, `Nur ${alle.n} Kontospalten gefunden — greift die Suche noch?`);
   });

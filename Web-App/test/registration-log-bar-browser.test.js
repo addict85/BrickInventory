@@ -34,8 +34,8 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
     return;
   }
   const { b, bis } = app;
-  const groesse = (w, h, mobil) =>
-    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
+  const groesse = (w, h, mobileView) =>
+    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobileView });
 
   await t.test('theme fully on the tile', async () => {
     await groesse(1280, 900, false);

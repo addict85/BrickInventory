@@ -54,19 +54,19 @@ async function seed() {
       FOR EACH ROW EXECUTE FUNCTION alarm_bremse();`);
 }
 
-const schalte = an =>
+const toggle = an =>
   db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
 async function withBrake(fn) {
-  await schalte(true);
+  await toggle(true);
   try {
     return await fn();
   } finally {
-    await schalte(false);
+    await toggle(false);
   }
 }
 
 test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/wanted/wanted.js');

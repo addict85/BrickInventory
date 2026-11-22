@@ -13,46 +13,46 @@ function geraeteSchluessel() {
 }
 
 /** This is how the app signs: SHA256withECDSA, DER, Base64. */
-const signiere = (privateKey, text) =>
+const signIt = (privateKey, text) =>
   sign('sha256', Buffer.from(text, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64');
 
 /**
  * Fetch nonce, build a chain with it as challenge, store it. [o] goes to attestation.kette().
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  calls /api/v1 + weg
+ * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
  * @param {string} token
  */
-async function deposit(ruf, token, o = {}) {
-  const n = await ruf('/device/key/nonce', { method: 'POST', token, body: {} });
+async function deposit(callFn, token, o = {}) {
+  const n = await callFn('/device/key/nonce', { method: 'POST', token, body: {} });
   if (n.status !== 200) return { response: n, schluessel: null };
   const k = attestation.chain({ challenge: Buffer.from(n.body.nonce, 'base64url'), ...o });
-  const response = await ruf('/device/key', { method: 'POST', token, body: { chain: k.chain } });
+  const response = await callFn('/device/key', { method: 'POST', token, body: { chain: k.chain } });
   return { response, schluessel: { privateKey: k.privateKey, public_key: k.public_key }, nonce: n.body.nonce };
 }
 
 /**
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  calls /api/v1 + weg
+ * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
  * @param {string} token
  * @param {string} action
  * @param {{ privateKey: import('node:crypto').KeyObject }} [schluessel]  if missing, one is created and stored
  */
-async function releaseDevice(ruf, token, action, schluessel) {
+async function releaseDevice(callFn, token, action, schluessel) {
   let s = schluessel;
   if (!s) {
-    const h = await deposit(ruf, token);
+    const h = await deposit(callFn, token);
     const r = h.response;
     if (r.status !== 200 || !h.schluessel)
       throw new Error(`Schlüssel nicht hinterlegt: ${r.status} ${JSON.stringify(r.body)}`);
     s = h.schluessel;
   }
-  const c = await ruf('/device/step/challenge', { method: 'POST', token, body: { action } });
+  const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action } });
   if (c.status !== 200) throw new Error(`keine Challenge: ${c.status} ${JSON.stringify(c.body)}`);
-  const f = await ruf('/device/step/approval', {
+  const f = await callFn('/device/step/approval', {
     method: 'POST',
     token,
-    body: { challenge: c.body.challenge, signature: signiere(s.privateKey, c.body.message) },
+    body: { challenge: c.body.challenge, signature: signIt(s.privateKey, c.body.message) },
   });
   if (f.status !== 200) throw new Error(`keine Freigabe: ${f.status} ${JSON.stringify(f.body)}`);
   return s;
 }
 
-module.exports = { geraeteSchluessel, signiere, releaseDevice, deposit };
+module.exports = { geraeteSchluessel, signIt, releaseDevice, deposit };

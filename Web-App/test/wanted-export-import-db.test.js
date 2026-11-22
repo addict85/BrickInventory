@@ -34,7 +34,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const { importWorker } = require('./helpers/jobs');
 const db = testData();
@@ -93,8 +93,8 @@ function fromZip(buf, name) {
     const methode = buf.readUInt16LE(i + 8);
     const namLen = buf.readUInt16LE(i + 26);
     const extraLen = buf.readUInt16LE(i + 28);
-    const datName = buf.slice(i + 30, i + 30 + namLen).toString('utf-8');
-    if (datName !== name) continue;
+    const fileName = buf.slice(i + 30, i + 30 + namLen).toString('utf-8');
+    if (fileName !== name) continue;
     const start = i + 30 + namLen + extraLen;
     // The compressed size is in the header only if no data descriptor is used
     // (bit 3 of the flags field). archiver streams and sets the bit —
@@ -133,7 +133,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -223,17 +223,17 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     // The opposite direction to case 3: the import must also be applicable to a
     // FILLED list. Without this case an import that only works on the empty table
     // would count as "correct".
-    const einlesen = async () => {
+    const readIn = async () => {
       const fd = new FormData();
       fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
       const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
       return r.json();
     };
     await db.run('DELETE FROM wanted');
-    const erst = await einlesen();
+    const erst = await readIn();
     assert.equal(erst.added, ITEM.length, `Vorbedingung: der erste Import legt ${ITEM.length} an, bekam ${erst.added}`);
 
-    const b = await einlesen();
+    const b = await readIn();
     assert.equal(b.added, 0, `${b.added} neu angelegt — die Posten gab es schon alle`);
     assert.equal(b.updated, ITEM.length, `${b.updated} als bestehend gemeldet statt ${ITEM.length}`);
     assert.equal(

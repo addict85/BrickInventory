@@ -9,7 +9,7 @@ const path = require('node:path');
 const { OUT_REL, placeBundleSafe } = require('../../scripts/build-frontend');
 
 const ROOT = path.join(__dirname, '..', '..');
-const BUENDEL = path.join(ROOT, 'public', OUT_REL);
+const BUNDLE_FILE = path.join(ROOT, 'public', OUT_REL);
 
 /**
  * A bundle from main.js plus `extra` (source text with imports relative to
@@ -19,7 +19,7 @@ const BUENDEL = path.join(ROOT, 'public', OUT_REL);
  * @param {string} name
  * @param {string} extra
  */
-function buildTestbuendel(name, extra) {
+function buildTestBundle(name, extra) {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
   const { allowedStyles } = require('../../scripts/build-frontend');
   const ziel = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
@@ -35,10 +35,10 @@ function buildTestbuendel(name, extra) {
     charset: 'utf8',
     outfile: ziel,
     logLevel: 'error',
-    define: { __ERLAUBTE_STILE__: JSON.stringify(allowedStyles()) },
+    define: { __ALLOWED_STYLES__: JSON.stringify(allowedStyles()) },
   });
   process.on('exit', () => fs.rmSync(ziel, { force: true }));
   return ziel;
 }
 
-module.exports = { BUENDEL, placeBundleSafe, buildTestbuendel };
+module.exports = { BUNDLE_FILE, placeBundleSafe, buildTestBundle };

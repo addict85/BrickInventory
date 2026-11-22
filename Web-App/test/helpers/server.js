@@ -11,14 +11,14 @@ function asSession(/** @type {Record<string, any>} */ s) {
     for (const k of Object.keys(s)) delete s[k];
     fertig?.();
   };
-  const methoden = {
+  const methods = {
     regenerate: leeren,
     destroy: leeren,
     save: (/** @type {Function} [fertig] */ fertig) => fertig?.(),
     reload: (/** @type {Function} [fertig] */ fertig) => fertig?.(),
     touch: () => {},
   };
-  for (const [k, f] of Object.entries(methoden))
+  for (const [k, f] of Object.entries(methods))
     if (typeof s[k] !== 'function') Object.defineProperty(s, k, { value: f, configurable: true, writable: true });
   return s;
 }
@@ -32,14 +32,14 @@ function asSession(/** @type {Record<string, any>} */ s) {
  */
 function testServer(_req, { sitzung = {}, t } = {}) {
   const { testAccess, testServices } = require('./sources');
-  const gestellt = asSession(sitzung);
+  const posed = asSession(sitzung);
   const app = _req('startup/app.js').buildApp({
     pool: testAccess().systemWebPool,
     config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: testServices(),
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
-      req.session = gestellt;
+      req.session = posed;
       next();
     },
   });
@@ -54,9 +54,9 @@ function testServer(_req, { sitzung = {}, t } = {}) {
  * and administrator checks. Only for files not yet converted to testServer;
  * their number may only sink (test/ratschen.test.js).
  * @param {(path: string) => any} _req
- * @param {{ sitzung?: object, apiNutzer?: object, routen: Record<string, string>, t?: { after: Function } }} o
+ * @param {{ sitzung?: object, apiAccount?: object, routen: Record<string, string>, t?: { after: Function } }} o
  */
-function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
+function routerServer(_req, { sitzung = {}, apiAccount, routen, t }) {
   const express = require('express');
   const app = express();
   // As in buildApp: /api/v1 is the alias of /api/v2, the routers hang under /api/v2.
@@ -64,7 +64,7 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
   app.use(express.json());
   app.use((/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
     req.session = sitzung;
-    if (apiNutzer !== undefined) req.apiUser = apiNutzer;
+    if (apiAccount !== undefined) req.apiUser = apiAccount;
     next();
   });
   app.use(_req('src/http/rememberAccount.js').rememberRequest);

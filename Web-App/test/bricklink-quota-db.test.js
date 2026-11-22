@@ -62,34 +62,34 @@ test('BrickLink quota per HTTP call', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SN = `91${process.pid % 10000}-1`;
-  const heute = new Date().toISOString().slice(0, 10);
+  const todayDate = new Date().toISOString().slice(0, 10);
   const vorher = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
-  const setze = async (k, v) =>
+  const put = async (k, v) =>
     db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [
       k,
       v,
     ]);
   const newTag = async () => {
-    await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [heute]);
+    await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [todayDate]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     aufrufe.length = 0;
   };
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
   const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
-  for (const k of zugang) await setze(k, 'test');
+  for (const k of zugang) await put(k, 'test');
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   const { fetchPrice } = _req('src/finances/financeCalc.js');
   t.after(async () => {
-    await setze('api_limit_bricklink', vorher?.value ?? '4000');
+    await put('api_limit_bricklink', vorher?.value ?? '4000');
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterAccess) await setze(z.key, z.value);
+    for (const z of alterAccess) await put(z.key, z.value);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
 
   await t.test('sold and stock count once each', async () => {
-    await setze('api_limit_bricklink', '100');
+    await put('api_limit_bricklink', '100');
     await newTag();
     const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
     assert.equal(parseFloat(p.avg_price), 12.5, 'der Rückfall auf Angebote hat keinen Preis geliefert');
@@ -98,7 +98,7 @@ test('BrickLink quota per HTTP call', { concurrency: 1 }, async t => {
   });
 
   await t.test('an exhausted quota also stops the fallback', async () => {
-    await setze('api_limit_bricklink', '1');
+    await put('api_limit_bricklink', '1');
     await newTag();
     await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
     assert.equal(aufrufe.length, 1, `über das Limit hinaus abgerufen: ${aufrufe.join(' | ')}`);

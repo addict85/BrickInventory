@@ -40,14 +40,14 @@ Module.prototype.require = function (name, ...rest) {
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('instructions as a job', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const Q = _req('src/catalog/loadInstruction.js');
@@ -61,16 +61,16 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     const p = await pause();
     return p ? Math.round((new Date(p.until_at).getTime() - Date.now()) / 1000) : null;
   };
-  const zuruecksetzen = () => db.run(`DELETE FROM job_pauses WHERE type = 'instructions'`);
+  const reset = () => db.run(`DELETE FROM job_pauses WHERE type = 'instructions'`);
   t.after(async () => {
     Module.prototype.require = realRequire;
-    await zuruecksetzen();
+    await reset();
     await db.run(`DELETE FROM jobs WHERE type = 'instructions'`);
     await db.pool.end().catch(() => {});
   });
 
   await t.test('after a supplied set nobody waits', async () => {
-    await zuruecksetzen();
+    await reset();
     abruf.extern = false;
     abruf.error_message = null;
     await Q.loadInstruction({ set_number: '10001-1' });
@@ -82,7 +82,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
   });
 
   await t.test('the Cloudflare ladder climbs and ends the next day', async () => {
-    await zuruecksetzen();
+    await reset();
     abruf.error_message = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
     for (let i = 0; i < 5; i++) {
@@ -103,7 +103,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
   });
 
   await t.test('if another process holds the lock, nothing is fetched', async () => {
-    await zuruecksetzen();
+    await reset();
     const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);

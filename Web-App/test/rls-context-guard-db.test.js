@@ -28,7 +28,7 @@ const { asRequest } = _req('src/infra/accountContext.js');
 
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
-const GEFAELSCHT = /app\.account changed within the transaction/;
+const FORGED = /app\.account changed within the transaction/;
 
 test('app.account cannot be switched unnoticed within a request', { concurrency: 1 }, async t => {
   const zugang = await accessOrSkip(t, _req);
@@ -67,7 +67,7 @@ test('app.account cannot be switched unnoticed within a request', { concurrency:
           await tx.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10002-1')`, [B]);
         }),
       ),
-      GEFAELSCHT,
+      FORGED,
     );
     // Row security followed the forged setting inside, but nothing of it got out or stayed.
     assert.deepEqual(gesehen, [B], 'Vorbedingung: die Abfrage lief unter dem gefälschten Konto');
@@ -78,18 +78,18 @@ test('app.account cannot be switched unnoticed within a request', { concurrency:
   await t.test('a single query that switches the account gets no rows', async () => {
     await assert.rejects(
       als(A, () => app.all(`WITH w AS (${wechsel}) SELECT s.user_id FROM w, LATERAL (SELECT user_id FROM sets) s`)),
-      GEFAELSCHT,
+      FORGED,
     );
     await assert.rejects(
       als(A, () => app.run(wechsel)),
-      GEFAELSCHT,
+      FORGED,
     );
   });
 
   await t.test('a setting forged at session level does not stick to the connection', async () => {
     await assert.rejects(
       als(A, () => app.run(`SELECT set_config('app.account', '${B}', false)`)),
-      GEFAELSCHT,
+      FORGED,
     );
     assert.deepEqual(await app.all('SELECT user_id FROM sets'), [], 'ohne Konto sieht die nächste Anfrage nichts');
   });

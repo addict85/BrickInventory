@@ -102,15 +102,16 @@ test('the main account can change the purchase price of a sub-account acquisitio
                   VALUES ($1,$2,99.00,'N',1)`,
       [mainId, SET],
     );
-    const fremdeId = (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [mainId, SET]))
-      .id;
-    r = await fetch(`${baseSub}/api/v2/sets/${SET}/acquisitions/${fremdeId}`, {
+    const foreignId = (
+      await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [mainId, SET])
+    ).id;
+    r = await fetch(`${baseSub}/api/v2/sets/${SET}/acquisitions/${foreignId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 1.0 }),
     });
     assert.equal(r.status, 404, 'ein Unterkonto darf die Erfassung des Hauptkontos NICHT ändern');
-    const unveraendert = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [fremdeId]);
+    const unveraendert = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [foreignId]);
     assert.equal(parseFloat(unveraendert.purchase_price), 99.0, 'und sie darf sich nicht geändert haben');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

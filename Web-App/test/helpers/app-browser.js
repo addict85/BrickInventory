@@ -85,7 +85,7 @@ async function cdp(wsUrl) {
   });
   let n = 0;
   const open = new Map();
-  const ereignisse = [];
+  const eventList = [];
   const listener = [];
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
@@ -94,25 +94,25 @@ async function cdp(wsUrl) {
       open.delete(d.id);
       d.error ? f(new Error(d.error.message)) : r(d.result);
     } else if (d.method) {
-      ereignisse.push(d);
+      eventList.push(d);
       for (const h of listener) h(d);
     }
   };
-  const senden = (method, params = {}, sessionId) =>
+  const sendIt = (method, params = {}, sessionId) =>
     new Promise((r, f) => {
       const id = ++n;
       open.set(id, { r, f });
       ws.send(JSON.stringify({ id, method, params, sessionId }));
     });
-  const { targetId } = await senden('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await senden('Target.attachToTarget', { targetId, flatten: true });
-  const tab = (m, p) => senden(m, p, sessionId);
+  const { targetId } = await sendIt('Target.createTarget', { url: 'about:blank' });
+  const { sessionId } = await sendIt('Target.attachToTarget', { targetId, flatten: true });
+  const tab = (m, p) => sendIt(m, p, sessionId);
   const auswerten = async expression => {
     const r = await tab('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, ereignisse, listener, sessionId, schliessen: () => ws.close() };
+  return { tab, auswerten, eventList, listener, sessionId, schliessen: () => ws.close() };
 }
 
 /**
@@ -215,7 +215,7 @@ async function startApp(t, opt = {}) {
   // Chrome creates a Unix socket under TMPDIR (at most 107 characters); with a long
   // TMPDIR it would abort with “Socket path too long”, so profile and TMPDIR then go under /tmp.
   const basis = os.tmpdir().length > 60 && fs.existsSync('/tmp') ? '/tmp' : os.tmpdir();
-  const profil = fs.mkdtempSync(path.join(basis, 'app-browser-'));
+  const profileData = fs.mkdtempSync(path.join(basis, 'app-browser-'));
   const browser = starte(
     t,
     bin,
@@ -224,7 +224,7 @@ async function startApp(t, opt = {}) {
       '--no-sandbox',
       '--disable-gpu',
       '--remote-debugging-port=0',
-      `--user-data-dir=${profil}`,
+      `--user-data-dir=${profileData}`,
       '--window-size=1280,900',
       'about:blank',
     ],
@@ -234,7 +234,7 @@ async function startApp(t, opt = {}) {
   // a hook that throws skips the following ones — Chrome would then keep running.
   t.after(() => {
     try {
-      fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 });
+      fs.rmSync(profileData, { recursive: true, force: true, maxRetries: 5 });
     } catch {
       /* the system cleans up tmp */
     }
@@ -321,7 +321,7 @@ async function startApp(t, opt = {}) {
     const condition = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
     const s401 = rejected.length ? `\n401 auf: ${rejected.join(', ')}` : '';
     // Exceptions of the page (say Trusted Types): without them a CI run only shows the timeout.
-    const exceptions = b.ereignisse
+    const exceptions = b.eventList
       .filter(e => e.method === 'Runtime.exceptionThrown')
       .slice(-5)
       .map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);

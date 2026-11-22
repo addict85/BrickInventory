@@ -34,7 +34,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // The import stops at the first set at the lock per set number as long as the test holds it.
-let loslassen = () => {};
+let letGo = () => {};
 
 const { buildAndRequire, testData, testAccess, asAccount, testSources, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -60,7 +60,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
         sperre.fertig = db.transaction(async (/** @type {any} */ tx) => {
           await lockUntilToEnd(tx, LOCKS.SET_ADD, sn);
           await new Promise(r => {
-            loslassen = () => r(undefined);
+            letGo = () => r(undefined);
             gehalten(undefined);
           });
         });
@@ -138,7 +138,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, type: 'ergaenzen' }]);
 
-      loslassen();
+      letGo();
       await sperre.fertig;
       assert.equal((await untilDone()).status, 'done');
       assert.deepEqual(
@@ -189,7 +189,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       );
     });
   } finally {
-    loslassen();
+    letGo();
     await worker.stop(0);
     await testAccess().notification.close();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);

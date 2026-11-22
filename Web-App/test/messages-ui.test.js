@@ -27,27 +27,27 @@ async function createWantedItem(w, d) {
 
 /** Record timers from now on instead of letting them run. */
 function catchZeitgeber(w) {
-  const gefangen = [];
+  const caughtOne = [];
   const echt = w.setTimeout;
   w.setTimeout = (fn, ms, ...rest) => {
     if (typeof fn === 'function' && ms >= 3000) {
-      gefangen.push({ fn, ms });
+      caughtOne.push({ fn, ms });
       return 0;
     }
     return echt.call(w, fn, ms, ...rest);
   };
-  return gefangen;
+  return caughtOne;
 }
 
 test('errors and button messages do not expire', async () => {
   const { w, d } = await openUi(FEHLER);
   try {
-    const gefangen = catchZeitgeber(w);
+    const caughtOne = catchZeitgeber(w);
     await createWantedItem(w, d);
     await warte(() => d.querySelector('#toasts .toast.error'));
     const meldung = d.querySelector('#toasts .toast.error');
     assert.match(meldung.textContent, /Merkliste kaputt/);
-    for (const z of gefangen) z.fn();
+    for (const z of caughtOne) z.fn();
     assert.ok(meldung.isConnected, 'der Fehler lief nach seiner Frist ab');
     const zu = meldung.querySelector('.toast-close');
     assert.equal(zu.getAttribute('aria-label'), 'Schliessen');

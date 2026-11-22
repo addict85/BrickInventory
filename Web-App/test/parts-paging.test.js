@@ -130,14 +130,14 @@ test('parts list against the database: pages, color filter and upper bound on bo
     SN = `PP${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const U = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const TEILE = [
+  const PARTS = [
     ['pp1', 5, 'Rot'],
     ['pp2', 1, 'Blau'],
     ['pp3', 5, 'Rot'],
   ];
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('pp1','Eins'),('pp2','Zwei'),('pp3','Drei')
                 ON CONFLICT (part_number) DO NOTHING`);
-  for (const [nr, farbe, name] of TEILE) {
+  for (const [nr, farbe, name] of PARTS) {
     await db.run(
       `INSERT INTO part_color_catalog (part_number,color_id,color_name) VALUES ($1,$2,$3)
                   ON CONFLICT (part_number,color_id) DO UPDATE SET color_name = EXCLUDED.color_name`,
@@ -149,7 +149,7 @@ test('parts list against the database: pages, color filter and upper bound on bo
     );
   }
   await holdsSet(db, U, SN, 1);
-  for (const [nr, farbe] of TEILE) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity: 1 });
+  for (const [nr, farbe] of PARTS) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity: 1 });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
     await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
@@ -161,11 +161,11 @@ test('parts list against the database: pages, color filter and upper bound on bo
   // Without exclude_manual the live query always answers; with it, after the build, the summary.
   let abfrage = { page: 1 };
   const pruefe = async weg => {
-    const seite1 = await H.partsQuery(U, { ...abfrage, page_size: 2 });
-    const seite2 = await H.partsQuery(U, { ...abfrage, page: 2, page_size: 2 });
-    assert.equal(seite1.source, weg);
+    const page1 = await H.partsQuery(U, { ...abfrage, page_size: 2 });
+    const page2 = await H.partsQuery(U, { ...abfrage, page: 2, page_size: 2 });
+    assert.equal(page1.source, weg);
     // Without total the client does not know when to stop.
-    assert.deepEqual([seite1.total, seite1.parts.length, seite2.parts.length, seite1.page_size], [3, 2, 1, 2], weg);
+    assert.deepEqual([page1.total, page1.parts.length, page2.parts.length, page1.page_size], [3, 2, 1, 2], weg);
     const rot = await H.partsQuery(U, { ...abfrage, page_size: 50, color: 'Rot' });
     // The source too: an error in the filter would otherwise fall back to the live query unnoticed.
     assert.deepEqual(

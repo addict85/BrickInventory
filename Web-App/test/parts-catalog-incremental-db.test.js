@@ -29,7 +29,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { asRequest } = _req('src/infra/accountContext.js');
@@ -39,7 +39,7 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const PS = _req('src/parts/summary.js');

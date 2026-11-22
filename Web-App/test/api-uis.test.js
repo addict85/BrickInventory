@@ -1,5 +1,7 @@
 /**
  * ONE address, one implementation — and only ONE UI left.
+ *
+ * Counter-check: the health check in compose.yaml pointed at /api/v2/health/bereit → red “the health check from compose.yaml points to a real address”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +33,7 @@ function routesFrom(datei, mount) {
  */
 function webRouter() {
   // The same reading as in the other checks (helpers/sources.js); routes/api is the second UI.
-  return require('./helpers/sources').routerEinhaengungen();
+  return require('./helpers/sources').routerMounts();
 }
 
 /**
@@ -45,8 +47,8 @@ function webRouter() {
 const ALLOWED = new Map([]);
 
 /** Prefix off: /api/v2/sets/x and /api/sets/x both become /sets/x. */
-function withoutPrefix(eintrag) {
-  return eintrag.replace(/ \/api(\/v1)?/, ' ');
+function withoutPrefix(entryRow) {
+  return entryRow.replace(/ \/api(\/v1)?/, ' ');
 }
 
 test('no unjustified route on either API surface', () => {
@@ -99,16 +101,16 @@ test('no unjustified route on either API surface', () => {
 test('every router hangs under /api/v1', () => {
   const STILL_NOT = new Map([]);
 
-  const einhaengungen = webRouter();
+  const mountings = webRouter();
   // Self-proof: if the pattern finds no mount points, everything below
   // checks nothing and would still be green.
   // One: auth. Settings, sets, parts and minifigures were absorbed into the v1 router.
   assert.ok(
-    einhaengungen.length >= 1,
-    `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`,
+    mountings.length >= 1,
+    `Nur ${mountings.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`,
   );
 
-  const daneben = einhaengungen
+  const daneben = mountings
     .map(r => r.mount)
     .filter(m => !m.startsWith('/api/v2') && !STILL_NOT.has(m))
     .sort();
@@ -123,7 +125,7 @@ test('every router hangs under /api/v1', () => {
 
   // And the exception must not be left lying around: if it is there although the router
   // moved long ago, the conversion looks less finished than it is.
-  const done = [...STILL_NOT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
+  const done = [...STILL_NOT.keys()].filter(m => !mountings.some(r => r.mount === m));
   assert.deepEqual(
     done,
     [],
@@ -228,18 +230,18 @@ test('the health check from compose.yaml points to a real address', () => {
   const address = treffer[1];
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
+  const direct = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
   // And the GET routes of the routers mounted in server.ts (routes/health.ts).
   for (const r of webRouter())
     for (const m of require('./helpers/sources').routesFromSource(
       ohneKommentare(fs.readFileSync(r.datei, 'utf8')),
       r.mount,
     ))
-      if (m[1] === 'get') direkt.push(r.mount + m[2]);
-  assert.ok(direkt.length >= 2, `Nur ${direkt.length} direkte GET-Routen gefunden — Muster veraltet?`);
+      if (m[1] === 'get') direct.push(r.mount + m[2]);
+  assert.ok(direct.length >= 2, `Nur ${direct.length} direkte GET-Routen gefunden — Muster veraltet?`);
   assert.ok(
-    direkt.includes(address),
-    `compose.yaml prueft ${address}; server.ts kennt nur ${direkt.join(', ')}. ` +
+    direct.includes(address),
+    `compose.yaml prueft ${address}; server.ts kennt nur ${direct.join(', ')}. ` +
       'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
       'Anwendung selbst etwas davon merkt.',
   );

@@ -91,7 +91,7 @@ test('job table', { concurrency: 1 }, async t => {
     await t.test('an error is retried and ends after the last attempt', async () => {
       await leeren();
       let mal = 0;
-      const aufgegeben = [];
+      const abandoned = [];
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async n => {
@@ -99,7 +99,7 @@ test('job table', { concurrency: 1 }, async t => {
             if (n.immer || mal === 1) throw new Error('Quelle weg');
           },
           givenUp: async (_n, error_message) => {
-            aufgegeben.push(error_message);
+            abandoned.push(error_message);
           },
         },
       });
@@ -119,7 +119,7 @@ test('job table', { concurrency: 1 }, async t => {
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id2]);
       await w.processOne();
       assert.equal((await row(id2)).status, 'error');
-      assert.deepEqual(aufgegeben, ['Quelle weg'], 'aufgegeben genau einmal, nach dem letzten Versuch');
+      assert.deepEqual(abandoned, ['Quelle weg'], 'aufgegeben genau einmal, nach dem letzten Versuch');
     });
 
     await t.test('the same key is open only once', async () => {
@@ -175,7 +175,7 @@ test('job table', { concurrency: 1 }, async t => {
       await A.pauseKind(EX, new Date(Date.now() + 60_000), 'Test');
       assert.equal(await A.claimJob([EX], 60, 'x', [EX]), null, 'trotz Pause belegt');
       await A.endPause(EX);
-      let gleichzeitig = 0,
+      let simultaneous = 0,
         hoechstens = 0;
       const w = createWorker(
         require('./helpers/sources').testServices().jobQueue,
@@ -183,9 +183,9 @@ test('job table', { concurrency: 1 }, async t => {
           [EX]: {
             exklusiv: true,
             ausfuehren: async () => {
-              hoechstens = Math.max(hoechstens, ++gleichzeitig);
+              hoechstens = Math.max(hoechstens, ++simultaneous);
               await warte(60);
-              gleichzeitig--;
+              simultaneous--;
             },
           },
         },
@@ -205,11 +205,11 @@ test('job table', { concurrency: 1 }, async t => {
     await t.test('postponing only counts when it should', async () => {
       await leeren();
       const { JobMove } = _req('jobs/jobWorker.js');
-      let zaehlt = false;
+      let counted = false;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async () => {
-            throw new JobMove(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt);
+            throw new JobMove(new Date(Date.now() + 3_600_000), 'gedrosselt', counted);
           },
         },
       });
@@ -217,7 +217,7 @@ test('job table', { concurrency: 1 }, async t => {
       await w.processOne();
       let z = await row(id);
       assert.deepEqual([z.status, z.attempts, z.error_message, z.spaeter], ['pending', 0, 'gedrosselt', true]);
-      zaehlt = true;
+      counted = true;
       for (let i = 0; i < 2; i++) {
         await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
         await w.processOne();

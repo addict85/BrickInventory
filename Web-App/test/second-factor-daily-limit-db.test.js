@@ -72,7 +72,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
   assert.equal(codes?.length, 10, 'Einrichtung');
   const s = zf.timeStep();
   const gueltig = [-1, 0, 1].map(v => zf.hotp(schluessel, s + v));
-  const FALSCH = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
+  const WRONG = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
 
   const anmelden = async code => {
     await lockEmpty();
@@ -81,10 +81,10 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
 
   await t.test('up to the limit: wrong code', async () => {
     for (let i = 1; i < lim.MAX_FACTOR_LOGIN_JE_ACCOUNT; i++) {
-      const r = await anmelden(FALSCH);
+      const r = await anmelden(WRONG);
       assert.equal(r.absage?.code, 'second_factor_wrong', `Versuch ${i}`);
     }
-    const r = await anmelden(FALSCH);
+    const r = await anmelden(WRONG);
     assert.equal(r.absage?.code, 'second_factor_locked', 'der 20. falsche Code erreicht die Schranke');
     assert.equal(r.absage?.zweiterFaktor, true, 'das Codefeld bleibt offen');
     const row = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`faktor-anmeldung-konto|${uid}`]);
@@ -94,7 +94,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
   await t.test('the owner learns of it immediately, once', async () => {
     // hintInBackground sends without await; only a second look shows that it stays at one mail.
     await bis(() => mails.some(m => m.kind === 'second_factor_locked'));
-    await anmelden(FALSCH);
+    await anmelden(WRONG);
     assert.deepEqual(
       mails.filter(m => m.kind === 'second_factor_locked'),
       [{ an: `${NAME}@example.org`, kind: 'second_factor_locked' }],

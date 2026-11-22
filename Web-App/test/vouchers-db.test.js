@@ -17,7 +17,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -83,7 +83,7 @@ async function dbReachable() {
 test('vouchers against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -129,7 +129,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
   };
   const hole = (path, keks, opts = {}) =>
     fetch(basis + path, { ...opts, headers: { cookie: keks, ...(opts.headers || {}) } });
-  const jsonAn = (path, keks, methode, koerper) =>
+  const jsonTo = (path, keks, methode, koerper) =>
     hole(path, keks, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -144,7 +144,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
 
   try {
     await t.test('create manually: the three values land in the database', async () => {
-      const r = await jsonAn('/api/v2/vouchers', cookieGrandparent, 'POST', {
+      const r = await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
         amount: 400,
@@ -165,7 +165,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('the same card a second time gives 409, not silently nothing', async () => {
-      const r = await jsonAn('/api/v2/vouchers', cookieGrandparent, 'POST', {
+      const r = await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
         amount: 400,
@@ -183,7 +183,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         [{ number: '1234567890127', amount: 10, currency: 'Franken' }, 'currency_invalid'],
       ];
       for (const [koerper, code] of faelle) {
-        const r = await jsonAn('/api/v2/vouchers', cookieGrandparent, 'POST', koerper);
+        const r = await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', koerper);
         assert.equal(r.status, 400, `${JSON.stringify(koerper)} haette abgewiesen werden muessen`);
         assert.equal((await r.json()).code, code, `falscher Grund fuer ${JSON.stringify(koerper)}`);
       }
@@ -194,7 +194,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       // 0 — without the lower bound an empty form field would have created a
       // voucher over nothing, and without any error message.
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
-      await jsonAn('/api/v2/vouchers', cookieGrandparent, 'POST', { number: '9999999999999', amount: '' });
+      await jsonTo('/api/v2/vouchers', cookieGrandparent, 'POST', { number: '9999999999999', amount: '' });
       const nachher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       assert.equal(nachher, vorher, 'es darf keine Zeile dazugekommen sein');
     });
@@ -221,7 +221,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         const r =
           methode === 'GET'
             ? await hole(path, keks)
-            : await jsonAn(path, keks, methode, methode === 'PUT' ? { amount: 1 } : { password: PASS });
+            : await jsonTo(path, keks, methode, methode === 'PUT' ? { amount: 1 } : { password: PASS });
         assert.equal(r.status, 404, `${wer} durfte ${methode} ${path} nicht`);
       }
       // And the row still stands.
@@ -263,23 +263,23 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const ticket = async () =>
         (
           await (
-            await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
+            await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
           ).json()
         ).ticket;
-      const anzeigen = await hole(`/api/v2/vouchers/${withPdf.id}/pdf?ticket=${await ticket()}`, cookieGrandparent);
-      assert.equal(anzeigen.status, 200);
-      assert.match(anzeigen.headers.get('content-type') || '', /application\/pdf/);
+      const show = await hole(`/api/v2/vouchers/${withPdf.id}/pdf?ticket=${await ticket()}`, cookieGrandparent);
+      assert.equal(show.status, 200);
+      assert.match(show.headers.get('content-type') || '', /application\/pdf/);
       assert.match(
-        anzeigen.headers.get('content-disposition') || '',
+        show.headers.get('content-disposition') || '',
         /^inline/,
         'ohne ?download=1 soll das PDF im Fenster erscheinen, nicht im Download-Ordner',
       );
       assert.equal(
-        anzeigen.headers.get('content-security-policy'),
+        show.headers.get('content-security-policy'),
         "sandbox; default-src 'none'",
         'ein hochgeladenes PDF läuft auch inline nicht unter der Herkunft der App',
       );
-      const bytes = Buffer.from(await anzeigen.arrayBuffer());
+      const bytes = Buffer.from(await show.arrayBuffer());
       assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'es muss wirklich ein PDF zurueckkommen');
 
       const laden = await hole(
@@ -311,7 +311,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         [403, 'pdf_grant_required'],
         'ohne Ticket kein PDF',
       );
-      const withoutPw = await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', {});
+      const withoutPw = await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
         [withoutPw.status, (await withoutPw.json()).code],
         [400, 'current_password_wrong'],
@@ -319,7 +319,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       );
       await db.run("DELETE FROM admin_log WHERE action IN ('voucher_pdf', 'voucher_export')");
       const f = await (
-        await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([f.success, typeof f.ticket, f.valid_seconds], [true, 'string', 60]);
       assert.ok(f.ticket.length >= 32);
@@ -329,7 +329,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         'ein Ticket gilt nur für sein PDF',
       );
       const f2 = await (
-        await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.equal(
         (await hole(`/api/v2/vouchers/${withPdf.id}/pdf?ticket=${f2.ticket}`, cookieGrandchild)).status,
@@ -337,14 +337,14 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         'ein Ticket gilt nur für sein Konto',
       );
       const f3 = await (
-        await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       const erst = await pdf(f3.ticket);
       assert.equal(erst.status, 200);
       await erst.arrayBuffer();
       assert.equal((await pdf(f3.ticket)).status, 403, 'ein Ticket gilt einmal');
       const alt = await (
-        await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       const realTime = Date.now;
       Date.now = () => realTime() + 61_000;
@@ -353,7 +353,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       } finally {
         Date.now = realTime;
       }
-      const ex = await jsonAn('/api/v2/vouchers/export/pdf-grant', cookieGrandparent, 'POST', { password: PASS });
+      const ex = await jsonTo('/api/v2/vouchers/export/pdf-grant', cookieGrandparent, 'POST', { password: PASS });
       const exTicket = (await ex.json()).ticket;
       assert.equal(
         (await hole('/api/v2/vouchers/export/pdf', cookieGrandparent)).status,
@@ -446,12 +446,12 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
 
     // ── Changing ─────────────────────────────────────────────────────────────
     await t.test('changing leaves alone what does not come along', async () => {
-      const r = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
+      const r = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.amount, 350, 'der neue Betrag');
       const k = await (
-        await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'Nummer und PIN dürfen nicht verschwinden');
     });
@@ -459,14 +459,14 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     // Counter-check (measured 03.11.2026): the mask not recognized in PUT → red
     // “the mask from the form changes nothing” (400 number_invalid).
     await t.test('the mask from the form changes nothing', async () => {
-      const r = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
+      const r = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '…1166',
         pin: '•••',
         amount: 360,
       });
       assert.equal(r.status, 200, await r.text());
       const k = await (
-        await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', { password: PASS })
+        await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225']);
     });
@@ -483,18 +483,18 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         !JSON.stringify(liste).includes('5045076374450011166') && !JSON.stringify(liste).includes('5225'),
         'Nummer oder PIN im Klartext in der Liste',
       );
-      const ohne = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {});
+      const ohne = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
         [ohne.status, (await ohne.json()).code],
         [400, 'current_password_wrong'],
         'Klartext nur mit Passwort',
       );
-      const fremd = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandchild, 'POST', {
+      const fremd = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandchild, 'POST', {
         password: PASS,
       });
       assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
       await db.run("DELETE FROM admin_log WHERE action = 'voucher_plaintext'");
-      const k = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {
+      const k = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {
         password: PASS,
       });
       assert.deepEqual(await k.json(), {
@@ -511,7 +511,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('rewriting a card to the number of another gives 409', async () => {
-      const r = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
+      const r = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '5045076374450019999',
       });
       assert.equal(r.status, 409);
@@ -563,7 +563,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         'löschen ohne Passwort',
       );
       assert.ok(fs.existsSync(datei), 'ohne Passwort ist die Datei weg');
-      const r = await jsonAn(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
+      const r = await jsonTo(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
       assert.equal(r.status, 200);
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [withPdf.id])).n, 0);
       assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');

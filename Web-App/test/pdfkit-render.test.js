@@ -1,6 +1,8 @@
 /**
  * pdfkit actually produces a valid PDF — with exactly the API that this
  * application uses.
+ *
+ * Counter-check: the JPEG replaced by the PNG in the test document → red “images are embedded — JPEG and PNG”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +11,7 @@ const path = require('node:path');
 const os = require('node:os');
 
 /** Collects the data stream of a document into a buffer. */
-function rendern(bauen) {
+function render(bauen) {
   const PDFDocument = require('pdfkit');
   return new Promise((fertig, error) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -34,7 +36,7 @@ function isValidPdf(b, wo) {
 
 test('the parts list export draws a valid PDF', async () => {
   // The same set of methods as in routes/api/pdf.ts.
-  const b = await rendern(doc => {
+  const b = await render(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);
     doc.font('Helvetica').fontSize(10);
@@ -75,7 +77,7 @@ test('images are embedded — JPEG and PNG', async () => {
   );
 
   try {
-    const b = await rendern(doc => {
+    const b = await render(doc => {
       doc.addPage({ size: [600, 800] });
       doc.image(jpg, 0, 0, { width: 600 });
       doc.addPage({ size: [600, 800] });

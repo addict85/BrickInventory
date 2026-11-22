@@ -77,30 +77,30 @@ async function cdp(wsUrl) {
   });
   let n = 0;
   const open = new Map();
-  const ereignisse = [];
+  const eventList = [];
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
     if (d.id && open.has(d.id)) {
       const { r, f } = open.get(d.id);
       open.delete(d.id);
       d.error ? f(new Error(d.error.message)) : r(d.result);
-    } else if (d.method) ereignisse.push(d);
+    } else if (d.method) eventList.push(d);
   };
-  const senden = (method, params = {}, sessionId) =>
+  const sendIt = (method, params = {}, sessionId) =>
     new Promise((r, f) => {
       const id = ++n;
       open.set(id, { r, f });
       ws.send(JSON.stringify({ id, method, params, sessionId }));
     });
-  const { targetId } = await senden('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await senden('Target.attachToTarget', { targetId, flatten: true });
-  const tab = (m, p) => senden(m, p, sessionId);
+  const { targetId } = await sendIt('Target.createTarget', { url: 'about:blank' });
+  const { sessionId } = await sendIt('Target.attachToTarget', { targetId, flatten: true });
+  const tab = (m, p) => sendIt(m, p, sessionId);
   const auswerten = async expression => {
     const r = await tab('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, ereignisse, schliessen: () => ws.close() };
+  return { tab, auswerten, eventList, schliessen: () => ws.close() };
 }
 
 test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -150,12 +150,12 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   // Inline only the one block of the start skeleton, via its hash — no 'unsafe-inline'.
   assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
 
-  const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
+  const profileData = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
   // Chrome still writes into the profile when exiting; an error here would skip the
   // remaining cleanup steps and leave Chrome running.
   t.after(() => {
     try {
-      fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 });
+      fs.rmSync(profileData, { recursive: true, force: true, maxRetries: 5 });
     } catch {
       /* the system cleans up tmp */
     }
@@ -168,7 +168,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       '--no-sandbox',
       '--disable-gpu',
       '--remote-debugging-port=0',
-      `--user-data-dir=${profil}`,
+      `--user-data-dir=${profileData}`,
       '--window-size=1280,900',
       'about:blank',
     ],
@@ -228,7 +228,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     uebrig: [...document.querySelectorAll('[data-style]')].map(e => e.getAttribute('data-style')).slice(0, 5),
     styleSet: document.querySelectorAll('[style]').length,
   })`);
-  const warnings = b.ereignisse
+  const warnings = b.eventList
     .filter(e => e.method === 'Runtime.consoleAPICalled')
     .map(e => e.params.args.map(a => a.value ?? '').join(' '))
     .filter(x => x.includes('[stile]'));

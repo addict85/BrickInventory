@@ -24,13 +24,13 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
-const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, mounting, ohneKommentare } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 // READ the mount from server.ts, do not copy it: a test bench with a
 // fixed address stays green while the router has long been mounted elsewhere.
-const AUTH = einhaengung('auth');
+const AUTH = mounting('auth');
 const db = testData();
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));

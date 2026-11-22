@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { ROOT, buildAndRequire, ohneKommentare, testData, testAccess } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { portOf } = require('./helpers/server');
 const db = testData();
 
@@ -42,7 +42,7 @@ async function dbReachable() {
 
 test('parts fallback for foreign sets', async t => {
   if (!(await dbReachable())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
 
@@ -119,19 +119,19 @@ test('write endpoints without login carry a throttle', () => {
   // middleware or in the body), or it counts attempts per IP. qr-login had …
   const src = ohneKommentare(require('./helpers/sources').loginSource());
   // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
-  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
-  assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
+  const placeList = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
+  assert.ok(placeList.length >= 6, `nur ${placeList.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
   const open = [];
-  for (let i = 0; i < stellen.length; i++) {
-    const von = stellen[i].index;
-    const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
+  for (let i = 0; i < placeList.length; i++) {
+    const von = placeList[i].index;
+    const bis = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
-    const geschuetzt =
+    const protectedOne =
       /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!geschuetzt) open.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
+    if (!protectedOne) open.push(`${(placeList[i][1] ?? placeList[i][2]).toUpperCase()} ${placeList[i][3]}`);
   }
   assert.deepEqual(open, [], `weder Anmeldung noch Drossel: ${open.join(', ')}`);
 });
@@ -139,9 +139,9 @@ test('write endpoints without login carry a throttle', () => {
 test('the barcode search counts its Rebrickable calls', () => {
   // The barcode search (src/sets/barcode.ts) only asks Rebrickable via
   // rebrickableJson() — and that counts and throttles.
-  const dienst = source('src/sets/barcode.ts');
-  assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
-  assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
+  const serviceFn = source('src/sets/barcode.ts');
+  assert.match(serviceFn, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
+  assert.doesNotMatch(serviceFn, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = source('clients/rebrickable.ts');
   const rbJson = client.slice(
     client.indexOf('async function rebrickableJson'),
@@ -156,8 +156,8 @@ test('CSV export defuses formulas, the own import reverses it', () => {
 
   // A field that Excel would execute when opening.
   assert.equal(defuse('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
-  for (const anfang of ['=', '+', '-', '@', '\t', '\r']) {
-    assert.equal(defuse(`${anfang}böse`)[0], "'", `${JSON.stringify(anfang)} nicht entschärft`);
+  for (const start of ['=', '+', '-', '@', '\t', '\r']) {
+    assert.equal(defuse(`${start}böse`)[0], "'", `${JSON.stringify(start)} nicht entschärft`);
   }
 
   // Numbers stay numbers — otherwise every negative purchase price would come back with an apostrophe
@@ -225,7 +225,7 @@ test('all three CSV import paths defuse back', () => {
 
 test('the CSV progress stream survives back pressure on the first write', async t => {
   if (!(await dbReachable())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   const uid = (

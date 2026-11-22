@@ -58,13 +58,13 @@ async function confirm(d, { passwort, code }) {
 }
 
 test('delete everything asks for the code', async () => {
-  const rufe = [];
-  const { w, d } = await openUi({ '/v2/inventory': withFactor(rufe) });
+  const callIt = [];
+  const { w, d } = await openUi({ '/v2/inventory': withFactor(callIt) });
   try {
     d.getElementById('btn-dall').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '654321' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
+    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
     assert.equal(d.getElementById('cd-passkey').hidden, true, 'ohne Passkey-Fähigkeit kein Passkey-Knopf');
   } finally {
     w.close();
@@ -72,29 +72,29 @@ test('delete everything asks for the code', async () => {
 });
 
 test('creating an account asks for the code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(rufe)(url, o) : { success: true, users: [] }),
+    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(callIt)(url, o) : { success: true, users: [] }),
   });
   try {
     d.getElementById('nu-n').value = 'bert';
     d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
     d.getElementById('btn-cu').click();
     await confirm(d, { passwort: 'Verwalter-Passwort-1', code: '111222' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.equal(rufe[1].admin_password, 'Verwalter-Passwort-1');
-    assert.equal(rufe[1].code, '111222', 'die zweite Anfrage trägt den Code');
+    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.equal(callIt[1].admin_password, 'Verwalter-Passwort-1');
+    assert.equal(callIt[1].code, '111222', 'die zweite Anfrage trägt den Code');
   } finally {
     w.close();
   }
 });
 
 test('the passkey replaces the code', async () => {
-  const rufe = [];
+  const callIt = [];
   const puffer = () => new Uint8Array([1, 2, 3]).buffer;
   const { w, d } = await openUi(
     {
-      '/v2/inventory': withFactor(rufe, true),
+      '/v2/inventory': withFactor(callIt, true),
       '/v2/auth/passkey/login/options': { success: true, options: { challenge: 'AAAA', allowCredentials: [] } },
     },
     {
@@ -126,45 +126,45 @@ test('the passkey replaces the code', async () => {
     const knopf = d.getElementById('cd-passkey');
     assert.equal(knopf.hidden, false, 'der Passkey-Knopf erscheint');
     knopf.click();
-    assert.ok(await warte(() => rufe.length === 2), `der Passkey ersetzt den Code: nur ${rufe.length} Anfrage(n)`);
-    assert.equal(rufe[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
-    assert.equal(rufe[1].code, undefined);
+    assert.ok(await warte(() => callIt.length === 2), `der Passkey ersetzt den Code: nur ${callIt.length} Anfrage(n)`);
+    assert.equal(callIt[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
+    assert.equal(callIt[1].code, undefined);
   } finally {
     w.close();
   }
 });
 
 test('emptying the trash asks for password and code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v2/trash': (url, o) => (o?.method === 'DELETE' ? withFactor(rufe)(url, o) : { success: true, entries: [] }),
+    '/v2/trash': (url, o) => (o?.method === 'DELETE' ? withFactor(callIt)(url, o) : { success: true, entries: [] }),
   });
   try {
     d.getElementById('trash-empty').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '246810' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
+    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
   } finally {
     w.close();
   }
 });
 
 test('deleting a voucher asks for password and code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
     '/v2/vouchers': {
       success: true,
       vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v2/vouchers/3': withFactor(rufe),
+    '/v2/vouchers/3': withFactor(callIt),
   });
   try {
     await sicht(w, 'vouchers');
     assert.ok(await warte(() => d.querySelector('[data-click="deleteVoucher"]')), 'Gutscheinliste');
     d.querySelector('[data-click="deleteVoucher"]').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '135790' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
+    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.deepEqual(callIt[1], { password: 'Mein-Passwort-1', code: '135790' });
   } finally {
     w.close();
   }
@@ -208,14 +208,14 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
 });
 
 test('the voucher list shows the mask, number and PIN only after confirmation', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
     '/v2/vouchers': {
       success: true,
       vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
     },
     '/v2/vouchers/3/plaintext': (_u, o) => {
-      rufe.push(JSON.parse(o.body));
+      callIt.push(JSON.parse(o.body));
       return { success: true, id: 3, number: '6123456789012', pin: '4711' };
     },
   });
@@ -236,7 +236,7 @@ test('the voucher list shows the mask, number and PIN only after confirmation', 
       'die PIN erscheint nach der Bestätigung',
     );
     assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }]);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }]);
   } finally {
     w.close();
   }

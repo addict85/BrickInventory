@@ -52,7 +52,7 @@ function fakeRes() {
 }
 
 /** A call of deliverFromCache with sensible defaults. */
-async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
+async function callFn(dir, { wantThumb, createMay = true, fresh = false }) {
   const res = fakeRes();
   const streamed = [];
   const noted = [];
@@ -84,7 +84,7 @@ test('delivery order of the image cache', async t => {
 
   await t.test('nothing in the cache → the caller has to fetch from the CDN', async () => {
     aufraeumen();
-    const { done, streamed } = await ruf(dir, { wantThumb: false });
+    const { done, streamed } = await callFn(dir, { wantThumb: false });
     assert.equal(done, false, 'false heisst: nicht beantwortet, bitte holen');
     assert.deepEqual(streamed, []);
   });
@@ -92,7 +92,7 @@ test('delivery order of the image cache', async t => {
   await t.test('original there, preview wanted → original IMMEDIATELY, preview reserved', async () => {
     aufraeumen();
     datei(orig, 5000);
-    const { done, streamed, res } = await ruf(dir, { wantThumb: true });
+    const { done, streamed, res } = await callFn(dir, { wantThumb: true });
     assert.equal(done, true);
     assert.deepEqual(
       streamed,
@@ -108,7 +108,7 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
-    const { streamed, res } = await ruf(dir, { wantThumb: true });
+    const { streamed, res } = await callFn(dir, { wantThumb: true });
     assert.deepEqual(streamed, [thumb], 'Die Vorschau hat Vorrang, wenn es sie gibt');
     assert.equal(res.kopf['content-type'], 'image/jpeg');
     assert.equal(res.kopf['content-length'], '900');
@@ -118,7 +118,7 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
-    const { streamed } = await ruf(dir, { wantThumb: false });
+    const { streamed } = await callFn(dir, { wantThumb: false });
     assert.deepEqual(streamed, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
   });
 
@@ -129,7 +129,7 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 50);
-    const { streamed } = await ruf(dir, { wantThumb: true });
+    const { streamed } = await callFn(dir, { wantThumb: true });
     assert.deepEqual(streamed, [orig], 'Die unbrauchbare Vorschau wurde ausgeliefert');
     assert.equal(
       fs.existsSync(thumb),
@@ -143,7 +143,7 @@ test('delivery order of the image cache', async t => {
     // background job, throttled and only in the primary process.
     aufraeumen();
     datei(orig, 5000);
-    const { noted } = await ruf(dir, { wantThumb: true, createMay: false });
+    const { noted } = await callFn(dir, { wantThumb: true, createMay: false });
     assert.deepEqual(noted, [1], 'Ohne Erzeugungsrecht muss vorgemerkt werden');
   });
 
@@ -156,14 +156,14 @@ test('delivery order of the image cache', async t => {
     datei(orig, 5000);
     datei(thumb, 900);
 
-    const v = await ruf(dir, { wantThumb: true, fresh: true });
+    const v = await callFn(dir, { wantThumb: true, fresh: true });
     assert.equal(v.done, true, '304 ist eine FERTIGE Antwort');
     assert.equal(v.res.code, 304);
     assert.equal(v.res.beendet, true);
     assert.deepEqual(v.streamed, [], 'Bei 304 darf kein Bild mehr rausgehen');
 
     fs.unlinkSync(thumb);
-    const o = await ruf(dir, { wantThumb: false, fresh: true });
+    const o = await callFn(dir, { wantThumb: false, fresh: true });
     assert.equal(o.done, true);
     assert.equal(o.res.code, 304);
     assert.deepEqual(o.streamed, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
@@ -186,7 +186,7 @@ test('delivery order of the image cache', async t => {
       aufraeumen();
       datei(orig, 5000);
       fs.writeFileSync(orig + '.ct', abgelegt);
-      const { res } = await ruf(dir, { wantThumb: false });
+      const { res } = await callFn(dir, { wantThumb: false });
       assert.equal(
         res.kopf['content-type'],
         erwartet,

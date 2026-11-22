@@ -25,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
 const G = _req('src/vouchers/balanceLookup.js');
 /** The session store that the compartment of the voucher services otherwise holds. */
-const vorrat = new Map();
+const stockList = new Map();
 const { FetchError } = _req('src/infra/fetch.js');
 // The real fetch, as the services pass it via their sources (src/externalSources/sources.ts).
 const { legoFetch } = require('./helpers/sources').testServices().externalSources.sources;
@@ -117,12 +117,12 @@ test.after(() => {
 });
 test.beforeEach(() => {
   gesehen.length = 0;
-  vorrat.clear();
+  stockList.clear();
 });
 
 test('cookies, token and body arrive via the real fetch path', async () => {
   modus = 'gut';
-  const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch });
+  const g = await G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch });
   assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.path}`),
@@ -142,7 +142,7 @@ test('cookies, token and body arrive via the real fetch path', async () => {
 test('a redirect to a foreign host is not followed', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
+    G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
     (/** @type {any} */ e) => e instanceof FetchError && e.reason === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
@@ -155,7 +155,7 @@ test('a redirect to a foreign host is not followed', async () => {
 test('an oversized response is aborted', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
+    G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
     (/** @type {any} */ e) => e instanceof FetchError && e.reason === 'zu-gross',
   );
 });

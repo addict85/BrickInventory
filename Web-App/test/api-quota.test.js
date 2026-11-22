@@ -92,9 +92,9 @@ test('the route answers 429 with Retry-After and error code', async t => {
   ohne.use('/api/v2', (_req, res) => res.json({ success: true }));
   const srv2 = ohne.listen(0);
   t.after(() => new Promise(r => srv2.close(r)));
-  const adresse2 = srv2.address();
-  const basis2 = `http://localhost:${typeof adresse2 === 'object' && adresse2 ? adresse2.port : 0}/api/v2`;
+  const address2 = srv2.address();
+  const base2 = `http://localhost:${typeof address2 === 'object' && address2 ? address2.port : 0}/api/v2`;
   const vorher = used.asked;
-  assert.equal((await fetch(basis2 + '/sets')).status, 200);
+  assert.equal((await fetch(base2 + '/sets')).status, 200);
   assert.equal(used.asked, vorher, 'without login the store is not asked');
 });

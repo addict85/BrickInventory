@@ -50,7 +50,7 @@ const protokoll = _req('src/infra/log.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const P = process.pid,
   PASS = 'Protokoll-Passwort-1',
-  FALSCH = 'Geheim-Falsch-987';
+  WRONG = 'Geheim-Falsch-987';
 
 test('login events in the log', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -97,29 +97,29 @@ test('login events in the log', { concurrency: 1 }, async t => {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const ruf = (weg, body) =>
+  const callFn = (weg, body) =>
     fetch(`${base}/api/v2/auth${weg}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then(r => r.status);
   const anmelden = (username, password, code) =>
-    ruf('/login', { username, password, without_token: true, ...(code ? { code } : {}) });
+    callFn('/login', { username, password, without_token: true, ...(code ? { code } : {}) });
   /** The warning lines of an event as parsed JSON. */
-  const ereignisse = kind => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === kind);
+  const eventList = kind => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === kind);
   const waitOnMails = async n => {
     for (let i = 0; i < 60 && mails.length < n; i++) await new Promise(r => setTimeout(r, 25));
   };
 
   await t.test('an unknown name: line without name and password', async () => {
-    assert.equal(await anmelden(`niemand_${P}`, FALSCH), 401);
-    const [z] = ereignisse('anmeldung_fehlgeschlagen');
+    assert.equal(await anmelden(`niemand_${P}`, WRONG), 401);
+    const [z] = eventList('anmeldung_fehlgeschlagen');
     assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
     // Depending on the machine, localhost is 127.0.0.1 or ::1 (shortened to the /64).
     assert.match(z.kontext.address, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(
-      !zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(FALSCH),
+      !zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(WRONG),
       'Name oder Passwort im Protokoll',
     );
   });
@@ -127,8 +127,8 @@ test('login events in the log', { concurrency: 1 }, async t => {
   await t.test('an unknown name is only stored as an HMAC in rate_limit_attempts', async () => {
     const X = `Vertippt-Geheim-${P}-Passwort`;
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
-    assert.equal(await anmelden(X, FALSCH), 401);
-    assert.equal(await anmelden(X, FALSCH), 401);
+    assert.equal(await anmelden(X, WRONG), 401);
+    assert.equal(await anmelden(X, WRONG), 401);
     const klar = await db.get(
       `SELECT count(*)::int n FROM rate_limit_attempts WHERE key ILIKE '%' || lower($1) || '%'`,
       [X],
@@ -156,9 +156,9 @@ test('login events in the log', { concurrency: 1 }, async t => {
 
   await t.test('wrong password: line with account, a mail when the lock is reached', async () => {
     zeilen.length = 0;
-    for (let i = 0; i < 5; i++) assert.equal(await anmelden(NAME, FALSCH), 401);
+    for (let i = 0; i < 5; i++) assert.equal(await anmelden(NAME, WRONG), 401);
     assert.deepEqual(
-      ereignisse('anmeldung_fehlgeschlagen').map(z => z.kontext.konto),
+      eventList('anmeldung_fehlgeschlagen').map(z => z.kontext.konto),
       [uid, uid, uid, uid, uid],
     );
     await waitOnMails(1);
@@ -169,14 +169,14 @@ test('login events in the log', { concurrency: 1 }, async t => {
     zeilen.length = 0;
     assert.equal(await anmelden(NAME, PASS), 429);
     assert.deepEqual(
-      ereignisse('anmeldung_gesperrt').map(z => z.kontext.konto),
+      eventList('anmeldung_gesperrt').map(z => z.kontext.konto),
       [uid],
     );
   });
 
   await t.test('the mail at most once a day', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
-    for (let i = 0; i < 5; i++) await anmelden(NAME, FALSCH);
+    for (let i = 0; i < 5; i++) await anmelden(NAME, WRONG);
     await waitOnMails(2); // a second mail would arrive here
     assert.equal(mails.length, 1, JSON.stringify(mails));
   });
@@ -187,17 +187,17 @@ test('login events in the log', { concurrency: 1 }, async t => {
     const richtig = zf.hotp(zf.fromBase32(g), zf.timeStep());
     assert.equal(await anmelden(FACTOR, PASS, richtig === '000000' ? '000001' : '000000'), 401);
     assert.deepEqual(
-      ereignisse('second_factor_wrong').map(z => z.kontext.konto),
+      eventList('second_factor_wrong').map(z => z.kontext.konto),
       [zfId],
     );
   });
 
   await t.test('a wrong confirmation', async () => {
     zeilen.length = 0;
-    assert.equal(await ruf('/change-password', { current: FALSCH, newPassword: 'Neues-Passwort-77' }), 400);
-    const [z] = ereignisse('bestaetigung_fehlgeschlagen');
+    assert.equal(await callFn('/change-password', { current: WRONG, newPassword: 'Neues-Passwort-77' }), 400);
+    const [z] = eventList('bestaetigung_fehlgeschlagen');
     assert.deepEqual([z?.kontext.konto, z?.kontext.kind], [uid, 'passwort']);
-    assert.ok(!zeilen.join('\n').includes(FALSCH));
+    assert.ok(!zeilen.join('\n').includes(WRONG));
   });
 
   await t.test('the line ends up in app_logs', async () => {

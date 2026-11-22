@@ -33,17 +33,17 @@ const replace = (rel, zusatz) => {
   _req(rel);
   require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
 };
-const stoerung = { protokoll: false, rememberPdf: false, writePdf: false };
+const outage = { protokoll: false, rememberPdf: false, writePdf: false };
 const kaputt = was => {
   throw new Error(`Störung: ${was}`);
 };
 const realLog = _req('src/account/repository/log.js');
 replace('src/account/repository/log.js', {
-  logEntry: (...a) => (stoerung.protokoll ? kaputt('protokoll') : realLog.logEntry(...a)),
+  logEntry: (...a) => (outage.protokoll ? kaputt('protokoll') : realLog.logEntry(...a)),
 });
 const realFiles = _req('src/vouchers/voucherFiles.js');
 replace('src/vouchers/voucherFiles.js', {
-  writeVoucherPdf: (...a) => (stoerung.writePdf ? kaputt('pdf') : realFiles.writeVoucherPdf(...a)),
+  writeVoucherPdf: (...a) => (outage.writePdf ? kaputt('pdf') : realFiles.writeVoucherPdf(...a)),
 });
 
 /** Two readers: the first waits after reading until the second has begun
@@ -63,7 +63,7 @@ const withLimit =
 replace('src/vouchers/repository/vouchers.js', {
   voucher: withLimit('voucher'),
   lockedVoucher: withLimit('lockedVoucher'),
-  rememberVoucherPdf: (...a) => (stoerung.rememberPdf ? kaputt('pdf merken') : echtRepo.rememberVoucherPdf(...a)),
+  rememberVoucherPdf: (...a) => (outage.rememberPdf ? kaputt('pdf merken') : echtRepo.rememberVoucherPdf(...a)),
 });
 
 test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async t => {
@@ -89,11 +89,11 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     await db.pool.end().catch(() => {});
   });
   const disrupt = async (was, work) => {
-    stoerung[was] = true;
+    outage[was] = true;
     try {
       await assert.rejects(work, /Störung/);
     } finally {
-      stoerung[was] = false;
+      outage[was] = false;
     }
   };
 
@@ -102,8 +102,8 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [`${NAME}-neu`]), undefined);
     // Without interference account and entry arise together.
     const id = await K.addAccount(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
-    const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
-    assert.equal(eintrag?.action, 'account_created');
+    const entryRow = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
+    assert.equal(entryRow?.action, 'account_created');
   });
 
   await t.test('if the log entry fails while locking, the account stays active', async () => {

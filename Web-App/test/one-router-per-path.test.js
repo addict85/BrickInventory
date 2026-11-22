@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { buildAndRequire, ROOT, routerEinhaengungen, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, ROOT, routerMounts, ohneKommentare } = require('./helpers/sources');
 
 const _req = buildAndRequire();
 
@@ -36,10 +36,10 @@ function routen(router, praefix = '') {
 }
 
 /** Router mounts in startup/app.ts: path → router module. */
-function einhaengungen() {
+function mountings() {
   const v1 = { mount: '/api/v2', datei: path.join(ROOT, 'routes/api/index.ts'), name: 'api/index' };
   // The parts of routes/auth.ts are already in its stack.
-  return [v1, ...routerEinhaengungen({ withoutParts: true })];
+  return [v1, ...routerMounts({ withoutParts: true })];
 }
 
 test('one router per mount point', () => {
@@ -61,7 +61,7 @@ test('one router per mount point', () => {
 
 test('every route exactly once', () => {
   const alle = [];
-  for (const e of einhaengungen()) {
+  for (const e of mountings()) {
     const modul = require('./helpers/sources').routerFrom(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
     alle.push(...routen(modul.default || modul, e.mount));
   }

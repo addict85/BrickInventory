@@ -106,7 +106,7 @@ let _ownDb = null;
 let _accessFactory = null;
 /** Builds services and contexts of this test file; set by buildAndRequire(). */
 let _serviceFactory = null;
-let _gebaut = null;
+let _builtOnce = null;
 /** Replacements (replaceServices), remembered even before the first build. */
 const _ersatz = [];
 
@@ -114,11 +114,11 @@ const _ersatz = [];
 /** @returns {any} */
 function testServices() {
   if (!_serviceFactory) throw new Error('testServices() erst nach buildAndRequire()');
-  if (!_gebaut) {
-    _gebaut = _serviceFactory();
-    for (const [b, e] of _ersatz) Object.assign(_gebaut.d[b], e);
+  if (!_builtOnce) {
+    _builtOnce = _serviceFactory();
+    for (const [b, e] of _ersatz) Object.assign(_builtOnce.d[b], e);
   }
-  return _gebaut.d;
+  return _builtOnce.d;
 }
 
 /** The context of a scope (repositories, access, dependencies) for tests that
@@ -126,7 +126,7 @@ function testServices() {
 /** @param {string} bereich @returns {any} */
 function testContext(bereich) {
   testServices();
-  const k = _gebaut.contexts[bereich];
+  const k = _builtOnce.contexts[bereich];
   if (!k) throw new Error(`kein Kontext für ${bereich}`);
   return k;
 }
@@ -135,7 +135,7 @@ function testContext(bereich) {
  *  call them via their context (the same object). Before or after the first build. */
 function replaceServices(bereich, ersatz) {
   _ersatz.push([bereich, ersatz]);
-  if (_gebaut) Object.assign(_gebaut.d[bereich], ersatz);
+  if (_builtOnce) Object.assign(_builtOnce.d[bereich], ersatz);
 }
 
 /** The public side of a scope (index.js) together with its services of this test file:
@@ -319,12 +319,12 @@ function ownerAccess(dbModule, testDb, firstStart) {
     { firstStart: () => inSystemContext('start', firstStart) },
   );
   const app = testDb();
-  const enden = [eigen.pool, app.pool].map(p => {
+  const endings = [eigen.pool, app.pool].map(p => {
     const ende = p.end.bind(p);
     let zu = null;
     return { p, schliesse: () => (zu ??= ende()) };
   });
-  for (const { p } of enden) p.end = () => Promise.all(enden.map(e => e.schliesse())).then(() => undefined);
+  for (const { p } of endings) p.end = () => Promise.all(endings.map(e => e.schliesse())).then(() => undefined);
   return eigen;
 }
 
@@ -445,7 +445,7 @@ function ohneKommentare(src) {
  * a pattern on a statement should not depend on where Biome wraps
  * (brackets over several lines, comma before the closing bracket).
  */
-function kompakt(src) {
+function compact(src) {
   return String(src)
     .replace(/\s+/g, ' ')
     .replace(/([([]) /g, '$1')
@@ -680,7 +680,7 @@ function checkParameter(src, name, params, hint = '') {
  *          without routes/api/* — that is the index itself.
  */
 /** @param {{ withoutParts?: boolean }} [o] withoutParts: only the mounted modules, not the files of an assembly */
-function routerEinhaengungen(o = {}) {
+function routerMounts(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` at the top, `app.use('/api/…', xRouter)` below.
   const fileJeName = new Map(
@@ -720,8 +720,8 @@ function routerEinhaengungen(o = {}) {
  * would stay green after a move.
  * @param {string} name file name without routes/ and without .ts, e.g. 'auth'.
  */
-function einhaengung(name) {
-  const treffer = routerEinhaengungen().filter(r => r.name === name);
+function mounting(name) {
+  const treffer = routerMounts().filter(r => r.name === name);
   if (treffer.length !== 1)
     throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in startup/app.ts — erwartet: genau einmal`);
   return treffer[0].mount;
@@ -785,7 +785,7 @@ function pathForm(roh, marke = ':X') {
  * @returns {{text: string, ende: number}|null} content without quotes
  *   and the position AFTER the literal; null if none starts at `i`.
  */
-function leseLiteral(src, i) {
+function readLiteral(src, i) {
   const anf = src[i];
   if (anf !== '`' && anf !== "'" && anf !== '"') return null;
   let j = i + 1,
@@ -806,7 +806,7 @@ function leseLiteral(src, i) {
       else if (c === '}') depth--;
       // A literal in ${…} is read along so that it does not confuse the count.
       else if (c === '`' || c === "'" || c === '"') {
-        const inner = leseLiteral(src, j);
+        const inner = readLiteral(src, j);
         if (inner) {
           j = inner.ende;
           continue;
@@ -852,7 +852,7 @@ function v1Routes() {
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')).filter(f => f.endsWith('.ts')))
     lies(`routes/api/${f}`, '/api/v2');
   // The routers mounted in server.ts (auth including parts, gesundheit).
-  for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v2')))
+  for (const r of routerMounts().filter(r => r.mount.startsWith('/api/v2')))
     lies(path.relative(ROOT, r.datei), r.mount);
   lies('server.ts', '');
   return found.filter(([, p]) => p.startsWith('/api/v2'));
@@ -979,7 +979,7 @@ module.exports = {
   localeSource,
   i18nAll,
   ohneKommentare,
-  kompakt,
+  compact,
   withoutHtmlComments,
   regexLiteral,
   proxyThumbSource,
@@ -994,11 +994,11 @@ module.exports = {
   functionBody,
   hatParameter,
   checkParameter,
-  routerEinhaengungen,
-  einhaengung,
+  routerMounts,
+  mounting,
   abschnitt,
   pathForm,
-  leseLiteral,
+  readLiteral,
   routesFromSource,
   v1Routes,
   allSources,

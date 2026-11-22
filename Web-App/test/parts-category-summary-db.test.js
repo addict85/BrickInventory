@@ -59,7 +59,7 @@ test('category from the summary', { concurrency: 1 }, async t => {
     await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity });
 
   const zeilen = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
-  const kategorien = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();
+  const categoryList = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();
   const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
   try {
@@ -84,8 +84,8 @@ test('category from the summary', { concurrency: 1 }, async t => {
       assert.deepEqual(zeilen(await H.partsQuery(U, { ...abfrage, spare: '1' })), zeilen(liveSpare));
     });
     await t.test('the category list is the same on both paths', async () => {
-      assert.deepEqual(kategorien(liveKat), ['98701|Steine|12', '98702|Platten|6']);
-      assert.deepEqual(kategorien(await H.partCategoriesQuery(U)), kategorien(liveKat));
+      assert.deepEqual(categoryList(liveKat), ['98701|Steine|12', '98702|Platten|6']);
+      assert.deepEqual(categoryList(await H.partCategoriesQuery(U)), categoryList(liveKat));
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [U]);

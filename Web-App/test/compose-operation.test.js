@@ -45,7 +45,7 @@ function config() {
 }
 
 /** @param {import('node:test').TestContext} t */
-function withKonfig(t) {
+function withConfig(t) {
   const { j, error } = config();
   if (!j) {
     if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${error}`);
@@ -55,7 +55,7 @@ function withKonfig(t) {
 }
 
 test('every service has limited logs', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const dienste = Object.entries(j.services);
   assert.ok(dienste.length >= 6, Object.keys(j.services).join(', '));
@@ -74,15 +74,15 @@ test('every service has limited logs', t => {
 });
 
 test('every tmpfs is without exec, without setuid and limited in size', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const falsch = [];
   for (const [n, d] of Object.entries(j.services))
-    for (const eintrag of d.tmpfs ?? []) {
-      const options = eintrag.split(':')[1]?.split(',') ?? [];
-      const noetig = [eintrag.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
+    for (const entryRow of d.tmpfs ?? []) {
+      const options = entryRow.split(':')[1]?.split(',') ?? [];
+      const noetig = [entryRow.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
       if (!noetig.every(o => options.includes(o)) || !options.some(o => /^size=\d+[km]$/.test(o)))
-        falsch.push(`${n}: ${eintrag}`);
+        falsch.push(`${n}: ${entryRow}`);
     }
   assert.deepEqual(falsch, []);
   assert.ok(
@@ -92,19 +92,22 @@ test('every tmpfs is without exec, without setuid and limited in size', t => {
 });
 
 test('the database hangs only in internal networks and only writes to data and socket', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const pg = j.services.postgres;
-  const netze = Object.keys(pg.networks ?? {});
-  assert.ok(netze.length >= 1, 'postgres hängt in keinem Netz');
-  for (const n of netze)
+  const networkList = Object.keys(pg.networks ?? {});
+  assert.ok(networkList.length >= 1, 'postgres hängt in keinem Netz');
+  for (const n of networkList)
     assert.equal(j.networks[n]?.internal, true, `postgres hängt im Netz ${n} mit Weg nach draussen`);
   for (const d of ['app', 'jobs', 'db-rolle'])
     assert.ok(
-      netze.some(n => Object.keys(j.services[d].networks ?? {}).includes(n)),
+      networkList.some(n => Object.keys(j.services[d].networks ?? {}).includes(n)),
       `${d} erreicht postgres nicht`,
     );
-  assert.ok(!netze.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)), 'caddy erreicht postgres');
+  assert.ok(
+    !networkList.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)),
+    'caddy erreicht postgres',
+  );
   assert.equal(pg.read_only, true, 'postgres: read_only fehlt');
   assert.ok(
     (pg.tmpfs ?? []).some(e => e.startsWith('/var/run/postgresql:')),
@@ -113,7 +116,7 @@ test('the database hangs only in internal networks and only writes to data and s
 });
 
 test('pgweb no longer exists, not even in the tools profile', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   assert.equal(j.services.pgweb, undefined);
   assert.ok(!Object.keys(j.networks ?? {}).some(n => /pgweb/.test(n)), Object.keys(j.networks ?? {}).join(', '));
@@ -122,7 +125,7 @@ test('pgweb no longer exists, not even in the tools profile', t => {
 // Counter-check (measured 11.11.2026): caddy-rechte back to `brickinventory-caddy:2.11.8`
 // → red “caddy-rechte takes the same signed image”.
 test('Caddy comes as a signed image by digest, built itself from base images by digest', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const c = j.services.caddy;
   assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');

@@ -25,9 +25,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { buildTestbuendel } = require('./helpers/bundle');
+const { buildTestBundle } = require('./helpers/bundle');
 
-process.env.TEST_BUENDEL = buildTestbuendel(
+process.env.TEST_BUENDEL = buildTestBundle(
   'aktionen-dispatcher',
   "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',
@@ -184,14 +184,14 @@ test('the log window loads its script as a file', async () => {
     assert.ok(geschrieben.length > 500, 'Das Fenster bekommt kein Markup');
     const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
     const fenster = new JSDOM(geschrieben).window.document;
-    const skripte = [...fenster.querySelectorAll('script')];
+    const scriptList = [...fenster.querySelectorAll('script')];
     assert.deepEqual(
-      skripte.filter(s => !s.src).map(s => s.textContent.slice(0, 40)),
+      scriptList.filter(s => !s.src).map(s => s.textContent.slice(0, 40)),
       [],
       'Inline-<script> blockiert die CSP, die das Fenster vom Öffner erbt',
     );
     assert.ok(
-      skripte.some(s => /\/js\/logviewer\.js/.test(s.src)),
+      scriptList.some(s => /\/js\/logviewer\.js/.test(s.src)),
       'logviewer.js fehlt',
     );
     // The data is in the attribute, escaped: the JSON with its quotes arrives intact.

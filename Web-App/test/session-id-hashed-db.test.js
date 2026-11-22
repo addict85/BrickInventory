@@ -62,7 +62,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const ruf = async (path, cookie, body) => {
+  const callFn = async (path, cookie, body) => {
     const r = await fetch(basis + path, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', origin: basis, ...(cookie ? { cookie } : {}) },
@@ -71,19 +71,19 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     return { status: r.status, body: await r.json().catch(() => null), cookie: r.headers.get('set-cookie') };
   };
   const anmelden = async () => {
-    const r = await ruf('/api/v2/auth/login', null, { username: NAME, password: PASS, without_token: true });
+    const r = await callFn('/api/v2/auth/login', null, { username: NAME, password: PASS, without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return (r.cookie ?? '').split(';')[0];
   };
-  const idAus = cookie => signature.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), GEHEIM);
+  const idFrom = cookie => signature.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), GEHEIM);
   const keks = sid => `bim.sid=${encodeURIComponent(`s:${signature.sign(sid, GEHEIM)}`)}`;
-  const angemeldet = async cookie => (await ruf('/api/v2/auth/me', cookie)).body?.loggedIn === true;
+  const angemeldet = async cookie => (await callFn('/api/v2/auth/me', cookie)).body?.loggedIn === true;
   const zeilen = async () =>
     (await db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).map(z => z.sid);
 
   await t.test('the table holds the hash, not the id', async () => {
     const cookie = await anmelden();
-    const sid = idAus(cookie);
+    const sid = idFrom(cookie);
     assert.ok(sid, cookie);
     assert.ok(await angemeldet(cookie));
     const da = await zeilen();
@@ -100,26 +100,26 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   await t.test('logout deletes the row', async () => {
     const cookie = await anmelden();
     const vorher = (await zeilen()).length;
-    assert.equal((await ruf('/api/v2/auth/logout', cookie, {})).status, 200);
+    assert.equal((await callFn('/api/v2/auth/logout', cookie, {})).status, 200);
     assert.equal((await zeilen()).length, vorher - 1);
-    assert.ok(!(await zeilen()).includes(sessionDigest(idAus(cookie))));
+    assert.ok(!(await zeilen()).includes(sessionDigest(idFrom(cookie))));
     assert.equal(await angemeldet(cookie), false);
   });
 
   await t.test('end other sessions keeps the own one', async () => {
     const eigen = await anmelden();
     const fremd = await anmelden();
-    const r = await ruf('/api/v2/settings/sessions/end-others', eigen, { password: PASS });
+    const r = await callFn('/api/v2/settings/sessions/end-others', eigen, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.deleted >= 1);
-    assert.deepEqual(await zeilen(), [sessionDigest(idAus(eigen))]);
+    assert.deepEqual(await zeilen(), [sessionDigest(idFrom(eigen))]);
     assert.ok(await angemeldet(r.cookie ? r.cookie.split(';')[0] : eigen));
     assert.equal(await angemeldet(fremd), false);
   });
 
   await t.test('the stream watch finds the session by the hash', async () => {
     const cookie = await anmelden();
-    const sid = idAus(cookie);
+    const sid = idFrom(cookie);
     const { accessAppliesStill } = _req('src/account/http/accessWatch.js');
     const session = require(path.join(__dirname, '..', 'node_modules', 'express-session'));
     const pgSession = require(path.join(__dirname, '..', 'node_modules', 'connect-pg-simple'))(session);
@@ -136,7 +136,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   await t.test('the migration hashes old rows, once', async () => {
     // The session of a real login, stored under its plaintext id as before the update.
     const cookie = await anmelden();
-    const alt = idAus(cookie);
+    const alt = idFrom(cookie);
     const { sess } = await db.get('SELECT sess FROM user_sessions WHERE sid = $1', [sessionDigest(alt)]);
     await db.run('DELETE FROM user_sessions WHERE sid = $1', [sessionDigest(alt)]);
     assert.equal(await angemeldet(cookie), false);

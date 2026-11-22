@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt, ANMELDUNG } = require('./helpers/ui');
 
-const HAUSHALT = {
+const HOUSEHOLD = {
   '/v2/sets/household-members': {
     success: true,
     members: [
@@ -24,14 +24,14 @@ const HAUSHALT = {
     ],
   },
 };
-const GEMERKT = {
+const REMEMBERED = {
   bim_scope_gallery: '7',
   bim_scope_parts: 'own',
   bim_scope_finance: '7',
   bim_location_gallery: 'Regal A',
 };
 const remember = w => {
-  for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
+  for (const [k, v] of Object.entries(REMEMBERED)) w.localStorage.setItem(k, v);
 };
 const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v2\/sets(\?|$)/.test(a.url));
 
@@ -39,7 +39,7 @@ test('login resets the account and location filters before the list loads', asyn
   const o = await openUi(
     {
       ...ANMELDUNG,
-      ...HAUSHALT,
+      ...HOUSEHOLD,
       '/v2/auth/me': { success: true, loggedIn: false },
       '/v2/auth/login': {
         success: true,
@@ -58,7 +58,7 @@ test('login resets the account and location filters before the list loads', asyn
     await o.ruhig();
     const erste = setQueries(o)[0].url;
     assert.doesNotMatch(erste, /accounts=|storage=/, `die erste Setabfrage filtert noch: ${erste}`);
-    for (const k of Object.keys(GEMERKT)) assert.equal(o.w.localStorage.getItem(k), null, `${k} blieb gespeichert`);
+    for (const k of Object.keys(REMEMBERED)) assert.equal(o.w.localStorage.getItem(k), null, `${k} blieb gespeichert`);
     assert.equal(o.d.getElementById('scope-gallery').value, 'all');
   } finally {
     o.w.close();
@@ -66,7 +66,7 @@ test('login resets the account and location filters before the list loads', asyn
 });
 
 test('a reload in the same session keeps the choice', async () => {
-  const o = await openUi(HAUSHALT, { before: remember });
+  const o = await openUi(HOUSEHOLD, { before: remember });
   try {
     await o.ruhig();
     assert.ok(
@@ -83,7 +83,7 @@ test('a reload in the same session keeps the choice', async () => {
 });
 
 test('the choice is remembered and goes to the server', async () => {
-  const o = await openUi(HAUSHALT);
+  const o = await openUi(HOUSEHOLD);
   try {
     await o.ruhig();
     const field = o.d.getElementById('scope-gallery');

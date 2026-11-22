@@ -21,7 +21,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 
 test('a real currency change triggers the price job, a no-op save does not', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // What is observed is the date of the scheduled job 'prices'.
   const Z = _req('src/jobQueue/schedule.js');

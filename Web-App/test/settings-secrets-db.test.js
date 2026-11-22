@@ -78,7 +78,7 @@ const EXEMPT = new Map([
   ],
 ]);
 
-function leserouten() {
+function readRoutes() {
   const source = ['settings.ts', 'settingsGlobal.ts']
     .map(f => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'routes/api', f), 'utf8'))
     .join('\n')
@@ -102,7 +102,7 @@ function allValues(x, out = []) {
 }
 
 test('settings never hand out secrets in plain text', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const NUTZER = `sec-user-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -137,16 +137,16 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
   const baseUser = `http://localhost:${srvUser.address().port}`;
   const baseAdmin = `http://localhost:${srvAdmin.address().port}`;
 
-  const hol = async (base, path) => {
+  const fetchIt = async (base, path) => {
     const r = await fetch(base + path);
     assert.equal(r.status, 200, `${path} -> ${r.status}`);
     return allValues(await r.json());
   };
 
   try {
-    for (const path of leserouten()) {
+    for (const path of readRoutes()) {
       // 1. An account WITHOUT admin rights must not see the keys at all.
-      const asUser = await hol(baseUser, path);
+      const asUser = await fetchIt(baseUser, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
         assert.ok(!asUser.includes(v), `${path}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
       }
@@ -157,7 +157,7 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
 
       // 2. Even an admin only gets the mask — otherwise the values end up in the
       //    browser storage, where every XSS gap takes them along.
-      const alsAdmin = await hol(baseAdmin, path);
+      const alsAdmin = await fetchIt(baseAdmin, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
         assert.ok(!alsAdmin.includes(v), `${path}: auch ein Admin darf ${k} nur maskiert bekommen`);
       }

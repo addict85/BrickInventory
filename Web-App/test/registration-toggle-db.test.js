@@ -33,8 +33,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const { mailAttrappe } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake } = require('./helpers/mail-fake');
+mailFake();
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -70,19 +70,19 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     t,
     routen: { '/api/v2/auth': 'routes/auth.js', '/api/v2': 'routes/api/settings.js' },
   });
-  const rufe = (methode, path, body) =>
+  const callIt = (methode, path, body) =>
     fetch(`${base}/api/v2${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: body && JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
-  const setze = async wert => {
+  const put = async wert => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (wert !== null)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [wert]);
   };
   const register = () =>
-    rufe('POST', '/auth/register', { username: NEU, email: `${NEU}@example.org`, password: 'Neues-Passwort-1' });
+    callIt('POST', '/auth/register', { username: NEU, email: `${NEU}@example.org`, password: 'Neues-Passwort-1' });
   const gespeichert = async key => (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value;
 
   for (const [fall, wert] of [
@@ -91,8 +91,8 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     ['"0" ist zu', '0'],
   ]) {
     await t.test(fall, async () => {
-      await setze(wert);
-      assert.equal((await rufe('GET', '/auth/registration-status')).body.enabled, false);
+      await put(wert);
+      assert.equal((await callIt('GET', '/auth/registration-status')).body.enabled, false);
       const r = await register();
       assert.equal(r.status, 403, JSON.stringify(r.body));
       assert.equal(r.body.code, 'registration_disabled');
@@ -106,26 +106,26 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
       if (alt === undefined) environment({ APP_BASE_URL: undefined });
       else environment({ APP_BASE_URL: alt });
     });
-    const wege = async () => {
-      const b = (await rufe('GET', '/auth/registration-status')).body;
+    const pathList = async () => {
+      const b = (await callIt('GET', '/auth/registration-status')).body;
       return [b.passkey, b.forgot_password];
     };
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
     environment({ APP_BASE_URL: undefined });
-    assert.deepEqual(await wege(), [false, false], 'ohne Adresse');
+    assert.deepEqual(await pathList(), [false, false], 'ohne Adresse');
     environment({ APP_BASE_URL: 'http://192.168.1.20:3000' });
-    assert.deepEqual(await wege(), [false, false], 'IP-Adresse, ohne Mail');
+    assert.deepEqual(await pathList(), [false, false], 'IP-Adresse, ohne Mail');
     environment({ APP_BASE_URL: 'https://inventar.example.org' });
-    assert.deepEqual(await wege(), [true, false], 'Domäne, ohne Mail');
+    assert.deepEqual(await pathList(), [true, false], 'Domäne, ohne Mail');
     await db.run(
       "INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.example.org'), ('smtp_user', 'inventar')",
     );
-    assert.deepEqual(await wege(), [true, true], 'Domäne und Mail');
+    assert.deepEqual(await pathList(), [true, true], 'Domäne und Mail');
   });
 
   await t.test('"1" opens it', async () => {
-    await setze('1');
-    assert.equal((await rufe('GET', '/auth/registration-status')).body.enabled, true);
+    await put('1');
+    assert.equal((await callIt('GET', '/auth/registration-status')).body.enabled, true);
     const r = await register();
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEU]));
@@ -134,19 +134,19 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
   await t.test('without mail sending it stays closed and cannot be switched on', async () => {
     environment({ APP_BASE_URL: 'https://inventar.example.org' });
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
-    const s = (await rufe('GET', '/auth/registration-status')).body;
+    const s = (await callIt('GET', '/auth/registration-status')).body;
     assert.deepEqual([s.enabled, s.mail_delivery], [false, false], 'trotz "1"');
-    const r = await rufe('POST', '/auth/register', {
+    const r = await callIt('POST', '/auth/register', {
       username: `${NEU}_x`,
       email: `${NEU}_x@example.org`,
       password: 'Neues-Passwort-1',
     });
     assert.deepEqual([r.status, r.body.code], [403, 'registration_disabled']);
-    await setze('0');
-    const ein = await rufe('POST', '/settings', { registration_enabled: '1', admin_password: PASS });
+    await put('0');
+    const ein = await callIt('POST', '/settings', { registration_enabled: '1', admin_password: PASS });
     assert.deepEqual([ein.status, ein.body.code], [400, 'registration_needs_mail']);
     assert.equal(await gespeichert('registration_enabled'), '0');
-    const withMail = await rufe('POST', '/settings', {
+    const withMail = await callIt('POST', '/settings', {
       registration_enabled: '1',
       smtp_host: 'mail.example.org',
       smtp_user: 'inventar',
@@ -160,11 +160,11 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     const { assertLoginAllowed } = _req('src/account/loginCheck.js');
     const neu = (await db.get('SELECT id FROM users WHERE username = $1', [NEU])).id;
     const row = () => db.get('SELECT * FROM users WHERE id = $1', [neu]);
-    const inList = async () => (await rufe('GET', '/auth/users')).body.users.find(u => u.id === neu);
+    const inList = async () => (await callIt('GET', '/auth/users')).body.users.find(u => u.id === neu);
     assert.equal((await inList()).awaiting_confirmation, true);
     assert.equal(assertLoginAllowed(await row())?.code, 'email_not_confirmed');
-    assert.equal((await rufe('PUT', `/auth/users/${neu}/approve`, {})).status, 400, 'ohne Passwort');
-    const r = await rufe('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
+    assert.equal((await callIt('PUT', `/auth/users/${neu}/approve`, {})).status, 400, 'ohne Passwort');
+    const r = await callIt('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const z = await row();
     assert.deepEqual(
@@ -177,21 +177,21 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
       (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu])).action,
       'account_unlocked',
     );
-    const nochmal = await rufe('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
+    const nochmal = await callIt('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
     assert.deepEqual([nochmal.status, nochmal.body.code], [409, 'account_not_pending']);
   });
 
   await t.test('the form only takes 0 or 1', async () => {
     for (const falsch of ['false', 'true', 'ja', '']) {
-      const r = await rufe('POST', '/settings', { registration_enabled: falsch });
+      const r = await callIt('POST', '/settings', { registration_enabled: falsch });
       assert.equal(r.status, 400, `${falsch}: ${JSON.stringify(r.body)}`);
       assert.equal(r.body.code, 'value_invalid');
     }
     const smtpBefore = await gespeichert('smtp_secure');
-    assert.equal((await rufe('POST', '/settings', { smtp_secure: 'yes', admin_password: PASS })).status, 400);
+    assert.equal((await callIt('POST', '/settings', { smtp_secure: 'yes', admin_password: PASS })).status, 400);
     assert.equal(await gespeichert('registration_enabled'), '1');
     assert.equal(await gespeichert('smtp_secure'), smtpBefore);
-    assert.equal((await rufe('POST', '/settings', { registration_enabled: '0', admin_password: PASS })).status, 200);
+    assert.equal((await callIt('POST', '/settings', { registration_enabled: '0', admin_password: PASS })).status, 200);
     assert.equal(await gespeichert('registration_enabled'), '0');
   });
 

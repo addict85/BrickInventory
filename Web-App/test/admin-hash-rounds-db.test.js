@@ -18,14 +18,14 @@ delete process.env.ADMIN_PASSWORD;
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('admin account with the same number of rounds', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   t.after(() => db.pool.end().catch(() => {}));

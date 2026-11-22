@@ -226,8 +226,8 @@ test('a button "open set" for an existing set', async () => {
     o.d.getElementById('add-num').value = '10305-1';
     o.d.getElementById('btn-add').click();
     assert.ok(await warte(() => !o.d.getElementById('add-unknown').hidden));
-    const knoepfe = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
-    assert.equal(knoepfe.length, 1);
+    const buttonList = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
+    assert.equal(buttonList.length, 1);
   } finally {
     o.w.close();
   }

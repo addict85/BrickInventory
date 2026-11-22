@@ -163,7 +163,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
   });
 
   await t.test('the fingerprint does not reveal the password', async () => {
-    const dienst = _req('src/idempotency/service.js');
+    const serviceFn = _req('src/idempotency/service.js');
     const path = '/api/v2/auth/second-factor/setup';
     const alt = require('node:crypto')
       .createHash('sha256')
@@ -174,7 +174,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
       (await db.get("SELECT request FROM idempotency WHERE user_id = $1 AND key = 'zf-1'", [uid])).request,
       /^h1:[0-9a-f]{64}$/,
     );
-    const abdruck = rumpf => dienst.fingerprint('POST', path, rumpf);
+    const abdruck = rumpf => serviceFn.fingerprint('POST', path, rumpf);
     assert.equal(
       abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', factor_code: '2', pin: '3', x: 1 }),
       abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', factor_code: '8', pin: '7', x: 1 }),
@@ -195,7 +195,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
     }
 
     await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
-    assert.ok((await dienst.deleteOldFingerprints()) >= 1);
+    assert.ok((await serviceFn.deleteOldFingerprints()) >= 1);
     const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [uid])).map(z => z.key);
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });

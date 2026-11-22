@@ -29,7 +29,7 @@ const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/set
 const { setState, readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
 
 test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   {
     const c = await db.pool.connect();
     try {

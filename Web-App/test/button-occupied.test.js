@@ -51,7 +51,7 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
   const falsch = [],
-    ungenutzt = [];
+    unused = [];
   let found = 0;
   for (const name of dateien) {
     const src = fs.readFileSync(path.join(JS, name), 'utf8');
@@ -64,21 +64,21 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
       const args = gruppe(src, m.index + m[0].length - 1);
       // Split off the second argument at the top level.
       let depth = 0,
-        zweites = null;
+        secondOne = null;
       for (let i = 0; i < args.length; i++) {
         const c = args[i];
         if ('([{'.includes(c)) depth++;
         else if (')]}'.includes(c)) depth--;
         else if (c === ',' && depth === 0) {
-          zweites = args.slice(i + 1).trim();
+          secondOne = args.slice(i + 1).trim();
           break;
         }
       }
-      if (zweites && /^(async\b|\(|function\b)/.test(zweites)) falsch.push(`${name}:${row}`);
+      if (secondOne && /^(async\b|\(|function\b)/.test(secondOne)) falsch.push(`${name}:${row}`);
       // And the return value MUST land somewhere — otherwise the button stays
       // occupied forever.
       if (!/(=|return|\?|:)\s*$/.test(davor.trimEnd() + ' '.repeat(0)) && !/[=?:]\s*$/.test(davor.trimEnd()))
-        ungenutzt.push(`${name}:${row}`);
+        unused.push(`${name}:${row}`);
     }
   }
   assert.ok(found >= 5, `Nur ${found} Aufrufe gefunden — greift die Suche noch?`);
@@ -89,7 +89,7 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
       'auf dem Knopf, und ihr Rumpf läuft nie — genau der Fehler aus Marcos Bild.',
   );
   assert.deepEqual(
-    ungenutzt,
+    unused,
     [],
     'Hier wird die Freigabe weggeworfen. Der Knopf bleibt dann dauerhaft ' +
       'deaktiviert und trägt weiter „…" als Beschriftung.',
@@ -124,7 +124,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
     }
   }
   const source = src.slice(auf, ende + 1).replace(/^export\s+/, '');
-  const knopfBesetzt = new Function(`${source}; return buttonBusy;`)();
+  const buttonOccupied = new Function(`${source}; return buttonBusy;`)();
 
   const LABEL = '📦 Bereits vorhandene Teile eintragen';
   const dom = new JSDOM(`<button class="btn bs" id="b">${LABEL}</button>`);
@@ -135,7 +135,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   breite(235);
 
   // 1. Occupied: the label stays, the state is visible anyway.
-  const frei = knopfBesetzt(btn);
+  const frei = buttonOccupied(btn);
   assert.equal(
     btn.textContent,
     LABEL,
@@ -156,7 +156,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
 
   // 3. A button with its OWN minimum width keeps it.
   btn.style.minWidth = '300px';
-  knopfBesetzt(btn)();
+  buttonOccupied(btn)();
   assert.equal(
     btn.style.minWidth,
     '300px',
@@ -166,7 +166,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
 
   // 4. An invisible button (offsetWidth 0) gets nothing imposed.
   breite(0);
-  knopfBesetzt(btn);
+  buttonOccupied(btn);
   assert.equal(btn.style.minWidth, '', 'Bei Breite 0 gibt es nichts einzufrieren.');
   btn.disabled = false;
   btn.classList.remove('occupied');
@@ -174,7 +174,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   // 5. WITH its own waiting text: the text changes — and the width is
   //    held, otherwise this button would tear the line along.
   breite(235);
-  const freePdf = knopfBesetzt(btn, 'erstelle…');
+  const freePdf = buttonOccupied(btn, 'erstelle…');
   assert.equal(btn.textContent, 'erstelle…');
   assert.equal(
     btn.style.minWidth,
@@ -185,6 +185,6 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(btn.textContent, LABEL, 'Danach kommt die ursprüngliche Beschriftung zurück.');
 
   // 6. The release may set a DIFFERENT label (QR: “Neu generieren").
-  knopfBesetzt(btn)('Neu generieren');
+  buttonOccupied(btn)('Neu generieren');
   assert.equal(btn.textContent, 'Neu generieren');
 });

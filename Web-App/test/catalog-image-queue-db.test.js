@@ -1,5 +1,7 @@
 /**
  * The catalog no longer triggers more images than someone looks at.
+ *
+ * Counter-check: catalogPage() (src/catalog/service.ts) calls k.images.loadSetImage for every row → red “the catalog list triggers no image work at all”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

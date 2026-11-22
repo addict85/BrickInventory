@@ -113,10 +113,10 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
     // `del\w*` and not `delete\w*`: the gallery tile calls `delSetStop`.
     // With the narrower pattern the search found NOTHING there — and the self-proof
     // reported exactly that instead of running through green.
-    const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
-    buttonsTotal += knoepfe.length;
+    const buttonList = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
+    buttonsTotal += buttonList.length;
     let found = 0;
-    for (const k of knoepfe) {
+    for (const k of buttonList) {
       const name = (k.match(/data-click="(del\w*)"/) || [])[1];
       if (EXCEPTION.has(name)) {
         found++;

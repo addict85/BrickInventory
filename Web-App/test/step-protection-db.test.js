@@ -57,7 +57,7 @@ const auth = _req('src/account/deviceToken.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/time');
 const { adminWithFactor } = require('./helpers/admin');
-const { geraeteSchluessel, signiere, releaseDevice, deposit } = require('./helpers/device');
+const { geraeteSchluessel, signIt, releaseDevice, deposit } = require('./helpers/device');
 const attestation = require('./helpers/attestation');
 const repo = require('./helpers/sources').testArea('devices').geraeteSchluessel;
 const { pairQr } = require('./helpers/qr');
@@ -121,7 +121,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   const basis = `http://127.0.0.1:${port}`;
   await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000);
 
-  const ruf = async (weg, o = {}) => {
+  const callFn = async (weg, o = {}) => {
     const r = await fetch(basis + '/api/v2' + weg, {
       method: o.method || 'GET',
       headers: {
@@ -134,7 +134,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     return { status: r.status, kopf: r.headers, body: await r.json().catch(() => null) };
   };
   const anmelden = async (name, extra = {}) => {
-    const a = await ruf('/auth/login', {
+    const a = await callFn('/auth/login', {
       method: 'POST',
       body: { username: name, password: PASS, never_expires: true, ...extra },
     });
@@ -142,20 +142,20 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     return a;
   };
   const token = (await anmelden(NAME)).body.token;
-  const neu = await ruf('/vouchers', {
+  const neu = await callFn('/vouchers', {
     method: 'POST',
     token,
     body: { number: '6006491234567890', pin: '4321', amount: 25, currency: 'CHF' },
   });
   assert.equal(neu.status, 200, JSON.stringify(neu.body));
   const gid = neu.body.voucher?.id ?? (await db.get('SELECT id FROM vouchers WHERE user_id = $1', [uid])).id;
-  const klartext = o => ruf(`/vouchers/${gid}/plaintext`, { method: 'POST', body: { password: PASS }, ...o });
+  const klartext = o => callFn(`/vouchers/${gid}/plaintext`, { method: 'POST', body: { password: PASS }, ...o });
   let device;
 
   await t.test('without a device key an app token does not get to the PIN', async () => {
     const r = await klartext({ token });
     assert.deepEqual([r.status, r.body.code], [403, 'device_key_missing']);
-    const c = await ruf('/device/step/challenge', { method: 'POST', token, body: { action: 'voucher' } });
+    const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action: 'voucher' } });
     assert.deepEqual([c.status, c.body.code], [403, 'device_key_missing']);
   });
 
@@ -171,11 +171,11 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
         ['POST', '/auth/second-factor/codes'],
         ['POST', '/auth/second-factor/setup'],
       ]) {
-        const genau = await ruf(weg, { method, token, body: { password: PASS, code: '123456' } });
+        const genau = await callFn(weg, { method, token, body: { password: PASS, code: '123456' } });
         assert.deepEqual([genau.status, genau.body.code], [403, 'device_key_missing'], `${method} ${weg}`);
         const gross = weg.replace(/[a-z-]+$/, x => x.toUpperCase());
         for (const anders of [`${weg}/`, `${weg}//`, `${weg}%2F`, gross]) {
-          const r = await ruf(anders, { method, token, body: { password: PASS, code: '123456' } });
+          const r = await callFn(anders, { method, token, body: { password: PASS, code: '123456' } });
           if (r.status < 400 || ![403, 404, 400].includes(r.status)) open.push(`${method} ${anders} → ${r.status}`);
         }
       }
@@ -186,7 +186,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
 
   await t.test('without a fresh revocation list or with a revoked chain the server accepts no key', async () => {
     const versuch = async reason => {
-      const h = await deposit(ruf, (await anmelden(NAME)).body.token);
+      const h = await deposit(callFn, (await anmelden(NAME)).body.token);
       assert.deepEqual([h.response.status, h.response.body.code], [400, 'device_key_attestation'], reason);
       await bis(() => log.includes(`abgewiesen: ${reason}`), 5000);
       assert.match(log, new RegExp(`abgewiesen: ${reason}`));
@@ -203,12 +203,12 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('the key applies once per access; another one is not pushed in later', async () => {
-    const h = await deposit(ruf, token);
+    const h = await deposit(callFn, token);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
     device = h.schluessel;
-    const anderer = await deposit(ruf, token);
+    const anderer = await deposit(callFn, token);
     assert.deepEqual([anderer.response.status, anderer.response.body.code], [409, 'device_key_exists']);
-    const withoutChain = await ruf('/device/key', {
+    const withoutChain = await callFn('/device/key', {
       method: 'POST',
       token,
       body: { public_key: device.public_key },
@@ -222,17 +222,17 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
 
   await t.test('a chain with a foreign or used challenge, from software or a foreign root is rejected', async () => {
     const neu = (await anmelden(NAME)).body.token;
-    const senden = chain => ruf('/device/key', { method: 'POST', token: neu, body: { chain } });
+    const sendIt = chain => callFn('/device/key', { method: 'POST', token: neu, body: { chain } });
     const foreignChallenge = attestation.chain({ challenge: Buffer.alloc(32, 1) });
-    assert.deepEqual([(await senden(foreignChallenge.chain)).body.code], ['device_key_attestation']);
+    assert.deepEqual([(await sendIt(foreignChallenge.chain)).body.code], ['device_key_attestation']);
     for (const o of [{ confidence: 0 }, { wurzel: attestation.newRoot('Fremd') }, { paket: 'com.boese.app' }]) {
-      const n = (await ruf('/device/key/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
-      const r = await senden(attestation.chain({ challenge: Buffer.from(n, 'base64url'), ...o }).chain);
+      const n = (await callFn('/device/key/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
+      const r = await sendIt(attestation.chain({ challenge: Buffer.from(n, 'base64url'), ...o }).chain);
       assert.deepEqual([r.status, r.body.code], [400, 'device_key_attestation'], JSON.stringify(o));
     }
-    const ok = await deposit(ruf, neu);
+    const ok = await deposit(callFn, neu);
     assert.equal(ok.response.status, 200, JSON.stringify(ok.response.body));
-    const zweimal = await ruf('/device/key', {
+    const zweimal = await callFn('/device/key', {
       method: 'POST',
       token: (await anmelden(NAME)).body.token,
       body: { chain: attestation.chain({ challenge: Buffer.from(ok.nonce, 'base64url') }).chain },
@@ -255,7 +255,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     ]);
     assert.equal((await klartext({ token: alt })).body.code, 'step_approval_required', 'vor dem Stichtag gilt er');
     assert.equal(await repo.keyThe(f, new Date(Date.now() - 1000)), null, 'nach dem Stichtag nicht mehr');
-    const h = await deposit(ruf, alt);
+    const h = await deposit(callFn, alt);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
     assert.deepEqual(await repo.entryThe(f), { public_key: h.schluessel.public_key, attested: true });
     assert.equal(await repo.keyThe(f, new Date(0)), h.schluessel.public_key);
@@ -263,17 +263,17 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
 
   await t.test('an access from QR pairing only stores with the nonce of its collection', async () => {
     const sitzung = (await anmelden(NAME, { without_token: true })).kopf.get('set-cookie').split(';')[0];
-    const qr = await ruf('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS } });
+    const qr = await callFn('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS } });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
-    const post = (p, body, kopf) => ruf('/auth' + p, { method: 'POST', body, cookie: kopf.cookie });
+    const post = (p, body, kopf) => callFn('/auth' + p, { method: 'POST', body, cookie: kopf.cookie });
     const a = await pairQr(post, qr.body, { cookie: sitzung });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.match(a.body.key_nonce, /^[\w-]{43}$/);
     for (let i = 0; i < 2; i++) {
-      const n = await ruf('/device/key/nonce', { method: 'POST', token: a.body.token, body: {} });
+      const n = await callFn('/device/key/nonce', { method: 'POST', token: a.body.token, body: {} });
       assert.equal(n.body.nonce, a.body.key_nonce, 'keine zweite Nonce neben der aus der Abholung');
     }
-    const h = await deposit(ruf, a.body.token);
+    const h = await deposit(callFn, a.body.token);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
   });
 
@@ -283,40 +283,40 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('a foreign signature opens nothing, and the challenge is used up afterwards', async () => {
-    const c = await ruf('/device/step/challenge', { method: 'POST', token, body: { action: 'voucher' } });
+    const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action: 'voucher' } });
     assert.equal(c.status, 200);
-    const fremd = await ruf('/device/step/approval', {
+    const fremd = await callFn('/device/step/approval', {
       method: 'POST',
       token,
-      body: { challenge: c.body.challenge, signature: signiere(geraeteSchluessel().privateKey, c.body.message) },
+      body: { challenge: c.body.challenge, signature: signIt(geraeteSchluessel().privateKey, c.body.message) },
     });
     assert.deepEqual([fremd.status, fremd.body.code], [400, 'step_signature_invalid']);
-    const spaeter = await ruf('/device/step/approval', {
+    const spaeter = await callFn('/device/step/approval', {
       method: 'POST',
       token,
-      body: { challenge: c.body.challenge, signature: signiere(device.privateKey, c.body.message) },
+      body: { challenge: c.body.challenge, signature: signIt(device.privateKey, c.body.message) },
     });
     assert.equal(spaeter.status, 400, 'Eine Challenge gilt genau einmal');
     assert.equal((await klartext({ token })).status, 403);
   });
 
   await t.test('a challenge is only good for its action', async () => {
-    const c = await ruf('/device/step/challenge', { method: 'POST', token, body: { action: 'admin' } });
+    const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action: 'admin' } });
     const reinterpreted = c.body.message.replace('\nadmin\n', '\nvoucher\n');
     assert.notEqual(reinterpreted, c.body.message);
-    const r = await ruf('/device/step/approval', {
+    const r = await callFn('/device/step/approval', {
       method: 'POST',
       token,
-      body: { challenge: c.body.challenge, signature: signiere(device.privateKey, reinterpreted) },
+      body: { challenge: c.body.challenge, signature: signIt(device.privateKey, reinterpreted) },
     });
     assert.equal(r.status, 400);
     // Correctly signed it opens the administration, not the vouchers.
-    await releaseDevice(ruf, token, 'admin', device);
+    await releaseDevice(callFn, token, 'admin', device);
     assert.equal((await klartext({ token })).status, 403);
   });
 
   await t.test('after approval the PIN; expired closed again; another access has its own', async () => {
-    await releaseDevice(ruf, token, 'voucher', device);
+    await releaseDevice(callFn, token, 'voucher', device);
     const r = await klartext({ token });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.pin, '4321');
@@ -335,7 +335,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
       auth.tokenDigest(alt),
     ]);
-    const n = await ruf('/device/key/nonce', { method: 'POST', token: alt, body: {} });
+    const n = await callFn('/device/key/nonce', { method: 'POST', token: alt, body: {} });
     assert.deepEqual([n.status, n.body.code], [403, 'device_key_deadline']);
     // Even a nonce from back then does not help: it expires with the deadline of the family.
     const altNonce = Buffer.alloc(32, 9);
@@ -344,7 +344,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
        date_trunc('milliseconds', created_at), NOW() + INTERVAL '1 hour' FROM api_tokens WHERE token = $1`,
       [auth.tokenDigest(alt), altNonce.toString('base64url')],
     );
-    const r = await ruf('/device/key', {
+    const r = await callFn('/device/key', {
       method: 'POST',
       token: alt,
       body: { chain: attestation.chain({ challenge: altNonce }).chain },
@@ -357,27 +357,27 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     const keks = a.kopf.get('set-cookie').split(';')[0];
     const r = await klartext({ cookie: keks });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const c = await ruf('/device/step/challenge', { method: 'POST', cookie: keks, body: { action: 'voucher' } });
+    const c = await callFn('/device/step/challenge', { method: 'POST', cookie: keks, body: { action: 'voucher' } });
     assert.deepEqual([c.status, c.body.code], [403, 'app_token_only']);
   });
 
   await t.test('administrator routes of an app token only after the approval “verwaltung”', async () => {
     const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
-    const vorher = await ruf('/admin/cache-ttl', { token: voll });
+    const vorher = await callFn('/admin/cache-ttl', { token: voll });
     assert.deepEqual([vorher.status, vorher.body.code], [403, 'device_key_missing']);
-    const h = await deposit(ruf, voll);
+    const h = await deposit(callFn, voll);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
     const s = h.schluessel;
-    assert.equal((await ruf('/auth/users', { token: voll })).body.code, 'step_approval_required');
-    await releaseDevice(ruf, voll, 'voucher', s);
+    assert.equal((await callFn('/auth/users', { token: voll })).body.code, 'step_approval_required');
+    await releaseDevice(callFn, voll, 'voucher', s);
     assert.equal(
-      (await ruf('/admin/cache-ttl', { token: voll })).status,
+      (await callFn('/admin/cache-ttl', { token: voll })).status,
       403,
       'Die Freigabe der Gutscheine öffnet keine Verwaltung',
     );
-    await releaseDevice(ruf, voll, 'admin', s);
-    assert.equal((await ruf('/admin/cache-ttl', { token: voll })).status, 200);
-    assert.equal((await ruf('/auth/users', { token: voll })).status, 200);
+    await releaseDevice(callFn, voll, 'admin', s);
+    assert.equal((await callFn('/admin/cache-ttl', { token: voll })).status, 200);
+    assert.equal((await callFn('/auth/users', { token: voll })).status, 200);
   });
 
   await t.test('every administrator path in settings and instructions requires the approval “verwaltung”', async () => {
@@ -385,7 +385,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.schritt.example')
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
     await db.run(`DELETE FROM global_settings WHERE key IN ('einrichtung_erledigt', 'default_price_condition')`);
-    const einspielen = async () => {
+    const restoreIt = async () => {
       const form = new FormData();
       const datei = JSON.stringify({ version: '3.0', global: { default_price_condition: 'U' }, user_settings: {} });
       form.append('file', new Blob([datei], { type: 'application/json' }), 'k.json');
@@ -396,23 +396,25 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       });
       return { status: r.status, body: await r.json().catch(() => null) };
     };
-    const wege = {
-      'POST /settings': () => ruf('/settings', { method: 'POST', token: voll, body: { default_price_condition: 'N' } }),
-      'POST /settings/import': einspielen,
-      'POST /settings/smtp-test': () => ruf('/settings/smtp-test', { method: 'POST', token: voll, body: {} }),
-      'GET /settings/setup': () => ruf('/settings/setup', { token: voll }),
-      'POST /settings/setup/complete': () => ruf('/settings/setup/complete', { method: 'POST', token: voll, body: {} }),
+    const pathList = {
+      'POST /settings': () =>
+        callFn('/settings', { method: 'POST', token: voll, body: { default_price_condition: 'N' } }),
+      'POST /settings/import': restoreIt,
+      'POST /settings/smtp-test': () => callFn('/settings/smtp-test', { method: 'POST', token: voll, body: {} }),
+      'GET /settings/setup': () => callFn('/settings/setup', { token: voll }),
+      'POST /settings/setup/complete': () =>
+        callFn('/settings/setup/complete', { method: 'POST', token: voll, body: {} }),
       'POST /settings/test-source': () =>
-        ruf('/settings/test-source', { method: 'POST', token: voll, body: { source: 'keine' } }),
+        callFn('/settings/test-source', { method: 'POST', token: voll, body: { source: 'keine' } }),
       'POST /sets/:setNumber/instructions': () =>
-        ruf('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
+        callFn('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
     };
     // Since the attestation the app stores the key with a chain (helpers/device.js).
-    const h = await deposit(ruf, voll);
+    const h = await deposit(callFn, voll);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
     const s = h.schluessel;
-    for (const [weg, rufe] of Object.entries(wege)) {
-      const r = await rufe();
+    for (const [weg, callIt] of Object.entries(pathList)) {
+      const r = await callIt();
       assert.deepEqual([r.status, r.body?.code], [403, 'step_approval_required'], `${weg} ohne Freigabe`);
     }
     assert.equal(
@@ -420,13 +422,13 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       undefined,
       'ohne Freigabe ist nichts geschrieben',
     );
-    const ohne = await ruf('/settings/raw', { token: voll });
+    const ohne = await callFn('/settings/raw', { token: voll });
     assert.equal(ohne.status, 200);
     assert.equal(ohne.body.settings.smtp_host, undefined, 'ohne Freigabe zeigt /settings/raw nur Kontowerte');
-    const eigene = await ruf('/settings', { method: 'POST', token: voll, body: { language: 'de' } });
+    const eigene = await callFn('/settings', { method: 'POST', token: voll, body: { language: 'de' } });
     assert.equal(eigene.status, 200, 'die eigenen Werte braucht keine Freigabe');
 
-    await releaseDevice(ruf, voll, 'admin', s);
+    await releaseDevice(callFn, voll, 'admin', s);
     const erwartet = {
       'POST /settings': [200, undefined],
       'POST /settings/import': [200, undefined],
@@ -436,11 +438,11 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       'POST /settings/test-source': [400, 'source_unknown'],
       'POST /sets/:setNumber/instructions': [202, undefined],
     };
-    for (const [weg, rufe] of Object.entries(wege)) {
-      const r = await rufe();
+    for (const [weg, callIt] of Object.entries(pathList)) {
+      const r = await callIt();
       assert.deepEqual([r.status, r.body?.code], erwartet[weg], `${weg} mit Freigabe: ${JSON.stringify(r.body)}`);
     }
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'einrichtung_erledigt'`))?.value, '1');
-    assert.equal((await ruf('/settings/raw', { token: voll })).body.settings.smtp_host, 'mail.schritt.example');
+    assert.equal((await callFn('/settings/raw', { token: voll })).body.settings.smtp_host, 'mail.schritt.example');
   });
 });

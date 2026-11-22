@@ -27,7 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const db = testData();
 const { testServer } = require('./helpers/server');
@@ -42,7 +42,7 @@ const item = (typ, id, farbe) =>
   '<MINQTY>1</MINQTY><CONDITION>N</CONDITION></ITEM>';
 const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>${i.join('')}</INVENTORY>\n`;
 
-async function hochladen(base, xml, corrections) {
+async function uploadIt(base, xml, corrections) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
   fd.append('corrections', JSON.stringify(corrections));
@@ -54,7 +54,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -86,11 +86,11 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
   );
-  const gemeinsam = async () =>
+  const common = async () =>
     (await db.all('SELECT type, rb_id, bl_id FROM bl_mapping ORDER BY type, rb_id')).map(
       z => `${z.type}|${z.rb_id}|${z.bl_id}`,
     );
-  const vorher = await gemeinsam();
+  const vorher = await common();
 
   // Bruno holds the same things so that his valuation has rows.
   const { addManualPart } = _req('src/parts/manualParts.js');
@@ -103,13 +103,13 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
 
   await t.test("the import only writes Anna's mapping", async () => {
-    const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
+    const { status, body } = await uploadIt(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
       { index: 0, blId: 'sw0001a', kind: 'fig', rbId: 'fig-000001' },
       { index: 1, blId: '3001', kind: 'part', rbId: '3003', rbColor: 4 },
     ]);
     assert.equal(status, 200, JSON.stringify(body));
     assert.equal(body.corrections?.applied, 2, JSON.stringify(body.corrections));
-    assert.deepEqual(await gemeinsam(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
+    assert.deepEqual(await common(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
     const eigen = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
     assert.deepEqual(
       eigen.map(z => `${z.user_id}|${z.type}|${z.rb_id}|${z.bl_id}`),
@@ -160,7 +160,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
 
   await t.test('the BrickLink no. of an own figure stays with the account', async () => {
     await asAccount(BRUNO, () => updateManualMinifig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
-    assert.deepEqual(await gemeinsam(), vorher);
+    assert.deepEqual(await common(), vorher);
     assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw9999');
     assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
   });
@@ -172,7 +172,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     await rememberBlNumber('part', '3003', '3003b');
     await rememberBlNumber('part', '3004', '3004');
     assert.deepEqual(
-      await gemeinsam(),
+      await common(),
       ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],
       'ein vorhandener Wert bleibt, ein leerer wird gefüllt, ein neuer angelegt',
     );

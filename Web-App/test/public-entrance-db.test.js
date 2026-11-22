@@ -33,7 +33,7 @@ const WEB = path.join(__dirname, '..');
 const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api/middleware.js');
 /** What the app needs from the server, generated from its source (Android-App/tools/contract). */
 const APP = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
-const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');
+const withoutPrefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');
 
 /** What the sign-in screen calls before there is a token (the generator follows
  * AnmeldungViewModel → KontoRepositoryImpl → AccountApi). */
@@ -44,7 +44,7 @@ const v2Of = (/** @type {string} */ r) => {
   return `${m} ${v2PathOf(m, p).path}`;
 };
 const signInScreenRoutes = () =>
-  new Set((APP[require('./helpers/contract').APP_KEYS.withoutToken] ?? []).map(r => ohnePraefix(v2Of(r))));
+  new Set((APP[require('./helpers/contract').APP_KEYS.withoutToken] ?? []).map(r => withoutPrefix(v2Of(r))));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {
@@ -78,7 +78,9 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   );
   // The exceptions marked `app` are routes the app really calls.
   const app = new Set(
-    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) => ohnePraefix(v2Of(`${r.methode} ${r.pfad}`))),
+    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) =>
+      withoutPrefix(v2Of(`${r.methode} ${r.pfad}`)),
+    ),
   );
   for (const [r, wer] of Object.entries(EXCEPTIONS))
     if (wer === 'app') assert.ok(app.has(r), `${r} ruft die App nicht`);
@@ -118,7 +120,7 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
   const address = base.replace('localhost', '127.0.0.1');
-  const ruf = async (/** @type {boolean} */ browser, /** @type {string} */ path, /** @type {object} */ body) => {
+  const callFn = async (/** @type {boolean} */ browser, /** @type {string} */ path, /** @type {object} */ body) => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
     if (browser) Object.assign(sitzung, { userId: uid, username: NAME });
     const r = await fetch(`${address}/api/v2/auth${path}`, {
@@ -128,17 +130,17 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const qr = await ruf(true, '/qr-token', { password: PASS });
+  const qr = await callFn(true, '/qr-token', { password: PASS });
   assert.equal(qr.status, 200, JSON.stringify(qr.body));
-  const m = await ruf(false, '/qr-login', { token: qr.body.token, label: 'Pixel Nein' });
+  const m = await callFn(false, '/qr-login', { token: qr.body.token, label: 'Pixel Nein' });
   assert.equal(m.status, 200, JSON.stringify(m.body));
 
-  const nein = await ruf(false, '/qr-login/discard', { pickup: m.body.pickup });
+  const nein = await callFn(false, '/qr-login/discard', { pickup: m.body.pickup });
   assert.equal(nein.status, 200, JSON.stringify(nein.body));
   const row = await db.get('SELECT rejected_at FROM qr_login_tokens WHERE user_id = $1', [uid]);
   assert.ok(row?.rejected_at, 'die Ablehnung steht in der Datenbank');
   // The web session confirms afterwards: the app still gets no token.
-  assert.equal((await ruf(true, `/qr-pairing/${qr.body.pairing}/confirm`, { code: m.body.code })).status, 409);
-  const ab = await ruf(false, '/qr-login/collect', { pickup: m.body.pickup });
+  assert.equal((await callFn(true, `/qr-pairing/${qr.body.pairing}/confirm`, { code: m.body.code })).status, 409);
+  const ab = await callFn(false, '/qr-login/collect', { pickup: m.body.pickup });
   assert.equal(ab.body?.token, undefined, JSON.stringify(ab.body));
 });

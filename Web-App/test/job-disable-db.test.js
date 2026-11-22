@@ -35,12 +35,12 @@ test('switching off during a claim', async t => {
     .jobQueue.registerKind({ kind: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
-  let loslassen = () => {};
+  let letGo = () => {};
   const haengt = new Promise(r => {
-    loslassen = () => r(null);
+    letGo = () => r(null);
   });
   t.after(async () => {
-    loslassen();
+    letGo();
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]).catch(() => {});

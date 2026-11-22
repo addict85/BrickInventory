@@ -15,6 +15,8 @@
  *        the same millisecond. The case passed by chance. Since then there is
  *        a pause in between — the counter-check repaired the check,
  *        not the other way round.
+ *   D  `return stampAssetsCached(…)` in startPageHtml() replaced by `return out`
+ *      → “the renderer really stamps” red (runs the renderer with a stub context).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -115,27 +117,25 @@ test('a reference without ?v= stays untouched', () => {
   }
 });
 
-test('the renderer really stamps', () => {
-  // A rule nobody calls is the most expensive way of doing nothing —
-  // and the cases above would stay green because they call the function
-  // directly. The same gap as with sitzung-beruehrung and
-  // sitzung-leerlauf, closed there with the same rationale.
-  const idx = fs.readFileSync(path.join(ROOT, 'src/profile/indexHtml.ts'), 'utf8');
-  assert.match(
-    idx,
-    /return stampAssetsCached\(out, PUBLIC_DIR\)/,
-    'src/profile/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
-      'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
-  );
-  // LAST, after the language swap: the language file itself carries a `?v=`.
-  //
-  // The anchor is `lang !== ` and NOT `/locales/`. The first attempt took
-  // the latter — and hit a comment further up (position 3150 instead of
-  // 4882), making the case red although the order was right. A
-  // check that hangs on the wrong word measures the wrong thing.
-  assert.ok(
-    idx.indexOf('stampAssetsCached(out') > idx.indexOf('lang !== '),
-    'Gestempelt wird vor dem Austausch der Sprachdatei — dann hängt der ' +
-      'Stempel der deutschen Datei an der englischen.',
-  );
+test('the renderer really stamps', async () => {
+  // A rule nobody calls does nothing; the start page must carry the stamps of the files it names —
+  // and the stamp of the language file it serves, not of the German one it replaced.
+  // Straight from dist/: _req binds area functions to the test services, here k is the stub.
+  const { startPageHtml } = require(path.join(ROOT, 'dist', 'src/profile/indexHtml.js'));
+  const k = {
+    config: { production: false },
+    clock: { now: () => Date.now() },
+    settings: {
+      themeFor: async () => ({ own: 'classic' }),
+      globalValue: async () => 'classic',
+      userSettings: async () => ({ language: 'en' }),
+    },
+  };
+  const out = await startPageHtml(k, 1);
+  const pub = path.join(ROOT, 'public');
+  const styles = fileStamp(path.join(pub, 'styles.css'));
+  const en = fileStamp(path.join(pub, 'locales', 'en.js'));
+  assert.ok(styles && en, 'the stamp of the files could not be computed');
+  assert.ok(out.includes(`/styles.css?v=${styles}`), 'the start page does not carry the stamp of styles.css');
+  assert.ok(out.includes(`/locales/en.js?v=${en}`), 'the English language file carries a foreign stamp');
 });

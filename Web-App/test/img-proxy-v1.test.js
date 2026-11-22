@@ -41,7 +41,7 @@ test('built addresses take the new form, the old one is still recognized', () =>
 });
 
 test('the server serves both addresses', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // Older app versions assemble the old address themselves.
   const app = require('express')();
   app.use((req, _res, next) => {
@@ -103,7 +103,7 @@ test('only the new address is built', () => {
 /** The app need not recognize the old one: a stored path is only completed with the server address. */
 test('the app builds the new address and nowhere the old one', () => {
   // Addresses built by hand by the app (shared/app-schnittstelle.json, generated from its source text).
-  const { adressen } = require('./helpers/contract').appSchnittstelle();
+  const { adressen } = require('./helpers/contract').appInterface();
   assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
   assert.deepEqual(
     adressen.filter(a => a === ALT || a.startsWith(`${ALT}?`)),
@@ -133,18 +133,18 @@ test('the migration covers EVERY table with image_url', () => {
   // `LIKE '%…%'` it decides against — and the check below
   // promptly tripped over it. The same trap helpers/sources.js warns about.
   const mig = ohneKommentare(lies(ROOT, 'db/migrations/0014-img-proxy-nach-v1.sql'));
-  const fehlend = tabellen.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
+  const absent = tabellen.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
   assert.deepEqual(
-    fehlend,
+    absent,
     [],
     'Diese Tabellen tragen image_url, die Migration fasst sie nicht an:\n  ' +
-      fehlend.join('\n  ') +
+      absent.join('\n  ') +
       '\nSonst bleiben dort Adressen in der alten Form stehen.',
   );
 
   // Tables that did not exist yet at migration 0014
-  const umgeschrieben = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
-  assert.ok(umgeschrieben.length >= 5, `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
+  const rewritten = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
+  assert.ok(rewritten.length >= 5, `Nur ${rewritten.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
 
   const migDir = path.join(ROOT, 'db/migrations');
   const spaeter = fs
@@ -165,10 +165,10 @@ test('the migration covers EVERY table with image_url', () => {
   );
 
   // A valid source is also a later table that itself reads from such a one.
-  const quellen = new Set(umgeschrieben);
+  const quellen = new Set(rewritten);
   const liestAusQuelle = (tab, txt) => {
     // The INSERT that fills this table, and what it reads from.
-    const bloecke = [
+    const blockList = [
       ...txt.matchAll(
         new RegExp(
           `INSERT\\s+INTO\\s+${tab}\\s*\\([^)]*image_url[^)]*\\)([\\s\\S]*?)(?=INSERT\\s+INTO|ALTER\\s+TABLE|CREATE\\s|\\$sql\\$|$)`,
@@ -176,7 +176,7 @@ test('the migration covers EVERY table with image_url', () => {
         ),
       ),
     ];
-    return bloecke.some(b => [...quellen].some(q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
+    return blockList.some(b => [...quellen].some(q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
   };
   for (let neu = true; neu; ) {
     neu = false;

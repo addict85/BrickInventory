@@ -48,12 +48,12 @@ test('session version across all processes', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const hoeher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
+  const higher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
   const inDb = async () => (await db.get('SELECT session_version AS v FROM users WHERE id = $1', [uid])).v;
 
   await t.test('without a listen connection only the database applies', async () => {
     await sv.currentSessionVersion(uid);
-    await hoeher();
+    await higher();
     assert.equal(await sv.currentSessionVersion(uid), await inDb());
   });
 
@@ -69,7 +69,7 @@ test('session version across all processes', { concurrency: 1 }, async t => {
 
   await t.test('an increment from another process applies immediately', async () => {
     const vorher = await sv.currentSessionVersion(uid);
-    await hoeher();
+    await higher();
     assert.equal(await sv.currentSessionVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
     await anderer.query("SELECT pg_notify('sitzung_version', 'anderer')");
     const neu = await inDb();
@@ -80,11 +80,11 @@ test('session version across all processes', { concurrency: 1 }, async t => {
   });
 
   await t.test('an increment here notifies the others', async () => {
-    const gehoert = [];
-    anderer.on('notification', m => gehoert.push(m.channel));
+    const belongsTo = [];
+    anderer.on('notification', m => belongsTo.push(m.channel));
     await anderer.query('LISTEN sitzung_version');
     await _req('src/account/accessEnd.js').endAllSessions(uid);
-    await bis(() => gehoert.length > 0, 1000);
-    assert.deepEqual(gehoert.slice(0, 1), ['sitzung_version']);
+    await bis(() => belongsTo.length > 0, 1000);
+    assert.deepEqual(belongsTo.slice(0, 1), ['sitzung_version']);
   });
 });

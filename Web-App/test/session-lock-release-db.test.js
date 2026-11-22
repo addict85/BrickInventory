@@ -66,7 +66,7 @@ async function lockFree() {
 }
 
 test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // The pool should have exactly one connection, otherwise the check would get a different one
   // than the one holding the lock, and would find it "free".
   const maxBefore = testAccess().pool.options.max;

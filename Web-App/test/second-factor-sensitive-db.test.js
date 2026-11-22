@@ -88,7 +88,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       t,
     }).base;
   const basis = server(uid, NAME);
-  const ruf = async (b, methode, weg, body) => {
+  const callFn = async (b, methode, weg, body) => {
     const r = await fetch(`${b}/api/v2/auth${weg}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -98,19 +98,19 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   };
 
   await t.test('password change', async () => {
-    const withoutCode = await ruf(basis, 'POST', '/change-password', {
+    const withoutCode = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
     });
     assert.equal(withoutCode.body.code, 'second_factor_required', 'Passwortwechsel ohne Code');
     assert.equal(withoutCode.status, 400);
-    const falsch = await ruf(basis, 'POST', '/change-password', {
+    const falsch = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
       code: '000000',
     });
     assert.equal(falsch.body.code, 'second_factor_wrong');
-    const gut = await ruf(basis, 'POST', '/change-password', {
+    const gut = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
       code: codes[0],
@@ -128,22 +128,22 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
         [uid, `zfh-${process.pid}`],
       )
     ).id;
-    const withoutCode = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
+    const withoutCode = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
     assert.equal(withoutCode.body.code, 'second_factor_required', 'Passkey löschen ohne Code');
     assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'der Passkey steht noch');
-    const gut = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
+    const gut = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
     assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
   });
 
   await t.test('change e-mail', async () => {
-    const withoutCode = await ruf(basis, 'PUT', '/profile', {
+    const withoutCode = await callFn(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
       password_current: PASS,
     });
     assert.equal(withoutCode.body.code, 'second_factor_required', 'E-Mail ändern ohne Code');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
-    const gut = await ruf(basis, 'PUT', '/profile', {
+    const gut = await callFn(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
       password_current: PASS,
@@ -156,10 +156,10 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   await t.test('missing code does not count in the brake', async () => {
     for (let i = 0; i < 7; i++)
       assert.equal(
-        (await ruf(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-33' })).status,
+        (await callFn(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-33' })).status,
         400,
       );
-    const gut = await ruf(basis, 'POST', '/change-password', {
+    const gut = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-33',
       code: codes[3],
@@ -168,7 +168,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   });
 
   await t.test('without second factor as before', async () => {
-    const r = await ruf(server(ohne, OHNE), 'POST', '/change-password', {
+    const r = await callFn(server(ohne, OHNE), 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-44',
     });
@@ -176,7 +176,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   });
 
   await t.test('administrator address only applies after the link', async () => {
-    const r = await ruf(server(chef, CHEF, true), 'PUT', '/profile', {
+    const r = await callFn(server(chef, CHEF, true), 'PUT', '/profile', {
       username: CHEF,
       email: `${CHEF}@neu.example`,
       password_current: PASS,

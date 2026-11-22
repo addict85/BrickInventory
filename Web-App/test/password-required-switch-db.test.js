@@ -74,7 +74,7 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     await db.pool.end().catch(() => {});
   });
   /** @param {string} weg @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
-  const ruf = async (weg, { body, cookie, token } = {}) => {
+  const callFn = async (weg, { body, cookie, token } = {}) => {
     const r = await fetch(basis + weg, {
       method: body ? 'POST' : 'GET',
       headers: {
@@ -91,21 +91,21 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     };
   };
 
-  const anmeldung = await ruf('/auth/login', { body: { username: NAME, password: PASS } });
+  const anmeldung = await callFn('/auth/login', { body: { username: NAME, password: PASS } });
   assert.equal(anmeldung.status, 200, JSON.stringify(anmeldung.body));
   assert.equal(anmeldung.body.user.mustChangePassword, true);
   const {
     body: { token },
   } = anmeldung;
-  const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, without_token: true } });
+  const { cookie } = await callFn('/auth/login', { body: { username: NAME, password: PASS, without_token: true } });
 
   await t.test('session and token only get as far as the change', async () => {
-    const s = await ruf('/settings/tokens', { cookie });
+    const s = await callFn('/settings/tokens', { cookie });
     assert.equal(s.status, 403, 'Sitzung kommt am Wechsel vorbei');
     assert.equal(s.body.code, 'password_change_required');
-    const k = await ruf('/settings/tokens', { token });
+    const k = await callFn('/settings/tokens', { token });
     assert.equal(k.status, 403, 'Token kommt am Wechsel vorbei');
-    const ich = await ruf('/auth/me', { cookie });
+    const ich = await callFn('/auth/me', { cookie });
     assert.equal(ich.status, 200);
     assert.equal(ich.body.user.mustChangePassword, true, '/me sagt der Oberfläche nichts vom Wechsel');
   });
@@ -115,17 +115,17 @@ test('start password: change it first, then everything else', { concurrency: 1 }
       decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0],
     );
     await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mussPasswortAendern')::json WHERE sid = $1`, [sid]);
-    assert.equal((await ruf('/settings/tokens', { cookie })).status, 403);
+    assert.equal((await callFn('/settings/tokens', { cookie })).status, 403);
   });
 
   await t.test('the change itself works, afterwards (as an admin with a second factor) everything', async () => {
-    const w = await ruf('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
+    const w = await callFn('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;
     // Since 04.11.2026 admin rights require a code generator afterwards.
-    assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'second_factor_mandatory');
+    assert.equal((await callFn('/settings/tokens', { cookie: neu })).body.code, 'second_factor_mandatory');
     await require('./helpers/admin').adminWithFactor(_req, uid);
-    assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
-    assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
+    assert.equal((await callFn('/settings/tokens', { cookie: neu })).status, 200);
+    assert.equal((await callFn('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
   });
 });

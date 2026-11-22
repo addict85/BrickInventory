@@ -23,7 +23,7 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
 test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async t => {
-  const ANDERE = `rc_admin_${process.pid}`;
+  const OTHERS = `rc_admin_${process.pid}`;
   const app = await startApp(t, { name: `rc_${process.pid}` });
   if (app.reason) {
     t.skip(app.reason);
@@ -32,10 +32,10 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
   const { b, bis, db } = app;
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin) VALUES ($1, $2, 'x', true, true, true)`,
-    [ANDERE, `${ANDERE}@example.org`],
+    [OTHERS, `${OTHERS}@example.org`],
   );
-  t.after(() => db.run('DELETE FROM users WHERE username = $1', [ANDERE]).catch(() => {}));
-  const X = `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)})?.querySelector('.role-chip .chip-remove')`;
+  t.after(() => db.run('DELETE FROM users WHERE username = $1', [OTHERS]).catch(() => {}));
+  const X = `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(OTHERS)})?.querySelector('.role-chip .chip-remove')`;
   const metric = (breite, telefon) =>
     b.tab('Emulation.setDeviceMetricsOverride', {
       width: breite,
@@ -71,7 +71,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
     await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Rückfrage');
     assert.equal(
       await b.auswerten(`document.getElementById('cd-title').textContent.trim()`),
-      `„${ANDERE}“ die Administratorrolle entziehen?`,
+      `„${OTHERS}“ die Administratorrolle entziehen?`,
     );
     await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
     await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Rückfrage zu');

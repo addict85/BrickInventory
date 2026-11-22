@@ -11,9 +11,9 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, placeBundleSafe } = require('./helpers/bundle');
+const { BUNDLE_FILE, placeBundleSafe } = require('./helpers/bundle');
 placeBundleSafe();
-const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
+const BUNDLE = fs.readFileSync(BUNDLE_FILE, 'utf8');
 const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detail-fields.js'), 'utf8');
 
 /**
@@ -62,10 +62,10 @@ function fenster() {
     virtualConsole: vc,
   });
   const w = dom.window;
-  const rufe = [];
+  const callIt = [];
   w.fetch = async (u, o = {}) => {
     // The startup query is not part of the measurement.
-    if (!String(u).includes('startup-status')) rufe.push(`${o.method || 'GET'} ${u}`);
+    if (!String(u).includes('startup-status')) callIt.push(`${o.method || 'GET'} ${u}`);
     return {
       ok: true,
       status: 200,
@@ -81,7 +81,7 @@ function fenster() {
   // schliesse(): WITHOUT it the check hangs. startApp() in the bundle
   // polls /api/v2/startup-status every second, and this timer
   // keeps the Node process alive long after the test is done.
-  return { w, rufe, meldungen, field: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
+  return { w, callIt, meldungen, field: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
 }
 
 const { warte } = require('./helpers/time');
@@ -102,29 +102,29 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
   assert.deepEqual(schnell.meldungen, [], 'Es gab Meldungen in der Konsole');
 
   // 1. It is saved at all — that was Marco's finding.
-  assert.ok(schnell.rufe.length >= 1, 'Tippen hat gar nichts ausgelöst — genau der gemeldete Fehler');
+  assert.ok(schnell.callIt.length >= 1, 'Tippen hat gar nichts ausgelöst — genau der gemeldete Fehler');
 
   // 2. And only once, not per character.
   const langsam = fenster();
   await tap(langsam, REST + 200);
   assert.ok(
-    langsam.rufe.length > schnell.rufe.length,
-    `Die Ruhezeit ändert nichts: schnell ${schnell.rufe.length}, langsam ` +
-      `${langsam.rufe.length}. Ohne diesen Abstand misst der Prüfstand nur sich selbst.`,
+    langsam.callIt.length > schnell.callIt.length,
+    `Die Ruhezeit ändert nichts: schnell ${schnell.callIt.length}, langsam ` +
+      `${langsam.callIt.length}. Ohne diesen Abstand misst der Prüfstand nur sich selbst.`,
   );
   assert.equal(
-    schnell.rufe.length,
+    schnell.callIt.length,
     1,
-    `Schnelles Tippen ergab ${schnell.rufe.length} Anfragen: ${schnell.rufe.join(' | ')}`,
+    `Schnelles Tippen ergab ${schnell.callIt.length} Anfragen: ${schnell.callIt.join(' | ')}`,
   );
 
   // 3. The last number wins — not the intermediate states “2" or “24".
   //    Exactly those would have remained without idle time, and a threshold at 2
   //    reports immediately.
   assert.match(
-    schnell.rufe[0],
+    schnell.callIt[0],
     /^PUT .*\/sets\/10179-1\/alert$/,
-    `Gespeichert wurde nicht per PUT: ${schnell.rufe[0]}`,
+    `Gespeichert wurde nicht per PUT: ${schnell.callIt[0]}`,
   );
   schnell.schliesse();
   langsam.schliesse();
@@ -138,7 +138,7 @@ test('the response does NOT write back into the field', async () => {
   await tap(f, 40);
   assert.equal(f.field.value, '249.90', 'Das Feld wurde überschrieben');
   assert.deepEqual(
-    f.rufe.filter(r => r.startsWith('GET')),
+    f.callIt.filter(r => r.startsWith('GET')),
     [],
     'Nach dem Speichern wurde der Alarm neu geladen — das fasst das Feld an',
   );
@@ -152,7 +152,7 @@ test('a cleared field deletes', async () => {
   f.field.value = '';
   f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
   await warte(REST * 2);
-  assert.equal(f.rufe.length, 1, `Anfragen: ${f.rufe.join(' | ')}`);
-  assert.match(f.rufe[0], /^DELETE .*\/alert\?condition=N$/, `Ein leeres Feld löschte nicht: ${f.rufe[0]}`);
+  assert.equal(f.callIt.length, 1, `Anfragen: ${f.callIt.join(' | ')}`);
+  assert.match(f.callIt[0], /^DELETE .*\/alert\?condition=N$/, `Ein leeres Feld löschte nicht: ${f.callIt[0]}`);
   f.schliesse();
 });

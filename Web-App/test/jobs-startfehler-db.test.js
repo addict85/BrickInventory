@@ -47,11 +47,11 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   t.after(() => db.pool.end().catch(() => {}));
 
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
-  const vorladen = path.join(ordner, 'planeAll-wirft.js');
-  fs.writeFileSync(vorladen, PRELOAD);
+  const preload = path.join(ordner, 'planeAll-wirft.js');
+  fs.writeFileSync(preload, PRELOAD);
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
-  const srv = spawn(process.execPath, ['--require', vorladen, path.join(ROOT, 'dist', 'server.js')], {
+  const srv = spawn(process.execPath, ['--require', preload, path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, ROLE: 'jobs' },

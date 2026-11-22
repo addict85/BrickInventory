@@ -29,10 +29,10 @@ const db = testData();
 const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
 
 /** Compare sorted: the order within the set is not a statement. */
-const sortiert = a => [...a].sort();
+const sortedList = a => [...a].sort();
 
 test('price run: the condition of a wishlist item is that of the user', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // Own users per process — the test runs alongside others on the same DB.
   const anlegen = async suffix =>
@@ -71,7 +71,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       a,
     ]);
     assert.deepEqual(
-      sortiert((await statesJeSet(a, ['21318-1'])).get('21318-1')),
+      sortedList((await statesJeSet(a, ['21318-1'])).get('21318-1')),
       ['N', 'U'],
       'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis',
     );
@@ -98,7 +98,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     );
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'42100-1','U')`, [a]);
     assert.deepEqual(
-      sortiert((await statesJeSet(a, ['42100-1'])).get('42100-1')),
+      sortedList((await statesJeSet(a, ['42100-1'])).get('42100-1')),
       ['N', 'U'],
       'Bestand und Merkposten in verschiedenen Zuständen ergeben beide Abrufe',
     );
@@ -146,21 +146,21 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     // wishlist. This assertion holds them together.
     for (const sn of ['10305-1', '21318-1', '75192-1', '42100-1', '10276-1', '31203-1']) {
       assert.deepEqual(
-        sortiert(await conditionsNeededFor(sn, a)),
-        sortiert((await statesJeSet(a, [sn])).get(sn)),
+        sortedList(await conditionsNeededFor(sn, a)),
+        sortedList((await statesJeSet(a, [sn])).get(sn)),
         `conditionsNeededFor(${sn}) muss dasselbe sagen wie der Lauf`,
       );
     }
 
     // ── The hint (acquisition that does not exist yet) ──────────────────────
     assert.deepEqual(
-      sortiert(await conditionsNeededFor('99999-1', a, 'U')),
+      sortedList(await conditionsNeededFor('99999-1', a, 'U')),
       ['U'],
       'ohne Bestand entscheidet der Hinweis — sonst bekäme ein als gebraucht ' +
         'erfasstes Set den Neupreis als Kaufpreis',
     );
     assert.deepEqual(
-      sortiert(await conditionsNeededFor('10276-1', a, 'N')),
+      sortedList(await conditionsNeededFor('10276-1', a, 'N')),
       ['N', 'U'],
       'der Hinweis tritt neben die vorhandenen Erfassungen, er ersetzt sie nicht',
     );

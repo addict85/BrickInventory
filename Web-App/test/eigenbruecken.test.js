@@ -42,7 +42,7 @@ function existsSource(rel) {
 }
 
 /** Folders that really exist in the web tree — everything else is not a path from here. */
-const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
+const FOLDER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('no test reads a source file that does not exist', () => {
   const dateien = fs
@@ -59,7 +59,7 @@ test('no test reads a source file that does not exist', () => {
   /**
    * Does the path stand in an ABSENCE assertion?
    */
-  const isAbwesenheitsCheck = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
+  const isAbsenceCheck = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
 
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
@@ -68,7 +68,7 @@ test('no test reads a source file that does not exist', () => {
     for (const m of src.matchAll(/['"]((?:[\w.-]+\/)+[\w.-]+)['"]/g)) {
       const p = m[1];
       if (!QUELLE.test(p)) continue;
-      if (!ORDNER.includes(p.split('/')[0])) continue;
+      if (!FOLDER.includes(p.split('/')[0])) continue;
       geprueft++;
       if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
     }
@@ -79,15 +79,15 @@ test('no test reads a source file that does not exist', () => {
         .split(',')
         .map(s => s.trim())
         .filter(Boolean);
-      const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
-      if (segmente.some(s => s === undefined)) {
+      const segmentList = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
+      if (segmentList.some(s => s === undefined)) {
         // Not resolvable — reported, not skipped.
-        open.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
+        open.push(`${datei}: ${roh.find((_s, i) => segmentList[i] === undefined)}`);
         continue;
       }
-      const p = segmente.join('/');
+      const p = segmentList.join('/');
       if (!QUELLE.test(p)) continue;
-      if (isAbwesenheitsCheck(src, m.index)) {
+      if (isAbsenceCheck(src, m.index)) {
         absent.push(`${datei}: ${p}`);
         continue;
       }

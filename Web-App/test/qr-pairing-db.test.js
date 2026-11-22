@@ -59,7 +59,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
   const { base } = testServer(_req, { sitzung, t });
   // Via IPv4: with „localhost“ the CI runner asks via ::1, and the checked network would be 0:0:0::/48.
   const address = base.replace('localhost', '127.0.0.1');
-  const ruf = async (methode, path, body) => {
+  const callFn = async (methode, path, body) => {
     const r = await fetch(`${address}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -68,17 +68,17 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const newCode = async () => {
-    const qr = await ruf('POST', '/qr-token', { password: PASS });
+    const qr = await callFn('POST', '/qr-token', { password: PASS });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     return qr.body;
   };
   const melde = async qr => {
-    const m = await ruf('POST', '/qr-login', { token: qr.token, label: 'Pixel Probe' });
+    const m = await callFn('POST', '/qr-login', { token: qr.token, label: 'Pixel Probe' });
     assert.equal(m.status, 200, JSON.stringify(m.body));
     return m.body;
   };
-  const abholen = m => ruf('POST', '/qr-login/collect', { pickup: m.pickup });
-  const confirm = (qr, code) => ruf('POST', `/qr-pairing/${qr.pairing}/confirm`, { code });
+  const abholen = m => callFn('POST', '/qr-login/collect', { pickup: m.pickup });
+  const confirm = (qr, code) => callFn('POST', `/qr-pairing/${qr.pairing}/confirm`, { code });
 
   await t.test('without confirmation no token, afterwards exactly one', async () => {
     const qr = await newCode();
@@ -87,7 +87,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     assert.match(m.code, /^\d{6}$/);
     const vorher = await abholen(m);
     assert.deepEqual([vorher.status, vorher.body.waiting, vorher.body.token], [200, true, undefined]);
-    const state = await ruf('GET', `/qr-pairing/${qr.pairing}`);
+    const state = await callFn('GET', `/qr-pairing/${qr.pairing}`);
     assert.deepEqual(
       [state.body.state, state.body.device, state.body.ip_range],
       ['waiting', 'Pixel Probe', '127.0.0.0/24'],
@@ -108,10 +108,10 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     const qr = await newCode();
     const m = await melde(qr);
     const preview = { pickup: m.pickup, preview: true };
-    assert.equal((await ruf('POST', '/qr-login/collect', preview)).body.waiting, true);
+    assert.equal((await callFn('POST', '/qr-login/collect', preview)).body.waiting, true);
     assert.equal((await confirm(qr, m.code)).status, 200);
     for (let i = 0; i < 2; i++) {
-      const v = await ruf('POST', '/qr-login/collect', preview);
+      const v = await callFn('POST', '/qr-login/collect', preview);
       assert.equal(v.status, 200, JSON.stringify(v.body));
       assert.deepEqual([v.body.username, v.body.preview, v.body.token], [NAMEN[0], true, undefined]);
     }
@@ -134,19 +134,19 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     const tokens = async () =>
       (await db.get('SELECT count(*)::int AS n FROM api_tokens WHERE user_id = $1', [ids[0]])).n;
     const vorher = await tokens();
-    assert.equal((await ruf('POST', '/qr-login/collect', { pickup: m.pickup, preview: true })).status, 200);
-    assert.equal((await ruf('POST', '/qr-login/discard', { pickup: m.pickup })).status, 200);
+    assert.equal((await callFn('POST', '/qr-login/collect', { pickup: m.pickup, preview: true })).status, 200);
+    assert.equal((await callFn('POST', '/qr-login/discard', { pickup: m.pickup })).status, 200);
     const r = await abholen(m);
     assert.deepEqual([r.status, r.body.code], [403, 'qr_rejected']);
     assert.equal(await tokens(), vorher);
-    assert.equal((await ruf('GET', `/qr-pairing/${qr.pairing}`)).body.state, 'rejected');
-    assert.equal((await ruf('POST', '/qr-login/discard', { pickup: 'unbekannt' })).status, 401);
+    assert.equal((await callFn('GET', `/qr-pairing/${qr.pairing}`)).body.state, 'rejected');
+    assert.equal((await callFn('POST', '/qr-login/discard', { pickup: 'unbekannt' })).status, 401);
   });
 
   await t.test('a code reports only one device', async () => {
     const qr = await newCode();
     await melde(qr);
-    assert.equal((await ruf('POST', '/qr-login', { token: qr.token })).status, 401);
+    assert.equal((await callFn('POST', '/qr-login', { token: qr.token })).status, 401);
   });
 
   await t.test('a wrong code counts, after three the pairing is rejected', async () => {
@@ -163,7 +163,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
   await t.test('rejecting in the browser ends the pairing', async () => {
     const qr = await newCode();
     const m = await melde(qr);
-    assert.equal((await ruf('POST', `/qr-pairing/${qr.pairing}/reject`, {})).status, 200);
+    assert.equal((await callFn('POST', `/qr-pairing/${qr.pairing}/reject`, {})).status, 200);
     assert.equal((await abholen(m)).status, 403);
   });
 
@@ -172,7 +172,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     const m = await melde(qr);
     Object.assign(sitzung, { userId: ids[1], username: NAMEN[1] });
     try {
-      assert.equal((await ruf('GET', `/qr-pairing/${qr.pairing}`)).status, 404);
+      assert.equal((await callFn('GET', `/qr-pairing/${qr.pairing}`)).status, 404);
       assert.equal((await confirm(qr, m.code)).status, 404);
     } finally {
       Object.assign(sitzung, { userId: ids[0], username: NAMEN[0] });
@@ -195,7 +195,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
       [ids[1], OPEN_PAIRINGS_AT_MOST],
     );
     await newCode();
-    const r = await ruf('POST', '/qr-token', { password: PASS });
+    const r = await callFn('POST', '/qr-token', { password: PASS });
     assert.deepEqual([r.status, r.body?.code], [503, 'server_busy']);
     await db.run(`UPDATE qr_login_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE token LIKE 'voll%'`);
     await newCode();

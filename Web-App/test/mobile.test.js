@@ -1,5 +1,7 @@
 /**
  * Frontend tests for public/js/mobile.js in jsdom.
+ *
+ * Counter-check: in public/js/mobile.js no cell gets its data-label → red “data-label comes from the header row”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -23,7 +23,7 @@ const { warte: takt } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
 
-function oeffne() {
+function openIt() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const dom = new JSDOM(
     `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge","log.level.error":"Error","log.more_rows":"{n} weitere Zeilen"}'>
@@ -64,7 +64,7 @@ function oeffne() {
 }
 
 test('loads with the session cookie and only shows the chosen levels, escaped', async () => {
-  const { w, d, aufrufe } = oeffne();
+  const { w, d, aufrufe } = openIt();
   try {
     await takt(10);
     assert.equal(aufrufe.length, 1);
@@ -81,7 +81,7 @@ test('loads with the session cookie and only shows the chosen levels, escaped', 
 });
 
 test('switch on level info and filter the search', async () => {
-  const { w, d } = oeffne();
+  const { w, d } = openIt();
   try {
     await takt(10);
     d.getElementById('btn-info').click();
@@ -97,7 +97,7 @@ test('switch on level info and filter the search', async () => {
 });
 
 test('a foreign name stays ineffective', async () => {
-  const { w, d, alarm } = oeffne();
+  const { w, d, alarm } = openIt();
   try {
     await takt(10);
     d.getElementById('fremd').click();
@@ -109,7 +109,7 @@ test('a foreign name stays ineffective', async () => {
 });
 
 test('level translated, stack trace collapsed, the search expands it', async () => {
-  const { w, d } = oeffne();
+  const { w, d } = openIt();
   try {
     await takt(10);
     const stapel = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));

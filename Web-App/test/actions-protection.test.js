@@ -89,15 +89,15 @@ test('injected markup triggers no dangerous action', async () => {
     await takt(50);
     assert.ok(galleryFetches(ab).length > 0, 'Kontrolle: loadGallery per Klick ruft /v2/sets ab');
 
-    let geoeffnet = 0;
+    let opened = 0;
     w.open = () => {
-      geoeffnet++;
+      opened++;
       return null;
     };
     inject('<button id="x5" data-click="open" data-arg="https://example.org/">x</button>');
     d.getElementById('x5').click();
     await takt(20);
-    assert.equal(geoeffnet, 0, 'window.open über data-click erreichbar');
+    assert.equal(opened, 0, 'window.open über data-click erreichbar');
   } finally {
     w.close();
   }
@@ -143,7 +143,7 @@ test('every handler in the markup is in the list of its event', () => {
       .map(f => path.join(ROOT, 'public', 'js', f)),
   ];
   // The log window (monitor.js) is a separate popup with its own resolution.
-  const LOGFENSTER = new Set(['loadLogs', 'renderLogs']);
+  const LOG_WINDOW = new Set(['loadLogs', 'renderLogs']);
   const fehlt = [];
   let gesehen = 0;
   for (const typ of ['change', 'input', 'blur', 'keydown']) {
@@ -151,7 +151,7 @@ test('every handler in the markup is in the list of its event', () => {
     for (const f of dateien)
       for (const m of fs.readFileSync(f, 'utf8').matchAll(new RegExp(`data-${typ}="([^"$]+)"`, 'g'))) {
         gesehen++;
-        if (!erlaubt.has(m[1]) && !LOGFENSTER.has(m[1])) fehlt.push(`${path.basename(f)}: data-${typ}="${m[1]}"`);
+        if (!erlaubt.has(m[1]) && !LOG_WINDOW.has(m[1])) fehlt.push(`${path.basename(f)}: data-${typ}="${m[1]}"`);
       }
   }
   assert.ok(gesehen > 40, `nur ${gesehen} Treffer — greift die Suche noch?`);

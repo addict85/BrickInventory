@@ -75,11 +75,11 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
   });
 
   await t.test('a revocation here notifies the others', async () => {
-    const gehoert = [];
-    anderer.on('notification', m => gehoert.push(m.channel));
+    const belongsTo = [];
+    anderer.on('notification', m => belongsTo.push(m.channel));
     await anderer.query('LISTEN token_widerrufen');
     await auth.revokeAllTokens(uid);
-    for (let i = 0; i < 40 && !gehoert.length; i++) await new Promise(r => setTimeout(r, 25));
-    assert.deepEqual(gehoert.slice(0, 1), ['token_widerrufen']);
+    for (let i = 0; i < 40 && !belongsTo.length; i++) await new Promise(r => setTimeout(r, 25));
+    assert.deepEqual(belongsTo.slice(0, 1), ['token_widerrufen']);
   });
 });

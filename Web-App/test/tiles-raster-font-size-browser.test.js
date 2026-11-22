@@ -91,13 +91,13 @@ async function wantedUnknown(_t, a) {
   await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
   assert.equal((await vorgelesen(b, '#mk-list .mk-row')).name, '10276-1');
   assert.match(await b.auswerten(text('#mk-list .mk-row .mk-sub')), /^Set noch nicht im Katalog · Neuware$/);
-  const vorher = b.ereignisse.length;
+  const vorher = b.eventList.length;
   await b.auswerten(`document.querySelector('#mk-list .mk-row').click(); true`);
   await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Detail');
   await a.ruhig(5000);
   assert.match(await b.auswerten(text('#mk-m-det')), /Katalog ?Set noch nicht im Katalog — Name, Jahr und Thema/);
   assert.doesNotMatch(await b.auswerten(text('#mk-m-det')), /Jahr —/);
-  const catalogRequests = b.ereignisse
+  const catalogRequests = b.eventList
     .slice(vorher)
     .filter(e => e.method === 'Network.requestWillBeSent' && /\/catalog\/sets\/10276-1/.test(e.params.request.url));
   assert.equal(catalogRequests.length, 0, 'Anfrage an den Katalog, die mit 404 endet');

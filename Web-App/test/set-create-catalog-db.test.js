@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 test('catalog name stays when sources are missing', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const SN = `9${process.pid % 10000}-1`;
   const NAME = `kat-name-${process.pid}`;
   const schluessel = ['rebrickable_api_key', 'brickset_api_key'];
@@ -76,8 +76,8 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
       const { possibleSetNumber } = _req('src/infra/setNumber.js');
       for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
         assert.ok(possibleSetNumber(gut), gut);
-      for (const schlecht of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])
-        assert.ok(!possibleSetNumber(schlecht), schlecht);
+      for (const badOne of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])
+        assert.ok(!possibleSetNumber(badOne), badOne);
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);

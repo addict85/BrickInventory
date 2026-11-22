@@ -70,7 +70,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 
@@ -82,7 +82,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -109,7 +109,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
   const { base } = testServer(_req, { sitzung: { userId: UID }, t });
-  const aendere = async (number, oldColor, koerper) => {
+  const changeOne = async (number, oldColor, koerper) => {
     const r = await fetch(`${base}/api/v2/parts/${number}/${oldColor}/color`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -123,7 +123,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       ORDER BY color_id`,
       [UID],
     );
-  const erfassungen = async () =>
+  const acqList = async () =>
     (
       await db.all(
         `SELECT color_id, quantity, (created_at AT TIME ZONE 'UTC')::date AS tag
@@ -140,7 +140,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     // color change — without clearing, the next case would carry the image of the previous one.
     await db.run(`DELETE FROM set_parts`);
   };
-  const farbImage = async farbe =>
+  const colorImage = async farbe =>
     db.get(
       `SELECT image_url, image_local FROM part_color_catalog
       WHERE part_number='3001' AND color_id=$1`,
@@ -161,7 +161,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [UID],
     );
 
-    const a = await aendere('3001', 0, { color_id: 4 });
+    const a = await changeOne('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body.combined, false, 'Es gab keine Zielzeile — nichts zusammenzulegen');
 
@@ -171,8 +171,8 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       'Nach der Änderung muss GENAU EINE Zeile dastehen, und zwar in Farbe 4',
     );
     assert.deepEqual(
-      await erfassungen(),
-      [{ farbe: 4, quantity: 10, tag: (await erfassungen())[0].tag }],
+      await acqList(),
+      [{ farbe: 4, quantity: 10, tag: (await acqList())[0].tag }],
       'Die Erfassung muss mitgezogen sein — bleibt sie in Farbe 0 zurück, ist der ' +
         'Kaufpreis vom Teil abgeschnitten und die Stückzahl der neuen Zeile null',
     );
@@ -210,7 +210,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [UID],
     );
 
-    const a = await aendere('3001', 0, { color_id: 4 });
+    const a = await changeOne('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(
       a.body.combined,
@@ -224,7 +224,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [4],
       'Das Doppelte ist der ganze Grund für diese Funktion: Danach darf nur ' + 'die Zeile in Farbe 4 übrig sein',
     );
-    const erf = await erfassungen();
+    const erf = await acqList();
     assert.deepEqual(
       erf.map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [
@@ -252,7 +252,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [UID],
     );
 
-    const a = await aendere('3001', 0, { color_id: 4 });
+    const a = await changeOne('3001', 0, { color_id: 4 });
     // Without the adding BEFORE the move the UPDATE runs into idx_part_acq_tag_zustand
     // and the whole request fails with 500 — but only on a day on which
     // both acquisitions happen to coincide.
@@ -264,7 +264,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     );
     assert.equal(a.body.united, 1, 'Eine Erfassung musste addiert werden');
     assert.deepEqual(
-      (await erfassungen()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
+      (await acqList()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [{ farbe: 4, quantity: 17 }],
       'Aus 7 und 10 vom gleichen Tag muss EINE Erfassung mit 17 werden — ' +
         'verschwindet eine der beiden, fehlen Marco Stücke.',
@@ -285,10 +285,10 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                          ($1,'3001',4,10,0.50,'N', NOW())`,
       [UID],
     );
-    const a = await aendere('3001', 0, { color_id: 4 });
+    const a = await changeOne('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
-      (await erfassungen()).map(e => e.quantity).sort((x, y) => x - y),
+      (await acqList()).map(e => e.quantity).sort((x, y) => x - y),
       [7, 10],
       'Seit Migration 0047 kein Mischpreis: zwei Käufe, zwei Zeilen, zusammen 17',
     );
@@ -304,7 +304,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [UID, ORT],
     );
 
-    assert.equal((await aendere('3001', 0, { color_id: 4 })).status, 200);
+    assert.equal((await changeOne('3001', 0, { color_id: 4 })).status, 200);
     const zeilen = await holding();
     assert.equal(zeilen.length, 1);
     assert.equal(
@@ -321,7 +321,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                   VALUES ($1,'3001',4,'manual')`,
       [UID],
     );
-    const a = await aendere('3001', 4, {});
+    const a = await changeOne('3001', 4, {});
     assert.equal(
       a.status,
       400,
@@ -344,7 +344,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                   VALUES ($1,'10497-1','3001',0,'set')`,
       [UID],
     );
-    const a = await aendere('3001', 0, { color_id: 4 });
+    const a = await changeOne('3001', 0, { color_id: 4 });
     assert.equal(
       a.status,
       404,
@@ -375,7 +375,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                   VALUES ($1,'3001',4,5,'N', NOW())`,
       [UID],
     );
-    const a = await aendere('3001', 4, { color_id: 4 });
+    const a = await changeOne('3001', 4, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
       { v: a.body.moved, u: a.body.united, z: a.body.combined },
@@ -383,7 +383,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       'Gleiche Farbe heisst: nichts verschoben, nichts vereint, nichts zusammengelegt',
     );
     assert.deepEqual(
-      (await erfassungen()).map(e => e.quantity),
+      (await acqList()).map(e => e.quantity),
       [5],
       'Die Erfassung muss unverändert dastehen',
     );
@@ -401,11 +401,11 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name,image_url)
                   VALUES ('3001',7,'Blue','https://cdn.example/schon-da.jpg')`);
 
-    const a = await aendere('3001', 4, { color_id: 7 });
+    const a = await changeOne('3001', 4, { color_id: 7 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body.image, 'vorhanden', `Die Antwort sagt „${a.body.image}" — erwartet „vorhanden"`);
     assert.equal(
-      (await farbImage(7))?.image_url,
+      (await colorImage(7))?.image_url,
       'https://cdn.example/schon-da.jpg',
       'Das dastehende Bild gilt. Es bei jeder Farbänderung zu ersetzen hiesse, ' +
         'ein genau für diese Farbe geholtes Bild gegen das erste beliebige aus ' +
@@ -427,7 +427,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       [UID],
     );
 
-    const a = await aendere('3001', 4, { color_id: 7 });
+    const a = await changeOne('3001', 4, { color_id: 7 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     // Without a Rebrickable key lookupPart() returns null immediately; in
     // this environment there is none. So what is measured is the case „nothing
@@ -445,7 +445,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         'ein fehlendes Bild ist kein Grund, die Korrektur zurückzunehmen',
     );
     assert.deepEqual(
-      (await erfassungen()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
+      (await acqList()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [{ farbe: 7, quantity: 5 }],
       'Die Erfassung zieht mit',
     );

@@ -2,6 +2,8 @@
  * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
+ *
+ * Counter-check: a condition column added to sets in db/base.sql → red “after the complete schema setup sets has no purchase price and no condition”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Aftermath: leave a cleaned-up database behind
@@ -45,7 +47,7 @@ test('after the complete schema setup sets has no purchase price and no conditio
   try {
     await db.run('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

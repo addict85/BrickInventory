@@ -44,7 +44,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
   });
   const srv = web.srv;
 
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     // Set AND acquisition belong to the sub-account.
@@ -76,12 +76,12 @@ test('a quantity increase on the sub-account set lands in the own account', { co
     });
     assert.equal(ohne.status, 401, 'der App-Weg darf ohne Token nicht durchkommen');
     /** @type {[string, string, Record<string, string>][]} */
-    const wege = [
+    const pathList = [
       ['Webapp', web.base, {}],
       ['Android', app.base, { authorization: `Bearer ${token}` }],
     ];
-    for (const [name, base, credential] of wege) {
-      await aufbauen();
+    for (const [name, base, credential] of pathList) {
+      await setUp();
       const r = await fetch(`${base}/api/v2/sets/${SN}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', ...credential },

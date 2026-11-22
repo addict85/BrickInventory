@@ -1,5 +1,7 @@
 /**
  * The STOCK of storage locations — against a real database.
+ *
+ * Counter-check: renameStorage() (src/inventory/storageLocation.ts) no longer writes the name → red “renaming takes the assignments along”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -43,7 +45,7 @@ async function dbReachable() {
 test('storage location stock against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();

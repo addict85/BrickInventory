@@ -25,21 +25,21 @@ function replace(rel, felder) {
   require.cache[p].exports = Object.assign({}, echt, felder);
 }
 let rebrickable = 'gestoert';
-const stoerung = async () => {
+const outage = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-replace('src/catalog/rebrickableCatalog.js', { allPartsOfSet: stoerung });
-testSources(null, { getSetMinifigs: stoerung });
+replace('src/catalog/rebrickableCatalog.js', { allPartsOfSet: outage });
+testSources(null, { getSetMinifigs: outage });
 // The follow-up work: parts and figures succeed, two enrichments fail.
 const still = async () => {};
 replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
 replace('src/sets/setContentImport.js', { importParts: still, importMinifigs: still });
 replace('src/catalog/instructionJob.js', { enqueueInstruction: still });
 replace('src/catalog/partsEnrichment.js', {
-  enrichSetParts: stoerung,
+  enrichSetParts: outage,
   enrichSetMinifigs: still,
-  downloadSetImages: stoerung,
+  downloadSetImages: outage,
 });
 
 test('result: value, substitute and reported failure', async () => {

@@ -36,16 +36,16 @@ test('1. the web app sends all four filters to the server', async () => {
   try {
     await reiter(o.w, 'wanted');
     await o.ruhig();
-    const setze = (id, wert) => {
+    const put = (id, wert) => {
       const f = o.d.getElementById(id);
       f.value = wert;
       assert.equal(f.value, wert, `${id} kennt ${wert} nicht`);
       f.dispatchEvent(new o.w.Event(f.tagName === 'INPUT' ? 'input' : 'change', { bubbles: true }));
     };
-    setze('scope-wanted', '7');
-    setze('mkcond', 'U');
-    setze('mksort', 'price_asc');
-    setze('mks', 'Burg');
+    put('scope-wanted', '7');
+    put('mkcond', 'U');
+    put('mksort', 'price_asc');
+    put('mks', 'Burg');
     assert.ok(
       await warte(() => o.aufrufe.some(a => /\/v2\/wanted\?.*search=Burg/.test(a.url)), 2000),
       'die Suche lädt nicht neu',

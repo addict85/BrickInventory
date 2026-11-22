@@ -39,7 +39,7 @@ process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 
 test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -47,7 +47,7 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
   try {
     await admin.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await cleanRemainder(admin, 'schema_basis');
@@ -143,15 +143,15 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
   try {
     await admin.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const NAME2 = testName('schema_abbild');
   await cleanRemainder(admin, 'schema_abbild');
   await admin.query(`CREATE DATABASE ${id(NAME2)}`);
-  const ziel2 = new URL(BASIS);
-  ziel2.pathname = '/' + NAME2;
-  const c = new Client({ connectionString: ziel2.toString() });
+  const target2 = new URL(BASIS);
+  target2.pathname = '/' + NAME2;
+  const c = new Client({ connectionString: target2.toString() });
   t.after(async () => {
     await c.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME2)} WITH (FORCE)`).catch(() => {});
@@ -190,7 +190,7 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
       return;
     }
     assert.equal(
-      sk.basisText(ziel2.toString()),
+      sk.basisText(target2.toString()),
       datei,
       'db/base.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:snapshot',
     );

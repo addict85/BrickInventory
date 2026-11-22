@@ -39,7 +39,7 @@ const response = currency => ({
   },
 });
 
-async function einstand(browserLanguage, currency = 'EUR') {
+async function entryPrice(browserLanguage, currency = 'EUR') {
   const o = await openUi(response(currency), { browserLanguage });
   try {
     await reiter(o.w, 'finance');
@@ -51,18 +51,18 @@ async function einstand(browserLanguage, currency = 'EUR') {
 }
 
 test('de-DE', async () => {
-  assert.match(await einstand('de-DE'), /1\.097,93/);
+  assert.match(await entryPrice('de-DE'), /1\.097,93/);
 });
 
 // The apostrophe depends on the ICU version: Node 22 sets ’, Node 26 sets '.
 test('de-CH stays Swiss, even in EUR', async () => {
-  assert.match(await einstand('de-CH'), /1['’]097\.93/);
+  assert.match(await entryPrice('de-CH'), /1['’]097\.93/);
 });
 
 test('without a matching region: EUR German', async () => {
-  for (const b of ['de', 'en-US']) assert.match(await einstand(b), /^1\.097,93\s€$/, b);
+  for (const b of ['de', 'en-US']) assert.match(await entryPrice(b), /^1\.097,93\s€$/, b);
 });
 
 test('without a matching region: CHF Swiss', async () => {
-  assert.match(await einstand('en-US', 'CHF'), /1['’]097\.93/);
+  assert.match(await entryPrice('en-US', 'CHF'), /1['’]097\.93/);
 });

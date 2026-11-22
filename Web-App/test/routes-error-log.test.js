@@ -39,11 +39,11 @@ function logWithLevel(error, req) {
   assert.equal(zeilen.length, 1, 'Es soll genau eine Zeile geschrieben werden');
   return zeilen[0];
 }
-const protokolliere = (error, req) => logWithLevel(error, req).row;
+const logIt = (error, req) => logWithLevel(error, req).row;
 
 test('the error line names method and path', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404, code: 'not_found' });
-  const row = protokolliere(e, {
+  const row = logIt(e, {
     method: 'PUT',
     originalUrl: '/api/v2/parts/3001/5/acquisitions/42',
   });
@@ -56,7 +56,7 @@ test('the error line names method and path', () => {
 
 test('the question mark part stays outside', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404 });
-  const row = protokolliere(e, {
+  const row = logIt(e, {
     method: 'GET',
     originalUrl: '/api/v2/sets?accounts=alle&geheim=abc',
   });
@@ -71,7 +71,7 @@ test('the question mark part stays outside', () => {
 test('without a request the line stays as before', () => {
   // There are callers outside of a route (background work, tests). The addition
   // must not turn into „undefined undefined" there.
-  const row = protokolliere(new Error('kaputt'), undefined);
+  const row = logIt(new Error('kaputt'), undefined);
   assert.match(row, /\[route-error\] 500:/, `Unerwartete Form: ${row}`);
   assert.ok(!row.includes('undefined'), `„undefined" in der Zeile: ${row}`);
 });

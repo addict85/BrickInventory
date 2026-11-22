@@ -35,8 +35,8 @@ const BLUE = {
   conditions: ['N'],
   category_name: '11',
 };
-const FIGUR = { fig_number: 'fig-000123', fig_name: 'Chewbacca', quantity: 1, conditions: ['N'] };
-const SETTEIL = {
+const FIGURE = { fig_number: 'fig-000123', fig_name: 'Chewbacca', quantity: 1, conditions: ['N'] };
+const SET_PART = {
   part_number: '3020',
   part_name: 'Plate 2 x 4',
   color_name: 'Red',
@@ -92,7 +92,7 @@ test('parts: both empty — exactly one empty state, the empty box disappears', 
 });
 
 test('parts: only from sets — no empty box for manual ones', async () => {
-  const { w, d } = await parts({ '/v2/parts': { success: true, parts: [SETTEIL], total: 1 } });
+  const { w, d } = await parts({ '/v2/parts': { success: true, parts: [SET_PART], total: 1 } });
   try {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
@@ -142,7 +142,7 @@ async function minifigs(antworten) {
 }
 
 test('figures: manual ones there, from sets empty — no empty state', async () => {
-  const { w, d } = await minifigs({ '/v2/minifigs/manual': { success: true, figs: [FIGUR] } });
+  const { w, d } = await minifigs({ '/v2/minifigs/manual': { success: true, figs: [FIGURE] } });
   try {
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
     assert.ok(

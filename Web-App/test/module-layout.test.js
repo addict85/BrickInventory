@@ -135,7 +135,7 @@ test('no cycles via real import statements', () => {
   const dateien = sources();
   const kennt = new Set(dateien.map(d => path.resolve(d)));
 
-  const aufloesen = (von, rel) => {
+  const resolveIt = (von, rel) => {
     const basis = path.resolve(path.dirname(von), rel);
     for (const k of [basis + '.ts', path.join(basis, 'index.ts')]) {
       if (kennt.has(k)) return k;
@@ -148,7 +148,7 @@ test('no cycles via real import statements', () => {
     const ziele = new Set();
     // `import type` disappears when compiling and loads nothing at runtime.
     for (const m of src.matchAll(/^import (?!type\b)[^;]*from\s*'(\.[^']+)'/gm)) {
-      const z = aufloesen(datei, m[1]);
+      const z = resolveIt(datei, m[1]);
       if (z && z !== path.resolve(datei)) ziele.add(z);
     }
     graph.set(path.resolve(datei), ziele);
@@ -203,15 +203,15 @@ test('every source folder also arrives in the container', () => {
   const kopie = bau.search(/^COPY \. \.\s*$/m),
     translate = bau.indexOf('scripts/build-ts.js');
   assert.ok(kopie > 0 && kopie < translate, 'Das Bau-Stage kopiert den Kontext nicht ganz vor dem Übersetzen');
-  const ausgeschlossen = fs
+  const excluded = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')
     .map(z => z.trim())
     .filter(z => z && !z.startsWith('#'))
     .map(z => z.replace(/^\/|\/$/g, ''));
-  assert.ok(ausgeschlossen.includes('node_modules') && ausgeschlossen.length >= 5, '.dockerignore nicht gelesen');
+  assert.ok(excluded.includes('node_modules') && excluded.length >= 5, '.dockerignore nicht gelesen');
   for (const ziel of [...dirs, 'server.ts', 'package.json', 'scripts', 'public']) {
-    const treffer = ausgeschlossen.filter(
+    const treffer = excluded.filter(
       m => !m.startsWith('!') && (path.matchesGlob(ziel, m) || path.matchesGlob(`${ziel}/x.ts`, m)),
     );
     assert.deepEqual(treffer, [], `${ziel} wird von .dockerignore ausgeschlossen — im Container fehlt es`);

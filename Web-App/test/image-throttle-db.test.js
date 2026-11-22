@@ -1,5 +1,7 @@
 /**
  * A throttling of the CDN is NOT a miss marker.
+ *
+ * Counter-check: in src/images/imageDemandRun.ts the set-aside part of the message dropped → red “403 locks out no image and loses no note”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +27,7 @@ testImageWorker(null, {
     return null;
   },
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const db = testData();
 
@@ -34,7 +36,7 @@ test('a hopeless preview is only attempted ONCE', { concurrency: 1 }, async t =>
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -80,7 +82,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -89,7 +91,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
   await emptyQueue(db);
 
   const P = `DR${process.pid}`;
-  const fuellen = async () => {
+  const fill = async () => {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
     await db.run(
       `INSERT INTO image_wanted (url, set_number)
@@ -109,7 +111,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
     await t.test('403 locks out no image and loses no note', async () => {
       response = 403;
       versuche = 0;
-      await fuellen();
+      await fill();
       const IQ = _req('src/images/imageDemandRun.js');
       const e = await IQ._workStack();
       assert.equal(versuche, 1, `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
@@ -159,7 +161,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       const IQ = _req('src/images/imageDemandRun.js');
       response = 404;
       versuche = 0;
-      await fuellen();
+      await fill();
       await IQ._workStack();
       await _req('src/images/imageMisses.js')._writeBuffer();
       assert.equal(versuche, 10, `${versuche} Versuche — bei 404 läuft der Stapel durch`);

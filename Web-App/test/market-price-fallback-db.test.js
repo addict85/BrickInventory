@@ -25,7 +25,7 @@ const NAME = `mengenschnitt_${process.pid}`;
 const SET = `7${process.pid}2-1`,
   TEIL = `mt${process.pid}`,
   FARBE = 11,
-  FIGUR = `mf${process.pid}`;
+  FIGURE = `mf${process.pid}`;
 const SET_PRICE = 37.5,
   PART_PRICE = 0.25,
   MINIFIG_PRICE = 8;
@@ -40,7 +40,7 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]);
-    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGURE]);
     await db.pool.end().catch(() => {});
   });
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
@@ -63,11 +63,11 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, 'N', 'CHF', 0, $2, NOW())`,
-    [FIGUR, MINIFIG_PRICE],
+    [FIGURE, MINIFIG_PRICE],
   );
   await holdsSet(db, uid, SET, 2, { preis: 30 });
   await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 4, preis: 0.2 });
-  await holdsMinifig(db, uid, FIGUR, { quantity: 1, preis: 5 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1, preis: 5 });
 
   const f = _req('src/finances/financeCalc.js');
 
@@ -80,7 +80,7 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     assert.equal(parts.parts.find(z => z.part_number === TEIL).avg_price, PART_PRICE);
     assert.equal(parts.value_total, 1);
     const minifigs = await f.valueMinifigs(uid, [uid]);
-    assert.equal(minifigs.figs.find(z => z.fig_number === FIGUR).avg_price, MINIFIG_PRICE);
+    assert.equal(minifigs.figs.find(z => z.fig_number === FIGURE).avg_price, MINIFIG_PRICE);
     assert.equal(minifigs.value_total, MINIFIG_PRICE);
   });
 
@@ -102,6 +102,6 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     const pv = _req('src/finances/priceHistory.js');
     assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
     assert.equal((await pv.priceHistoryPart([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);
-    assert.equal((await pv.priceHistoryMinifig([uid], FIGUR, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
+    assert.equal((await pv.priceHistoryMinifig([uid], FIGURE, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
   });
 });

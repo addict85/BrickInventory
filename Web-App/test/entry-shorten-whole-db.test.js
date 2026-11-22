@@ -60,21 +60,21 @@ test('trimming works completely or not at all', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const erfassungen = async () =>
+  const acqList = async () =>
     (await db.all('SELECT quantity FROM part_acquisitions WHERE user_id = $1 ORDER BY created_at', [uid])).map(
       r => r.quantity,
     );
 
   await t.test('nothing half trimmed', async () => {
-    assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');
+    assert.deepEqual(await acqList(), [3, 2], 'Vorbedingung');
     // 5 → 1: the newer one (2) gone, shorten the older one by 2 — there the trigger applies.
     await assert.rejects(changeManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
-    assert.deepEqual(await erfassungen(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
+    assert.deepEqual(await acqList(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
   });
 
   await t.test('without errors trimming happens', async () => {
     await db.run(`DROP TRIGGER ${fn} ON part_acquisitions`);
     await changeManualPart(uid, TEIL, 5, { quantity: 1 });
-    assert.deepEqual(await erfassungen(), [1]);
+    assert.deepEqual(await acqList(), [1]);
   });
 });

@@ -1,5 +1,7 @@
 /**
  * The index of the fix history and the parts in CHANGELOG/ must match.
+ *
+ * Counter-check: a file name in the table of CHANGELOG-fixes.md misspelled → red “every part is in the index and vice versa”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,9 +60,9 @@ test('the file name matches the content', () => {
   // index, every reference was right. Only the file was named something other than …
   const daneben = [];
   for (const f of onDisk()) {
-    const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
-    if (!spanne) continue; // 01-frueh-N.md
-    const [von, bis] = [Number(spanne[1]), Number(spanne[2])];
+    const span = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
+    if (!span) continue; // 01-frueh-N.md
+    const [von, bis] = [Number(span[1]), Number(span[2])];
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
     for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
       const n = Number(m[1]);

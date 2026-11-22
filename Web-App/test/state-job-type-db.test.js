@@ -30,7 +30,7 @@ const MIGRATION = fs.readFileSync(
   'utf8',
 );
 const SCHEMA = `probe0109_${process.pid}`;
-const TABELLEN = [
+const TABLES = [
   'wanted',
   'price_alerts',
   'price_cache',
@@ -57,7 +57,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     await c.query(`CREATE SCHEMA ${SCHEMA}`);
     await c.query(`SET search_path TO ${SCHEMA}, public`);
     // Without today's checks: defaults and indexes, no CHECKs.
-    for (const tab of TABELLEN)
+    for (const tab of TABLES)
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING DEFAULTS INCLUDING INDEXES)`);
     // State before 0124: migration 0109 only knows the names of back then.
     await c.query(`ALTER TABLE price_alerts RENAME COLUMN direction TO richtung;

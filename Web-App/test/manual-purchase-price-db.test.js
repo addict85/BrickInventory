@@ -1,5 +1,7 @@
 /**
  * Part and minifigure without a market price leave behind THE SAME.
+ *
+ * Counter-check: in src/parts/repository/partsList.ts unit_price read as COALESCE(…, 0) → red “without market price: display value 0, acquisition NULL — for part AND figure”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

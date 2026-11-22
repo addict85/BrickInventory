@@ -3,6 +3,10 @@
  *
  * Counter-check (performed): creation removed and instead, as before,
  * `G('app-scrollbar')` expected → “bar created" turns red.
+ *
+ * Counter-check: `if (requested) return;` removed in public/js/scrollbar.js → red “redrawing is throttled”.
+ * Counter-check: `label.style.display = ''` after dragging removed → red “the label disappears again after dragging”.
+ * Counter-check: without a registered function the label shows '1999' → red “the label stays empty as long as nobody registers it”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -61,32 +65,47 @@ test('without a scroll area it disappears again', () => {
   assert.equal(w.document.getElementById('app-scrollbar').style.display, 'none');
 });
 
+/** A stage whose animation frames wait until the test runs them, and whose scrollTo does nothing. */
+function frameStage() {
+  const w = stage();
+  const frames = [];
+  w.requestAnimationFrame = cb => frames.push(cb);
+  w.scrollTo = () => {};
+  w.eval('initScrollbar();');
+  return { w, frames, bar: w.document.getElementById('app-scrollbar') };
+}
+
 test('redrawing is throttled', () => {
-  // drawScrollbar() READS layout (scrollHeight). Unthrottled, every
-  // scroll event forces a recomputation — dozens of times per second. The
-  // page then feels sluggish although the server answered long ago.
-  const code = scrollbarCode();
-  assert.match(code, /requestAnimationFrame\(/, 'Das Neuzeichnen hängt ungedrosselt am Scroll-Ereignis');
-  const i = code.indexOf("addEventListener('scroll'");
-  assert.ok(i > 0, 'Kein Scroll-Zuhörer');
-  assert.match(code.slice(0, i), /requested/, 'Der Zuhörer ruft nicht die gedrosselte Fassung');
+  // drawScrollbar() reads layout; a burst of scroll events must cost one frame, not one per event.
+  const { w, frames } = frameStage();
+  for (let i = 0; i < 10; i++) w.dispatchEvent(new w.Event('scroll'));
+  assert.equal(frames.length, 1, `${frames.length} frames requested for ten scroll events`);
+  frames.shift()();
+  w.dispatchEvent(new w.Event('scroll'));
+  assert.equal(frames.length, 1, 'after the frame ran, the next scroll event requests a new one');
 });
 
 test('the label disappears again after dragging', () => {
-  // Marco's screenshot
-  const code = scrollbarCode();
-  const i = code.indexOf('const end =');
-  assert.ok(i > 0, 'Kein Ende-Handler');
-  // Cut up to the END of the handler, not by fixed length: the
-  // rationale in the comment is longer than any window I would guess
-  // — the same trap that has already struck five times in this project.
-  const fn = code.slice(i, code.indexOf('\n  };', i));
-  assert.match(
-    fn,
-    /label\.style\.display = ''/,
-    'Die inline gesetzte Sichtbarkeit wird nach dem Ziehen nicht zurückgenommen — ' +
-      'dann bleibt das Etikett in jedem Reiter stehen',
-  );
+  const { w, bar } = frameStage();
+  w.eval("setScrollLabel(() => '2019');");
+  const label = w.document.getElementById('app-scrollbar-label');
+  bar.dispatchEvent(new w.MouseEvent('mousedown', { clientY: 100, bubbles: true }));
+  assert.equal(label.textContent, '2019', 'while dragging the label shows the registered text');
+  assert.equal(label.style.display, 'block');
+  w.dispatchEvent(new w.MouseEvent('mouseup', { bubbles: true }));
+  assert.equal(label.style.display, '', 'the inline visibility stays after letting go and beats the stylesheet');
+});
+
+test('the label stays empty as long as nobody registers it', () => {
+  const { w, bar } = frameStage();
+  const label = w.document.getElementById('app-scrollbar-label');
+  bar.dispatchEvent(new w.MouseEvent('mousedown', { clientY: 100, bubbles: true }));
+  assert.equal(label.textContent, '');
+  assert.equal(label.style.display, 'none', 'without a registered function the label must stay hidden');
+  w.dispatchEvent(new w.MouseEvent('mouseup', { bubbles: true }));
+  w.eval("setScrollLabel(() => '2020'); setScrollLabel(null);");
+  bar.dispatchEvent(new w.MouseEvent('mousedown', { clientY: 100, bubbles: true }));
+  assert.equal(label.textContent, '', 'an unregistered function still delivers its text');
 });
 
 test('the label is unregistered when leaving the catalog', () => {
@@ -95,22 +114,5 @@ test('the label is unregistered when leaving the catalog', () => {
     gal,
     /if \(tab !== 'catalog'\) setScrollLabel\(null\)/,
     'Beim Reiterwechsel wird die Etikett-Funktion nicht abgemeldet',
-  );
-});
-
-test('the label stays empty as long as nobody registers it', () => {
-  // The bar belongs to the whole application; the year is an ingredient of the
-  // catalog. Without login nothing may stand there — otherwise every
-  // tab would show a number that means nothing to it.
-  const code = scrollbarCode();
-  assert.match(
-    code,
-    /export let scrollLabelFn = null|let scrollLabelFn = null/,
-    'Es gibt keine Anmeldestelle für das Etikett',
-  );
-  assert.match(
-    code,
-    /scrollLabelFn \? scrollLabelFn\(\) : null/,
-    'Das Etikett fragt die angemeldete Funktion nicht ab',
   );
 });

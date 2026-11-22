@@ -12,8 +12,8 @@ const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 const COMPONENT = 'components.js';
-const { buildTestbuendel } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestbuendel(
+const { buildTestBundle } = require('./helpers/bundle');
+process.env.TEST_BUENDEL = buildTestBundle(
   'bausteine',
   "import { detailRow, loadDisplay } from './components.js';\nwindow.__build = { detailRow, loadDisplay };\n",
 );
@@ -22,11 +22,11 @@ const { openUi } = require('./helpers/ui');
 /** All frontend modules except the bundle and the building block itself. */
 function module_() {
   const alle = fs.readdirSync(JS).filter(f => f.endsWith('.js'));
-  const gefiltert = alle.filter(f => f !== 'app.bundle.js' && f !== COMPONENT);
+  const filtered = alle.filter(f => f !== 'app.bundle.js' && f !== COMPONENT);
   // Self-proof: if the loop finds nothing, every check below would be
   // silently green.
-  assert.ok(gefiltert.length >= 10, `nur ${gefiltert.length} Frontend-Module gefunden — Pfad falsch?`);
-  return gefiltert;
+  assert.ok(filtered.length >= 10, `nur ${filtered.length} Frontend-Module gefunden — Pfad falsch?`);
+  return filtered;
 }
 
 test('the detail row is no longer built by hand anywhere', () => {

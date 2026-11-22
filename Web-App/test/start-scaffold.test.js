@@ -44,12 +44,12 @@ test('the hash matches the delivered block', async () => {
 
 test('before the first stylesheet and before every blocking script', () => {
   const html = stripComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
-  const geruest = html.indexOf('id="start-skeleton"');
-  assert.ok(geruest > 0);
+  const scaffold = html.indexOf('id="start-skeleton"');
+  assert.ok(scaffold > 0);
   const firstStylesheet = html.search(/<link rel="stylesheet"/);
   const firstScript = html.search(/<script (?!defer)[^>]*src=/);
-  assert.ok(geruest < firstStylesheet, 'vor dem ersten Stylesheet');
-  assert.ok(geruest < firstScript, 'vor dem ersten blockierenden Skript');
+  assert.ok(scaffold < firstStylesheet, 'vor dem ersten Stylesheet');
+  assert.ok(scaffold < firstScript, 'vor dem ersten blockierenden Skript');
 });
 
 test('logged in: skeleton gone, app there', async () => {

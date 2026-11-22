@@ -23,7 +23,7 @@ process.env.DATABASE_URL = DB_URL;
 // build .ts -> .js (esbuild, in place) — idempotent and fast
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 // stub requireToken BEFORE the router is loaded
 // The path must point to the BUILT module in dist/ — that is where the router loads
@@ -134,7 +134,7 @@ async function seed() {
 test('catalog API (Postgres integration)', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t, DB_URL);
+    noDb(t, DB_URL);
     return;
   }
   await seed();

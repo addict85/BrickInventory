@@ -106,8 +106,8 @@ test('value chart: division by 1-2-5, real time axis, month names', async () => 
     // Between the last two points lies a day, before that a month.
     const cx = JSON.parse(svg.dataset.dots).map(p => p.x);
     const tag = cx[13] - cx[12],
-      monat = cx[12] - cx[11];
-    assert.ok(monat > 10 * tag, `Zeitachse: ein Tag ${tag.toFixed(1)}, ein Monat ${monat.toFixed(1)}`);
+      monthValue = cx[12] - cx[11];
+    assert.ok(monthValue > 10 * tag, `Zeitachse: ein Tag ${tag.toFixed(1)}, ein Monat ${monthValue.toFixed(1)}`);
   } finally {
     w.close();
   }

@@ -11,14 +11,14 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { fromTable } = _req('src/infra/validate.js');
 
-const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
+const TABLE_NAME = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 
 test('a known key delivers the value', () => {
-  assert.strictEqual(fromTable(TABELLE, 'name_asc', 'VORGABE'), 'rb.name ASC');
+  assert.strictEqual(fromTable(TABLE_NAME, 'name_asc', 'VORGABE'), 'rb.name ASC');
 });
 
 test('an unknown key delivers the default', () => {
-  assert.strictEqual(fromTable(TABELLE, 'gibtsnicht', 'VORGABE'), 'VORGABE');
+  assert.strictEqual(fromTable(TABLE_NAME, 'gibtsnicht', 'VORGABE'), 'VORGABE');
 });
 
 test('inherited properties do NOT count as hits', () => {
@@ -26,13 +26,13 @@ test('inherited properties do NOT count as hits', () => {
   // Object function or Object.prototype would come back here — both truthy,
   // both landed unchecked in the SQL.
   for (const k of ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty']) {
-    assert.strictEqual(fromTable(TABELLE, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
+    assert.strictEqual(fromTable(TABLE_NAME, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
   }
 });
 
 test('counter-check: the naive access FAILS with the same keys', () => {
   // Proves that the test above checks something and would not be green anyway.
-  const naive = k => TABELLE[k] || 'VORGABE';
+  const naive = k => TABLE_NAME[k] || 'VORGABE';
   assert.strictEqual(naive('gibtsnicht'), 'VORGABE'); // equal here
   assert.notStrictEqual(naive('constructor'), 'VORGABE'); // NOT here
   assert.notStrictEqual(naive('__proto__'), 'VORGABE');
@@ -40,7 +40,7 @@ test('counter-check: the naive access FAILS with the same keys', () => {
 
 test('non-string keys are handled safely', () => {
   for (const k of [undefined, null, 42, {}, ['name_asc'], true]) {
-    const r = fromTable(TABELLE, k, 'VORGABE');
+    const r = fromTable(TABLE_NAME, k, 'VORGABE');
     // An array with a valid value may apply via einzelwert() —
     // everything else falls back to the default.
     assert.ok(r === 'VORGABE' || r === 'rb.name ASC', `Schlüssel ${JSON.stringify(k)} ergab ${r}`);
@@ -48,8 +48,8 @@ test('non-string keys are handled safely', () => {
 });
 
 test('without a default undefined comes instead of an inherited value', () => {
-  assert.strictEqual(fromTable(TABELLE, 'constructor'), undefined);
-  assert.strictEqual(fromTable(TABELLE, 'name_asc'), 'rb.name ASC');
+  assert.strictEqual(fromTable(TABLE_NAME, 'constructor'), undefined);
+  assert.strictEqual(fromTable(TABLE_NAME, 'name_asc'), 'rb.name ASC');
 });
 
 // ── The three locations: no direct table access anymore ────────────────────

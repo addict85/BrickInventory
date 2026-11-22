@@ -58,11 +58,11 @@ test('no service gains privileges, each has only the necessary capabilities', ()
     caddy: [],
     'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
   };
-  for (const [dienst, caps] of Object.entries(erwartet)) {
-    const block = readService(compose, dienst);
-    assert.match(block, /^\s*-\s*no-new-privileges:true\s*$/m, `${dienst}: no-new-privileges fehlt`);
-    assert.deepEqual(liste(block, 'cap_drop'), ['ALL'], `${dienst}: cap_drop: [ALL] fehlt`);
-    assert.deepEqual(liste(block, 'cap_add').sort(), caps, `${dienst}: unerwartete Capabilities`);
+  for (const [serviceFn, caps] of Object.entries(erwartet)) {
+    const block = readService(compose, serviceFn);
+    assert.match(block, /^\s*-\s*no-new-privileges:true\s*$/m, `${serviceFn}: no-new-privileges fehlt`);
+    assert.deepEqual(liste(block, 'cap_drop'), ['ALL'], `${serviceFn}: cap_drop: [ALL] fehlt`);
+    assert.deepEqual(liste(block, 'cap_add').sort(), caps, `${serviceFn}: unerwartete Capabilities`);
   }
 });
 
@@ -172,15 +172,15 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
 // Counter-checks (measured 01.11.2026): DATA_KEY_FILE deleted for jobs → red
 // “jobs: DATA_KEY_FILE missing”; path to /app/data/.datenschluessel → red “… ./data”.
 test('the data key lies outside of ./data for app and jobs', () => {
-  for (const dienst of ['app', 'jobs']) {
-    const block = readService(compose, dienst);
+  for (const serviceFn of ['app', 'jobs']) {
+    const block = readService(compose, serviceFn);
     const datei = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
-    assert.ok(datei, `${dienst}: DATA_KEY_FILE fehlt`);
+    assert.ok(datei, `${serviceFn}: DATA_KEY_FILE fehlt`);
     const ordner = [...block.matchAll(/^\s*-\s*(\.\/[^:\s]+):(\/[^:\s]+)(:ro)?\s*$/gm)].find(m =>
       datei.startsWith(m[2] + '/'),
     );
-    assert.ok(ordner, `${dienst}: ${datei} liegt in keinem eingehängten Ordner`);
-    assert.notEqual(ordner[1], './data', `${dienst}: der Schlüssel liegt wieder in ./data`);
+    assert.ok(ordner, `${serviceFn}: ${datei} liegt in keinem eingehängten Ordner`);
+    assert.notEqual(ordner[1], './data', `${serviceFn}: der Schlüssel liegt wieder in ./data`);
   }
 });
 
@@ -263,10 +263,10 @@ test('Caddy runs without root, caddy-rechte hands it its folders', () => {
   );
   const passed = chown.flatMap(m => m[2].trim().split(/\s+/));
   // Every folder Caddy mounts (except the Caddyfile) is mounted there and belongs to it afterwards.
-  const einh = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
-  const ordner = einh(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
+  const mount = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
+  const ordner = mount(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
   assert.ok(ordner.length >= 4, `Caddys Ordner nicht gefunden: ${ordner}`);
-  const fehlt = ordner.filter(e => !einh(rechte).includes(e) || !passed.some(u => e.endsWith(':' + u)));
+  const fehlt = ordner.filter(e => !mount(rechte).includes(e) || !passed.some(u => e.endsWith(':' + u)));
   assert.deepEqual(fehlt, [], 'diese Orte hat caddy-rechte nicht übergeben');
 });
 
@@ -383,12 +383,12 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
   assert.match(mig, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m);
   assert.match(mig, /^\s*entrypoint: \["node", "dist\/startup\/migrate\.js"\]\s*$/m);
   assert.equal(image('migration'), image('app'), 'migration nimmt ein anderes Image als app');
-  const netze = mig
+  const networkList = mig
     .split(/\n\s*networks:\s*\n/)[1]
     ?.split('\n')
     .filter(z => /^\s+-\s/.test(z))
     .map(z => z.trim().slice(2));
-  assert.deepEqual(netze, ['db-net'], 'migration braucht nur das interne Netz der Datenbank');
+  assert.deepEqual(networkList, ['db-net'], 'migration braucht nur das interne Netz der Datenbank');
   for (const d of ['app', 'jobs'])
     assert.match(
       readService(compose, d),

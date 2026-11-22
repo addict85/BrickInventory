@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 
-const DATEN = {
+const DATA = {
   username: 'marco',
   lang: 'de',
   setNumber: '10179-1',
@@ -46,7 +46,7 @@ test('price alert mail: the button and its absence', async t => {
 
   await t.test('1. with APP_BASE_URL the mail carries the link', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.test/' });
-    const m = await mailer.buildAlertMail(DATEN);
+    const m = await mailer.buildAlertMail(DATA);
     // The trailing slash of the variable must not double.
     assert.match(
       m.html,
@@ -65,7 +65,7 @@ test('price alert mail: the button and its absence', async t => {
     environment({ APP_BASE_URL: undefined });
     let m;
     const collected = await warningsOf(async () => {
-      m = await mailer.buildAlertMail(DATEN);
+      m = await mailer.buildAlertMail(DATA);
     });
 
     assert.ok(!/\?set=/.test(m.html), 'Ohne bekannte Adresse steht trotzdem ein Link in der Mail.');
@@ -90,7 +90,7 @@ test('price alert mail: the button and its absence', async t => {
     // here anymore.
     environment({ APP_BASE_URL: undefined });
     const collected = await warningsOf(async () => {
-      for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATEN);
+      for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATA);
     });
     const treffer = collected.filter(z => z.includes('APP_BASE_URL')).length;
     assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
@@ -104,21 +104,21 @@ test('price alert mail: the button and its absence', async t => {
   //   b) unequal tiles (44/12/40) -> red: “the widths add up to 96 %"
   await t.test('4. the two tiles leave room in the middle', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
-    const m = await mailer.buildAlertMail(DATEN);
+    const m = await mailer.buildAlertMail(DATA);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
     assert.equal(
       breiten.length,
       3,
       `Erwartet: zwei Kacheln und ein Abstand, alle in Prozent. Gefunden: ${breiten.length}.`,
     );
-    const [links, mitte, rechts] = breiten;
+    const [links, center, rechts] = breiten;
     assert.equal(
-      links + mitte + rechts,
+      links + center + rechts,
       100,
-      `Die Breiten ergeben ${links + mitte + rechts} % — der Klient muss dann etwas stauchen.`,
+      `Die Breiten ergeben ${links + center + rechts} % — der Klient muss dann etwas stauchen.`,
     );
     assert.equal(links, rechts, 'Die beiden Kacheln sind unterschiedlich breit.');
-    assert.ok(mitte > 0, 'In der Mitte steht kein Abstand.');
+    assert.ok(center > 0, 'In der Mitte steht kein Abstand.');
   });
 
   if (vorher === undefined) environment({ APP_BASE_URL: undefined });

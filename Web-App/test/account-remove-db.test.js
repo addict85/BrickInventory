@@ -30,17 +30,17 @@ test('remove account', { concurrency: 1 }, async t => {
   if (!db) return;
   const { removeAccount, removeAccountFiles } = _req('src/account/removeAccount.js');
   const P = process.pid;
-  const VERW = `entf-verw-${P}`,
+  const ADMIN_NAME = `entf-verw-${P}`,
     ZIEL = `entf-ziel-${P}`;
   const weg = async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[VERW, ZIEL]]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[ADMIN_NAME, ZIEL]]);
     await db.run("DELETE FROM jobs WHERE type = 'account_files'");
   };
   await weg();
   const verw = (
     await db.get(
       "INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1, 'x', true, true) RETURNING id",
-      [VERW],
+      [ADMIN_NAME],
     )
   ).id;
   const neu = async () =>

@@ -83,8 +83,8 @@ test('2. and really masters both languages', () => {
 test("3. and every caller passes it along — the mail is in the account's language", { timeout: 60_000 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   environment({ APP_BASE_URL: 'http://localhost' });
-  const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
-  const gesendet = mailAttrappe();
+  const { mailFake, enterMailServer } = require('./helpers/mail-fake');
+  const gesendet = mailFake();
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
@@ -132,14 +132,14 @@ test("3. and every caller passes it along — the mail is in the account's langu
       headers: { 'content-type': 'application/json', 'accept-language': 'de' },
       body: JSON.stringify({ email }),
     });
-  const mailAn = async address => {
+  const mailTo = async address => {
     assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `keine Mail an ${address}`);
     return gesendet.find(m => m.to === address);
   };
   // The request comes in German; what counts is the language of the recipient.
   for (const [n, address] of Object.entries(konten).filter(([n]) => n.endsWith('_ok'))) {
     assert.equal((await post('/forgot-password', address)).status, 200);
-    const mail = await mailAn(address);
+    const mail = await mailTo(address);
     assert.match(
       mail.subject + mail.text,
       n.includes('_en_') ? /Reset|password/i : /Passwort/,
@@ -149,7 +149,7 @@ test("3. and every caller passes it along — the mail is in the account's langu
   }
   const neu = Object.entries(konten).find(([n]) => n.endsWith('_neu'))[1];
   assert.equal((await post('/resend-confirmation', neu)).status, 200);
-  const bestaetigung = await mailAn(neu);
+  const bestaetigung = await mailTo(neu);
   assert.doesNotMatch(bestaetigung.subject, /bestätig|Bestätig/, bestaetigung.subject);
 });
 

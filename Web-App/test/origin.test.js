@@ -38,64 +38,64 @@ test('origin of writing requests', async t => {
   app.all('/x', (_req, res) => res.json({ ok: true }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const ruf = async (method, kopf = {}) =>
+  const callFn = async (method, kopf = {}) =>
     (await fetch(`http://127.0.0.1:${srv.address().port}/x`, { method, headers: kopf })).status;
 
   await t.test('a foreign website', async () => {
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site' }), 403);
-    assert.equal(await ruf('DELETE', { 'sec-fetch-site': 'cross-site' }), 403);
+    assert.equal(await callFn('POST', { 'sec-fetch-site': 'cross-site' }), 403);
+    assert.equal(await callFn('DELETE', { 'sec-fetch-site': 'cross-site' }), 403);
   });
   await t.test('a neighboring subdomain', async () => {
-    assert.equal(await ruf('PUT', { 'sec-fetch-site': 'same-site' }), 403);
+    assert.equal(await callFn('PUT', { 'sec-fetch-site': 'same-site' }), 403);
   });
   await t.test('the own site', async () => {
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin' }), 200);
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'none' }), 200, 'vom Nutzer selbst eingegeben');
+    assert.equal(await callFn('POST', { 'sec-fetch-site': 'same-origin' }), 200);
+    assert.equal(await callFn('POST', { 'sec-fetch-site': 'none' }), 200, 'vom Nutzer selbst eingegeben');
   });
   await t.test('without header and without session: app, scripts', async () => {
-    assert.equal(await ruf('POST'), 200);
-    assert.equal(await ruf('POST', { authorization: 'Bearer abc' }), 200);
+    assert.equal(await callFn('POST'), 200);
+    assert.equal(await callFn('POST', { authorization: 'Bearer abc' }), 200);
   });
   const eigen = () => `http://127.0.0.1:${srv.address().port}`;
   const SESSION = { cookie: '__Host-bim.sid=s%3Aabc' };
   await t.test('a cookie session without any origin information', async () => {
-    assert.equal(await ruf('POST', SESSION), 403);
-    assert.equal(await ruf('DELETE', SESSION), 403);
-    assert.equal(await ruf('GET', SESSION), 200, 'lesend bleibt erlaubt');
+    assert.equal(await callFn('POST', SESSION), 403);
+    assert.equal(await callFn('DELETE', SESSION), 403);
+    assert.equal(await callFn('GET', SESSION), 200, 'lesend bleibt erlaubt');
   });
   await t.test('an old browser without Sec-Fetch-Site, from a foreign site', async () => {
-    assert.equal(await ruf('POST', { ...SESSION, origin: 'https://boese.example' }), 403);
-    assert.equal(await ruf('POST', { ...SESSION, origin: 'null' }), 403, 'Origin „null" (Sandbox, Datei)');
-    assert.equal(await ruf('POST', { ...SESSION, referer: 'https://boese.example/seite' }), 403);
-    assert.equal(await ruf('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
+    assert.equal(await callFn('POST', { ...SESSION, origin: 'https://boese.example' }), 403);
+    assert.equal(await callFn('POST', { ...SESSION, origin: 'null' }), 403, 'Origin „null" (Sandbox, Datei)');
+    assert.equal(await callFn('POST', { ...SESSION, referer: 'https://boese.example/seite' }), 403);
+    assert.equal(await callFn('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
   });
   await t.test('a host that only starts like the own one', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
-      assert.equal(await ruf('POST', { ...SESSION, origin: 'https://lego.example.org.boese.example' }), 403);
-      assert.equal(await ruf('POST', { ...SESSION, referer: 'https://lego.example.org.boese.example/' }), 403);
+      assert.equal(await callFn('POST', { ...SESSION, origin: 'https://lego.example.org.boese.example' }), 403);
+      assert.equal(await callFn('POST', { ...SESSION, referer: 'https://lego.example.org.boese.example/' }), 403);
     } finally {
       environment({ APP_BASE_URL: undefined });
     }
   });
   await t.test('an old browser from the own site', async () => {
-    assert.equal(await ruf('POST', { ...SESSION, origin: eigen() }), 200);
-    assert.equal(await ruf('POST', { ...SESSION, referer: `${eigen()}/#/sets` }), 200);
+    assert.equal(await callFn('POST', { ...SESSION, origin: eigen() }), 200);
+    assert.equal(await callFn('POST', { ...SESSION, referer: `${eigen()}/#/sets` }), 200);
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
-      assert.equal(await ruf('POST', { ...SESSION, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL');
+      assert.equal(await callFn('POST', { ...SESSION, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL');
     } finally {
       environment({ APP_BASE_URL: undefined });
     }
   });
   await t.test('reading and with token', async () => {
-    assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site', authorization: 'Bearer abc' }), 200);
+    assert.equal(await callFn('GET', { 'sec-fetch-site': 'cross-site' }), 200);
+    assert.equal(await callFn('POST', { 'sec-fetch-site': 'cross-site', authorization: 'Bearer abc' }), 200);
   });
   await t.test('a bearer header next to the session cookie switches nothing off', async () => {
     // With a cookie the session applies, not the token — so the origin counts.
     assert.equal(
-      await ruf('POST', {
+      await callFn('POST', {
         'sec-fetch-site': 'same-site',
         authorization: 'Bearer x',
         cookie: 'theme=dunkel; bim.sid=s%3Aabc',
@@ -103,7 +103,7 @@ test('origin of writing requests', async t => {
       403,
     );
     assert.equal(
-      await ruf('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x', cookie: 'bim.sid=s%3Aabc' }),
+      await callFn('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x', cookie: 'bim.sid=s%3Aabc' }),
       200,
     );
   });

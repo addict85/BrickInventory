@@ -33,7 +33,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { CONTRACT, routeForRequest } = _req('src/contract/index.js');
-const { responseIsSecret: antwortIstGeheim } = _req('src/idempotency/http/middleware.js');
+const { responseIsSecret: answerIsSecret } = _req('src/idempotency/http/middleware.js');
 const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
@@ -95,7 +95,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     await warte(250);
 
   let n = 0;
-  const rufe = async (m, url, key = `schreibung-${++n}`) => {
+  const callIt = async (m, url, key = `schreibung-${++n}`) => {
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {
       method: m,
       redirect: 'manual',
@@ -112,7 +112,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     );
 
   assert.ok(ROUTES.length > 150, `nur ${ROUTES.length} Vertragsrouten — greift die Suche noch?`);
-  assert.ok((await rufe('GET', '/api/v2/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
+  assert.ok((await callIt('GET', '/api/v2/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
 
   await t.test('upper case is a different route', async () => {
     const falsch = [],
@@ -121,7 +121,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
       const rest = url.slice('/api/v2/'.length);
       for (const anders of [url.toUpperCase(), rest && `/api/v2/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
         if (!anders || anders === url) continue;
-        const r = await rufe(m, anders);
+        const r = await callIt(m, anders);
         key.push(r.key);
         if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
       }
@@ -135,7 +135,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     const anders = ROUTES.filter(
       ({ m, url }) =>
         routeForRequest(m, url + '/') !== routeForRequest(m, url) ||
-        antwortIstGeheim(m, url + '/') !== antwortIstGeheim(m, url),
+        answerIsSecret(m, url + '/') !== answerIsSecret(m, url),
     );
     assert.deepEqual(
       anders.map(r => `${r.m} ${r.p}`),
@@ -149,7 +149,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     // `/api/v2/` stands like this in the contract; `//` at the end is the same path there.
     for (const { m, url } of ROUTES.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
-        const r = await rufe(m, anders);
+        const r = await callIt(m, anders);
         key.push(r.key);
         if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
       }
@@ -158,11 +158,11 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   });
 
   await t.test('… and a %2F at the end gets no secret or confirmed response', async () => {
-    const geheim = ROUTES.filter(({ m, url }) => WRITING.has(m) && antwortIstGeheim(m, url));
+    const geheim = ROUTES.filter(({ m, url }) => WRITING.has(m) && answerIsSecret(m, url));
     assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
     const succeeded = [];
     for (const { m, url } of geheim) {
-      const r = await rufe(m, url + '%2F');
+      const r = await callIt(m, url + '%2F');
       if (r.status < 400) succeeded.push(`${m} ${url}%2F → ${r.status}`);
     }
     assert.deepEqual(succeeded, []);

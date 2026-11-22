@@ -1,5 +1,7 @@
 /**
  * Functions without callers.
+ *
+ * Counter-check: a function without caller appended to src/sets/service.ts → red “no function without a single caller”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -111,8 +113,8 @@ test('no exported value without a single caller', () => {
   for (const datei of sources) {
     const src = inhalt.get(datei);
     for (const name of exportedValues(src)) {
-      const anderswo = [...inhalt].some(([f, t]) => f !== datei && new RegExp(`\\b${name}\\b`).test(t));
-      if (!anderswo && ownUsage(src, name) === 0) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
+      const elsewhere = [...inhalt].some(([f, t]) => f !== datei && new RegExp(`\\b${name}\\b`).test(t));
+      if (!elsewhere && ownUsage(src, name) === 0) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
     }
   }
 

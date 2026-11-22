@@ -41,7 +41,7 @@ const cut = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
 test('registration, categories, phone, terms', { timeout: 300_000 }, async t => {
   const NAME = `r14_${process.pid}`,
     KIND = `${NAME}_kind`,
-    WARTET = `${NAME}_wartet`;
+    WAITING = `${NAME}_wartet`;
   const app = await startApp(t, {
     name: NAME,
     holding: async (db, uid) => {
@@ -57,7 +57,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       await db.run(
         `INSERT INTO users (username, new_email, password_hash, is_active, email_verified, registration_pending)
       VALUES ($1, $2, 'x', true, false, true)`,
-        [WARTET, `${WARTET}@example.org`],
+        [WAITING, `${WAITING}@example.org`],
       );
     },
   });
@@ -82,7 +82,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
   };
   const telefon = (breite, hoehe) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
-  const schrift = prozent => b.auswerten(`document.documentElement.style.fontSize = '${prozent}'; true`);
+  const schrift = percentValue => b.auswerten(`document.documentElement.style.fontSize = '${percentValue}'; true`);
 
   await telefon(390, 844);
 
@@ -206,7 +206,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       'Benutzerliste',
     );
     const z =
-      await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)}));
+      await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WAITING)}));
       const tabelle = document.getElementById('users-tbl').innerText;
       return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="unlockAccount"]'),
         verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
@@ -217,10 +217,10 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
-      `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="unlockAccount"]').click(); true`,
+      `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WAITING)})).querySelector('[data-click="unlockAccount"]').click(); true`,
     );
     await bis(open, 'Dialog');
-    assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WARTET}“ freischalten?`);
+    assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WAITING}“ freischalten?`);
     await zu();
   });
 
@@ -231,9 +231,9 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       `[...document.querySelectorAll('#parts-main tbody.parts-body tr')].some(r => r.textContent.includes('99901'))`,
       'Teiletabelle',
     );
-    const kategorien = `(() => { const zelle = (nr) => [...document.querySelectorAll('#parts-main tbody.parts-body tr')].find(r => r.children[1]?.textContent.trim() === nr)?.children[4]?.textContent.trim();
+    const categoryList = `(() => { const zelle = (nr) => [...document.querySelectorAll('#parts-main tbody.parts-body tr')].find(r => r.children[1]?.textContent.trim() === nr)?.children[4]?.textContent.trim();
       return { b99902: zelle('99902'), b99901: zelle('99901'), filter: [...document.querySelectorAll('#parts-cat option')].map(o => o.textContent).slice(1).sort() }; })()`;
-    assert.deepEqual(await b.auswerten(kategorien), {
+    assert.deepEqual(await b.auswerten(categoryList), {
       b99902: 'Bricks',
       b99901: 'Unbekannt',
       filter: ['Bricks', 'Unbekannt'],

@@ -27,6 +27,8 @@
  * test measures what the job DOES and reads the tile state from a SECOND PROCESS.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
+ *
+ * Counter-check: in src/images/imageDemandRun.ts the skipped counter no longer counts → red “a tick clears finished notes instead of ten every twenty seconds”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -56,7 +58,7 @@ testImageWorker(null, {
   },
   createPreview: async () => true,
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const { portOf } = require('./helpers/server');
 const db = testData();
@@ -84,7 +86,7 @@ const open = async p =>
  * all rows enters the same NOW(), the order is arbitrary — and a test
  * that targets batch boundaries then measures chance.
  */
-const einreihen = async (praefix, von, bis) => {
+const enqueue = async (praefix, von, bis) => {
   await db.run(
     `INSERT INTO image_wanted (url, set_number, requested_at)
                   SELECT 'https://cdn/'||$1||'_'||g||'.jpg', $1||'_'||g,
@@ -98,7 +100,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -111,7 +113,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
   const COUNT = STAPEL * 4;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= COUNT; i++) finishedImage(`${P}_${i}`);
-  await einreihen(P, 1, COUNT);
+  await enqueue(P, 1, COUNT);
 
   try {
     loadTimes.length = 0;
@@ -145,7 +147,7 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -169,7 +171,7 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
     else finishedImage(`${P}_${i}`);
   }
   assert.ok(zuLaden.size > STAPEL, 'Vorbedingung: mehr zu laden als das Kontingent');
-  await einreihen(P, 1, COUNT);
+  await enqueue(P, 1, COUNT);
 
   try {
     loadTimes.length = 0;
@@ -213,7 +215,7 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -229,7 +231,7 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
     ZU_LADEN = 3;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= DONE; i++) finishedImage(`${P}_${i}`);
-  await einreihen(P, 1, DONE + ZU_LADEN);
+  await enqueue(P, 1, DONE + ZU_LADEN);
 
   try {
     loadTimes.length = 0;
@@ -255,7 +257,7 @@ test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -268,7 +270,7 @@ test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 
   const COUNT = DECKEL + STAPEL * 2;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= COUNT; i++) finishedImage(`${P}_${i}`);
-  await einreihen(P, 1, COUNT);
+  await enqueue(P, 1, COUNT);
 
   try {
     const e = await IQ._tickPass();
@@ -284,7 +286,7 @@ test('expired notes are really deleted', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -334,7 +336,7 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -381,9 +383,9 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   assert.ok(Date.now() - state.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
   // And now up to the TILE
-  const IQhier = _req('src/images/imageDemandRun.js');
-  IQhier.lastRun.zeit = null;
-  IQhier.lastRun.ergebnis = null;
+  const IQhere = _req('src/images/imageDemandRun.js');
+  IQhere.lastRun.zeit = null;
+  IQhere.lastRun.ergebnis = null;
 
   const NUTZER = `pace-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -421,7 +423,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -453,7 +455,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
     try {
       await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
       await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
-      await einreihen(P, 1, 2);
+      await enqueue(P, 1, 2);
       const e = await IQ._workStack();
       assert.equal(e.notLoaded, 2, 'Marcos Fall: zwei Notizen, kein Bild, und kein Zähler nannte den Grund');
       assert.equal(e.total, 2);
@@ -480,7 +482,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
     const COUNT = STAPEL;
     for (let i = 1; i <= COUNT; i++) IM.rememberMissing(`set:${P}_${i}`);
     await IM._writeBuffer();
-    await einreihen(P, 1, COUNT);
+    await enqueue(P, 1, COUNT);
     try {
       loadTimes.length = 0;
       const t0 = Date.now();

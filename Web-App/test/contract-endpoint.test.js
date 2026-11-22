@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
+const { contractRouter: contractRouterFn } = _req('src/http/contractRouter.js');
 
 function server(t, mount, router) {
   const app = express();
@@ -29,7 +29,7 @@ function server(t, mount, router) {
 }
 
 test('the envelope sets success, the route only returns its result', async t => {
-  const r = vertragsRouter('/api/v2/auth');
+  const r = contractRouterFn('/api/v2/auth');
   r.endpoint('GET /api/v2/auth/users', () => ({ users: [] }));
   const basis = server(t, '/api/v2/auth', r);
   const a = await fetch(`${basis}/api/v2/auth/users`);
@@ -37,7 +37,7 @@ test('the envelope sets success, the route only returns its result', async t => 
 });
 
 test('a foreign prefix is a 500, no response under a wrong path', async t => {
-  const r = vertragsRouter('/api/v2/auth');
+  const r = contractRouterFn('/api/v2/auth');
   r.endpoint('GET /api/v2/auth/registration-status', () => ({ enabled: true }));
   const basis = server(t, '/api/v2', r);
   const a = await fetch(`${basis}/api/v2/registration-status`);
@@ -46,12 +46,15 @@ test('a foreign prefix is a 500, no response under a wrong path', async t => {
 });
 
 test('a key outside the contract or the prefix throws at build time', () => {
-  assert.throws(() => vertragsRouter('/api/v2').endpoint('GET /api/v2/gibt-es-nicht', () => ({})), /nicht im Vertrag/);
-  assert.throws(() => vertragsRouter('/api/v2/auth').endpoint('GET /api/v2/sets', () => ({})), /nicht im Vertrag/);
+  assert.throws(
+    () => contractRouterFn('/api/v2').endpoint('GET /api/v2/gibt-es-nicht', () => ({})),
+    /nicht im Vertrag/,
+  );
+  assert.throws(() => contractRouterFn('/api/v2/auth').endpoint('GET /api/v2/sets', () => ({})), /nicht im Vertrag/);
 });
 
 test('a route with a step brand only answers if the entrance checked exactly its step', async t => {
-  const r = vertragsRouter('/api/v2');
+  const r = contractRouterFn('/api/v2');
   r.endpoint('POST /api/v2/vouchers/:id/plaintext', () => ({ id: 1, number: '1', pin: null }));
   const app = express();
   app.use(express.json());
@@ -66,7 +69,7 @@ test('a route with a step brand only answers if the entrance checked exactly its
   const srv = app.listen(0);
   t.after(() => new Promise(x => srv.close(x)));
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}`;
-  const ruf = async schritt =>
+  const callFn = async schritt =>
     (
       await fetch(`${basis}/api/v2/vouchers/1/plaintext`, {
         method: 'POST',
@@ -76,7 +79,7 @@ test('a route with a step brand only answers if the entrance checked exactly its
     ).status;
   // Without the entrance (routerServer in older tests) the router does not check.
   assert.deepEqual(
-    [await ruf('keiner'), await ruf('second_factor'), await ruf('voucher'), await ruf(undefined)],
+    [await callFn('keiner'), await callFn('second_factor'), await callFn('voucher'), await callFn(undefined)],
     [403, 403, 200, 200],
   );
 });

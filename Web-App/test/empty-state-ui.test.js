@@ -33,9 +33,9 @@ test('add set exactly once', async () => {
   const { w, d } = await openUi({}, { before: withStyle });
   try {
     await warte(() => !!d.querySelector('#gallery .empty.empty-state'));
-    const knoepfe = sichtbar(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
-    assert.equal(knoepfe.length, 1);
-    assert.ok(knoepfe[0].closest('#gallery .empty.empty-state'), 'der sichtbare Knopf steht nicht im Leerzustand');
+    const buttonList = sichtbar(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
+    assert.equal(buttonList.length, 1);
+    assert.ok(buttonList[0].closest('#gallery .empty.empty-state'), 'der sichtbare Knopf steht nicht im Leerzustand');
     assert.match(d.querySelector('#gallery .empty.empty-state').textContent, /Noch keine Sets/);
   } finally {
     w.close();

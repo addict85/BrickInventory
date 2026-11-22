@@ -33,7 +33,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const { newLimit, bcryptGate, BcryptOverload } = _req('src/account/bcryptLimit.js');
@@ -77,13 +77,13 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
 test('priority: to the front of the queue, even if it is full', async () => {
   const s = newLimit(1, 1, 1000);
   const open = [],
-    reihe = [];
+    rowList = [];
   const a = s.run(() => new Promise(r => open.push(r)));
   const b = s.run(async () => {
-    reihe.push('b');
+    rowList.push('b');
   });
   const v = s.run(async () => {
-    reihe.push('v');
+    rowList.push('v');
   }, true);
   await assert.rejects(
     s.run(async () => 'x'),
@@ -92,14 +92,14 @@ test('priority: to the front of the queue, even if it is full', async () => {
   assert.deepEqual(s.state(), { laufend: 1, wartend: 2 });
   open.shift()();
   await Promise.all([a, b, v]);
-  assert.deepEqual(reihe, ['v', 'b']);
+  assert.deepEqual(rowList, ['v', 'b']);
 });
 
 test('with a full limit, login and password confirmation answer 503', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {

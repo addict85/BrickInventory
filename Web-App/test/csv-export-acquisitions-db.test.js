@@ -2,6 +2,8 @@
  * The CSV export gives one line per entry — and needs ONE query for it.
  *
  * @superuser (ratchet in test/roles-separation-db.test.js)
+ *
+ * Counter-check: the sets CSV query (src/sets/repository/sets.ts) ordered by created_at DESC → red “sets export: one row per acquisition, without an acquisition the set row”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -96,7 +98,7 @@ test('sets export: one row per acquisition, without an acquisition the set row',
 });
 
 test('sets export needs ONE query, independent of the number of sets', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // ── Why counting and not timing ───────────────────────────────────────────
   // A timing would be the worse check here: it fluctuates with the
@@ -121,9 +123,9 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
       );
     }
 
-    let abfragen = 0;
+    let queryList = 0;
     db.pool.query = (...args) => {
-      abfragen++;
+      queryList++;
       return realQuery(...args);
     };
     const csv = await require('./helpers/sources').areaPage('sets').setsAlsCsv(uid);
@@ -132,10 +134,10 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
     assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');
     // Lower bound: if the patch counted nothing at all, the upper bound below would be
     // trivially fulfilled — exactly the state this test was in at first.
-    assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
     assert.ok(
-      abfragen <= 2,
-      `${abfragen} Abfragen fuer 25 Sets. Der Export holte die Erfassungen frueher ` +
+      queryList <= 2,
+      `${queryList} Abfragen fuer 25 Sets. Der Export holte die Erfassungen frueher ` +
         `je Set einzeln — bei 700 Sets waren das 701 Hin- und Rueckwege. Der LEFT JOIN ` +
         `in SETS_CSV_SQL macht daraus einen; erlaubt sind 2, weil der Rueckfallweg ` +
         `(fehlende Migration) eine zweite Abfrage kostet.`,
@@ -149,7 +151,7 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
 });
 
 test('minifigures export: the same rule, the same single query', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const nutzer = `figexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -182,9 +184,9 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
       [uid],
     );
 
-    let abfragen = 0;
+    let queryList = 0;
     db.pool.query = (...args) => {
-      abfragen++;
+      queryList++;
       return realQuery(...args);
     };
     const csv = await _req('src/inventory/inventoryExport.js').minifigsCsv(uid);
@@ -205,10 +207,10 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
     // Since migration 0047 the condition is mandatory; what is checked is that it gets through.
     assert.equal(b.condition, 'U');
 
-    assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
     assert.ok(
-      abfragen <= 2,
-      `${abfragen} Abfragen fuer 2 Figuren. Frueher lief eine Abfrage JE FIGUR; ` + `FIGS_CSV_SQL macht daraus eine.`,
+      queryList <= 2,
+      `${queryList} Abfragen fuer 2 Figuren. Frueher lief eine Abfrage JE FIGUR; ` + `FIGS_CSV_SQL macht daraus eine.`,
     );
   } finally {
     db.pool.query = realQuery;
@@ -220,7 +222,7 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
 
 test('parts export: the same rule, the same single query', { concurrency: 1 }, async t => {
   // Why this case came later
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const nutzer = `teilexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -261,9 +263,9 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
       [uid],
     );
 
-    let abfragen = 0;
+    let queryList = 0;
     db.pool.query = (...args) => {
-      abfragen++;
+      queryList++;
       return realQuery(...args);
     };
     const csv = await _req('src/inventory/inventoryExport.js').partsCsv(uid);
@@ -292,10 +294,10 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
     assert.equal(withoutPrice.unit_price, '', 'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(withoutPrice.condition, 'U');
 
-    assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
     assert.ok(
-      abfragen <= 2,
-      `${abfragen} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` + `PARTS_CSV_SQL macht daraus eine.`,
+      queryList <= 2,
+      `${queryList} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` + `PARTS_CSV_SQL macht daraus eine.`,
     );
   } finally {
     db.pool.query = realQuery;

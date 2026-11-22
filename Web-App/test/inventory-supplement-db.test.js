@@ -20,7 +20,7 @@ const db = testData();
 const { newestInventory } = _req('src/catalog/rbInventory.js');
 
 test('an inventory is found under both spellings', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // rb_inventories.id is not a SERIAL — the numbers come from the CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;
@@ -63,7 +63,7 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
 test('the inventory lookup lives in only one place', () => {
   // Found, not enumerated.
   const dateien = [];
-  const gehen = d => {
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (
         e.name === 'node_modules' ||
@@ -74,15 +74,15 @@ test('the inventory lookup lives in only one place', () => {
       )
         continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
+      if (e.isDirectory()) go(abs);
       else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  const stellen = [];
+  const placeList = [];
   for (const f of dateien) {
     const code = fs
       .readFileSync(f, 'utf8')
@@ -92,12 +92,12 @@ test('the inventory lookup lives in only one place', () => {
     // partsCatalogEnrich (WHERE set_num = ANY(...), without LIMIT) answers
     // a different question and stays where it is.
     for (const m of code.matchAll(/FROM rb_inventories[\s\S]{0,200}?LIMIT 1/g))
-      stellen.push(path.relative(ROOT, f) + (m ? '' : ''));
+      placeList.push(path.relative(ROOT, f) + (m ? '' : ''));
   }
   // Counter-check: the old SELECT in routes/api/catalog.ts reinserted
   // → red.
   assert.deepEqual(
-    stellen,
+    placeList,
     ['src/catalog/repository/catalogMaster.ts'],
     'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
       'vier verschiedene Kandidatenregeln entstanden',

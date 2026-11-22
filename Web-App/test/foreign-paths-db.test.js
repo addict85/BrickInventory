@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 const db = testData();
 
@@ -41,7 +41,7 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -85,7 +85,7 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
 
   const { base } = routerServer(_req, {
     sitzung: { userId: 1 },
-    apiNutzer: { user_id: 1, is_admin: 0 },
+    apiAccount: { user_id: 1, is_admin: 0 },
     routen: { '/api/v2': 'routes/api/index.js' },
     t,
   });

@@ -56,12 +56,12 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`);
     await warte(500);
   };
-  const groesse = async (w, h, mobil) => {
+  const groesse = async (w, h, mobileView) => {
     await b.tab('Emulation.setDeviceMetricsOverride', {
       width: w,
       height: h,
-      deviceScaleFactor: mobil ? 2 : 1,
-      mobile: mobil,
+      deviceScaleFactor: mobileView ? 2 : 1,
+      mobile: mobileView,
     });
     await bis(`innerWidth === ${w}`, 'Fensterbreite');
     await ruhig();

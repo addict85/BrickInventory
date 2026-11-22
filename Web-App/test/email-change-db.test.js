@@ -89,7 +89,7 @@ test('change email', { concurrency: 1 }, async t => {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const profil = async body => {
+  const profileData = async body => {
     const r = await fetch(`${base}/api/v2/auth/profile`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -100,21 +100,21 @@ test('change email', { concurrency: 1 }, async t => {
   const address = async () => (await db.get('SELECT email FROM users WHERE id = $1', [uid])).email;
 
   await t.test('without password', async () => {
-    const r = await profil({ email: `${NAME}@neu.example` });
+    const r = await profileData({ email: `${NAME}@neu.example` });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'current_password_required');
     assert.equal(await address(), `${NAME}@alt.example`);
   });
 
   await t.test('wrong password', async () => {
-    const r = await profil({ email: `${NAME}@neu.example`, password_current: 'falsch-falsch' });
+    const r = await profileData({ email: `${NAME}@neu.example`, password_current: 'falsch-falsch' });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'current_password_wrong');
     assert.equal(await address(), `${NAME}@alt.example`);
   });
 
   await t.test('with password', async () => {
-    const r = await profil({ email: `${NAME}@neu.example`, password_current: PASS });
+    const r = await profileData({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
     assert.equal(await address(), `${NAME}@alt.example`, 'die neue gilt erst nach dem Link (email-neu-db)');
@@ -126,21 +126,21 @@ test('change email', { concurrency: 1 }, async t => {
   });
 
   await t.test('even without a new address only with password', async () => {
-    const ohne = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
+    const ohne = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu' });
     assert.deepEqual([ohne.status, ohne.body.code], [400, 'current_password_required']);
     assert.equal(
-      (await profil({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code,
+      (await profileData({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code,
       'current_password_wrong',
     );
-    const mit = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
+    const mit = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
   });
 
   await t.test('a taken username only reveals itself with password', async () => {
-    assert.equal((await profil({ username: `${NAME}_b` })).body.code, 'current_password_required');
+    assert.equal((await profileData({ username: `${NAME}_b` })).body.code, 'current_password_required');
     assert.equal(
-      (await profil({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code,
+      (await profileData({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code,
       'current_password_wrong',
     );
   });
@@ -151,12 +151,12 @@ test('change email', { concurrency: 1 }, async t => {
     environment({ APP_BASE_URL: undefined });
     try {
       bestaetigt.length = 0;
-      const r = await profil({ email: `${NAME}@drei.example`, password_current: PASS });
+      const r = await profileData({ email: `${NAME}@drei.example`, password_current: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
       assert.deepEqual(bestaetigt, [], 'ohne feste Adresse darf kein Link verschickt werden');
       environment({ APP_BASE_URL: 'https://lego.example.org/' });
-      await profil({ email: `${NAME}@vier.example`, password_current: PASS });
+      await profileData({ email: `${NAME}@vier.example`, password_current: PASS });
       assert.deepEqual(bestaetigt, ['https://lego.example.org']);
     } finally {
       environment({ NODE_ENV: vorher.env });
@@ -167,16 +167,16 @@ test('change email', { concurrency: 1 }, async t => {
 
   await t.test('a taken address answers like a free one', async () => {
     const belegt = `${NAME}@belegt.example`;
-    assert.equal((await profil({ email: belegt })).body.code, 'current_password_required');
+    assert.equal((await profileData({ email: belegt })).body.code, 'current_password_required');
     assert.equal(
-      (await profil({ email: belegt, password_current: 'falsch-falsch' })).body.code,
+      (await profileData({ email: belegt, password_current: 'falsch-falsch' })).body.code,
       'current_password_wrong',
     );
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       versuche.length = 0;
-      const frei = await profil({ email: `${NAME}@frei.example`, password_current: PASS });
-      const vergeben = await profil({ email: belegt.toUpperCase(), password_current: PASS });
+      const frei = await profileData({ email: `${NAME}@frei.example`, password_current: PASS });
+      const vergeben = await profileData({ email: belegt.toUpperCase(), password_current: PASS });
       assert.deepEqual(vergeben, frei, 'Status und Felder gleich');
       assert.deepEqual(frei, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
       // The owner of the taken address gets a hint instead of a link.
@@ -193,7 +193,7 @@ test('change email', { concurrency: 1 }, async t => {
   await t.test('availability checks are throttled', async () => {
     const codes = [];
     for (let i = 0; i < 12; i++)
-      codes.push((await profil({ username: `${NAME}_b`, password_current: PASS })).body.code);
+      codes.push((await profileData({ username: `${NAME}_b`, password_current: PASS })).body.code);
     assert.equal(codes[0], 'username_taken');
     const ab = codes.indexOf('too_many_requests');
     assert.ok(ab > 0, codes.join(', '));
@@ -205,7 +205,7 @@ test('change email', { concurrency: 1 }, async t => {
 
   await t.test('password only via change-password', async () => {
     const vorher = (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
-    const r = await profil({ password: 'GanzNeuesPasswort1', password_current: PASS });
+    const r = await profileData({ password: 'GanzNeuesPasswort1', password_current: PASS });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'password_via_change_password');
     assert.equal((await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash, vorher);

@@ -45,8 +45,8 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     NAMEN = ['a', 'b'].map(n => `vb_${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   // Only these two administrators count; the other accounts of the test DB are hidden for the duration.
-  const fremde = (await db.all('SELECT id FROM users WHERE is_admin AND is_active')).map(z => z.id);
-  await db.run('UPDATE users SET is_active = false WHERE id = ANY($1)', [fremde]);
+  const foreignOnes = (await db.all('SELECT id FROM users WHERE is_admin AND is_active')).map(z => z.id);
+  await db.run('UPDATE users SET is_active = false WHERE id = ANY($1)', [foreignOnes]);
   const neu = async name =>
     (
       await db.get(
@@ -57,20 +57,20 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
-    await db.run('UPDATE users SET is_active = true WHERE id = ANY($1)', [fremde]).catch(() => {});
+    await db.run('UPDATE users SET is_active = true WHERE id = ANY($1)', [foreignOnes]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const activeAdmin = async () =>
     (await db.get('SELECT count(*)::int AS n FROM users WHERE is_admin AND is_active AND username = ANY($1)', [NAMEN]))
       .n;
-  const zuruecksetzen = async () => {
+  const reset = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
     return [await neu(NAMEN[0]), await neu(NAMEN[1])];
   };
   /** Fresh accounts in every round; exactly one of the two calls may get through. */
-  const gleichzeitig = async call => {
+  const simultaneous = async call => {
     for (let i = 0; i < ROUNDS; i++) {
-      const [x, y] = await zuruecksetzen();
+      const [x, y] = await reset();
       const r = await Promise.all([call(x, y), call(y, x)]);
       const abgelehnt = r.filter(e => e === LAST).length;
       assert.equal(abgelehnt, 1, `Runde ${i}: ${JSON.stringify(r)}`);
@@ -79,7 +79,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
   };
 
   await t.test('the last admin keeps the role and the account active', async () => {
-    const [x, y] = await zuruecksetzen();
+    const [x, y] = await reset();
     assert.deepEqual(await K.setzeVerwalterRolle(y, false), { changed: true });
     assert.equal(await alsWert(K.setzeVerwalterRolle(x, false)), LAST);
     assert.equal(await alsWert(K.setzeAktiv(x, false)), LAST);
@@ -97,20 +97,20 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
   });
 
   await t.test('concurrent revocation of the role', async () => {
-    await gleichzeitig(ziel => alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
+    await simultaneous(ziel => alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deactivation', async () => {
-    await gleichzeitig(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
+    await simultaneous(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deletion', async () => {
-    await gleichzeitig((ziel, ich) => remove(ziel, ich).then(r => (r === true ? 'ok' : r)));
+    await simultaneous((ziel, ich) => remove(ziel, ich).then(r => (r === true ? 'ok' : r)));
   });
 
   await t.test('revocation against deactivation, concurrently', async () => {
     for (let i = 0; i < ROUNDS; i++) {
-      const [x, y] = await zuruecksetzen();
+      const [x, y] = await reset();
       const r = await Promise.all([alsWert(K.setzeVerwalterRolle(x, false)), alsWert(K.setzeAktiv(y, false))]);
       assert.equal(r.filter(e => e === LAST).length, 1, `Runde ${i}: ${JSON.stringify(r)}`);
       assert.equal(await activeAdmin(), 1, `Runde ${i}`);

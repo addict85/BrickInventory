@@ -1,5 +1,7 @@
 /**
  * The estimated minifigure market price is cached.
+ *
+ * Counter-check: in src/finances/marketPrice.ts the cached estimate is never used → red “a fresh cache entry replaces the recomputation”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 async function newUser(db) {
   return db.get(`INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
@@ -19,7 +21,7 @@ test('a fresh cache entry replaces the recomputation', async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -62,7 +64,7 @@ test('an outdated entry is skipped', async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

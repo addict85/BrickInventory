@@ -125,8 +125,8 @@ test('finance table, storage locations, number format, screen reader', {
   });
 
   await t.test('number format: a German account in EUR writes 1.234,56 €', async () => {
-    const einstand = await b.auswerten(text('#fin-cost-basis'));
-    assert.match(einstand.replace(/ /g, ' '), /^\d{1,3}(\.\d{3})*,\d{2} €$/, einstand);
+    const entryPrice = await b.auswerten(text('#fin-cost-basis'));
+    assert.match(entryPrice.replace(/ /g, ' '), /^\d{1,3}(\.\d{3})*,\d{2} €$/, entryPrice);
     assert.equal(
       await b.auswerten(`navigator.language.startsWith('de-')`),
       false,

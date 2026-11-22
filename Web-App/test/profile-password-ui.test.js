@@ -13,13 +13,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
-const PROFIL = {
+const PROFILE = {
   '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
 };
 const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v2/auth/profile'));
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
-async function speichern(w, d) {
+async function store(w, d) {
   await sicht(w, 'profile');
   await warte(() => d.getElementById('prof-user').value === 'anna');
   assert.equal(
@@ -33,9 +33,9 @@ async function speichern(w, d) {
 }
 
 test('without a password no request goes out', async () => {
-  const { w, d, aufrufe } = await openUi(PROFIL);
+  const { w, d, aufrufe } = await openUi(PROFILE);
   try {
-    await speichern(w, d);
+    await store(w, d);
     assert.deepEqual(putCalls(aufrufe), [], 'vor der Bestätigung');
     d.getElementById('cd-cancel').click();
     await warte(() => !openDialog(d));
@@ -46,9 +46,9 @@ test('without a password no request goes out', async () => {
 });
 
 test('with a password it goes along, even with a mere name change', async () => {
-  const { w, d, aufrufe } = await openUi(PROFIL);
+  const { w, d, aufrufe } = await openUi(PROFILE);
   try {
-    await speichern(w, d);
+    await store(w, d);
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
     await warte(() => putCalls(aufrufe).length);
@@ -64,14 +64,14 @@ test('with a password it goes along, even with a mere name change', async () => 
 test('a wrong password asks again', async () => {
   let n = 0;
   const { w, d, aufrufe } = await openUi({
-    ...PROFIL,
+    ...PROFILE,
     '/v2/auth/profile': (_url, o) =>
       o?.method === 'PUT' && ++n === 1
         ? { success: false, code: 'current_password_wrong', error: 'Aktuelles Passwort falsch' }
-        : PROFIL['/v2/auth/profile'],
+        : PROFILE['/v2/auth/profile'],
   });
   try {
-    await speichern(w, d);
+    await store(w, d);
     d.getElementById('cd-pw').value = 'wrong';
     d.getElementById('cd-confirm').click();
     await warte(

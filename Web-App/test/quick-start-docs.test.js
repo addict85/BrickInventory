@@ -29,7 +29,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const DOKUS = [
+const DOCS = [
   { datei: path.join(ROOT, '..', 'README.md'), abschnitt: '## Schnellstart' },
   { datei: path.join(ROOT, 'README.md'), abschnitt: '## Docker (empfohlen)' },
 ];
@@ -80,7 +80,7 @@ function compose(location, ...args) {
   });
 }
 
-for (const { datei, abschnitt } of DOKUS) {
+for (const { datei, abschnitt } of DOCS) {
   const name = path.relative(path.join(ROOT, '..'), datei);
   test(`${name}: the quick start matches compose.yaml`, t => {
     const probe = compose(path.join(ROOT), 'version');
@@ -112,11 +112,11 @@ for (const { datei, abschnitt } of DOKUS) {
       });
       assert.equal(r.status, 0, `Schritt scheitert: ${row}\n${r.stdout}${r.stderr}`);
     }
-    const gezogen = fs.existsSync(path.join(location, 'docker.log'))
+    const pulled = fs.existsSync(path.join(location, 'docker.log'))
       ? fs.readFileSync(path.join(location, 'docker.log'), 'utf8')
       : '';
     assert.ok(
-      dockerRows.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(gezogen),
+      dockerRows.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(pulled),
       'der Schnellstart zieht das Image (docker compose pull)',
     );
     assert.ok(
@@ -143,11 +143,11 @@ for (const { datei, abschnitt } of DOKUS) {
     }
 
     // The steps have created every file that compose mounts as a secret.
-    const brauchen = new Set(
+    const need = new Set(
       Object.values(j.services).flatMap(d => (d.profiles ? [] : (d.secrets || []).map(s => s.source))),
     );
-    assert.ok(brauchen.size >= 3, `nur ${brauchen.size} Secrets — liest der Test die richtige Datei?`);
-    for (const s of brauchen) {
+    assert.ok(need.size >= 3, `nur ${need.size} Secrets — liest der Test die richtige Datei?`);
+    for (const s of need) {
       const f = j.secrets[s].file;
       assert.ok(fs.existsSync(f), `Secret ${s}: ${path.relative(location, f)} fehlt`);
     }

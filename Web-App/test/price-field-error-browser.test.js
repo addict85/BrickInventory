@@ -32,7 +32,7 @@ test('price field: error message below the whole row', { concurrency: 1, timeout
   await bis(`document.getElementById('tab-gallery').classList.contains('active')`, 'Galerie');
   await ruhig();
 
-  for (const [breite, mobil] of [
+  for (const [breite, mobileView] of [
     [390, true],
     [1280, false],
   ]) {
@@ -41,7 +41,7 @@ test('price field: error message below the whole row', { concurrency: 1, timeout
         width: breite,
         height: 900,
         deviceScaleFactor: 1,
-        mobile: mobil,
+        mobile: mobileView,
       });
       await bis(`innerWidth === ${breite}`, 'Fenstergrösse');
       await b.auswerten(`document.querySelector('button[data-click="openCapture"][data-arg="set"]').click(); true`);

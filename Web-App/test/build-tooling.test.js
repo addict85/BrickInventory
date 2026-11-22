@@ -156,17 +156,17 @@ test('@types/* describe the same major version as the package itself', () => {
     nodemailer: '8.0.1 ist die NEUESTE veröffentlichte Fassung; für nodemailer 9 gibt es noch keine',
   };
 
-  const abweichend = [];
+  const deviating = [];
   let geprueft = 0;
-  for (const [name, spanne] of Object.entries(alle)) {
+  for (const [name, span] of Object.entries(alle)) {
     if (!name.startsWith('@types/')) continue;
     const ziel = name.slice('@types/'.length).replace('__', '/');
     if (!(ziel in alle)) continue; // @types/node and the like have no counterpart
     geprueft++;
     if (ziel in carteBlanche) continue;
     const a = haupt(alle[ziel]),
-      b = haupt(spanne);
-    if (a && b && a !== b) abweichend.push(`${ziel} ${alle[ziel]} ↔ ${name} ${spanne}`);
+      b = haupt(span);
+    if (a && b && a !== b) deviating.push(`${ziel} ${alle[ziel]} ↔ ${name} ${span}`);
   }
 
   // An exemption for a package that no longer exists hides the real question
@@ -175,7 +175,7 @@ test('@types/* describe the same major version as the package itself', () => {
   assert.deepEqual(verwaist, [], 'Freibrief ohne Paket — Eintrag entfernen: ' + verwaist.join(', '));
 
   assert.ok(geprueft >= 5, `Nur ${geprueft} Paare gefunden — heissen die Typpakete noch @types/<paket>?`);
-  assert.deepEqual(abweichend, [], 'Typpaket und Paket in verschiedenen Hauptversionen:\n  ' + abweichend.join('\n  '));
+  assert.deepEqual(deviating, [], 'Typpaket und Paket in verschiedenen Hauptversionen:\n  ' + deviating.join('\n  '));
 });
 
 // strictNullChecks stays on, and tsc must run through cleanly (CI step).
@@ -235,8 +235,8 @@ test('the pg client in CI follows the version of the service', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
 
   // Self-proof: without a service definition everything below checks nothing.
-  const dienst = yml.match(/image:\s*postgres:(\d+)/);
-  assert.ok(dienst, 'Keine Postgres-Dienstdefinition im Workflow gefunden — Muster veraltet?');
+  const serviceFn = yml.match(/image:\s*postgres:(\d+)/);
+  assert.ok(serviceFn, 'Keine Postgres-Dienstdefinition im Workflow gefunden — Muster veraltet?');
 
   // No second version of the same number.
   const fixedClients = [...yml.matchAll(/postgresql-client-(\d+)/g)].map(m => m[1]);
@@ -244,7 +244,7 @@ test('the pg client in CI follows the version of the service', () => {
     fixedClients,
     [],
     `Die Klientenversion steht als feste Zahl im Workflow (${fixedClients.join(', ')}). ` +
-      `Der Dienst laeuft auf ${dienst[1]}; zwei Zahlen fuer dieselbe Sache laufen auseinander — ` +
+      `Der Dienst laeuft auf ${serviceFn[1]}; zwei Zahlen fuer dieselbe Sache laufen auseinander — ` +
       'die Version gehoert aus der Dienstdefinition gelesen.',
   );
   assert.match(
@@ -302,11 +302,11 @@ test('both workflows report what was red', () => {
  * Found instead of enumerated: the steps come from the file, and the
  * self-proof below shows when the parsing no longer works.
  */
-function stepBody(yml, teilname) {
+function stepBody(yml, partName) {
   const headers = [...yml.matchAll(/^ {6}- name: (.+)$/gm)];
   assert.ok(headers.length >= 8, `Nur ${headers.length} Schritte erkannt — das Zerlegen greift nicht mehr`);
   for (let i = 0; i < headers.length; i++) {
-    if (!headers[i][1].includes(teilname)) continue;
+    if (!headers[i][1].includes(partName)) continue;
     const ende = i + 1 < headers.length ? headers[i + 1].index : yml.length;
     return yml.slice(headers[i].index, ende);
   }
@@ -425,7 +425,7 @@ test('the CI workflow checks what it is supposed to check', () => {
 
 test('a pipe in the workflow does not lose the failure', () => {
   // measured, not assumed
-  const DURCHREICHER = /\|\s*(tee|head|tail|cat)\b/;
+  const PASS_THROUGH = /\|\s*(tee|head|tail|cat)\b/;
   const wf = path.join(ROOT, '..', '.github', 'workflows');
   let geprueft = 0;
   for (const datei of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
@@ -435,7 +435,7 @@ test('a pipe in the workflow does not lose the failure', () => {
         .split('\n')
         .filter(z => !z.trimStart().startsWith('#'))
         .join('\n');
-      if (!/\brun:/.test(rumpf) || !DURCHREICHER.test(rumpf)) continue;
+      if (!/\brun:/.test(rumpf) || !PASS_THROUGH.test(rumpf)) continue;
       geprueft++;
       assert.match(
         rumpf,
@@ -482,26 +482,26 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
   // Web-App/ — see the paragraph in the test above.
   const ci = read('../.github/workflows/web-ci.yml');
 
-  const imBild = [...docker.matchAll(/^FROM node:(\d+)-/gm)].map(m => m[1]);
-  assert.ok(imBild.length >= 2, `Nur ${imBild.length} FROM node:… im Dockerfile — gibt es die zwei Stufen noch?`);
+  const inImage = [...docker.matchAll(/^FROM node:(\d+)-/gm)].map(m => m[1]);
+  assert.ok(inImage.length >= 2, `Nur ${inImage.length} FROM node:… im Dockerfile — gibt es die zwei Stufen noch?`);
   assert.equal(
-    new Set(imBild).size,
+    new Set(inImage).size,
     1,
-    `Build- und Runtime-Stage laufen auf verschiedenen Node-Versionen: ${imBild.join(', ')}`,
+    `Build- und Runtime-Stage laufen auf verschiedenen Node-Versionen: ${inImage.join(', ')}`,
   );
 
   const imCi = (ci.match(/node-version:\s*'(\d+)'/) || [])[1];
   assert.ok(imCi, 'Der CI-Workflow legt keine Node-Version fest');
   assert.equal(
     imCi,
-    imBild[0],
-    `CI prüft auf Node ${imCi}, ausgeliefert wird Node ${imBild[0]} — ` +
+    inImage[0],
+    `CI prüft auf Node ${imCi}, ausgeliefert wird Node ${inImage[0]} — ` +
       'dann sagt ein grüner Lauf nichts über das Image',
   );
   // .nvmrc for local development (`nvm use`). Counter-check (04.11.2026):
   // .nvmrc to 24 → red “.nvmrc names Node 24”.
   const nvmrc = read('.nvmrc').trim();
-  assert.equal(nvmrc, imBild[0], `.nvmrc nennt Node ${nvmrc}, ausgeliefert wird Node ${imBild[0]}`);
+  assert.equal(nvmrc, inImage[0], `.nvmrc nennt Node ${nvmrc}, ausgeliefert wird Node ${inImage[0]}`);
 
   // Expired lines. When adding, please write the date with it.
   const abgelaufen = {
@@ -516,8 +516,8 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
     25: 'nie LTS',
   };
   assert.ok(
-    !(imBild[0] in abgelaufen),
-    `Node ${imBild[0]} bekommt seit ${abgelaufen[imBild[0]]} keine Sicherheits-Patches mehr — ` +
+    !(inImage[0] in abgelaufen),
+    `Node ${inImage[0]} bekommt seit ${abgelaufen[inImage[0]]} keine Sicherheits-Patches mehr — ` +
       'das ist keine alte Version, sondern eine ungepatchte Laufzeitumgebung',
   );
 });
@@ -530,14 +530,14 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
  * version is in the Dockerfile.
  */
 test('@types/node matches the Node version from the Dockerfile', () => {
-  const imBild = (read('Dockerfile').match(/^FROM node:(\d+)-/m) || [])[1];
+  const inImage = (read('Dockerfile').match(/^FROM node:(\d+)-/m) || [])[1];
   const typen = (JSON.parse(read('package.json')).devDependencies['@types/node'] || '').match(/(\d+)\./);
-  assert.ok(imBild, 'Keine Node-Version im Dockerfile gefunden');
+  assert.ok(inImage, 'Keine Node-Version im Dockerfile gefunden');
   assert.ok(typen, '@types/node fehlt in den devDependencies');
   assert.equal(
     typen[1],
-    imBild,
-    `Ausgeliefert wird Node ${imBild}, typgeprüft wird gegen @types/node ${typen[1]} — ` +
+    inImage,
+    `Ausgeliefert wird Node ${inImage}, typgeprüft wird gegen @types/node ${typen[1]} — ` +
       'dann beschreibt der Übersetzer eine andere Standardbibliothek als die laufende',
   );
 });

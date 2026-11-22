@@ -100,13 +100,13 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     const token = crypto.randomBytes(32).toString('hex');
     assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const setze = password =>
+    const put = password =>
       fetch(`${base}/api/v2/auth/reset-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, password }),
       }).then(async r => [r.status, (await r.json()).code ?? null, password]);
-    const antworten = await Promise.all([setze('Erstes-Neu-2026x'), setze('Zweites-Neu-2026x')]);
+    const antworten = await Promise.all([put('Erstes-Neu-2026x'), put('Zweites-Neu-2026x')]);
     assert.deepEqual(antworten.map(a => a[0]).sort(), [200, 400], JSON.stringify(antworten));
     const sieger = antworten.find(a => a[0] === 200)[2];
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);

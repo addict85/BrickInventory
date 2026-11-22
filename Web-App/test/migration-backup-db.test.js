@@ -48,7 +48,7 @@ const backups = async () =>
   );
 
 test('migrations: backup and time limit', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const client = await db.pool.connect();
   await runMigrations(client);
   const vorher = new Set(await backups());
@@ -119,8 +119,8 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   });
 
   const SHORT = { fristMs: 200, versuche: 2 };
-  const SPERRPROBE = `9998-sperre-${process.pid}.sql`,
-    TABELLE = `migsperre_${process.pid}`;
+  const LOCK_PROBE = `9998-sperre-${process.pid}.sql`,
+    TABLE_NAME = `migsperre_${process.pid}`;
   /** A second connection holds `tabelle` exclusively until `frei()` is called –
    * at the latest after 4 s, so that a version without a deadline turns red instead of hanging. */
   const holdLock = async tabelle => {
@@ -151,27 +151,27 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   };
 
   await t.test('a held lock: deadline, retry, clear message', { timeout: 15_000 }, async () => {
-    const datei = path.join(DIST, 'db/migrations', SPERRPROBE);
-    await db.run(`CREATE TABLE IF NOT EXISTS ${TABELLE} (x int)`);
+    const datei = path.join(DIST, 'db/migrations', LOCK_PROBE);
+    await db.run(`CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (x int)`);
     t.after(async () => {
       fs.rmSync(datei, { force: true });
-      await db.run('DELETE FROM schema_migrations WHERE name = $1', [SPERRPROBE]).catch(() => {});
-      await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
+      await db.run('DELETE FROM schema_migrations WHERE name = $1', [LOCK_PROBE]).catch(() => {});
+      await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     });
-    fs.writeFileSync(datei, `SELECT count(*) FROM ${TABELLE};`);
-    const frei = await holdLock(TABELLE);
+    fs.writeFileSync(datei, `SELECT count(*) FROM ${TABLE_NAME};`);
+    const frei = await holdLock(TABLE_NAME);
     const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { sperre: SHORT }));
     await frei();
     assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
     assert.match(
       ergebnis.message,
       new RegExp(
-        `Migration ${SPERRPROBE} fehlgeschlagen: .*nach 0.2 s keine Sperre erhalten.*Aufgegeben nach 2 Versuchen`,
+        `Migration ${LOCK_PROBE} fehlgeschlagen: .*nach 0.2 s keine Sperre erhalten.*Aufgegeben nach 2 Versuchen`,
       ),
     );
     assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
-    assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [SPERRPROBE]), undefined);
-    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [SPERRPROBE], 'ohne Sperre läuft sie durch');
+    assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [LOCK_PROBE]), undefined);
+    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [LOCK_PROBE], 'ohne Sperre läuft sie durch');
   });
 
   await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {

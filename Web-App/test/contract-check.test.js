@@ -24,12 +24,12 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
+const { contractRouter: contractRouterFn } = _req('src/http/contractRouter.js');
 const { setConfig } = _req('src/infra/config.js');
 
 /** A router with real contract keys that answers whatever the test wants. */
 function server(t, antworten) {
-  const router = vertragsRouter('/api/v2/auth');
+  const router = contractRouterFn('/api/v2/auth');
   router.endpoint('GET /api/v2/auth/registration-status', (_req, res) =>
     res.status(antworten.status ?? 200).json(antworten.rumpf),
   );
@@ -60,14 +60,14 @@ test('a response matching the contract goes out unchanged', async t => {
 
 test('an input violating the contract does not reach the route', async t => {
   const basis = server(t, {});
-  const senden = rumpf =>
+  const sendIt = rumpf =>
     fetch(`${basis}/users/7/admin`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rumpf),
     });
-  assert.equal((await senden({ is_admin: true })).status, 200);
-  const r = await senden({ is_admin: 'vielleicht' });
+  assert.equal((await sendIt({ is_admin: true })).status, 200);
+  const r = await sendIt({ is_admin: 'vielleicht' });
   assert.equal(r.status, 400);
   assert.match((await r.json()).error, /is_admin/);
 });

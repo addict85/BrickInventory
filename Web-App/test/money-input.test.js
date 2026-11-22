@@ -22,7 +22,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, sicht, takt, warte } = require('./helpers/ui');
 
-async function setErfassen(o, preis) {
+async function setAcquire(o, preis) {
   const { d, w, aufrufe } = o;
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(10);
@@ -59,7 +59,7 @@ test('add set: comma, dot and thousands', async () => {
       ['', null],
       ['  ', null],
     ]) {
-      const r = await setErfassen(o, ein);
+      const r = await setAcquire(o, ein);
       assert.equal(r.error, '', `„${ein}“ gemeldet: ${r.error}`);
       assert.equal(r.wert, aus, `„${ein}“ ging als ${r.wert} hinaus`);
     }
@@ -77,7 +77,7 @@ test('English: comma as thousands, dot as decimal', async () => {
       ['149,95', 149.95],
       ['1,299.95', 1299.95],
     ]) {
-      const r = await setErfassen(o, ein);
+      const r = await setAcquire(o, ein);
       assert.equal(r.wert, aus, `„${ein}“ ging als ${r.wert} hinaus`);
     }
   } finally {
@@ -89,7 +89,7 @@ test('nonsense is reported at the field and not sent', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
-      const r = await setErfassen(o, ein);
+      const r = await setAcquire(o, ein);
       assert.equal(r.gesendet, false, `„${ein}“ ging an den Server`);
       // Readable, only negative: own text (UX check 20).
       assert.match(r.error, ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/, `„${ein}“`);

@@ -181,8 +181,13 @@ function checkUi(design, device) {
       return;
     }
     const { b } = app;
-    const [w, h, mobil] = DEVICES[device];
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
+    const [w, h, mobileView] = DEVICES[device];
+    await b.tab('Emulation.setDeviceMetricsOverride', {
+      width: w,
+      height: h,
+      deviceScaleFactor: 1,
+      mobile: mobileView,
+    });
     // Without a Rebrickable key the setup wizard opens after startup.
     await warte(1000);
     await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
@@ -214,7 +219,7 @@ function checkUi(design, device) {
         await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
         await image();
         const wo = dunkel ? 'dark' : 'hell';
-        for (const f of await b.auswerten(LAYOUT(mobil))) funde.push(`${wo}: ${f}`);
+        for (const f of await b.auswerten(LAYOUT(mobileView))) funde.push(`${wo}: ${f}`);
         for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
       }
       for (const f of await tabCheck(b)) funde.push(`Tastatur: ${f}`);
@@ -250,12 +255,12 @@ function checkLargeFont(modus, breite = 320) {
       return;
     }
     const { b } = app;
-    const mobil = breite <= 640;
+    const mobileView = breite <= 640;
     await b.tab('Emulation.setDeviceMetricsOverride', {
       width: breite,
-      height: mobil ? 640 : 900,
+      height: mobileView ? 640 : 900,
       deviceScaleFactor: 1,
-      mobile: mobil,
+      mobile: mobileView,
     });
     await warte(1000);
     await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
@@ -287,7 +292,7 @@ function checkLargeFont(modus, breite = 320) {
           );
           await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
           const wo = `${design} ${dunkel ? 'dark' : 'hell'}`;
-          for (const f of [...(await b.auswerten(LAYOUT(mobil))), ...(await b.auswerten(BAR))])
+          for (const f of [...(await b.auswerten(LAYOUT(mobileView))), ...(await b.auswerten(BAR))])
             if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
         }
       await t.test(ansicht, () => assert.deepEqual(funde, []));

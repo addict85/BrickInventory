@@ -1,3 +1,6 @@
+/**
+ * Counter-check: var(--brick-0) in public/themes/noppe.css replaced → red “the lid colors come from the SAME source”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -180,16 +183,16 @@ test('the studs have a round top edge, not a gradient edge', () => {
   // Self-proof: MEASURED there are two — the header bar and the tile lid.
   assert.equal(reihen.length, 2, `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
 
-  for (const reihe of reihen) {
-    const kopf = reihe.slice(0, reihe.indexOf('{')).trim();
-    assert.ok(reihe.includes('var(--studs-form)'), `"${kopf}" benutzt die Noppenform nicht`);
+  for (const rowList of reihen) {
+    const kopf = rowList.slice(0, rowList.indexOf('{')).trim();
+    assert.ok(rowList.includes('var(--studs-form)'), `"${kopf}" benutzt die Noppenform nicht`);
     assert.ok(
-      !/repeating-linear-gradient/.test(reihe),
+      !/repeating-linear-gradient/.test(rowList),
       `"${kopf}" zeichnet die Noppen wieder als Verlauf. Ein Verlauf kann keine ` +
         'runden Ecken — genau daran sahen sie aus wie Striche.',
     );
     assert.ok(
-      !/border-radius/.test(reihe),
+      !/border-radius/.test(rowList),
       `"${kopf}" rundet mit border-radius. Das rundet den BALKEN, nicht die ` +
         'einzelne Noppe — der Unterschied war in der laufenden App zu sehen.',
     );

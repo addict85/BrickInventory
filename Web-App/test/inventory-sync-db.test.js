@@ -1,5 +1,7 @@
 /**
  * “Can I build this?" — the comparison between parts list and own stock.
+ *
+ * Counter-check: in src/parts/queries.ts loose taken from total → red “counts per part AND color, not per part number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsPart } = require('./helpers/inventory');
 
@@ -69,7 +71,7 @@ async function dbReachable() {
 test('inventory reconciliation against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();

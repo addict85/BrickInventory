@@ -1,6 +1,8 @@
 /**
  * No test excerpt on which ONLY negating assertions stand may be
  * cut unsecured.
+ *
+ * Counter-check: a snippet checked only with doesNotMatch appended to a test file → red “no snippet with only negative assertions is unsecured”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,8 +39,8 @@ test('no snippet with only negative assertions is unsecured', () => {
       if (arten.some(a => !NEGATING.has(a))) continue; // a positive one suffices
 
       // Secured after all?
-      const abgeleitet = new RegExp(`(\\w+)\\s*=\\s*${ziel}\\.indexOf\\(`, 'g');
-      const indizes = [...block.matchAll(abgeleitet)].map(a => a[1]);
+      const derived = new RegExp(`(\\w+)\\s*=\\s*${ziel}\\.indexOf\\(`, 'g');
+      const indizes = [...block.matchAll(derived)].map(a => a[1]);
       if (indizes.some(n => new RegExp(`assert\\.ok\\([^)]*\\b${n}\\b\\s*[><!=]`).test(block))) continue;
 
       still.push(`${datei}:${src.slice(0, m.index).split('\n').length}  (${[...new Set(arten)].join(', ')})`);

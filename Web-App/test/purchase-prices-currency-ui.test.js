@@ -30,7 +30,7 @@ const { openUi, warte, takt, reiter } = require('./helpers/ui');
 const SN = '10326-1';
 /** Text with simple spaces: Intl puts narrow no-break spaces before the currency sign. */
 const text = s => String(s || '').replace(/\s+/g, ' ');
-const ERFASSUNGEN = [
+const ACQUISITIONS = [
   {
     id: 1,
     quantity: 3,
@@ -63,7 +63,7 @@ function antworten(state) {
     [`/v2/sets/${SN}/acquisitions`]: () => ({
       success: true,
       owner_user_id: 1,
-      acquisitions: ERFASSUNGEN,
+      acquisitions: ACQUISITIONS,
       totals: { quantity: 5, amount: state.betrag, priced_rows: 2, currency: 'EUR', without_rate: 0 },
     }),
     [`/v2/sets/${SN}/acquisitions/2`]: () => {

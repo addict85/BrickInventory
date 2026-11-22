@@ -31,7 +31,7 @@ const manuell = {
   ..._req('src/inventory/repository/manualQuantities.js'),
   ...require('./helpers/sources').testArea('inventory').manualQuantities,
 };
-const versch = {
+const various = {
   ..._req('src/inventory/repository/reassign.js'),
   deleteSetEntry: (tx, id, [konto]) => erf.deleteEntry(tx, 'set', id, konto),
   deleteManualEntry: _req('src/inventory/repository/manualQuantities.js').removeEntry,
@@ -118,14 +118,14 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
       )
     ).id;
     await ein(async tx => {
-      await versch.deleteSetEntry(tx, setId, [eigen]);
-      await versch.deleteManualEntry(tx, 'fig', figId, [eigen]);
+      await various.deleteSetEntry(tx, setId, [eigen]);
+      await various.deleteManualEntry(tx, 'fig', figId, [eigen]);
     });
     assert.ok(await lies('set_acquisitions', setId));
     assert.ok(await lies('minifig_acquisitions', figId));
     await ein(async tx => {
-      await versch.deleteSetEntry(tx, setId, [fremd]);
-      await versch.deleteManualEntry(tx, 'fig', figId, [fremd]);
+      await various.deleteSetEntry(tx, setId, [fremd]);
+      await various.deleteManualEntry(tx, 'fig', figId, [fremd]);
     });
     assert.equal(await lies('set_acquisitions', setId), undefined, 'Gegenprobe: das eigene Konto löscht');
     assert.equal(await lies('minifig_acquisitions', figId), undefined);
@@ -138,9 +138,9 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
         [fremd],
       )
     ).id;
-    await ein(tx => versch.removeManual(tx, 'fig', eigen, ['fig-000002'], row));
+    await ein(tx => various.removeManual(tx, 'fig', eigen, ['fig-000002'], row));
     assert.ok(await lies('minifigs', row), 'mit dem Konto des Absenders ist es eine fremde Zeile');
-    await ein(tx => versch.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
+    await ein(tx => various.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
     assert.equal(await lies('minifigs', row), undefined, 'Gegenprobe: das eigene Konto entfernt');
   });
 });

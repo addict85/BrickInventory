@@ -50,7 +50,7 @@ const freePort = () =>
 const P = process.pid;
 const SN = { unter: `BBU${P}-1`, fremd: `BBF${P}-1`, gemerkt: `BBW${P}-1`, none: `BBX${P}-1` };
 const TEIL = `BBT${P}_0.png`;
-const DATEN = path.join(ROOT, 'data');
+const DATA = path.join(ROOT, 'data');
 const DATEIEN = [
   ['images/sets', `${SN.unter}.jpg`],
   ['images/sets', `${SN.unter}_thumb.jpg`],
@@ -60,7 +60,7 @@ const DATEIEN = [
   ['instructions', `${SN.unter}_1.pdf`],
   ['instructions', `${SN.fremd}_1.pdf`],
   ['instructions', `${SN.gemerkt}_bdp.pdf`],
-].map(([o, n]) => path.join(DATEN, o, n));
+].map(([o, n]) => path.join(DATA, o, n));
 
 test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

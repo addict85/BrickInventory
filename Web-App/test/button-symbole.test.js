@@ -15,10 +15,10 @@ for (const language of ['de', 'en']) {
   test(`no button starts with a plus (${language})`, async () => {
     const { w, d } = await openUi({}, { language });
     try {
-      const knoepfe = [...d.querySelectorAll('button, .btn')];
-      assert.ok(knoepfe.length > 100, 'Knöpfe nicht gefunden');
+      const buttonList = [...d.querySelectorAll('button, .btn')];
+      assert.ok(buttonList.length > 100, 'Knöpfe nicht gefunden');
       // A plus before a WORD; the zoom plus in the PDF viewer is its own character.
-      const withPlus = knoepfe.map(k => k.textContent.trim()).filter(t => /^[+＋]\s*\p{L}/u.test(t));
+      const withPlus = buttonList.map(k => k.textContent.trim()).filter(t => /^[+＋]\s*\p{L}/u.test(t));
       assert.deepEqual(withPlus, []);
       const pl = d.querySelector('[data-click="plAddSet"]');
       assert.equal(pl.querySelector('use')?.getAttribute('href'), '#i-plus', 'Teileliste: Knopf ohne Plus-Symbol');

@@ -46,9 +46,9 @@ test('daily quota per account', { concurrency: 1 }, async t => {
   await t.test('an account gets a quarter, and the rejected call does not count in the total', async () => {
     assert.equal((await zaehle(kind)).allowed, true);
     assert.equal((await zaehle(kind)).allowed, true);
-    const dritter = await zaehle(kind);
-    assert.equal(dritter.allowed, false);
-    assert.equal(dritter.jeAccount, true);
+    const thirdOne = await zaehle(kind);
+    assert.equal(thirdOne.allowed, false);
+    assert.equal(thirdOne.jeAccount, true);
     assert.equal((await k.quotaOverview('brickset')).count, 2);
     assert.equal((await asRequest(kind, () => k.quotaFree('brickset'))).allowed, false);
   });
@@ -57,9 +57,9 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     await k.setQuotaBack('brickset');
     const konten = [990111, 990112, 990113].map(id => ({ apiUser: { user_id: id, is_admin: 0 } }));
     // Limit 8: 2 per account, 4 for all together. The third account gets nothing more.
-    for (const kto of konten.slice(0, 2)) for (let i = 0; i < 2; i++) assert.equal((await zaehle(kto)).allowed, true);
-    const dritter = await zaehle(konten[2]);
-    assert.equal(dritter.allowed, false);
+    for (const acct of konten.slice(0, 2)) for (let i = 0; i < 2; i++) assert.equal((await zaehle(acct)).allowed, true);
+    const thirdOne = await zaehle(konten[2]);
+    assert.equal(thirdOne.allowed, false);
     assert.equal((await asRequest(konten[2], () => k.quotaFree('brickset'))).allowed, false);
     assert.equal((await zaehle(chef)).allowed, true, 'Verwalter haben die andere Hälfte');
     assert.equal((await k.quotaOverview('brickset')).count, 5);

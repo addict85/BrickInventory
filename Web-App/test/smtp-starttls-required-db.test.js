@@ -155,7 +155,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     await db.pool.end().catch(() => {});
   });
 
-  const setze = async values => {
+  const put = async values => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = {
       smtp_host: '127.0.0.1',
@@ -172,7 +172,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   const LINK = 'https://brick.example/reset?token=abcdef0123';
 
   await t.test('without STARTTLS sending aborts before AUTH', async () => {
-    await setze({ smtp_port: ohne.port });
+    await put({ smtp_port: ohne.port });
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, false);
     assert.match(r.error, /kein STARTTLS/);
@@ -189,7 +189,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   });
 
   await t.test('the mail test in the settings takes the same path', async () => {
-    await setze({ smtp_port: ohne.port });
+    await put({ smtp_port: ohne.port });
     const beforeRows = ohne.recording.length;
     assert.equal((await mailer.testSmtp()).code, 'smtp_error');
     await adminWithFactor(_req, uid);
@@ -208,7 +208,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   });
 
   await t.test('with STARTTLS AUTH only goes over the encrypted connection', async () => {
-    await setze({ smtp_port: mit.port, smtp_tls_ca: zert.cert });
+    await put({ smtp_port: mit.port, smtp_tls_ca: zert.cert });
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, true, r.error);
     assert.equal(mit.post.length, 1);
@@ -225,7 +225,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     tls.DEFAULT_MIN_VERSION = 'TLSv1';
     tls.DEFAULT_CIPHERS = 'DEFAULT@SECLEVEL=0';
     try {
-      await setze({ smtp_port: alt.port, smtp_tls_ca: zert.cert });
+      await put({ smtp_port: alt.port, smtp_tls_ca: zert.cert });
       const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Alt', text: LINK });
       assert.equal(r.success, false);
       assert.equal(alt.post.length, 0);
@@ -259,7 +259,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   };
 
   await t.test('a name that resolves to a blocked address is not connected', async () => {
-    await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
+    await put({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
     const beforeRows = ohne.recording.length;
     let r;
     const asked = await withDns('169.254.169.254', async () => {
@@ -272,7 +272,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   });
 
   await t.test('a name that resolves to an allowed address: the connection goes to the checked address', async () => {
-    await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
+    await put({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
     const beforeRows = ohne.recording.length;
     // Only the first call gets 127.0.0.1; a second lookup would land on 127.0.0.2.
     const dns = require('node:dns');

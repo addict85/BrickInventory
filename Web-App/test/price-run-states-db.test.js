@@ -32,8 +32,8 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end();
   });
-  const [MIXED, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
-  for (const sn of [MIXED, REIN, GEMERKT]) await catalogSet(db, sn, { name: 'Probe' });
+  const [MIXED, REIN, REMEMBERED, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
+  for (const sn of [MIXED, REIN, REMEMBERED]) await catalogSet(db, sn, { name: 'Probe' });
   const { bookEntry } = _req('src/sets/addSet.js');
   for (const [sn, z] of [
     [MIXED, 'N'],
@@ -49,15 +49,15 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
       condition: z,
     });
   }
-  await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);
+  await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, REMEMBERED]);
   const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
-  const sortiert = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
+  const sortedList = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
 
-  const z = sortiert(await statesJeSet(uid, [MIXED, REIN, GEMERKT, FREMD]));
+  const z = sortedList(await statesJeSet(uid, [MIXED, REIN, REMEMBERED, FREMD]));
 
   await t.test('a mixed set needs both prices', () => assert.deepEqual(z[MIXED], ['N', 'U']));
   await t.test('a pure set costs only one request', () => assert.deepEqual(z[REIN], ['U']));
-  await t.test('a remembered used condition counts as well', () => assert.deepEqual(z[GEMERKT], ['U']));
+  await t.test('a remembered used condition counts as well', () => assert.deepEqual(z[REMEMBERED], ['U']));
   await t.test('without an entry and pending item, new applies', () => assert.deepEqual(z[FREMD], ['N']));
   await t.test('the condition of a not yet written entry counts', async () => {
     assert.deepEqual((await conditionsNeededFor(REIN, uid, 'N')).sort(), ['N', 'U']);

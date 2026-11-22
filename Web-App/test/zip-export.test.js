@@ -8,7 +8,7 @@ const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
 /** Builds an archive like routes/api/settings.ts and returns the bytes. */
-function zippen(dateien) {
+function zipIt(dateien) {
   const { ZipArchive } = require('archiver');
   return new Promise((fertig, error) => {
     const parts = [];
@@ -44,7 +44,7 @@ test('archiver is usable from CommonJS', () => {
 });
 
 test('the data export produces an unpackable ZIP', async () => {
-  const b = await zippen({
+  const b = await zipIt({
     'sets.csv': 'set_number;name\n10294-1;Titanic\n',
     'teile.csv': 'part;color\n3001;Rot\n',
     'minifiguren.csv': 'fig;name\nsw0001;Luke\n',

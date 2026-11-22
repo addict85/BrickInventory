@@ -81,25 +81,25 @@ test('a workflow uses every action in the same version everywhere', () => {
       .filter(z => !z.trimStart().startsWith('#'))
       .join('\n');
     for (const m of yml.matchAll(/uses:\s*([\w.-]+\/[\w.\-/]+)@([\w.-]+)/g)) {
-      const [, action, fassung] = m;
+      const [, action, variant] = m;
       if (!versions.has(action)) versions.set(action, new Map());
       const je = versions.get(action);
-      if (!je.has(fassung)) je.set(fassung, []);
-      if (!je.get(fassung).includes(f)) je.get(fassung).push(f);
+      if (!je.has(variant)) je.set(variant, []);
+      if (!je.get(variant).includes(f)) je.get(variant).push(f);
     }
   }
 
   // Self-proof 3: without found actions the loop below is empty.
   assert.ok(versions.size >= 8, `Nur ${versions.size} Actions gefunden — Muster veraltet?`);
-  const mehrfach = [...versions].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
+  const multiple = [...versions].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
   // Lowered from 3 to 2 when android-playstore.yml was removed: with one
   // workflow fewer there is less overlap. MEASURED, there are now
   // actions/checkout@v7 (in all three runs) and actions/upload-artifact@v7
   // (in two) — both uniform, so the check below still applies to
   // exactly the cases that matter.
   assert.ok(
-    mehrfach.length >= 2,
-    `Nur ${mehrfach.length} Actions stehen an mehr als einer Stelle — dann ` + 'kann diese Prüfung nichts finden.',
+    multiple.length >= 2,
+    `Nur ${multiple.length} Actions stehen an mehr als einer Stelle — dann ` + 'kann diese Prüfung nichts finden.',
   );
 
   const disagreeing = [...versions]
@@ -110,7 +110,7 @@ test('a workflow uses every action in the same version everywhere', () => {
 
 test('a run that executes tests runs on EVERY branch', () => {
   // Why
-  const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
+  const TEST_COMMANDS = [/npm\s+test/, /testDebugUnitTest/];
 
   const checking = [];
   for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
@@ -122,7 +122,7 @@ test('a run that executes tests runs on EVERY branch', () => {
       .split('\n')
       .filter(z => !z.trimStart().startsWith('#'))
       .join('\n');
-    if (TESTBEFEHLE.some(r => r.test(yml))) checking.push([f, yml]);
+    if (TEST_COMMANDS.some(r => r.test(yml))) checking.push([f, yml]);
   }
 
   // Self-proof: there are at least the two — web and Android. If the pattern
@@ -207,8 +207,8 @@ test('the security run checks code, dependencies, image and the running server',
     .join('\n');
   const oben = yml.slice(0, yml.indexOf('\njobs:'));
   assert.match(oben, /\npermissions:\n {2}contents: read\n/, 'oben nur contents: read');
-  const schreibend = [...yml.matchAll(/security-events:\s*write/g)].length;
-  assert.equal(schreibend, 1, 'security-events: write darf nur der CodeQL-Job haben');
+  const writing = [...yml.matchAll(/security-events:\s*write/g)].length;
+  assert.equal(writing, 1, 'security-events: write darf nur der CodeQL-Job haben');
   const codeql = yml.slice(yml.indexOf('\n  codeql:'), yml.indexOf('\n  trivy:'));
   assert.match(codeql, /security-events:\s*write/, 'nur der CodeQL-Job darf Befunde hochladen');
   for (const language of ['javascript-typescript', 'java-kotlin'])
@@ -244,7 +244,7 @@ function dependabot() {
 // red „Hauptversion“.
 test('Dependabot maintains npm, Gradle, images and actions from the root configuration', () => {
   const entries = dependabot();
-  const finde = (oe, ordner) => entries.find(e => e.ecosystem === oe && e.folder === ordner);
+  const findIt = (oe, ordner) => entries.find(e => e.ecosystem === oe && e.folder === ordner);
   for (const [oe, ordner] of [
     ['npm', '/Web-App'],
     // The name assembled: abgleich-baumbruecken reads every mention as a path into the tree.
@@ -253,7 +253,7 @@ test('Dependabot maintains npm, Gradle, images and actions from the root configu
     ['docker-compose', '/Web-App'],
     ['github-actions', '/'],
   ]) {
-    const e = finde(oe, ordner);
+    const e = findIt(oe, ordner);
     assert.ok(e, `${oe} in ${ordner}: hält niemand aktuell`);
     assert.match(e.text, /interval: weekly/, `${oe}: wöchentlich`);
     assert.match(e.text, /open-pull-requests-limit: [1-5]\b/, `${oe}: offene PRs begrenzt`);
@@ -265,7 +265,7 @@ test('Dependabot maintains npm, Gradle, images and actions from the root configu
       `${oe}: neue Fassungen ohne Wartezeit`,
     );
   assert.match(
-    finde('docker-compose', '/Web-App').text,
+    findIt('docker-compose', '/Web-App').text,
     /dependency-name: postgres\s*\n\s*update-types: \[version-update:semver-major\]/,
     'eine PostgreSQL-Hauptversion braucht einen Umzug der Daten, kein stilles Update',
   );

@@ -18,13 +18,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 /** Intercepted download: status code per set, no network. */
 const antworten = new Map();
-const angefragt = [];
+const requested = [];
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async (_url, sn, info) => {
-    angefragt.push(sn);
+    requested.push(sn);
     const status = antworten.get(sn);
     if (status && info) info.status = status;
     return null;
@@ -71,11 +71,11 @@ test('set image follow-up run: only sets with a reference, 404 rests', { concurr
     await t.test('a 404 is noted and missing in the next run', async () => {
       IM._emptyForeground();
       antworten.set(imageless, 404);
-      angefragt.length = 0;
+      requested.length = 0;
       await reloadSetImages();
       await IM._writeBuffer();
       assert.deepEqual(
-        angefragt.filter(sn => sn.startsWith(P)),
+        requested.filter(sn => sn.startsWith(P)),
         [gehalten, imageless],
       );
       const m = await db.get(`SELECT reason FROM image_misses WHERE cache_key = $1`, ['set:' + imageless]);

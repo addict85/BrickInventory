@@ -3,6 +3,8 @@
  * frontend modules must exist in index.html. Exactly this class of error
  * (JS accesses renamed/removed IDs) otherwise only shows at runtime
  * as a silent TypeError.
+ *
+ * Counter-check: `G('zz-missing-id')` appended to public/js/init.js → red “G('...') IDs from init.js exist in index.html”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -35,7 +35,7 @@ const db = testData();
 after(() => db.pool.end().catch(() => {}));
 
 test('setup state: remembered, separated by administrator, throttled', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);

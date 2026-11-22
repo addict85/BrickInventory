@@ -42,12 +42,12 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
 }, async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
   let now = 0,
-    hoechst = 0,
+    highest = 0,
     halten = 300;
   const lengths = [];
   const app = http.createServer((req, res) => {
     now++;
-    hoechst = Math.max(hoechst, now);
+    highest = Math.max(highest, now);
     lengths.push(req.headers['content-length']);
     req.resume();
     req.on('end', () =>
@@ -140,12 +140,12 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
 
   // Held long so that even a slow run has all 16 open at once.
   now = 0;
-  hoechst = 0;
+  highest = 0;
   halten = 1500;
   const logins = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v2/auth/login')));
   halten = 300;
   assert.deepEqual(logins, Array(16).fill(200), 'Anmeldungen gehen verloren');
-  assert.ok(hoechst > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${hoechst} zugleich)`);
+  assert.ok(highest > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${highest} zugleich)`);
 
   assert.equal(
     await anfrage('POST', '/api/v2/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),

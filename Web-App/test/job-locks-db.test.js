@@ -8,7 +8,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 async function dbReachable() {
@@ -31,12 +31,12 @@ async function holdAs(fremder, ns) {
   };
 }
 
-const REDL_LOCK = 57;
+const REDOWNLOAD_LOCK = 57;
 
 test('job locks work across process boundaries', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
 
@@ -59,7 +59,7 @@ test('job locks work across process boundaries', async t => {
     const frei = await enrich.redownloadMissingImages();
     assert.equal(frei.alreadyRunning, undefined, 'Lauf wurde ohne fremde Sperre abgewiesen');
 
-    const freigeben = await holdAs('zweiter Worker', REDL_LOCK);
+    const freigeben = await holdAs('zweiter Worker', REDOWNLOAD_LOCK);
     try {
       const gesperrt = await enrich.redownloadMissingImages();
       assert.equal(

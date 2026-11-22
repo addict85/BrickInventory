@@ -25,7 +25,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.MAIL_CONSOLE_WITH_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
+const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
@@ -73,7 +73,7 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
   await t.test('the reset mail goes to the stored address', async () => {
     const app = express();
     app.use(express.json());
-    app.use(einhaengung('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+    app.use(mounting('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     const zeilen = [];
     const echt = console.log;
@@ -81,7 +81,7 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
       zeilen.push(a.join(' '));
     };
     try {
-      const r = await fetch(`http://localhost:${srv.address().port}${einhaengung('auth')}/forgot-password`, {
+      const r = await fetch(`http://localhost:${srv.address().port}${mounting('auth')}/forgot-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: VARIANT.toUpperCase() }),

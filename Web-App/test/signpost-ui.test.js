@@ -34,7 +34,7 @@ for (const language of ['de', 'en']) {
         // After „Menü → “ a menu item must stand (the longest one that fits);
         // after „Einstellungen → “ a section of the settings.
         const einst = language === 'de' ? 'Einstellungen' : 'Settings';
-        const beginnt = (rest, namen) =>
+        const begins = (rest, namen) =>
           [...namen]
             .sort((x, y) => y.length - x.length)
             .find(n => rest.startsWith(n) && !/^[\p{L}\d]/u.test(rest.slice(n.length)));
@@ -42,13 +42,13 @@ for (const language of ['de', 'en']) {
           gesehen++;
           if (m[1] !== MENU) funde.push(`${k}: „${m[1]}“ statt „${MENU}“`);
           const rest = text.slice(m.index + m[0].length);
-          const ziel = beginnt(rest, menue);
+          const ziel = begins(rest, menue);
           if (!ziel) {
             funde.push(`${k}: „${rest.slice(0, 24)}…“ beginnt mit keinem Menüpunkt`);
             continue;
           }
           const danach = rest.slice(ziel.length);
-          if (ziel === einst && danach.startsWith(' → ') && !beginnt(danach.slice(3), sections))
+          if (ziel === einst && danach.startsWith(' → ') && !begins(danach.slice(3), sections))
             funde.push(`${k}: „${danach.slice(3, 27)}…“ ist kein Abschnitt der Einstellungen`);
         }
       }

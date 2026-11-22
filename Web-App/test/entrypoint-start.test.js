@@ -34,12 +34,12 @@ test('the owner change does not run on every start', () => {
   // occur, but never unconditionally: every inode change is on an SD card
   // or a network drive a separate write, and data/images/ fills
   // up with every set, part and minifigure image.
-  const rekursiv = [...ep.matchAll(/^\s*(chown -R |find \/app\/data -xdev ! -uid "\$ZIEL_UID" -exec chown )/gm)];
+  const recursively = [...ep.matchAll(/^\s*(chown -R |find \/app\/data -xdev ! -uid "\$ZIEL_UID" -exec chown )/gm)];
   assert.ok(
-    rekursiv.length > 0,
+    recursively.length > 0,
     'Der Reparaturschritt fehlt ganz — ein frisch ' + 'eingehaengter Datentraeger waere dann nie zu retten',
   );
-  for (const m of rekursiv) {
+  for (const m of recursively) {
     // Indented, i.e. in a function or a branch; at the start of the line
     // it would run over all images at EVERY start.
     assert.match(m[0], /^\s+/, 'Der Reparaturschritt steht unbedingt am Zeilenanfang.');
@@ -79,7 +79,7 @@ test('the service creates the created directories itself, not root', () => {
     [...code.matchAll(/^.*\bmkdir\b.*$/gm)].map(m => m[0].trim()),
     ['su-exec brickinv mkdir -p \\'],
   );
-  const flach = code.slice(code.indexOf('su-exec brickinv mkdir -p'));
+  const flat = code.slice(code.indexOf('su-exec brickinv mkdir -p'));
   for (const ordner of [
     '/app/data',
     '/app/data/instructions',
@@ -89,7 +89,7 @@ test('the service creates the created directories itself, not root', () => {
     '/app/data/images/minifigs',
   ]) {
     assert.ok(
-      flach.slice(0, 400).includes(ordner),
+      flat.slice(0, 400).includes(ordner),
       `${ordner} wird nicht mehr unbedingt gesetzt — nach BRICKINV_CHOWN=never ` +
         'koennte der Dienst dort nicht schreiben',
     );
@@ -106,9 +106,9 @@ test('a normal start does not even go through the files', () => {
   );
   // It must be read BEFORE the search, otherwise it saves nothing.
   const readBrand = ep.indexOf('cat "$MARKE"');
-  const gesucht = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
+  const sought = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
   assert.ok(
-    readBrand > 0 && readBrand < gesucht,
+    readBrand > 0 && readBrand < sought,
     'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' + 'gelaufen, und die Marke spart nichts.',
   );
   // And it must carry the UID, not merely exist: a change of the UID

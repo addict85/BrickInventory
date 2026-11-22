@@ -84,28 +84,28 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
     });
     const text = await r.text();
     if (!r.headers.get('content-type')?.includes('event-stream')) return { status: r.status, ...JSON.parse(text) };
-    const ereignisse = text
+    const eventList = text
       .split('\n')
       .filter(z => z.startsWith('data: '))
       .map(z => JSON.parse(z.slice(6)));
-    return ereignisse.at(-1);
+    return eventList.at(-1);
   };
 
   await t.test('the acquisition stream names no internal text', async () => {
-    const letztes = await stream('GEHEIM-1', 'en');
-    assert.ok(!JSON.stringify(letztes).includes('geheime_tabelle'), JSON.stringify(letztes));
+    const lastOne = await stream('GEHEIM-1', 'en');
+    assert.ok(!JSON.stringify(lastOne).includes('geheime_tabelle'), JSON.stringify(lastOne));
     // The set is already created: the end says that a job completes it, instead of “error”.
-    assert.equal(letztes.step, 'done');
-    assert.equal(letztes.success, true);
-    assert.equal(letztes.supplement, 'pending');
-    assert.equal(letztes.catalog_pending, true);
+    assert.equal(lastOne.step, 'done');
+    assert.equal(lastOne.success, true);
+    assert.equal(lastOne.supplement, 'pending');
+    assert.equal(lastOne.catalog_pending, true);
   });
 
   await t.test('a domain error arrives with its code', async () => {
-    const letztes = await stream('FACH-1');
-    assert.equal(letztes.status, 400);
-    assert.equal(letztes.code, 'set_number_invalid');
-    assert.equal(letztes.error, errorText('set_number_invalid', 'de'));
+    const lastOne = await stream('FACH-1');
+    assert.equal(lastOne.status, 400);
+    assert.equal(lastOne.code, 'set_number_invalid');
+    assert.equal(lastOne.error, errorText('set_number_invalid', 'de'));
   });
 
   await t.test('the CSV report names no internal text', async () => {

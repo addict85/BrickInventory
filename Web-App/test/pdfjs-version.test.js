@@ -19,19 +19,19 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const paket = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const fassung = paket.devDependencies['pdfjs-dist'];
+const variant = paket.devDependencies['pdfjs-dist'];
 const installiert = path.join(ROOT, 'node_modules', 'pdfjs-dist');
 
 test('exact version in package.json and lockfile', () => {
-  assert.match(String(fassung), /^\d+\.\d+\.\d+$/, `pdfjs-dist „${fassung}“ ist keine exakte Fassung`);
+  assert.match(String(variant), /^\d+\.\d+\.\d+$/, `pdfjs-dist „${variant}“ ist keine exakte Fassung`);
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
-  assert.equal(lock.packages['node_modules/pdfjs-dist']?.version, fassung);
+  assert.equal(lock.packages['node_modules/pdfjs-dist']?.version, variant);
 });
 
 test('cache buster in pdfjs-boot.js names the same version', () => {
   const boot = fs.readFileSync(path.join(ROOT, 'public', 'js', 'pdfjs-boot.js'), 'utf8');
   const v = [...boot.matchAll(/\/vendor\/pdfjs\/[\w.]+\.mjs\?v=([\w.-]+)/g)].map(m => m[1]);
-  assert.deepEqual(v, [fassung, fassung]);
+  assert.deepEqual(v, [variant, variant]);
 });
 
 test('the delivered files are those of the package', t => {
@@ -41,7 +41,7 @@ test('the delivered files are those of the package', t => {
       fs
         .readFileSync(path.join(ROOT, 'public', 'vendor', 'pdfjs', d))
         .equals(fs.readFileSync(path.join(installiert, 'build', d))),
-      `${d} weicht von pdfjs-dist ${fassung} ab`,
+      `${d} weicht von pdfjs-dist ${variant} ab`,
     );
 });
 
@@ -75,7 +75,7 @@ test('the copy script stores the files and updates the version', t => {
     (
       fs
         .readFileSync(path.join(ziel, 'public', 'js', 'pdfjs-boot.js'), 'utf8')
-        .match(new RegExp(`v=${fassung.replace(/\./g, '\\.')}`, 'g')) || []
+        .match(new RegExp(`v=${variant.replace(/\./g, '\\.')}`, 'g')) || []
     ).length,
     2,
   );

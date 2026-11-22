@@ -1,5 +1,7 @@
 /**
  * What a spare part is is decided by ONE place.
+ *
+ * Counter-check: `r.is_spare === 't'` appended to src/sets/service.ts → red “the spellings are enumerated in only one place”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -12,7 +14,7 @@ const { ohneKommentare, testData } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -74,7 +76,7 @@ test('the response carries a real boolean', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');

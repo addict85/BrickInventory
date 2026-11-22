@@ -30,7 +30,7 @@ const db = testData();
 after(() => db.pool.end().catch(() => {}));
 
 test('setup state without login', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -93,7 +93,7 @@ test('setup state without login', { concurrency: 1 }, async t => {
 });
 
 test('the entry lets only the state through without a session', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const app = express();
   const mw = _req('routes/api/middleware.js');
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);

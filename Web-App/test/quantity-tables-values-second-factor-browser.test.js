@@ -221,8 +221,8 @@ async function minusAtOne(_t, a) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
   await bis(`document.getElementById('m-qty')?.value === '1' && !!document.getElementById('m-qty-dec')`, 'Detail');
-  const schreibend = () =>
-    b.ereignisse.filter(
+  const writing = () =>
+    b.eventList.filter(
       e =>
         e.method === 'Network.requestWillBeSent' &&
         e.params.request.method !== 'GET' &&
@@ -232,14 +232,14 @@ async function minusAtOne(_t, a) {
     b.auswerten(`(() => { const k = document.getElementById('m-qty-dec');
       return { wert: document.getElementById('m-qty').value, gesperrt: k.getAttribute('aria-disabled'), titel: k.title,
         beschreibung: document.getElementById(k.getAttribute('aria-describedby') || '-')?.textContent || '' }; })()`);
-  const vorher = schreibend();
+  const vorher = writing();
   const m = await state();
   assert.equal(m.gesperrt, 'true', `„−“ bei einem Exemplar nicht gesperrt: ${JSON.stringify(m)}`);
   assert.equal(m.titel, 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“');
   assert.equal(m.beschreibung, m.titel, 'Vorleser hören den Hinweis nicht');
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
   await a.warte(700);
-  assert.deepEqual([(await state()).wert, schreibend() - vorher], ['1', 0], '„−“ bei 1 hat etwas getan');
+  assert.deepEqual([(await state()).wert, writing() - vorher], ['1', 0], '„−“ bei 1 hat etwas getan');
   await b.auswerten(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
   assert.equal((await state()).titel, '', 'Hinweis bleibt bei 2 stehen');
@@ -372,7 +372,7 @@ async function financeTerms(_t, a) {
 }
 
 /** Reloads the page (like round 24): the error should come on the first load, not over an old state. */
-async function serverfehlerAdmin(_t, a) {
+async function serverErrorAdmin(_t, a) {
   const { b, bis } = a;
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__echt = window.fetch;
@@ -536,7 +536,7 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
     ['Merkliste zugeklappt', wantedTo],
     ['Bilder verschiedener Form', bilder],
     // Reloads the page.
-    ['Serverfehler für Verwalter', serverfehlerAdmin],
+    ['Serverfehler für Verwalter', serverErrorAdmin],
     // Replaces the recovery codes: last.
     ['Zweiter Faktor: Code im Dialog', zweiterFaktor],
   ];

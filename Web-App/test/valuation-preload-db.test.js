@@ -40,7 +40,7 @@ for (const [i, p] of pools.entries())
     return altQuery[i].call(p, text, ...rest);
   };
 /** The queries during fn, filtered on a pattern. */
-async function abfragen(muster, fn) {
+async function queryList(muster, fn) {
   gesehen.length = 0;
   count = true;
   try {
@@ -90,7 +90,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
   const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
 
   await t.test('twelve parts, one query on the parts cache', async () => {
-    const m = await abfragen(/FROM part_price_cache/, () => valueParts(uid, [uid]));
+    const m = await queryList(/FROM part_price_cache/, () => valueParts(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
@@ -100,7 +100,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
   });
 
   await t.test('six minifigures, one query on the minifigure cache', async () => {
-    const m = await abfragen(/FROM minifig_price_cache/, () => valueMinifigs(uid, [uid]));
+    const m = await queryList(/FROM minifig_price_cache/, () => valueMinifigs(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),

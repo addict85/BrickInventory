@@ -29,7 +29,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { routerMounts, testData } = require('./helpers/sources');
 const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
 const { contractTo, appRoutes, APP_KEYS } = require('./helpers/contract');
 const db = testData();
@@ -39,7 +39,7 @@ const NAME = `kvertrag_${process.pid}`;
 const SET = '99074-1',
   TEIL = '3001kv',
   FARBE = 5,
-  FIGUR = 'kv0001';
+  FIGURE = 'kv0001';
 
 /** Routes that cannot run here — with reason. */
 const OMITTED = new Map([
@@ -80,7 +80,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   ).id;
   // A parent account and a separated account so that `parents` and
   // `former_links` of the household response do not arrive empty.
-  const nebenkonto = async zusatz => {
+  const subAccount = async zusatz => {
     await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_${zusatz}`]);
     return (
       await db.get(
@@ -90,8 +90,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
       )
     ).id;
   };
-  const oben = await nebenkonto('oben'),
-    getrennt = await nebenkonto('getrennt');
+  const oben = await subAccount('oben'),
+    getrennt = await subAccount('getrennt');
   // Global catalogs: only remove what this test created itself.
   const aufraeumen = [];
   const katalog = async (sql, values, weg, routeValues) => {
@@ -104,7 +104,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     for (const tab of ['part_price_cache', 'part_price_history', 'part_catalog', 'part_color_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE part_number = $1`, [TEIL]).catch(() => {});
     for (const tab of ['minifig_price_cache', 'minifig_price_history', 'minifigs_catalog'])
-      await db.run(`DELETE FROM ${tab} WHERE fig_number = $1`, [FIGUR]).catch(() => {});
+      await db.run(`DELETE FROM ${tab} WHERE fig_number = $1`, [FIGURE]).catch(() => {});
     for (const [sql, values] of aufraeumen) await db.run(sql, values).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -134,10 +134,10 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   await db.run(
     `INSERT INTO set_minifigs (set_number, fig_number, quantity)
                 VALUES ($1, $2, 1) ON CONFLICT DO NOTHING`,
-    [SET, FIGUR],
+    [SET, FIGURE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
-    FIGUR,
+    FIGURE,
   ]);
   for (const condition of ['N', 'U']) {
     await db.run(
@@ -206,12 +206,12 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, $2, 'EUR', 4.5, 4.2)`,
-      [FIGUR, condition],
+      [FIGURE, condition],
     );
     await db.run(
       `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, recorded_at)
                   VALUES ($1, $2, 'EUR', 4.4, NOW() - INTERVAL '2 days')`,
-      [FIGUR, condition],
+      [FIGURE, condition],
     );
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, sub]);
@@ -238,8 +238,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   await holdsSet(db, uid, SET, 2, { preis: 49.9 });
   await holdsPart(db, uid, TEIL, { setNumber: SET, colorId: FARBE, quantity: 4 });
   await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 3 });
-  await holdsMinifig(db, uid, FIGUR, { setNumber: SET, quantity: 1 });
-  await holdsMinifig(db, uid, FIGUR, { quantity: 1 });
+  await holdsMinifig(db, uid, FIGURE, { setNumber: SET, quantity: 1 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1 });
   await db.run(`INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)`, [uid, SET]);
   const location = (
     await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal A') RETURNING id`, [uid])
@@ -264,14 +264,14 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
-  for (const r of routerEinhaengungen())
+  for (const r of routerMounts())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const routen = appRoutes(_req).filter(r => r.methode === 'GET');
-  const values = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
+  const values = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGURE };
 
   const deviations = [],
     leer = [],
@@ -330,9 +330,9 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     .map(([p]) => p);
   const pagesError = [];
   for (const p of paged) {
-    const hol = async q => (await fetch(`${basis}${p}${q}`)).json();
-    const ganz = await hol(''),
-      zweite = await hol('?page_size=1&page=2');
+    const fetchIt = async q => (await fetch(`${basis}${p}${q}`)).json();
+    const ganz = await fetchIt(''),
+      zweite = await fetchIt('?page_size=1&page=2');
     const field = Object.keys(ganz).find(k => Array.isArray(ganz[k]) && ganz[k].length > 0);
     if (!field) {
       if (![...EMPTY_ALLOWED.keys()].some(k => k.startsWith(p + ' '))) pagesError.push(`${p}: keine gefüllte Liste`);

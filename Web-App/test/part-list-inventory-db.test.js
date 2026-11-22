@@ -12,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { ownedQuantitiesQuery } = _req('src/parts/queries.js');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
@@ -73,7 +73,7 @@ async function dbReachable() {
 test('inventory reconciliation of the parts list', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();

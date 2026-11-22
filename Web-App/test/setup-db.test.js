@@ -40,7 +40,7 @@ const SCHLUESSEL = [
 ];
 
 test('setup wizard', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
 
@@ -55,7 +55,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
   const verwalter = { userId: uid, isAdmin: true };
   const V = testServer(_req, { sitzung: verwalter, t });
   const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });
-  const ruf = async (srv, weg, body) => {
+  const callFn = async (srv, weg, body) => {
     const r = await fetch(srv.base + '/api/v2/settings' + weg, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json' },
@@ -63,7 +63,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const setze = (k, v) =>
+  const put = (k, v) =>
     db.run(
       `INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [k, v],
@@ -71,7 +71,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
 
   try {
     await t.test('with the initial password the entry only leads to the change', async () => {
-      const r = await ruf(V, '/setup');
+      const r = await callFn(V, '/setup');
       assert.equal(r.status, 403, JSON.stringify(r.body));
       assert.equal(r.body.code, 'password_change_required');
     });
@@ -80,20 +80,20 @@ test('setup wizard', { concurrency: 1 }, async t => {
       // Like POST /auth/change-password: account and session forget the obligation.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       delete verwalter.mussPasswortAendern;
-      const r = await ruf(V, '/setup');
+      const r = await callFn(V, '/setup');
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.open, true);
       assert.equal(r.body.change_password, false);
       assert.deepEqual(r.body.sources, { rebrickable: false, brickset: false, bricklink: false });
-      const n = await ruf(N, '/setup');
+      const n = await callFn(N, '/setup');
       assert.equal(n.status, 403, 'Nicht-Verwalter sieht den Stand');
       assert.equal(n.body.code, 'admins_only');
     });
 
     await t.test('set up: key present, password set → no longer open', async () => {
-      await setze('rebrickable_api_key', 'abc');
+      await put('rebrickable_api_key', 'abc');
       await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
-      const r = await ruf(V, '/setup');
+      const r = await callFn(V, '/setup');
       assert.equal(r.body.open, false);
       assert.equal(r.body.sources.rebrickable, true);
       assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
@@ -101,30 +101,30 @@ test('setup wizard', { concurrency: 1 }, async t => {
 
     await t.test('“Fertig” closes it even if something is still missing', async () => {
       await db.run('DELETE FROM global_settings WHERE key = $1', ['rebrickable_api_key']);
-      assert.equal((await ruf(V, '/setup')).body.open, true);
-      assert.equal((await ruf(V, '/setup/complete', {})).status, 200);
-      assert.equal((await ruf(V, '/setup')).body.open, false, 'erscheint nach Fertig weiter');
+      assert.equal((await callFn(V, '/setup')).body.open, true);
+      assert.equal((await callFn(V, '/setup/complete', {})).status, 200);
+      assert.equal((await callFn(V, '/setup')).body.open, false, 'erscheint nach Fertig weiter');
     });
 
     await t.test('test button: only known sources, without a key an understandable refusal', async () => {
       for (const q of ['gibtsnicht', '__proto__', 'constructor']) {
-        const r = await ruf(V, '/test-source', { source: q });
+        const r = await callFn(V, '/test-source', { source: q });
         assert.equal(r.status, 400, q);
         assert.equal(r.body.code, 'source_unknown', `${q} gilt als Quelle`);
       }
-      const bs = await ruf(V, '/test-source', { source: 'brickset' });
+      const bs = await callFn(V, '/test-source', { source: 'brickset' });
       assert.equal(bs.status, 400);
       assert.equal(bs.body.code, 'source_without_key', 'fehlender Schlüssel in Klartext');
       assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
       assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
-      const bl = await ruf(V, '/test-source', { source: 'bricklink' });
+      const bl = await callFn(V, '/test-source', { source: 'bricklink' });
       assert.equal(bl.body.code, 'source_without_key');
       assert.match(bl.body.details, /nicht vollständig/);
-      assert.equal((await ruf(N, '/test-source', { source: 'brickset' })).status, 403);
+      assert.equal((await callFn(N, '/test-source', { source: 'brickset' })).status, 403);
     });
   } finally {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]).catch(() => {});
-    for (const z of vorher) await setze(z.key, z.value).catch(() => {});
+    for (const z of vorher) await put(z.key, z.value).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   }

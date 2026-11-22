@@ -55,14 +55,14 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const ruf = async (weg, token, method = 'GET') => {
+  const callFn = async (weg, token, method = 'GET') => {
     const r = await fetch(basis + '/api/v2' + weg, { method, headers: { authorization: `Bearer ${token}` } });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
   await t.test('six concurrent exchanges: one new, the others 409', async () => {
     const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
-    const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/rotate-token', alt, 'POST')));
+    const antworten = await Promise.all(Array.from({ length: 6 }, () => callFn('/auth/rotate-token', alt, 'POST')));
     const state = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
     const neu = antworten.filter(a => a.status === 200);
     assert.equal(neu.length, 1, state);
@@ -71,7 +71,7 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
       state,
     );
     tokenCache.emptyTokenCache();
-    assert.equal((await ruf('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
+    assert.equal((await callFn('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
   });
 
   await t.test('a second exchange from another network ends the family', async () => {

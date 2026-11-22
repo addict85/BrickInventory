@@ -100,8 +100,8 @@ test('every menu entry is assigned', () => {
   // Self-proof: if the derivation finds nothing, the loops would be silently green.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
 
-  const webZu = new Set(MAPPING.map(z => z.web));
-  const openWeb = web.filter(e => !webZu.has(e.schluessel) && !(e.schluessel in NUR_WEB));
+  const webTo = new Set(MAPPING.map(z => z.web));
+  const openWeb = web.filter(e => !webTo.has(e.schluessel) && !(e.schluessel in NUR_WEB));
   assert.deepEqual(
     openWeb.map(e => e.schluessel),
     [],

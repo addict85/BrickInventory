@@ -33,7 +33,7 @@ test('the contract delivers the domain format to the route', { concurrency: 1 },
     await db.pool.end().catch(() => {});
   });
   const basis = testServer(_req, { sitzung: { userId: a }, t }).base;
-  const rufe = async (methode, path, rumpf) => {
+  const callIt = async (methode, path, rumpf) => {
     const r = await fetch(`${basis}/api/v2${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -43,13 +43,13 @@ test('the contract delivers the domain format to the route', { concurrency: 1 },
   };
 
   await t.test('a lower-case condition counts as upper case', async () => {
-    const r = await rufe('POST', '/settings/user/default-condition', { condition: 'n' });
+    const r = await callIt('POST', '/settings/user/default-condition', { condition: 'n' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition, 'N');
-    assert.equal((await rufe('GET', '/settings/user/default-condition')).body.condition, 'N');
-    const u = await rufe('POST', '/settings/user/default-condition', { condition: 'u' });
+    assert.equal((await callIt('GET', '/settings/user/default-condition')).body.condition, 'N');
+    const u = await callIt('POST', '/settings/user/default-condition', { condition: 'u' });
     assert.equal(u.body.condition, 'U');
     // What the contract does not know it rejects; the route never sees it.
-    assert.equal((await rufe('POST', '/settings/user/default-condition', { condition: 'x' })).status, 400);
+    assert.equal((await callIt('POST', '/settings/user/default-condition', { condition: 'x' })).status, 400);
   });
 });

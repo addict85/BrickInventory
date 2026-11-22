@@ -56,10 +56,10 @@ test('deleting asks at most once', () => {
 test('the quantity multiplication is in all places', () => {
   const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Parts and minifigures of a set count PER COPY times the set count.
-  const stellen = (h.match(/quantityFrom\('sm', ?1\)/g) || []).length;
+  const placeList = (h.match(/quantityFrom\('sm', ?1\)/g) || []).length;
   assert.ok(
-    stellen >= 3,
-    `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
+    placeList >= 3,
+    `nur ${placeList} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
       'mindestens Teileliste, Kennzahlen und Minifigurenliste',
   );
   // And each of these places needs the JOIN source for it, otherwise the

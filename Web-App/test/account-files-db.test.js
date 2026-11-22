@@ -25,8 +25,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const { noDb } = require('./helpers/db');
+const AUTH = require('./helpers/sources').mounting('auth');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
@@ -36,7 +36,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NR = '5045076374450077711',
   PIN = '8642';
 
-function gutscheinPdf() {
+function voucherPdf() {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4', compress: false });
     const s = [];
@@ -52,7 +52,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -87,7 +87,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
   const codes = await adminWithFactor(_req, adminId);
   const admin = testServer(_req, { sitzung: { userId: adminId, username: ADMIN, isAdmin: true }, t });
 
-  const original = await gutscheinPdf();
+  const original = await voucherPdf();
   const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
   /** What someone reads from the file alone. */
   const lesbar = daten => {

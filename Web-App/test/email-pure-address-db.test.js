@@ -57,16 +57,16 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const setze = (k, v) =>
+  const put = (k, v) =>
     db.run(
       `INSERT INTO global_settings (key, value) VALUES ($1, $2)
     ON CONFLICT (key) DO UPDATE SET value = $2`,
       [k, v],
     );
-  await setze('registration_enabled', '1');
-  await setze('smtp_host', '192.0.2.25'); // one address: a name would have to resolve (src/infra/targetAddress.ts)
-  await setze('smtp_user', 'versand');
-  await setze('smtp_from', 'BrickInventory <absender@example.org>');
+  await put('registration_enabled', '1');
+  await put('smtp_host', '192.0.2.25'); // one address: a name would have to resolve (src/infra/targetAddress.ts)
+  await put('smtp_user', 'versand');
+  await put('smtp_from', 'BrickInventory <absender@example.org>');
   const NAME = `rein_${P}`;
   await db.run('DELETE FROM users WHERE username LIKE $1', [`%_${P}`]);
   const uid = (
@@ -85,7 +85,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   // The IP throttle (5/h) should not hide the check of the address.
-  const rufe = async (methode, path, body) => {
+  const callIt = async (methode, path, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     const r = await fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
@@ -97,11 +97,11 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
 
   await t.test('registration only accepts plain addresses', async () => {
     for (const [i, email] of UNREIN.entries()) {
-      const r = await rufe('POST', '/register', { username: `spam${i}_${P}`, email, password: 'Langes-Passwort-42' });
+      const r = await callIt('POST', '/register', { username: `spam${i}_${P}`, email, password: 'Langes-Passwort-42' });
       assert.deepEqual(r, { status: 400, code: 'email_invalid' }, email);
     }
     assert.equal((await db.get('SELECT count(*)::int AS n FROM users WHERE username LIKE $1', [`spam%_${P}`])).n, 0);
-    const gut = await rufe('POST', '/register', {
+    const gut = await callIt('POST', '/register', {
       username: `gut_${P}`,
       email: `o'brien.gut_${P}@example.org`,
       password: 'Langes-Passwort-42',
@@ -112,11 +112,15 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   await t.test('forgot password and confirmation only accept plain addresses', async () => {
     for (const weg of ['/forgot-password', '/resend-confirmation'])
       for (const email of UNREIN)
-        assert.deepEqual(await rufe('POST', weg, { email }), { status: 400, code: 'email_invalid' }, `${weg} ${email}`);
+        assert.deepEqual(
+          await callIt('POST', weg, { email }),
+          { status: 400, code: 'email_invalid' },
+          `${weg} ${email}`,
+        );
   });
 
   await t.test('the profile only accepts plain addresses', async () => {
-    const r = await rufe('PUT', '/profile', { email: 'x<opfer@example.org>', password_current: PASS });
+    const r = await callIt('PUT', '/profile', { email: 'x<opfer@example.org>', password_current: PASS });
     assert.deepEqual(r, { status: 400, code: 'email_invalid' });
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@example.org`);
   });

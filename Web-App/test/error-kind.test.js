@@ -54,7 +54,7 @@ function response(e) {
   }
   return { status, code: rumpf?.code };
 }
-const geworfen = fn => {
+const thrown = fn => {
   try {
     fn();
   } catch (e) {
@@ -87,7 +87,7 @@ test('every kind yields its status', () => {
   assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
   for (const [kind, status] of Object.entries(erwartet)) {
     assert.deepEqual(
-      response(geworfen(() => failDomain(kind, 'set_not_found'))),
+      response(thrown(() => failDomain(kind, 'set_not_found'))),
       { status, code: 'set_not_found' },
       kind,
     );
@@ -105,7 +105,7 @@ test('every kind yields its status', () => {
 });
 
 test('a duplicate from the database becomes a conflict', () => {
-  const e = geworfen(() => asDuplicate('username_taken')({ code: '23505' }));
+  const e = thrown(() => asDuplicate('username_taken')({ code: '23505' }));
   assert.equal(e.kind, 'konflikt');
   assert.deepEqual(response(e), { status: 409, code: 'username_taken' });
   // A foreign error with its own status (body parser) keeps it.

@@ -13,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Record times and concurrency of the downloads.
 const times = [];
 const thumbTimes = [];
-let gleichzeitig = 0,
+let simultaneous = 0,
   maxConcurrent = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
@@ -21,10 +21,10 @@ const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async (_u, sn) => {
     times.push(Date.now());
-    gleichzeitig++;
-    maxConcurrent = Math.max(maxConcurrent, gleichzeitig);
+    simultaneous++;
+    maxConcurrent = Math.max(maxConcurrent, simultaneous);
     await new Promise(r => setTimeout(r, 30)); // “network"
-    gleichzeitig--;
+    simultaneous--;
     return `/images/sets/${sn}.jpg`;
   },
   createPreview: async () => {
@@ -32,14 +32,14 @@ testImageWorker(null, {
     return true;
   },
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('the image server is queried gently', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -103,7 +103,7 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own

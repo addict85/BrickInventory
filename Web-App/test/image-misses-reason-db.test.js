@@ -19,7 +19,7 @@ testImageWorker(null, {
     return null; // failure — the status code decides the rest
   },
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
@@ -27,7 +27,7 @@ const db = testData();
 const IQ = _req('src/images/imageDemandRun.js');
 const IM = _req('src/images/imageMisses.js');
 
-const einreihen = async sn => {
+const enqueue = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
   await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, $2)`, [`https://cdn/${sn}.jpg`, sn]);
 };
@@ -38,7 +38,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await db.initSchemaOnce();
     await db.runMigrations?.();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -52,7 +52,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
     responseStatus = 404;
-    await einreihen(sn);
+    await enqueue(sn);
     const e = await IQ._workStack();
     await IM._writeBuffer();
     assert.equal(e.notLoaded, 1);
@@ -71,7 +71,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
     responseStatus = 404;
-    await einreihen(sn);
+    await enqueue(sn);
 
     const echtErr = console.error,
       echtWarn = console.warn;
@@ -110,7 +110,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
     responseStatus = null;
-    await einreihen(sn);
+    await enqueue(sn);
 
     const echtErr = console.error,
       echtWarn = console.warn;
@@ -148,7 +148,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
     responseStatus = null;
-    await einreihen(sn);
+    await enqueue(sn);
     const e = await IQ._workStack();
     await IM._writeBuffer();
     assert.equal(e.notLoaded, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
@@ -196,7 +196,7 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own

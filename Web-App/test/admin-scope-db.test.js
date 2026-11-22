@@ -86,9 +86,9 @@ test('admin tools reveal no owners', { concurrency: 1 }, async t => {
     const r = await fetch(`${base}/api/v2/admin/job-queue?status=error`);
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
-    const eintrag = body.jobs.find(a => a.id === String(auftrag));
-    assert.ok(eintrag, 'Vorbedingung: der Auftrag steht in der Liste');
-    assert.equal(eintrag.set_number, SN);
-    assert.equal(containsKey(body, 'user_id'), false, JSON.stringify(eintrag));
+    const entryRow = body.jobs.find(a => a.id === String(auftrag));
+    assert.ok(entryRow, 'Vorbedingung: der Auftrag steht in der Liste');
+    assert.equal(entryRow.set_number, SN);
+    assert.equal(containsKey(body, 'user_id'), false, JSON.stringify(entryRow));
   });
 });

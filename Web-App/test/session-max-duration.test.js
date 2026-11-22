@@ -118,8 +118,8 @@ test('administrator sessions have shorter periods', async t => {
   });
 
   await t.test('administrators never longer than all others', () => {
-    const { sessionDeadlines: sitzungsfristen } = _req('src/account/sessionDeadline.js');
-    const f = sitzungsfristen({
+    const { sessionDeadlines: sessionTimeouts } = _req('src/account/sessionDeadline.js');
+    const f = sessionTimeouts({
       sitzungHoechstStd: 2,
       sitzungLeerlaufMin: 10,
       sitzungVerwalterHoechstStd: 12,
@@ -130,7 +130,7 @@ test('administrator sessions have shorter periods', async t => {
       adminMaxMs: 2 * 3_600_000,
       adminIdleMs: 10 * 60_000,
     });
-    const preset = sitzungsfristen(_req('src/infra/config.js').loadConfig({}));
+    const preset = sessionTimeouts(_req('src/infra/config.js').loadConfig({}));
     assert.equal(preset.adminIdleMs, 30 * 60_000, 'Vorgabe 30 Minuten');
     assert.equal(preset.adminMaxMs, 12 * 3_600_000, 'Vorgabe 12 Stunden');
   });

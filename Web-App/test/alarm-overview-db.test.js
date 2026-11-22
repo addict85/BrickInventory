@@ -226,7 +226,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
     // The app's model (shared/app-schnittstelle.json, generated from its source text).
-    const app = require('./helpers/contract').appSchnittstelle().modelle.Preisalarm?.felder ?? [];
+    const app = require('./helpers/contract').appInterface().modelle.Preisalarm?.felder ?? [];
     assert.ok(app.includes('set_number'), 'Modell Preisalarm nicht gefunden — umbenannt?');
     // The app reads API v1, so a field arrives under its v1 name.
     const { v1Field } = _req('src/contract/v1.js');
@@ -277,15 +277,15 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       ['DE', de],
       ['EN', en],
     ]) {
-      const scharf = String(w['alerts.armed'] || '');
-      const unscharf = String(w['alerts.fired'] || '');
-      assert.ok(scharf.includes('●'), `${name}: das gefüllte Zeichen fehlt bei „scharf".`);
-      assert.ok(unscharf.includes('○'), `${name}: das hohle Zeichen fehlt bei „unscharf".`);
-      const a = scharf.replace(/[^\p{L}]/gu, '').toLowerCase();
-      const b = unscharf.replace(/[^\p{L}]/gu, '').toLowerCase();
+      const sharp = String(w['alerts.armed'] || '');
+      const blurry = String(w['alerts.fired'] || '');
+      assert.ok(sharp.includes('●'), `${name}: das gefüllte Zeichen fehlt bei „scharf".`);
+      assert.ok(blurry.includes('○'), `${name}: das hohle Zeichen fehlt bei „unscharf".`);
+      const a = sharp.replace(/[^\p{L}]/gu, '').toLowerCase();
+      const b = blurry.replace(/[^\p{L}]/gu, '').toLowerCase();
       assert.ok(
         a && b.includes(a),
-        `${name}: „${scharf}" und „${unscharf}" sind kein erkennbares Gegensatzpaar. ` +
+        `${name}: „${sharp}" und „${blurry}" sind kein erkennbares Gegensatzpaar. ` +
           'Ohne Farbe ist das der einzige Hinweis darauf, dass der eine Zustand das ' +
           'Gegenteil des anderen ist.',
       );

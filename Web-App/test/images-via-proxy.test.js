@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
 /** Fields that can carry a FOREIGN address. */
-const BILDFELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
+const IMAGE_FIELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
 
 // That the policy only allows img-src 'self' data: blob: is checked by security-across-cut-db.test.js
 // on every response of the real server; the rule below relies on that.
@@ -30,7 +30,7 @@ test('no src attribute inserts an image field without imgUrl()/fullUrl()', () =>
     // write images.
     const pruefe = (ausdruck, index) => {
       geprueft++;
-      if (!BILDFELD.test(ausdruck)) return; // not an image field — irrelevant
+      if (!IMAGE_FIELD.test(ausdruck)) return; // not an image field — irrelevant
       if (/\b(imgUrl|fullUrl)\(/.test(ausdruck)) return;
       treffer.push(`${name}:${src.slice(0, index).split('\n').length}`);
     };

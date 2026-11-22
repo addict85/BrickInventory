@@ -63,7 +63,7 @@ async function traces(sn) {
 }
 
 test('a BrickLink price is written away on one path', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const JOB = `schreibweg-${process.pid}-job`;
   const ROUTE = `schreibweg-${process.pid}-weg`;
@@ -80,7 +80,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
     fetches = [];
     assert.equal(await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24), 'updated');
-    const nachLauf1 = fetches.length;
+    const afterRun1 = fetches.length;
     assert.equal(
       await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24),
       'skipped',
@@ -89,8 +89,8 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     );
     assert.equal(
       fetches.length,
-      nachLauf1,
-      `Zweiter Lauf hat ${fetches.length - nachLauf1} zusaetzliche BrickLink-Abrufe gekostet`,
+      afterRun1,
+      `Zweiter Lauf hat ${fetches.length - afterRun1} zusaetzliche BrickLink-Abrufe gekostet`,
     );
 
     // 2. The same case via the request path leaves behind the same.
@@ -104,9 +104,9 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     assert.deepEqual(j.cache, w.cache, 'Job und Anfrageweg hinterlassen unterschiedliche price_cache-Zeilen');
     assert.deepEqual(j.hist, w.hist, 'Job und Anfrageweg hinterlassen unterschiedliche price_history-Punkte');
     assert.equal(
-      nachLauf1,
+      afterRun1,
       fetchesRoute,
-      `Job braucht ${nachLauf1} Abrufe, der Anfrageweg ${fetchesRoute} — fuer dieselbe Auskunft`,
+      `Job braucht ${afterRun1} Abrufe, der Anfrageweg ${fetchesRoute} — fuer dieselbe Auskunft`,
     );
 
     // And what is left behind is also the right thing: the null row for the
@@ -148,7 +148,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
 test('the write rule exists in only one place', () => {
   // Found, not enumerated: all .ts of the tree except tests and tooling.
   const dateien = [];
-  const gehen = d => {
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (
         e.name === 'node_modules' ||
@@ -159,11 +159,11 @@ test('the write rule exists in only one place', () => {
       )
         continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
+      if (e.isDirectory()) go(abs);
       else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   // Self-proof: if the search found nothing, the rule below would be vacuously true.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 

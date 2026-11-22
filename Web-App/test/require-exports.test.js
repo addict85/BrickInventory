@@ -49,7 +49,7 @@ test('no server module fetches another one via late require()', () => {
 test('no test fetches a module from dist/ that does not exist', () => {
   buildAndRequire(); // makes sure that dist/ stands
   const dir = path.join(ROOT, 'test');
-  const fehlend = [];
+  const absent = [];
   let geprueft = 0;
 
   for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.test.js'))) {
@@ -61,12 +61,12 @@ test('no test fetches a module from dist/ that does not exist', () => {
       /['"]((?:utils|routes|db|jobs|clients|startup)\/[A-Za-z0-9_/-]+\.js|server\.js)['"]/g,
     )) {
       geprueft++;
-      if (!fs.existsSync(path.join(DIST, m[1]))) fehlend.push(`${f}: ${m[1]}`);
+      if (!fs.existsSync(path.join(DIST, m[1]))) absent.push(`${f}: ${m[1]}`);
     }
   }
 
   // Lower limit for the same reason as above: if the search pattern breaks, this
   // rule would silently check nothing any more.
   assert.ok(geprueft > 10, `Nur ${geprueft} Modulpfade gefunden — das Muster greift nicht mehr`);
-  assert.deepEqual(fehlend, [], `Test holt ein Modul, das es in dist/ nicht gibt:\n  ${fehlend.join('\n  ')}`);
+  assert.deepEqual(absent, [], `Test holt ein Modul, das es in dist/ nicht gibt:\n  ${absent.join('\n  ')}`);
 });

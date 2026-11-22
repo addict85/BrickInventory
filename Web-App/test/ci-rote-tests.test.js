@@ -24,7 +24,7 @@ const ROOT = path.join(__dirname, '..');
 const AWK = path.join(ROOT, '..', '.github', 'rote-tests.awk');
 
 /** Apply the extraction tool to a log. */
-function annotationen(protokoll) {
+function annotationList(protokoll) {
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bi-rot-')), 'test.log');
   fs.writeFileSync(datei, protokoll);
   try {
@@ -62,7 +62,7 @@ test('annotations for red tests', async t => {
       '1..7',
     ].join('\n');
 
-    const a = annotationen(log);
+    const a = annotationList(log);
     assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
     const m = a[0];
     assert.match(m, /^::error title=Roter Test::/);
@@ -83,9 +83,9 @@ test('annotations for red tests', async t => {
   });
 
   await t.test('eleven red tests yield nine plus a summary message', () => {
-    const bloecke = [];
+    const blockList = [];
     for (let i = 1; i <= 11; i++) {
-      bloecke.push(
+      blockList.push(
         `not ok ${i} - Test ${i}`,
         '  ---',
         '  error: |-',
@@ -95,7 +95,7 @@ test('annotations for red tests', async t => {
         '  ...',
       );
     }
-    const a = annotationen('TAP version 13\n' + bloecke.join('\n') + '\n');
+    const a = annotationList('TAP version 13\n' + blockList.join('\n') + '\n');
     assert.equal(
       a.length,
       10,
@@ -115,7 +115,7 @@ test('annotations for red tests', async t => {
   });
 
   await t.test('the heading of the spec reporter is skipped', () => {
-    const a = annotationen('✖ failing tests:\n\n✖ Test A (1.2ms)\n  error: etwas\n  stack: x\n');
+    const a = annotationList('✖ failing tests:\n\n✖ Test A (1.2ms)\n  error: etwas\n  stack: x\n');
     assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
     assert.match(a[0], /Test A/);
     assert.doesNotMatch(a[0], /failing tests/, '„failing tests:" ist die Ueberschrift der Liste, kein Testname.');
@@ -124,13 +124,13 @@ test('annotations for red tests', async t => {
   await t.test('a run without a red test yields no annotation', () => {
     // The fallback for it is in the workflow (the end of the log as an annotation)
     // — this tool may then stay silent instead of inventing something.
-    assert.deepEqual(annotationen('TAP version 13\nok 1 - alles gut\n1..1\n'), []);
+    assert.deepEqual(annotationList('TAP version 13\nok 1 - alles gut\n1..1\n'), []);
   });
 
   await t.test('percent signs in the text do not destroy the annotation', () => {
     // `%` is the escape character of the annotations. A text like “95 % of the lines"
     // would otherwise be read as an encoding and swallow the rest.
-    const a = annotationen('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');
+    const a = annotationList('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');
     assert.equal(a.length, 1);
     assert.match(a[0], /nur 95 %25 erreicht/, `das Prozentzeichen ist nicht maskiert: ${a[0]}`);
   });

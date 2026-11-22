@@ -28,7 +28,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const zf = _req('src/factors/secondFactor.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -73,7 +73,7 @@ test('second factor for admins', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {

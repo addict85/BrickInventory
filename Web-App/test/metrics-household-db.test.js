@@ -1,5 +1,7 @@
 /**
  * The number above the gallery must match what stands below it.
+ *
+ * Counter-check: in src/inventory/repository/metrics.ts total_quantity counts distinct set numbers → red “header and gallery count the same sets”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -10,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -27,7 +29,7 @@ after(() => db.pool.end());
 
 test('header and gallery count the same sets', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');

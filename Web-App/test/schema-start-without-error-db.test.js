@@ -1,3 +1,6 @@
+/**
+ * Counter-check: a failing query with logAndContinue at the start of initSchema() (db/schemaStart.ts) → red “the schema start reports no swallowed error”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -32,7 +35,7 @@ test('the schema start reports no swallowed error', async t => {
   };
 
   try {
-    if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+    if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   } finally {
     console.warn = realWarn;
   }

@@ -1,5 +1,7 @@
 /**
  * A lost entry does not disappear silently.
+ *
+ * Counter-check: `.catch(() => {})` after addPurchaseAtTag in src/inventory/reassign.ts → red “no silent catch on an acquisition”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

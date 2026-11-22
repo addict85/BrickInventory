@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-const erfassungen = {
+const acqList = {
   '/v2/sets/10294-1/acquisitions': () => ({
     success: true,
     acquisitions: [{ id: 7, quantity: 1, condition: 'N', purchase_price: 129.99, created_at: '2026-06-01T10:00:00Z' }],
@@ -19,7 +19,7 @@ const erfassungen = {
 };
 
 async function dialog(browserLanguage) {
-  const o = await openUi(erfassungen, { language: 'de', browserLanguage });
+  const o = await openUi(acqList, { language: 'de', browserLanguage });
   const knopf = o.d.createElement('button');
   knopf.dataset.click = 'openAcqModal';
   knopf.dataset.arg = '10294-1';

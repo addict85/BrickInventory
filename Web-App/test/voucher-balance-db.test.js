@@ -9,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const S = _req('src/vouchers/balanceThrottle.js');
@@ -44,12 +44,12 @@ function response({ status = 200, json = {}, text = '', cookies = [] } = {}) {
 
 function jwt(seconds) {
   const kopf = Buffer.from('{"alg":"none"}').toString('base64url');
-  const nutz = Buffer.from(
+  const useIt = Buffer.from(
     JSON.stringify({
       exp: Math.floor(Date.now() / 1000) + seconds,
     }),
   ).toString('base64url');
-  return `${kopf}.${nutz}.x`;
+  return `${kopf}.${useIt}.x`;
 }
 
 function guthaben(cent, currency = 'CHF', text = null) {
@@ -80,7 +80,7 @@ testSources(null, {
 });
 
 /** The number of queries to the balance endpoint (not page/login). */
-const abfragen = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
+const queryList = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
 
 async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -132,7 +132,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -179,7 +179,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   });
 
   await t.test('2. the second query bounces off the barrier — without a call', async () => {
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, `Antwort ${r.status} statt 429: ${JSON.stringify(d)}`);
@@ -190,7 +190,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     );
     assert.ok(/30/.test(d.error), `Der Satz nennt die Grenze nicht: ${d.error}`);
     assert.equal(
-      abfragen(),
+      queryList(),
       vorher,
       'Es ging ein Aufruf hinaus, obwohl die Schranke zu war. Genau das ist ' +
         'Marcos Vorgabe: „maximal 1 Request pro 30sek".',
@@ -200,7 +200,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   await t.test('3. the limit applies ACROSS ALL USERS', async () => {
     // Marco's addendum: „(über alle Benutzer)". A counter per account or per
     // worker process would be green here and in truth N times as high.
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(fremdSrv.base, FOREIGN);
     const d = await r.json();
     assert.equal(
@@ -210,7 +210,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
         'bei zwei Konten wären es zwei Aufrufe in 30 Sekunden, bei zehn zehn.',
     );
     assert.equal(d.reason, 'abstand');
-    assert.equal(abfragen(), vorher, 'Und es ging dabei nichts hinaus');
+    assert.equal(queryList(), vorher, 'Und es ging dabei nichts hinaus');
   });
 
   await t.test('4. after 31 seconds the slot is free again', async () => {
@@ -227,12 +227,12 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
 
   await t.test('5. without a PIN nothing is asked at all — and the slot stays free', async () => {
     await limitFree();
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(srv.base, WITHOUT_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_pin_missing');
-    assert.equal(abfragen(), vorher, 'Ohne PIN hat LEGO nichts zu antworten');
+    assert.equal(queryList(), vorher, 'Ohne PIN hat LEGO nichts zu antworten');
     // And now the actual point: the refusal must NOT have used up the one slot per
     // 30 seconds.
     nextResponse = guthaben(777);
@@ -247,7 +247,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
 
   await t.test('6. a foreign voucher is not reachable', async () => {
     await limitFree();
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(srv.base, FOREIGN);
     assert.equal(
       r.status,
@@ -255,7 +255,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       `Antwort ${r.status}. Ein Gutschein trägt Nummer und PIN — ein Fremdzugriff ` +
         'wäre die Weitergabe eines Zahlungsmittels.',
     );
-    assert.equal(abfragen(), vorher);
+    assert.equal(queryList(), vorher);
   });
 
   await t.test('7. an unknown issuing country stops the query', async () => {
@@ -264,13 +264,13 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       `INSERT INTO global_settings (key,value) VALUES ('voucher_country','de-XX')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_country_invalid');
     assert.equal(
-      abfragen(),
+      queryList(),
       vorher,
       'Es wurde mit einem Land gefragt, das es nicht gibt — die Adresse dafür ' +
         'existiert bei LEGO nicht, und die Absage gehört VOR den Aufruf.',
@@ -318,19 +318,19 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     // The slot is still closed after 31 seconds: the LOCK applies, not the
     // distance. Exactly that is Marco's „dass nicht mehr Aufrufe generiert werden".
     await lastFetchBefore(31);
-    const vorher = abfragen();
+    const vorher = queryList();
     nextResponse = guthaben(25000);
     const r2 = await abfrage(srv.base, WITH_PIN);
     const d2 = await r2.json();
     assert.equal(r2.status, 429, `Antwort ${r2.status}: ${JSON.stringify(d2)}`);
     assert.equal(d2.reason, 'botschutz', 'Nach einem Bot-Schutz-Treffer gilt die Pause');
-    assert.equal(abfragen(), vorher, 'Und es geht dabei nichts hinaus');
+    assert.equal(queryList(), vorher, 'Und es geht dabei nichts hinaus');
 
     // The same for the foreign account — the lock is installation-wide.
     const r3 = await abfrage(fremdSrv.base, FOREIGN);
     assert.equal(r3.status, 429);
     assert.equal((await r3.json()).reason, 'botschutz');
-    assert.equal(abfragen(), vorher);
+    assert.equal(queryList(), vorher);
   });
 
   await t.test('10. an exhausted card: 0 is saved and stays editable', async () => {
@@ -406,7 +406,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.ok(d.error.includes('1166'), 'Die letzten vier Ziffern dürfen stehen — sonst weiss niemand, welche Karte');
 
     // The slot IS used up: the request was sent.
-    const vorher = abfragen();
+    const vorher = queryList();
     const r2 = await abfrage(srv.base, WITH_PIN);
     assert.equal(
       r2.status,
@@ -414,7 +414,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       'Ein gescheiterter Aufruf muss den Platz verbrauchen — sonst liesse sich ' +
         'die Grenze durch wiederholtes Scheitern beliebig oft umgehen.',
     );
-    assert.equal(abfragen(), vorher);
+    assert.equal(queryList(), vorher);
   });
 
   // Counter-checks (measured 02.11.2026): the check kontoStand() removed from claimSlot()
@@ -436,14 +436,14 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     ]);
     await limitFree();
     await db.run(`UPDATE voucher_balance_throttle SET locked_until = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
-    const vorher = abfragen();
+    const vorher = queryList();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, JSON.stringify(d));
     assert.equal(d.reason, 'konto');
     assert.equal(d.code, 'too_many_requests');
     assert.ok(d.waitSeconds > 0 && d.waitSeconds <= 3600, String(d.waitSeconds));
-    assert.equal(abfragen(), vorher, 'trotz Grenze ging eine Abfrage hinaus');
+    assert.equal(queryList(), vorher, 'trotz Grenze ging eine Abfrage hinaus');
 
     await limitFree();
     nextResponse = response({ status: 403, text: 'Bot' });

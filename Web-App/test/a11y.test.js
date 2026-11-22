@@ -164,11 +164,11 @@ test('no aria-label that is only the identifier', async () => {
   const { d } = await oberflaeche();
   const mit = [...d.querySelectorAll('[aria-label]')].filter(sichtbar);
   assert.ok(mit.length >= 20, `Nur ${mit.length} aria-label gefunden`);
-  const schlecht = mit
+  const badOne = mit
     .filter(el => {
       const v = el.getAttribute('aria-label');
       return v === el.id || (!/\s/.test(v) && /[-_.]/.test(v) && v === v.toLowerCase());
     })
     .map(el => `${el.id}: ${el.getAttribute('aria-label')}`);
-  assert.deepEqual(schlecht, []);
+  assert.deepEqual(badOne, []);
 });

@@ -301,21 +301,21 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       const e = document.getElementById(id); const z = (id === 'mk-csv-file' ? e.closest('label') : e).getBoundingClientRect();
       return { id, oben: Math.round(z.top), hoehe: Math.round(z.height) };
     })`);
-    for (const [breite, hoehe, mobil] of [
+    for (const [breite, hoehe, mobileView] of [
       [1280, 900, false],
       [390, 844, true],
     ]) {
       await b.tab('Emulation.setDeviceMetricsOverride', {
         width: breite,
         height: hoehe,
-        deviceScaleFactor: mobil ? 2 : 1,
-        mobile: mobil,
+        deviceScaleFactor: mobileView ? 2 : 1,
+        mobile: mobileView,
       });
       await bis(`innerWidth === ${breite}`, 'Fensterbreite');
       await ruhig();
       const m = await messen();
       // On the phone the fields wrap; there only the equal height counts.
-      const row = mobil ? m : m.filter(x => x.oben === m[0].oben);
+      const row = mobileView ? m : m.filter(x => x.oben === m[0].oben);
       assert.equal(row.length, m.length, `${breite} px: nicht in einer Zeile ${JSON.stringify(m)}`);
       assert.equal(new Set(m.map(x => x.hoehe)).size, 1, `${breite} px: Höhen ${JSON.stringify(m)}`);
     }

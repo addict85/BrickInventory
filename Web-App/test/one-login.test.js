@@ -1,5 +1,7 @@
 /**
  * „Logged in" means something in ONE place, not in five.
+ *
+ * Counter-check: `req.session.userId` read in routes/api/minifigs.ts → red “no handler asks the session for the user identifier itself”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

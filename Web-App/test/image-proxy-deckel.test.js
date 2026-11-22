@@ -140,9 +140,9 @@ test('the fourth foreign image is throttled, hits and other accounts are not', a
   konto = 600000 + (process.pid % 100000);
   for (let i = 1; i <= 3; i++)
     assert.equal((await hole(`https://cdn.rebrickable.com/media/parts/d${i}.png`)).status, 200);
-  const vierte = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
-  assert.equal(vierte.status, 429);
-  assert.ok(Number(vierte.headers.get('retry-after')) > 0);
+  const fourthItem = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
+  assert.equal(fourthItem.status, 429);
+  assert.ok(Number(fourthItem.headers.get('retry-after')) > 0);
   assert.ok(await bis(() => imagesInCache() >= 5), 'd1 bis d3 landen nicht im Cache');
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
   konto += 1;
@@ -334,12 +334,12 @@ test('errors are counted and logged', async () => {
 });
 
 test('the probe shows WHAT is delivered', async () => {
-  const { imageProbe: bildProbe } = _req('src/management/diagnostics.js');
+  const { imageProbe: imageCheck } = _req('src/management/diagnostics.js');
   const address = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
   try {
     cdnBody = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     kopfzeilen.length = 0;
-    const jpeg = await bildProbe(address);
+    const jpeg = await imageCheck(address);
     assert.equal(jpeg.body_check.looks_like, 'JPEG');
     assert.match(jpeg.body_check.first_bytes_hex, /^ff d8 ff e0/);
     assert.deepEqual(
@@ -356,7 +356,7 @@ test('the probe shows WHAT is delivered', async () => {
     // A CDN that compresses anyway shows up in the response.
     cdnBody = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
     cdnHeader = { 'content-encoding': 'gzip' };
-    const gz = await bildProbe(address);
+    const gz = await imageCheck(address);
     assert.deepEqual([gz.body_check.looks_like, gz.probes[0].content_encoding], ['gzip (komprimiert!)', 'gzip']);
   } finally {
     cdnBody = Buffer.alloc(300, 7);

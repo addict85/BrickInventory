@@ -54,7 +54,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
   const base = `http://localhost:${srv.address().port}`;
 
   // Everything belongs to the SUB-ACCOUNT — as in the reported case.
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM part_acquisitions WHERE part_number=$1`, [PN]);
@@ -125,7 +125,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
 
   try {
     for (const [name, methode, pathFn, body] of faelle) {
-      await aufbauen();
+      await setUp();
       const path = await pathFn();
       const r = await fetch(`${base}${path}`, {
         method: methode,
@@ -142,7 +142,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
     // Deleting must REALLY delete. Two of the paths used not to check at all
     // whether a row was hit: the DELETE ran into nothing, the response
     // still reported success — the user saw “deleted", the row stayed.
-    await aufbauen();
+    await setUp();
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
     await fetch(`${base}/api/v2/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
     const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);

@@ -50,15 +50,15 @@ function buildBundle() {
     charset: 'utf8',
     outfile: ziel,
     logLevel: 'error',
-    define: { __ERLAUBTE_STILE__: JSON.stringify(allowedStyles()) },
+    define: { __ALLOWED_STYLES__: JSON.stringify(allowedStyles()) },
   });
   return ziel;
 }
 
-const BUENDEL = buildBundle();
-process.env.TEST_BUENDEL = BUENDEL;
+const BUNDLE_FILE = buildBundle();
+process.env.TEST_BUENDEL = BUNDLE_FILE;
 const { openUi, reiter, sicht, warte } = require('./helpers/ui');
-test.after(() => fs.rmSync(BUENDEL, { force: true }));
+test.after(() => fs.rmSync(BUNDLE_FILE, { force: true }));
 
 const SERVED = 'button, input[type=file], .import-menu > summary';
 const gesperrt = k => k.dataset.offlineLocked === '1';
@@ -69,8 +69,8 @@ async function offline(w) {
   await warte(() => w.document.documentElement.hasAttribute('data-offline'));
 }
 
-const ZEIT = '2026-11-01T10:00:00Z';
-const DATEN = {
+const TIME = '2026-11-01T10:00:00Z';
+const DATA = {
   '/v2/sets': {
     success: true,
     total: 1,
@@ -102,8 +102,8 @@ const DATEN = {
         bezeichnung: 'Ferrari',
         count: 1,
         user_id: 1,
-        geloescht_am: ZEIT,
-        purge_at: ZEIT,
+        geloescht_am: TIME,
+        purge_at: TIME,
       },
     ],
   },
@@ -199,7 +199,7 @@ test('one button per action: exactly the writing ones are locked offline', async
 });
 
 test('index.html and templates: exactly the writing ones locked offline', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi(DATEN);
+  const { w, d, aufrufe, ruhig } = await openUi(DATA);
   try {
     const { WRITING_ACTIONS: s } = w.__rating;
     await warte(() => d.querySelector('#gallery .sc'));
@@ -221,10 +221,10 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     await sicht(w, 'alerts');
     assert.ok(await warte(() => d.querySelector('#alerts-list [data-click="deleteAlert"]')), 'alarme nicht gezeichnet');
 
-    const knoepfe = [...d.querySelectorAll('[data-click]')].filter(
+    const buttonList = [...d.querySelectorAll('[data-click]')].filter(
       k => !vorher.has(k) && !k.closest('#login-screen, .toast'),
     );
-    const namen = new Set(knoepfe.map(k => k.getAttribute('data-click')));
+    const namen = new Set(buttonList.map(k => k.getAttribute('data-click')));
     for (const n of [
       'createLocation',
       'createHouseholdInvite',
@@ -245,7 +245,7 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     assert.ok([...namen].filter(n => !s.has(n)).length > 40, 'zu wenig lesende Knöpfe gezeichnet');
     // A field that saves on change counts like a writing button, whatever its data-click does.
     const writes = k => ['data-click', 'data-change', 'data-input'].some(a => s.has(k.getAttribute(a)));
-    const falsch = knoepfe
+    const falsch = buttonList
       .filter(k => gesperrt(k) !== writes(k))
       .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${gesperrt(k) ? 'gesperrt' : 'free'}`);
     assert.deepEqual(falsch, []);
@@ -253,11 +253,11 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     const felder = [
       ...d.querySelectorAll('input:not([type=file])[data-change], select[data-change], input[data-input]'),
     ].filter(k => !vorher.has(k) && !k.closest('#login-screen'));
-    const schreibende = felder.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
-    assert.ok(schreibende.length > 0, 'kein speicherndes Feld gezeichnet');
+    const writers = felder.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
+    assert.ok(writers.length > 0, 'kein speicherndes Feld gezeichnet');
     assert.deepEqual(
       felder
-        .filter(k => k.disabled !== schreibende.includes(k))
+        .filter(k => k.disabled !== writers.includes(k))
         .map(k => `${k.id || k.getAttribute('data-change')}: ${k.disabled ? 'gesperrt' : 'free'}`),
       [],
     );
