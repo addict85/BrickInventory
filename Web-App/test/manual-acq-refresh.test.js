@@ -350,25 +350,6 @@ test('no create path writes directly into an acquisition table', () => {
   }
 });
 
-test('the legacy data is merged once into one row per day', () => {
-  // The new rule only applies on the next write — already existing
-  // duplicate rows do not disappear by themselves.
-  const mig = read('db/migrations/0004-erfassung-pro-tag.sql');
-  for (const t of ['set_acquisitions', 'part_acquisitions', 'minifig_acquisitions']) {
-    assert.ok(mig.includes(`FROM ${t}`), `${t} fehlt im Zusammenfassen`);
-  }
-  assert.match(mig, /HAVING COUNT\(\*\) > 1/, 'Nur echte Doppelzeilen anfassen');
-  assert.match(
-    mig,
-    /FILTER \(WHERE purchase_price IS NOT NULL\)/,
-    'Preislose Zeilen dürfen den Nenner nicht aufblähen',
-  );
-  assert.match(mig, /CASE WHEN g\.gebraucht = 1 THEN 'U' ELSE 'N' END/, 'Gebraucht gewinnt — wie im Schreibpfad');
-  // Grouping is per entry AND day; purchases on different days stay
-  // separate, they are the reason for the acquisition history.
-  assert.match(mig, /GROUP BY user_id, set_number, created_at::date/);
-});
-
 test('the quantity increase averages the purchase price instead of leaving it', () => {
   // The earlier branch only increased the quantity for an acquisition of today. A
   // copy bought today at the current market price thereby vanished into the

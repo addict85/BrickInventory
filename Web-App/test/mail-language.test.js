@@ -12,6 +12,9 @@
  *      (the mail to the English account is German); likewise in
  *      /bestaetigung-erneut
  *   f) buildAlertMail without emailTemplate (html = text) → step 4 red
+ * Counter-checks (22.11.2026): the English branch of sendVerificationMail, sendPasswordResetMail
+ * or buildAlertMail never taken → step 3 (verification, reset) or step 4 (alert) red; the former
+ * source check of both branches is replaced by them.
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');
@@ -22,15 +25,6 @@ const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 const MAILER = lies('src/mail/mailer.ts');
-
-/** The body of a function — from its head up to the next one at the start of a column. */
-function rumpf(source, kopf) {
-  const i = source.indexOf(kopf);
-  assert.ok(i >= 0, `${kopf} nicht gefunden — umbenannt?`);
-  const rest = source.slice(i + kopf.length);
-  const m = rest.search(/\n(?:export )?(?:async )?function |\nexport \{/);
-  return m >= 0 ? rest.slice(0, m) : rest;
-}
 
 test('1. every mail function accepts the language', () => {
   // Found via the NAME, not via a list: a fourth mail
@@ -59,24 +53,6 @@ test('1. every mail function accepts the language', () => {
           ),
         ));
     assert.ok(carriesLang, `${n}() kennt die Sprache des Empfängers nicht — sie ginge immer in der Vorgabe hinaus.`);
-  }
-});
-
-test('2. and really masters both languages', () => {
-  // A `lang` parameter that is read nowhere is worse than none:
-  // it looks like multilingualism.
-  for (const [n, kopf] of [
-    ['sendVerificationMail', 'async function sendVerificationMail('],
-    ['sendPasswordResetMail', 'async function sendPasswordResetMail('],
-    ['buildAlertMail', 'async function buildAlertMail('],
-  ]) {
-    const body = rumpf(MAILER, kopf);
-    assert.match(body, /lang (?:!==|===) 'en'/, `${n}() verzweigt nicht nach der Sprache.`);
-    // An English sentence that is not merely a keyword.
-    assert.ok(
-      /Hello |Hi |Reset |Confirm |Price alert/.test(body),
-      `${n}() hat keinen englischen Text — der Parameter wäre Dekoration.`,
-    );
   }
 });
 
