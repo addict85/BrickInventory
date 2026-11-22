@@ -43,6 +43,8 @@ import ch.brickinventoryapp.ui.components.AppOverviewProtection
 import ch.brickinventoryapp.ui.components.LocalAppLock
 import ch.brickinventoryapp.ui.components.unlockWithDevicesLock
 import android.os.SystemClock
+import android.app.KeyguardManager
+import ch.brickinventoryapp.security.CertificateUnresolved
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
@@ -156,6 +158,22 @@ class MainActivity : OnlyLauncherStart() {
         drawWidgetNew()
     }
 
+    private fun deviceSecure(): Boolean = getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
+    /**
+     * A new server key from Android 16: the yes counts only after the screen lock (signature
+     * of the app lock's key). The dialog stays open until then; cancelling changes nothing.
+     */
+    private fun trustCertificate(frage: CertificateUnresolved, eingabe: String?): Boolean {
+        if (!frage.deviceConfirmationNeeded || !deviceSecure()) return vertrauen.trustCertificate(eingabe)
+        val texts = LanguageManager.localizedContext(this)
+        unlockWithDevicesLock(this, texts.getString(R.string.zert_geraet_titel), frage.schluessel.substringBeforeLast(':')) {
+            // Without a lock unlockWithDevicesLock lets through unasked; then the transcript must count.
+            vertrauen.trustCertificate(eingabe, deviceConfirmed = deviceSecure())
+        }
+        return true
+    }
+
     /** The widget hides its amounts depending on the app lock (AppLock.hiddenWidget); it redraws only when prompted. */
     private fun drawWidgetNew() {
         val ctx = applicationContext
@@ -246,9 +264,10 @@ class MainActivity : OnlyLauncherStart() {
                         CertificateDialog(
                             frage = frage,
                             userCaAn = userCa,
-                            trustOn = vertrauen::trustCertificate,
+                            trustOn = { eingabe -> trustCertificate(frage, eingabe) },
                             onNutzerCa = { vertrauen.userCa.requests(); vertrauen.discardCertificate() },
                             onAbbrechen = vertrauen::discardCertificate,
+                            deviceSecure = deviceSecure(),
                         )
                     }
                     // Here and not in the settings: the certificate dialog asks too.

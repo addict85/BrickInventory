@@ -6,6 +6,8 @@ import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
 import ch.brickinventoryapp.data.Tokenspiegel
+import ch.brickinventoryapp.data.TokenAblage
+import java.io.IOException
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.VersionsHint
 import okhttp3.OkHttpClient
@@ -42,7 +44,17 @@ private class DevicesAccess(private val prefs: Tokenspiegel) : Zugangslage {
     // A QR pairing already talks to the new server; the token stays bound to its
     // origin and does not go there (ServerWaechter.setHeaders).
     override fun serverUrl(): String { bereit(); return prefs.kopplungszielState.value ?: prefs.serverUrlState.value.orEmpty() }
-    override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
+    // Locked the mirror holds a placeholder: the request fails like a network error and is
+    // retried later, instead of going out without a token and reading as „signed out“.
+    override fun token(): String {
+        bereit()
+        val token = prefs.authTokenState.value.orEmpty()
+        if (token == TokenAblage.TOKEN_WIPED) {
+            prefs.restoreAfterLock()
+            throw IOException("Gerät gesperrt")
+        }
+        return token
+    }
     override fun tokenOrigin(): String? { bereit(); return prefs.tokenOriginState.value }
     override fun generation(): Long { bereit(); return prefs.tokenGeneration() }
 }

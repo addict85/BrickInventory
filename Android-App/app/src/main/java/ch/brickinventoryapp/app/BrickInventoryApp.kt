@@ -32,6 +32,8 @@ import ch.brickinventoryapp.app.widget.SammlungsWidget
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
+import android.app.KeyguardManager
+import ch.brickinventoryapp.model.util.LockWipe
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
@@ -46,6 +48,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var sessionLazy: dagger.Lazy<SitzungsRepository>
     @Inject lateinit var ausgangsmelderLazy: dagger.Lazy<Ausgangsmelder>
+    @Inject lateinit var lockWipeLazy: dagger.Lazy<LockWipe>
 
     /**
      * WorkManager on demand instead of at start, the counterpart to tools:node="remove"
@@ -71,10 +74,19 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // locked it could not read its numbers (DevicesStore.widgetStatus).
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                lockWipeLazy.get().restore()
                 areas.application.launch { fangeAusserAbbruch { tokenuebernahme.levelTokenHigh() } }
                 areas.application.launch { fangeAusserAbbruch { SammlungsWidget().updateAll(context) } }
             }
         }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
+
+        // Screen off with a secure lock: store keys and token leave memory (LockWipe). Without a
+        // lock the Keystore releases them anyway; dropping them would only cost reloading.
+        ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true) lockWipeLazy.get().wipe()
+            }
+        }, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
 
         // Cleanup in the background; a plaintext token of older versions never counts, it just goes away.
         areas.application.launch {

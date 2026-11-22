@@ -83,15 +83,23 @@ internal class TokenLimit {
 }
 
 /**
- * Maximum duration of a sign-in, the same as the server's hard deadline
- * (APP_MAX_DURATION_DAYS in Web-App/src/account/tokenRequest.ts; the swap inherits it). The
- * check here is the second line: the app signs itself out and invalidates the
- * token instead of only noticing at the 401 that the chain has ended.
+ * Maximum duration of a sign-in, the server's default hard deadline for app tokens
+ * (Web-App/src/account/tokenRequest.ts; the swap inherits it). The check here is the
+ * second line: the app signs itself out and invalidates the token instead of only
+ * noticing at the 401 that the chain has ended. A shorter server deadline still ends with that 401.
  */
-internal const val TOKEN_MAX_DURATION_DAYS = 180L
+internal const val TOKEN_MAX_DURATION_DAYS = 90L
+
+/** This long before the end the app asks for a new sign-in, so it does not stop mid-use. */
+internal const val LOGIN_WARNING_DAYS = 7L
+
+private const val DAY_MS = 24L * 60 * 60 * 1000
 
 internal fun loginOverdue(signedInAt: Long, jetzt: Long): Boolean =
-    jetzt - signedInAt > TOKEN_MAX_DURATION_DAYS * 24 * 60 * 60 * 1000
+    jetzt - signedInAt > TOKEN_MAX_DURATION_DAYS * DAY_MS
+
+internal fun loginDueSoon(signedInAt: Long, jetzt: Long): Boolean =
+    !loginOverdue(signedInAt, jetzt) && jetzt - signedInAt > (TOKEN_MAX_DURATION_DAYS - LOGIN_WARNING_DAYS) * DAY_MS
 
 /**
  * Swaps the token when the server requires it (header `X-Token-Rotation:

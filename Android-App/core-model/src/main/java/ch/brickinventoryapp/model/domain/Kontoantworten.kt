@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.domain
 
+import java.time.Instant
+
 import ch.brickinventoryapp.model.ui.theme.Design
 
 // What the account repository delivers, in domain values: the areas read no field of the
@@ -18,8 +20,17 @@ data class Anmeldung(
     val fehler: String? = null,
 )
 
-/** Who is signed in, as the server sees it. */
-data class AccountOwner(val id: Int, val benutzer: String, val verwalter: Boolean, val zweiterFaktorPflicht: Boolean)
+/**
+ * Who is signed in, as the server sees it. [tokenEndsAt]: the token's hard end from /auth/me
+ * (token_info.hard_expires_at, ISO instant); the swap does not move it.
+ */
+data class AccountOwner(
+    val id: Int,
+    val benutzer: String,
+    val verwalter: Boolean,
+    val zweiterFaktorPflicht: Boolean,
+    val tokenEndsAt: Instant? = null,
+)
 
 /** A started QR pairing: [code] is shown by the app for comparison with the browser. */
 data class QrPairing(val abholung: String, val code: String, val validSeconds: Int)

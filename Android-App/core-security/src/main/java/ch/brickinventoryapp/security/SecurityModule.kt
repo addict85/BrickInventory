@@ -2,6 +2,7 @@ package ch.brickinventoryapp.security
 
 import android.app.KeyguardManager
 import android.content.Context
+import ch.brickinventoryapp.model.util.LockWipe
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,14 +45,14 @@ internal object SecurityModule {
      */
     @Provides
     @Singleton
-    fun provideAblageschluessel(@ApplicationContext context: Context): Ablageschluessel =
+    fun provideAblageschluessel(@ApplicationContext context: Context, lockWipe: LockWipe): Ablageschluessel =
         Ablageschluessel(
             File(context.noBackupFilesDir, "ablage.schluessel"),
             EntsperrVault(
                 KeystoreTokenVault(ALIAS_STORE_UNLOCKED, onlyUnlocked = true),
                 KeystoreTokenVault(ALIAS_STORE, readOnly = true),
             ),
-        )
+        ).also { lockWipe.register(it::forgetInMemory) }
 
     /**
      * Two keys that survive sign-out. The one for pins and the user-CA switch works
@@ -61,7 +62,7 @@ internal object SecurityModule {
      */
     @Provides
     @Singleton
-    fun provideVertrauenschiffre(@ApplicationContext context: Context): Vertrauenschiffre {
+    fun provideVertrauenschiffre(@ApplicationContext context: Context, lockWipe: LockWipe): Vertrauenschiffre {
         val schluessel = Ablageschluessel(
             File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenVault("brickinventory_vertrauen"),
         )
@@ -69,6 +70,8 @@ internal object SecurityModule {
             File(context.noBackupFilesDir, "angaben.schluessel"),
             KeystoreTokenVault(ALIAS_DETAILS, onlyUnlocked = true),
         )
+        // The pins' key stays: TLS needs it locked too, and it reveals no account.
+        lockWipe.register(angaben::forgetInMemory)
         return Vertrauenschiffre(angaben = { angaben.fuer("angaben") }) { schluessel.fuer("vertrauen") }
     }
 

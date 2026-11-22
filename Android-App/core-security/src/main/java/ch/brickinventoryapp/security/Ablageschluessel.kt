@@ -24,9 +24,12 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
     @Volatile var newCreated: Boolean = false
         private set
 
+    // Callers get a copy: forgetInMemory() overwrites the cached bytes, and an encryption
+    // running at that moment must not end up under an all-zero key.
     @Synchronized
-    fun fetch(): ByteArray {
-        bekannt?.let { return it }
+    fun fetch(): ByteArray = (bekannt ?: load()).copyOf()
+
+    private fun load(): ByteArray {
         if (datei.isFile) {
             val umhuellt = datei.readText().trim()
             when (val finding = tresor.oeffne(umhuellt)) {
@@ -69,6 +72,17 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
             .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 
+    /**
+     * Device locked: drop the key from memory. The next access reads it from disk again,
+     * which the Keystore only allows unlocked (onlyUnlocked); until then it throws IOException
+     * like any locked access. An open database keeps its own copy until it is closed.
+     */
+    @Synchronized
+    fun forgetInMemory() {
+        bekannt?.fill(0)
+        bekannt = null
+    }
+
     /** Counts the renewals; whoever holds a derived key notices this way that it has gone stale. */
     @Volatile var stand: Long = 0
         private set
@@ -88,6 +102,7 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
         beforeRenewal.forEach { it() }
         datei.delete()
         runCatching { tresor.vergiss() }
+        bekannt?.fill(0)
         bekannt = null
         stand++
         // Locked, the new one is only created on the next access: a sign-out in the background

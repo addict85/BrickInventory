@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.cache.CacheOwner
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.Geraetesperre
+import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.security.Tresorbefund
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -23,11 +24,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Provider
@@ -49,6 +53,8 @@ class TokenAblage @Inject constructor(
     private val geraet: DevicesStore,
     /** The mirrors run as long as the app lives; no own scope without an owner. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
+    /** Screen off with a secure lock: the token leaves the interceptor's mirror (wipeTokenMirror). */
+    private val lockWipe: LockWipe = LockWipe(),
     /**
      * With a locked device reading the token waits for unlocking (readToken).
      * Stands before [redemption]: a trailing lambda means the scheduler, not the lock.
@@ -76,8 +82,25 @@ class TokenAblage @Inject constructor(
         val TOKEN_ORIGIN = stringPreferencesKey("token_herkunft")
         /** The server that issued the token (NetworkPolicy.herkunft); it goes only there. */
         val TOKEN_ORIGIN_SECRET = stringPreferencesKey("token_herkunft_geheim")
-        /** When the sign-in happened with password, passkey or QR; a swap does not change it. */
+        /** Plaintext of older versions: taken over once into [SIGNED_IN_SECRET] (signedInAt). */
         val SIGNED_IN_AT = longPreferencesKey("angemeldet_am")
+        /**
+         * When the sign-in happened with password, passkey or QR, bound to the token and
+         * under the details' key: a later date or one copied from another sign-in fails the check.
+         */
+        val SIGNED_IN_SECRET = stringPreferencesKey("angemeldet_am_geheim")
+
+        /**
+         * Stands in the mirror while the device is locked: not blank (signed in stays signed in),
+         * but never a token. The interceptor refuses it (di/ServerClient) instead of sending it.
+         */
+        internal const val TOKEN_WIPED = "\u0000gesperrt"
+
+        /**
+         * Until then a plaintext date of older versions is still taken over; afterwards every sign-in
+         * still valid carries the sealed one, and a missing one means: tampered, sign in anew.
+         */
+        internal const val LEGACY_DATE_UNTIL = 1_811_808_000_000L // 2027-06-01: older ones ran out after 180 days
         /** Plaintext and earlier form, like [SERVER_URL] and [SERVER_URL_ENC]. */
         val USERNAME     = stringPreferencesKey("username")
         val USERNAME_ENC = stringPreferencesKey("username_enc")
@@ -198,7 +221,7 @@ class TokenAblage @Inject constructor(
      * PDF export and price alert worker all read here: first the in-memory value, only at
      * cold start the disk.
      */
-    override suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
+    override suspend fun tokenJetzt(): String = _authTokenState.value?.takeUnless { it == TOKEN_WIPED } ?: authToken.first()
 
     /** The same rule for the server address — for the same reason. */
     override suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
@@ -218,10 +241,13 @@ class TokenAblage @Inject constructor(
 
     /** From the same mirrors as [accountArea]; null until the cold start has been read. */
     override fun accountAreaFlow(): Flow<String?> =
-        combine(_serverUrlState, _authTokenState, username) { s, t, name ->
-            val server = s?.trim()?.trimEnd('/').orEmpty()
-            if (server.isBlank() || t.isNullOrBlank()) null else "$server\n" + name.ifBlank { t }
-        }.distinctUntilChanged()
+        combine(_serverUrlState, _authTokenState, username) { s, t, name -> Triple(s, t, name) }
+            // Locked the account stays the same; only the token is out of memory.
+            .filter { it.second != TOKEN_WIPED }
+            .map { (s, t, name) ->
+                val server = s?.trim()?.trimEnd('/').orEmpty()
+                if (server.isBlank() || t.isNullOrBlank()) null else "$server\n" + name.ifBlank { t }
+            }.distinctUntilChanged()
 
     override suspend fun cacheArea(): String? {
         val server = serverUrlJetzt().trim().trimEnd('/')
@@ -241,6 +267,7 @@ class TokenAblage @Inject constructor(
         mirror<List<String?>, String?>({ roh(it, ORIGIN) }, _tokenOriginState) { r, melde ->
             readPatient({ oeffne(r, ORIGIN) }, null, melde = { melde(it.ifEmpty { null }) }, lock = lock)
         }
+        lockWipe.register(::wipeTokenMirror, ::restoreAfterLock)
         prefsScope.launch {
             try {
                 geraet.prepareBefore()
@@ -291,7 +318,7 @@ class TokenAblage @Inject constructor(
                 it.setze(ADDRESS, adresse)
                 if (anderer) {
                     it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.entferne(ORIGIN); it.entferne(NAME)
-                    it.remove(SIGNED_IN_AT)
+                    it.remove(SIGNED_IN_AT); it.remove(SIGNED_IN_SECRET)
                 }
             }
         }
@@ -331,19 +358,70 @@ class TokenAblage @Inject constructor(
     /**
      * FIRST into memory: the caller fires the first requests immediately afterwards,
      * and the interceptor reads the value synchronously. [signedInAt] only
-     * on a sign-in: a swap does not extend the maximum duration.
+     * on a sign-in: a swap carries the date of [previousToken] over to the new one.
      */
-    private suspend fun writeToken(token: String, herkunft: String?, signedInAt: Long?) {
+    private suspend fun writeToken(token: String, herkunft: String?, signedInAt: Long?, previousToken: String? = null) {
         // Encrypt first: if it fails (locked), memory and disk still stand at the old values.
         val geheim = tresor.verschluessle(token)
         val originSecret = herkunft?.let { verschluessle(ORIGIN, it) }
+        val datum = signedInAt ?: previousToken?.let { alt ->
+            (signedInFrom(dataStore.data.first(), alt, System.currentTimeMillis()) as? SignedIn.At)?.ms
+        }
+        // Not carried over (tampered): the old seal stays, does not match, and the next start signs out.
+        val versiegelt = datum?.let { sealSignedIn(it, token) }
         _tokenOriginState.value = herkunft
         _authTokenState.value = token
         dataStore.edit {
             it[AUTH_TOKEN_ENC] = geheim
             it.remove(AUTH_TOKEN)
             if (originSecret != null) it.setze(ORIGIN, originSecret) else it.entferne(ORIGIN)
-            if (signedInAt != null) it[SIGNED_IN_AT] = signedInAt
+            if (versiegelt != null) { it[SIGNED_IN_SECRET] = versiegelt; it.remove(SIGNED_IN_AT) }
+        }
+    }
+
+    /** The date with a tag of the token; AES-GCM under the details' key, which only works unlocked. */
+    private fun sealSignedIn(ms: Long, token: String): String =
+        geraet.verschluessleDetail("$ms:${tokenTag(token)}", SIGNED_IN_SECRET.name)
+            ?: throw IOException("${SIGNED_IN_SECRET.name} gerade nicht verschlüsselbar")
+
+    /** Sealed date of [token]; otherwise a plaintext one of older versions until [LEGACY_DATE_UNTIL]. */
+    private fun signedInFrom(prefs: Preferences, token: String, jetzt: Long): SignedIn {
+        prefs[SIGNED_IN_SECRET]?.let { geheim ->
+            return when (val b = geraet.openDetail(geheim, SIGNED_IN_SECRET.name)) {
+                is Tresorbefund.Readable -> b.klartext.split(':').takeIf { it.size == 2 && it[1] == tokenTag(token) }
+                    ?.get(0)?.toLongOrNull()?.let { SignedIn.At(it, legacy = false) } ?: SignedIn.Missing
+                Tresorbefund.Gesperrt -> SignedIn.Locked
+                Tresorbefund.Weg -> SignedIn.Missing
+            }
+        }
+        // A date in the future would extend the sign-in; at most now counts.
+        val alt = prefs[SIGNED_IN_AT] ?: return SignedIn.Missing
+        return if (jetzt < LEGACY_DATE_UNTIL) SignedIn.At(minOf(alt, jetzt), legacy = true) else SignedIn.Missing
+    }
+
+    /** Screen off with a secure lock: the interceptor gets a placeholder until unlocking. */
+    private fun wipeTokenMirror() {
+        prefsScope.launch {
+            tokenLimit.schreibe<Unit>(newSession = { false }) {
+                if (!_authTokenState.value.isNullOrBlank()) _authTokenState.value = TOKEN_WIPED
+            }
+        }
+    }
+
+    private val restoring = AtomicBoolean(false)
+
+    /** Reads the token from disk again; locked, readToken waits for unlocking. */
+    override fun restoreAfterLock() {
+        if (_authTokenState.value != TOKEN_WIPED || !restoring.compareAndSet(false, true)) return
+        prefsScope.launch {
+            try {
+                val token = authToken.first()
+                tokenLimit.schreibe<Unit>(newSession = { false }) {
+                    if (_authTokenState.value == TOKEN_WIPED) _authTokenState.value = token
+                }
+            } finally {
+                restoring.set(false)
+            }
         }
     }
 
@@ -364,20 +442,38 @@ class TokenAblage @Inject constructor(
     /** Store the swapped token only if nothing else happened since the swap began. */
     override suspend fun replaceSwappedToken(vorher: TokenStatus, neu: String, requestOrigin: String?): Boolean =
         tokenLimit.replaceIf(vorher, requestOrigin, ::tokenStatus) {
-            writeToken(neu, requestOrigin, signedInAt = null)
+            writeToken(neu, requestOrigin, signedInAt = null, previousToken = vorher.token)
         }
 
     /**
-     * Is the sign-in older than [TOKEN_MAX_DURATION_DAYS]? A sign-in from
-     * a version without a date starts counting now instead of signing out immediately.
+     * Is the sign-in older than [TOKEN_MAX_DURATION_DAYS]? Without a date that matches the
+     * token (deleted, altered, copied) it counts as expired: otherwise removing it would
+     * restart the clock. Locked it cannot be read; then it is checked on the next start.
      */
     suspend fun loginExpired(jetzt: Long = System.currentTimeMillis()): Boolean {
-        val am = dataStore.data.first()[SIGNED_IN_AT]
-        if (am == null) {
-            if (tokenJetzt().isNotBlank()) dataStore.edit { it[SIGNED_IN_AT] = jetzt }
-            return false
+        val token = tokenJetzt().ifBlank { return false }
+        return when (val am = signedInFrom(dataStore.data.first(), token, jetzt)) {
+            is SignedIn.At -> {
+                if (am.legacy) adoptLegacyDate(am.ms, token)
+                loginOverdue(am.ms, jetzt)
+            }
+            SignedIn.Locked -> false
+            SignedIn.Missing -> true
         }
-        return loginOverdue(am, jetzt)
+    }
+
+    /** Less than [LOGIN_WARNING_DAYS] left: the session asks for a new sign-in in time. */
+    suspend fun loginExpiresSoon(jetzt: Long = System.currentTimeMillis()): Boolean {
+        val token = tokenJetzt().ifBlank { return false }
+        val am = signedInFrom(dataStore.data.first(), token, jetzt) as? SignedIn.At ?: return false
+        return loginDueSoon(am.ms, jetzt)
+    }
+
+    /** The plaintext date of older versions goes under the seal; only if the token is still the same. */
+    private suspend fun adoptLegacyDate(ms: Long, token: String) = tokenLimit.schreibe<Unit>(newSession = { false }) {
+        if (tokenJetzt() != token) return@schreibe
+        val versiegelt = fangeAusserAbbruch { sealSignedIn(ms, token) }.getOrNull() ?: return@schreibe
+        dataStore.edit { it[SIGNED_IN_SECRET] = versiegelt; it.remove(SIGNED_IN_AT) }
     }
 
     /**
@@ -466,11 +562,24 @@ class TokenAblage @Inject constructor(
             it.entferne(ORIGIN)
             it.entferne(NAME)
             it.remove(SIGNED_IN_AT)
+            it.remove(SIGNED_IN_SECRET)
             // The price alert's mark belongs to the account; the next one would otherwise get its state.
             it.remove(DevicesStore.ALARM_BRAND)
         }
     }
 }
+
+/** The sign-in date as found: readable and matching, not readable right now, or not to be trusted. */
+private sealed class SignedIn {
+    class At(val ms: Long, val legacy: Boolean) : SignedIn()
+    object Locked : SignedIn()
+    object Missing : SignedIn()
+}
+
+/** 128 bits of the token's SHA-256: binds the date without the token itself lying in it. */
+private fun tokenTag(token: String): String =
+    MessageDigest.getInstance("SHA-256").digest(token.toByteArray(Charsets.UTF_8)).take(16)
+        .joinToString("") { "%02x".format(it) }
 
 /** A detail in its forms: [geheim] now, [alt] under the pins' key, [klar] in plaintext. */
 private class Angabe(

@@ -205,6 +205,35 @@ jobs:
           fi
           { echo "sha256_apk=$APK"; echo "sha256_aab=$AAB"; } >> "$GITHUB_OUTPUT"
 
+      # Signiert der Inhaber offline, braucht die Freigabe in release erst zu kommen, wenn
+      # die signierten Dateien da sind. Sonst steht hier, was zu signieren ist.
+      - name: Offline signierte Dateien vorhanden?
+        if: vars.ANDROID_SIGNIERWEG == 'offline'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIKETT: ${{ steps.etikett.outputs.etikett }}
+          LAUF: ${{ steps.etikett.outputs.lauf }}
+          APK: ${{ steps.summen.outputs.sha256_apk }}
+          AAB: ${{ steps.summen.outputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          MUSTER="^signiert-$(printf '%s' "$ETIKETT" | sed 's/[.]/\\./g')(-[0-9]+)?\$"
+          if ! gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+               --jq '.[] | select(.prerelease and (.draft | not)) | .tag_name' | grep -Eq "$MUSTER"; then
+            {
+              echo "## Offline signieren"
+              echo ""
+              echo "Aus dem Baulauf $LAUF das Artefakt \`apk-unsigniert\` holen und prüfen:"
+              echo ""
+              echo "    $APK  apk/release/app-release-unsigned.apk"
+              echo "    $AAB  bundle/release/app-release.aab"
+              echo ""
+              echo "Dann signieren und als Vorab-Release \`signiert-$ETIKETT\` ablegen (docs/ANDROID-RELEASE.md, „Offline signieren“) und diesen Workflow von Hand mit dem Etikett neu starten."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Offline-Signatur fehlt::Noch keine Vorab-Release signiert-$ETIKETT (Anleitung in der Zusammenfassung dieses Laufs). Nichts wird signiert."
+            exit 1
+          fi
+
   # ── Signieren und prüfen: aus main, Schlüssel nur in den Environments ────
   signieren:
     needs: etikett

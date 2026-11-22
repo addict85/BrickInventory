@@ -486,7 +486,8 @@
     <string name="vm_set_added">„%1$s“ hinzugefügt</string>
     <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Das hat nicht geklappt: %1$s</string>
-    <string name="vm_anmeldung_zu_alt">Die Anmeldung ist älter als 180 Tage. Bitte melde dich neu an.</string>
+    <string name="vm_anmeldung_zu_alt">Die Anmeldung ist abgelaufen (höchstens 90 Tage) oder liess sich nicht prüfen. Bitte melde dich neu an.</string>
+    <string name="vm_anmeldung_laeuft_ab">Deine Anmeldung läuft in weniger als einer Woche ab. Bitte melde dich neu an, damit die App ohne Unterbruch weiterläuft.</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
     <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Web-App unter „Angemeldete Geräte“ nachsehen.</string>
     <string name="abmeldung_kanal">Abmeldung</string>
@@ -1031,6 +1032,8 @@
     <string name="zert_bisher">Bisher bestätigt</string>
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
+    <string name="zert_geraet_bestaetigen">Der Server verwendet einen neuen Schlüssel. Bestätige nach dem Tippen mit deiner Displaysperre, dass du es bist.</string>
+    <string name="zert_geraet_titel">Neuen Serverschlüssel bestätigen</string>
     <string name="zert_titel_schluessel_neu">Der Server hat einen neuen Schlüssel</string>
     <string name="zert_text_schluessel_neu">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
     <string name="zert_erstkontakt_abtippen">Fingerabdruck stattdessen abtippen</string>

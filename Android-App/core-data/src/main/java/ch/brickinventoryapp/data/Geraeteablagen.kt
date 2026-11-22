@@ -84,6 +84,9 @@ interface Tokenspiegel {
     fun onServerwechsel(listener: () -> Unit)
     suspend fun tokenStatus(): TokenStatus
     suspend fun replaceSwappedToken(vorher: TokenStatus, neu: String, requestOrigin: String?): Boolean
+
+    /** After the device lock wiped the token from memory: read it again (TokenAblage, LockWipe). */
+    fun restoreAfterLock() = Unit
 }
 
 /** Once at start: remove a plaintext token of older versions, rekey an old ciphertext. */

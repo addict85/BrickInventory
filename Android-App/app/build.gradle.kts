@@ -100,6 +100,12 @@ android {
     }
 
     buildTypes {
+        // Its own package next to the release: a debug build (debuggable, run-as can read
+        // its files) never replaces the signed app or reaches its data, and Play rejects it.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // findByName instead of getByName: without a keystore the configuration
             // does not exist, and `signingConfig = null` means

@@ -43,10 +43,12 @@ import org.junit.Test
  *   H  in TokenLimit.schreibe() `generation++` removed → red “… even if
  *      the same token comes back”
  *   I  loginOverdue() with `TOKEN_MAX_DURATION_DAYS * 24 * 60 * 1000`
- *      (minutes instead of hours) → red “after 180 days the sign-in is overdue …”
+ *      (minutes instead of hours) → red “after 90 days the sign-in is overdue …”
  * Counter-check:
  *   J  noetig() again without origin and generation (`stand().token.takeIf …`) →
  *      red “already swapped does not mean taking the token of another session”
+ * Counter-check:
+ *   N  loginDueSoon() without `!loginOverdue(…)` → red “in the last week the app asks …”
  * Counter-check:
  *   K  faellig() swaps with runBlocking in the caller instead of in the passed scope →
  *      red “due swaps in the application scope and returns immediately”
@@ -241,13 +243,23 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `after 180 days the sign-in is overdue, not before`() {
+    fun `after 90 days the sign-in is overdue, not before`() {
         val tag = 24L * 60 * 60 * 1000
         val am = 1_700_000_000_000L
-        assertFalse(loginOverdue(am, am + 179 * tag))
-        assertFalse(loginOverdue(am, am + 180 * tag))
-        assertTrue(loginOverdue(am, am + 180 * tag + 1))
+        assertFalse(loginOverdue(am, am + 89 * tag))
+        assertFalse(loginOverdue(am, am + 90 * tag))
+        assertTrue(loginOverdue(am, am + 90 * tag + 1))
         assertFalse("Eine zurückgestellte Uhr meldet nicht ab", loginOverdue(am, am - tag))
+    }
+
+    @Test
+    fun `in the last week the app asks for a new sign-in, not earlier and not after the end`() {
+        val tag = 24L * 60 * 60 * 1000
+        val am = 1_700_000_000_000L
+        assertFalse(loginDueSoon(am, am + 83 * tag))
+        assertTrue(loginDueSoon(am, am + 83 * tag + 1))
+        assertTrue(loginDueSoon(am, am + 90 * tag))
+        assertFalse("Abgelaufen ist kein Hinweis mehr, sondern Abmelden", loginDueSoon(am, am + 90 * tag + 1))
     }
 
     private companion object {

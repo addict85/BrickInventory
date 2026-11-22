@@ -22,6 +22,7 @@ internal class AccountStore @Inject constructor(
     override suspend fun serverUrlJetzt(): String = token.serverUrlJetzt()
     override suspend fun tokenJetzt(): String = token.tokenJetzt()
     override suspend fun loginExpired(jetzt: Long): Boolean = token.loginExpired(jetzt)
+    override suspend fun loginExpiresSoon(jetzt: Long): Boolean = token.loginExpiresSoon(jetzt)
     override suspend fun saveAppTheme(theme: Design) = geraet.saveAppTheme(theme)
     override suspend fun saveCurrency(cur: Waehrung) = geraet.saveCurrency(cur)
     override fun failedRedemptions(): Set<String> = geraet.failedRedemptions()

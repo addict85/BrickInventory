@@ -140,7 +140,13 @@ class SitzungsDienst @Inject constructor(
         // there would only fail and fill the bar with network errors.
         if (token.isNotBlank() && url.isNotBlank() &&
             !NetworkPolicy.plaintextLegacyStock(url, NetworkPolicy.entwicklung)) {
-            anmeldung.launch { sitzung.adoptAccount(konto, zweiterFaktorPflicht) }
+            anmeldung.launch {
+                val nutzer = sitzung.adoptAccount(konto, zweiterFaktorPflicht)
+                // The swap cannot extend the hard end (the app's 90 days or the server's); only a new sign-in can.
+                if (prefs.loginExpiresSoon() || tokenEndsSoon(nutzer?.tokenEndsAt, System.currentTimeMillis())) {
+                    meldungen.zeige(Meldung.Resource(R.string.vm_anmeldung_laeuft_ab))
+                }
+            }
             afterLogin(anmeldung)
             ladeEinstellungen(anmeldung)
             vorwaermen.kick()

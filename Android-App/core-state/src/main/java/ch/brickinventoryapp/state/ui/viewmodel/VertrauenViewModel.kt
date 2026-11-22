@@ -30,9 +30,12 @@ class VertrauenViewModel @Inject constructor(
         afterChange = drop::discard,
     )
 
-    /** Yes to the shown certificate. Without a known CA or when changed, only with [eingabe]. */
-    fun trustCertificate(eingabe: String? = null): Boolean {
-        if (!certificateQuestion.confirm(prefs, eingabe)) return false
+    /**
+     * Yes to the shown certificate. Without a known CA or when changed, only with [eingabe];
+     * a new key from Android 16 only with [deviceConfirmed] (screen lock just passed).
+     */
+    fun trustCertificate(eingabe: String? = null, deviceConfirmed: Boolean = false): Boolean {
+        if (!certificateQuestion.confirm(prefs, eingabe, deviceConfirmed)) return false
         drop.discard()
         return true
     }

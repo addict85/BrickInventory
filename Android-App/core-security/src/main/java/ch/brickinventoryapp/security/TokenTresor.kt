@@ -11,7 +11,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Encryption for the bearer token. The token opens an account on the server and expires
- * only after TOKEN_IDLE_DAYS of inactivity.
+ * at the latest after TOKEN_MAX_DURATION_DAYS (core-data), earlier when unused.
  */
 
 /** Where the keys live: on the device the AndroidKeyStore, in the test a bundle in memory. */
