@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -27,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.PurchaseSumsView
 import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.ui.loading
@@ -100,25 +103,12 @@ internal fun AcquisitionManagementScreen(
     onBack: () -> Unit,
     message: SnackbarHostState = remember { SnackbarHostState() },
 ) {
-    val state = condition.state
-    val glance = condition.glance
-    val currency = state.currency
     val manDetailState = condition.manDetailState
-
     val acquisitions = manDetailState.acquisitions.filterNot { it.id == condition.routePurchaseId }
-    // Total from the server — the calculation used to sit here, and three more times
-    // elsewhere (see `utils/acquisitions.ts`, acquisitionTotals).
-    val totals = manDetailState.acquisitionTotals
     // Feedback after an owner change — the server says whether and what
     // moved along.
     var moveMessage by remember { mutableStateOf<String?>(null) }
-    // For the success message with the real numbers from the response. Not
-    // `LocalContext.current.getString`: a grabbed context delivers stale values after a
-    // config change (Lint: LocalContextGetResourceValueCall).
-    // `stringResource` doesn't work, because the numbers only exist in the response;
-    // LocalResources is the config-aware form.
-    val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = manDetailState.purchasesFetch.loading
+    val item = PurchaseItem(type, id, colorId)
 
     Scaffold(
         snackbarHost = { SnackbarHost(message) },
@@ -127,19 +117,14 @@ internal fun AcquisitionManagementScreen(
             DetailTopAppBar(title, onBack, close = false)
         }
     ) { innerPadding ->
-        if (isLoading && acquisitions.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
         if (acquisitions.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) {
-                Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (manDetailState.purchasesFetch.loading) CircularProgressIndicator()
+                else Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             return@Scaffold
         }
+        val onMoved = rememberMoveMessage { moveMessage = it }
 
         // Centered at form width on the tablet, like settings: above 1200 dp
         // quantity and price in one row sat too far apart to read together.
@@ -162,81 +147,112 @@ internal fun AcquisitionManagementScreen(
             items(acquisitions, key = { it.id }) { acq ->
                 AcquisitionManagementRow(
                     acquisition = acq,
-                    currency = currency,
-                    onSave = { price, cond, qty, date ->
-                        when (type) {
-                            ItemKind.SET  -> actions.updateAcquisition(id, acq.id, price, cond, qty, date)
-                            else   -> actions.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
-                        }
-                        // Reload after save to reflect server-side changes (e.g. market price fill);
-                        // the ViewModel already reloads date changes on its own.
-                        if (price == null && date == null) {
-                            if (type == ItemKind.SET) actions.loadAcquisitions(id)
-                            else actions.loadManualAcquisitions(type, id, colorId)
-                        }
-                    },
+                    onSave = { price, cond, qty, date -> item.save(actions, acq.id, price, cond, qty, date) },
                     onDelete = { actions.purchaseDeleteReserve(type, id, colorId, acq.id) }
                 )
-                // ── Owner of this row ──
-                //
-                // The purchase price is the level at which a copy exists: three entries
-                // are three purchases, which can belong to different children. For sets, manual
-                // parts and minifigures — the only way to move inventory between accounts.
-                if (glance.householdMembers.size > 1) {
-                    OwnerPicker(
-                        members = glance.householdMembers,
-                        selected = acq.ownerUserId ?: glance.householdMembers.firstOrNull { it.isSelf }?.id,
-                        onSelect = { target ->
-                            // acq.ownerUserId only for comparison — the
-                            // server determines the sender from the row.
-                            if (target != acq.ownerUserId) actions.changeAcquisitionOwner(
-                                type, id, colorId, acq.id, target
-                            ) { err, parts, figures ->
-                                // After the switch the list no longer matches:
-                                // the row now belongs to the other account.
-                                if (type == ItemKind.SET) actions.loadAcquisitions(id)
-                                else actions.loadManualAcquisitions(type, id, colorId)
-                                // The numbers come from the response, otherwise the message said "0
-                                // parts" even when hundreds move. Two numbers, two
-                                // matches: a <plurals> only matches one,
-                                // hence two fragments in one frame.
-                                moveMessage = err ?: res.getString(
-                                    R.string.household_move_ok,
-                                    res.getQuantityString(R.plurals.household_move_parts, parts, parts),
-                                    res.getQuantityString(R.plurals.household_move_minifigs, figures, figures))
-                            }
-                        },
-                        modifier = Modifier.padding(top = Spacing.tiny)
-                    )
-                }
+                AcquisitionOwner(acq, condition.glance.householdMembers, item, actions, onMoved)
                 HorizontalDivider()
             }
 
             // The total comes from the server and still counts a pending purchase.
             if (acquisitions.size > 1 && condition.routePurchaseId == null) {
-                item {
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = Spacing.tiny),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(R.string.acq_total_quantity, totals.quantity),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // null means "no purchase price recorded" — the server makes
-                        // that distinction, not this view.
-                        totals.amount?.let {
-                            Text(fmtMoney(it, currency),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                }
+                item { AcquisitionTotals(manDetailState.acquisitionTotals, condition.state.currency) }
             }
         }
     }
 }
 
+/** The set, part or figure whose purchases are managed; the server addresses sets apart from the rest. */
+private class PurchaseItem(val type: ItemKind, val id: String, val colorId: Int) {
+    fun reload(actions: PurchasesActions) {
+        if (type == ItemKind.SET) actions.loadAcquisitions(id)
+        else actions.loadManualAcquisitions(type, id, colorId)
+    }
+
+    fun save(actions: PurchasesActions, acqId: Int, price: Double?, cond: Condition?, qty: Int?, date: String?) {
+        when (type) {
+            ItemKind.SET  -> actions.updateAcquisition(id, acqId, price, cond, qty, date)
+            else   -> actions.updateManualAcquisition(type, id, colorId, acqId, price, cond, qty, date)
+        }
+        // Reload after save to reflect server-side changes (e.g. market price fill);
+        // the ViewModel already reloads date changes on its own.
+        if (price == null && date == null) reload(actions)
+    }
+}
+
+/**
+ * The message after an owner change, from the real numbers of the response. Not
+ * `LocalContext.current.getString`: a grabbed context delivers stale values after a
+ * config change (Lint: LocalContextGetResourceValueCall); LocalResources is the config-aware form.
+ */
+@Composable
+private fun rememberMoveMessage(show: (String) -> Unit): (err: String?, parts: Int, figures: Int) -> Unit {
+    val res = LocalResources.current
+    return { err, parts, figures ->
+        // The numbers come from the response, otherwise the message said "0
+        // parts" even when hundreds move. Two numbers, two
+        // matches: a <plurals> only matches one,
+        // hence two fragments in one frame.
+        show(err ?: res.getString(
+            R.string.household_move_ok,
+            res.getQuantityString(R.plurals.household_move_parts, parts, parts),
+            res.getQuantityString(R.plurals.household_move_minifigs, figures, figures)))
+    }
+}
+
+/**
+ * Owner of this row. The purchase price is the level at which a copy exists: three entries
+ * are three purchases, which can belong to different children. For sets, manual
+ * parts and minifigures — the only way to move inventory between accounts.
+ */
+@Composable
+private fun AcquisitionOwner(
+    acq: PurchaseView,
+    members: List<MemberView>,
+    item: PurchaseItem,
+    actions: PurchasesActions,
+    onMoved: (err: String?, parts: Int, figures: Int) -> Unit,
+) {
+    if (members.size <= 1) return
+    OwnerPicker(
+        members = members,
+        selected = acq.ownerUserId ?: members.firstOrNull { it.isSelf }?.id,
+        onSelect = { target ->
+            // acq.ownerUserId only for comparison — the
+            // server determines the sender from the row.
+            if (target != acq.ownerUserId) actions.changeAcquisitionOwner(
+                item.type, item.id, item.colorId, acq.id, target
+            ) { err, parts, figures ->
+                // After the switch the list no longer matches:
+                // the row now belongs to the other account.
+                item.reload(actions)
+                onMoved(err, parts, figures)
+            }
+        },
+        modifier = Modifier.padding(top = Spacing.tiny)
+    )
+}
+
+/** Total quantity and amount below several purchases; null means "no purchase price recorded". */
+@Composable
+private fun AcquisitionTotals(totals: PurchaseSumsView, currency: CurrencyCode) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = Spacing.tiny),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.acq_total_quantity, totals.quantity),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // null means "no purchase price recorded" — the server makes
+        // that distinction, not this view.
+        totals.amount?.let {
+            Text(fmtMoney(it, currency),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
 /**
  * The purchase date with a visible label, as a button at full tap size: a bare
  * date in small type was hard to hit and gave away neither what it was nor
@@ -265,7 +281,6 @@ internal fun PurchaseDate(createdAt: Instant?, changeOn: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AcquisitionManagementRow(
     acquisition: PurchaseView,
-    currency: CurrencyCode,
     onSave: (price: Double?, cond: Condition?, qty: Int?, date: String?) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -274,9 +289,7 @@ private fun AcquisitionManagementRow(
         mutableStateOf(acquisition.effectivePrice?.let { fmtInput(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
-    val estimatedText = stringResource(R.string.acq_price_estimated)
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
 
     // Capture unsaved input: onFocusChanged for the normal case,
     // DisposableEffect for navigating back. lastSaved prevents a double save
@@ -317,6 +330,104 @@ private fun AcquisitionManagementRow(
         )
     }
 
+    PurchaseDateEdit(acquisition, onSave)
+
+    Column(Modifier.fillMaxWidth()) {
+        QuantityPriceRow(acquisition, qtyText, { qtyText = it }, priceText, { priceText = it }, ::flushPending) {
+            showDeleteConfirm = true
+        }
+        // The condition below quantity and price, full width: in the row the
+        // segmented button left the price barely any room on the phone.
+        ConditionToggle(
+            selected = condition,
+            onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
+            modifier = Modifier.padding(bottom = Spacing.small),
+        )
+    }
+}
+
+/** Quantity and price side by side, saved on losing focus or "Done"; the delete button at the end. */
+@Composable
+private fun QuantityPriceRow(
+    acquisition: PurchaseView,
+    qtyText: String,
+    onQty: (String) -> Unit,
+    priceText: String,
+    onPrice: (String) -> Unit,
+    flush: () -> Unit,
+    onDeleteAsk: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val estimatedText = stringResource(R.string.acq_price_estimated)
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = Spacing.tiny),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Qty
+        OutlinedTextField(
+            value = qtyText,
+            onValueChange = { onQty(NumericInput.quantity(it)) },
+            label = { Text(stringResource(R.string.common_quantity)) },
+            prefix = { Text(stringResource(R.string.common_times), fontWeight = FontWeight.Bold) },
+            // onFocusChanged in addition to onDone: whoever changes the value and taps back without
+            // pressing "Done" would lose the input. Only saved on losing focus
+            // if the value has actually changed.
+            modifier = Modifier
+                .width(COUNT_WIDTH)
+                .onFocusChanged { st -> if (!st.isFocused) flush() },
+            singleLine = true,
+            keyboardOptions = NumericInput.integerKeyboard(ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus(); flush() }
+            ),
+            shape = Shapes.tag
+        )
+
+        // Price
+        OutlinedTextField(
+            value = priceText,
+            onValueChange = { onPrice(NumericInput.price(it)) },
+            // See the reasoning at the quantity field: without saving on
+            // losing focus, every input would be lost where the user didn't
+            // explicitly press "Done" on the keyboard.
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { st -> if (!st.isFocused) flush() },
+            singleLine = true,
+            label = { Text(stringResource(R.string.detail_purchase_price)) },
+            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
+            // A market price the server has filled in is not a paid
+            // amount; the "≈" says so, until someone enters the real price.
+            prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
+                { Text("≈", modifier = Modifier.semantics {
+                    contentDescription = estimatedText }) }
+            } else null,
+            suffix = acquisition.currency?.let { w -> { Text(w.code, style = MaterialTheme.typography.bodySmall) } },
+            keyboardOptions = NumericInput.priceKeyboard(),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus(); flush() }
+            ),
+            shape = Shapes.tag
+        )
+
+        // Delete
+        WithTooltip(stringResource(R.string.acq_delete_title)) {
+            IconButton(onClick = onDeleteAsk) {
+                Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
+                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+/** The purchase date and its picker; the chosen day goes to the server as YYYY-MM-DD. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PurchaseDateEdit(
+    acquisition: PurchaseView,
+    onSave: (price: Double?, cond: Condition?, qty: Int?, date: String?) -> Unit,
+) {
     var showDatePicker by remember(acquisition.id) { mutableStateOf(false) }
     PurchaseDate(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
@@ -341,76 +452,6 @@ private fun AcquisitionManagementRow(
         ) {
             DatePicker(state = dpState)
         }
-    }
-
-    Column(Modifier.fillMaxWidth()) {
-    Row(
-        Modifier.fillMaxWidth().padding(bottom = Spacing.tiny),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Qty
-        OutlinedTextField(
-            value = qtyText,
-            onValueChange = { qtyText = NumericInput.quantity(it) },
-            label = { Text(stringResource(R.string.common_quantity)) },
-            prefix = { Text(stringResource(R.string.common_times), fontWeight = FontWeight.Bold) },
-            // onFocusChanged in addition to onDone: whoever changes the value and taps back without
-            // pressing "Done" would lose the input. Only saved on losing focus
-            // if the value has actually changed.
-            modifier = Modifier
-                .width(COUNT_WIDTH)
-                .onFocusChanged { st -> if (!st.isFocused) flushPending() },
-            singleLine = true,
-            keyboardOptions = NumericInput.integerKeyboard(ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus(); flushPending() }
-            ),
-            shape = Shapes.tag
-        )
-
-        // Price
-        OutlinedTextField(
-            value = priceText,
-            onValueChange = { priceText = NumericInput.price(it) },
-            // See the reasoning at the quantity field: without saving on
-            // losing focus, every input would be lost where the user didn't
-            // explicitly press "Done" on the keyboard.
-            modifier = Modifier
-                .weight(1f)
-                .onFocusChanged { st -> if (!st.isFocused) flushPending() },
-            singleLine = true,
-            label = { Text(stringResource(R.string.detail_purchase_price)) },
-            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
-            // A market price the server has filled in is not a paid
-            // amount; the "≈" says so, until someone enters the real price.
-            prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
-                { Text("≈", modifier = Modifier.semantics {
-                    contentDescription = estimatedText }) }
-            } else null,
-            suffix = acquisition.currency?.let { w -> { Text(w.code, style = MaterialTheme.typography.bodySmall) } },
-            keyboardOptions = NumericInput.priceKeyboard(),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus(); flushPending() }
-            ),
-            shape = Shapes.tag
-        )
-
-        // Delete
-        WithTooltip(stringResource(R.string.acq_delete_title)) {
-            IconButton(onClick = { showDeleteConfirm = true }) {
-                Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
-                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-            }
-        }
-    }
-    // The condition below quantity and price, full width: in the row the
-    // segmented button left the price barely any room on the phone.
-    ConditionToggle(
-        selected = condition,
-        onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
-        modifier = Modifier.padding(bottom = Spacing.small),
-    )
     }
 }
 

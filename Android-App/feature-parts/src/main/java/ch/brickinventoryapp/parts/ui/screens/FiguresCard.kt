@@ -27,6 +27,7 @@ import ch.brickinventoryapp.model.util.DateYear
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionBadges
 import ch.brickinventoryapp.shared.ui.ManualTile
+import ch.brickinventoryapp.shared.ui.ManualTileItem
 import ch.brickinventoryapp.shared.ui.OwnerBadges
 import ch.brickinventoryapp.shared.ui.TableRow
 import ch.brickinventoryapp.shared.ui.quantityFromSet
@@ -53,16 +54,18 @@ internal fun ManualFigTile(fig: ManualMinifigView, serverUrl: String, imageLoade
     // parts also use — so that condition and owner badges are not maintained in only
     // one twin.
     ManualTile(
+        item = ManualTileItem(
+            name = fig.figName ?: fig.figNumber,
+            quantity = fig.quantity,
+            states = fig.conditions,
+            condition = fig.condition,
+            owner = fig.owners,
+            price = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
+        ),
+        currency = currency,
         imageUrl = image,
         onImageError = onImageError,
         imageLoader = imageLoader,
-        name = fig.figName ?: fig.figNumber,
-        quantity = fig.quantity,
-        states = fig.conditions,
-        condition = fig.condition,
-        owner = fig.owners,
-        price = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
-        currency = currency,
         onEdit = onEdit,
     )
 }

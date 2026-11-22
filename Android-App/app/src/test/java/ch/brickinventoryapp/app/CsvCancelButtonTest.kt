@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -38,7 +39,7 @@ class CsvCancelButtonTest {
         val running = mutableStateOf(true)
         compose.setContent {
             BrickInventoryManagerTheme {
-                CsvImportBanner(done = 3, total = 10, current = "75192-1", ok = 3, warn = 0, err = 0,
+                CsvImportBanner(CsvProgress(done = 3, total = 10, current = "75192-1", ok = 3, warn = 0, err = 0),
                     running = running.value, onCancel = { cancelled++ })
             }
         }

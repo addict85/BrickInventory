@@ -14,8 +14,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -128,106 +130,128 @@ private fun PriceCardContent(
 }
 
 /** Core data: number, quantity (changeable), entry date. */
-internal fun LazyListScope.setDetailDetailsSection(set: SetView, setNumber: String, storageUiState: StorageUiState, actions: SetDetailActions, acquisitions: List<PurchaseView>, currency: CurrencyCode, fmtDate: (Instant?) -> String, onNavigateToAcqMgmt: (type: ItemKind, id: String, colorId: Int, title: String) -> Unit) {
+/** What the details section shows of the purchases: rows, currency and the date format. */
+internal class PurchaseSummary(val acquisitions: List<PurchaseView>, val currency: CurrencyCode, val fmtDate: (Instant?) -> String)
+
+internal fun LazyListScope.setDetailDetailsSection(
+    set: SetView,
+    setNumber: String,
+    storageUiState: StorageUiState,
+    actions: SetDetailActions,
+    purchases: PurchaseSummary,
+    onNavigateToAcqMgmt: (type: ItemKind, id: String, colorId: Int, title: String) -> Unit,
+) {
+    val fmtDate = purchases.fmtDate
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             // Without a date, no row: "Added —" says nothing.
             if (set.addedAt != null) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
-            // ── Storage location ──
-            //
-            // A picker field with the option to add new locations. The list belongs to the
-            // set's owner; SetDetailViewModel fetches it with the detail.
-            // At large font size, the field sits below the label at full width:
-            // 180 dp next to "Storage location" wasn't even enough for the placeholder at 200%.
-            val storageLabel: @Composable () -> Unit = {
-                Text(stringResource(R.string.detail_storage),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium)
-            }
-            if (largeFont()) {
-                Column(Modifier.fillMaxWidth().padding(vertical = Spacing.hairline),
-                       verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
-                    storageLabel()
-                    LocationField(
-                        value = set.storage ?: "",
-                        stock = storageUiState.stock.map { it.name },
-                        onValue = { actions.setSetLocation(setNumber, it) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            } else Row(Modifier.fillMaxWidth()
-                    .padding(vertical = Spacing.hairline),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                storageLabel()
-                LocationField(
-                    value = set.storage ?: "",
-                    stock = storageUiState.stock.map { it.name },
-                    onValue = { actions.setSetLocation(setNumber, it) },
-                    // The rest of the row: at a fixed width, "No storage location" was
-                    // cut off, and on the tablet the field stood half as wide as the card.
-                    modifier = Modifier.padding(start = Spacing.large).weight(1f),
-                )
-            }
+            SetStorageRow(set, setNumber, storageUiState, actions)
             HorizontalDivider(
                 Modifier.padding(vertical = Spacing.tiny),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
-            // Quantity stepper, tied to set.quantity: the server can cap a decrease
-            // and reports back the real quantity; without the link, the stepper would keep
-            // its own assumption.
-            var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
-            // A quiet tick per step: the number changes without needing to look.
-            val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-            val tick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = Spacing.tiny),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    stringResource(R.string.common_quantity),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.medium)
-                ) {
-                    WithTooltip(stringResource(R.string.cd_qty_decrease)) {
-                        QuantitiesButton(onClick = { if (qty > 1) { qty--; tick(); actions.changeQuantityBy(set.setNumber, -1) } }) {
-                            Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
-                                Modifier.size(withFont(18.dp)))
-                        }
-                    }
-                    Text(
-                        "$qty",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.widthIn(min = 24.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    WithTooltip(stringResource(R.string.cd_qty_increase)) {
-                        QuantitiesButton(onClick = { qty++; tick(); actions.changeQuantityBy(set.setNumber, 1) }) {
-                            Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
-                                Modifier.size(withFont(18.dp)))
-                        }
-                    }
-                }
-            }
+            SetQuantityRow(set, actions)
 
             // Purchase price — compact summary + button to manage
             val capturedSetNumber = set.setNumber
             val capturedSetTitle  = set.name ?: set.setNumber
             AcquisitionSummarySection(
-                acquisitions = acquisitions,
-                currency = currency,
+                acquisitions = purchases.acquisitions,
+                currency = purchases.currency,
                 onEditPrices = {
                     onNavigateToAcqMgmt(ItemKind.SET, capturedSetNumber, 0, capturedSetTitle)
                 }
             )
+        }
+    }
+}
+
+/**
+ * The storage location: a picker field with the option to add new locations. The list belongs to
+ * the set's owner; SetDetailViewModel fetches it with the detail.
+ */
+@Composable
+private fun SetStorageRow(set: SetView, setNumber: String, storageUiState: StorageUiState, actions: SetDetailActions) {
+    // At large font size, the field sits below the label at full width:
+    // 180 dp next to "Storage location" wasn't even enough for the placeholder at 200%.
+    val storageLabel: @Composable () -> Unit = {
+        Text(stringResource(R.string.detail_storage),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium)
+    }
+    if (largeFont()) {
+        Column(Modifier.fillMaxWidth().padding(vertical = Spacing.hairline),
+               verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+            storageLabel()
+            LocationField(
+                value = set.storage ?: "",
+                stock = storageUiState.stock.map { it.name },
+                onValue = { actions.setSetLocation(setNumber, it) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    } else Row(Modifier.fillMaxWidth()
+            .padding(vertical = Spacing.hairline),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically) {
+        storageLabel()
+        LocationField(
+            value = set.storage ?: "",
+            stock = storageUiState.stock.map { it.name },
+            onValue = { actions.setSetLocation(setNumber, it) },
+            // The rest of the row: at a fixed width, "No storage location" was
+            // cut off, and on the tablet the field stood half as wide as the card.
+            modifier = Modifier.padding(start = Spacing.large).weight(1f),
+        )
+    }
+}
+
+/** Quantity stepper with a quiet tick per step. */
+@Composable
+private fun SetQuantityRow(set: SetView, actions: SetDetailActions) {
+    // Quantity stepper, tied to set.quantity: the server can cap a decrease
+    // and reports back the real quantity; without the link, the stepper would keep
+    // its own assumption.
+    var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
+    // A quiet tick per step: the number changes without needing to look.
+    val haptics = LocalHapticFeedback.current
+    val tick = { haptics.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Spacing.tiny),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(R.string.common_quantity),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.medium)
+        ) {
+            WithTooltip(stringResource(R.string.cd_qty_decrease)) {
+                QuantitiesButton(onClick = { if (qty > 1) { qty--; tick(); actions.changeQuantityBy(set.setNumber, -1) } }) {
+                    Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
+                        Modifier.size(withFont(18.dp)))
+                }
+            }
+            Text(
+                "$qty",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.widthIn(min = 24.dp),
+                textAlign = TextAlign.Center
+            )
+            WithTooltip(stringResource(R.string.cd_qty_increase)) {
+                QuantitiesButton(onClick = { qty++; tick(); actions.changeQuantityBy(set.setNumber, 1) }) {
+                    Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
+                        Modifier.size(withFont(18.dp)))
+                }
+            }
         }
     }
 }
@@ -250,7 +274,7 @@ internal fun LazyListScope.setDetailValueTiles(set: SetView, price: SetPriceView
     }
 }
 
-/** Kennzahl-Chips: Jahr, Teile, Minifiguren, Thema. */
+/** Metric chips: year, parts, minifigures, theme. */
 internal fun LazyListScope.setDetailStatChips(set: SetView) {
     // ── Quick-stat chips ───────────────────────────────────────────────
     item {

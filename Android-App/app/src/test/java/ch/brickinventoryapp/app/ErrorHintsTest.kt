@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.Load
@@ -69,10 +70,10 @@ class ErrorHintsTest {
     fun `if the catalog detail fails, the reason with Retry is shown instead of the spinner`() {
         val loaded = mutableListOf<String>()
         show {
-            CatalogDetailScreen(setNumber = "10305-1",
-                loaded = Load.Failure(ErrorClass.SERVER, Message.Text("Server antwortet mit 503")),
-                imageLoader = SampleImages.loader(ctx), serverUrl = "", onLoad = { loaded += it },
-                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {})
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Failure(ErrorClass.SERVER, Message.Text("Server antwortet mit 503")), imageLoader = SampleImages.loader(ctx), serverUrl = "",
+                actions = object : CatalogDetailActions {
+                    override fun load(setNumber: String) { loaded += setNumber }
+                })
         }
         compose.onNodeWithText(ctx.getString(R.string.error_server_title)).fetchSemanticsNode("Keine Überschrift der Fehlerklasse")
         compose.onNodeWithText("Server antwortet mit 503").fetchSemanticsNode("Der Grund fehlt")

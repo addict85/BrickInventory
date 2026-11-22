@@ -50,7 +50,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.collection.ui.CollectionTarget
@@ -86,7 +85,6 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
 import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -183,8 +181,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }
@@ -211,8 +208,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }
@@ -250,8 +246,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Finanzen", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = FinanceTarget.Finance) {
                     composable<FinanceTarget.Finance> {
@@ -286,8 +281,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { }
@@ -477,8 +471,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Seite", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { }
@@ -524,8 +517,7 @@ class UisRulesTest {
             MainScaffold(
                 title = "Seite", navController = n, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(n, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { Text("Galerieseite") }

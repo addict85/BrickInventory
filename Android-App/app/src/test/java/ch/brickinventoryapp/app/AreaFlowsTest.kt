@@ -36,6 +36,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
@@ -242,11 +243,10 @@ class AreaFlowsTest {
         val wanted = WantedItemView(setNumber = "10305-1", condition = Condition.NEW, name = "Lion Knights' Castle", currency = CurrencyCode("CHF"),
             alarm = WantedItemAlarmView(direction = AlarmDirection.BELOW, threshold = Money.from(349.0)!!))
         show {
-            CatalogDetailScreen(setNumber = "10305-1",
-                loaded = Load.Data(CatalogDetailView(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)),
-                imageLoader = images, serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
-                wanted = wanted, onOpenWantedItem = { sn, z -> opened = sn to z })
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(CatalogDetailView(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)), imageLoader = images, serverUrl = "", wanted = wanted,
+                actions = object : CatalogDetailActions {
+                    override fun openWantedItem(setNumber: String, condition: Condition) { opened = setNumber to condition }
+                })
         }
         compose.onNodeWithText(ctx.getString(R.string.catalog_on_wanted_list)).fetchSemanticsNode("Merkliste nicht genannt")
         compose.onAllNodesWithText(ctx.getString(R.string.wanted_add_submit)).assertCountEquals(0)

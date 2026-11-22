@@ -2,6 +2,7 @@ package ch.brickinventoryapp.collection.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,6 +11,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -121,54 +124,25 @@ internal fun SetDetailScreen(
     fun fmtPrice(v: Money?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
-    // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
+    // The shared helper (fmtTag): the same conversion once stood in
     // MinifigsScreen in a second, diverging version.
     fun fmtDate(time: Instant?) = fmtTag(time) ?: "—"
 
-    val accent = LocalAccentSurfaces.current
     // Snackbar in its own scaffold instead of Toast: stays readable until TalkBack is done.
     val messages = remember { SnackbarHostState() }
     val noAppText = stringResource(R.string.common_no_app_to_open)
-    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Scaffold(
         snackbarHost = { SnackbarHost(messages) },
         topBar = {
-            // The same header as in catalog, watchlist and parts (DetailTopAppBar).
-            DetailTopAppBar(
-                title = set?.name ?: setNumber,
-                onBack = onBack,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = accent.detailBar,
-                    titleContentColor = accent.onDetailBar,
-                    navigationIconContentColor = accent.onDetailBar,
-                    actionIconContentColor = accent.onDetailBar,
-                ),
-                actions = {
-                    // No move button: moving happens via the purchase price, row by row —
-                    // a set with three entries is three purchases that can belong to different
-                    // children. The server enforces the same (move without acquisition_ids: 400).
-                    WithTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
-                        IconButton(onClick = {
-                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            if (undoPossible) onDelete(setNumber) else showSetDeleteConfirm = true
-                        }) {
-                            Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
-                        }
-                    }
-                },
-            )
+            SetDetailTopBar(set?.name ?: setNumber, onBack) {
+                if (undoPossible) onDelete(setNumber) else showSetDeleteConfirm = true
+            }
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) { padding ->
 
         if (set == null) {
-            // Without a detail and without a preview: loading or failed — never a spinner with no end.
-            val error = detailState.detailFetch as? Load.Failure
-            if (error != null) {
-                StateHint(Modifier.padding(padding)) {
-                    ErrorHint(error.message.sentence(), actions::refresh, error.kind)
-                }
-            } else LoadCircle(Modifier.padding(padding))
+            SetDetailMissing(detailState.detailFetch, Modifier.padding(padding), actions::refresh)
             return@Scaffold
         }
 
@@ -181,7 +155,6 @@ internal fun SetDetailScreen(
         // open.
         val detailRetryState = remember(set.setNumber, imageUrl) { mutableIntStateOf(0) }
         val detailScope = rememberCoroutineScope()
-        val zoomImageUrl = imageUrl
 
         // The file picker for a manual. Here and not in the section below: a
         // `LazyListScope` isn't a Composable context, and a launcher recreated on
@@ -191,19 +164,15 @@ internal fun SetDetailScreen(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
         ) { uri -> if (uri != null) actions.loadInstructionHigh(setNumber, FileRef(uri.toString())) }
 
-        val header: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        SetDetailColumns(Modifier.padding(padding), left = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
             setDetailStatChips(set)
             setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
-        }
-        val info: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailDetailsSection(set, setNumber, condition.storageUiState, actions, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
-            setDetailAlarmSection(setNumber, detailState.priceAlarms, currency, actions::setPriceAlert)
-        }
-        val prices: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailPriceSection(detailState, price, history, currency, actions::refresh)
-        }
-        val instructions: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        }) {
+            setDetailDetailsSection(set, setNumber, condition.storageUiState, actions,
+                PurchaseSummary(acquisitions, currency, ::fmtDate), onNavigateToAcqMgmt)
+            setDetailAlarmSection(setNumber, detailState.priceAlarms, currency, actions::setPriceAlert)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
                 onInstructionChoose = { instructionSelection.launch(INSTRUCTION_TYPES) },
@@ -211,56 +180,103 @@ internal fun SetDetailScreen(
                 onNoApp = { coroutineScope.launch { messages.showSnackbar(noAppText) } },
             )
         }
-        // Two columns from "expanded" on — image and prices on the left, details, alert and
-        // manuals on the right: single-column, a row's label and value sat an
-        // arm's length apart on the tablet. Single-column, the prices come before the details:
-        // the value is the first question about a set, not the entry date.
-        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-            val edge = PaddingValues(bottom = Spacing.veryLarge)
-            if (twoColumn(maxWidth.value)) {
-                Row(Modifier.fillMaxSize()) {
-                    CompositionLocalProvider(LocalColumnMap provides true) {
-                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { header(); prices() }
-                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { info(); instructions() }
-                    }
-                }
-            } else {
-                // One column with a max width for all cards: in portrait on the tablet,
-                // the price history (SectionCard, Lesebreite) sat narrower than the tiles above it.
-                val lateral = ((maxWidth - DETAIL_COLUMN) / 2).coerceAtLeast(0.dp)
-                CompositionLocalProvider(LocalColumnMap provides true) {
-                    LazyColumn(Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = lateral, end = lateral, bottom = Spacing.veryLarge)) {
-                        header(); prices(); info(); instructions()
-                    }
+
+        if (showSetDeleteConfirm) SetDeleteConfirm(set, { showSetDeleteConfirm = false; onDelete(setNumber) }) {
+            showSetDeleteConfirm = false
+        }
+
+        // Shared implementation with the catalog detail
+        // (ui/components/ZoomableImageDialog.kt), so the gesture and state logic only exists once.
+        if (showImageZoom && imageUrl != null) {
+            ZoomableImageDialog(imageUrl = imageUrl, contentDescription = set.name, imageLoader = imageLoader,
+                onDismiss = { showImageZoom = false })
+        }
+    }
+}
+
+/** Without a detail and without a preview: loading or failed — never a spinner with no end. */
+@Composable
+private fun SetDetailMissing(fetch: Load<*>, modifier: Modifier, onRetry: () -> Unit) {
+    val error = fetch as? Load.Failure
+    if (error != null) {
+        StateHint(modifier) {
+            ErrorHint(error.message.sentence(), onRetry, error.kind)
+        }
+    } else LoadCircle(modifier)
+}
+
+/** The question before deleting; with several copies, the sentence says all of them are meant. */
+@Composable
+private fun SetDeleteConfirm(set: SetView, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    val name = set.name ?: set.setNumber
+    Prompt(
+        title = stringResource(R.string.gallery_delete_title),
+        text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_copies, set.quantity, set.quantity, name)
+               else stringResource(R.string.gallery_delete_text, name),
+        confirm = stringResource(R.string.common_delete),
+        onConfirm = onConfirm,
+        onCancel = onCancel,
+        symbol = Icons.Default.Delete,
+    )
+}
+
+/** The same header as in catalog, watchlist and parts (DetailTopAppBar), with the delete button. */
+@Composable
+private fun SetDetailTopBar(title: String, onBack: () -> Unit, onDelete: () -> Unit) {
+    val accent = LocalAccentSurfaces.current
+    val haptics = LocalHapticFeedback.current
+    DetailTopAppBar(
+        title = title,
+        onBack = onBack,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = accent.detailBar,
+            titleContentColor = accent.onDetailBar,
+            navigationIconContentColor = accent.onDetailBar,
+            actionIconContentColor = accent.onDetailBar,
+        ),
+        actions = {
+            // No move button: moving happens via the purchase price, row by row —
+            // a set with three entries is three purchases that can belong to different
+            // children. The server enforces the same (move without acquisition_ids: 400).
+            WithTooltip(stringResource(R.string.cd_set_delete, title)) {
+                IconButton(onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                }) {
+                    Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, title))
                 }
             }
-        }
+        },
+    )
+}
 
-        if (showSetDeleteConfirm) {
-            val name = set.name ?: setNumber
-            Prompt(
-                title = stringResource(R.string.gallery_delete_title),
-                // With several copies, the sentence says all of them are meant.
-                text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_copies, set.quantity, set.quantity, name)
-                       else stringResource(R.string.gallery_delete_text, name),
-                confirm = stringResource(R.string.common_delete),
-                onConfirm = { showSetDeleteConfirm = false; onDelete(setNumber) },
-                onCancel = { showSetDeleteConfirm = false },
-                symbol = Icons.Default.Delete,
-            )
-        }
-
-        if (showImageZoom && zoomImageUrl != null) {
-            // Shared implementation with the catalog detail
-            // (ui/components/ZoomableImageDialog.kt), so the gesture and state logic only
-            // exists once.
-            ZoomableImageDialog(
-                imageUrl = zoomImageUrl,
-                contentDescription = set.name,
-                imageLoader = imageLoader,
-                onDismiss = { showImageZoom = false }
-            )
+/**
+ * Two columns from "expanded" on — image and prices on the left, details, alert and
+ * manuals on the right: single-column, a row's label and value sat an
+ * arm's length apart on the tablet. Single-column, the prices come before the details:
+ * the value is the first question about a set, not the entry date.
+ */
+@Composable
+private fun SetDetailColumns(modifier: Modifier, left: LazyListScope.() -> Unit, right: LazyListScope.() -> Unit) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val edge = PaddingValues(bottom = Spacing.veryLarge)
+        if (twoColumn(maxWidth.value)) {
+            Row(Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalColumnMap provides true) {
+                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { left() }
+                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { right() }
+                }
+            }
+        } else {
+            // One column with a max width for all cards: in portrait on the tablet,
+            // the price history (SectionCard, reading width) sat narrower than the tiles above it.
+            val lateral = ((maxWidth - DETAIL_COLUMN) / 2).coerceAtLeast(0.dp)
+            CompositionLocalProvider(LocalColumnMap provides true) {
+                LazyColumn(Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = lateral, end = lateral, bottom = Spacing.veryLarge)) {
+                    left(); right()
+                }
+            }
         }
     }
 }

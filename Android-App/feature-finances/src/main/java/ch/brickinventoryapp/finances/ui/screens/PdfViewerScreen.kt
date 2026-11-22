@@ -70,6 +70,21 @@ internal const val PDF_ZOOM_DOUBLE_TAP = 2.5f    // double tap out of 1x
 internal fun renderLevel(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
 
 /**
+ * Keeps the screen on WHILE LOADING: if the display goes off, Android
+ * briefly disconnects the network (depending on device/Wi-Fi sleep). Free again afterward (battery).
+ */
+@Composable
+private fun KeepScreenOnWhile(isLoading: Boolean) {
+    val ctx = LocalContext.current
+    DisposableEffect(isLoading) {
+        val window = ctx.findActivity()?.window
+        if (isLoading) window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
+}
+
+/**
  * The viewer at the navigation destination: fetches the ViewModel and triggers the loading.
  * The screen underneath now only gets the state.
  */
@@ -122,20 +137,9 @@ internal fun PdfViewerScreen(
     var zoom by remember { mutableFloatStateOf(PDF_ZOOM_MIN) }
     val anchor = remember { ZoomAnchor() }
     // Gesture and double tap zoom around their point, the buttons (null) around the center.
-    val setZoom = { newValue: Float, point: Offset? ->
-        anchor.point = point
-        zoom = newValue.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX)
-    }
+    val setZoom = { newValue: Float, point: Offset? -> anchor.point = point; zoom = newValue.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX) }
 
-    // Keep the screen on WHILE LOADING: if the display goes off, Android
-    // briefly disconnects the network (depending on device/Wi-Fi sleep). Free again afterward (battery).
-    val isLoading = state is PdfLoadState.Downloading || state is PdfLoadState.Rendering
-    DisposableEffect(isLoading) {
-        val window = ctx.findActivity()?.window
-        if (isLoading) window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        else window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-    }
+    KeepScreenOnWhile(state is PdfLoadState.Downloading || state is PdfLoadState.Rendering)
 
     Scaffold(
         snackbarHost = { SnackbarHost(messages) },

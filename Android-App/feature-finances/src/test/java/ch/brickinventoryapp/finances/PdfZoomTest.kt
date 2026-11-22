@@ -230,7 +230,7 @@ class PdfZoomTest {
         // The counter must claim NOTHING — otherwise it is the same conflict
         // with the roles swapped.
         val block = Regex(
-            "awaitPointerEventScope \\{(.*?)\\n {16}\\}", RegexOption.DOT_MATCHES_ALL
+            "awaitPointerEventScope \\{(.*?)\\n {8}\\}", RegexOption.DOT_MATCHES_ALL
         ).find(source)?.groupValues?.get(1)
         assert(block != null) { "Kein awaitPointerEventScope-Block mehr gefunden." }
         assert(!block!!.contains("consume()")) {
@@ -242,13 +242,13 @@ class PdfZoomTest {
     fun `the zoom computes with the finger point when measuring`() {
         // The calculation itself is checked by PdfZoomAnchorTest. Here only that it is
         // called where the old layout and the new zoom are both available at once.
-        val measure = Regex("""\.layout \{ measurable, limits ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
+        val measure = Regex("""layout \{ measurable, limits ->(.*?)\n {4}\}""", RegexOption.DOT_MATCHES_ALL)
             .find(source)?.groupValues?.get(1)
-        assert(measure != null) { "Kein .layout { messbar, grenzen -> ... } vor dem Rollen mehr." }
+        assert(measure != null) { "No layout { measurable, limits -> ... } before scrolling anymore." }
         for (part in listOf("zoomTargetY(", "requestScrollToItem(", "zoomTargetX(", "dispatchRawDelta(")) {
             assert(measure!!.contains(part)) { "Beim Messen fehlt $part:\n$measure" }
         }
-        assert(source.indexOf(".layout {") < source.indexOf(".horizontalScroll(")) {
+        assert(source.indexOf(".zoomAnchored(") in 0 until source.indexOf(".horizontalScroll(")) {
             "Die Messung steht nicht vor horizontalScroll — dann kappt es das Ziel an der alten Breite."
         }
     }

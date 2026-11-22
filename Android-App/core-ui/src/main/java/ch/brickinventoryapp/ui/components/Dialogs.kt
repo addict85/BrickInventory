@@ -120,7 +120,7 @@ fun AddDialog(
         )
     }
     if (addFullscreen()) {
-        FullscreenAdd(title, confirm, onConfirm, onCancel, close, confirmEnabled, changed, content)
+        FullscreenAdd(title, AddConfirm(confirm, onConfirm, confirmEnabled), onCancel, close, changed, content)
         return
     }
     AlertDialog(
@@ -204,11 +204,9 @@ fun addFullscreen(): Boolean {
 @Composable
 private fun FullscreenAdd(
     title: String,
-    confirm: String,
-    onConfirm: () -> Unit,
+    main: AddConfirm,
     onCancel: () -> Unit,
     onClose: () -> Unit,
-    confirmEnabled: Boolean,
     changed: Boolean,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -231,12 +229,15 @@ private fun FullscreenAdd(
                     verticalArrangement = Arrangement.spacedBy(Spacing.medium),
                 ) { content() }
                 HorizontalDivider()
-                Button(onClick = onConfirm, enabled = confirmEnabled, colors = mainButtonColors(),
-                    modifier = Modifier.fillMaxWidth().padding(Spacing.large)) { Text(confirm) }
+                Button(onClick = main.onConfirm, enabled = main.enabled, colors = mainButtonColors(),
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.large)) { Text(main.label) }
             }
         }
     }
 }
+
+/** The main button of an add dialog: label, action and whether it accepts a tap. */
+private class AddConfirm(val label: String, val onConfirm: () -> Unit, val enabled: Boolean)
 
 /**
  * A section of a sub-page: card with a heading. Unlike SettingsCard,
@@ -276,11 +277,11 @@ fun PasswordPrompt(
     title: String,
     text: String,
     confirm: String,
-    codeNeeded: Boolean,
-    error: String?,
-    running: Boolean,
     onConfirm: (password: String, code: String?) -> Unit,
     onCancel: () -> Unit,
+    codeNeeded: Boolean = false,
+    error: String? = null,
+    running: Boolean = false,
 ) {
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }

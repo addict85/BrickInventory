@@ -232,52 +232,8 @@ class MainActivity : OnlyLauncherStart() {
                     }
                     // Without a screen lock the step guard asks here instead of silently letting through.
                     WithoutLockWarning(stepGuard.withoutLock)
-                    // With a start password the server rejects everything: only the form until it is replaced.
-                    val startPassword by vm.startPasswordNeeded.collectAsStateWithLifecycle()
-                    // Initial value false: the form appears only with both states,
-                    // and Lint forbids StateFlow.value in the composition.
-                    val loggedIn by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
-                        .collectAsStateWithLifecycle(false)
-                    // Likewise admin rights without a second factor; the start password comes first.
-                    val factorRequired by vm.secondFactorNeeded.collectAsStateWithLifecycle()
-                    if (startPassword && loggedIn) {
-                        val accountUiState by startAccountVm.accountState.collectAsStateWithLifecycle()
-                        StartPasswordMask(
-                            accountUiState = accountUiState,
-                            onReplace = { old, newValue, code -> startAccountVm.changePassword(old, newValue, code) },
-                            onLogout = { vm.logout() },
-                        )
-                    } else if (factorRequired && loggedIn) {
-                        val factorState by startAccountVm.secondFactorState.collectAsStateWithLifecycle()
-                        SecondFactorRequiredMask(
-                            condition = factorState,
-                            onSetUp = startAccountVm::setUpSecondFactorOne,
-                            onConfirm = startAccountVm::confirmSecondFactor,
-                            onNext = { startAccountVm.secondFactorBack(); vm.secondFactorConfigured() },
-                            onLogout = { startAccountVm.secondFactorBack(); vm.logout() },
-                        )
-                    }
-                    // Above everything: any fetch can hit an unknown certificate.
-                    val certificate by trust.certificate.collectAsStateWithLifecycle()
-                    val userCa by trust.userCa.an.collectAsStateWithLifecycle()
-                    certificate?.let { question ->
-                        CertificateDialog(
-                            question = question,
-                            userCaEnabled = userCa,
-                            trustOn = { input -> trustCertificate(question, input) },
-                            onUserCa = { trust.userCa.requests(); trust.discardCertificate() },
-                            onCancel = trust::discardCertificate,
-                            deviceSecure = deviceSecure(),
-                        )
-                    }
-                    // Here and not in the settings: the certificate dialog asks too.
-                    val userCaQuestion by trust.userCa.question.collectAsStateWithLifecycle()
-                    if (userCaQuestion) {
-                        UserCaDialog(
-                            onYes = trust.userCa::confirm,
-                            onCancel = trust.userCa::cancel,
-                        )
-                    }
+                    MandatoryForms()
+                    TrustDialogs()
                     // Topmost: the app lock also covers the mandatory forms.
                     if (locked) AppLockScreen {
                         val texts = LanguageManager.localizedContext(this@MainActivity)
@@ -286,6 +242,60 @@ class MainActivity : OnlyLauncherStart() {
                     }
                 } }
             }
+        }
+    }
+
+    /** With a start password the server rejects everything: only the form until it is replaced. */
+    @Composable
+    private fun MandatoryForms() {
+        val startPassword by vm.startPasswordNeeded.collectAsStateWithLifecycle()
+        // Initial value false: the form appears only with both states,
+        // and Lint forbids StateFlow.value in the composition.
+        val loggedIn by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
+            .collectAsStateWithLifecycle(false)
+        // Likewise admin rights without a second factor; the start password comes first.
+        val factorRequired by vm.secondFactorNeeded.collectAsStateWithLifecycle()
+        if (startPassword && loggedIn) {
+            val accountUiState by startAccountVm.accountState.collectAsStateWithLifecycle()
+            StartPasswordMask(
+                accountUiState = accountUiState,
+                onReplace = { old, newValue, code -> startAccountVm.changePassword(old, newValue, code) },
+                onLogout = { vm.logout() },
+            )
+        } else if (factorRequired && loggedIn) {
+            val factorState by startAccountVm.secondFactorState.collectAsStateWithLifecycle()
+            SecondFactorRequiredMask(
+                condition = factorState,
+                onSetUp = startAccountVm::setUpSecondFactorOne,
+                onConfirm = startAccountVm::confirmSecondFactor,
+                onNext = { startAccountVm.secondFactorBack(); vm.secondFactorConfigured() },
+                onLogout = { startAccountVm.secondFactorBack(); vm.logout() },
+            )
+        }
+    }
+
+    /** Above everything: any fetch can hit an unknown certificate. */
+    @Composable
+    private fun TrustDialogs() {
+        val certificate by trust.certificate.collectAsStateWithLifecycle()
+        val userCa by trust.userCa.an.collectAsStateWithLifecycle()
+        certificate?.let { question ->
+            CertificateDialog(
+                question = question,
+                userCaEnabled = userCa,
+                trustOn = { input -> trustCertificate(question, input) },
+                onUserCa = { trust.userCa.requests(); trust.discardCertificate() },
+                onCancel = trust::discardCertificate,
+                deviceSecure = deviceSecure(),
+            )
+        }
+        // Here and not in the settings: the certificate dialog asks too.
+        val userCaQuestion by trust.userCa.question.collectAsStateWithLifecycle()
+        if (userCaQuestion) {
+            UserCaDialog(
+                onYes = trust.userCa::confirm,
+                onCancel = trust.userCa::cancel,
+            )
         }
     }
 }

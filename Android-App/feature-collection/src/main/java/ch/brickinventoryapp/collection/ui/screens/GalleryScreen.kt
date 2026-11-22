@@ -213,8 +213,9 @@ internal fun GalleryScreen(
             // skeleton already shows that something is coming, two loading indicators stacked felt restless.
             PullToRefreshBox(isRefreshing = gallery.fetch.loading && display == GalleryDisplay.LIST,
                              onRefresh = events.refresh, modifier = Modifier.fillMaxSize()) {
-                GalleryContent(display, condition, searchInput, imageLoader, gridState, onSetClick,
-                    onScanBarcode, addOn = { showAddDialog = true }, onRefresh = events.refresh)
+                GalleryContent(display, condition, searchInput, onRefresh = events.refresh,
+                    empty = { GalleryEmpty(addOn = { showAddDialog = true }, onScanBarcode) },
+                ) { GalleryRaster(condition, imageLoader, gridState, onSetClick) }
             }
         }
 
@@ -280,12 +281,9 @@ private fun GalleryContent(
     display: GalleryDisplay,
     condition: GalleryState,
     searchText: String,
-    imageLoader: ImageLoader,
-    gridState: LazyGridState,
-    onSetClick: (String) -> Unit,
-    onScanBarcode: () -> Unit,
-    addOn: () -> Unit,
     onRefresh: () -> Unit,
+    empty: @Composable () -> Unit,
+    list: @Composable () -> Unit,
 ) {
     val gallery = condition.gallery
     val stats = gallery.stats
@@ -298,14 +296,14 @@ private fun GalleryContent(
             ErrorHint(gallery.fetch.errorMessage?.sentence(), onRefresh,
                 gallery.fetch.errorKind)
         }
-        GalleryDisplay.EMPTY -> GalleryEmpty(addOn, onScanBarcode)
+        GalleryDisplay.EMPTY -> empty()
         GalleryDisplay.NO_HITS -> GalleryHint {
             // The figures refer to the whole collection — even with no hits.
             if (stats != null) GalleryMetrics(stats)
             EmptySymbol(Icons.Default.SearchOff)
             Text(stringResource(R.string.gallery_no_results, searchText), fontWeight = FontWeight.SemiBold)
         }
-        GalleryDisplay.LIST -> GalleryRaster(condition, imageLoader, gridState, onSetClick)
+        GalleryDisplay.LIST -> list()
     }
 }
 

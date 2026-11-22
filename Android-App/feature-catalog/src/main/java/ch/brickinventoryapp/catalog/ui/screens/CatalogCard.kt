@@ -61,7 +61,6 @@ fun CatalogSetCard(
     /** Position in the tile wall — only for the cap color of the `noppe` design. */
     position: Int = 0
 ) {
-    val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
@@ -93,73 +92,9 @@ fun CatalogSetCard(
                 // 4:3 like the gallery's tiles: a fixed height left the image standing narrow
                 // in the tile on the tablet.
                 Box(Modifier.fillMaxWidth().aspectRatio(CATALOG_IMAGE_RATIO)) {
-                    // Resolved via the server instead of a raw CDN address; if the preview fails,
-                    // fall back to the full resolution before the placeholder.
-                    val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
-                    ProductImage(
-                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
-                        imageLoader = imageLoader,
-                        // Without a description: the name sits below it, TalkBack would otherwise read it twice.
-                        contentDescription = null,
-                        onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
-                        modifier = Modifier.fillMaxSize()
-                            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                        contentScale = ContentScale.Fit,
-                        fallbackSize = 44.dp,
-                        imageBackground = true,
-                        innerGap = Spacing.small,
-                    )
-                    // The reflection on the glass pane, only above the image (LightStrip in BrickDecor.kt).
-                    if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
-                    // A pill inside the image like the gallery's quantity badge; read out at the end.
-                    if (set.owned) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = Shapes.tag,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(CATALOG_BADGE_EDGE).clearAndSetSemantics {}
-                        ) {
-                            Text(
-                                if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.hairline),
-                            )
-                        }
-                    }
+                    CatalogCardImage(set, imageLoader, serverUrl, isBrick, isGloss)
                 }
-                // The name first, as it's read aloud; number, year and parts below it.
-                // A short name leaves no gap; the line is missing at the bottom (TileBalance).
-                var namedRows by remember { mutableIntStateOf(2) }
-                Box {
-                    Column(Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.small),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namedRows = it.lineCount })
-                        Text(set.setNumber, Modifier.readAloudAs(stringResource(R.string.cd_set_number, set.setNumber)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            val year = set.year
-                            if (year != null) Text("$year", Modifier.readAloudAs(stringResource(R.string.cd_year, "$year")),
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if ((set.numParts ?: 0) > 0) {
-                                // The same parts icon as in the "Parts" tab and in the web app.
-                                Icon(
-                                    ImageVector.vectorResource(R.drawable.ic_parts_bricks),
-                                    contentDescription = null,
-                                    tint = Color.Unspecified,
-                                    modifier = Modifier.size(withFont(13.dp))
-                                )
-                                // The number with a word: "500" alone next to the brick icon read like a price.
-                                val parts = set.numParts ?: 0
-                                Text(pluralStringResource(R.plurals.gallery_stat_parts, parts, fmtInt(parts)),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        TileBalance(2 - namedRows)
-                    }
-                    if (ownershipAnnouncement != null) Box(Modifier.semantics { contentDescription = ownershipAnnouncement })
-                }
+                CatalogCardText(set, ownershipAnnouncement)
             }
         }
         if (isBrick) StudsSeries(
@@ -167,6 +102,83 @@ fun CatalogSetCard(
             modifier = Modifier.align(Alignment.TopStart),
             color = LocalBrickDecor.current.studs,
         )
+    }
+}
+
+/** The set's image with the glass reflection and, if owned, the ownership pill. */
+@Composable
+private fun BoxScope.CatalogCardImage(set: CatalogSetView, imageLoader: ImageLoader, serverUrl: String, isBrick: Boolean, isGloss: Boolean) {
+    val ctx = LocalContext.current
+    // Resolved via the server instead of a raw CDN address; if the preview fails,
+    // fall back to the full resolution before the placeholder.
+    val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
+    ProductImage(
+        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
+        imageLoader = imageLoader,
+        // Without a description: the name sits below it, TalkBack would otherwise read it twice.
+        contentDescription = null,
+        onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
+        modifier = Modifier.fillMaxSize()
+            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
+        contentScale = ContentScale.Fit,
+        fallbackSize = 44.dp,
+        imageBackground = true,
+        innerGap = Spacing.small,
+    )
+    // The reflection on the glass pane, only above the image (LightStrip in BrickDecor.kt).
+    if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
+    // A pill inside the image like the gallery's quantity badge; read out at the end.
+    if (set.owned) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            shape = Shapes.tag,
+            modifier = Modifier.align(Alignment.TopEnd).padding(CATALOG_BADGE_EDGE).clearAndSetSemantics {}
+        ) {
+            Text(
+                if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.hairline),
+            )
+        }
+    }
+}
+
+/** Name, number, year and parts below the image. */
+@Composable
+private fun CatalogCardText(set: CatalogSetView, ownershipAnnouncement: String?) {
+    // The name first, as it's read aloud; number, year and parts below it.
+    // A short name leaves no gap; the line is missing at the bottom (TileBalance).
+    var namedRows by remember { mutableIntStateOf(2) }
+    Box {
+        Column(Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.small),
+            verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+            Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namedRows = it.lineCount })
+            Text(set.setNumber, Modifier.readAloudAs(stringResource(R.string.cd_set_number, set.setNumber)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                val year = set.year
+                if (year != null) Text("$year", Modifier.readAloudAs(stringResource(R.string.cd_year, "$year")),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if ((set.numParts ?: 0) > 0) {
+                    // The same parts icon as in the "Parts" tab and in the web app.
+                    Icon(
+                        ImageVector.vectorResource(R.drawable.ic_parts_bricks),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(withFont(13.dp))
+                    )
+                    // The number with a word: "500" alone next to the brick icon read like a price.
+                    val parts = set.numParts ?: 0
+                    Text(pluralStringResource(R.plurals.gallery_stat_parts, parts, fmtInt(parts)),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            TileBalance(2 - namedRows)
+        }
+        if (ownershipAnnouncement != null) Box(Modifier.semantics { contentDescription = ownershipAnnouncement })
     }
 }
 

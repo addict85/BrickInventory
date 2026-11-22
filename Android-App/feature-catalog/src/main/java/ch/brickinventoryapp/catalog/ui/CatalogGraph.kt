@@ -12,6 +12,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.toRoute
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.catalog.ui.screens.CatalogRoute
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
@@ -81,21 +82,23 @@ private fun CatalogDetailTarget(navigation: CatalogNavigation, backStack: NavBac
         imageLoader = navigation.images,
         serverUrl = state.serverUrl,
         defaultCondition = state.userDefaultCondition ?: Condition.NEW,
-        onLoad = catalog::loadCatalogDetail,
         householdMembers = glance.householdMembers,
         // The STOCK of storage locations, not the occupied ones: an empty
         // shelf should also be selectable when entering.
         storageLocations = storageUiState.own.map { it.name },
         locationDefault = storageUiState.default?.name ?: "",
-        onAddToGallery = { wish ->
-            record(wish)
-            catalog.markCaptured(wish.setNumber, wish.quantity)
-        },
-        onWish = catalog::track,
-        onOpenInGallery = navigation::openSet,
-        onBack = { navController.popBackStack() },
         wanted = wanted,
-        onOpenWantedItem = navigation::openWantedItem,
+        actions = object : CatalogDetailActions {
+            override fun load(setNumber: String) = catalog.loadCatalogDetail(setNumber)
+            override fun addToGallery(request: EntryRequest) {
+                record(request)
+                catalog.markCaptured(request.setNumber, request.quantity)
+            }
+            override fun wish(request: WantedRequest) = catalog.track(request)
+            override fun openInGallery(setNumber: String) = navigation.openSet(setNumber)
+            override fun back() { navController.popBackStack() }
+            override fun openWantedItem(setNumber: String, condition: Condition) = navigation.openWantedItem(setNumber, condition)
+        },
     )
 }
 

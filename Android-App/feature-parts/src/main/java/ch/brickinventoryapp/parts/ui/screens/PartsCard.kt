@@ -27,6 +27,7 @@ import ch.brickinventoryapp.model.domain.ManualPartView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ManualTile
+import ch.brickinventoryapp.shared.ui.ManualTileItem
 import ch.brickinventoryapp.shared.ui.SparePartBadge
 import ch.brickinventoryapp.shared.ui.TableRow
 import ch.brickinventoryapp.shared.ui.quantityFromSet
@@ -60,16 +61,18 @@ internal fun ManualPartTile(part: ManualPartView, serverUrl: String, imageLoader
         rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
     // A tile shared with the minifigures — see ManualTile.
     ManualTile(
+        item = ManualTileItem(
+            name = part.partName ?: part.partNumber,
+            quantity = part.quantity,
+            states = part.conditions,
+            condition = part.condition,
+            owner = part.owners,
+            price = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
+        ),
+        currency = currency,
         imageUrl = image,
         onImageError = onImageError,
         imageLoader = imageLoader,
-        name = part.partName ?: part.partNumber,
-        quantity = part.quantity,
-        states = part.conditions,
-        condition = part.condition,
-        owner = part.owners,
-        price = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
-        currency = currency,
         onEdit = onEdit,
         color = color,
         colorName = part.colorName?.let { colorTranslator()(it) },

@@ -188,7 +188,7 @@ class GalleryImageRetryTest {
         // remains the WHAT (a distinguishable feature of the request), not
         // the name of a library function — the name is only here because
         // a text comparison can do nothing else.
-        assert(src.contains(".memoryCacheKeyExtra(\"retry\", retryNonce.toString())")) {
+        assert(src.contains(".memoryCacheKeyExtra(\"retry\", source.retryNonce.toString())")) {
             "Die Anfrage braucht ein unterscheidbares Merkmal, sonst könnte Coil " +
             "sie mit dem fehlgeschlagenen Vorgänger verwechseln"
         }

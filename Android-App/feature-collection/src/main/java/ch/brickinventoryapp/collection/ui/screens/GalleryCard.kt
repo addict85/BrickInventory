@@ -107,6 +107,7 @@ fun SetCard(
     // in the catalog. The gallery only knows the name; the same name gives the same tone.
     val tone = if (LocalIsColorSlotsTheme.current)
         slotsTone(set.theme?.hashCode()) else null
+    val look = TileLook(isBrick, isStud, isGloss, tone, row)
 
     // In the list row, the badges move from the image into the text: the image is too small there.
     val pct = price?.pnlPct
@@ -121,10 +122,11 @@ fun SetCard(
     val quantity: (@Composable () -> Unit)? = if (set.quantity > 1) ({
         QuantityBadge(set)
     }) else null
+    val badges = TileBadges(pnl, quantity)
 
     // The image area; without badges in the row and rounded on the left instead of the top.
     val canvas: @Composable (Modifier) -> Unit = { surface ->
-        TileImage(surface, set, imageUrl, imageLoader, retryNonce, row, isBrick, isGloss, pnl, quantity,
+        TileImage(surface, set, TileImageSource(imageUrl, imageLoader, retryNonce), look, badges,
             onState = { st ->
                 if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
                     // Delayed, not on the same moment: right after
@@ -143,11 +145,22 @@ fun SetCard(
             })
     }
     val texts: @Composable (Modifier) -> Unit = { column ->
-        TileTexts(column, set, row, tone, pnl, quantity, price, amount, currency, listOfNotNull(pnlAnnouncement, quantityAnnouncement))
+        TileTexts(column, set, look, badges, TileMoney(price, amount, currency), listOfNotNull(pnlAnnouncement, quantityAnnouncement))
     }
-    TileFrame(isBrick, isStud, isGloss, position, tone, row, picked,
-        onClick = { onClick(set.setNumber) }, canvas = canvas, texts = texts)
+    TileFrame(look, position, picked, onClick = { onClick(set.setNumber) }, canvas = canvas, texts = texts)
 }
+
+/** The design's look of a tile: brick edge, stud cap, glass, theme tone, and whether it is a list row. */
+private class TileLook(val isBrick: Boolean, val isStud: Boolean, val isGloss: Boolean, val tone: Color?, val row: Boolean)
+
+/** P&L and quantity badges; on the image, or before the condition in the list row. */
+private class TileBadges(val pnl: (@Composable () -> Unit)?, val quantity: (@Composable () -> Unit)?)
+
+/** Where the tile's image comes from; [retryNonce] makes Coil fetch it once more after an error. */
+private class TileImageSource(val imageUrl: String?, val imageLoader: ImageLoader, val retryNonce: Int)
+
+/** The tile's amount with its origin; [amount] is null without a price. */
+private class TileMoney(val price: TilePrice?, val amount: Money?, val currency: CurrencyCode)
 
 /**
  * P&L as a badge: in the price line it wrapped next to "each", and the tile
@@ -188,26 +201,24 @@ private fun QuantityBadge(set: SetView) {
 private fun TileImage(
     modifier: Modifier,
     set: SetView,
-    imageUrl: String?,
-    imageLoader: ImageLoader,
-    retryNonce: Int,
-    row: Boolean,
-    isBrick: Boolean,
-    isGloss: Boolean,
-    pnl: (@Composable () -> Unit)?,
-    quantity: (@Composable () -> Unit)?,
+    source: TileImageSource,
+    look: TileLook,
+    badges: TileBadges,
     onState: (AsyncImagePainter.State) -> Unit,
 ) {
+    val row = look.row
+    val pnl = badges.pnl
+    val quantity = badges.quantity
     val ctx = LocalContext.current
     // Fade in softly only if motion is wanted (movementReduced).
     val soft = !movementReduced()
     Box(modifier) {
         SharedImage(set.setNumber) { image ->
             ProductImage(
-                model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
-                    .memoryCacheKeyExtra("retry", retryNonce.toString())
+                model = source.imageUrl?.let { ImageRequest.Builder(ctx).data(it)
+                    .memoryCacheKeyExtra("retry", source.retryNonce.toString())
                     .crossfade(soft).build() },
-                imageLoader = imageLoader,
+                imageLoader = source.imageLoader,
                 // Without a description: the tile summarizes its content, and the
                 // name already stood below it as text — TalkBack would read it twice.
                 contentDescription = null,
@@ -217,7 +228,7 @@ private fun TileImage(
                 modifier = image
                     .fillMaxSize()
                     .then(when {
-                        isBrick -> Modifier
+                        look.isBrick -> Modifier
                         row -> Modifier.clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
                         else -> Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                     }),
@@ -229,7 +240,7 @@ private fun TileImage(
         }
         // The reflection on the glass pane: above the image, but UNDER badges and
         // menu, so the controls sit on their own surface (lightStrip()).
-        if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
+        if (look.isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
         // The tile carries no destructive action: deletion happens in the detail,
         // with a confirmation and "Undo" after. Badges with padding inside
         // the image (BADGE_EDGE): on its edge they sat over the corner.
@@ -250,16 +261,14 @@ private fun TileImage(
 private fun TileTexts(
     modifier: Modifier,
     set: SetView,
-    row: Boolean,
-    tone: Color?,
-    pnl: (@Composable () -> Unit)?,
-    quantity: (@Composable () -> Unit)?,
-    price: TilePrice?,
-    amount: Money?,
-    currency: CurrencyCode,
+    look: TileLook,
+    badges: TileBadges,
+    money: TileMoney,
     /** What the image badges say; TalkBack reads it after the price. */
     announce: List<String>,
 ) {
+    val row = look.row
+    val tone = look.tone
     // A one-line name leaves no blank line below it; so the grid row stays the same
     // height, the missing line sits at the foot of the tile (TileBalance).
     var namedRows by remember { mutableIntStateOf(2) }
@@ -277,8 +286,8 @@ private fun TileTexts(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.tiny),
                     verticalArrangement = Arrangement.spacedBy(Spacing.hairline),
                 ) {
-                    pnl?.invoke()
-                    quantity?.invoke()
+                    badges.pnl?.invoke()
+                    badges.quantity?.invoke()
                     ConditionBadges(set.conditions, set.condition)
                 } else ConditionBadges(set.conditions, set.condition)
                 // Who owns this copy? Without that information, you'd
@@ -294,7 +303,7 @@ private fun TileTexts(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            TileAmountRows(set, row, price, amount, currency)
+            TileAmountRows(set, row, money.price, money.amount, money.currency)
             if (!row) TileBalance(2 - namedRows)
         }
         // Without a surface: only the image badges' announcement, after the price.
@@ -346,17 +355,16 @@ private fun TileAmountRows(set: SetView, row: Boolean, price: TilePrice?, amount
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TileFrame(
-    isBrick: Boolean,
-    isStud: Boolean,
-    isGloss: Boolean,
+    look: TileLook,
     position: Int,
-    tone: Color?,
-    row: Boolean,
     picked: Boolean,
     onClick: () -> Unit,
     canvas: @Composable (Modifier) -> Unit,
     texts: @Composable (Modifier) -> Unit,
 ) {
+    val isBrick = look.isBrick
+    val tone = look.tone
+    val row = look.row
     Box {
         AppCard(
             modifier = Modifier
@@ -380,7 +388,7 @@ private fun TileFrame(
                 // exactly like `.sc:nth-child(6n+…)` in `themes/noppe.css`. The same
                 // building block as the brick design, only taller and in
                 // varying color; hence the same component instead of a second one.
-                if (isStud) BrickStudCap(color = brickTone(position), gloss = isGloss)
+                if (look.isStud) BrickStudCap(color = brickTone(position), gloss = look.isGloss)
                 if (tone != null) Box(Modifier.fillMaxWidth().height(5.dp).background(tone))
                 // 4:3 like the set images themselves: a fixed height left a gap between the image
                 // and text with ContentScale.Fit.

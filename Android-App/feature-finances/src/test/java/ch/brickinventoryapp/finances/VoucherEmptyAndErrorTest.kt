@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
 import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.Load
@@ -42,10 +43,9 @@ class VoucherEmptyAndErrorTest {
     private fun show(condition: VoucherUiState, onAgain: () -> Unit = {}) {
         compose.setContent {
             BrickInventoryManagerTheme {
-                VouchersCard(condition = condition, onField = { _, _, _, _ -> }, switchOnPin = {}, editOn = {},
-                    onCancel = {}, onSave = {}, deleteOn = {}, openOnPdf = {}, onCopy = { _, _ -> },
-                    onBalance = {}, cancelOnBalance = {}, onAgain = onAgain,
-                    onConfirm = { _, _ -> }, cancelOnConfirmation = {})
+                VouchersCard(condition = condition, actions = object : VoucherCardActions {
+                    override fun reload() = onAgain()
+                })
             }
         }
         compose.waitForIdle()

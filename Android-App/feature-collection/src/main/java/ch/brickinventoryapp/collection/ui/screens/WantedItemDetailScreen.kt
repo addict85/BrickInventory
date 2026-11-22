@@ -17,9 +17,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListActions
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import ch.brickinventoryapp.network.util.externalAddress
@@ -27,6 +31,7 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.shared.ui.PriceLoadsRow
+import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.PartialLoadFailed
@@ -92,33 +97,11 @@ internal fun WantedItemDetailScreen(
 
     // The watchlist item is gone (deleted or taken over) — then this
     // screen should be gone too, instead of showing a corpse.
-    LaunchedEffect(wantedItem == null, list.fetch.loading) {
-        if (wantedItem == null && !list.fetch.loading && list.wantedItem.isNotEmpty()) onBack()
-    }
-
-    val noPrice = stringResource(R.string.detail_price_none_yet)
-    fun price(v: Money?) = if (v == null) noPrice else fmtMoney(v, appState.currency)
+    LeaveWhenGone(wantedItem == null, list.fetch.loading, list.wantedItem.isNotEmpty(), onBack)
 
     Scaffold(
         snackbarHost = { SnackbarHost(messages) },
-        topBar = {
-            // The same header as the set, catalog and parts detail (DetailTopAppBar).
-            DetailTopAppBar(title = wantedItem?.name ?: setNumber, onBack = onBack,
-                // Without a confirmation as in the web app: a watchlist item isn't owned and is quickly
-                // re-added. `let`, because the watchlist item up here is still nullable.
-                actions = {
-                    wantedItem?.let { w ->
-                        WithTooltip(stringResource(R.string.common_delete)) {
-                            IconButton(onClick = {
-                                actions.deleteWantedItem(w.setNumber, w.condition, w.userId)
-                            }) {
-                                Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
-                            }
-                        }
-                    }
-                },
-            )
-        },
+        topBar = { WantedItemTopBar(wantedItem?.name ?: setNumber, wantedItem, actions, onBack) },
     ) { padding ->
         if (wantedItem == null) {
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
@@ -135,61 +118,10 @@ internal fun WantedItemDetailScreen(
             contentPadding = PaddingValues(Spacing.large),
             verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         ) {
-            item {
-                ProductImage(
-                    model = imageUrl,
-                    contentDescription = wantedItem.name,
-                    imageLoader = imageLoader,
-                    // Tapping opens the zoom — the same behavior as in the
-                    // set and catalog detail.
-                    modifier = Modifier.fillMaxWidth().height(Spacing.huge * 5)
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_image_enlarge), role = Role.Button) { openZoom = true },
-                    fallbackSize = Spacing.huge * 2,
-                    imageBackground = true,
-                    innerGap = Spacing.medium,
-                )
-            }
+            item { WantedItemImage(imageUrl, wantedItem.name, imageLoader) { openZoom = true } }
 
             // The cards limit the width (as in the set detail), not every element within them.
-            item {
-                AppCard(Modifier.centeredUntil(ReadingWidth.form)) {
-                    // With spacing between the rows as in the catalog detail: stacked tightly,
-                    // the card read as one block.
-                    Column(Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                        // Only rows with a value: four dashes in a row only said
-                        // that the catalog doesn't know the set.
-                        CatalogDetailRow(stringResource(R.string.detail_set_number), wantedItem.setNumber)
-                        wantedItem.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
-                        detail.catalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
-                        (detail.catalog?.numParts ?: wantedItem.numParts)?.let {
-                            CatalogDetailRow(stringResource(R.string.detail_pieces), fmtInt(it))
-                        }
-                        detail.catalog?.minifigs?.let {
-                            CatalogDetailRow(stringResource(R.string.detail_minifigs), fmtInt(it))
-                        }
-                        CatalogDetailRow(stringResource(R.string.common_condition),
-                            stringResource(if (wantedItem.condition == Condition.USED) R.string.condition_used
-                                           else R.string.condition_new))
-                        CatalogDetailRow(stringResource(R.string.wanted_since),
-                            fmtTag(wantedItem.createdAt) ?: "—")
-
-                        // ── The owner, changeable ──
-                        //
-                        // The same picker as in the entry masks; on a single account
-                        // it hides itself.
-                        if (glance.householdMembers.size > 1) {
-                            Spacer(Modifier.height(Spacing.small))
-                            OwnerPicker(
-                                members = glance.householdMembers,
-                                selected = wantedItem.userId,
-                                onSelect = { actions.moveWantedItem(
-                                    wantedItem.setNumber, wantedItem.condition, wantedItem.userId, it) },
-                            )
-                        }
-                    }
-                }
-            }
+            item { WantedItemFacts(wantedItem, detail, glance.householdMembers, actions) }
 
             // ── The price alert, editable ──
             //
@@ -198,85 +130,12 @@ internal fun WantedItemDetailScreen(
             setDetailAlarmSection(wantedItem.setNumber, detail.priceAlarms, appState.currency, actions::setPriceAlert,
                 outerGap = false, onAllAlerts = onOpenPriceAlerts)
 
-            item {
-                AppCard(Modifier.centeredUntil(ReadingWidth.form)) {
-                    Column(Modifier.padding(Spacing.medium)) {
-                        SectionTitle(stringResource(R.string.detail_section_market))
-                        Spacer(Modifier.height(Spacing.small))
-                        // From the PRICE response, not from the history: that
-                        // fetches fresh, the history only reads the cache.
-                        CatalogDetailRow(stringResource(R.string.condition_new),
-                            price(detail.prices?.current?.new?.avgPrice))
-                        CatalogDetailRow(stringResource(R.string.condition_used),
-                            price(detail.prices?.current?.used?.avgPrice))
-
-                        val chart = detail.history?.chart
-                        if (chart != null && chart.values.isNotEmpty()) {
-                            Spacer(Modifier.height(Spacing.small))
-                            PriceChart(chart, appState.currency)
-                        } else if (detail.fetch.loading) {
-                            Spacer(Modifier.height(Spacing.small))
-                            PriceLoadsRow()
-                        }
-                        PartialLoadFailed(detail.fetch, { actions.loadWantedItemDetail(wantedItem.setNumber) })
-                    }
-                }
-            }
+            item { WantedItemMarket(wantedItem, detail, appState.currency, actions) }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    // BrickLink and price comparison side by side, with spacing below them the
-                    // take-over: on top the paths outward, below the controls that change
-                    // something. If one address drops out, the other takes the whole row.
-                    val addresses = listOfNotNull(
-                        detail.catalog?.bricklink?.url?.takeIf { it.isNotBlank() }
-                            ?.let { R.string.catalog_buy_bricklink to it },
-                        // The catalog delivers the same address, only with the name
-                        // in it ("LEGO 75192 Millennium Falcon" instead of just the
-                        // number). If it doesn't come back — 404 for a set that
-                        // rb_sets doesn't know — the watchlist item's own is ready.
-                        (detail.catalog?.priceComparisonUrl ?: wantedItem.priceComparisonUrl)
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { R.string.detail_compare to it },
-                    )
-                    val width = Modifier.fillMaxWidth()
-                    if (addresses.isNotEmpty()) {
-                        Row(
-                            width,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                        ) {
-                            for ((label, url) in addresses) {
-                                OutlinedButton(
-                                    onClick = {
-                                        if (!openExtern(ctx, externalAddress(url))) {
-                                            area.launch { messages.showSnackbar(noAppText) }
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    contentPadding = PaddingValues(
-                                        horizontal = Spacing.small, vertical = Spacing.small),
-                                    colors = secondaryButtonColors(),
-                                    border = secondaryButtonRand(),
-                                ) {
-                                    // One step smaller, for the same reason as in the
-                                    // catalog detail: two buttons share the
-                                    // width that one alone used to have.
-                                    Text(stringResource(label), maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(Spacing.small))
-                    }
-
-                    Button(
-                        onClick = { openTakeover = true },
-                        modifier = width,
-                    ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
-                        Spacer(Modifier.width(Spacing.tiny))
-                        Text(stringResource(R.string.wanted_take))
+                WantedItemLinks(wantedItem, detail, onTakeOver = { openTakeover = true }) { url ->
+                    if (!openExtern(ctx, externalAddress(url))) {
+                        area.launch { messages.showSnackbar(noAppText) }
                     }
                 }
             }
@@ -291,29 +150,206 @@ internal fun WantedItemDetailScreen(
         // The same address as the image above, recalculated here because `wantedItem`
         // is nullable again outside the scaffold body. Drawn by
         // ui/components/ZoomableImageDialog.kt as in the set and catalog detail.
-        val zoomUrl = resolveFullUrl(appState.serverUrl,
-            detail.catalog?.imageLocal ?: w.imageLocal, w.imageUrl)
-        if (zoomUrl != null) {
-            ZoomableImageDialog(
-                imageUrl = zoomUrl,
-                contentDescription = w.name,
-                imageLoader = imageLoader,
-                onDismiss = { openZoom = false },
-            )
+        resolveFullUrl(appState.serverUrl, detail.catalog?.imageLocal ?: w.imageLocal, w.imageUrl)?.let { zoomUrl ->
+            ZoomableImageDialog(imageUrl = zoomUrl, contentDescription = w.name, imageLoader = imageLoader,
+                onDismiss = { openZoom = false })
         }
     }
 
-    if (openTakeover) wantedItem?.let { w ->
-        AdoptionDialog(
-            wantedItem = w,
-            storageLocations = storageUiState.own.map { it.name },
-            locationDefault = storageUiState.default?.name ?: "",
-            onDismiss = { openTakeover = false },
-            onAdopt = { count, priceRaw, stateChoice, location ->
-                actions.adoptWantedItem(w.setNumber, w.condition, w.userId,
-                                   count, priceRaw, stateChoice, location)
-                openTakeover = false
-            },
+    if (openTakeover) wantedItem?.let { w -> WantedTakeover(w, storageUiState, actions) { openTakeover = false } }
+}
+
+/** The same header as the set, catalog and parts detail (DetailTopAppBar), with the delete button. */
+@Composable
+private fun WantedItemTopBar(title: String, wantedItem: WantedItemView?, actions: WantedListActions, onBack: () -> Unit) {
+    DetailTopAppBar(title = title, onBack = onBack,
+        // Without a confirmation as in the web app: a watchlist item isn't owned and is quickly
+        // re-added. `let`, because the watchlist item up here is still nullable.
+        actions = {
+            wantedItem?.let { w ->
+                WithTooltip(stringResource(R.string.common_delete)) {
+                    IconButton(onClick = {
+                        actions.deleteWantedItem(w.setNumber, w.condition, w.userId)
+                    }) {
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                    }
+                }
+            }
+        },
+    )
+}
+
+/** The set image; tapping opens the zoom — the same behavior as in the set and catalog detail. */
+@Composable
+private fun WantedItemImage(imageUrl: String?, name: String?, imageLoader: coil3.ImageLoader, onZoom: () -> Unit) {
+    ProductImage(
+        model = imageUrl,
+        contentDescription = name,
+        imageLoader = imageLoader,
+        modifier = Modifier.fillMaxWidth().height(Spacing.huge * 5)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_image_enlarge), role = Role.Button) { onZoom() },
+        fallbackSize = Spacing.huge * 2,
+        imageBackground = true,
+        innerGap = Spacing.medium,
+    )
+}
+
+/** The same take-over dialog as in the list: quantity, purchase price and condition in the same mask. */
+@Composable
+private fun WantedTakeover(w: WantedItemView, storageUiState: StorageUiState, actions: WantedListActions, onClose: () -> Unit) {
+    AdoptionDialog(
+        wantedItem = w,
+        storageLocations = storageUiState.own.map { it.name },
+        locationDefault = storageUiState.default?.name ?: "",
+        onDismiss = onClose,
+        onAdopt = { count, priceRaw, stateChoice, location ->
+            actions.adoptWantedItem(w.setNumber, w.condition, w.userId,
+                               count, priceRaw, stateChoice, location)
+            onClose()
+        },
+    )
+}
+
+/**
+ * BrickLink and price comparison side by side, with spacing below them the
+ * take-over: on top the paths outward, below the controls that change
+ * something. If one address drops out, the other takes the whole row.
+ */
+@Composable
+private fun WantedItemLinks(
+    wantedItem: WantedItemView,
+    detail: WantedItemDetailUiState,
+    onTakeOver: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        // BrickLink and price comparison side by side, with spacing below them the
+        // take-over: on top the paths outward, below the controls that change
+        // something. If one address drops out, the other takes the whole row.
+        val addresses = listOfNotNull(
+            detail.catalog?.bricklink?.url?.takeIf { it.isNotBlank() }
+                ?.let { R.string.catalog_buy_bricklink to it },
+            // The catalog delivers the same address, only with the name
+            // in it ("LEGO 75192 Millennium Falcon" instead of just the
+            // number). If it doesn't come back — 404 for a set that
+            // rb_sets doesn't know — the watchlist item's own is ready.
+            (detail.catalog?.priceComparisonUrl ?: wantedItem.priceComparisonUrl)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { R.string.detail_compare to it },
         )
+        val width = Modifier.fillMaxWidth()
+        if (addresses.isNotEmpty()) {
+            Row(
+                width,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+            ) {
+                for ((label, url) in addresses) {
+                    OutlinedButton(
+                        onClick = { onOpenUrl(url) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(
+                            horizontal = Spacing.small, vertical = Spacing.small),
+                        colors = secondaryButtonColors(),
+                        border = secondaryButtonRand(),
+                    ) {
+                        // One step smaller, for the same reason as in the
+                        // catalog detail: two buttons share the
+                        // width that one alone used to have.
+                        Text(stringResource(label), maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(Spacing.small))
+        }
+
+        Button(
+            onClick = onTakeOver,
+            modifier = width,
+        ) {
+            Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.tiny))
+            Text(stringResource(R.string.wanted_take))
+        }
+    }
+}
+
+/** Number, year, theme, parts, figures, condition and date of the item, and its owner. */
+@Composable
+private fun WantedItemFacts(wantedItem: WantedItemView, detail: WantedItemDetailUiState, members: List<MemberView>, actions: WantedListActions) {
+    AppCard(Modifier.centeredUntil(ReadingWidth.form)) {
+        // With spacing between the rows as in the catalog detail: stacked tightly,
+        // the card read as one block.
+        Column(Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+            // Only rows with a value: four dashes in a row only said
+            // that the catalog doesn't know the set.
+            CatalogDetailRow(stringResource(R.string.detail_set_number), wantedItem.setNumber)
+            wantedItem.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
+            detail.catalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
+            (detail.catalog?.numParts ?: wantedItem.numParts)?.let {
+                CatalogDetailRow(stringResource(R.string.detail_pieces), fmtInt(it))
+            }
+            detail.catalog?.minifigs?.let {
+                CatalogDetailRow(stringResource(R.string.detail_minifigs), fmtInt(it))
+            }
+            CatalogDetailRow(stringResource(R.string.common_condition),
+                stringResource(if (wantedItem.condition == Condition.USED) R.string.condition_used
+                               else R.string.condition_new))
+            CatalogDetailRow(stringResource(R.string.wanted_since),
+                fmtTag(wantedItem.createdAt) ?: "—")
+
+            // ── The owner, changeable ──
+            //
+            // The same picker as in the entry masks; on a single account
+            // it hides itself.
+            if (members.size > 1) {
+                Spacer(Modifier.height(Spacing.small))
+                OwnerPicker(
+                    members = members,
+                    selected = wantedItem.userId,
+                    onSelect = { actions.moveWantedItem(
+                        wantedItem.setNumber, wantedItem.condition, wantedItem.userId, it) },
+                )
+            }
+        }
+    }
+}
+
+/** Market prices from the price response and the history chart. */
+@Composable
+private fun WantedItemMarket(wantedItem: WantedItemView, detail: WantedItemDetailUiState, currency: CurrencyCode, actions: WantedListActions) {
+    val noPrice = stringResource(R.string.detail_price_none_yet)
+    fun price(v: Money?) = if (v == null) noPrice else fmtMoney(v, currency)
+    AppCard(Modifier.centeredUntil(ReadingWidth.form)) {
+        Column(Modifier.padding(Spacing.medium)) {
+            SectionTitle(stringResource(R.string.detail_section_market))
+            Spacer(Modifier.height(Spacing.small))
+            // From the PRICE response, not from the history: that
+            // fetches fresh, the history only reads the cache.
+            CatalogDetailRow(stringResource(R.string.condition_new),
+                price(detail.prices?.current?.new?.avgPrice))
+            CatalogDetailRow(stringResource(R.string.condition_used),
+                price(detail.prices?.current?.used?.avgPrice))
+
+            val chart = detail.history?.chart
+            if (chart != null && chart.values.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.small))
+                PriceChart(chart, currency)
+            } else if (detail.fetch.loading) {
+                Spacer(Modifier.height(Spacing.small))
+                PriceLoadsRow()
+            }
+            PartialLoadFailed(detail.fetch, { actions.loadWantedItemDetail(wantedItem.setNumber) })
+        }
+    }
+}
+
+/** Goes back once the item is missing from a loaded, non-empty list. */
+@Composable
+private fun LeaveWhenGone(missing: Boolean, loading: Boolean, listFilled: Boolean, onBack: () -> Unit) {
+    LaunchedEffect(missing, loading) {
+        if (missing && !loading && listFilled) onBack()
     }
 }

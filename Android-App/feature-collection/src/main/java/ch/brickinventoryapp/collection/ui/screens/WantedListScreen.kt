@@ -195,25 +195,8 @@ internal fun WantedListScreen(
             // Without watchlist items, neither search nor filter: the empty message offers watchlisting and
             // scanning, a second scan button above would be the same path twice.
             val withHeader = display != LoadingIndicator.ERROR && display != LoadingIndicator.EMPTY
-            if (withHeader) Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SearchField(
-                    value = searchInput,
-                    onValue = { searchInput = it; actions.setWantedSearch(it) },
-                    placeholder = stringResource(R.string.wanted_search),
-                    modifier = Modifier.weight(1f),
-                )
-                SortMenu(
-                    options = WantedSort.entries.map { it to it.label() },
-                    chosen = condition.sorting,
-                    onChoice = { actions.setWantedSorting(it) },
-                    modifier = Modifier.padding(end = Spacing.tiny),
-                    default = WantedSort.DEFAULT,
-                )
-                ScanButton({ onScan() }, Modifier.padding(end = 14.dp))
-            }
+            if (withHeader) WantedSearchRow(searchInput, { searchInput = it; actions.setWantedSearch(it) },
+                condition.sorting, actions, onScan)
 
             // The condition narrows the list: a filter, hence chips as in gallery and
             // finances; segments are only for views (sets | parts | minifigures).
@@ -230,44 +213,11 @@ internal fun WantedListScreen(
                     onAgain = { actions.loadWanted() },
                     // Like the empty gallery: say what the list is for, and offer both paths
                     // to the first entry — the same ones as the buttons at the bottom right.
-                    empty = {
-                        HintText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
-                            stringResource(R.string.wanted_empty_hint))
-                        ButtonStack {
-                            Button(onClick = { openMask = true }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
-                                Spacer(Modifier.width(Spacing.small))
-                                Text(stringResource(R.string.wanted_add_first))
-                            }
-                            OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
-                                Icon(BarcodeSymbol, null, Modifier.size(withFont(18.dp)))
-                                Spacer(Modifier.width(Spacing.small))
-                                Text(stringResource(R.string.gallery_scan_barcode))
-                            }
-                        }
-                    },
+                    empty = { WantedEmpty(onAdd = { openMask = true }, onScan) },
                     noHits = { NoHitsHint(stringResource(R.string.wanted_no_results)) },
                     errorClass = condition.fetch.errorKind,
                 ) {
-                    BoxWithConstraints {
-                    val multiColumn = maxWidth >= WANTED_COLUMN * 2
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(WANTED_COLUMN),
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.small),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                        // Room for the add button: without it, it would cover the last row.
-                        contentPadding = PaddingValues(bottom = FabSpace),
-                    ) {
-                        items(condition.wantedItem, key = ::wantedItemKey) { w ->
-                            Moved {
-                                WantedItemRow(w, appState.serverUrl, imageLoader,
-                                    chosen = chosen == w.setNumber to w.condition,
-                                    onOpen = { onOpen(w.setNumber, w.condition) }, multiColumn = multiColumn)
-                            }
-                        }
-                    }
-                    }
+                    WantedGrid(condition.wantedItem, appState.serverUrl, imageLoader, chosen, onOpen)
                 }
             }
         }
@@ -339,6 +289,88 @@ private fun StateFilterChips(chosen: Condition?, onChoice: (Condition?) -> Unit,
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
         options.forEach { (value, text) ->
             SelectionChip(selected = value == chosen, onClick = { onChoice(value) }, label = { Text(stringResource(text)) })
+        }
+    }
+}
+
+/** Search, sorting and scan above the list; scan sits next to search, so only ONE button floats at the bottom. */
+@Composable
+private fun WantedSearchRow(
+    searchInput: String,
+    onSearch: (String) -> Unit,
+    sorting: WantedSort,
+    actions: WantedListActions,
+    onScan: () -> Unit,
+) {
+Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SearchField(
+            value = searchInput,
+            onValue = onSearch,
+            placeholder = stringResource(R.string.wanted_search),
+            modifier = Modifier.weight(1f),
+        )
+        SortMenu(
+            options = WantedSort.entries.map { it to it.label() },
+            chosen = sorting,
+            onChoice = { actions.setWantedSorting(it) },
+            modifier = Modifier.padding(end = Spacing.tiny),
+            default = WantedSort.DEFAULT,
+        )
+        ScanButton({ onScan() }, Modifier.padding(end = 14.dp))
+    }
+}
+
+/**
+ * Like the empty gallery: say what the list is for, and offer both paths
+ * to the first entry — the same ones as the buttons at the bottom right.
+ */
+@Composable
+private fun WantedEmpty(onAdd: () -> Unit, onScan: () -> Unit) {
+    HintText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
+        stringResource(R.string.wanted_empty_hint))
+    ButtonStack {
+        Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.wanted_add_first))
+        }
+        OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+            Icon(BarcodeSymbol, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.gallery_scan_barcode))
+        }
+    }
+}
+
+/** The items as a grid; several columns from twice the column width on. */
+@Composable
+private fun WantedGrid(
+    wanted: List<WantedItemView>,
+    serverUrl: String,
+    imageLoader: coil3.ImageLoader,
+    chosen: Pair<String, Condition>?,
+    onOpen: (String, Condition) -> Unit,
+) {
+    BoxWithConstraints {
+        val multiColumn = maxWidth >= WANTED_COLUMN * 2
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(WANTED_COLUMN),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(Spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+            // Room for the add button: without it, it would cover the last row.
+            contentPadding = PaddingValues(bottom = FabSpace),
+        ) {
+            items(wanted, key = ::wantedItemKey) { w ->
+                Moved {
+                    WantedItemRow(w, serverUrl, imageLoader,
+                        chosen = chosen == w.setNumber to w.condition,
+                        onOpen = { onOpen(w.setNumber, w.condition) }, multiColumn = multiColumn)
+                }
+            }
         }
     }
 }

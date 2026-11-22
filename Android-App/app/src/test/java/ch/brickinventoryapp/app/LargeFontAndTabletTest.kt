@@ -26,7 +26,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
@@ -53,7 +52,6 @@ import ch.brickinventoryapp.shared.ui.ConditionRow
 import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -154,8 +152,7 @@ class LargeFontAndTabletTest {
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = FinanceTarget.Finance) { composable<FinanceTarget.Finance> { } }
             }
@@ -181,8 +178,7 @@ class LargeFontAndTabletTest {
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Wanted) { composable<CollectionTarget.Wanted> { } }
             }
@@ -219,8 +215,7 @@ class LargeFontAndTabletTest {
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }

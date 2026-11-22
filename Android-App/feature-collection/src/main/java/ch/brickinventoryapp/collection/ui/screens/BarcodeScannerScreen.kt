@@ -352,8 +352,8 @@ internal fun CameraPreviewBarcode(
     // The analysis loop (barcode, text recognition, confirmation, throttling) lives in
     // BarcodeAnalyzer.kt.
     val imageAnalyzer = rememberBarcodeAnalyzer(
-        frozen, ocrEnabled, onBarcodeFound, onSetNumberFound, onStatus,
-        confirmingHint, aimHint, errorHint,
+        frozen, ocrEnabled, ScanCallbacks(onBarcodeFound, onSetNumberFound, onStatus),
+        ScanHints(confirmingHint, aimHint, errorHint),
     )
 
     AndroidView(

@@ -2,6 +2,7 @@ package ch.brickinventoryapp.finances.ui.screens
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -10,6 +11,7 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -147,56 +149,13 @@ internal fun PdfPages(
         Box(
             Modifier
                 .fillMaxSize()
-                // The zoom holds fixed the point between the fingers. This is computed
-                // here, in the measuring: only here are the layout of the old zoom and
-                // the new zoom both available at once, and the new width already applies to
-                // the scroll limit. An effect afterward would arrive one frame too late.
-                .layout { measurable, limits ->
-                    val f = if (anchor.measuredAt > 0f) zoom / anchor.measuredAt else 1f
-                    anchor.measuredAt = zoom
-                    if (f != 1f) {
-                        val p = anchor.point ?: Offset(limits.maxWidth / 2f, limits.maxHeight / 2f)
-                        anchor.point = null
-                        val info = vertical.layoutInfo
-                        zoomTargetY(
-                            info.visibleItemsInfo.map {
-                                PagesSituation(it.index, it.offset + info.beforeContentPadding, it.size)
-                            },
-                            p.y, f, info.beforeContentPadding, info.mainAxisItemSpacing,
-                        )?.let { (index, offset) -> vertical.requestScrollToItem(index, offset) }
-                        anchor.pendingX = zoomTargetX(horizontal.value, p.x, Spacing.small.toPx(), f)
-                    }
-                    val space = measurable.measure(limits)
-                    layout(space.width, space.height) {
-                        // Only now does horizontalScroll know the new width; before
-                        // that it capped the target at the old one.
-                        anchor.pendingX?.let { target ->
-                            anchor.pendingX = null
-                            horizontal.dispatchRawDelta((target - horizontal.value).toFloat())
-                        }
-                        space.place(0, 0)
-                    }
-                }
+                .zoomAnchored(anchor, zoom, vertical, horizontal)
                 // Order: transformable sits behind horizontalScroll and sees the movement
                 // first. The other way around, horizontal scrolling could claim a two-finger gesture for
                 // itself, and the zoom would never get its turn.
                 .horizontalScroll(horizontal)
                 .transformable(state = gesture, canPan = { false })
-                .pointerInput(Unit) {
-                    // Nur zaehlen, nie beanspruchen — siehe oben.
-                    awaitPointerEventScope {
-                        while (true) {
-                            val e = awaitPointerEvent(PointerEventPass.Initial)
-                            val on = e.changes.filter { it.pressed }
-                            twoFinger = on.size >= 2
-                            // This layer scrolls horizontally along; converted into the viewport.
-                            anchor.finger = if (!twoFinger) null else Offset(
-                                on.map { it.position.x }.average().toFloat() - horizontal.value,
-                                on.map { it.position.y }.average().toFloat(),
-                            )
-                        }
-                    }
-                }
+                .countFingers(anchor, horizontal) { twoFinger = it }
                 .pointerInput(Unit) {
                     // Double tap: the reliable way with one finger. Tap
                     // recognizers do not claim drags (they abort at the
@@ -259,3 +218,55 @@ private fun PdfPage(source: PdfSource, index: Int, renderWidthPx: Int, render: P
         }
     }
 }
+
+/**
+ * The zoom holds fixed the point between the fingers. This is computed here, in the measuring:
+ * only here are the layout of the old zoom and the new zoom both available at once, and the new
+ * width already applies to the scroll limit. An effect afterward would arrive one frame too late.
+ */
+private fun Modifier.zoomAnchored(anchor: ZoomAnchor, zoom: Float, vertical: LazyListState, horizontal: ScrollState): Modifier =
+    layout { measurable, limits ->
+        val f = if (anchor.measuredAt > 0f) zoom / anchor.measuredAt else 1f
+        anchor.measuredAt = zoom
+        if (f != 1f) {
+            val p = anchor.point ?: Offset(limits.maxWidth / 2f, limits.maxHeight / 2f)
+            anchor.point = null
+            val info = vertical.layoutInfo
+            zoomTargetY(
+                info.visibleItemsInfo.map {
+                    PagesSituation(it.index, it.offset + info.beforeContentPadding, it.size)
+                },
+                p.y, f, info.beforeContentPadding, info.mainAxisItemSpacing,
+            )?.let { (index, offset) -> vertical.requestScrollToItem(index, offset) }
+            anchor.pendingX = zoomTargetX(horizontal.value, p.x, Spacing.small.toPx(), f)
+        }
+        val space = measurable.measure(limits)
+        layout(space.width, space.height) {
+            // Only now does horizontalScroll know the new width; before
+            // that it capped the target at the old one.
+            anchor.pendingX?.let { target ->
+                anchor.pendingX = null
+                horizontal.dispatchRawDelta((target - horizontal.value).toFloat())
+            }
+            space.place(0, 0)
+        }
+    }
+
+/** Counts resting fingers in the initial pass without claiming anything; the zoom centers between them. */
+private fun Modifier.countFingers(anchor: ZoomAnchor, horizontal: ScrollState, onTwoFinger: (Boolean) -> Unit): Modifier =
+    pointerInput(Unit) {
+        // Only count, never claim — see PdfPages.
+        awaitPointerEventScope {
+            while (true) {
+                val e = awaitPointerEvent(PointerEventPass.Initial)
+                val on = e.changes.filter { it.pressed }
+                val twoFinger = on.size >= 2
+                onTwoFinger(twoFinger)
+                // This layer scrolls horizontally along; converted into the viewport.
+                anchor.finger = if (!twoFinger) null else Offset(
+                    on.map { it.position.x }.average().toFloat() - horizontal.value,
+                    on.map { it.position.y }.average().toFloat(),
+                )
+            }
+        }
+    }

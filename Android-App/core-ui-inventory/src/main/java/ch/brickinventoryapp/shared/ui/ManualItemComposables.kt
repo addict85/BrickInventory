@@ -313,6 +313,70 @@ fun PurchasePriceField(value: String, onValue: (String) -> Unit, label: String, 
     )
 }
 
+/** The tile's image with the quantity badge, the color dot and the edit button. */
+@Composable
+private fun ManualTileImage(
+    imageUrl: String?,
+    onImageError: () -> Unit,
+    imageLoader: ImageLoader,
+    quantity: Int,
+    color: Color?,
+    onEdit: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    Box(Modifier.fillMaxWidth().height(76.dp)) {
+        ProductImage(
+            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
+            imageLoader = imageLoader,
+            // Without a description: the name sits below it, TalkBack would otherwise read it twice.
+            contentDescription = null,
+            onState = { st ->
+                if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+            },
+            modifier = Modifier.fillMaxSize().clip(Shapes.tileImageCorners),
+            contentScale = ContentScale.Fit,
+            fallbackSize = 28.dp,
+        )
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            shape = Shapes.brand,
+            modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+        ) {
+            // The quantity badge: „×N" on a MANUALLY captured tile,
+            // „N×" on a tile from a set. That's not a whim,
+            // but the web app's rule — there, `man-tile` carries a
+            // `qbadge` with ×N, `part-card` a `part-qty` with N×.
+            Text(quantityManual(quantity), Modifier.padding(horizontal = Spacing.tiny, vertical = 1.dp).readAloudAs(quantity(quantity)),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+        if (color != null) {
+            Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
+                .clip(CircleShape).background(color))
+        }
+        Row(Modifier.align(Alignment.TopStart).padding(Spacing.hairline)) {
+            WithTooltip(stringResource(R.string.common_edit)) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        // No trash icon on the tile: the card opens the detail, and it sits there
+        // in the same spot as for the set.
+    }
+}
+
+/** What a manual tile shows of its part or figure: name, quantity, conditions, owners, price. */
+data class ManualTileItem(
+    val name: String,
+    val quantity: Int,
+    val states: List<Condition>,
+    val condition: Condition?,
+    val owner: List<AccountView>,
+    val price: Money?,
+)
+
 /**
  * The tile of a manually captured part or figure — one implementation, so
  * badges and footer don't need to be ported in just one of them. Only the
@@ -321,21 +385,16 @@ fun PurchasePriceField(value: String, onValue: (String) -> Unit, label: String, 
  */
 @Composable
 fun ManualTile(
+    item: ManualTileItem,
+    currency: CurrencyCode,
     imageUrl: String?,
     onImageError: () -> Unit,
     imageLoader: ImageLoader,
-    name: String,
-    quantity: Int,
-    states: List<Condition>,
-    condition: Condition?,
-    owner: List<AccountView>,
-    price: Money?,
-    currency: CurrencyCode,
     onEdit: () -> Unit,
     color: Color? = null,
     colorName: String? = null,
 ) {
-    val ctx = LocalContext.current
+    val quantity = item.quantity
     Card(
         onClick = onEdit,  // whole card clickable — opens the purchase-price/quantity dialog, like sets
         modifier = Modifier.width(Shapes.tileWidth).heightIn(min = Shapes.tileHeight),
@@ -344,61 +403,21 @@ fun ManualTile(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column {
-            Box(Modifier.fillMaxWidth().height(76.dp)) {
-                ProductImage(
-                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
-                    imageLoader = imageLoader,
-                    // Without a description: the name sits below it, TalkBack would otherwise read it twice.
-                    contentDescription = null,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                    },
-                    modifier = Modifier.fillMaxSize().clip(Shapes.tileImageCorners),
-                    contentScale = ContentScale.Fit,
-                    fallbackSize = 28.dp,
-                )
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Shapes.brand,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
-                ) {
-                    // The quantity badge: „×N" on a MANUALLY captured tile,
-                    // „N×" on a tile from a set. That's not a whim,
-                    // but the web app's rule — there, `man-tile` carries a
-                    // `qbadge` with ×N, `part-card` a `part-qty` with N×.
-                    Text(quantityManual(quantity), Modifier.padding(horizontal = Spacing.tiny, vertical = 1.dp).readAloudAs(quantity(quantity)),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                if (color != null) {
-                    Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
-                        .clip(CircleShape).background(color))
-                }
-                Row(Modifier.align(Alignment.TopStart).padding(Spacing.hairline)) {
-                    WithTooltip(stringResource(R.string.common_edit)) {
-                        IconButton(onClick = onEdit) {
-                            Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
-                                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-                // No trash icon on the tile: the card opens the detail, and it sits there
-                // in the same spot as for the set.
-            }
+            ManualTileImage(imageUrl, onImageError, imageLoader, quantity, color, onEdit)
             Column(Modifier.padding(horizontal = 6.dp, vertical = Spacing.tiny)) {
-                Text(name, style = MaterialTheme.typography.bodySmall,
+                Text(item.name, style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (colorName != null) {
                     Text(colorName, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, condition) }
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(item.states, item.condition) }
                 // Who owns the entry? The server only attaches owners when
                 // several accounts are in the Blickfeld — in a single account, "mine" would sit on
                 // every single tile.
-                OwnerBadges(owner, Modifier.padding(top = Spacing.hairline))
-                ManualTileFooter(price = price, currency = currency)
+                OwnerBadges(item.owner, Modifier.padding(top = Spacing.hairline))
+                ManualTileFooter(price = item.price, currency = currency)
             }
         }
     }

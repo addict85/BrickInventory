@@ -72,6 +72,20 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.launch
 
+/** What the catalog detail can trigger; every action does nothing unless overridden (preview, test). */
+interface CatalogDetailActions {
+    fun load(setNumber: String) = Unit
+    fun addToGallery(request: EntryRequest) = Unit
+
+    /** Add to watchlist; the target account as in the entry dialog and the web app (cat-m-owner). */
+    fun wish(request: WantedRequest) = Unit
+    fun openInGallery(setNumber: String) = Unit
+    fun back() = Unit
+
+    /** Open the watchlist item — set number and condition. */
+    fun openWantedItem(setNumber: String, condition: Condition) = Unit
+}
+
 /**
  * Catalog detail: image, metadata (year, theme, parts, minifigures) and
  * "Add to gallery" button with a quantity/price/condition dialog.
@@ -84,6 +98,7 @@ fun CatalogDetailScreen(
     loaded: Load<CatalogDetailView>,
     imageLoader: ImageLoader,
     serverUrl: String,
+    actions: CatalogDetailActions,
     defaultCondition: Condition = Condition.NEW,
     /** Household members — the account picker hides itself without them. */
     householdMembers: List<MemberView> = emptyList(),
@@ -91,23 +106,12 @@ fun CatalogDetailScreen(
     storageLocations: List<String> = emptyList(),
     /** The preselected storage location (star in settings). Empty means: no default. */
     locationDefault: String = "",
-    onLoad: (String) -> Unit,
-    onAddToGallery: (EntryRequest) -> Unit,
-    /** Add to watchlist; the target account as in the entry dialog and the web app (cat-m-owner). */
-    onWish: (WantedRequest) -> Unit,
-    onOpenInGallery: (String) -> Unit,
-    onBack: () -> Unit,
     /** The watchlist item for this set, if it's already on the watchlist. */
     wanted: WantedItemView? = null,
-    /** Open the watchlist item — set number and condition. */
-    onOpenWantedItem: (String, Condition) -> Unit = { _, _ -> },
 ) {
     val detail = loaded.dataOrNull()
-    LaunchedEffect(setNumber) { onLoad(setNumber) }
-    var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showWishDialog by rememberSaveable { mutableStateOf(false) }
-    // Screen-filling zoom as in the set detail — here too, on user request.
-    var showImageZoom by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(setNumber) { actions.load(setNumber) }
+    var open by rememberSaveable { mutableStateOf<CatalogDialog?>(null) }
     val ctx = LocalContext.current
     // `stringResource` instead of `ctx.getString` in the callback: a context grabbed from
     // LocalContext.current can deliver stale values after a config change (language, dark mode,
@@ -123,37 +127,60 @@ fun CatalogDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(messages) },
         // The name sits in the bar as in the set detail (DetailTopAppBar), not only in the content.
-        topBar = { DetailTopAppBar(title = detail?.name ?: setNumber, onBack = onBack) }
+        topBar = { DetailTopAppBar(title = detail?.name ?: setNumber, onBack = actions::back) }
     ) { padding ->
         when {
             loaded is Load.Failure -> StateHint(Modifier.padding(padding)) {
-                ErrorHint(loaded.message.sentence(), { onLoad(setNumber) }, loaded.kind)
+                ErrorHint(loaded.message.sentence(), { actions.load(setNumber) }, loaded.kind)
             }
             detail == null -> LoadCircle(Modifier.padding(padding))
             else -> CatalogDetailContent(
                 detail, serverUrl, imageLoader, wanted, roles, Modifier.padding(padding),
-                onZoom = { showImageZoom = true },
-                rememberOn = { if (wanted != null) onOpenWantedItem(wanted.setNumber, wanted.condition) else showWishDialog = true },
-                captureOn = { showAddDialog = true },
-                onOpenInGallery = onOpenInGallery,
-                onBrickLink = { url ->
-                    // Don't swallow silently: with no browser present, otherwise nothing would happen.
-                    if (!openExtern(ctx, externalAddress(url))) {
-                        area.launch { messages.showSnackbar(noAppText) }
-                    }
-                },
+                DetailEvents(
+                    onZoom = { open = CatalogDialog.ZOOM },
+                    rememberOn = {
+                        if (wanted != null) actions.openWantedItem(wanted.setNumber, wanted.condition) else open = CatalogDialog.WISH
+                    },
+                    captureOn = { open = CatalogDialog.ADD },
+                    onOpenInGallery = actions::openInGallery,
+                    onBrickLink = { url ->
+                        // Don't swallow silently: with no browser present, otherwise nothing would happen.
+                        if (!openExtern(ctx, externalAddress(url))) {
+                            area.launch { messages.showSnackbar(noAppText) }
+                        }
+                    },
+                ),
             )
         }
     }
 
     CatalogDetailDialogs(
-        detail = detail, rememberItem = showWishDialog, take = showAddDialog, zoom = showImageZoom,
-        defaultCondition = defaultCondition, householdMembers = householdMembers,
-        storageLocations = storageLocations, locationDefault = locationDefault, serverUrl = serverUrl, imageLoader = imageLoader,
-        onWish = onWish, onAddToGallery = onAddToGallery,
-        onClose = { showWishDialog = false; showAddDialog = false; showImageZoom = false },
+        detail = detail, open = open,
+        choices = EntryChoices(defaultCondition, householdMembers, storageLocations, locationDefault),
+        serverUrl = serverUrl, imageLoader = imageLoader, actions = actions,
+        onClose = { open = null },
     )
 }
+
+/** Which of the detail's dialogs is open: watchlist, add or image zoom. */
+private enum class CatalogDialog { WISH, ADD, ZOOM }
+
+/** What the entry dialogs preselect and offer. */
+private class EntryChoices(
+    val defaultCondition: Condition,
+    val householdMembers: List<MemberView>,
+    val storageLocations: List<String>,
+    val locationDefault: String,
+)
+
+/** The taps of the detail content. */
+private class DetailEvents(
+    val onZoom: () -> Unit,
+    val rememberOn: () -> Unit,
+    val captureOn: () -> Unit,
+    val onOpenInGallery: (String) -> Unit,
+    val onBrickLink: (String) -> Unit,
+)
 
 /** Image and details; two columns from "expanded" on. */
 @Composable
@@ -164,11 +191,7 @@ private fun CatalogDetailContent(
     wanted: WantedItemView?,
     roles: ScrollState,
     modifier: Modifier,
-    onZoom: () -> Unit,
-    rememberOn: () -> Unit,
-    captureOn: () -> Unit,
-    onOpenInGallery: (String) -> Unit,
-    onBrickLink: (String) -> Unit,
+    events: DetailEvents,
 ) {
     val ctx = LocalContext.current
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -185,7 +208,7 @@ private fun CatalogDetailContent(
                 imageLoader = imageLoader,
                 contentDescription = detail.name,
                 modifier = m.clip(Shapes.card)
-                    .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_image_enlarge), role = Role.Button) { onZoom() },
+                    .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_image_enlarge), role = Role.Button) { events.onZoom() },
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 fallbackSize = 64.dp,
                 imageBackground = true,
@@ -196,10 +219,10 @@ private fun CatalogDetailContent(
             CatalogDetails(
                 detail = detail,
                 wanted = wanted,
-                rememberOn = rememberOn,
-                captureOn = captureOn,
-                onOpenInGallery = onOpenInGallery,
-                onBrickLink = onBrickLink,
+                rememberOn = events.rememberOn,
+                captureOn = events.captureOn,
+                onOpenInGallery = events.onOpenInGallery,
+                onBrickLink = events.onBrickLink,
             )
         }
         // Two columns from "expanded" on, like the set detail: image left, details and
@@ -231,48 +254,42 @@ private fun CatalogDetailContent(
 @Composable
 private fun CatalogDetailDialogs(
     detail: CatalogDetailView?,
-    rememberItem: Boolean,
-    take: Boolean,
-    zoom: Boolean,
-    defaultCondition: Condition,
-    householdMembers: List<MemberView>,
-    storageLocations: List<String>,
-    locationDefault: String,
+    open: CatalogDialog?,
+    choices: EntryChoices,
     serverUrl: String,
     imageLoader: ImageLoader,
-    onWish: (WantedRequest) -> Unit,
-    onAddToGallery: (EntryRequest) -> Unit,
+    actions: CatalogDetailActions,
     onClose: () -> Unit,
 ) {
-    if (rememberItem && detail != null) {
+    if (open == CatalogDialog.WISH && detail != null) {
         WantedItemDialog(
             setName = detail.name ?: detail.setNumber,
-            defaultCondition = defaultCondition,
-            householdMembers = householdMembers,
+            defaultCondition = choices.defaultCondition,
+            householdMembers = choices.householdMembers,
             onDismiss = onClose,
             onWish = { condition, direction, threshold, account ->
-                onWish(WantedRequest(detail.setNumber, condition, direction, threshold, account))
+                actions.wish(WantedRequest(detail.setNumber, condition, direction, threshold, account))
                 onClose()
             },
         )
     }
 
-    if (take && detail != null) {
+    if (open == CatalogDialog.ADD && detail != null) {
         CatalogAddDialog(
             setName = detail.name ?: detail.setNumber,
-            defaultCondition = defaultCondition,
-            householdMembers = householdMembers,
-            storageLocations = storageLocations,
-            locationDefault = locationDefault,
+            defaultCondition = choices.defaultCondition,
+            householdMembers = choices.householdMembers,
+            storageLocations = choices.storageLocations,
+            locationDefault = choices.locationDefault,
             onDismiss = onClose,
             onAdd = { wish ->
                 onClose()
-                onAddToGallery(wish.copy(setNumber = detail.setNumber))
+                actions.addToGallery(wish.copy(setNumber = detail.setNumber))
             }
         )
     }
 
-    if (zoom) {
+    if (open == CatalogDialog.ZOOM) {
         // The same address as the preview image above: resolveFullUrl() already
         // delivers the full resolution (no thumb) — a second call with
         // different values would only drift apart.

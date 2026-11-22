@@ -68,6 +68,7 @@ import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.catalog.ui.screens.ThemeRow
 import ch.brickinventoryapp.collection.ui.screens.SetCard
@@ -383,7 +384,7 @@ class AccessibilityTest {
     @Test
     fun `CSV bar names state, expanding and progress`() {
         show {
-            CsvImportBanner(done = 3, total = 10, current = "10294-1", ok = 2, warn = 1, err = 0, running = true, onCancel = {})
+            CsvImportBanner(CsvProgress(done = 3, total = 10, current = "10294-1", ok = 2, warn = 1, err = 0), running = true, onCancel = {})
         }
         val bar = compose.onNode(hasClickAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.StateDescription))
             .fetchSemanticsNode("Der Aufklapper nennt keinen Zustand")

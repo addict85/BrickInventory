@@ -79,23 +79,7 @@ internal fun YearScrubber(
     Row(modifier) {
         // Label track — only visible while dragging, catches no touches.
         Box(Modifier.fillMaxHeight()) {
-            if (dragging && tag != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    shape = Shapes.brand,
-                    shadowElevation = 3.dp,
-                    modifier = Modifier
-                        .offset { IntOffset(0, thumbOffsetY) }
-                        .padding(end = 6.dp)
-                ) {
-                    Text(
-                        "$tag",
-                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                    )
-                }
-            }
+            if (dragging && tag != null) YearLabel(tag, thumbOffsetY)
         }
 
         // 48 dp track like every tap target; dragging is only one of the paths. TalkBack and
@@ -127,46 +111,72 @@ internal fun YearScrubber(
                     detectTapGestures { offset -> roles(offset.y) }
                 }
         ) {
-            // Schiene
-            Surface(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                shape = Shapes.stroke,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 11.dp, top = 6.dp, bottom = 6.dp)
-                    .width(3.dp)
-                    .fillMaxHeight()
-            ) {}
-
-            // Handle — opaque, so it stands out on every tile; follows the list.
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
-                shadowElevation = if (dragging) 3.dp else 1.dp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset { IntOffset(0, thumbOffsetY) }
-            ) {
-                Box(Modifier.width(HANDLE_WIDTH).height(HANDLE_HEIGHT), Alignment.Center) {
-                    if (LocalIsBrickTheme.current) {
-                        // Brick design: handle as a stud (lighter stud dot)
-                        Surface(
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f),
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            modifier = Modifier.size(8.dp)
-                        ) {}
-                    } else {
-                        Icon(
-                            Icons.Default.UnfoldMore, null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
+            ScrubberHandle(thumbOffsetY, dragging)
             YearJumpMenu(jumpMenu, distribution, onClose = { jumpMenu = false }) { number ->
                 jumpMenu = false
                 onScrollTo(number.coerceIn(0, (total - 1).coerceAtLeast(0)))
+            }
+        }
+    }
+}
+
+/** The year at the handle while dragging. */
+@Composable
+private fun YearLabel(tag: Int, thumbOffsetY: Int) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = Shapes.brand,
+        shadowElevation = 3.dp,
+        modifier = Modifier
+            .offset { IntOffset(0, thumbOffsetY) }
+            .padding(end = 6.dp)
+    ) {
+        Text(
+            "$tag",
+            fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+        )
+    }
+}
+
+/** Rail and handle; the handle follows the list, opaque so it stands out on every tile. */
+@Composable
+private fun BoxScope.ScrubberHandle(thumbOffsetY: Int, dragging: Boolean) {
+    // Rail
+    Surface(
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+        shape = Shapes.stroke,
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .padding(end = 11.dp, top = 6.dp, bottom = 6.dp)
+            .width(3.dp)
+            .fillMaxHeight()
+    ) {}
+
+    // Handle — opaque, so it stands out on every tile; follows the list.
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
+        shadowElevation = if (dragging) 3.dp else 1.dp,
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .offset { IntOffset(0, thumbOffsetY) }
+    ) {
+        Box(Modifier.width(HANDLE_WIDTH).height(HANDLE_HEIGHT), Alignment.Center) {
+            if (LocalIsBrickTheme.current) {
+                // Brick design: handle as a stud (lighter stud dot)
+                Surface(
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    modifier = Modifier.size(8.dp)
+                ) {}
+            } else {
+                Icon(
+                    Icons.Default.UnfoldMore, null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

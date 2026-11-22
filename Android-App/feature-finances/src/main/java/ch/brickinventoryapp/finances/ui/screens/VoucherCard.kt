@@ -33,6 +33,16 @@ import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
 
+/** What a voucher card can trigger; each already behind the device lock where needed. */
+internal class VoucherEvents(
+    val switchPin: () -> Unit,
+    val edit: () -> Unit,
+    val delete: () -> Unit,
+    val openPdf: () -> Unit,
+    val copy: (isNumber: Boolean) -> Unit,
+    val queryBalance: () -> Unit,
+)
+
 /**
  * A voucher as a card: number on the left (in groups of four, because nineteen digits
  * cannot be read off at the checkout), amount and balance-query status, a menu on the right with
@@ -44,12 +54,7 @@ import ch.brickinventoryapp.ui.util.fmtTag
 internal fun VoucherCard(
     g: VoucherView,
     pinVisible: Boolean,
-    switchOnPin: () -> Unit,
-    editOn: () -> Unit,
-    deleteOn: () -> Unit,
-    openOnPdf: () -> Unit,
-    onCopy: (isNumber: Boolean) -> Unit,
-    onBalance: () -> Unit,
+    events: VoucherEvents,
     balanceRunning: Boolean,
     /** Number and PIN in plain text, if they have already been fetched for this page. */
     plaintext: PlaintextView?,
@@ -64,7 +69,7 @@ internal fun VoucherCard(
              verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // What gets copied is the plain text without groups of four: a payment field does not accept them.
-            CopyRow(stringResource(R.string.vouchers_cd_copy_number, number), { onCopy(true) },
+            CopyRow(stringResource(R.string.vouchers_cd_copy_number, number), { events.copy(true) },
                 Modifier.weight(1f)) {
                 Text(number, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
@@ -80,15 +85,15 @@ internal fun VoucherCard(
                     // the entry would be a trap producing the same rejection every time.
                     if (g.pin != null) MenuEntry(stringResource(R.string.vouchers_menu_balance),
                         stringResource(R.string.vouchers_cd_balance, number), Icons.Default.Sync,
-                        enabled = !balanceRunning) { menu = false; onBalance() }
+                        enabled = !balanceRunning) { menu = false; events.queryBalance() }
                     if (g.hasPdf) MenuEntry(stringResource(R.string.vouchers_menu_pdf),
                         stringResource(R.string.vouchers_cd_pdf, number), Icons.Default.PictureAsPdf) {
-                        menu = false; openOnPdf()
+                        menu = false; events.openPdf()
                     }
                     MenuEntry(stringResource(R.string.common_edit),
-                        stringResource(R.string.vouchers_cd_edit, number), Icons.Default.Edit) { menu = false; editOn() }
+                        stringResource(R.string.vouchers_cd_edit, number), Icons.Default.Edit) { menu = false; events.edit() }
                     MenuEntry(stringResource(R.string.common_delete),
-                        stringResource(R.string.vouchers_cd_delete, number), Icons.Default.Delete) { menu = false; deleteOn() }
+                        stringResource(R.string.vouchers_cd_delete, number), Icons.Default.Delete) { menu = false; events.delete() }
                 }
             }
         }
@@ -97,12 +102,12 @@ internal fun VoucherCard(
         if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
             // The PIN is also tappable while HIDDEN: copying does not mean viewing.
             val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinVisible) plaintext?.pin ?: pin else "••••"
-            CopyRow(stringResource(R.string.vouchers_cd_copy_pin, number), { onCopy(false) }) {
+            CopyRow(stringResource(R.string.vouchers_cd_copy_pin, number), { events.copy(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
             val pinToggle = stringResource(if (pinVisible) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
             WithTooltip(pinToggle) {
-                IconButton(onClick = switchOnPin) {
+                IconButton(onClick = events.switchPin) {
                     // In primary like the copy icon next to it: actions of equal rank, one color.
                     Icon(
                         if (pinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,

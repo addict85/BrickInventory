@@ -51,19 +51,22 @@ fun VouchersRoute(
         onBalanceAll = { gvm.queryAllBalances() }, exportOn = { gvm.openVoucherExport() }) { newValue, onNew ->
         VouchersCard(
             condition = voucherState,
-            onField = { n, p, b, w -> gvm.setVoucherField(n, p, b, w) },
-            switchOnPin = { gvm.switchVoucherPin(it) },
-            editOn = { gvm.editVoucher(it) },
-            onCancel = { gvm.emptyVoucherForm() },
-            onSave = { gvm.saveVoucher(it?.let { u -> FileRef(u.toString()) }) },
-            deleteOn = { gvm.deleteVoucher(it) },
-            openOnPdf = { gvm.openVoucherPdf(it) },
-            onCopy = { id, isNumber -> gvm.copyVoucher(id, isNumber) },
-            onBalance = { gvm.queryBalance(it) },
-            cancelOnBalance = { gvm.cancelBalanceRun() },
-            onAgain = { gvm.loadVouchers() },
-            onConfirm = { password, code -> gvm.confirm(password, code) },
-            cancelOnConfirmation = { gvm.cancelConfirmation() },
+            actions = object : VoucherCardActions {
+                override fun setField(number: String?, pin: String?, amount: String?, currency: String?) =
+                    gvm.setVoucherField(number, pin, amount, currency)
+                override fun switchPin(id: Int) = gvm.switchVoucherPin(id)
+                override fun edit(id: Int) = gvm.editVoucher(id)
+                override fun cancelEdit() = gvm.emptyVoucherForm()
+                override fun save(pdf: android.net.Uri?) = gvm.saveVoucher(pdf?.let { u -> FileRef(u.toString()) })
+                override fun delete(id: Int) = gvm.deleteVoucher(id)
+                override fun openPdf(id: Int) = gvm.openVoucherPdf(id)
+                override fun copy(id: Int, isNumber: Boolean) = gvm.copyVoucher(id, isNumber)
+                override fun queryBalance(id: Int) = gvm.queryBalance(id)
+                override fun cancelBalanceRun() = gvm.cancelBalanceRun()
+                override fun reload() = gvm.loadVouchers()
+                override fun confirm(password: String, code: String?) = gvm.confirm(password, code)
+                override fun cancelConfirmation() = gvm.cancelConfirmation()
+            },
             newValue = newValue,
             onNew = onNew,
         )

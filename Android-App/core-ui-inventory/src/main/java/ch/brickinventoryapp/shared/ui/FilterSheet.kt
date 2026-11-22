@@ -82,22 +82,24 @@ fun SearchWithFilter(
     active: List<ActiveFilter> = emptyList(),
 ) {
     Column(Modifier.fillMaxWidth()) {
-        SearchAndButtons(value, onValue, placeholder, activeFilter, onFilter, scanOn, sorting, record)
+        SearchAndButtons(value, onValue, placeholder, HeaderButtons(activeFilter, onFilter, scanOn, sorting, record))
         ActiveFilterSeries(active)
     }
 }
 
+/** The buttons next to the search field, as [SearchWithFilter] takes them. */
+private class HeaderButtons(
+    val activeFilter: Int,
+    val onFilter: () -> Unit,
+    val scanOn: (() -> Unit)?,
+    val sorting: (@Composable () -> Unit)?,
+    val record: Pair<String, () -> Unit>?,
+)
+
 @Composable
-private fun SearchAndButtons(
-    value: String,
-    onValue: (String) -> Unit,
-    placeholder: String,
-    activeFilter: Int,
-    onFilter: () -> Unit,
-    scanOn: (() -> Unit)?,
-    sorting: (@Composable () -> Unit)?,
-    record: Pair<String, () -> Unit>?,
-) {
+private fun SearchAndButtons(value: String, onValue: (String) -> Unit, placeholder: String, header: HeaderButtons) {
+    val scanOn = header.scanOn
+    val sorting = header.sorting
     // As wide as the grid below it (ReadingWidth.kt): if the bar ended at 840 dp,
     // it stood on the tablet right in the middle over the tiles.
     Box(Modifier.fillMaxWidth()) {
@@ -107,10 +109,10 @@ private fun SearchAndButtons(
         val large = largeFont()
         // With large text, capture sits in this row instead of floating: over a
         // list that shows only two entries, the floating button covered its text.
-        val addHere = record.takeIf { large }
+        val addHere = header.record.takeIf { large }
         val buttons: @Composable () -> Unit = {
             val follows = scanOn != null || sorting != null || addHere != null
-            FilterButton(activeFilter, onFilter, Modifier.padding(end = if (follows) Spacing.tiny else 14.dp))
+            FilterButton(header.activeFilter, header.onFilter, Modifier.padding(end = if (follows) Spacing.tiny else 14.dp))
             if (sorting != null) Box(Modifier.padding(end = if (scanOn != null || addHere != null) Spacing.tiny else 14.dp)) { sorting() }
             if (scanOn != null) ScanButton(scanOn,
                 Modifier.padding(end = if (addHere != null) Spacing.tiny else 14.dp))

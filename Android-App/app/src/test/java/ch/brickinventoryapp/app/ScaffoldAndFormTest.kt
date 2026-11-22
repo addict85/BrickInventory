@@ -62,8 +62,8 @@ import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -99,7 +99,6 @@ import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtInt
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -192,8 +191,7 @@ class ScaffoldAndFormTest {
         MainScaffold(
             title = "Sammlung", navController = nav, bottomNavItems = tab,
             snackbarHostState = message,
-            csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-            onCsvCancel = {}, onTabTapped = {}, pendingChanges = open,
+            onTabTapped = {}, pendingChanges = open,
         ) {
             NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { content() } }
         }
@@ -559,10 +557,8 @@ class ScaffoldAndFormTest {
     fun `detail cards stand in reading width on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         show {
-            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail),
-                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = {},
-                onOpenInGallery = {}, onBack = {})
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail), imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                actions = object : CatalogDetailActions {})
         }
         val density = ctx.resources.displayMetrics.density
         val year = compose.onNodeWithText(ctx.getString(R.string.catalog_detail_year)).fetchSemanticsNode().boundsInRoot
@@ -580,10 +576,8 @@ class ScaffoldAndFormTest {
     fun `catalog detail stands in two columns on the tablet, add before BrickLink`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         show {
-            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail),
-                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = {},
-                onOpenInGallery = {}, onBack = {})
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail), imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                actions = object : CatalogDetailActions {})
         }
         // The name stands once, in the bar as in the set detail; the details to the right of the image.
         compose.onAllNodesWithText("Lion Knights' Castle").assertCountEquals(1)

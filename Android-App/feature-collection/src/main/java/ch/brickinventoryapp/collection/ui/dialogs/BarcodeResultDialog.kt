@@ -123,83 +123,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
         // Can't be closed while adding — the call is still running.
         onCancel = { if (!barcodeState.add.running) actions.cancelBarcode() },
     ) {
-                // ── Notice for a guessed number ──
-                //
-                // The dialog shows image and name; the notice says when a closer look is needed
-                // (server with no EAN match, `utils/barcodeQuelle.ts`, or text recognition). Above, and
-                // in the warning color, but without blocking the operation: the hit is often right,
-                // and confirming should be a glance, not a click more.
-                if (barcodeState.unsafe) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 10.dp, vertical = Spacing.small),
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Warning, null, Modifier.size(withFont(20.dp)),
-                                tint = MaterialTheme.colorScheme.onErrorContainer)
-                            Text(
-                                stringResource(R.string.main_barcode_unsure),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-                val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                ProductImage(
-                    model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
-                    imageLoader = imageLoader,
-                    contentDescription = barcodeState.setName,
-                    modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Fit,
-                    fallbackSize = 56.dp,
-                )
-                // Name and number belong together, as on the box; the notice follows after.
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                    if (barcodeState.setName != null)
-                        Text(barcodeState.setName, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
-                        // The recognized set number is shown, not tapped: no link color.
-                        Text(barcodeState.result, style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                        if (barcodeState.theme != null)
-                            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                                Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Spacing.hairline),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            }
-                    }
-                }
-                // As in the catalog: whoever already has a set should see it before entering it a second time.
-                if (barcodeState.ownershipQuantity > 0 && !forPartList)
-                    InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.CalendarMonth, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${barcodeState.year}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(withFont(18.dp)), tint = Color.Unspecified)
-                        Text(fmtInt(barcodeState.pieces), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (barcodeState.minifigs != null && barcodeState.minifigs > 0)
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Person, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${barcodeState.minifigs}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                }
+        BarcodeFound(barcodeState, state.serverUrl, imageLoader, forPartList)
                 // Entry fields only when entering into the collection. No inventory item comes
                 // from a parts list entry — confirmAddBarcode() only passes the
                 // number on in the TEILELISTE branch. Owner, purchase price and condition would be fields with no
@@ -228,5 +152,100 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
                         { barcodeLocation = it }
                     )
                 }
+    }
+}
+
+/** What was found: the notice for a guessed number, image, name, ownership and the set's figures. */
+@Composable
+private fun BarcodeFound(barcodeState: BarcodeUiState, serverUrl: String, imageLoader: ImageLoader, forPartList: Boolean) {
+    // ── Notice for a guessed number ──
+    //
+    // The dialog shows image and name; the notice says when a closer look is needed
+    // (server with no EAN match, `utils/barcodeQuelle.ts`, or text recognition). Above, and
+    // in the warning color, but without blocking the operation: the hit is often right,
+    // and confirming should be a glance, not a click more.
+    if (barcodeState.unsafe) UnsureNotice()
+    val imgUrl = barcodeState.imageLocal?.let { "$serverUrl$it" } ?: barcodeState.imageUrl
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    ProductImage(
+        model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
+        imageLoader = imageLoader,
+        contentDescription = barcodeState.setName,
+        modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
+        contentScale = ContentScale.Fit,
+        fallbackSize = 56.dp,
+    )
+    // Name and number belong together, as on the box; the notice follows after.
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+        if (barcodeState.setName != null)
+            Text(barcodeState.setName, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
+            // The recognized set number is shown, not tapped: no link color.
+            Text(barcodeState.result.orEmpty(), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+            if (barcodeState.theme != null)
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
+                    Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Spacing.hairline),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+        }
+    }
+    // As in the catalog: whoever already has a set should see it before entering it a second time.
+    if (barcodeState.ownershipQuantity > 0 && !forPartList)
+        InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
+    HorizontalDivider()
+    BarcodeStats(barcodeState)
+}
+
+/**
+ * Notice for a guessed number: in the warning color, but without blocking the operation — the hit
+ * is often right, and confirming should be a glance, not a click more.
+ */
+@Composable
+private fun UnsureNotice() {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = Spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Warning, null, Modifier.size(withFont(20.dp)),
+                tint = MaterialTheme.colorScheme.onErrorContainer)
+            Text(
+                stringResource(R.string.main_barcode_unsure),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+/** Year, pieces and minifigures of the found set, each with its icon. */
+@Composable
+private fun BarcodeStats(barcodeState: BarcodeUiState) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+        if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.CalendarMonth, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${barcodeState.year}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(withFont(18.dp)), tint = Color.Unspecified)
+            Text(fmtInt(barcodeState.pieces), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (barcodeState.minifigs != null && barcodeState.minifigs > 0)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Person, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${barcodeState.minifigs}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
     }
 }

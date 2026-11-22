@@ -31,9 +31,12 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
     val apiLimits  = monState.apiLimits
     // Half-typed limits belong to the person and stay saveable.
     var editingLimits by rememberSaveable { mutableStateOf(false) }
-    var rbInput    by rememberSaveable { mutableStateOf("0") }
-    var blInput    by rememberSaveable { mutableStateOf("0") }
-    var bsInput    by rememberSaveable { mutableStateOf("0") }
+    val rbState = rememberSaveable { mutableStateOf("0") }
+    val blState = rememberSaveable { mutableStateOf("0") }
+    val bsState = rememberSaveable { mutableStateOf("0") }
+    var rbInput by rbState
+    var blInput by blState
+    var bsInput by bsState
 
     // Pre-fill the input fields with the loaded values — but only as long as
     // editing is NOT happening. Saving reloads the limits itself; without
@@ -54,10 +57,7 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
         quotas = cacheStats?.rateLimits,
         edit = editingLimits,
         toggleOnEdit = { editingLimits = !editingLimits },
-        inputs = Triple(bsInput, blInput, rbInput),
-        onBrickset = { bsInput = it },
-        onBricklink = { blInput = it },
-        onRebrickable = { rbInput = it },
+        inputs = LimitInputs(bsState, blState, rbState),
         onSave = {
             // Reloading the limits lives in the ViewModel.
             events.limits(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
@@ -66,22 +66,24 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
     )
 }
 
+/** The typed limits of Brickset, BrickLink and Rebrickable while editing. */
+private class LimitInputs(val brickset: MutableState<String>, val bricklink: MutableState<String>, val rebrickable: MutableState<String>)
+
 /**
  * The daily quotas of the three services; in edit mode with input fields for
- * the limits. [inputs] in the order Brickset, BrickLink, Rebrickable.
+ * the limits.
  */
 @Composable
 private fun QuotaCard(
     quotas: QuotasView?,
     edit: Boolean,
     toggleOnEdit: () -> Unit,
-    inputs: Triple<String, String, String>,
-    onBrickset: (String) -> Unit,
-    onBricklink: (String) -> Unit,
-    onRebrickable: (String) -> Unit,
+    inputs: LimitInputs,
     onSave: () -> Unit,
 ) {
-    val (bsInput, blInput, rbInput) = inputs
+    val bsInput = inputs.brickset.value
+    val blInput = inputs.bricklink.value
+    val rbInput = inputs.rebrickable.value
     AppCard {
         Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -94,9 +96,9 @@ private fun QuotaCard(
             }
 
             quotas?.let { rl ->
-                RateLimitRow("Brickset",    rl.brickset,    if (edit) bsInput else null, onBrickset)
-                RateLimitRow("BrickLink",   rl.bricklink,   if (edit) blInput else null, onBricklink)
-                RateLimitRow("Rebrickable", rl.rebrickable, if (edit) rbInput else null, onRebrickable)
+                RateLimitRow("Brickset",    rl.brickset,    if (edit) bsInput else null) { inputs.brickset.value = it }
+                RateLimitRow("BrickLink",   rl.bricklink,   if (edit) blInput else null) { inputs.bricklink.value = it }
+                RateLimitRow("Rebrickable", rl.rebrickable, if (edit) rbInput else null) { inputs.rebrickable.value = it }
             }
 
             if (edit) {

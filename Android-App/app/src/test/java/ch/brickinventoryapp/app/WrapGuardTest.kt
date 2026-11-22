@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
@@ -271,9 +272,8 @@ class WrapGuardTest {
             bricklink = BrickLinkView(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         check("Katalog-Detail $font", font) {
-            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(detail), imageLoader = images,
-                serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = {},
-                onOpenInGallery = {}, onBack = {})
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(detail), imageLoader = images, serverUrl = "",
+                actions = object : CatalogDetailActions {})
         }
     }
 

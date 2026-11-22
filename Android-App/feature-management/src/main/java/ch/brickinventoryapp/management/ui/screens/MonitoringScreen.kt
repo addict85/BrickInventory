@@ -30,7 +30,6 @@ import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.model.domain.ScheduleView
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -144,10 +143,8 @@ fun MonitoringScreen(condition: MonitoringState, actions: MonitoringActions, cac
                 JobCard(
                     jobKey   = key,
                     job      = job,
-                    schedule = monState.jobSchedules[key],
+                    monState = monState,
                     queueOpen = queueOpen,
-                    queue    = monState.queue,
-                    buttons  = monState.buttons,
                     actions = actions,
                     onToggleQueue = {
                         queueOpen = !queueOpen
@@ -162,14 +159,15 @@ fun MonitoringScreen(condition: MonitoringState, actions: MonitoringActions, cac
 private fun JobCard(
     jobKey: String,
     job: JobStateView,
-    /** This job's schedule, or null — then the row is not shown. */
-    schedule: ScheduleView?,
+    /** Schedules, queue and start buttons of all jobs; this card takes its own. */
+    monState: MonitoringUiState,
     queueOpen: Boolean,
-    queue: Load<List<BricksetEntryView>>,
-    buttons: Map<Jobstart, Message>,
     actions: MonitoringActions,
     onToggleQueue: () -> Unit,
 ) {
+    // This job's schedule, or null — then the row is not shown.
+    val schedule = monState.jobSchedules[jobKey]
+    val buttons = monState.buttons
     AppCard {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
             JobHeader(jobKey, job)
@@ -200,7 +198,7 @@ private fun JobCard(
                     Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else stringResource(R.string.monitoring_queue_show, job.total), style = MaterialTheme.typography.labelMedium)
                 }
 
-                AnimatedVisibility(queueOpen) { Queue(queue, actions) }
+                AnimatedVisibility(queueOpen) { Queue(monState.queue, actions) }
             }
         }
     }

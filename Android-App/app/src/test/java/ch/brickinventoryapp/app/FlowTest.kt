@@ -29,6 +29,7 @@ import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
 import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
@@ -239,11 +240,11 @@ class FlowTest {
         show {
             CompositionLocalProvider(LocalStepGuard provides protection, LocalSdkLevel provides level) {
                 VouchersCard(
-                    condition = condition, onField = { _, _, _, _ -> },
-                    switchOnPin = { id -> condition = condition.copy(pinVisible = condition.pinVisible + id) },
-                    editOn = {}, onCancel = {}, onSave = {}, deleteOn = {}, openOnPdf = {},
-                    onCopy = { id, _ -> copied += id.toString() }, onBalance = {},
-                    cancelOnBalance = {}, onAgain = {}, onConfirm = { _, _ -> }, cancelOnConfirmation = {},
+                    condition = condition,
+                    actions = object : VoucherCardActions {
+                        override fun switchPin(id: Int) { condition = condition.copy(pinVisible = condition.pinVisible + id) }
+                        override fun copy(id: Int, isNumber: Boolean) { copied += id.toString() }
+                    },
                 )
             }
         }

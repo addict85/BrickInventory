@@ -5,15 +5,12 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The scanner must not slow down the camera.
+ * The scanner must not slow down the camera: tapping focuses.
  */
 class ScannerPerformanceTest {
 
-    // Both files of the scanner: the screen carries the tap-to-focus, the
-    // throttling of text recognition stands in BarcodeAnalyzer.kt.
-    // The order checks below stay valid — barcodeScanner.process(),
-    // lastOcr and textRecognizer.process() stand exclusively in the
-    // analysis file, prepending does not change their order relative to each other.
+    // Both files of the scanner: the screen carries the tap-to-focus. The throttling of text
+    // recognition is checked by running it (ScanDeciderTest in feature-collection).
     private val src: String by lazy {
         val w = "collection/ui/screens/"
         File(Sources.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
@@ -21,26 +18,6 @@ class ScannerPerformanceTest {
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    @Test
-    fun `text recognition is throttled, the barcode reader is not`() {
-        val c = code(src)
-        assert(c.contains("OCR_INTERVAL_MS")) {
-            "Ohne Drosselung läuft die Texterkennung auf jedem Bild und blockiert den " +
-                "Analyse-Thread — Vorschau und Autofokus werden dadurch träge"
-        }
-        val throttle = c.indexOf("lastOcr.get() < OCR_INTERVAL_MS")
-        val ocr = c.indexOf("textRecognizer.process(")
-        assert(throttle in 1 until ocr) {
-            "Die Zeitschranke muss VOR dem Aufruf der Texterkennung greifen"
-        }
-        // The barcode reader must NOT be throttled — it is cheap and should
-        // trigger immediately.
-        val barcode = c.indexOf("barcodeScanner.process(")
-        assert(barcode in 1 until throttle) {
-            "Der Barcode-Leser wurde mitgedrosselt — er soll auf jedem Bild laufen"
-        }
-    }
 
     @Test
     fun `tapping focuses`() {

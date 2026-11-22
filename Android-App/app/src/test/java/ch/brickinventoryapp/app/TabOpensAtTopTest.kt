@@ -15,7 +15,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.finances.ui.FinanceTarget
@@ -24,7 +23,6 @@ import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -70,8 +68,6 @@ class TabOpensAtTopTest {
                 MainScaffold(
                     title = "Sammlung", navController = nav, bottomNavItems = tab,
                     snackbarHostState = remember { SnackbarHostState() },
-                    csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                    onCsvCancel = {},
                     onTabTapped = { target -> reported += target to (nav.currentDestination?.hasRoute<CollectionTarget.Gallery>() == true) },
                 ) {
                     NavHost(nav, startDestination = CollectionTarget.Gallery) {

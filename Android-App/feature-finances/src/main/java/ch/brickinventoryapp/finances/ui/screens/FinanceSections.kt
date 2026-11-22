@@ -11,12 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.finances.ui.FinanceHeader
 import ch.brickinventoryapp.finances.ui.FinanceRow
+import ch.brickinventoryapp.finances.ui.FinanceSums
 import ch.brickinventoryapp.finances.ui.financeHeader
 import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.finances.ui.foreignPurchasePrices
@@ -317,139 +320,173 @@ private fun CategoryChip(
 /** The key-figure cards above the list. */
 @OptIn(ExperimentalLayoutApi::class)
 internal fun LazyListScope.financeSummaryCards(valuation: ValuationView, partsValuation: PartsValuationView?, figsValuation: FiguresValuationView?, pnl: ProfitView?, fmtPrice: (String?) -> String) {
-    item {
-        // In the dark theme primaryContainer instead of primary: the bright primary of the dark
-        // versions (Stein: light blue) was glaring as a whole tile.
-        val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-        val surface = if (dark) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
-        val on = if (dark) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = Shapes.chip,
-            colors = CardDefaults.cardColors(containerColor = surface, contentColor = on),
-            elevation = CardDefaults.cardElevation(defaultElevation = Shapes.cardElevationHigh)
-        ) {
-            Column(Modifier.padding(20.dp)) {
-                Text(
-                    stringResource(R.string.finance_market_avg),
-                    color = on,
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Spacer(Modifier.height(6.dp))
-                // totals.avg instead of qtyAvg: the market price is avg_price, the quantity-weighted
-                // average lies systematically below it (the same change as in the web app).
-                val sums = financeTotals(valuation, partsValuation, figsValuation, pnl)
-                // Cost basis, market value and P&L from one basis (financeHeader), otherwise the three
-                // numbers would not add up; older servers without a basis show the total value as before.
-                val header = financeHeader(valuation, partsValuation, figsValuation, pnl)
-                // FlowRow: at large font the profit badge moves under the amount,
-                // instead of squeezing it.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        if (header.value.signum() > 0) fmtPrice(header.value.toPlainString())
-                        else if (valuation.sets.any { it.error != null }) stringResource(R.string.finance_price_error)
-                        else if (valuation.sets.isEmpty()) stringResource(R.string.finance_no_sets)
-                        else stringResource(R.string.finance_load_prompt),
-                        color = on,
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
-                    val pnlPct = header.pnlPercent
-                    if (pnlPct != null) {
-                        // Profit green, loss red as everywhere else; on a white background, because the
-                        // status colors only meet 4.5:1 on surface, not on primary.
-                        val status = LocalStatusColors.current
-                        Surface(
-                            shape = Shapes.chip,
-                            color = MaterialTheme.colorScheme.surface,
-                            contentColor = if (pnlPct < 0) status.error else status.success,
-                            modifier = Modifier.align(Alignment.CenterVertically),
-                        ) {
-                            Text(
-                                stringResource(R.string.finance_total_pnl, fmtPercent(pnlPct)),
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                }
-                // „davon Teile“ only without a basis: the basis market value leaves out positions without
-                // a purchase price, a „davon“ built from all parts could be larger than it.
-                if (!header.withBase && sums.partsAndMinifigs.signum() > 0) {
-                    Spacer(Modifier.height(Spacing.tiny))
-                    Text(
-                        stringResource(R.string.finance_parts_extra, fmtPrice(sums.partsAndMinifigs.toPlainString())),
-                        color = on,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                // Purchase sum and P&L in one row that wraps when needed: stacked, that was
-                // four text levels in one tile, with amount, label and calculation note.
-                if (header.baseKnown) {
-                    Spacer(Modifier.height(Spacing.tiny))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.medium)) {
-                        header.cost?.let {
-                            Text(stringResource(R.string.finance_cost_basis_row, fmtPrice(it.toPlainString())),
-                                color = on, style = MaterialTheme.typography.bodySmall)
-                        }
-                        val pnl = header.pnlAmount
-                        Text(
-                            stringResource(R.string.finance_pnl_row,
-                                if (pnl == null) stringResource(R.string.finance_pnl_needs_prices)
-                                else (if (pnl.signum() > 0) "+" else "") + fmtPrice(pnl.toPlainString())),
-                            color = on, style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(Spacing.large))
-                HorizontalDivider(color = on.copy(alpha = 0.2f))
-                Spacer(Modifier.height(Spacing.medium))
-                // The sets' range to the lowest and highest price. The average only when it
-                // deviates from the amount above (plus parts and figures) — otherwise the same
-                // number stood there twice.
-                Text(stringResource(R.string.finance_range_label), color = on,
-                    style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(Spacing.tiny))
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround,
-                        verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min), on)
-                    if (sums.partsAndMinifigs.signum() > 0)
-                        PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), on)
-                    PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), on)
-                }
-            }
-        }
-    }
-    item {
-        // How it was computed, under the tile instead of inside it: it carries the numbers, the
-        // note the origin — like the row on the web (fin-basis), just quieter.
-        val header = financeHeader(valuation, partsValuation, figsValuation, pnl)
-        val withoutMarket = if (header.withoutMarket > 0) pluralStringResource(R.plurals.finance_basis_without_market,
-            header.withoutMarket, header.withoutMarket, fmtPrice(header.withoutMarketCost.toPlainString())) else null
-        val withoutPurchase = if (header.withoutPurchase > 0) pluralStringResource(R.plurals.finance_basis_without_purchase,
-            header.withoutPurchase, header.withoutPurchase, fmtPrice(header.withoutPurchaseValue.toPlainString())) else null
-        // As on the web (finance.fremde_waehrung_n): name missing purchase prices instead of silently leaving them out.
-        val foreign = foreignPurchasePrices(valuation, partsValuation, figsValuation, pnl)
-        val rows = listOfNotNull(
-            if (header.baseRowVisible) pluralStringResource(R.plurals.finance_basis_calculated, header.total,
-                header.valued, header.total) + " " + listOfNotNull(withoutMarket, withoutPurchase).joinToString(" · ") else null,
-            if (foreign > 0) pluralStringResource(R.plurals.finance_foreign_currency, foreign, foreign) else null,
-        )
-        if (rows.isNotEmpty()) Row(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.tiny),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-        ) {
-            Icon(Icons.Outlined.Info, null, Modifier.size(withFont(16.dp)),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                rows.forEach {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
+    item { FinanceHeaderCard(valuation, partsValuation, figsValuation, pnl, fmtPrice) }
+    item { FinanceBasisNote(valuation, partsValuation, figsValuation, pnl, fmtPrice) }
+}
 
-    // Category filter — gallery style: single-select, "All" resets
+/** The header tile: market value with P&L, cost basis and the sets' range. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FinanceHeaderCard(
+    valuation: ValuationView,
+    partsValuation: PartsValuationView?,
+    figsValuation: FiguresValuationView?,
+    pnl: ProfitView?,
+    fmtPrice: (String?) -> String,
+) {
+    // In the dark theme primaryContainer instead of primary: the bright primary of the dark
+    // versions (Stein: light blue) was glaring as a whole tile.
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val surface = if (dark) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
+    val on = if (dark) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = Shapes.chip,
+        colors = CardDefaults.cardColors(containerColor = surface, contentColor = on),
+        elevation = CardDefaults.cardElevation(defaultElevation = Shapes.cardElevationHigh)
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Text(
+                stringResource(R.string.finance_market_avg),
+                color = on,
+                style = MaterialTheme.typography.labelMedium
+            )
+            Spacer(Modifier.height(6.dp))
+            // totals.avg instead of qtyAvg: the market price is avg_price, the quantity-weighted
+            // average lies systematically below it (the same change as in the web app).
+            val sums = financeTotals(valuation, partsValuation, figsValuation, pnl)
+            // Cost basis, market value and P&L from one basis (financeHeader), otherwise the three
+            // numbers would not add up; older servers without a basis show the total value as before.
+            val header = financeHeader(valuation, partsValuation, figsValuation, pnl)
+            HeaderFigures(header, sums, valuation, on, fmtPrice)
+            Spacer(Modifier.height(Spacing.large))
+            HorizontalDivider(color = on.copy(alpha = 0.2f))
+            Spacer(Modifier.height(Spacing.medium))
+            HeaderRange(valuation, sums, on, fmtPrice)
+        }
+    }
+}
+
+/** The amount (or why there is none), the P&L badge, parts and cost basis below it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HeaderFigures(header: FinanceHeader, sums: FinanceSums, valuation: ValuationView, on: Color, fmtPrice: (String?) -> String) {
+    // FlowRow: at large font the profit badge moves under the amount,
+    // instead of squeezing it.
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            if (header.value.signum() > 0) fmtPrice(header.value.toPlainString())
+            else if (valuation.sets.any { it.error != null }) stringResource(R.string.finance_price_error)
+            else if (valuation.sets.isEmpty()) stringResource(R.string.finance_no_sets)
+            else stringResource(R.string.finance_load_prompt),
+            color = on,
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.align(Alignment.CenterVertically)
+        )
+        val pnlPct = header.pnlPercent
+        if (pnlPct != null) {
+            // Profit green, loss red as everywhere else; on a white background, because the
+            // status colors only meet 4.5:1 on surface, not on primary.
+            val status = LocalStatusColors.current
+            Surface(
+                shape = Shapes.chip,
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = if (pnlPct < 0) status.error else status.success,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            ) {
+                Text(
+                    stringResource(R.string.finance_total_pnl, fmtPercent(pnlPct)),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                )
+            }
+        }
+    }
+    // „davon Teile“ only without a basis: the basis market value leaves out positions without
+    // a purchase price, a „davon“ built from all parts could be larger than it.
+    if (!header.withBase && sums.partsAndMinifigs.signum() > 0) {
+        Spacer(Modifier.height(Spacing.tiny))
+        Text(
+            stringResource(R.string.finance_parts_extra, fmtPrice(sums.partsAndMinifigs.toPlainString())),
+            color = on,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    // Purchase sum and P&L in one row that wraps when needed: stacked, that was
+    // four text levels in one tile, with amount, label and calculation note.
+    if (header.baseKnown) {
+        Spacer(Modifier.height(Spacing.tiny))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.medium)) {
+            header.cost?.let {
+                Text(stringResource(R.string.finance_cost_basis_row, fmtPrice(it.toPlainString())),
+                    color = on, style = MaterialTheme.typography.bodySmall)
+            }
+            val pnl = header.pnlAmount
+            Text(
+                stringResource(R.string.finance_pnl_row,
+                    if (pnl == null) stringResource(R.string.finance_pnl_needs_prices)
+                    else (if (pnl.signum() > 0) "+" else "") + fmtPrice(pnl.toPlainString())),
+                color = on, style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+/**
+ * The sets' range to the lowest and highest price. The average only when it deviates from the
+ * amount above (plus parts and figures) — otherwise the same number stood there twice.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HeaderRange(valuation: ValuationView, sums: FinanceSums, on: Color, fmtPrice: (String?) -> String) {
+    Text(stringResource(R.string.finance_range_label), color = on,
+        style = MaterialTheme.typography.labelMedium)
+    Spacer(Modifier.height(Spacing.tiny))
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround,
+            verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min), on)
+        if (sums.partsAndMinifigs.signum() > 0)
+            PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), on)
+        PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), on)
+    }
+}
+
+/**
+ * How it was computed, under the tile instead of inside it: it carries the numbers, the
+ * note the origin — like the row on the web (fin-basis), just quieter.
+ */
+@Composable
+private fun FinanceBasisNote(
+    valuation: ValuationView,
+    partsValuation: PartsValuationView?,
+    figsValuation: FiguresValuationView?,
+    pnl: ProfitView?,
+    fmtPrice: (String?) -> String,
+) {
+    val header = financeHeader(valuation, partsValuation, figsValuation, pnl)
+    val withoutMarket = if (header.withoutMarket > 0) pluralStringResource(R.plurals.finance_basis_without_market,
+        header.withoutMarket, header.withoutMarket, fmtPrice(header.withoutMarketCost.toPlainString())) else null
+    val withoutPurchase = if (header.withoutPurchase > 0) pluralStringResource(R.plurals.finance_basis_without_purchase,
+        header.withoutPurchase, header.withoutPurchase, fmtPrice(header.withoutPurchaseValue.toPlainString())) else null
+    // As on the web (finance.fremde_waehrung_n): name missing purchase prices instead of silently leaving them out.
+    val foreign = foreignPurchasePrices(valuation, partsValuation, figsValuation, pnl)
+    val rows = listOfNotNull(
+        if (header.baseRowVisible) pluralStringResource(R.plurals.finance_basis_calculated, header.total,
+            header.valued, header.total) + " " + listOfNotNull(withoutMarket, withoutPurchase).joinToString(" · ") else null,
+        if (foreign > 0) pluralStringResource(R.plurals.finance_foreign_currency, foreign, foreign) else null,
+    )
+    if (rows.isNotEmpty()) Row(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.tiny),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+    ) {
+        Icon(Icons.Outlined.Info, null, Modifier.size(withFont(16.dp)),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+            rows.forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
 }

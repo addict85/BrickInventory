@@ -35,10 +35,20 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import ch.brickinventoryapp.ui.theme.Spacing
 
+/** How far the import is: sets done of all, the one in progress, and the outcome so far. */
+data class CsvProgress(
+    val done: Int,
+    val total: Int,
+    val current: String?,
+    val ok: Int,
+    val warn: Int,
+    val err: Int,
+)
+
 @Composable
 fun CsvImportBanner(
-    done: Int, total: Int, current: String?,
-    ok: Int, warn: Int, err: Int, running: Boolean,
+    progress: CsvProgress,
+    running: Boolean,
     /**
      * Cancel — visible only while the import runs.
      *
@@ -49,14 +59,16 @@ fun CsvImportBanner(
      */
     onCancel: () -> Unit,
 ) {
+    val done = progress.done
+    val total = progress.total
     var expanded by rememberSaveable { mutableStateOf(false) }
     val bg  = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
     // The expander names what it does and whether it is open (TalkBack only read “3/10, button”).
     val condition = stringResource(if (expanded) R.string.state_expanded else R.string.state_collapsed)
-    val progress = pluralStringResource(R.plurals.csv_progress, total, done, total)
+    val progressText = pluralStringResource(R.plurals.csv_progress, total, done, total)
     // Announced in steps of ten, not for every set.
     val level = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
-    val announced = remember(level, running) { progress }
+    val announced = remember(level, running) { progressText }
     val target = stringResource(if (expanded) R.string.csv_details_hide else R.string.csv_details_show)
 
     Column {
@@ -72,10 +84,10 @@ fun CsvImportBanner(
                 }
         ) {
             Column(Modifier.padding(horizontal = Spacing.large, vertical = Spacing.small)) {
-                CsvHeaderRow(done, total, ok, running, expanded, progress, onCancel)
-                if (running && current != null) {
+                CsvHeaderRow(done, total, progress.ok, running, expanded, progressText, onCancel)
+                if (running && progress.current != null) {
                     Text(
-                        current,
+                        progress.current,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(top = Spacing.hairline)
@@ -85,7 +97,7 @@ fun CsvImportBanner(
         }
         // Outside the button: otherwise the whole bar would become a live region and announce every set.
         if (running) Box(Modifier.announce().semantics { contentDescription = announced })
-        if (expanded) CsvImportNumbers(ok, warn, err, running)
+        if (expanded) CsvImportNumbers(progress.ok, progress.warn, progress.err, running)
     }
 }
 

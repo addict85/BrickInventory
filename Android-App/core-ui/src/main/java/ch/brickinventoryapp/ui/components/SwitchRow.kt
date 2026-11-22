@@ -30,8 +30,8 @@ import ch.brickinventoryapp.ui.theme.Spacing
 fun ToggleRow(
     text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,
     hint: String? = null, hintColor: Color = Color.Unspecified, enabled: Boolean = true,
-) = SwitchRow(text, an, toggleOn, Role.Switch, modifier, hint, hintColor, enabled,
-    textStyle = MaterialTheme.typography.bodyMedium, front = false) {
+) = SwitchRow(text, an, toggleOn, modifier, hint,
+    SwitchLook(Role.Switch, front = false, MaterialTheme.typography.bodyMedium, hintColor, enabled)) {
     Switch(checked = an, onCheckedChange = null, enabled = enabled)
 }
 
@@ -40,25 +40,29 @@ fun ToggleRow(
 fun BoxRow(
     text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,
     hint: String? = null, textStyle: TextStyle = MaterialTheme.typography.bodyMedium, enabled: Boolean = true,
-) = SwitchRow(text, an, toggleOn, Role.Checkbox, modifier, hint, Color.Unspecified, enabled, textStyle, front = true) {
+) = SwitchRow(text, an, toggleOn, modifier, hint, SwitchLook(Role.Checkbox, front = true, textStyle, Color.Unspecified, enabled)) {
     Checkbox(checked = an, onCheckedChange = null, enabled = enabled)
 }
 
+/** How a [SwitchRow] looks: its role, whether the control comes first, text style and hint color. */
+private class SwitchLook(val role: Role, val front: Boolean, val textStyle: TextStyle, val hintColor: Color, val enabled: Boolean)
+
 @Composable
 private fun SwitchRow(
-    text: String, an: Boolean, toggleOn: (Boolean) -> Unit, role: Role, modifier: Modifier,
-    hint: String?, hintColor: Color, enabled: Boolean, textStyle: TextStyle, front: Boolean,
+    text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier, hint: String?, look: SwitchLook,
     control: @Composable RowScope.() -> Unit,
 ) {
+    val front = look.front
+    val hintColor = look.hintColor
     Row(
         modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = an, enabled = enabled, role = role, onValueChange = toggleOn),
+            .toggleable(value = an, enabled = look.enabled, role = look.role, onValueChange = toggleOn),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
     ) {
         if (front) control()
         Column(Modifier.weight(1f)) {
-            Text(text, style = textStyle)
+            Text(text, style = look.textStyle)
             if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall,
                 color = if (hintColor.isSpecified) hintColor else MaterialTheme.colorScheme.onSurfaceVariant)
         }

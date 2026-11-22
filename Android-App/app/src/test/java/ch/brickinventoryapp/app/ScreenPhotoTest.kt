@@ -26,6 +26,7 @@ import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
 import ch.brickinventoryapp.finances.ui.screens.VouchersPage
 import ch.brickinventoryapp.login.ui.LoginForm
@@ -248,10 +249,7 @@ internal fun Vouchers() {
         Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = CurrencyCode("CHF")).asView()))
     VouchersPage(vouchers, remember { SnackbarHostState() }, onBack = {}, onBalanceAll = {}, exportOn = {}) { newValue, onNew ->
         VouchersCard(
-            condition = vouchers, onField = { _, _, _, _ -> }, switchOnPin = {}, editOn = {},
-            onCancel = {}, onSave = {}, deleteOn = {}, openOnPdf = {}, onCopy = { _, _ -> },
-            onBalance = {}, cancelOnBalance = {}, onAgain = {},
-            onConfirm = { _, _ -> }, cancelOnConfirmation = {}, newValue = newValue, onNew = onNew,
+            condition = vouchers, actions = object : VoucherCardActions {}, newValue = newValue, onNew = onNew,
         )
     }
 }

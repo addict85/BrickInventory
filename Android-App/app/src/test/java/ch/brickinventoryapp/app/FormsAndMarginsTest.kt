@@ -50,7 +50,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
@@ -100,7 +99,6 @@ import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -458,8 +456,7 @@ class FormsAndMarginsTest {
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
-                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvCancel = {}, onTabTapped = {},
+                onTabTapped = {},
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }

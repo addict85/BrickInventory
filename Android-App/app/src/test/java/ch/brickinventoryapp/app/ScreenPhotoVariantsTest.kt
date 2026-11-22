@@ -69,11 +69,12 @@ import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
@@ -452,8 +453,7 @@ class ScreenPhotoVariantsTest {
         MainScaffold(
             title = title, navController = nav, bottomNavItems = tab,
             snackbarHostState = snackbar,
-            csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-            onCsvCancel = {}, updateAvailable = true, onTabTapped = {},
+            updateAvailable = true, onTabTapped = {},
             pendingChanges = pendingChanges,
         ) {
             NavHost(nav, startDestination = CollectionTarget.Gallery) {
@@ -857,10 +857,8 @@ class ScreenPhotoVariantsTest {
 
     private fun catalogDetailPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "katalog-detail") {
         show(name, dark = dark, device = device, font = font) {
-            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail),
-                imageLoader = images, serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = {},
-                onOpenInGallery = {}, onBack = {})
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail), imageLoader = images, serverUrl = "",
+                actions = object : CatalogDetailActions {})
         }
         pause()
         photo(name, dark = dark, device = device)
@@ -1384,8 +1382,8 @@ class ScreenPhotoVariantsTest {
     private fun csvRunningPhoto(dark: Boolean, device: String) {
         show("csv-import-laeuft", dark = dark, device = device, wait = false) {
             Column {
-                CsvImportBanner(done = 37, total = 120, current = "75192-1 Millennium Falcon",
-                    ok = 35, warn = 1, err = 1, running = true, onCancel = {})
+                CsvImportBanner(CsvProgress(done = 37, total = 120, current = "75192-1 Millennium Falcon",
+                    ok = 35, warn = 1, err = 1), running = true, onCancel = {})
             }
         }
         pause()

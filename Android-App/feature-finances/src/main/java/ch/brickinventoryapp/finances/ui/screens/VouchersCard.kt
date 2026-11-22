@@ -45,31 +45,41 @@ import ch.brickinventoryapp.ui.util.fmtMoney
  * and as in the web app's profile. A file of its own, so that SettingsScreen.kt
  * stays manageable.
  */
-@Composable
-fun VouchersCard(
-    condition: VoucherUiState,
-    onField: (number: String?, pin: String?, amount: String?, currency: String?) -> Unit,
-    switchOnPin: (Int) -> Unit,
-    editOn: (Int) -> Unit,
-    onCancel: () -> Unit,
-    onSave: (android.net.Uri?) -> Unit,
-    deleteOn: (Int) -> Unit,
-    openOnPdf: (id: Int) -> Unit,
+/** What the vouchers card can trigger; every action does nothing unless overridden (preview, test). */
+interface VoucherCardActions {
+    fun setField(number: String?, pin: String?, amount: String?, currency: String?) = Unit
+    fun switchPin(id: Int) = Unit
+    fun edit(id: Int) = Unit
+    fun cancelEdit() = Unit
+    fun save(pdf: android.net.Uri?) = Unit
+    fun delete(id: Int) = Unit
+    fun openPdf(id: Int) = Unit
+
     /** Puts this voucher's number or PIN on the clipboard; needs the plain text. */
-    onCopy: (id: Int, isNumber: Boolean) -> Unit,
+    fun copy(id: Int, isNumber: Boolean) = Unit
+
     /**
      * Query this card's balance at LEGO and save it. The server allows
      * one query every 30 seconds across all users; the run across all cards therefore
      * paces itself.
      */
-    onBalance: (Int) -> Unit,
-    /** Den laufenden Durchgang anhalten. */
-    cancelOnBalance: () -> Unit,
+    fun queryBalance(id: Int) = Unit
+
+    /** Stop the running pass. */
+    fun cancelBalanceRun() = Unit
+
     /** Fetch the list anew after a load error. */
-    onAgain: () -> Unit,
+    fun reload() = Unit
+
     /** Password and code of the open prompt ([VoucherUiState.confirmation]). */
-    onConfirm: (password: String, code: String?) -> Unit,
-    cancelOnConfirmation: () -> Unit,
+    fun confirm(password: String, code: String?) = Unit
+    fun cancelConfirmation() = Unit
+}
+
+@Composable
+fun VouchersCard(
+    condition: VoucherUiState,
+    actions: VoucherCardActions,
     /** Whether the create form is open; its button sits on the page (VouchersPage). */
     newValue: Boolean = false,
     onNew: (Boolean) -> Unit = {},
@@ -104,23 +114,25 @@ fun VouchersCard(
         // menu (VoucherMenu): three wide buttons stacked pushed the cards
         // out of view. The balance query's progress stays here: with a query
         // every 30 seconds, four cards take a good minute and a half.
-        condition.balanceRun?.let { BalanceRunRow(it, cancelOnBalance) }
-        EmptyOrError(condition, onAgain)
+        condition.balanceRun?.let { BalanceRunRow(it, actions::cancelBalanceRun) }
+        EmptyOrError(condition, actions::reload)
 
         val card: @Composable (VoucherView, Modifier) -> Unit = { g, m ->
             VoucherCard(
                 g = g,
                 pinVisible = g.id in condition.pinVisible,
-                // Hiding needs no confirmation, revealing does.
-                switchOnPin = {
-                    if (g.id in condition.pinVisible) switchOnPin(g.id) else guarded { switchOnPin(g.id) }
-                },
-                editOn = { guarded { editOn(g.id) } },
-                deleteOn = { guarded { deleteOn(g.id) } },
-                openOnPdf = { guarded { openOnPdf(g.id) } },
-                onCopy = { isNumber -> guarded { onCopy(g.id, isNumber) } },
+                events = VoucherEvents(
+                    // Hiding needs no confirmation, revealing does.
+                    switchPin = {
+                        if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
+                    },
+                    edit = { guarded { actions.edit(g.id) } },
+                    delete = { guarded { actions.delete(g.id) } },
+                    openPdf = { guarded { actions.openPdf(g.id) } },
+                    copy = { isNumber -> guarded { actions.copy(g.id, isNumber) } },
+                    queryBalance = { actions.queryBalance(g.id) },
+                ),
                 plaintext = condition.plaintext[g.id],
-                onBalance = { onBalance(g.id) },
                 balanceRunning = condition.balanceRunning == g.id,
                 modifier = m,
             )
@@ -139,16 +151,16 @@ fun VouchersCard(
       }
     }
 
-    condition.confirmation?.let { VoucherPrompt(condition, onConfirm, cancelOnConfirmation) }
+    condition.confirmation?.let { VoucherPrompt(condition, actions::confirm, actions::cancelConfirmation) }
 
     if (newValue || condition.edited != null) {
         VoucherFormSheet(
             condition = condition,
             pdfSelected = pdfUri != null,
-            onField = onField,
+            onField = actions::setField,
             onPdfChoose = { selection.launch(arrayOf("application/pdf")) },
-            onSave = { sent = true; onSave(pdfUri); pdfUri = null },
-            onClose = { onNew(false); pdfUri = null; if (condition.edited != null) onCancel() },
+            onSave = { sent = true; actions.save(pdfUri); pdfUri = null },
+            onClose = { onNew(false); pdfUri = null; if (condition.edited != null) actions.cancelEdit() },
         )
     }
 }

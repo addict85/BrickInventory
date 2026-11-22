@@ -70,86 +70,15 @@ internal fun VoucherFormSheet(
             modifier = Modifier.semantics { heading() },
         )
 
-        val numberMask = isMaskedNumber(condition.number)
-        OutlinedTextField(
-            shape = Shapes.field,
-            value = condition.number,
-            onValueChange = {
-                onField(NumericInput.quantity(inputViaMask(condition.number, it, numberMask)), null, null, null)
-            },
-            label = { Text(stringResource(R.string.vouchers_number)) },
-            isError = numberMissing,
-            supportingText = when {
-                numberMissing -> { { Text(stringResource(R.string.vouchers_number_missing), Modifier.announce()) } }
-                numberMask -> { { Text(stringResource(R.string.vouchers_mask_hint)) } }
-                else -> null
-            },
-            singleLine = true,
-            keyboardOptions = NumericInput.integerKeyboard(),
-            modifier = Modifier.fillMaxWidth().focusRequester(numberFocus),
-        )
+        VoucherNumberField(condition, numberMissing, numberFocus, onField)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-            val pinMask = condition.pin == PIN_MASK_DISPLAY
-            OutlinedTextField(
-                shape = Shapes.field,
-                value = condition.pin,
-                onValueChange = { onField(null, NumericInput.quantity(inputViaMask(condition.pin, it, pinMask)), null, null) },
-                label = { Text(stringResource(R.string.vouchers_pin)) },
-                singleLine = true,
-                keyboardOptions = NumericInput.integerKeyboard(),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                shape = Shapes.field,
-                value = condition.amount,
-                onValueChange = { onField(null, null, NumericInput.price(it), null) },
-                label = { Text(stringResource(R.string.vouchers_amount)) },
-                // The same check as for the gallery's price fields; whether the amount is mandatory
-                // and how high it may be is decided solely by the server.
-                isError = amountMissing || NumericInput.priceInvalid(condition.amount),
-                supportingText = {
-                    if (NumericInput.priceInvalid(condition.amount)) Text(stringResource(R.string.record_price_invalid), Modifier.announce())
-                    else if (amountMissing) Text(stringResource(R.string.vouchers_amount_invalid), Modifier.announce())
-                },
-                singleLine = true,
-                // price/priceKeyboard and not an integer: a voucher can
-                // be denominated in cents. `price` allows EXACTLY ONE separator
-                // — „12.3.4" would otherwise be typeable and would only surface
-                // on conversion, and then as a silent zero amount.
-                keyboardOptions = NumericInput.priceKeyboard(),
-                modifier = Modifier.weight(1f).focusRequester(amountFocus),
-            )
-        }
+        PinAndAmount(condition, amountMissing, amountFocus, onField)
 
         SelectionField(stringResource(R.string.settings_currency), CURRENCIES.map { it to it }, condition.currency,
             { onField(null, null, null, it) }, Modifier.fillMaxWidth())
 
-        // ── Der PDF-Weg ──
-        //
         // Only when creating: a voucher gets its PDF once.
-        if (condition.edited == null) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                OutlinedButton(onClick = onPdfChoose, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(withFont(18.dp)))
-                    Spacer(Modifier.width(Spacing.small))
-                    Text(stringResource(R.string.vouchers_pick_pdf))
-                }
-                if (pdfSelected) {
-                    Text(
-                        stringResource(R.string.vouchers_pdf_chosen),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Text(
-                stringResource(R.string.vouchers_pdf_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        if (condition.edited == null) PdfChoice(pdfSelected, onPdfChoose)
       }
         HorizontalDivider(Modifier.padding(top = Spacing.small))
         ButtonRow(
@@ -190,3 +119,98 @@ private fun FocusRequester.focusIfPresent() {
 
 /** The same currencies as in the web app (public/index.html). */
 private val CURRENCIES = listOf("CHF", "EUR", "USD", "GBP", "SEK", "NOK", "AUD", "CAD", "DKK")
+
+/** The voucher number; masked by the server until it is typed anew. */
+@Composable
+private fun VoucherNumberField(
+    condition: VoucherUiState,
+    numberMissing: Boolean,
+    numberFocus: FocusRequester,
+    onField: (number: String?, pin: String?, amount: String?, currency: String?) -> Unit,
+) {
+    val numberMask = isMaskedNumber(condition.number)
+    OutlinedTextField(
+        shape = Shapes.field,
+        value = condition.number,
+        onValueChange = {
+            onField(NumericInput.quantity(inputViaMask(condition.number, it, numberMask)), null, null, null)
+        },
+        label = { Text(stringResource(R.string.vouchers_number)) },
+        isError = numberMissing,
+        supportingText = when {
+            numberMissing -> { { Text(stringResource(R.string.vouchers_number_missing), Modifier.announce()) } }
+            numberMask -> { { Text(stringResource(R.string.vouchers_mask_hint)) } }
+            else -> null
+        },
+        singleLine = true,
+        keyboardOptions = NumericInput.integerKeyboard(),
+        modifier = Modifier.fillMaxWidth().focusRequester(numberFocus),
+    )
+}
+
+/** PIN and amount side by side; the amount marks itself when missing or unreadable. */
+@Composable
+private fun PinAndAmount(
+    condition: VoucherUiState,
+    amountMissing: Boolean,
+    amountFocus: FocusRequester,
+    onField: (number: String?, pin: String?, amount: String?, currency: String?) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        val pinMask = condition.pin == PIN_MASK_DISPLAY
+        OutlinedTextField(
+            shape = Shapes.field,
+            value = condition.pin,
+            onValueChange = { onField(null, NumericInput.quantity(inputViaMask(condition.pin, it, pinMask)), null, null) },
+            label = { Text(stringResource(R.string.vouchers_pin)) },
+            singleLine = true,
+            keyboardOptions = NumericInput.integerKeyboard(),
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedTextField(
+            shape = Shapes.field,
+            value = condition.amount,
+            onValueChange = { onField(null, null, NumericInput.price(it), null) },
+            label = { Text(stringResource(R.string.vouchers_amount)) },
+            // The same check as for the gallery's price fields; whether the amount is mandatory
+            // and how high it may be is decided solely by the server.
+            isError = amountMissing || NumericInput.priceInvalid(condition.amount),
+            supportingText = {
+                if (NumericInput.priceInvalid(condition.amount)) Text(stringResource(R.string.record_price_invalid), Modifier.announce())
+                else if (amountMissing) Text(stringResource(R.string.vouchers_amount_invalid), Modifier.announce())
+            },
+            singleLine = true,
+            // price/priceKeyboard and not an integer: a voucher can
+            // be denominated in cents. `price` allows EXACTLY ONE separator
+            // — „12.3.4" would otherwise be typeable and would only surface
+            // on conversion, and then as a silent zero amount.
+            keyboardOptions = NumericInput.priceKeyboard(),
+            modifier = Modifier.weight(1f).focusRequester(amountFocus),
+        )
+    }
+}
+
+/** Choose the voucher's PDF, with what was chosen and what the PDF is for. */
+@Composable
+private fun PdfChoice(pdfSelected: Boolean, onPdfChoose: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        OutlinedButton(onClick = onPdfChoose, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+            Icon(Icons.Default.UploadFile, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.vouchers_pick_pdf))
+        }
+        if (pdfSelected) {
+            Text(
+                stringResource(R.string.vouchers_pdf_chosen),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+    Text(
+        stringResource(R.string.vouchers_pdf_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}

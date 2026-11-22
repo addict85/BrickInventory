@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +41,7 @@ import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.largeFont
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
 import ch.brickinventoryapp.ui.theme.LocalChartColors
 import ch.brickinventoryapp.ui.theme.LocalStatusColors
@@ -116,12 +118,6 @@ fun PriceChart(chart: PriceChartView, currency: CurrencyCode) {
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
 
-    val chartColors = LocalChartColors.current
-    val labelNew    = stringResource(R.string.condition_new)
-    val labelUsed   = stringResource(R.string.condition_used)
-    fun colorFor(cond: Condition) = if (cond == Condition.USED) chartColors.used else chartColors.new
-    fun labelFor(cond: Condition) = if (cond == Condition.USED) labelUsed else labelNew
-
     // Low and high across BOTH series — the same scale. No „Current“: the current
     // price is already shown above by each card, it would otherwise stand there three times.
     val allValues = lines.flatMap { it.points }.map { it.value }
@@ -136,9 +132,40 @@ fun PriceChart(chart: PriceChartView, currency: CurrencyCode) {
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
-    // Legend on top next to low and high: between the fill and the time axis it read like
-    // a label on the axis. Only conditions with a line — an entry without a line
-    // would look like missing data.
+    val look = ChartLook(LocalChartColors.current, stringResource(R.string.condition_new), stringResource(R.string.condition_used))
+    PriceChartLegend(deepHigh, lines, look)
+    PriceChartPlot(lines, bounds, currency, look)
+
+    // Edge label of the time axis — the server's shared axis.
+    PriceChartMath.axisRange(chart)?.let { (first, last) ->
+        Row(
+            Modifier.fillMaxWidth().padding(top = Spacing.hairline),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(PriceChartMath.formatDay(first),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(PriceChartMath.formatDay(last),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Color and name per condition, the same in legend, lines and description. */
+private class ChartLook(private val colors: ChartColors, private val labelNew: String, private val labelUsed: String) {
+    fun colorFor(cond: Condition) = if (cond == Condition.USED) colors.used else colors.new
+    fun labelFor(cond: Condition) = if (cond == Condition.USED) labelUsed else labelNew
+}
+
+/**
+ * Legend on top next to low and high: between the fill and the time axis it read like
+ * a label on the axis. Only conditions with a line — an entry without a line
+ * would look like missing data.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PriceChartLegend(deepHigh: String, lines: List<ChartLine>, look: ChartLook) {
     FlowRow(
         Modifier.fillMaxWidth().padding(bottom = Spacing.small),
         horizontalArrangement = Arrangement.spacedBy(Spacing.large),
@@ -153,22 +180,26 @@ fun PriceChart(chart: PriceChartView, currency: CurrencyCode) {
                 Canvas(Modifier.size(width = 28.dp, height = 10.dp)) {
                     val style = linesStyle(line.condition)
                     val middle = Offset(size.width - 5.dp.toPx(), size.height / 2)
-                    drawLine(colorFor(line.condition), Offset(0f, size.height / 2), middle,
+                    drawLine(look.colorFor(line.condition), Offset(0f, size.height / 2), middle,
                         strokeWidth = PRICE_LINE_WIDTH.toPx(), pathEffect = stroke(style))
-                    endMarker(colorFor(line.condition), style, middle, 3.5.dp.toPx())
+                    endMarker(look.colorFor(line.condition), style, middle, 3.5.dp.toPx())
                 }
-                Text(labelFor(line.condition),
+                Text(look.labelFor(line.condition),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
+}
 
+/** The value axis on the left and the lines on their guide lines. */
+@Composable
+private fun PriceChartPlot(lines: List<ChartLine>, bounds: ChartBounds, currency: CurrencyCode, look: ChartLook) {
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
     // As in the value chart (PortfolioChart): without a description TalkBack skips the canvas.
     val description = PriceChartMath.summary(lines).map { z ->
-        stringResource(R.string.price_chart_summary, labelFor(z.condition), z.of, z.until,
+        stringResource(R.string.price_chart_summary, look.labelFor(z.condition), z.of, z.until,
             fmtAmount(z.begin), fmtAmount(z.end),
             fmtAmount(z.deep), fmtAmount(z.high))
     }.joinToString("; ")
@@ -182,7 +213,7 @@ fun PriceChart(chart: PriceChartView, currency: CurrencyCode) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
         }
     }
-    val edgeTop = with(androidx.compose.ui.platform.LocalDensity.current) {
+    val edgeTop = with(LocalDensity.current) {
         (MaterialTheme.typography.labelSmall.lineHeight.toPx() / 2)
     }
     Canvas(modifier = Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = description }) {
@@ -202,56 +233,43 @@ fun PriceChart(chart: PriceChartView, currency: CurrencyCode) {
         }
 
         lines.forEach { line ->
-            val color = colorFor(line.condition)
-            val pts = line.points.map { Offset(px(it.day), py(it.value)) }
-
-            val style = linesStyle(line.condition)
-            if (pts.size == 1) {
-                endMarker(color, style, pts.first(), 3.dp.toPx())
-                return@forEach
-            }
-
-            // Fill under the line — only as a faint gradient, so two
-            // fills on top of each other don't make each other unreadable.
-            val fill = Path().apply {
-                moveTo(pts.first().x, h)
-                pts.forEach { lineTo(it.x, it.y) }
-                lineTo(pts.last().x, h)
-                close()
-            }
-            drawPath(fill, brush = Brush.verticalGradient(
-                listOf(color.copy(alpha = 0.16f), color.copy(alpha = 0f))))
-
-            val path = Path().apply {
-                moveTo(pts.first().x, pts.first().y)
-                pts.drop(1).forEach { lineTo(it.x, it.y) }
-            }
-            drawPath(path, color, style = Stroke(width = PRICE_LINE_WIDTH.toPx(), pathEffect = stroke(style)))
-
-            // End point: a light ring, so it stays visible even where
-            // the two lines meet.
-            endMarker(surfaceCol, style, pts.last(), 4.dp.toPx())
-            endMarker(color, style, pts.last(), 2.5.dp.toPx())
+            priceLine(line.points.map { Offset(px(it.day), py(it.value)) }, look.colorFor(line.condition),
+                linesStyle(line.condition), surfaceCol)
         }
     }
-    }
-
-    // Edge label of the time axis — the server's shared axis.
-    PriceChartMath.axisRange(chart)?.let { (first, last) ->
-        Row(
-            Modifier.fillMaxWidth().padding(top = Spacing.hairline),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(PriceChartMath.formatDay(first),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(PriceChartMath.formatDay(last),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
+/** One series: a faint fill under the line, the line, and its end mark. */
+private fun DrawScope.priceLine(pts: List<Offset>, color: Color, style: LinesStyle, surfaceCol: Color) {
+    val h = size.height
+    if (pts.size == 1) {
+        endMarker(color, style, pts.first(), 3.dp.toPx())
+        return
+    }
+
+    // Fill under the line — only as a faint gradient, so two
+    // fills on top of each other don't make each other unreadable.
+    val fill = Path().apply {
+        moveTo(pts.first().x, h)
+        pts.forEach { lineTo(it.x, it.y) }
+        lineTo(pts.last().x, h)
+        close()
+    }
+    drawPath(fill, brush = Brush.verticalGradient(
+        listOf(color.copy(alpha = 0.16f), color.copy(alpha = 0f))))
+
+    val path = Path().apply {
+        moveTo(pts.first().x, pts.first().y)
+        pts.drop(1).forEach { lineTo(it.x, it.y) }
+    }
+    drawPath(path, color, style = Stroke(width = PRICE_LINE_WIDTH.toPx(), pathEffect = stroke(style)))
+
+    // End point: a light ring, so it stays visible even where
+    // the two lines meet.
+    endMarker(surfaceCol, style, pts.last(), 4.dp.toPx())
+    endMarker(color, style, pts.last(), 2.5.dp.toPx())
+}
 /** From this many data points in a series onward, PriceChart shows a line. */
 const val MIN_POINTS_HISTORY = 3
 

@@ -26,9 +26,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -40,6 +42,7 @@ import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.app.nav.TargetEnvironment
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.management.ui.ManagementTarget
 import ch.brickinventoryapp.model.ui.running
@@ -64,8 +67,12 @@ import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.TabColors
 import ch.brickinventoryapp.ui.theme.tabColors
 import ch.brickinventoryapp.ui.title
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 import kotlin.reflect.KClass
+
+/** The CSV import for the bar above the content: its state, and how to cancel it from the bar. */
+class CsvImportBar(val state: StateFlow<CsvImportUiState>, val onCancel: () -> Unit)
 
 /**
  * Common scaffold of all signed-in screens: top bar with title and
@@ -77,21 +84,9 @@ import kotlin.reflect.KClass
 @Composable
 fun MainScaffold(
     title: String,
-    navController: androidx.navigation.NavController,
+    navController: NavController,
     bottomNavItems: List<Tab>,
     snackbarHostState: SnackbarHostState,
-    csvImportState: kotlinx.coroutines.flow.StateFlow<CsvImportUiState>,
-    /**
-     * Cancel the running CSV import — the button in the progress bar. As a callback,
-     * because this scaffold only gets state and callbacks, no ViewModel.
-     */
-    onCsvCancel: () -> Unit,
-    /**
-     * Is a newer version available? The check runs app-wide at start; the
-     * scaffold shows the finding as a dot on the destination “More”, where it stands at the
-     * settings once more. Loading never happens by itself.
-     */
-    updateAvailable: Boolean = false,
     /**
      * A tab was tapped at the bottom — discard its remembered scroll position. “I
      * come back” keeps the position, “I go to this tab” starts at the top
@@ -100,13 +95,20 @@ fun MainScaffold(
      * compile.
      */
     onTabTapped: (Any) -> Unit,
+    /** The running CSV import, shown on every tab as in the web app; null: no import bar. */
+    csvImport: CsvImportBar? = null,
+    /**
+     * Is a newer version available? The check runs app-wide at start; the
+     * scaffold shows the finding as a dot on the destination “More”, where it stands at the
+     * settings once more. Loading never happens by itself.
+     */
+    updateAvailable: Boolean = false,
     /** Changes saved offline that still have to go to the server; 0 hides the bar. */
     pendingChanges: Int = 0,
     content: @Composable () -> Unit
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
-    val accent = LocalAccentSurfaces.current
     // The app bar yields when scrolling down and comes back when scrolling back:
     // on the phone title and switcher otherwise stood permanently above the content.
     // A new destination starts with a visible bar.
@@ -115,16 +117,6 @@ fun MainScaffold(
 
     fun isSelected(screen: Any) =
         currentDest?.hierarchy?.any { d -> d.isOneOf(targetsOf(screen)) } == true
-
-    // Subpages of “More” with a bottom bar carry the back arrow like the other
-    // More subpages. It goes the same way as the back gesture: if both led to
-    // different places, one would not know before tapping where one lands. Only without
-    // a previous entry (entry from outside) does it lead to “More”.
-    val moreSubpage = currentDest != null && currentDest.isOneOf(MORE) && !currentDest.hasRoute<AppTarget.More>()
-    fun backFromMore() {
-        if (navController.previousBackStackEntry != null && navController.popBackStack()) return
-        if (!navController.popBackStack(AppTarget.More, inclusive = false)) navController.toTab(AppTarget.More)
-    }
 
     // Bottom bar and side bar share this path so that both treat the
     // scroll position the same.
@@ -135,10 +127,13 @@ fun MainScaffold(
         }
         navController.toTab(screen)
     }
+    val toggle: (Any) -> Unit = { target ->
+        onTabTapped(target)
+        navController.toTab(target)
+    }
 
     // The icon of a destination, on “More” with the dot for a new version.
-    @Composable
-    fun Symbol(screen: Any, icon: @Composable () -> Unit) {
+    val symbol: @Composable (Any, @Composable () -> Unit) -> Unit = { screen, icon ->
         if (screen == AppTarget.More && updateAvailable) BadgedBox(badge = { UpdatePoint() }) { icon() } else icon()
     }
 
@@ -146,86 +141,37 @@ fun MainScaffold(
     // screen is narrow and gets the bar at the bottom.
     // The snackbar lies above the content; its height lifts the add button above it.
     var snackbarHeight by remember { mutableIntStateOf(0) }
-    val offlineHints = remember { mutableIntStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val kind = navigationMode(maxWidth.value)
         // On wide windows the side bar stands at full height on the left, app bar
         // and content to the right of it — the same destinations as below, “More” included.
         Row(Modifier.fillMaxSize()) {
-        if (kind == NavigationMode.SIDEBAR) {
-            TabSidebar(bottomNavItems, ::isSelected, ::tabChoose) { screen, icon -> Symbol(screen, icon) }
-        }
+        if (kind == NavigationMode.SIDEBAR) TabSidebar(bottomNavItems, ::isSelected, ::tabChoose, symbol)
         Scaffold(
             modifier = Modifier.weight(1f).nestedScroll(collapse.nestedScrollConnection),
             topBar = {
               Column {
-                TopAppBar(
-                    // Plain text like every Material title: an icon in front read like a menu button
-                    // on “More”. Screen readers jump to the heading.
-                    title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
-                    navigationIcon = {
-                        if (moreSubpage) WithTooltip(stringResource(R.string.common_back)) {
-                            IconButton(onClick = { backFromMore() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = accent.bar,
-                        titleContentColor = accent.onBar,
-                        navigationIconContentColor = accent.onBar,
-                        actionIconContentColor = accent.onBar,
-                        scrolledContainerColor = accent.bar,
-                    ),
-                    scrollBehavior = collapse,
-                )
+                MainTopBar(title, navController, currentDest, collapse)
                 if (kind == NavigationMode.BAR_BOTTOM && currentDest?.isOneOf(COLLECTION) == true) {
-                    CollectionToggle(collectionTarget(currentDest), onChoice = { target ->
-                        onTabTapped(target)
-                        navController.toTab(target)
-                    }, modifier = Modifier.withBarCollapse { collapse.state.collapsedFraction })
+                    CollectionToggle(collectionTarget(currentDest), onChoice = toggle,
+                        modifier = Modifier.withBarCollapse { collapse.state.collapsedFraction })
                 }
               }
             },
             bottomBar = {
-                if (kind == NavigationMode.BAR_BOTTOM) {
-                    TabBar(bottomNavItems, ::isSelected, ::tabChoose) { screen, icon -> Symbol(screen, icon) }
-                }
+                if (kind == NavigationMode.BAR_BOTTOM) TabBar(bottomNavItems, ::isSelected, ::tabChoose, symbol)
             },
             snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHeight = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) { padding ->
-            // Global CSV import bar: appears on all tabs (as in the
-            // web app) as soon as an import runs — no matter where it was started.
-            val csvImport by csvImportState.collectAsStateWithLifecycle()
             Row(Modifier.fillMaxSize().padding(padding)) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     // On the tablet the switcher belongs to the content, as wide as the search field
                     // and the grid below. Next to an open set detail “Sets” stays selected.
                     if (kind == NavigationMode.SIDEBAR && currentDest?.isOneOf(COLLECTION + CollectionTarget.SetDetail::class) == true) {
-                        CollectionToggle(collectionTarget(currentDest),
-                            onChoice = { target ->
-                                onTabTapped(target)
-                                navController.toTab(target)
-                            })
+                        CollectionToggle(collectionTarget(currentDest), onChoice = toggle)
                     }
-                    // If an offline hint is shown, it names the pending changes itself.
-                    if (offlineHints.intValue == 0) OutboxBar(pendingChanges)
-                    if (csvImport.jobRun.running) {
-                        CsvImportBanner(
-                            done = csvImport.done, total = csvImport.total, current = csvImport.current,
-                            ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.jobRun.running,
-                            onCancel = onCsvCancel,
-                        )
-                    }
-                    Box(Modifier.fillMaxSize()) {
-                        CompositionLocalProvider(
-                            LocalSnackbarSpace provides
-                                with(LocalDensity.current) { snackbarHeight.toDp() },
-                            LocalOpenChanges provides pendingChanges,
-                            LocalOfflineHints provides offlineHints,
-                        ) { content() }
-                    }
+                    MainContent(csvImport, pendingChanges, with(LocalDensity.current) { snackbarHeight.toDp() }, content)
                 }
             }
         }
@@ -233,6 +179,75 @@ fun MainScaffold(
     }
 }
 
+/**
+ * Plain text like every Material title: an icon in front read like a menu button
+ * on “More”. Screen readers jump to the heading.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainTopBar(title: String, navController: NavController, currentDest: NavDestination?, collapse: TopAppBarScrollBehavior) {
+    val accent = LocalAccentSurfaces.current
+    // Subpages of “More” with a bottom bar carry the back arrow like the other
+    // More subpages. It goes the same way as the back gesture: if both led to
+    // different places, one would not know before tapping where one lands. Only without
+    // a previous entry (entry from outside) does it lead to “More”.
+    val moreSubpage = currentDest != null && currentDest.isOneOf(MORE) && !currentDest.hasRoute<AppTarget.More>()
+    fun backFromMore() {
+        if (navController.previousBackStackEntry != null && navController.popBackStack()) return
+        if (!navController.popBackStack(AppTarget.More, inclusive = false)) navController.toTab(AppTarget.More)
+    }
+    TopAppBar(
+        title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
+        navigationIcon = {
+            if (moreSubpage) WithTooltip(stringResource(R.string.common_back)) {
+                IconButton(onClick = { backFromMore() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = accent.bar,
+            titleContentColor = accent.onBar,
+            navigationIconContentColor = accent.onBar,
+            actionIconContentColor = accent.onBar,
+            scrolledContainerColor = accent.bar,
+        ),
+        scrollBehavior = collapse,
+    )
+}
+
+/** Outbox and CSV bars above the destination's content, and what the content learns from the scaffold. */
+@Composable
+private fun MainContent(
+    csvImport: CsvImportBar?,
+    pendingChanges: Int,
+    snackbarSpace: Dp,
+    content: @Composable () -> Unit,
+) {
+    val offlineHints = remember { mutableIntStateOf(0) }
+    // If an offline hint is shown, it names the pending changes itself.
+    if (offlineHints.intValue == 0) OutboxBar(pendingChanges)
+    // Global CSV import bar: appears on all tabs (as in the
+    // web app) as soon as an import runs — no matter where it was started.
+    if (csvImport != null) {
+        val state by csvImport.state.collectAsStateWithLifecycle()
+        if (state.jobRun.running) {
+            CsvImportBanner(
+                CsvProgress(done = state.done, total = state.total, current = state.current,
+                    ok = state.ok, warn = state.warn, err = state.err),
+                running = state.jobRun.running,
+                onCancel = csvImport.onCancel,
+            )
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(
+            LocalSnackbarSpace provides snackbarSpace,
+            LocalOpenChanges provides pendingChanges,
+            LocalOfflineHints provides offlineHints,
+        ) { content() }
+    }
+}
 /**
  * The scaffold for a tab destination with everything that is the same in every destination
  * (discarding the scroll position, update dot). A new destination thus cannot
@@ -255,8 +270,7 @@ fun TabScaffold(
         navController = environment.navController,
         bottomNavItems = environment.tab,
         snackbarHostState = environment.snackbar,
-        csvImportState = csvImport.csvImportState,
-        onCsvCancel = { csvImport.cancelCsvImport() },
+        csvImport = CsvImportBar(csvImport.csvImportState) { csvImport.cancelCsvImport() },
         // Tab tapped → start at the top.
         onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) },
         // The silent start check has a result — here it gets a place.
