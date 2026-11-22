@@ -75,12 +75,12 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   // What couldn't be read reads "missing" and goes into `degradiert`; only the
   // database row is itself the probe.
   const ab = new Degradations();
-  const done = !!(await ab.oder('erledigt', kx.einstellungen.globalValue('einrichtung_erledigt'), null));
+  const done = !!(await ab.orElse('erledigt', kx.einstellungen.globalValue('einrichtung_erledigt'), null));
   // Once setup is done, decrypting the keys is no longer needed.
   if (done) return { ...base, erledigt: true, konfiguriert: true, schritte: [] };
 
   // BrickLink only counts with all four values, as in /settings/einrichtung.
-  const has = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.globalValue(key), null));
+  const has = async (key: string) => !!(await ab.orElse('quelle', kx.einstellungen.globalValue(key), null));
   const rebrickable = await has('rebrickable_api_key');
   const bricklink = (
     await Promise.all(
@@ -94,9 +94,9 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   steps.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   steps.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   steps.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const account = await ab.oder('konten', kx.account.accountConfigured(isAdmin), false);
+  const account = await ab.orElse('konten', kx.account.accountConfigured(isAdmin), false);
   steps.push({ id: 'konto', ok: account, pflicht: true });
   steps.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 
-  return { ...base, erledigt: false, konfiguriert: rebrickable || bricklink, schritte: steps, ...ab.angabe() };
+  return { ...base, erledigt: false, konfiguriert: rebrickable || bricklink, schritte: steps, ...ab.detail() };
 }

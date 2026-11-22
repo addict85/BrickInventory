@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import { LIKE_ESCAPE, likeLiteral } from '../../../db/likeSearch';
-import { mengeSkalar } from '../../../db/stockQuantity';
-import type { Spalten } from '../../../db/rows';
+import { quantityScalar } from '../../../db/stockQuantity';
+import type { Columns } from '../../../db/rows';
 
 /** The route does not talk to db/ itself. */
 
@@ -35,42 +35,42 @@ export async function accountImageRows(db: DbInterface, sn: string): Promise<Acc
 }
 
 export function catalogImage(db: DbInterface, sn: string): Promise<ImageRow | undefined> {
-  return db.get<Spalten<'set_catalog', 'image_url' | 'image_local'>>(
+  return db.get<Columns<'set_catalog', 'image_url' | 'image_local'>>(
     `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`,
     [sn],
   );
 }
 
 export function setImageMiss(db: DbInterface, sn: string): Promise<ImageMissRow | undefined> {
-  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+  return db.get<Columns<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
     ['set:' + sn],
   );
 }
 
-/** @param datei the file name without extension, as the image storage forms it */
-export function thumbnailImageMiss(db: DbInterface, datei: string): Promise<ImageMissRow | undefined> {
-  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+/** @param file the file name without extension, as the image storage forms it */
+export function thumbnailImageMiss(db: DbInterface, file: string): Promise<ImageMissRow | undefined> {
+  return db.get<Columns<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
-    ['thumb:%' + likeLiteral(datei + '_thumb.jpg')],
+    ['thumb:%' + likeLiteral(file + '_thumb.jpg')],
   );
 }
 
 export function setImageMisses(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`,
   );
 }
 
 export function thumbnailImageMisses(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`,
   );
 }
 
 /** A 404 from the CDN stays recorded: a new attempt changes nothing about it. */
 export function setImageMissesWithout404(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
               AND (reason IS NULL OR reason NOT LIKE '%404%')`,
@@ -107,7 +107,7 @@ export function setsWithoutInstructions(db: DbInterface): Promise<{ set_number: 
 
 export function logSince(
   db: DbInterface,
-  minuten: number,
+  minutes: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all<{ id: number; level: string; message: string; logged_at: Date }>(
     // bigint would come as text; the contract (and the log window) names a number.
@@ -116,7 +116,7 @@ export function logSince(
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
        ORDER BY logged_at ASC
        LIMIT 5000`,
-    [minuten],
+    [minutes],
   );
 }
 
@@ -169,7 +169,7 @@ export function holdingMinifigImagesOpen(db: DbInterface): Promise<number> {
 /** The quantity from the acquisitions — the same sum the valuation sees. */
 export function sampleSet(db: DbInterface, uid: number, setNumber: string) {
   return db.get<{ set_number: string; quantity: number }>(
-    `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+    `SELECT s.set_number, ${quantityScalar('s')} AS quantity
               FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`,
     [uid, setNumber],
   );
@@ -180,7 +180,7 @@ export function sampleAcquisitions(
   uid: number,
   setNumber: string,
 ): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
-  return db.all<Spalten<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
+  return db.all<Columns<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
     'SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at',
     [uid, setNumber],
   );

@@ -5,9 +5,9 @@ import type { SetsContext } from './context';
 export async function importMinifigs(k: SetsContext, setNumber: string, userId: number): Promise<number> {
   const { figuren, fromSource } = await k.catalog.loadSetMinifigs(setNumber);
   if (!figuren.length) return 0;
-  const nummern = figuren.map(f => f.fig_number);
+  const numbers = figuren.map(f => f.fig_number);
   await k.transaktion(async t => {
-    await t.inventory.setInhalt.enterMinifigs(userId, setNumber, nummern);
+    await t.inventory.setInhalt.enterMinifigs(userId, setNumber, numbers);
     await t.catalog.setFigurenMerken(setNumber, figuren, fromSource);
   });
   console.log(`[minifigs] ${setNumber}: ${figuren.length} importiert`);
@@ -16,15 +16,15 @@ export async function importMinifigs(k: SetsContext, setNumber: string, userId: 
 
 /** In one transaction, so that an error never leaves a set without parts. */
 export async function importParts(k: SetsContext, setNumber: string, userId: number): Promise<number> {
-  const geladen = await k.catalog.loadSetParts(setNumber);
-  if (!geladen) return 0;
-  const { n, zeilen } = geladen;
-  const teile = zeilen.map(z => z.partNumber),
-    farben = zeilen.map(z => z.colorId);
+  const loaded = await k.catalog.loadSetParts(setNumber);
+  if (!loaded) return 0;
+  const { n, zeilen } = loaded;
+  const parts = zeilen.map(z => z.partNumber),
+    colors = zeilen.map(z => z.colorId);
   for (let versuch = 1; ; versuch++) {
     try {
       await k.transaktion(async t => {
-        await t.inventory.setInhalt.enterParts(userId, n, teile, farben);
+        await t.inventory.setInhalt.enterParts(userId, n, parts, colors);
         await t.catalog.setTeileMerken(n, zeilen);
       });
       break;

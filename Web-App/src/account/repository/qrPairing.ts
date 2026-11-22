@@ -15,33 +15,33 @@ export interface QrRow {
 const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'abgelehnt' WHEN picked_up_at IS NOT NULL THEN 'abgeholt'
   WHEN expires_at <= NOW() THEN 'abgelaufen' WHEN confirmed_at IS NOT NULL THEN 'bestaetigt'
   WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
-const SPALTEN = `id::int AS id, user_id, token_days, device AS geraet, ip_range, code_hash, ${STAND} AS stand`;
+const COLUMNS = `id::int AS id, user_id, token_days, device AS geraet, ip_range, code_hash, ${STAND} AS stand`;
 
 export async function cleanQrPairingsOn(db: DbInterface): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
 
 /** @returns null if `hoechstens` pairings are already open */
-export async function putQrPairingAn(
+export async function createQrPairing(
   db: DbInterface,
   hash: string,
   uid: number,
   bis: Date,
-  tage: number | null,
-  hoechstens: number,
+  days: number | null,
+  atMost: number,
 ): Promise<number | null> {
   const z = await db.get<{ id: number }>(
     `INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) SELECT $1, $2, $3, $4
       WHERE (SELECT COUNT(*) FROM qr_login_tokens
               WHERE expires_at > NOW() AND picked_up_at IS NULL AND rejected_at IS NULL) < $5
       RETURNING id::int AS id`,
-    [hash, uid, bis, tage, hoechstens],
+    [hash, uid, bis, days, atMost],
   );
   return z?.id ?? null;
 }
 
 /** Atomic: only the first scan registers its device; the deadline restarts for the confirmation. */
-export function melde(
+export function report(
   db: DbInterface,
   hash: string,
   a: { abholung: string; codeHash: string; geraet: string; ipArea: string | null; fristS: number },
@@ -49,17 +49,17 @@ export function melde(
   return db.get<QrRow>(
     `UPDATE qr_login_tokens SET used_at = NOW(), pickup_code = $2, code_hash = $3, device = $4, ip_range = $5,
             expires_at = NOW() + make_interval(secs => $6)
-      WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${SPALTEN}`,
+      WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${COLUMNS}`,
     [hash, a.abholung, a.codeHash, a.geraet, a.ipArea, a.fristS],
   );
 }
 
-export function afterPickup(db: DbInterface, abholung: string): Promise<QrRow | undefined> {
-  return db.get<QrRow>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE pickup_code = $1`, [abholung]);
+export function afterPickup(db: DbInterface, pickup: string): Promise<QrRow | undefined> {
+  return db.get<QrRow>(`SELECT ${COLUMNS} FROM qr_login_tokens WHERE pickup_code = $1`, [pickup]);
 }
 
 export function qrPairingOfAccount(db: DbInterface, id: number, uid: number): Promise<QrRow | undefined> {
-  return db.get<QrRow>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
+  return db.get<QrRow>(`SELECT ${COLUMNS} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
 }
 
 /** Only from "confirmed": two concurrent pickups do not get two tokens. */

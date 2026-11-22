@@ -4,12 +4,12 @@ import { guardFor } from './middleware';
 import { familyFrom } from '../../src/devices';
 import { isAppToken } from '../../src/account/http/stepGuard';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 
 const familie = (req: AuthedRequest) => (isAppToken(req) ? familyFrom(req.apiUser) : null);
 
-export function buildDeviceRouter(d: Pick<Dienste, 'account' | 'devices'>) {
+export function buildDeviceRouter(d: Pick<Services, 'account' | 'devices'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

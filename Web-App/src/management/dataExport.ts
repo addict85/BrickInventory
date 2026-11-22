@@ -6,7 +6,7 @@ import { DAILY_JOBS } from './timesOfDay';
 import { rescheduleJobs } from './service';
 import { jsonOrNull } from '../infra/validate';
 import { fachfehler } from '../infra/errorTexts';
-import { KonfigExport } from '../contract/settings';
+import { ConfigExport } from '../contract/settings';
 import type { ManagementContext } from './context';
 
 /** Mail server, registration and API keys are only accepted by the form, with password. */
@@ -15,12 +15,12 @@ export const isSensitive = (k: string) =>
 
 /** Global values only for admins: the import only accepts them from them, and
  * SMTP data is none of a sub-account's business. */
-export async function exportConfig(k: ManagementContext, uid: number, verwalter: boolean, name: string | null) {
+export async function exportConfig(k: ManagementContext, uid: number, admin: boolean, name: string | null) {
   return {
     exported_at: k.uhr.datum().toISOString(),
     exported_by: name,
     version: '3.0',
-    global: verwalter ? await k.settings.globalValuesWithoutSecrets() : {},
+    global: admin ? await k.settings.globalValuesWithoutSecrets() : {},
     user_settings: await k.settings.userSettings(uid),
   };
 }
@@ -29,7 +29,7 @@ export async function exportConfig(k: ManagementContext, uid: number, verwalter:
 export async function dataZip(
   k: ManagementContext,
   uid: number,
-  ziel: Writable,
+  target: Writable,
   atError: (e: Error) => void,
 ): Promise<void> {
   // archiver 8 is an ES module; from CommonJS only require() works, no import.
@@ -43,21 +43,21 @@ export async function dataZip(
   ]);
   const archive = new ZipArchive({ zlib: { level: 9 } });
   archive.on('error', atError);
-  archive.pipe(ziel);
-  for (const [name, inhalt] of [
+  archive.pipe(target);
+  for (const [name, content] of [
     ['sets.csv', setsCsv],
     ['teile.csv', partsCsv],
     ['minifiguren.csv', figsCsv],
     ['merkliste.csv', merkCsv],
     ['preisalarme.csv', alarmCsv],
   ] as const)
-    archive.append('﻿' + inhalt, { name });
+    archive.append('﻿' + content, { name });
   await archive.finalize();
 }
 interface ZipArchiveHandle {
   on(e: 'error', f: (e: Error) => void): void;
   pipe(z: Writable): void;
-  append(inhalt: string, o: { name: string }): void;
+  append(content: string, o: { name: string }): void;
   finalize(): Promise<void>;
 }
 
@@ -82,30 +82,30 @@ const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 
 /** An import file comes from anywhere: schema (KonfigExport), rules per key
  * (GLOBAL_RULES) and without the sensitive keys that would need a confirmation. */
-export async function importConfig(kx: ManagementContext, uid: number, verwalter: boolean, datei: Buffer) {
-  const gelesen = jsonOrNull(datei.toString('utf-8'));
-  const geprueft = gelesen ? KonfigExport.safeParse(gelesen.wert) : null;
-  if (!geprueft?.success) fachfehler('ungueltig', 'json_ungueltig');
-  const { global, user_settings: konto } = geprueft.data;
+export async function importConfig(kx: ManagementContext, uid: number, admin: boolean, file: Buffer) {
+  const gelesen = jsonOrNull(file.toString('utf-8'));
+  const checked = gelesen ? ConfigExport.safeParse(gelesen.wert) : null;
+  if (!checked?.success) fachfehler('ungueltig', 'json_ungueltig');
+  const { global, user_settings: konto } = checked.data;
   let imported = 0;
   const smtpSkipped = global ? Object.keys(global).filter(isSensitive) : [];
-  if (global && verwalter) {
+  if (global && admin) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
       fachfehler('ungueltig', 'wert_ungueltig');
-    const geaendert: string[] = [];
+    const changed: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Masked values from older exports must not overwrite real keys.
       if (SECRET_KEYS.has(key) && isMasked(global[key])) continue;
-      if (String(global[key]) !== String((await kx.settings.globalValue(key)) ?? '')) geaendert.push(key);
+      if (String(global[key]) !== String((await kx.settings.globalValue(key)) ?? '')) changed.push(key);
       await kx.settings.setGlobalValue(key, global[key]);
       imported++;
     }
-    if (geaendert.length)
+    if (changed.length)
       await kx.account.verwalter.rememberAdminAction(
         uid,
         uid,
         'einstellungen_geaendert',
-        `Import: ${geaendert.join(', ')}`,
+        `Import: ${changed.join(', ')}`,
       );
   }
   // Central place: an imported currency change triggers the price job.
@@ -114,11 +114,11 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
     imported++;
   }
   // Only admins: otherwise every account could clear the price cache with a one-line file.
-  if (verwalter) await rescheduleJobs(kx);
+  if (admin) await rescheduleJobs(kx);
   const note =
-    (verwalter ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +
-    (verwalter && smtpSkipped.length
+    (admin ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +
+    (admin && smtpSkipped.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { imported, note, smtp_uebergangen: verwalter ? smtpSkipped : [] };
+  return { imported, note, smtp_uebergangen: admin ? smtpSkipped : [] };
 }

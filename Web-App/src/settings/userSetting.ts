@@ -1,12 +1,12 @@
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { fachfehler } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
-import { ereignis } from '../infra/event';
+import { event } from '../infra/event';
 import { isValidUserValue, writeUserSetting } from './settings';
 import * as repo from './repository/currency';
 import type { SettingsContext } from './context';
 
-const currencyChange = (k: SettingsContext) => k.faecher.fach('currencyChange', () => ereignis('currencyChange'));
+const currencyChange = (k: SettingsContext) => k.faecher.fach('currencyChange', () => event('currencyChange'));
 /** Finances sit above and listen themselves (createFinances): settings does not know them. */
 export function onCurrencyChange(k: SettingsContext, fn: () => unknown): () => void {
   return currencyChange(k).horche(fn);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, KontoName, zeit, abfrage, Q, veraltet, PERCENT_TEXT, SEITE, PAGES_DETAIL } from './base';
+import { type Route, AccountName, time, query, Q, outdated, PERCENT_TEXT, PAGE, PAGES_DETAIL } from './base';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './shared';
 
 export const ChartPoint = z.looseObject({
@@ -41,7 +41,7 @@ export const FigsValuationResponse = z.looseObject({
   ...PAGES_DETAIL,
   currency: z.string(),
   figs: z.array(FigValuationItem),
-  total_value: veraltet(z.string(), 'wert_gesamt'),
+  total_value: outdated(z.string(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),
   kaufpreise_fremde_waehrung: z.number().int(),
@@ -53,7 +53,7 @@ export const PartsValuationResponse = z.looseObject({
   ...PAGES_DETAIL,
   currency: z.string(),
   parts: z.array(PartValuationItem),
-  total_value: veraltet(z.string(), 'wert_gesamt'),
+  total_value: outdated(z.string(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),
   kaufpreise_fremde_waehrung: z.number().int(),
@@ -83,8 +83,8 @@ export const PnlTotals = z.looseObject({
   ohne_kaufpreis_marktwert: z.string().optional(),
 });
 
-export const PnlSetZeile = z.looseObject({
-  added_at: zeit.nullable(),
+export const PnlSetRow = z.looseObject({
+  added_at: time.nullable(),
   condition: z.string(),
   image_local: z.string().nullable(),
   image_url: z.string().nullable(),
@@ -97,7 +97,7 @@ export const PnlSetZeile = z.looseObject({
   current_price: z.number().nullable(),
   baseline_price: z.number().nullable(),
   pnl_pct: PERCENT_TEXT,
-  baseline_pnl_pct: veraltet(z.string().nullable().optional(), 'baseline_pnl_prozent'),
+  baseline_pnl_pct: outdated(z.string().nullable().optional(), 'baseline_pnl_prozent'),
   pnl_betrag: z.number().nullable(),
   pnl_prozent: z.number().nullable(),
   baseline_pnl_prozent: z.number().nullable(),
@@ -111,7 +111,7 @@ export const PnlResponse = z.looseObject({
   ...PAGES_DETAIL,
   currency: z.string(),
   totals: PnlTotals,
-  sets: z.array(PnlSetZeile),
+  sets: z.array(PnlSetRow),
 });
 
 export const PriceByCondition = z.looseObject({
@@ -149,7 +149,7 @@ export const PortfolioHistoryResponse = z.looseObject({
 
 export const PriceHistoryPoint = z.looseObject({
   is_purchase_price: z.boolean().optional(),
-  recorded_at: zeit,
+  recorded_at: time,
   qty_avg_price: z.number().nullable(),
   avg_price: z.number().nullable(),
   min_price: z.number().nullable().optional(),
@@ -206,7 +206,7 @@ export const ValuationSet = z.looseObject({
   pnl_pct: PERCENT_TEXT,
   user_id: z.number().int(),
   set_number: z.string(),
-  added_at: zeit.nullable(),
+  added_at: time.nullable(),
   name: z.string().nullable(),
   year: z.number().int().nullable(),
   quantity: z.number().int(),
@@ -229,7 +229,7 @@ export const ValuationSet = z.looseObject({
   acquisitions: z.array(ValuationAcquisition),
   mixed: z.boolean(),
   /** Only in the household: every row is one account's inventory. */
-  owners: z.array(KontoName).optional(),
+  owners: z.array(AccountName).optional(),
   error: z.string().nullable().optional(),
 });
 
@@ -239,7 +239,7 @@ export const ValuationResponse = z.looseObject({
   ttl_hours: z.union([z.string(), z.number()]).nullable(),
   success: z.boolean(),
   ...PAGES_DETAIL,
-  total_value: veraltet(z.string(), 'wert_gesamt'),
+  total_value: outdated(z.string(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),
   currency: z.string(),
@@ -253,7 +253,7 @@ export const ValuationResponse = z.looseObject({
 export const routen = {
   'GET /api/v1/sets/:setNumber/price': {
     antwort: SetPriceResponse,
-    abfrage: abfrage({
+    abfrage: query({
       accounts: Q.konten,
       currency: Q.text(8).meta({
         deprecated: true,
@@ -264,32 +264,32 @@ export const routen = {
   'GET /api/v1/sets/:setNumber/price-history': {
     klein: true,
     antwort: PriceHistoryResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/parts/:partNumber/:colorId/price-history': {
     klein: true,
     antwort: PriceHistoryResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/minifigs/:figNumber/price-history': {
     klein: true,
     antwort: PriceHistoryResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/finance/parts-valuation': {
     antwort: PartsValuationResponse,
-    abfrage: abfrage({ accounts: Q.konten, ...SEITE }),
+    abfrage: query({ accounts: Q.konten, ...PAGE }),
   },
   'GET /api/v1/finance/minifigs-valuation': {
     antwort: FigsValuationResponse,
-    abfrage: abfrage({ accounts: Q.konten, ...SEITE }),
+    abfrage: query({ accounts: Q.konten, ...PAGE }),
   },
-  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
-  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: query({ accounts: Q.konten, ...PAGE }) },
+  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: query({ accounts: Q.konten, ...PAGE }) },
   'GET /api/v1/finance/portfolio-history': {
     klein: true,
     antwort: PortfolioHistoryResponse,
-    abfrage: abfrage({ accounts: Q.konten, period: Q.text(20) }),
+    abfrage: query({ accounts: Q.konten, period: Q.text(20) }),
   },
-  'GET /api/v1/stats': { antwort: StatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/stats': { antwort: StatsResponse, abfrage: query({ accounts: Q.konten }) },
 } satisfies Record<string, Route>;

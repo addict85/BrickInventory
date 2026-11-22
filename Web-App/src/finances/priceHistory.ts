@@ -8,9 +8,9 @@ import { developmentPercent } from './setValue';
 import type { FinancesContext } from './context';
 
 /** Only conditions with an acquisition: otherwise a curve would stand without a reference value.
- * @param rueckfall What applies if there is NO acquisition AT ALL. */
-export function statesForHistory(belegt: string[], rueckfall: string[]): string[] {
-  return belegt.length ? belegt : rueckfall;
+ * @param fallback What applies if there is NO acquisition AT ALL. */
+export function statesForHistory(claimed: string[], fallback: string[]): string[] {
+  return claimed.length ? claimed : fallback;
 }
 
 export interface PricePoint {
@@ -58,11 +58,11 @@ export async function priceHistorySet(
   ]);
 
   const currentRows = await k.preisverlauf.cachePricesOfSets(setNumber, currency);
-  const jetzt = (c: string) => {
+  const now = (c: string) => {
     const r = currentRows.find(z => z.condition === c);
     return r ? { ...r, avg_price: marketPriceFrom(r) } : null;
   };
-  const current = { N: jetzt('N'), U: jetzt('U') };
+  const current = { N: now('N'), U: now('U') };
 
   // Purchase price from the FIRST acquisition; every set row has at least one.
   const set = await k.preisverlauf.firstPurchaseOfSets(uids, setNumber, currency);
@@ -209,15 +209,15 @@ export async function priceHistoryPart(
   // Prices are stored under BrickLink number and color, acquisitions under those
   // of the user — the two key spaces must not be mixed.
   const blNumber = await resolveBlPartNumber(k, partNumber, Array.isArray(uid) ? (uid[0] ?? null) : uid);
-  const blFarbe = await resolveBlColorId(k, colorId);
-  const nummern = [...new Set([blNumber, partNumber])];
+  const blColor = await resolveBlColorId(k, colorId);
+  const numbers = [...new Set([blNumber, partNumber])];
   return manualPriceHistory(
     k,
     uid,
     currency,
     'part',
     'part_number = ANY($1) AND color_id = $2',
-    [nummern, blFarbe],
+    [numbers, blColor],
     'part_number = $1 AND color_id = $2',
     [partNumber, colorId],
   );
@@ -231,14 +231,14 @@ export async function priceHistoryMinifig(
   currency: string,
 ) {
   const uid = await k.household.scopeFrom(uidChoice);
-  const nummern = await priceNumbersForMinifig(k, uid, figNumber);
+  const numbers = await priceNumbersForMinifig(k, uid, figNumber);
   return manualPriceHistory(
     k,
     uid,
     currency,
     'fig',
     'fig_number = ANY($1)',
-    [nummern],
+    [numbers],
     // The acquisitions only carry the user's number.
     'fig_number = $1',
     [figNumber],
@@ -257,8 +257,8 @@ async function priceNumbersForMinifig(
 
 /** @returns number of removed rows */
 export async function deleteOldPrices(k: FinancesContext): Promise<number> {
-  const tage = k.konfig.priceHistoryDays;
-  if (tage <= 0) return 0;
-  const r = await k.preisverlauf.deleteOldHistory(String(tage));
+  const days = k.konfig.priceHistoryDays;
+  if (days <= 0) return 0;
+  const r = await k.preisverlauf.deleteOldHistory(String(days));
   return r?.changes || 0;
 }

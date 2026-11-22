@@ -1,5 +1,5 @@
 /** Retrying transient errors of a single query outside a transaction. */
-import { fehlerCode } from '../src/infra/error';
+import { errorCode } from '../src/infra/error';
 
 const RETRYABLE_CODES = new Set([
   '40001', // serialization_failure
@@ -21,7 +21,7 @@ export function isReading(sql: string): boolean {
 }
 
 /** With retry on transient errors. */
-export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
+export async function queryWithRetry<T>(queryFn: () => Promise<T>, reading: boolean, maxRetries = 2): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -29,8 +29,8 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
     } catch (err) {
       lastErr = err;
       // An error without a code is not retryable.
-      const code = fehlerCode(err) ?? '';
-      const retryable = RETRYABLE_CODES.has(code) || (lesend && ONLY_READING_RETRYABLE.has(code));
+      const code = errorCode(err) ?? '';
+      const retryable = RETRYABLE_CODES.has(code) || (reading && ONLY_READING_RETRYABLE.has(code));
       if (!retryable || attempt === maxRetries) throw err;
       const wait = 50 * 2 ** attempt; // 50 ms, 100 ms
       await new Promise(r => setTimeout(r, wait));

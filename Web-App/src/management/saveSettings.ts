@@ -4,12 +4,12 @@ import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { fachfehler } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
 import { GLOBAL_SETTINGS, ACCOUNT_SETTINGS } from '../contract/settings';
-import type { Eingabe } from '../contract';
+import type { Input } from '../contract';
 import { isSensitive } from './dataExport';
 import { bricksetLimitSet } from './service';
 import type { ManagementContext } from './context';
 
-type SettingsInput = Eingabe<'POST /api/v1/settings'>;
+type SettingsInput = Input<'POST /api/v1/settings'>;
 
 export interface SaveSettingsOptions {
   uid: number;
@@ -17,7 +17,7 @@ export interface SaveSettingsOptions {
   /** Admin, and an app token already has the approval (route). */
   verwalter: boolean;
   /** Password and factor; on `false` sends the refusal itself. */
-  confirm: (passwort: string | null | undefined) => Promise<boolean>;
+  confirm: (password: string | null | undefined) => Promise<boolean>;
 }
 
 /** Whether an admin part is present: only then does an app token need the approval. */
@@ -28,15 +28,12 @@ export const hasGlobalValues = (e: SettingsInput) => GLOBAL_SETTINGS.some(k => e
  * A first API key redirects nothing; only the setup wizard does not ask for it. */
 async function sensitiveKeys(k: ManagementContext, e: SettingsInput): Promise<string[]> {
   const sensitive: string[] = [];
-  const einrichtung = !(await k.settings.globalValue('einrichtung_erledigt'));
+  const setup = !(await k.settings.globalValue('einrichtung_erledigt'));
   for (const key of GLOBAL_SETTINGS.filter(isSensitive)) {
-    const neu = e[key];
-    if (neu === undefined || (SECRET_KEYS.has(key) && isMasked(neu))) continue;
+    const fresh = e[key];
+    if (fresh === undefined || (SECRET_KEYS.has(key) && isMasked(fresh))) continue;
     const alt = String((await k.settings.globalValue(key)) ?? '');
-    if (
-      String(neu) === alt ||
-      (einrichtung && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')
-    )
+    if (String(fresh) === alt || (setup && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled'))
       continue;
     sensitive.push(key);
   }
@@ -46,14 +43,14 @@ async function sensitiveKeys(k: ManagementContext, e: SettingsInput): Promise<st
 /** A mask sent back unchanged is not a new value, otherwise every save would
  * overwrite the real keys with dots. */
 async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput): Promise<void> {
-  const geaendert: string[] = [];
+  const changed: string[] = [];
   for (const key of GLOBAL_SETTINGS) {
     if (e[key] === undefined || (SECRET_KEYS.has(key) && isMasked(e[key]))) continue;
-    if (String(e[key]) !== String((await kx.settings.globalValue(key)) ?? '')) geaendert.push(key);
+    if (String(e[key]) !== String((await kx.settings.globalValue(key)) ?? '')) changed.push(key);
     await kx.settings.setGlobalValue(key, e[key]);
   }
-  if (geaendert.length)
-    await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+  if (changed.length)
+    await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', changed.join(', '));
   // Whoever saved the mail form has seen the hint about the old exception.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
@@ -82,8 +79,8 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // nothing has been written yet; the price job only follows a real change.
   if (e.currency !== undefined) await kx.settings.setUserSetting(o.uid, 'currency', e.currency);
   // Global values are only written by the system role (0117): then the whole transaction in its frame.
-  const rahmen = <T>(f: () => Promise<T>) => (global ? inSystemContext('globale Einstellungen', f) : f());
-  const bricksetAlt = await rahmen(() =>
+  const frame = <T>(f: () => Promise<T>) => (global ? inSystemContext('globale Einstellungen', f) : f());
+  const bricksetAlt = await frame(() =>
     kx.transaktion(async t => {
       const alt =
         global && e.api_limit_brickset !== undefined

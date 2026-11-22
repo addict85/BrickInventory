@@ -1,14 +1,14 @@
-import { WITHOUT_BODY, ZUSTAND, KENNUNG, TEXT, abfrage, Q, SEITE, PAGES_DETAIL, type Route } from './base';
+import { WITHOUT_BODY, CONDITION, IDENTIFIER, TEXT, query, Q, PAGE, PAGES_DETAIL, type Route } from './base';
 import { z } from 'zod';
-import { eingabe } from '../infra/validate';
+import { input } from '../infra/validate';
 import {
-  CsvImportErgebnis,
+  CsvImportResult,
   DEGRADED,
   StueckGeaendert,
   ManuellesTeil,
   PartsResponse,
-  VerwendendeSetsResponse,
-  InDenTrash,
+  UsingSetsResponse,
+  MovedToTrash,
 } from './shared';
 
 export { ManuellesTeil, StueckGeaendert };
@@ -21,14 +21,14 @@ export const AddPartResponse = z.looseObject({
   price_from_condition: z.string().nullable().optional(),
 });
 
-export const BestandEintrag = z.looseObject({
+export const HoldingEntry = z.looseObject({
   gesamt: z.number().int(),
   lose: z.number().int(),
 });
 
-export const BestandResponse = z.looseObject({
+export const HoldingResponse = z.looseObject({
   success: z.boolean(),
-  bestand: z.record(z.string(), BestandEintrag),
+  bestand: z.record(z.string(), HoldingEntry),
 });
 
 export const BrickColor = z.looseObject({
@@ -86,7 +86,7 @@ export const PartsStatsResponse = z.looseObject({
   stats: PartsStats.nullable(),
 });
 
-export const TeilFarbeResponse = z.looseObject({
+export const PartColorResponse = z.looseObject({
   bild: z.string().nullable(),
   success: z.boolean(),
   zusammengelegt: z.boolean(),
@@ -95,7 +95,7 @@ export const TeilFarbeResponse = z.looseObject({
 });
 
 /** BrickLink color → Rebrickable color; `source` says where the table comes from. */
-export const BlFarbTabelle = z.looseObject({
+export const BlColorTable = z.looseObject({
   success: z.literal(true),
   source: z.string(),
   map: z.record(z.string(), z.unknown()),
@@ -105,7 +105,7 @@ export const BlFarbTabelle = z.looseObject({
 export const routen = {
   'GET /api/v1/parts': {
     antwort: PartsResponse,
-    abfrage: abfrage({
+    abfrage: query({
       accounts: Q.konten,
       search: Q.text(),
       color: Q.text(64),
@@ -122,37 +122,37 @@ export const routen = {
   },
   'GET /api/v1/parts/:partNumber/:colorId/sets': {
     klein: true,
-    antwort: VerwendendeSetsResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    antwort: UsingSetsResponse,
+    abfrage: query({ accounts: Q.konten }),
   },
-  'GET /api/v1/parts/stats': { antwort: PartsStatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/stats': { antwort: PartsStatsResponse, abfrage: query({ accounts: Q.konten }) },
   'GET /api/v1/parts/brick-colors': { klein: true, antwort: BrickColorsResponse },
   'GET /api/v1/parts/colors': {
     klein: true,
     antwort: PartsFilterColorsResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/parts/categories': {
     klein: true,
     antwort: PartsCategoriesResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/parts/manual': {
     antwort: ManualPartsResponse,
-    abfrage: abfrage({ accounts: Q.konten, search: Q.text(), storage: Q.text(), ...SEITE }),
+    abfrage: query({ accounts: Q.konten, search: Q.text(), storage: Q.text(), ...PAGE }),
   },
   'PUT /api/v1/parts/:partNumber/:colorId/color': {
-    antwort: TeilFarbeResponse,
-    abfrage: abfrage({ owner: Q.konto }),
+    antwort: PartColorResponse,
+    abfrage: query({ owner: Q.konto }),
     eingabe: z.strictObject({
-      color_id: KENNUNG.nullable().optional(),
-      color_name: eingabe.text(100),
-      color_hex: eingabe.farbcode(),
+      color_id: IDENTIFIER.nullable().optional(),
+      color_name: input.text(100),
+      color_hex: input.farbcode(),
     }),
   },
   'POST /api/v1/parts/owned': {
-    antwort: BestandResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    antwort: HoldingResponse,
+    abfrage: query({ accounts: Q.konten }),
     eingabe: z.strictObject({
       teile: z
         .array(
@@ -167,36 +167,36 @@ export const routen = {
   'POST /api/v1/parts': {
     antwort: AddPartResponse,
     eingabe: z.strictObject({
-      part_number: eingabe.itemNumber('part_number'),
-      color_id: eingabe.farbe(),
-      color_name: eingabe.text(100),
-      color_hex: eingabe.farbcode(),
-      quantity: eingabe.stueckzahl(),
-      condition: eingabe.zustand(),
-      unit_price: eingabe.geld('Stückpreis'),
-      part_name: eingabe.text(200),
-      image_url: eingabe.imageUrl(),
-      category_name: eingabe.text(100),
-      owner_user_id: KENNUNG.nullable().optional(),
+      part_number: input.itemNumber('part_number'),
+      color_id: input.farbe(),
+      color_name: input.text(100),
+      color_hex: input.farbcode(),
+      quantity: input.stueckzahl(),
+      condition: input.zustand(),
+      unit_price: input.geld('Stückpreis'),
+      part_name: input.text(200),
+      image_url: input.imageUrl(),
+      category_name: input.text(100),
+      owner_user_id: IDENTIFIER.nullable().optional(),
       storage: TEXT().nullable().optional(),
       acquired_at: TEXT(40).nullable().optional(),
     }),
   },
   'PUT /api/v1/parts/:partNumber/:colorId': {
-    abfrage: abfrage({ owner: Q.konto }),
+    abfrage: query({ owner: Q.konto }),
     eingabe: z.strictObject({
-      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
-      quantity_delta: eingabe.quantitiesDelta(),
-      unit_price: eingabe.geld('Stückpreis'),
-      condition: ZUSTAND.nullable().optional(),
+      quantity: input.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: input.quantitiesDelta(),
+      unit_price: input.geld('Stückpreis'),
+      condition: CONDITION.nullable().optional(),
     }),
     antwort: StueckGeaendert,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId': {
     eingabe: WITHOUT_BODY,
-    antwort: InDenTrash,
-    abfrage: abfrage({ owner: Q.konto }),
+    antwort: MovedToTrash,
+    abfrage: query({ owner: Q.konto }),
   },
-  'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'GET /api/v1/parts/bl-color-map': { klein: true, antwort: BlFarbTabelle },
+  'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportResult },
+  'GET /api/v1/parts/bl-color-map': { klein: true, antwort: BlColorTable },
 } satisfies Record<string, Route>;

@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
-import { erfassungsTagSql } from '../../../db/stockQuantity';
+import { acquisitionDaySql } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
+import { teilSichtJoin, minifigViewJoin, TEIL, MINIFIG } from '../../../db/catalogView';
 
 // One row per acquisition in one query instead of one per part.
 const partsCsvSql = (l: InventoryReadContract) => `
@@ -17,7 +17,7 @@ const partsCsvSql = (l: InventoryReadContract) => `
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${acquisitionDaySql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM parts p
     LEFT JOIN ${l.teilErfassungen('= $1')} a
            ON a.user_id = p.user_id
@@ -46,15 +46,15 @@ const figsCsvSql = (l: InventoryReadContract) => `
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${acquisitionDaySql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
     LEFT JOIN bl_mapping z ON z.type = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN bl_mapping_custom ze ON ze.user_id = f.user_id AND ze.type = 'fig' AND ze.rb_id = f.fig_number
     LEFT JOIN ${l.figurErfassungen('= $1')} a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
-    ${figurSichtJoin('f.user_id', 'f.fig_number')}
+    ${minifigViewJoin('f.user_id', 'f.fig_number')}
    WHERE f.user_id = $1 AND f.source = 'manual'
-   ORDER BY ${FIGUR.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY ${MINIFIG.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
 export function partsForCsv(db: DbInterface, l: InventoryReadContract, uid: number) {
   return db.all<Record<string, unknown> & { unit_price: number | null }>(partsCsvSql(l), [uid]);

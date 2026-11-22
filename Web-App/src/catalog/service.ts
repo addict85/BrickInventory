@@ -18,8 +18,8 @@ const themesStorage = (k: CatalogContext) =>
   k.faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeTree>(1, THEME_CACHE_TTL));
 
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
-  const gemerkt = themesStorage(k).hole(0);
-  if (gemerkt) return gemerkt;
+  const remembered = themesStorage(k).hole(0);
+  if (remembered) return remembered;
   const rows = await k.katalogSuche.themen();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
@@ -33,8 +33,8 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   // Cycle-safe.
   const pathName = new Map<number, string>();
   const resolvePath = (id: number, seen: Set<number>): string => {
-    const fertig = pathName.get(id);
-    if (fertig !== undefined) return fertig;
+    const finished = pathName.get(id);
+    if (finished !== undefined) return finished;
     const node = byId.get(id);
     if (!node) return '';
     let name = node.name || '';
@@ -47,9 +47,9 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
     return name;
   };
   for (const id of byId.keys()) resolvePath(id, new Set([id]));
-  const baum = { byId, children, pathName };
-  themesStorage(k).setze(0, baum);
-  return baum;
+  const tree = { byId, children, pathName };
+  themesStorage(k).setze(0, tree);
+  return tree;
 }
 
 function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: number): number[] {
@@ -104,8 +104,8 @@ async function choose(k: CatalogContext, f: CatalogFilter): Promise<repo.Catalog
 }
 
 /** NULL years come first in descending order, as in the list. */
-export async function yearDistribution(k: CatalogContext, f: CatalogFilter, absteigend: boolean) {
-  return k.katalogSuche.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), absteigend);
+export async function yearDistribution(k: CatalogContext, f: CatalogFilter, descending: boolean) {
+  return k.katalogSuche.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
 }
 
 export async function catalogPage(
@@ -116,10 +116,10 @@ export async function catalogPage(
   page: number,
   limit: number,
 ) {
-  const wahl = await choose(k, f);
+  const choice = await choose(k, f);
   const [total, sets] = await Promise.all([
-    k.katalogSuche.catalogCount(wahl),
-    k.katalogSuche.catalogRows(await k.household.scopeIds(userId), wahl, sortRaw, limit, (page - 1) * limit),
+    k.katalogSuche.catalogCount(choice),
+    k.katalogSuche.catalogRows(await k.household.scopeIds(userId), choice, sortRaw, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
   // The list triggers no image work; missing images are fetched by the image proxy.
@@ -138,8 +138,8 @@ export async function catalogPage(
 
 export const catalogLoaded = async (k: CatalogContext) => !(await k.katalogSuche.catalogEmpty());
 
-export async function catalogSet(k: CatalogContext, userId: number, roh: string) {
-  const n = withVersion(roh.trim());
+export async function catalogSet(k: CatalogContext, userId: number, raw: string) {
+  const n = withVersion(raw.trim());
   const set = await k.katalogSuche.catalogRow(await k.household.scopeIds(userId), n);
   if (!set) return null;
   const invId = await newestInventory(k, n);

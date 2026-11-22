@@ -20,15 +20,15 @@ export async function getStats(k: InventoryContext, userIdChoice: Sicht | number
   const globalCond = await k.einstellungen.globalValue('default_price_condition');
   const effectiveCondition = ownState && ['N', 'U'].includes(ownState) ? ownState : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
-  const einzeln = Number(singleRow?.t ?? 0);
+  const single = Number(singleRow?.t ?? 0);
   return {
     total_sets: Number(setsRow?.total_sets ?? 0),
     total_quantity: Number(setsRow?.total_quantity ?? 0),
     total_pieces: pieces,
     total_parts: pieces,
     // The parts tab shows the same number; the breakdown makes it traceable.
-    set_parts: pieces - einzeln,
-    manual_parts: einzeln,
+    set_parts: pieces - single,
+    manual_parts: single,
     total_minifigs: Number(minifigsRow?.t ?? 0),
     total_instructions: Number(instrRow?.total_instructions ?? 0),
     currency: cur?.value || 'EUR',

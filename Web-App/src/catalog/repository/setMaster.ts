@@ -36,7 +36,7 @@ export function rememberSetCatalog(
   );
 }
 
-const PLATZHALTER_SQL =
+const PLACEHOLDER_SQL =
   "(rs.name = 'Set ' || rs.set_num AND rs.year IS NULL AND rs.theme_id IS NULL AND rs.num_parts IS NULL)";
 
 /** Created without network: the placeholder makes the set readable until the job fetches the catalog.
@@ -52,7 +52,7 @@ export async function rememberCatalogPlaceholder(dbh: DbInterface, setNumber: st
 
 export function catalogStatus(dbh: DbInterface, setNumber: string) {
   return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
-    `SELECT rs.name, c.image_local, c.minifigs, ${PLATZHALTER_SQL} AS platzhalter
+    `SELECT rs.name, c.image_local, c.minifigs, ${PLACEHOLDER_SQL} AS platzhalter
        FROM rb_sets rs LEFT JOIN set_catalog c ON c.set_number = rs.set_num
       WHERE rs.set_num = $1`,
     [setNumber],

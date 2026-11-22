@@ -11,32 +11,32 @@ import { moneyInput } from './geld';
 export const LARGEST_ID = 2 ** 31 - 1;
 
 /** An ID from path, body or query: digits up to `hoechstens`, otherwise null. */
-export function idWert(wert: unknown, hoechstens = LARGEST_ID): number | null {
-  const roh = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
-  if (!/^\d{1,16}$/.test(roh)) return null;
-  const n = Number(roh);
-  return Number.isSafeInteger(n) && n <= hoechstens ? n : null;
+export function idWert(wert: unknown, atMost = LARGEST_ID): number | null {
+  const raw = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
+  if (!/^\d{1,16}$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) && n <= atMost ? n : null;
 }
 
 const ID_FIELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
 
 /** The first field name that is named like an ID and carries a too large or crooked number.
  * Other values (set numbers, empty values) are checked by the route itself. */
-export function toLargeId(wert: unknown, tiefe = 0): string | null {
-  if (tiefe > 6 || wert === null || typeof wert !== 'object') return null;
+export function toLargeId(wert: unknown, depth = 0): string | null {
+  if (depth > 6 || wert === null || typeof wert !== 'object') return null;
   for (const [k, v] of Object.entries(wert)) {
-    const liste = Array.isArray(v) ? v : [v];
+    const list = Array.isArray(v) ? v : [v];
     if (
       ID_FIELD.test(k) &&
-      liste.some(
+      list.some(
         x =>
           (typeof x === 'number' || (typeof x === 'string' && /^-?\d+$/.test(x.trim()))) &&
           !(Number.isSafeInteger(Number(x)) && Math.abs(Number(x)) <= LARGEST_ID),
       )
     )
       return k;
-    const tiefer = toLargeId(v, tiefe + 1);
-    if (tiefer) return tiefer;
+    const deeper = toLargeId(v, depth + 1);
+    if (deeper) return deeper;
   }
   return null;
 }
@@ -115,18 +115,18 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
 /** No substitute value: `parseInt({a:1}) || 0` turned a broken request into
  * "quantity 0" and deleted the inventory. */
 export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
-  const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fachfehler('ungueltig', 'wert_ungueltig');
-  return +roh;
+  const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
+  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) fachfehler('ungueltig', 'wert_ungueltig');
+  return +raw;
 }
 
 /** Rebrickable's "[No Color/Any Color]". There 0 is black; a missing color
  * must therefore never become 0. */
-export const KEINE_FARBE = 9999;
+export const NO_COLOR = 9999;
 
 export function colorId(value: unknown): number {
-  const roh = String(value ?? '').trim();
-  return /^\d{1,6}$/.test(roh) ? Number(roh) : KEINE_FARBE;
+  const raw = String(value ?? '').trim();
+  return /^\d{1,6}$/.test(raw) ? Number(raw) : NO_COLOR;
 }
 
 /** Invalid values are discarded, not rejected. */
@@ -142,11 +142,11 @@ export type Zustand = 'N' | 'U';
 
 /** THE one rule for conditions from database, CSV and input: 'U' (lower case too)
  * is used, 'N' new, everything else the default. */
-export function zustand(roh: unknown, vorgabe: Zustand = 'N'): Zustand {
-  const v = String(roh ?? '')
+export function zustand(raw: unknown, defaultValue: Zustand = 'N'): Zustand {
+  const v = String(raw ?? '')
     .trim()
     .toUpperCase();
-  return v === 'U' || v === 'N' ? v : vorgabe;
+  return v === 'U' || v === 'N' ? v : defaultValue;
 }
 
 /** null = not specified. */
@@ -162,9 +162,9 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 /** Relatively changed quantity (quantity_delta): integer, |Δ| ≤ 9999; if missing, null. */
 export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
-  const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^-?\d{1,4}$/.test(roh)) fachfehler('ungueltig', 'wert_ungueltig');
-  return Number(roh);
+  const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
+  if (!/^-?\d{1,4}$/.test(raw)) fachfehler('ungueltig', 'wert_ungueltig');
+  return Number(raw);
 }
 
 /** Strict: the string "false" is truthy in JavaScript. */
@@ -175,7 +175,7 @@ export function strictBool(value: unknown, feld = 'Wert'): boolean {
 }
 
 /** Aggregates come as strings, and "0" is truthy in JavaScript. */
-export function istErsatzteil(value: unknown): boolean {
+export function isSparePart(value: unknown): boolean {
   return isJa(value);
 }
 
@@ -196,23 +196,23 @@ export function singleValue(value: unknown, fallback = ''): string {
 
 /** Only OWN keys count: a value from outside like 'constructor' would otherwise
  * find an inherited member. */
-export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
-export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
-export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe?: T): T | undefined {
-  const k = singleValue(schluessel);
-  return Object.hasOwn(tabelle, k) ? tabelle[k] : vorgabe;
+export function fromTable<T>(table: Record<string, T>, key: unknown, defaultValue: T): T;
+export function fromTable<T>(table: Record<string, T>, key: unknown): T | undefined;
+export function fromTable<T>(table: Record<string, T>, key: unknown, defaultValue?: T): T | undefined {
+  const k = singleValue(key);
+  return Object.hasOwn(table, k) ? table[k] : defaultValue;
 }
 
 /** The same checks as an input schema for the API contract: the rule exists
  * once, the JSON schema only describes it, and the route gets its result. */
-function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
+function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
 function alsSchema<T>(
-  pruefe: (v: unknown) => T,
+  check: (v: unknown) => T,
   json: Record<string, unknown>,
   pflicht?: false,
 ): z.ZodType<T | undefined, unknown>;
-function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht = false) {
-  const geprueft = z
+function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, pflicht = false) {
+  const checked = z
     .unknown()
     .meta(json)
     .transform((v, ctx): T => {
@@ -222,18 +222,18 @@ function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, 
         return z.NEVER;
       }
       try {
-        return pruefe(v);
+        return check(v);
       } catch (e) {
         ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } });
         return z.NEVER;
       }
     });
-  return pflicht ? geprueft : geprueft.optional();
+  return pflicht ? checked : checked.optional();
 }
 
-export const eingabe = {
+export const input = {
   /** An own rule with its own error code; mandatory. */
-  regel: <T>(pruefe: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(pruefe, json, true),
+  regel: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(check, json, true),
   itemNumber: (feld: string) =>
     alsSchema(v => numberRequired(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
@@ -251,7 +251,7 @@ export const eingabe = {
   stueckzahl: () =>
     alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   farbe: () =>
-    alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${KEINE_FARBE} (no color) applies` }),
+    alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${NO_COLOR} (no color) applies` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/geld.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */

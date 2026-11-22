@@ -22,7 +22,7 @@ export function lastFetchWarExtern(k: CatalogContext): boolean {
 
 // Count, read, delete in one place instead of scattered.
 
-export async function anzahlAnleitungen(k: CatalogContext, setNumber: string): Promise<number> {
+export async function instructionCount(k: CatalogContext, setNumber: string): Promise<number> {
   const r = await k.anleitungen.zaehleAnleitungen(withVersion(setNumber));
   return Number(r?.c) || 0;
 }
@@ -32,8 +32,8 @@ export async function instructionsToSet(k: CatalogContext, setNumber: string) {
 }
 
 /** First the automatically imported ones, then the self-uploaded ones. */
-export function mergeInstructions<A extends object, B extends object>(geteilt: A[], eigene: B[]) {
-  return [...geteilt.map(i => ({ ...i, is_manual: false })), ...eigene.map(i => ({ ...i, is_manual: true }))];
+export function mergeInstructions<A extends object, B extends object>(shared: A[], own: B[]) {
+  return [...shared.map(i => ({ ...i, is_manual: false })), ...own.map(i => ({ ...i, is_manual: true }))];
 }
 
 /** Once per set and day for everyone: reloading deletes for everyone and costs
@@ -60,7 +60,7 @@ async function brickinstructionsFund(k: CatalogContext, n: string) {
 
 export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumber: string) {
   const n = withVersion(setNumber);
-  const existing = await anzahlAnleitungen(k, n);
+  const existing = await instructionCount(k, n);
   if (existing > 0) return existing;
   const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
@@ -108,7 +108,7 @@ export async function setAnleitungenLaden(k: CatalogContext, setNumber: string, 
   // that have long had instructions.
   abruf(k).extern = false;
 
-  const existing = await anzahlAnleitungen(k, n);
+  const existing = await instructionCount(k, n);
   if (existing > 0) {
     return existing;
   }
@@ -210,9 +210,9 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
       const relPath = `/data/instructions/${pdfName}`;
       await k.anleitungen.rememberInstruction(n, instr.url, instr.description ?? null, null);
       saved++;
-      const { brickinstructions_base: basis, brickinstructions_hdrs: kopf, brickinstructions_first: erstes } = instr;
+      const { brickinstructions_base: basis, brickinstructions_hdrs: header, brickinstructions_first: erstes } = instr;
       setImmediate(() => {
-        void collectAndBuildPDF(k, basis, kopf, erstes, pdfDest, relPath, n).catch(
+        void collectAndBuildPDF(k, basis, header, erstes, pdfDest, relPath, n).catch(
           logAndContinue('anleitung:collectAndBuildPDF'),
         );
       });

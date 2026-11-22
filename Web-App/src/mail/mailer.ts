@@ -463,7 +463,7 @@ export async function sendAccountNoticeMail(
   const subject = en
     ? 'BrickInventory Manager — Change to your account'
     : 'BrickInventory Manager — Änderung an deinem Konto';
-  const haushalt = o.haushalt?.length
+  const household = o.haushalt?.length
     ? en
       ? `These accounts can see and change your collection: ${o.haushalt.join(', ')}.`
       : `Diese Konten sehen und ändern deine Sammlung: ${o.haushalt.join(', ')}.`
@@ -485,9 +485,9 @@ export async function sendAccountNoticeMail(
             button: en ? 'Allow this sign-in' : 'Anmeldung freigeben',
           }
         : null;
-  const text = `${hello} ${username},\n\n${was}\n${link ? `\n${link.url}\n` : ''}${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
+  const text = `${hello} ${username},\n\n${was}\n${link ? `\n${link.url}\n` : ''}${household ? `\n${household}\n` : ''}\n${note}\n\nBrickInventory Manager`;
   const html = `<p style="margin:0 0 8px">${hello} <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">${esc(was)}</p>${link ? emailBtn(link.url, link.button, theme) : ''}${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
+       <p style="margin:0 0 16px">${esc(was)}</p>${link ? emailBtn(link.url, link.button, theme) : ''}${household ? `<p style="margin:0 0 16px">${esc(household)}</p>` : ''}`;
   return sendMail(k, {
     to,
     subject,

@@ -9,20 +9,20 @@ const currentVersion = (k: PartsContext, userId: number) => k.summary.rawState(u
 export async function rebuildSummary(k: PartsContext, userId: number, version?: { v: number }): Promise<void> {
   const stand = version ?? (await currentVersion(k, userId));
   // Whether THIS call built it: if another call holds the lock, there is nothing to catch up on.
-  let gebaut = false;
+  let built = false;
   await k.transaktion(async t => {
     // Lock via the database, not only via _rebuilding: several processes.
     if (!(await repo.lockAccount(t.db, userId))) {
       return;
     }
     await repo.rebuildAll(t.db, userId, stand.v);
-    gebaut = true;
+    built = true;
   });
 
   // Without fresh statistics the planner picks the wrong index after the bulk insert.
   // At most every ten minutes, because ANALYZE scans the table across all accounts.
   const z = state(k);
-  if (gebaut && k.uhr.jetzt() - z.lastAnalyse > 10 * 60_000) {
+  if (built && k.uhr.jetzt() - z.lastAnalyse > 10 * 60_000) {
     z.lastAnalyse = k.uhr.jetzt();
     await k.summary.analyze().catch((e: unknown) => reportError('parts-summary:analyze', e));
   }
@@ -106,18 +106,18 @@ export function runCatalogFollowUp(k: PartsContext): Promise<{ konten: number; g
 async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
   return k.transaktion(async t => {
     if (!(await repo.lockCatalogFollowUp(t.db))) return null;
-    const nummern = await repo.pendingNumbers(t.db);
-    if (!nummern.length) return { konten: 0, gruppen: 0 };
-    if (nummern.length > CATALOG_INDIVIDUAL_UP_TO) return { konten: await repo.discardAllStates(t.db), gruppen: -1 };
-    const betroffen = await repo.affectedGroups(t.db, nummern);
+    const numbers = await repo.pendingNumbers(t.db);
+    if (!numbers.length) return { konten: 0, gruppen: 0 };
+    if (numbers.length > CATALOG_INDIVIDUAL_UP_TO) return { konten: await repo.discardAllStates(t.db), gruppen: -1 };
+    const affected = await repo.affectedGroups(t.db, numbers);
     const jeAccount = new Map<number, string[]>();
-    for (const b of betroffen) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
-    for (const [uid, gruppen] of jeAccount) {
+    for (const b of affected) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
+    for (const [uid, groups] of jeAccount) {
       // An in-progress rebuild is waited out so it doesn't overwrite with a stale catalog.
       await repo.waitForAccount(t.db, uid);
-      await repo.rebuildGroups(t.db, uid, gruppen);
+      await repo.rebuildGroups(t.db, uid, groups);
     }
-    return { konten: jeAccount.size, gruppen: betroffen.length };
+    return { konten: jeAccount.size, gruppen: affected.length };
   });
 }
 

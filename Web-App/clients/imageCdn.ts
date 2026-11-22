@@ -43,7 +43,7 @@ export interface ImageFetch {
   signal?: AbortSignal;
 }
 
-const optionen = (o: ImageFetch) => ({
+const options = (o: ImageFetch) => ({
   hosts: o.hosts ?? ALLOWED_IMAGE_HOSTS,
   maxBytes: o.maxBytes,
   zeitlimitMs: o.zeitlimitMs ?? 30_000,
@@ -55,10 +55,10 @@ const optionen = (o: ImageFetch) => ({
 
 /** Header and limited stream: for the proxy and files. */
 export function oeffneBild(url: string, o: ImageFetch): Promise<FetchStream> {
-  return openHttps(url, optionen(o));
+  return openHttps(url, options(o));
 }
 
 /** The whole image in memory: for small set images. */
 export function fetchImage(url: string, o: ImageFetch): Promise<FetchResponse> {
-  return holeHttps(url, optionen(o));
+  return holeHttps(url, options(o));
 }

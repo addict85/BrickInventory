@@ -28,12 +28,12 @@ export function newCode(): string {
 
 /** New codes without dashes and case; older ones (base64url) stay valid literally. */
 function invitationKey(code: string): string {
-  const kurz = code.trim().replace(/[\s-]/g, '').toUpperCase();
-  return new RegExp(`^[${CODE_CHARS}]{16}$`).test(kurz) ? kurz : code.trim();
+  const short = code.trim().replace(/[\s-]/g, '').toUpperCase();
+  return new RegExp(`^[${CODE_CHARS}]{16}$`).test(short) ? short : code.trim();
 }
 
 /** The code appears nowhere in plaintext. */
-export function einladungsHash(token: string) {
+export function invitationHash(token: string) {
   return crypto.createHash('sha256').update(invitationKey(token)).digest('hex');
 }
 
@@ -52,9 +52,9 @@ export function scopeKind(v: unknown): ScopeMode {
  * so that a signature says at which moment it stands. */
 export type ScopeInput = number | number[];
 
-export type Blickfeld = number[];
+export type Scope = number[];
 
-export function asIds(v: ScopeInput): Blickfeld {
+export function asIds(v: ScopeInput): Scope {
   return Array.isArray(v) ? v.map(x => parseInt(String(x), 10)) : [parseInt(String(v), 10)];
 }
 
@@ -65,6 +65,6 @@ export interface Sicht {
   readonly konten?: string | undefined;
 }
 /** Who writes; their write scope is themselves and their sub-accounts. */
-export interface Schreiber {
+export interface Writer {
   readonly schreiber: number;
 }

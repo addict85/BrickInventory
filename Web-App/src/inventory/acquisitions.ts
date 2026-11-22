@@ -89,8 +89,8 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
     quantity += menge;
     // purchase_price or unit_price per table — the fallback rule ONCE instead of
     // in every client.
-    const roh = r?.purchase_price ?? r?.unit_price;
-    const preis = roh === null || roh === undefined ? null : Number(roh);
+    const raw = r?.purchase_price ?? r?.unit_price;
+    const preis = raw === null || raw === undefined ? null : Number(raw);
     if (preis !== null && Number.isFinite(preis)) {
       amount += preis * menge;
       priced++;
@@ -114,28 +114,32 @@ type WithPrice = {
 
 /** Sum in the viewer's currency, at the rate of the purchase day as in the finances: otherwise
  * 3 × 260.66 USD would show up as euros. Without a rate the row counts in `ohne_kurs`, not in the sum. */
-export async function erfassungenInKontowaehrung<T extends WithPrice>(k: InventoryContext, rows: T[], viewer: number) {
-  const preise = rows.map(r => {
-    const roh = r.purchase_price ?? r.unit_price;
-    return roh === null || roh === undefined ? null : Number(roh);
+export async function acquisitionsInAccountCurrency<T extends WithPrice>(
+  k: InventoryContext,
+  rows: T[],
+  viewer: number,
+) {
+  const prices = rows.map(r => {
+    const raw = r.purchase_price ?? r.unit_price;
+    return raw === null || raw === undefined ? null : Number(raw);
   });
-  const tage = rows.map(r => {
+  const days = rows.map(r => {
     const d = r.created_at ? new Date(String(r.created_at)) : null;
     return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
   });
-  const umgerechnet = await k.kaufErfassungen.inCurrencyOfAccount(
+  const converted = await k.kaufErfassungen.inCurrencyOfAccount(
     viewer,
-    preise,
+    prices,
     rows.map(r => r.currency ?? null),
-    tage,
+    days,
   );
-  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.amounts[i] ?? null }));
+  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: converted.amounts[i] ?? null }));
   return {
     acquisitions,
     totals: {
       ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
-      currency: umgerechnet.waehrung,
-      ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length,
+      currency: converted.waehrung,
+      ohne_kurs: acquisitions.filter((a, i) => prices[i] != null && a.preis_konto == null).length,
     },
   };
 }
@@ -154,12 +158,12 @@ export async function setEstimatedPrice(
       const z = await repo.lockEntry(t.db, kind, id);
       if (!z || z[priceColumn(kind)] != null) return false;
       const keys = keyColumns(kind).map(s => z[s]);
-      const ziel = await purchaseAtSameTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
+      const target = await purchaseAtSameTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,
         waehrung: z.currency,
       });
-      if (ziel) await repo.putEntryTogether(t.db, kind, id, ziel, z.quantity);
+      if (target) await repo.putEntryTogether(t.db, kind, id, target, z.quantity);
       else await repo.setPriceEstimated(t.db, kind, id, preis);
       return true;
     },

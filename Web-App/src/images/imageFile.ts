@@ -20,24 +20,24 @@ const EXTENSION_TO_TYPE: Record<string, string> = {
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 /** Otherwise jpg. */
-export function imageExtension(adresse: string): string {
-  let pfad = '';
+export function imageExtension(address: string): string {
+  let path = '';
   try {
-    pfad = new URL(adresse).pathname;
+    path = new URL(address).pathname;
   } catch {
     return 'jpg';
   }
-  const e = (pfad.split('.').pop() ?? '').toLowerCase();
+  const e = (path.split('.').pop() ?? '').toLowerCase();
   return Object.hasOwn(EXTENSION_TO_TYPE, e) ? e : 'jpg';
 }
 
 export function imageTypeAllowed(contentType: string | undefined): boolean {
-  const typ =
+  const type =
     String(contentType ?? '')
       .split(';')[0]
       ?.trim()
       .toLowerCase() ?? '';
-  return Object.values(EXTENSION_TO_TYPE).includes(typ);
+  return Object.values(EXTENSION_TO_TYPE).includes(type);
 }
 
 /** @returns null if it could form a path — then nothing is saved */
@@ -47,9 +47,9 @@ export function filePart(wert: unknown): string | null {
 }
 
 /** Only if it really lies directly in the folder. */
-export function targetInFolder(ordner: string, datei: string): string | null {
-  const ziel = path.resolve(ordner, datei);
-  return path.dirname(ziel) === path.resolve(ordner) ? ziel : null;
+export function targetInFolder(folder: string, file: string): string | null {
+  const target = path.resolve(folder, file);
+  return path.dirname(target) === path.resolve(folder) ? target : null;
 }
 
 /** First into a temporary file, so that an aborted download does not later
@@ -57,15 +57,15 @@ export function targetInFolder(ordner: string, datei: string): string | null {
  * @returns whether the image now lies under `ziel` */
 export async function loadImage(
   k: ImagesContext,
-  adresse: string,
-  ziel: string,
+  address: string,
+  target: string,
   allowedHosts: readonly string[],
   kopfzeilen: Record<string, string> = {},
   reportWarning: (text: string) => void = () => {},
 ): Promise<boolean> {
   let a: Awaited<ReturnType<ImagesContext['externalSources']['quellen']['oeffneBild']>>;
   try {
-    a = await k.externalSources.quellen.oeffneBild(adresse, {
+    a = await k.externalSources.quellen.oeffneBild(address, {
       hosts: allowedHosts,
       maxBytes: IMAGE_MAX_BYTES,
       zeitlimitMs: 30_000,
@@ -77,24 +77,24 @@ export async function loadImage(
   }
   if (a.status !== 200) {
     a.verwerfen();
-    reportWarning(`HTTP ${a.status}: ${adresse.slice(0, 80)}`);
+    reportWarning(`HTTP ${a.status}: ${address.slice(0, 80)}`);
     return false;
   }
   if (!imageTypeAllowed(a.kopf['content-type'])) {
     a.verwerfen();
-    reportWarning(`kein Bild (${a.kopf['content-type']}): ${adresse.slice(0, 80)}`);
+    reportWarning(`kein Bild (${a.kopf['content-type']}): ${address.slice(0, 80)}`);
     return false;
   }
   // Unique per fetch: two concurrent downloads would otherwise write into
   // the same temporary file.
-  const zwischen = `${ziel}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.teil`;
+  const between = `${target}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.teil`;
   try {
-    await pipeline(a.strom(), fs.createWriteStream(zwischen));
-    await fs.promises.rename(zwischen, ziel);
+    await pipeline(a.strom(), fs.createWriteStream(between));
+    await fs.promises.rename(between, target);
     return true;
   } catch (e) {
-    if (e instanceof AbrufFehler && e.grund === 'zu-gross') reportWarning(`Bild zu gross: ${adresse.slice(0, 80)}`);
-    await fs.promises.rm(zwischen, { force: true });
+    if (e instanceof AbrufFehler && e.grund === 'zu-gross') reportWarning(`Bild zu gross: ${address.slice(0, 80)}`);
+    await fs.promises.rm(between, { force: true });
     return false;
   }
 }

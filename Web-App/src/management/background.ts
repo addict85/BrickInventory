@@ -5,8 +5,8 @@ export async function jobsOverview(
   k: ManagementContext,
   filter: { status?: string | undefined; art?: string | undefined } = {},
 ) {
-  const [uebersicht, bildbedarf] = await Promise.all([k.jobQueue.jobsInOverview(filter), k.images.openImageDemand()]);
-  return { ...uebersicht, bildbedarf };
+  const [overview, bildbedarf] = await Promise.all([k.jobQueue.jobsInOverview(filter), k.images.openImageDemand()]);
+  return { ...overview, bildbedarf };
 }
 
 /** For the image demand the notes go too. */

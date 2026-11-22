@@ -44,15 +44,15 @@ const PLACEHOLDER_SECRETS = [
 
 /** The development secret only with an explicit NODE_ENV=development/test;
  * without NODE_ENV the same rules as in production apply. */
-function sitzungsGeheimnis(): string {
-  const gesetzt = konfig().sessionSecret?.trim();
-  if (konfig().entwicklung) return gesetzt || 'brickinventory-manager-dev-secret';
-  const grund = !gesetzt
+function sessionSecret(): string {
+  const assigned = konfig().sessionSecret?.trim();
+  if (konfig().entwicklung) return assigned || 'brickinventory-manager-dev-secret';
+  const grund = !assigned
     ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen' +
       (konfig().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
-    : PLACEHOLDER_SECRETS.includes(gesetzt)
+    : PLACEHOLDER_SECRETS.includes(assigned)
       ? 'SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.'
-      : gesetzt.length < 32
+      : assigned.length < 32
         ? 'SESSION_SECRET ist zu kurz (nötig sind mindestens 32 Zeichen) — Start verweigert.'
         : null;
   if (grund) {
@@ -77,7 +77,7 @@ async function shutdown(
   signal: string,
   httpServer: Server | null,
   jobs: boolean,
-  zugang: Db,
+  access: Db,
   dienste: Dienste,
   webLockFree: (() => Promise<void>) | null,
 ): Promise<void> {
@@ -92,16 +92,16 @@ async function shutdown(
   emergencyBrake.unref();
   try {
     if (httpServer) {
-      const beendet = closeAllSse();
-      if (beendet) console.log(`[shutdown] ${beendet} offene Ereignis-Ströme beendet`);
+      const ended = closeAllSse();
+      if (ended) console.log(`[shutdown] ${ended} offene Ereignis-Ströme beendet`);
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Running jobs stop safely and go back into the table.
     if (jobs && lauf.jobs) await stopJobs(dienste, lauf.jobs);
-    await closeBufferAndTicks(zugang, dienste);
+    await closeBufferAndTicks(access, dienste);
     await webLockFree?.();
-    await zugang.pool.end().catch(logAndContinue('server:end'));
+    await access.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(emergencyBrake);
     process.exit(0);
@@ -112,7 +112,7 @@ async function shutdown(
 }
 
 /** One process per role (ROLLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
-async function starte(): Promise<void> {
+async function start(): Promise<void> {
   const k = konfig();
   if (k.operation) {
     const bans = startBans();
@@ -136,33 +136,33 @@ async function starte(): Promise<void> {
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
-  const geheimnis = web ? sitzungsGeheimnis() : ''; // before the database: a start ban should not wait for it
+  const geheimnis = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Database access and wiring are created here, not on import of a module;
   // acquisitions and settings trigger their follow-up work in every process.
-  const { db: zugang, dienste } = wireProcess();
+  const { db: access, dienste } = wireProcess();
 
   try {
     // Migrations, first start and re-keying go across all accounts.
-    await inSystemContext('start', () => prepareDatabaseBefore(zugang, dienste, { jobs }));
+    await inSystemContext('start', () => prepareDatabaseBefore(access, dienste, { jobs }));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
-  logInDieDatabase(zugang.pool);
+  logInDieDatabase(access.pool);
   const webLockFree = web
-    ? await holdWebLock(zugang).catch((e: unknown) => {
+    ? await holdWebLock(access).catch((e: unknown) => {
         console.error(`❌ [start] ${fehlertext(e)}`);
         process.exit(1);
       })
     : null;
   // Hints into the log: one that fails holds up neither the start nor the others.
-  const hinweise: [string, () => Promise<unknown>][] = [
+  const hints: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
     ...dienste.account.adressHints(),
   ];
-  if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
+  if (web) for (const [wo, hint] of hints) await hint().catch(logAndContinue(wo));
   if (web) dienste.account.listenOnRevocation();
   // Web and jobs (also separate processes) clear their household memory on every change.
   dienste.household.listenOnChanges();
@@ -174,7 +174,7 @@ async function starte(): Promise<void> {
     ? http
         .createServer(
           { ...HTTP_DEADLINES },
-          baueApp({ pool: zugang.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          baueApp({ pool: access.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
@@ -182,17 +182,17 @@ async function starte(): Promise<void> {
     : null;
   const lauf: Lauf = { endedBecomes: false, jobs: null };
   process.on('SIGTERM', () => {
-    void shutdown(lauf, 'SIGTERM', httpServer, jobs, zugang, dienste, webLockFree);
+    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, dienste, webLockFree);
   });
   process.on('SIGINT', () => {
-    void shutdown(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webLockFree);
+    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, dienste, webLockFree);
   });
   // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
   if (jobs) lauf.jobs = await startJobs(dienste);
 }
 
 // Continuing without a worker would fake a service.
-starte().catch((e: unknown) => {
+start().catch((e: unknown) => {
   console.error('❌ [start] Start gescheitert:', fehlertext(e));
   process.exit(1);
 });

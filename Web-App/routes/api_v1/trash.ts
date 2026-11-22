@@ -3,9 +3,9 @@
 import { guardFor } from './middleware';
 import { confirmWithFactor } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
-export function buildTrashRouter(d: Pick<Dienste, 'account' | 'inventory' | 'collection'>) {
+export function buildTrashRouter(d: Pick<Services, 'account' | 'inventory' | 'collection'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

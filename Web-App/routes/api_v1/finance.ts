@@ -3,22 +3,22 @@ import { viewOf, guardFor } from './middleware';
 import { singleValue } from '../../src/infra/validate';
 import { pageFrom } from '../../src/infra/page';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 /** Price errors come with a code from the valuation; the text follows the request's language, not the server's. */
 function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
-  zeilen: T[],
+  rows: T[],
   req: Parameters<typeof responseLanguage>[0],
 ): T[] {
-  const sprache = responseLanguage(req);
-  return zeilen.map(z =>
+  const language = responseLanguage(req);
+  return rows.map(z =>
     typeof z.error_code === 'string' && z.error_code in FEHLER
-      ? { ...z, error: errorText(z.error_code as ErrorCode, sprache) }
+      ? { ...z, error: errorText(z.error_code as ErrorCode, language) }
       : z,
   );
 }
 
-export function buildFinanceRouter(d: Pick<Dienste, 'account' | 'finances'>) {
+export function buildFinanceRouter(d: Pick<Services, 'account' | 'finances'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

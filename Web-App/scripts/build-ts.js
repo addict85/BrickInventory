@@ -126,7 +126,7 @@ function copyAssets(dir, out) {
  */
 function removeOrphaned(out) {
   /** @type {string[]} */
-  const weg = [];
+  const route = [];
   /** @param {string} dir */
   function goBy(dir) {
     if (!fs.existsSync(dir)) return;
@@ -138,15 +138,15 @@ function removeOrphaned(out) {
       }
       if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
       // Inversion of copyAssets(): dst = out + (abs - ROOT)
-      const quelle = path.join(ROOT, path.relative(out, abs));
-      if (!fs.existsSync(quelle)) {
+      const source = path.join(ROOT, path.relative(out, abs));
+      if (!fs.existsSync(source)) {
         fs.unlinkSync(abs);
-        weg.push(path.relative(out, abs));
+        route.push(path.relative(out, abs));
       }
     }
   }
   for (const dir of SRC_DIRS) goBy(path.join(out, dir));
-  return weg;
+  return route;
 }
 
 if (OUTDIR) {
@@ -154,10 +154,10 @@ if (OUTDIR) {
   for (const dir of SRC_DIRS) assets += copyAssets(path.join(ROOT, dir), OUTDIR);
   // tsconfig also checks the scripts (noImplicitAny).
   /** @type {string[]} */
-  const weg = removeOrphaned(OUTDIR);
+  const route = removeOrphaned(OUTDIR);
   console.log(`[build-ts] ${assets} Nicht-TS-Datei(en) mitkopiert (${ASSET_EXT.join(', ')})`);
   // By name into the build log, so that nothing disappears silently.
-  if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
+  if (route.length) console.log(`[build-ts] ${route.length} verwaiste Datei(en) entfernt: ${route.join(', ')}`);
   // The version belongs to the build, not into the working tree (scripts/version.js).
   const { buildVersion, schreibe } = require('./version');
   const version = buildVersion();

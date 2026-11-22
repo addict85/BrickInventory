@@ -8,17 +8,17 @@ import type { JobsContext } from './context';
 export async function rememberBefore<A extends JobKind>(
   k: JobsContext,
   art: A,
-  schluessel: string,
-  nutzlast: (versuch: number) => PayloadInput<A>,
+  key: string,
+  payload: (versuch: number) => PayloadInput<A>,
   o: { dueAb: Date; fehler: string; hoechstens: number },
 ): Promise<{ versuch: number; vorgemerkt: boolean }> {
-  const versuch = (await k.auftraege.highestCounter(schluessel, 'versuch')) + 1;
+  const versuch = (await k.auftraege.highestCounter(key, 'versuch')) + 1;
   if (versuch > o.hoechstens) {
-    await k.auftraege.openDelete(schluessel);
+    await k.auftraege.openDelete(key);
     return { versuch, vorgemerkt: false };
   }
-  const n = k.arten.pruefe(art, nutzlast(versuch));
-  await k.auftraege.writeResubmission(art, schluessel, n as object, {
+  const n = k.arten.check(art, payload(versuch));
+  await k.auftraege.writeResubmission(art, key, n as object, {
     dueAb: o.dueAb,
     fehler: o.fehler,
     maxAttempts: 3,
@@ -27,24 +27,24 @@ export async function rememberBefore<A extends JobKind>(
   return { versuch, vorgemerkt: true };
 }
 
-export async function vergiss(k: JobsContext, schluessel: string): Promise<void> {
-  await k.auftraege.openDelete(schluessel);
+export async function forget(k: JobsContext, key: string): Promise<void> {
+  await k.auftraege.openDelete(key);
 }
 
 /** Due right away, without a key the whole kind; a pause of the kind stays. */
-export async function jetzt(k: JobsContext, art: JobKind, schluessel?: string): Promise<number> {
-  return pullBefore(k, art, schluessel);
+export async function now(k: JobsContext, art: JobKind, key?: string): Promise<number> {
+  return pullBefore(k, art, key);
 }
 
 export async function prefer(k: JobsContext, art: JobKind, bis: Date): Promise<void> {
   await k.auftraege.pullAppointmentsBefore(art, bis);
 }
 
-export function wartende(k: JobsContext, art: JobKind) {
+export function waiting(k: JobsContext, art: JobKind) {
   return k.auftraege.waitingTheKind(art);
 }
 
-export async function zahlen(k: JobsContext, art: JobKind): Promise<{ wartend: number; faellig: number }> {
+export async function numbers(k: JobsContext, art: JobKind): Promise<{ wartend: number; faellig: number }> {
   const z = await k.auftraege.numbersTheKind(art);
   return { wartend: z?.wartend ?? 0, faellig: z?.faellig ?? 0 };
 }

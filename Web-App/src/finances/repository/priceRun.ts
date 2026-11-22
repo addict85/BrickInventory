@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/geldSql';
 
 export interface PriceSpace {
   user_id: number;
@@ -50,7 +50,7 @@ export async function writeDailyStatus(db: DbInterface): Promise<number> {
     INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at)
     SELECT set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, NOW()
     FROM price_cache
-    WHERE ${marktpreisSql()} IS NOT NULL
+    WHERE ${marketPriceSql()} IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM price_history ph
         WHERE ph.set_number = price_cache.set_number

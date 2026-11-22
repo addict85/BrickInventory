@@ -1,17 +1,17 @@
 import { z } from 'zod';
-import { eingabe, LARGEST_ID } from '../infra/validate';
-import { KontoName, type Route, zeit, ganz, WITHOUT_BODY, KENNUNG, ZUSTAND, TEXT, abfrage, Q } from './base';
+import { input, LARGEST_ID } from '../infra/validate';
+import { AccountName, type Route, time, whole, WITHOUT_BODY, IDENTIFIER, CONDITION, TEXT, query, Q } from './base';
 import {
   BrickLinkRef,
-  CsvImportErgebnis,
+  CsvImportResult,
   DEGRADED,
   GenericResponse,
-  SetFigurenResponse,
-  SetTeileResponse,
-  InDenTrash,
+  SetMinifigsResponse,
+  SetPartsResponse,
+  MovedToTrash,
 } from './shared';
 
-export { GenericResponse, SetFigurenResponse, SetTeileResponse };
+export { GenericResponse, SetMinifigsResponse as SetFigurenResponse, SetPartsResponse as SetTeileResponse };
 
 export const AddSetResponse = z.looseObject({
   success: z.boolean(),
@@ -40,8 +40,8 @@ export const BarcodeResponse = z.looseObject({
 });
 
 export const Instruction = z.looseObject({
-  downloaded_at: zeit.nullable().optional(),
-  fetched_at: zeit.nullable().optional(),
+  downloaded_at: time.nullable().optional(),
+  fetched_at: time.nullable().optional(),
   set_number: z.string(),
   user_id: z.number().int().nullable().optional(),
   id: z.number().int(),
@@ -65,14 +65,14 @@ export const MoveSetResponse = z.looseObject({
   to_user_id: z.number().int(),
 });
 
-export const Preisalarm = z.looseObject({
+export const PriceAlert = z.looseObject({
   set_number: z.string(),
   condition: z.string(),
   direction: z.string(),
   threshold: z.number(),
   currency_code: z.string(),
   triggered: z.boolean(),
-  last_triggered_at: zeit.nullable(),
+  last_triggered_at: time.nullable(),
   last_price: z.number().nullable(),
   name: z.string().nullable().optional(),
   image_local: z.string().nullable().optional(),
@@ -83,28 +83,28 @@ export const Preisalarm = z.looseObject({
 
 export const PendingAlertsResponse = z.looseObject({
   success: z.boolean(),
-  alerts: z.array(Preisalarm),
-  now: zeit.nullable(),
+  alerts: z.array(PriceAlert),
+  now: time.nullable(),
 });
 
-export const PreisalarmResponse = z.looseObject({
+export const PriceAlertResponse = z.looseObject({
   success: z.boolean(),
-  alert: Preisalarm.nullable().optional(),
+  alert: PriceAlert.nullable().optional(),
   removed: z.number().int().optional(),
 });
 
-export const PreisalarmeResponse = z.looseObject({
+export const PriceAlertsResponse = z.looseObject({
   success: z.boolean(),
-  alerts: z.array(Preisalarm),
+  alerts: z.array(PriceAlert),
 });
 
 export const SetItem = z.looseObject({
   acq_count: z.number().int(),
-  letzter_kauf: zeit.nullable().optional(),
+  letzter_kauf: time.nullable().optional(),
   owner_ids: z.array(z.number().int()).optional(),
   id: z.number().int().optional(),
   storage_id: z.number().int().nullable().optional(),
-  updated_at: zeit.nullable().optional(),
+  updated_at: time.nullable().optional(),
   user_id: z.number().int().optional(),
   set_number: z.string(),
   name: z.string().nullable(),
@@ -115,12 +115,12 @@ export const SetItem = z.looseObject({
   quantity: z.number().int(),
   image_url: z.string().nullable(),
   image_local: z.string().nullable(),
-  added_at: zeit.nullable(),
+  added_at: time.nullable(),
   condition: z.string().nullable(),
   storage: z.string().nullable(),
   conditions: z.array(z.string()),
   /** Only in the household (besitzerAnhaengen); alone there are no owners to name. */
-  owners: z.array(KontoName).optional(),
+  owners: z.array(AccountName).optional(),
   max_purchase_price: z.number().nullable(),
   avg_purchase_price: z.number().nullable(),
   kaufpreis_geschaetzt: z.boolean().nullable().optional(),
@@ -167,9 +167,9 @@ export const SetsResponse = z.looseObject({
 });
 
 /** 202: loading happens in the job process (job `anleitung`); the list is the state before loading. */
-export const AnleitungenGeladen = z.looseObject({
+export const InstructionsLoaded = z.looseObject({
   success: z.literal(true),
-  count: ganz,
+  count: whole,
   instructions: z.array(Instruction),
   auftrag_id: z.string().nullable(),
 });
@@ -177,7 +177,7 @@ export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.str
 
 const textOrNull = (max: number) => z.string().max(max).nullish();
 /** The job draws every row and loads images: number and size are limited. */
-export const PdfEingabe = z.strictObject({
+export const PdfInput = z.strictObject({
   sets: z
     .array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOrNull(500) }))
     .max(1000)
@@ -215,32 +215,32 @@ export const PdfStand = z.looseObject({
 /** The set import runs in the background; right away it is known how many rows and which sets already exist. */
 export const SetCsvImportGestartet = z.looseObject({
   success: z.boolean(),
-  total: ganz,
+  total: whole,
   /** false for `pruefen`: only counted, nothing started. */
   gestartet: z.boolean(),
-  vorhanden: ganz,
+  vorhanden: whole,
   vorhanden_nummern: z.array(z.string()),
-  skipped: ganz.optional(),
+  skipped: whole.optional(),
   skipped_hint: z.string().optional(),
 });
 
-export const TeileGeladen = z.looseObject({ success: z.literal(true), count: ganz });
+export const PartsLoaded = z.looseObject({ success: z.literal(true), count: whole });
 
 export const AnleitungHochgeladen = GenericResponse.extend({
   instruction: z.looseObject({ url: z.string(), description: z.string().nullable(), local_path: z.string() }),
 });
 
 /** What a reduction removed; the UI names the purchase and offers undo via `papierkorb`. */
-export const MengeGeaendert = GenericResponse.extend({
+export const QuantityChanged = GenericResponse.extend({
   /** null: written but not read back (see degradiert). */
-  quantity: ganz.nullable(),
+  quantity: whole.nullable(),
   papierkorb: z.number().int().optional(),
   degradiert: DEGRADED,
   entfallen: z
     .array(
       z.looseObject({
-        id: ganz,
-        quantity: ganz,
+        id: whole,
+        quantity: whole,
         purchase_price: z.number().nullable(),
         currency: z.string().nullable(),
         price_estimated: z.boolean(),
@@ -254,10 +254,10 @@ export const MengeGeaendert = GenericResponse.extend({
 /** A new set; the same fields for the stream (add-stream). */
 const NewSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
-  quantity: eingabe.stueckzahl(),
-  purchase_price: eingabe.geld('Kaufpreis'),
-  condition: ZUSTAND.nullable().optional(),
-  owner_user_id: KENNUNG.nullable().optional(),
+  quantity: input.stueckzahl(),
+  purchase_price: input.geld('Kaufpreis'),
+  condition: CONDITION.nullable().optional(),
+  owner_user_id: IDENTIFIER.nullable().optional(),
   storage: TEXT().nullable().optional(),
   currency: z
     .string()
@@ -275,7 +275,7 @@ export const routen = {
   'GET /api/v1/sets/info/:setNumber': { antwort: SetInfoResponse },
   'GET /api/v1/sets': {
     antwort: SetsResponse,
-    abfrage: abfrage({
+    abfrage: query({
       accounts: Q.konten,
       search: Q.text(),
       theme: Q.text(),
@@ -285,16 +285,16 @@ export const routen = {
       storage: Q.text(),
     }),
   },
-  'GET /api/v1/sets/:setNumber': { antwort: SetResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/sets/:setNumber': { antwort: SetResponse, abfrage: query({ accounts: Q.konten }) },
   'GET /api/v1/alerts/pending': {
     klein: true,
     antwort: PendingAlertsResponse,
-    abfrage: abfrage({ since: Q.text(40) }),
+    abfrage: query({ since: Q.text(40) }),
   },
-  'GET /api/v1/alerts': { klein: true, antwort: PreisalarmeResponse },
-  'GET /api/v1/sets/:setNumber/alert': { klein: true, antwort: PreisalarmeResponse },
-  'GET /api/v1/sets/:setNumber/parts-list': { klein: true, antwort: SetTeileResponse },
-  'GET /api/v1/sets/:setNumber/minifigs-list': { klein: true, antwort: SetFigurenResponse },
+  'GET /api/v1/alerts': { klein: true, antwort: PriceAlertsResponse },
+  'GET /api/v1/sets/:setNumber/alert': { klein: true, antwort: PriceAlertsResponse },
+  'GET /api/v1/sets/:setNumber/parts-list': { klein: true, antwort: SetPartsResponse },
+  'GET /api/v1/sets/:setNumber/minifigs-list': { klein: true, antwort: SetMinifigsResponse },
   'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
   'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
   'POST /api/v1/sets/:setNumber/instructions/upload': {
@@ -306,52 +306,52 @@ export const routen = {
   'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: NewSet },
   'PUT /api/v1/sets/:setNumber': {
     eingabe: z.strictObject({
-      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
-      quantity_delta: eingabe.quantitiesDelta(),
-      purchase_price: eingabe.geld('Kaufpreis'),
-      condition: ZUSTAND.nullable().optional(),
-      owner_user_id: KENNUNG.nullable().optional(),
+      quantity: input.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: input.quantitiesDelta(),
+      purchase_price: input.geld('Kaufpreis'),
+      condition: CONDITION.nullable().optional(),
+      owner_user_id: IDENTIFIER.nullable().optional(),
     }),
-    antwort: MengeGeaendert,
+    antwort: QuantityChanged,
   },
   'DELETE /api/v1/sets/:setNumber': {
     eingabe: WITHOUT_BODY,
-    antwort: InDenTrash,
-    abfrage: abfrage({ accounts: Q.konten }),
+    antwort: MovedToTrash,
+    abfrage: query({ accounts: Q.konten }),
   },
   'PUT /api/v1/sets/:setNumber/alert': {
     eingabe: z.strictObject({
       direction: z.enum(['unter', 'ueber']),
-      threshold: eingabe.geld('Schwelle', { nullbar: false }),
-      condition: ZUSTAND.optional(),
+      threshold: input.geld('Schwelle', { nullbar: false }),
+      condition: CONDITION.optional(),
     }),
-    antwort: PreisalarmResponse,
+    antwort: PriceAlertResponse,
   },
   'DELETE /api/v1/sets/:setNumber/alert': {
     eingabe: WITHOUT_BODY,
-    antwort: PreisalarmResponse,
-    abfrage: abfrage({ condition: z.enum(['N', 'U', 'n', 'u']) }),
+    antwort: PriceAlertResponse,
+    abfrage: query({ condition: z.enum(['N', 'U', 'n', 'u']) }),
   },
   'POST /api/v1/sets/:sn/move': {
     eingabe: z.strictObject({
-      from_user_id: KENNUNG.nullable().optional(),
-      to_user_id: KENNUNG,
-      acquisition_ids: z.array(KENNUNG).max(10_000).nullable().optional(),
+      from_user_id: IDENTIFIER.nullable().optional(),
+      to_user_id: IDENTIFIER,
+      acquisition_ids: z.array(IDENTIFIER).max(10_000).nullable().optional(),
     }),
     antwort: MoveSetResponse,
   },
   'POST /api/v1/sets/import/csv': {
     formular: true,
     antwort: SetCsvImportGestartet,
-    abfrage: abfrage({ pruefen: Q.schalter }),
+    abfrage: query({ pruefen: Q.schalter }),
   },
-  'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'POST /api/v1/sets/:setNumber/instructions': { eingabe: WITHOUT_BODY, antwort: AnleitungenGeladen },
-  'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },
+  'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportResult },
+  'POST /api/v1/sets/:setNumber/instructions': { eingabe: WITHOUT_BODY, antwort: InstructionsLoaded },
+  'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfInput },
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
   'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom', ereignis: PdfStand },
   'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NewSet },
   'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
-  'POST /api/v1/sets/:setNumber/parts': { eingabe: WITHOUT_BODY, antwort: TeileGeladen },
+  'POST /api/v1/sets/:setNumber/parts': { eingabe: WITHOUT_BODY, antwort: PartsLoaded },
 } satisfies Record<string, Route>;

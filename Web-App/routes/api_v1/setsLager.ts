@@ -3,10 +3,10 @@ import { kontoSchranke, viewOf, guardFor } from './middleware';
 import { csvReceive } from '../../src/http/fileUpload';
 import { zustand } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 
-export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' | 'inventory' | 'sets'>) {
+export function buildSetsStorageRouter(d: Pick<Services, 'account' | 'finances' | 'inventory' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

@@ -4,14 +4,14 @@ import { perSession, signedInUserId, confirmWithFactor } from '../../src/account
 import { vertragsRouter } from '../../src/http/contractRouter';
 import { devicesNameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 
 const NAME_MAX = 60;
-const passkeyName = (roh: unknown) =>
-  typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
+const passkeyName = (raw: unknown) =>
+  typeof raw === 'string' && raw.trim() ? Array.from(raw.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
 
-export function buildPasskeyRouter(d: Pick<Dienste, 'account' | 'factors'>) {
+export function buildPasskeyRouter(d: Pick<Services, 'account' | 'factors'>) {
   const { requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 

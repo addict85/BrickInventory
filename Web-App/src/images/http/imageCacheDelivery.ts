@@ -18,16 +18,16 @@ export async function deliverFromCache(
     wantThumb: boolean;
     createMay: boolean;
     note: () => void;
-    streamFileToResponse(res: ImageResponse, datei: string, onEnd?: () => void, req?: ImageRequest): unknown;
+    streamFileToResponse(res: ImageResponse, file: string, onEnd?: () => void, req?: ImageRequest): unknown;
   },
 ): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const treffer = await bilder.cacheTreffer(opts);
-  if (!treffer) return false;
-  res.setHeader('Content-Type', treffer.typ);
+  const hits = await bilder.cacheTreffer(opts);
+  if (!hits) return false;
+  res.setHeader('Content-Type', hits.typ);
   // Pass the length: a reverse proxy may buffer a chunked response.
-  if (treffer.groesse !== null) res.setHeader('Content-Length', String(treffer.groesse));
-  if (treffer.etag) res.setHeader('ETag', treffer.etag);
+  if (hits.groesse !== null) res.setHeader('Content-Length', String(hits.groesse));
+  if (hits.etag) res.setHeader('ETag', hits.etag);
   res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
   // If the browser already knows the file, an empty 304 is enough.
   if (req.fresh) {
@@ -36,6 +36,6 @@ export async function deliverFromCache(
   }
   // No raw pipe(): cache maintenance can remove the file between check and
   // opening, and a read stream error without listeners ends the process.
-  streamFileToResponse(res, treffer.datei, undefined, req);
+  streamFileToResponse(res, hits.datei, undefined, req);
   return true;
 }

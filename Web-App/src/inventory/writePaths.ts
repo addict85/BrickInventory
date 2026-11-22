@@ -1,9 +1,9 @@
 /** Sets and purchases belong to the inventory (docs/architektur.md); the areas above write via this. */
-import type { ErfassungsArt } from '../../db/stockQuantity';
-import { mit } from '../infra/area';
-import * as erfassungen from './repository/acquisitions';
-import * as gemeinsam from './repository/shared';
-import * as kaeufe from './repository/purchases';
+import type { AcquisitionKind } from '../../db/stockQuantity';
+import { withValue } from '../infra/area';
+import * as acquisitions from './repository/acquisitions';
+import * as shared from './repository/shared';
+import * as purchases from './repository/purchases';
 import { manualEntryReassign } from './reassign';
 import type { InventoryContext } from './context';
 
@@ -15,20 +15,20 @@ export interface EntryChange {
 }
 
 /** Only in the passed accounts: a second line behind the caller's check. */
-async function aendere(k: InventoryContext, art: ErfassungsArt, id: number, konten: number[], a: EntryChange) {
-  if (a.menge !== undefined) await erfassungen.setEntryQuantity(k.db, art, id, a.menge, konten);
-  if (a.preis) await erfassungen.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
-  if (a.zustand !== undefined) await erfassungen.setEntryState(k.db, art, id, a.zustand, konten);
-  if (a.datum) await erfassungen.setEntryDate(k.db, art, id, a.datum, konten);
+async function change(k: InventoryContext, art: AcquisitionKind, id: number, konten: number[], a: EntryChange) {
+  if (a.menge !== undefined) await acquisitions.setEntryQuantity(k.db, art, id, a.menge, konten);
+  if (a.preis) await acquisitions.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
+  if (a.zustand !== undefined) await acquisitions.setEntryState(k.db, art, id, a.zustand, konten);
+  if (a.datum) await acquisitions.setEntryDate(k.db, art, id, a.datum, konten);
 }
 
-export const schreibwege = (k: InventoryContext) => ({
-  putSetAn: mit(k.db, gemeinsam.putSetAn),
-  setNewest: mit(k.db, kaeufe.setNewest),
+export const writePaths = (k: InventoryContext) => ({
+  putSetAn: withValue(k.db, shared.createSet),
+  setNewest: withValue(k.db, purchases.setNewest),
   erfassung: {
-    imSchreibfeld: mit(k.db, erfassungen.entryInWriteField),
-    aendere: mit(k)(aendere),
-    loesche: mit(k.db, erfassungen.deleteEntry),
+    imSchreibfeld: withValue(k.db, acquisitions.entryInWriteField),
+    aendere: withValue(k)(change),
+    loesche: withValue(k.db, acquisitions.deleteEntry),
   },
-  manualEntryReassign: mit(k)(manualEntryReassign),
+  manualEntryReassign: withValue(k)(manualEntryReassign),
 });

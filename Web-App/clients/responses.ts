@@ -46,8 +46,8 @@ export const RbColor = z.looseObject({ id: z.number(), name: text, rgb: text });
 export const RbPartColor = z.looseObject({ part_img_url: text });
 
 /** One page of a list; `next` is the address of the following one. */
-export const rbPage = <T extends z.ZodType>(zeile: T) =>
-  z.looseObject({ count: z.number().optional(), next: text, results: z.array(zeile) });
+export const rbPage = <T extends z.ZodType>(row: T) =>
+  z.looseObject({ count: z.number().optional(), next: text, results: z.array(row) });
 
 /** Every Brickset response; with `status: 'error'` the reason is in `message`. */
 export const BsResponse = z.looseObject({ status: z.string(), message: text });
@@ -68,9 +68,9 @@ export const BsInstructions = BsResponse.extend({
 });
 
 /** Checks a response; an unexpected shape is an error with the first finding. */
-export function checkResponse<T extends z.ZodType>(dienst: string, schema: T, daten: unknown): z.output<T> {
-  const r = schema.safeParse(daten);
+export function checkResponse<T extends z.ZodType>(service: string, schema: T, data: unknown): z.output<T> {
+  const r = schema.safeParse(data);
   if (r.success) return r.data;
   const i = r.error.issues[0];
-  throw new Error(`${dienst}: unerwartete Antwort (${i?.path.join('.') || '$'}: ${i?.message ?? ''})`);
+  throw new Error(`${service}: unerwartete Antwort (${i?.path.join('.') || '$'}: ${i?.message ?? ''})`);
 }

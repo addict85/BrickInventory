@@ -11,8 +11,8 @@ import { hashePassword } from './passwordHash';
 import { forgetSessionVersion } from './sessionVersion';
 import { tokenDigest } from './deviceToken';
 import { kontoEntfernen } from './removeAccount';
-import { anmeldungFreigeben } from './loginLimiter';
-import type { Uebernahme, TakeoverKind } from './repository/takeovers';
+import { approveLogin } from './loginLimiter';
+import type { Takeover, TakeoverKind } from './repository/takeovers';
 import type { AccountContext } from './context';
 
 export function writeRole(k: AccountContext, durch: number, ziel: number, soll: boolean) {
@@ -38,8 +38,8 @@ export async function verwalterRolleSetzen(k: AccountContext, durch: number, zie
 
 /** An active administrator is only deactivated after the deadline; an already deactivated account stays so. */
 export async function aktivSetzen(k: AccountContext, durch: number, ziel: number, soll: boolean) {
-  const aktiv = !soll && (await k.konten.accountFull(ziel))?.is_active === true;
-  const effectiveAb = aktiv ? await announceTeardown(k, durch, ziel, 'deaktivieren') : null;
+  const active = !soll && (await k.konten.accountFull(ziel))?.is_active === true;
+  const effectiveAb = active ? await announceTeardown(k, durch, ziel, 'deaktivieren') : null;
   return effectiveAb
     ? { geaendert: false, effectiveAb }
     : { ...(await persistActive(k, durch, ziel, soll)), effectiveAb };
@@ -67,7 +67,7 @@ export async function unlockRegistration(k: AccountContext, durch: number, ziel:
  * (password, second factor) or remove an administrator account: only after TAKEOVER_HOURS, with a
  * mail and a cancel link to the target; a login of the target or the link cancels the change. */
 export const TAKEOVER_HOURS = 24;
-type Verwalterweg = { effectiveAb: Date | null };
+type AdminRoute = { effectiveAb: Date | null };
 export type Teardown = Extract<TakeoverKind, 'deaktivieren' | 'rolle_entziehen' | 'loeschen'>;
 const isTakeover = (a: TakeoverKind) => a === 'passwort' || a === 'zweiter_faktor';
 
@@ -77,54 +77,54 @@ export async function passwordByAdmin(
   k: AccountContext,
   durch: number,
   ziel: number,
-  passwort: string,
-): Promise<Verwalterweg | null> {
+  password: string,
+): Promise<AdminRoute | null> {
   if (!(await k.konten.accountExists(ziel))) return null;
-  const password_hash = await hashePassword(passwort);
+  const password_hash = await hashePassword(password);
   return { effectiveAb: await announce(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }) };
 }
 
-export async function factorByAdmin(k: AccountContext, durch: number, ziel: number): Promise<Verwalterweg> {
+export async function factorByAdmin(k: AccountContext, durch: number, ziel: number): Promise<AdminRoute> {
   if (!(await k.konten.accountExists(ziel))) notFound('benutzer_nicht_gefunden');
-  const u: Uebernahme = { target_id: ziel, type: 'zweiter_faktor', initiated_by: durch, password_hash: null };
+  const u: Takeover = { target_id: ziel, type: 'zweiter_faktor', initiated_by: durch, password_hash: null };
   return { effectiveAb: await announce(k, u) };
 }
 
 /** Announce deactivating, revoking the role or deleting an administrator (or one who just was).
  * @returns from when it applies, or null: the target is no administrator, the caller acts immediately. */
 async function announceTeardown(k: AccountContext, durch: number, ziel: number, type: Teardown): Promise<Date | null> {
-  const verwalter =
+  const admin =
     type === 'rolle_entziehen'
       ? (await k.konten.accountShort(ziel))?.is_admin === true
       : await k.uebernahmen.adminOrJustBeen(ziel, TAKEOVER_HOURS);
-  return verwalter ? announce(k, { target_id: ziel, type, initiated_by: durch, password_hash: null }) : null;
+  return admin ? announce(k, { target_id: ziel, type, initiated_by: durch, password_hash: null }) : null;
 }
 
-async function announce(k: AccountContext, u: Uebernahme): Promise<Date> {
+async function announce(k: AccountContext, u: Takeover): Promise<Date> {
   const abbruch = crypto.randomBytes(32).toString('base64url');
   const bis = await accessTransaction(k, async t => {
     const b = await t.uebernahmen.terminateAn(u, TAKEOVER_HOURS, tokenDigest(abbruch));
     await rememberAdminAction(t, u.initiated_by, u.target_id, 'uebernahme_angekuendigt', u.type);
     return b;
   });
-  const angaben = { durch: await accountDisplayName(k, u.initiated_by), was: u.type, bis: bis.toISOString() };
+  const details = { durch: await accountDisplayName(k, u.initiated_by), was: u.type, bis: bis.toISOString() };
   // Only the target gets the link: with it, it cancels, even deactivated and without login.
-  hintInBackground(k, u.target_id, 'uebernahme_angekuendigt', undefined, { ...angaben, abbruch });
+  hintInBackground(k, u.target_id, 'uebernahme_angekuendigt', undefined, { ...details, abbruch });
   adminHintInBackground(k, 'verwaltung_uebernahme_angekuendigt', {
-    ...angaben,
+    ...details,
     konto: await accountDisplayName(k, u.target_id),
   });
   return bis;
 }
 
-async function afterTheTakeover(k: AccountContext, u: Uebernahme): Promise<void> {
+async function afterTheTakeover(k: AccountContext, u: Takeover): Promise<void> {
   const [durch, konto] = [await accountDisplayName(k, u.initiated_by), await accountDisplayName(k, u.target_id)];
   const pw = u.type === 'passwort';
   hintInBackground(k, u.target_id, pw ? 'passwort_durch_verwalter' : 'zweiter_faktor_entfernt', undefined, { durch });
   adminHintInBackground(k, pw ? 'verwaltung_passwort_gesetzt' : 'verwaltung_faktor_entfernt', { konto, durch });
 }
 
-async function executeTeardown(k: AccountContext, u: Uebernahme): Promise<void> {
+async function executeTeardown(k: AccountContext, u: Takeover): Promise<void> {
   const [durch, konto] = [await accountDisplayName(k, u.initiated_by), await accountDisplayName(k, u.target_id)];
   if (u.type === 'deaktivieren') await persistActive(k, u.initiated_by, u.target_id, false);
   else if (u.type === 'rolle_entziehen') await writeRole(k, u.initiated_by, u.target_id, false);
@@ -172,21 +172,21 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
 export async function cancelTakeovers(
   k: AccountContext,
   uid: number,
-  weg: 'anmeldung' | 'link' = 'anmeldung',
+  route: 'anmeldung' | 'link' = 'anmeldung',
 ): Promise<TakeoverKind[]> {
-  const arten = await k.uebernahmen.abortTakeoversAb(uid);
-  if (!arten.length) return arten;
-  for (const type of arten) await rememberAdminAction(k, uid, uid, 'uebernahme_abgebrochen', `${weg}:${type}`);
+  const kinds = await k.uebernahmen.abortTakeoversAb(uid);
+  if (!kinds.length) return kinds;
+  for (const type of kinds) await rememberAdminAction(k, uid, uid, 'uebernahme_abgebrochen', `${route}:${type}`);
   adminHintInBackground(k, 'verwaltung_uebernahme_abgebrochen', {
     konto: await accountDisplayName(k, uid),
-    was: arten.join(', '),
+    was: kinds.join(', '),
   });
-  return arten;
+  return kinds;
 }
 
 /** The links from mails to the owner, without login; a cancellation applies once, because it deletes the rows. */
 export async function redeemMailLink(k: AccountContext, type: 'abbrechen' | 'freigeben', token: string): Promise<void> {
-  if (type === 'freigeben') return anmeldungFreigeben(k, token);
+  if (type === 'freigeben') return approveLogin(k, token);
   const ziel = token ? await k.uebernahmen.targetToAbort(tokenDigest(token)) : null;
   if (ziel === null) fachfehler('konflikt', 'abbruch_link_ungueltig');
   await cancelTakeovers(k, ziel, 'link');

@@ -1,4 +1,4 @@
-import { encrypt, decrypt, umschluesseln, kontext } from '../infra/secret';
+import { encrypt, decrypt, rekey, kontext } from '../infra/secret';
 import { fachfehler, fileError } from '../infra/errorTexts';
 import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../contract/globalRules';
 import * as repo from './repository/values';
@@ -143,8 +143,8 @@ export async function registrationOpen(k: SettingsContext): Promise<boolean> {
 export async function reencryptLegacyGlobalValues(k: SettingsContext): Promise<number> {
   let n = 0;
   for (const z of await k.repository.globalValues([...SECRET_KEYS])) {
-    const neu = umschluesseln(z.value, globalContext(z.key));
-    if (neu && (await k.repository.replaceGlobalValue(z.key, z.value, neu))) n++;
+    const fresh = rekey(z.value, globalContext(z.key));
+    if (fresh && (await k.repository.replaceGlobalValue(z.key, z.value, fresh))) n++;
   }
   return n;
 }

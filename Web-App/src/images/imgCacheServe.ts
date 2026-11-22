@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
 import { previewType } from './thumbs';
 import { beforeThe, withoutMissingFile, reportError } from '../infra/error';
-import { prozessweit } from '../infra/prozessweit';
+import { processWide } from '../infra/prozessweit';
 import path from 'node:path';
 import { APP_ROOT, SET_IMAGES_DIR } from '../infra/appPaths';
 import type { ImagesContext } from './context';
@@ -11,9 +11,9 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp
 
 /** Only a type from the list, never the CDN's raw header: "image/png, text/html"
  * would be read as HTML by a browser. Everything else becomes JPEG, harmless with nosniff. */
-export function imageType(roh: string): string {
-  const typ = beforeThe(roh, ';').trim().toLowerCase();
-  return IMAGE_TYPES.has(typ) ? typ : 'image/jpeg';
+export function imageType(raw: string): string {
+  const type = beforeThe(raw, ';').trim().toLowerCase();
+  return IMAGE_TYPES.has(type) ? type : 'image/jpeg';
 }
 
 /** What can be delivered from the disk cache; sending happens in
@@ -98,13 +98,13 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** Untouched for 30 days → gone; afterwards, if the cache is still above the
  * limit, the images unused the longest including .ct and preview. */
-export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promise<number> {
+export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(withoutMissingFile('bildcache:lesen', [] as string[]));
-  const cutoff = jetzt - 30 * 24 * 60 * 60 * 1000;
-  const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
-  let weg = 0,
-    summe = 0;
+  const cutoff = now - 30 * 24 * 60 * 60 * 1000;
+  const groups = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
+  let route = 0,
+    sum = 0;
   for (const f of files) {
     const p = path.join(cacheDir, f);
     const st = await fs.promises.stat(p).catch(withoutMissingFile('img-cache:stat', null));
@@ -118,15 +118,15 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
         () => false,
       ))
     ) {
-      weg++;
+      route++;
       continue;
     }
-    const g = gruppen.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
+    const g = groups.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
     g.dateien.push(p);
     g.bytes += st.size;
     g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
-    gruppen.set(f.slice(0, 40), g);
-    summe += st.size;
+    groups.set(f.slice(0, 40), g);
+    sum += st.size;
   }
   // images/sets counts but is not cleared: the set images apply permanently, the cap
   // applies to everything the proxy puts on disk.
@@ -134,12 +134,12 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
     .readdir(SET_IMAGES_DIR)
     .catch(withoutMissingFile('bildcache:sets', [] as string[]))) {
     const st = await fs.promises.stat(path.join(SET_IMAGES_DIR, f)).catch(withoutMissingFile('img-cache:stat', null));
-    if (st?.isFile()) summe += st.size;
+    if (st?.isFile()) sum += st.size;
   }
-  if (summe <= maxBytes) return weg;
+  if (sum <= maxBytes) return route;
   // Down to 90 % instead of just below the limit: otherwise it would start again right away.
-  for (const g of [...gruppen.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
-    if (summe <= maxBytes * 0.9) break;
+  for (const g of [...groups.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
+    if (sum <= maxBytes * 0.9) break;
     for (const d of g.dateien)
       if (
         await fs.promises.unlink(d).then(
@@ -147,16 +147,16 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
           () => false,
         )
       )
-        weg++;
-    summe -= g.bytes;
+        route++;
+    sum -= g.bytes;
   }
-  return weg;
+  return route;
 }
 
 /** Between two daily runs the cache can grow quickly; after every tenth of the limit
  * in new bytes it is therefore capped immediately. */
 export function rememberCacheGrowth(bytes: number, max: number): void {
-  const z = prozessweit('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
+  const z = processWide('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
   z.bytes += bytes;
   if (z.laeuft || z.bytes < max / 10) return;
   z.bytes = 0;

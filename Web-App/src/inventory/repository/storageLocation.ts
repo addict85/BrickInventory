@@ -1,10 +1,10 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
 
-const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
-export type StorageTable = keyof typeof TABELLEN;
+const TABLES = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
+export type StorageTable = keyof typeof TABLES;
 
-const BEDINGUNG: Record<StorageTable, (ab: number) => string> = {
+const CONDITION_SQL: Record<StorageTable, (ab: number) => string> = {
   set: ab => `set_number = $${ab}`,
   part: ab => `part_number = $${ab} AND color_id = $${ab + 1}`,
   fig: ab => `fig_number = $${ab}`,
@@ -15,17 +15,17 @@ const BEDINGUNG: Record<StorageTable, (ab: number) => string> = {
 export async function sortLocationTo(
   dbh: DbInterface,
   art: StorageTable,
-  besitzer: number[],
+  owner: number[],
   ort: string | null,
-  schluessel: string[],
+  key: string[],
 ): Promise<number> {
   const r = await dbh.run(
-    `UPDATE ${TABELLEN[art]} t
+    `UPDATE ${TABLES[art]} t
         SET storage_id = (SELECT l.id FROM storage_locations l
                            WHERE l.user_id = t.user_id
                              AND lower(l.name) = lower($2))
-      WHERE t.user_id = ANY($1) AND ${BEDINGUNG[art](3)}`,
-    [besitzer, ort, ...schluessel],
+      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[art](3)}`,
+    [owner, ort, ...key],
   );
   return r.changes ?? 0;
 }
@@ -33,15 +33,15 @@ export async function sortLocationTo(
 export async function ownerWithRow(
   tx: DbInterface,
   art: StorageTable,
-  besitzer: number[],
-  schluessel: string[],
+  owner: number[],
+  key: string[],
 ): Promise<number[]> {
-  const zeilen = await tx.all<{ user_id: number }>(
-    `SELECT DISTINCT t.user_id FROM ${TABELLEN[art]} t
-      WHERE t.user_id = ANY($1) AND ${BEDINGUNG[art](2)}`,
-    [besitzer, ...schluessel],
+  const rows = await tx.all<{ user_id: number }>(
+    `SELECT DISTINCT t.user_id FROM ${TABLES[art]} t
+      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[art](2)}`,
+    [owner, ...key],
   );
-  return zeilen.map(b => parseInt(String(b.user_id), 10));
+  return rows.map(b => parseInt(String(b.user_id), 10));
 }
 
 export async function takeLocationOn(tx: DbInterface, ids: number[], ort: string): Promise<void> {

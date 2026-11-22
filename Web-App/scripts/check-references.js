@@ -16,7 +16,7 @@ const EARLIER = ['utils', 'handlers'];
 /** @param {string} web */
 function pruefe(web) {
   const repo = path.dirname(web);
-  const ordner = [web, repo]
+  const folder = [web, repo]
     .flatMap(w =>
       fs
         .readdirSync(w, { withFileTypes: true })
@@ -26,7 +26,7 @@ function pruefe(web) {
     .filter(n => !['node_modules', 'dist', 'coverage', 'data', '.git'].includes(n))
     .concat(EARLIER);
   const muster = new RegExp(
-    `(?<![\\w./-])((?:${ordner.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${EXTENSIONS}))\\b`,
+    `(?<![\\w./-])((?:${folder.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${EXTENSIONS}))\\b`,
     'g',
   );
   /** @param {string} p @param {string} datei */
@@ -36,16 +36,16 @@ function pruefe(web) {
     );
 
   /** @type {string[]} */
-  const quellen = [];
+  const sources = [];
   /** @type {string[]} */
-  const doku = [path.join(web, 'README.md')];
+  const docs = [path.join(web, 'README.md')];
   (function lauf(/** @type {string} */ d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
         if (!OUTER_BEFORE.has(e.name)) lauf(p);
-      } else if (/\.(ts|js|sh)$/.test(e.name) && !e.name.startsWith('app.bundle.js')) quellen.push(p);
-      else if (e.name.endsWith('.md') && path.relative(web, p).startsWith(`docs${path.sep}`)) doku.push(p);
+      } else if (/\.(ts|js|sh)$/.test(e.name) && !e.name.startsWith('app.bundle.js')) sources.push(p);
+      else if (e.name.endsWith('.md') && path.relative(web, p).startsWith(`docs${path.sep}`)) docs.push(p);
     }
   })(web);
 
@@ -64,9 +64,9 @@ function pruefe(web) {
           if (!gibt(pfad, datei)) tot.push(`${path.relative(web, datei)}:${i + 1} ${pfad}`);
         }
       });
-  for (const f of quellen) lies(f, f.endsWith('.sh') ? commentSh : commentJs);
-  for (const f of doku) if (fs.existsSync(f)) lies(f, z => z);
-  return { tot, gesehen, dateien: quellen.length + doku.length };
+  for (const f of sources) lies(f, f.endsWith('.sh') ? commentSh : commentJs);
+  for (const f of docs) if (fs.existsSync(f)) lies(f, z => z);
+  return { tot, gesehen, dateien: sources.length + docs.length };
 }
 
 /** Only the comment part: a comment line entirely, otherwise what stands behind ` // `

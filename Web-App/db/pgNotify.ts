@@ -11,7 +11,7 @@ import { AsyncResource } from 'node:async_hooks';
 type Handler = (payload?: string) => void | Promise<void>;
 /** The handler runs in the frame of its listen(): a stream of a request then
  * queries with its account, a job in the system frame (row-level security, migration 0111). */
-type Eintrag = { roh: Handler; lauf: Handler };
+type Entry = { roh: Handler; lauf: Handler };
 
 /** Channel names are identifiers and cannot be bound as parameters. */
 function quoteIdent(name: string) {
@@ -20,34 +20,34 @@ function quoteIdent(name: string) {
 }
 
 /** A catch-up without a signal; if it fails, the next signal fetches the state. */
-function holeNach(handler: Handler) {
+function fetchPending(handler: Handler) {
   Promise.resolve(handler()).catch(logAndContinue('notify:nachholen'));
 }
 
 /** What an access offers in LISTEN/NOTIFY. */
-export interface Signale {
+export interface Signals {
   listen(channel: string, handler: Handler): void;
   listensTo(channel: string): boolean;
   notify(channel: string, payload?: string): Promise<void>;
   unlisten(channel: string, handler: Handler): void;
   close(): Promise<void>;
   /** The same signals, sent over `senden` (the connection of a transaction). */
-  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale;
+  over(send: (sql: string, p: unknown[]) => Promise<unknown>): Signals;
 }
 
 /** Errors are swallowed: the database row is the reliable source,
  * the signal only the speed-up. */
-async function notifyVia(senden: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
+async function notifyVia(send: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
   try {
-    await senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
+    await send(`SELECT pg_notify($1, $2)`, [channel, payload]);
   } catch (e) {
     console.error(`[notify:${channel}]`, (e as Error).message);
   }
 }
 
 /** Sent over the access (senden), listened on a connection of its own. */
-export class Benachrichtigung implements Signale {
-  private readonly _handlers = new Map<string, Eintrag[]>();
+export class Notification implements Signals {
+  private readonly _handlers = new Map<string, Entry[]>();
   private _client: Client | null = null;
   private _connecting = false;
   private _retryMs = 1000;
@@ -59,8 +59,8 @@ export class Benachrichtigung implements Signale {
   private readonly _listens = new Set<string>();
 
   constructor(
-    private readonly verbindung: ClientConfig,
-    private readonly senden: (sql: string, p: unknown[]) => Promise<unknown>,
+    private readonly connection: ClientConfig,
+    private readonly send: (sql: string, p: unknown[]) => Promise<unknown>,
   ) {}
 
   /** Never throws: a failure schedules the next attempt itself. */
@@ -68,7 +68,7 @@ export class Benachrichtigung implements Signale {
     if (this._connecting || this._client || this._closed) return;
     this._connecting = true;
     try {
-      const c = new Client({ ...this.verbindung, keepAlive: true });
+      const c = new Client({ ...this.connection, keepAlive: true });
       c.on('error', () => {
         this.retire(c);
       });
@@ -93,7 +93,7 @@ export class Benachrichtigung implements Signale {
       for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
       // A signal from the disconnect is lost: the handlers catch up once.
       for (const [channel, hs] of this._handlers) {
-        for (const h of hs) holeNach(h.lauf);
+        for (const h of hs) fetchPending(h.lauf);
         if (this._client === c) this._listens.add(channel);
       }
     } catch (e) {
@@ -138,7 +138,7 @@ export class Benachrichtigung implements Signale {
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
-        holeNach(handler);
+        fetchPending(handler);
         if (this._client === c) this._listens.add(channel);
       }, logAndContinue('notify:listen'));
     } else {
@@ -154,17 +154,17 @@ export class Benachrichtigung implements Signale {
   /** Errors are swallowed: the database row is the reliable source,
    * the signal only the speed-up. */
   async notify(channel: string, payload = '') {
-    await notifyVia(this.senden, channel, payload);
+    await notifyVia(this.send, channel, payload);
   }
 
-  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale {
+  over(send: (sql: string, p: unknown[]) => Promise<unknown>): Signals {
     return {
       listen: (c, h) => this.listen(c, h),
       listensTo: c => this.listensTo(c),
-      notify: (c, p = '') => notifyVia(senden, c, p),
+      notify: (c, p = '') => notifyVia(send, c, p),
       unlisten: (c, h) => this.unlisten(c, h),
       close: () => this.close(),
-      ueber: s => this.ueber(s),
+      over: s => this.over(s),
     };
   }
 

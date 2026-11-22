@@ -1,29 +1,29 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/area';
-import type { Uhr } from '../infra/clock';
+import { withValue, type Context } from '../infra/area';
+import type { Clock } from '../infra/clock';
 import * as repository from './repository';
 
 export interface ThrottleDependencies {
   db: Db;
   /** The in-memory fallback's clock. */
-  uhr: Uhr;
+  uhr: Clock;
 }
 
 export const access = (db: Db) => ({
   counter: {
-    read: mit(db)(repository.read),
-    increase: mit(db)(repository.increase),
-    lock: mit(db)(repository.lock),
-    occupySlot: mit(db)(repository.occupySlot),
-    freeSlot: mit(db)(repository.freeSlot),
-    deleteCounter: mit(db)(repository.deleteCounter),
-    deleteCountersWithPrefix: mit(db)(repository.deleteCountersWithPrefix),
-    deleteOldCounters: mit(db)(repository.deleteOldCounters),
-    countUp: mit(db)(repository.countUp),
-    hourlyState: mit(db)(repository.hourlyState),
-    countHour: mit(db)(repository.countHour),
-    countOncePerDay: mit(db)(repository.countOncePerDay),
+    read: withValue(db)(repository.read),
+    increase: withValue(db)(repository.increase),
+    lock: withValue(db)(repository.lock),
+    occupySlot: withValue(db)(repository.occupySlot),
+    freeSlot: withValue(db)(repository.freeSlot),
+    deleteCounter: withValue(db)(repository.deleteCounter),
+    deleteCountersWithPrefix: withValue(db)(repository.deleteCountersWithPrefix),
+    deleteOldCounters: withValue(db)(repository.deleteOldCounters),
+    countUp: withValue(db)(repository.countUp),
+    hourlyState: withValue(db)(repository.hourlyState),
+    countHour: withValue(db)(repository.countHour),
+    countOncePerDay: withValue(db)(repository.countOncePerDay),
   },
 });
-export type ThrottleContext = Kontext<ThrottleDependencies, ReturnType<typeof access>>;
+export type ThrottleContext = Context<ThrottleDependencies, ReturnType<typeof access>>;

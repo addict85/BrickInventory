@@ -1,6 +1,6 @@
 import type { DbInterface, Db } from '../../db/database';
 
-export type Eintrag = {
+export type Entry = {
   request: string;
   status: number | null;
   response: string | null;
@@ -27,8 +27,8 @@ export async function receipts(
   ));
 }
 
-export function eintrag(db: DbInterface, uid: number, key: string, orphanedAfterS: number) {
-  return db.get<Eintrag>(
+export function entry(db: DbInterface, uid: number, key: string, orphanedAfterS: number) {
+  return db.get<Entry>(
     `SELECT request, status, response, has_effect, created_at < NOW() - make_interval(secs => $3) AS verwaist
        FROM idempotency WHERE user_id = $1 AND key = $2`,
     [uid, key, orphanedAfterS],
@@ -45,7 +45,7 @@ export function withEffectNote<T>(db: Db, uid: number, key: string, work: () => 
   }, work);
 }
 
-export async function closeAb(
+export async function finish(
   db: DbInterface,
   uid: number,
   key: string,
@@ -70,8 +70,8 @@ export async function deleteRunning(db: DbInterface, uid: number, key: string, s
   );
 }
 
-export async function deleteOtherPrints(db: DbInterface, praefix: string): Promise<number> {
-  return (await db.run("DELETE FROM idempotency WHERE request NOT LIKE $1 || '%'", [praefix])).changes || 0;
+export async function deleteOtherPrints(db: DbInterface, prefix: string): Promise<number> {
+  return (await db.run("DELETE FROM idempotency WHERE request NOT LIKE $1 || '%'", [prefix])).changes || 0;
 }
 
 export async function deleteOlderAs(db: DbInterface, hours: number): Promise<number> {
@@ -93,7 +93,7 @@ export async function replaceResponse(
   uid: number,
   key: string,
   alt: string,
-  neu: string,
+  fresh: string,
 ): Promise<number> {
   return (
     (
@@ -101,7 +101,7 @@ export async function replaceResponse(
         uid,
         key,
         alt,
-        neu,
+        fresh,
       ])
     ).changes || 0
   );

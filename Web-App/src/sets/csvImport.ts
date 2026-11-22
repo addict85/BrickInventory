@@ -3,7 +3,7 @@ import { beforeThe, fehlertext, publicError } from '../infra/error';
 import { buildJobStatus } from '../jobQueue';
 import { normalisiereSetNummer } from '../infra/setNumber';
 import { csvReadIn, defusingUndo, csvDatum, rowsList } from '../infra/csvExport';
-import { fachfehler, type Sprache } from '../infra/errorTexts';
+import { fachfehler, type Language } from '../infra/errorTexts';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
 import { versuche } from '../infra/result';
@@ -20,8 +20,8 @@ export interface ImportZeile {
 }
 
 /** Turning "x" into a 1 and "-2" into a 2 would silently book something other than what is in the file. */
-function csvMenge(roh: string): number | null {
-  const s = roh.trim();
+function csvMenge(raw: string): number | null {
+  const s = raw.trim();
   if (s === '') return 1;
   return /^\d{1,6}$/.test(s) && Number(s) >= 1 ? Number(s) : null;
 }
@@ -40,10 +40,10 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
     fachfehler('ungueltig', 'csv_keine_datenzeilen');
   }
   const rows: ImportZeile[] = [];
-  for (const [i, roh] of gelesen.records.entries()) {
+  for (const [i, raw] of gelesen.records.entries()) {
     const zeile = gelesen.zeilen[i];
     const row: Record<string, string> = {};
-    for (const [k, v] of Object.entries(roh))
+    for (const [k, v] of Object.entries(raw))
       row[
         k
           .toLowerCase()
@@ -84,11 +84,11 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
 /** For existing sets the import increases the quantity, the single capture rejects it: the UI asks. */
 async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile[]): Promise<string[]> {
   const da = new Set((await repo.setsWithQuantity(sk.db, userId)).map(s => s.set_number));
-  const treffer = rows
+  const hits = rows
     .filter(r => !r.fehler)
     .map(r => normalisiereSetNummer(r.sn))
     .filter(sn => da.has(sn));
-  return [...new Set(treffer)];
+  return [...new Set(hits)];
 }
 
 /** A running import of the same account is aborted; `checkOnly` only reads. */
@@ -96,8 +96,8 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
   const { rows, uebersprungen } = setCsvRows(text);
   const vorhanden = await alreadyPresent(sk, userId, rows);
   if (checkOnly) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
-  const laufend = await sk.jobQueue.jobGet(userId);
-  if (laufend && laufend.status === 'running') await sk.jobQueue.jobUpdate(userId, { status: 'cancelled' });
+  const running = await sk.jobQueue.jobGet(userId);
+  if (running && running.status === 'running') await sk.jobQueue.jobUpdate(userId, { status: 'cancelled' });
   const lauf = randomUUID();
   await sk.jobQueue.jobSet(userId, {
     status: 'running',
@@ -127,20 +127,20 @@ export async function cancelSetCsvImport(k: SetsContext, userId: number) {
   await k.jobQueue.reportJobStatus(userId);
 }
 
-type Kopf = { headers?: Record<string, unknown> };
+type Header = { headers?: Record<string, unknown> };
 
-export async function csvImportStand(k: SetsContext, uid: number, req: Kopf) {
+export async function csvImportStand(k: SetsContext, uid: number, req: Header) {
   return buildJobStatus(await k.jobQueue.jobGet(uid), req);
 }
 
 /** In the open stream there is no status code any more: a read error becomes "no import". */
-export async function csvImportStatusForStream(k: SetsContext, uid: number, req: Kopf, sprache: Sprache) {
-  return buildJobStatus(await k.jobQueue.jobGet(uid), req, sprache);
+export async function csvImportStatusForStream(k: SetsContext, uid: number, req: Header, language: Language) {
+  return buildJobStatus(await k.jobQueue.jobGet(uid), req, language);
 }
 
 /** Reports every state of this account's CSV import, from this and from other processes. */
-export function subscribeCsvImportStatus(k: SetsContext, uid: number, melde: () => void): () => void {
+export function subscribeCsvImportStatus(k: SetsContext, uid: number, report: () => void): () => void {
   return k.jobQueue.atImportStatus(konto => {
-    if (String(konto) === String(uid)) melde();
+    if (String(konto) === String(uid)) report();
   });
 }

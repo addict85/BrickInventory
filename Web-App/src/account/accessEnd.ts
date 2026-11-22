@@ -4,7 +4,7 @@ import { tokenDigest, ACCESSES_AT_MOST } from './deviceToken';
 import { sessionDigest } from './sessionStore';
 import { listenOnTokenRevocation, emptyTokenCache } from './tokenCache';
 import { inSystemContext } from '../infra/accountContext';
-import { imSystemrahmen } from '../infra/area';
+import { inSystemFrame } from '../infra/area';
 import type { AccountContext } from './context';
 
 /** Token cache and session versions of this process follow the revocations of the others (NOTIFY). */
@@ -15,9 +15,9 @@ export function listenOnRevocation(k: AccountContext): void {
 
 /** `eigene` is the plaintext id (req.sessionID); the table holds the hash. Without an id
  * (a store without ids, as in tests) there is no own row to spare: nothing falls. */
-export function limitSessions(k: AccountContext, userId: number, eigene: string | undefined): Promise<number> {
-  if (!eigene) return Promise.resolve(0);
-  return k.zugaenge.capSessions(userId, sessionDigest(eigene), ACCESSES_AT_MOST - 1);
+export function limitSessions(k: AccountContext, userId: number, own: string | undefined): Promise<number> {
+  if (!own) return Promise.resolve(0);
+  return k.zugaenge.capSessions(userId, sessionDigest(own), ACCESSES_AT_MOST - 1);
 }
 
 /** In user_sessions, where the session store really lives. */
@@ -29,7 +29,7 @@ export async function endAllSessions(k: AccountContext, userId: number): Promise
 /** A transaction over credentials in the system frame (login looks for them before there is
  * an account). Inside a running one only if that itself runs in the system frame. */
 export function accessTransaction<T>(k: AccountContext, fn: (t: AccountContext) => Promise<T>): Promise<T> {
-  return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(fn));
+  return inSystemFrame(k.db, 'zugangsdaten', () => k.transaktion(fn));
 }
 
 /** Password, accesses and passkeys together, in the system frame (also without login: forgotten

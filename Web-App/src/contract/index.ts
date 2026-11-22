@@ -49,38 +49,38 @@ export const CONTRACT = {
   ...verwaltung.routen,
 };
 
-export type Schluessel = keyof typeof CONTRACT;
-type Rumpf<K extends Schluessel> = (typeof CONTRACT)[K] extends { antwort: infer S extends z.ZodType }
+export type Key = keyof typeof CONTRACT;
+type Body<K extends Key> = (typeof CONTRACT)[K] extends { antwort: infer S extends z.ZodType }
   ? Wire<z.output<S>>
   : never;
 /** The body of a route, for services that compose it entirely. */
-export type ResponseBody<K extends Schluessel> = Rumpf<K>;
+export type ResponseBody<K extends Key> = Body<K>;
 
-type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> = (typeof CONTRACT)[K] extends {
+type Teil<K extends Key, F extends 'eingabe' | 'abfrage'> = (typeof CONTRACT)[K] extends {
   [P in F]: infer S extends z.ZodType;
 }
   ? z.output<S>
   : Record<never, never>;
 /** The checked body (checkInput); empty without a schema. */
-export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
+export type Input<K extends Key> = Teil<K, 'eingabe'>;
 /** The checked query; empty without a schema, reading there is a translation error. */
-export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
+export type Query<K extends Key> = Teil<K, 'abfrage'>;
 
-export function routeZu(schluessel: string): Route | undefined {
-  return Object.hasOwn(CONTRACT, schluessel) ? (CONTRACT as Record<string, Route>)[schluessel] : undefined;
+export function routeZu(key: string): Route | undefined {
+  return Object.hasOwn(CONTRACT, key) ? (CONTRACT as Record<string, Route>)[key] : undefined;
 }
 
 /** Literal segments before placeholders, as Express handles these paths. */
 const MUSTER = Object.entries(CONTRACT as Record<string, Route>)
   .map(([k, route]) => {
-    const [methode, pfad] = k.split(' ') as [string, string];
-    const teile = pfad.split('/');
-    return { schluessel: k as Schluessel, methode, teile, route, offen: teile.filter(t => t.startsWith(':')).length };
+    const [methode, path] = k.split(' ') as [string, string];
+    const teile = path.split('/');
+    return { schluessel: k as Key, methode, teile, route, offen: teile.filter(t => t.startsWith(':')).length };
   })
   .sort((a, b) => a.offen - b.offen);
 
-function patternForRequest(methode: string, pfad: string) {
-  const teile = pfad.replace(/\/+$/, '').split('/');
+function patternForRequest(methode: string, path: string) {
+  const teile = path.replace(/\/+$/, '').split('/');
   return MUSTER.find(
     m =>
       m.methode === methode &&
@@ -90,11 +90,11 @@ function patternForRequest(methode: string, pfad: string) {
 }
 
 /** The contract route for a request, before Express has matched it. */
-export function routeForRequest(methode: string, pfad: string): Route | undefined {
-  return patternForRequest(methode, pfad)?.route;
+export function routeForRequest(methode: string, path: string): Route | undefined {
+  return patternForRequest(methode, path)?.route;
 }
 
 /** Its key: whoever classifies routes by it names them the way the translator checks them. */
-export function keyForRequest(methode: string, pfad: string): Schluessel | undefined {
-  return patternForRequest(methode, pfad)?.schluessel;
+export function keyForRequest(methode: string, path: string): Key | undefined {
+  return patternForRequest(methode, path)?.schluessel;
 }

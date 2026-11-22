@@ -5,7 +5,7 @@ export type WantedArt = 'part' | 'fig' | 'set';
 
 // Only P, M and S have a place in the inventory; other kinds are counted and
 // reported instead of silently discarded.
-const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
+const KINDS: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedItem {
   art: WantedArt;
@@ -23,7 +23,7 @@ export interface WantedItem {
 
 /** Two searches for fixed text instead of `<name>([\s\S]*?)</name>`: with an open tag the lazy
  * pattern restarts at every match position — quadratic. */
-function zwischen(text: string, name: string, ab: number): { inhalt: string; ende: number } | null {
+function between(text: string, name: string, ab: number): { inhalt: string; ende: number } | null {
   const auf = new RegExp(`<${name}>`, 'gi');
   auf.lastIndex = ab;
   const a = auf.exec(text);
@@ -35,8 +35,8 @@ function zwischen(text: string, name: string, ab: number): { inhalt: string; end
   return { inhalt: text.slice(auf.lastIndex, z.index), ende: zu.lastIndex };
 }
 
-function feld(block: string, name: string): string | null {
-  const m = zwischen(block, name, 0);
+function field(block: string, name: string): string | null {
+  const m = between(block, name, 0);
   if (!m) return null;
   // Only the five predefined entities; &amp; LAST, otherwise
   // "&amp;lt;" would become a "<".
@@ -62,32 +62,32 @@ export function readWantedList(xml: string): ReadResult {
   const fremdeArten: Record<string, number> = {};
   let ohneNummer = 0;
 
-  for (let m = zwischen(xml, 'ITEM', 0); m !== null; m = zwischen(xml, 'ITEM', m.ende)) {
+  for (let m = between(xml, 'ITEM', 0); m !== null; m = between(xml, 'ITEM', m.ende)) {
     const block = m.inhalt;
-    const typ = (feld(block, 'ITEMTYPE') ?? '').toUpperCase();
-    const art = ARTEN[typ];
-    const blId = feld(block, 'ITEMID');
+    const type = (field(block, 'ITEMTYPE') ?? '').toUpperCase();
+    const art = KINDS[type];
+    const blId = field(block, 'ITEMID');
 
     if (!blId) {
       ohneNummer++;
       continue;
     }
     if (!art) {
-      fremdeArten[typ || '(ohne)'] = (fremdeArten[typ || '(ohne)'] ?? 0) + 1;
+      fremdeArten[type || '(ohne)'] = (fremdeArten[type || '(ohne)'] ?? 0) + 1;
       continue;
     }
 
-    const colorRaw = feld(block, 'COLOR');
-    const farbe = colorRaw === null ? null : parseInt(colorRaw, 10);
-    const quantityRaw = parseInt(feld(block, 'MINQTY') ?? '1', 10);
-    const stateRaw = (feld(block, 'CONDITION') ?? '').toUpperCase();
-    const priceRaw = parseFloat(feld(block, 'MAXPRICE') ?? '');
+    const colorRaw = field(block, 'COLOR');
+    const color = colorRaw === null ? null : parseInt(colorRaw, 10);
+    const quantityRaw = parseInt(field(block, 'MINQTY') ?? '1', 10);
+    const stateRaw = (field(block, 'CONDITION') ?? '').toUpperCase();
+    const priceRaw = parseFloat(field(block, 'MAXPRICE') ?? '');
 
     posten.push({
       art,
       blId,
       // At BrickLink color 0 is "(Not Applicable)", not a color.
-      blFarbe: farbe !== null && Number.isFinite(farbe) && farbe > 0 ? farbe : null,
+      blFarbe: color !== null && Number.isFinite(color) && color > 0 ? color : null,
       menge: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
       // X means "any": null, so that the account's setting decides.
       zustand: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,

@@ -1,6 +1,6 @@
 import { setBestand } from '../../../db/inventoryView';
 import type { DbInterface, Treffer } from '../../../db/database';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
 
@@ -39,8 +39,8 @@ const WANTED_SORTS = {
   name_asc: 'rb.name ASC NULLS LAST',
   num_asc: 'w.set_number ASC',
   year_desc: 'rb.year DESC NULLS LAST',
-  price_desc: `${marktpreisSql('pc')} DESC NULLS LAST`,
-  price_asc: `${marktpreisSql('pc')} ASC NULLS LAST`,
+  price_desc: `${marketPriceSql('pc')} DESC NULLS LAST`,
+  price_asc: `${marketPriceSql('pc')} ASC NULLS LAST`,
 };
 
 export interface WantedSelection {
@@ -67,7 +67,7 @@ export type WantedRow = {
   owned: boolean;
 };
 
-export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, waehrung: string) {
+export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, currency: string) {
   const werte: unknown[] = [userIds];
   let wo = '';
   if (f.setOnly) {
@@ -85,16 +85,16 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
     wo += ` AND w.condition = $${werte.length}`;
   }
   // fromTable(): direct access would also find inherited properties like "constructor".
-  const ordnung = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
-  werte.push(waehrung);
-  const pWaehrung = `$${werte.length}`;
+  const order = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
+  werte.push(currency);
+  const pCurrency = `$${werte.length}`;
   return db.all<WantedRow>(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             sc.image_url,
             pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
             pa.triggered AS alarm_triggered,
-            ${marktpreisSql('pc')} AS marktpreis,
+            ${marketPriceSql('pc')} AS marktpreis,
             EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
@@ -109,9 +109,9 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
        -- booked a used price as a new acquisition in addSet().
        LEFT JOIN price_cache pc ON pc.set_number = w.set_number
                                AND pc.condition = w.condition
-                               AND pc.currency_code = ${pWaehrung}
+                               AND pc.currency_code = ${pCurrency}
       WHERE w.user_id = ANY($1)${wo}
-      ORDER BY ${ordnung}, w.set_number, w.condition`,
+      ORDER BY ${order}, w.set_number, w.condition`,
     werte,
   );
 }

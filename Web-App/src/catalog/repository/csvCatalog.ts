@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import type { Spalten } from '../../../db/rows';
+import type { Columns } from '../../../db/rows';
 import type { CatalogReadContract } from '../readContract';
 
 export async function catalogImageStatus(
@@ -58,13 +58,13 @@ export async function inventoryMinifigs(
   );
 }
 
-export async function setsWithoutPartCatalog(db: DbInterface, grenze = 50): Promise<string[]> {
+export async function setsWithoutPartCatalog(db: DbInterface, limit = 50): Promise<string[]> {
   const rows = await db.all<{ set_num: string }>(
     `SELECT DISTINCT s.set_num FROM rb_sets s
      LEFT JOIN set_parts_catalog c ON c.set_number = s.set_num
      WHERE c.set_number IS NULL AND s.set_num NOT LIKE 'fig-%'
      LIMIT $1`,
-    [grenze],
+    [limit],
   );
   return rows.map(r => r.set_num);
 }
@@ -73,7 +73,7 @@ export async function manualColorParts(
   db: DbInterface,
   l: CatalogReadContract,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
-  return db.all<Spalten<'parts', 'id' | 'part_number' | 'color_id'>>(
+  return db.all<Columns<'parts', 'id' | 'part_number' | 'color_id'>>(
     `SELECT id, part_number, color_id FROM ${l.teilBestand()} p
       WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC`,
   );

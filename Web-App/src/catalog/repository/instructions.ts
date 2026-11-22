@@ -9,7 +9,7 @@ export interface InstructionRow {
   fetched_at: Date | null;
 }
 
-export function zaehleAnleitungen(db: DbInterface, setNumber: string) {
+export function countInstructions(db: DbInterface, setNumber: string) {
   return db.get<{ c: string }>('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
@@ -31,12 +31,12 @@ export function storeInstruction(
   db: DbInterface,
   setNumber: string,
   url: string,
-  beschreibung: string | null,
+  description: string | null,
   localPath: string | null,
 ) {
   return db.run(
     'INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
-    [setNumber, url, beschreibung, localPath],
+    [setNumber, url, description, localPath],
   );
 }
 

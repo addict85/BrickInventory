@@ -8,9 +8,9 @@ import {
   type JobKind,
   type JobStatus,
   type JobRow,
-  type Belegung,
-  type Einstellen,
-  type Fortschritt,
+  type Claim,
+  type Enqueue,
+  type Progress,
   type PayloadInput,
 } from './jobs';
 import { logAndContinue } from '../infra/error';
@@ -38,10 +38,10 @@ export function waitTimeSec(versuch: number): number {
 export async function placeJobOne<A extends JobKind>(
   k: JobsContext,
   art: A,
-  nutzlast: PayloadInput<A>,
-  o: Einstellen = {},
+  payload: PayloadInput<A>,
+  o: Enqueue = {},
 ): Promise<string | null> {
-  const id = await k.auftraege.addJobOne(art, k.arten.pruefe(art, nutzlast), o);
+  const id = await k.auftraege.addJobOne(art, k.arten.check(art, payload), o);
   await wakeWorker(k, art);
   return id;
 }
@@ -51,10 +51,10 @@ export async function placeJobOne<A extends JobKind>(
 export async function placeOwnJobOne<A extends JobKind>(
   k: JobsContext,
   art: A,
-  nutzlast: PayloadInput<A>,
-  o: Einstellen & { userId: number },
+  payload: PayloadInput<A>,
+  o: Enqueue & { userId: number },
 ): Promise<string | null> {
-  const id = await k.auftraege.addOwnJobOne(art, k.arten.pruefe(art, nutzlast), o);
+  const id = await k.auftraege.addOwnJobOne(art, k.arten.check(art, payload), o);
   await wakeWorker(k, art);
   return id;
 }
@@ -64,10 +64,10 @@ export async function placeOwnJobOne<A extends JobKind>(
 export async function supplementListenJob<A extends JobKind>(
   k: JobsContext,
   art: A,
-  nutzlast: PayloadInput<A>,
+  payload: PayloadInput<A>,
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
-  const n = k.arten.pruefe(art, nutzlast);
+  const n = k.arten.check(art, payload);
   const id = await k.auftraege.addListAn(art, n as object, o);
   await wakeWorker(k, art);
   return id;
@@ -75,8 +75,8 @@ export async function supplementListenJob<A extends JobKind>(
 
 /** Also counts as a sign of life. erledigt and gesamt are counts (contract
  * and app: integer); a fraction like 5.532 of 8 steps showed up as "5.532 / 8". */
-export async function setProgress(kx: JobsContext, a: Belegung, f: Fortschritt, deadlineSec: number): Promise<boolean> {
-  const stand: Fortschritt = { ...f };
+export async function setProgress(kx: JobsContext, a: Claim, f: Progress, deadlineSec: number): Promise<boolean> {
+  const stand: Progress = { ...f };
   for (const k of ['erledigt', 'gesamt'] as const) {
     const x = f[k];
     if (typeof x === 'number' && Number.isFinite(x)) stand[k] = Math.floor(x);
@@ -86,8 +86,8 @@ export async function setProgress(kx: JobsContext, a: Belegung, f: Fortschritt, 
   return !!z;
 }
 
-export async function erledigt(k: JobsContext, a: Belegung & Pick<JobRow, 'type'>): Promise<boolean> {
-  const z = await k.auftraege.setDone(a, !!k.arten.von(a.type)?.discardPayload);
+export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Promise<boolean> {
+  const z = await k.auftraege.setDone(a, !!k.arten.fromValue(a.type)?.discardPayload);
   await reportStatus(k, z);
   return !!z;
 }
@@ -112,10 +112,10 @@ export async function verschoben(
   a: JobRow,
   bis: Date,
   grund: string,
-  zaehlt: boolean,
+  counts: boolean,
 ): Promise<boolean> {
-  const final = zaehlt && a.attempts >= a.max_attempts;
-  const z = await k.auftraege.setMoved(a, final, bis, grund, zaehlt);
+  const final = counts && a.attempts >= a.max_attempts;
+  const z = await k.auftraege.setMoved(a, final, bis, grund, counts);
   await reportStatus(k, z);
   return final && !!z;
 }
@@ -138,17 +138,17 @@ export async function repeat(k: JobsContext, id: string): Promise<boolean> {
   return ja;
 }
 
-export async function pullBefore(k: JobsContext, art: JobKind, schluessel?: string): Promise<number> {
-  const n = await k.auftraege.makeDue(art, schluessel);
+export async function pullBefore(k: JobsContext, art: JobKind, key?: string): Promise<number> {
+  const n = await k.auftraege.makeDue(art, key);
   if (n > 0) await wakeWorker(k, art);
   return n;
 }
 
 /** Every status with a number, even 0. */
 export async function countKind(k: JobsContext, art: JobKind): Promise<Record<JobStatus, number>> {
-  const aus = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
-  for (const z of await k.auftraege.statusNumbers(art)) aus[z.status] = z.n;
-  return aus;
+  const from = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
+  for (const z of await k.auftraege.statusNumbers(art)) from[z.status] = z.n;
+  return from;
 }
 
 /** A job with an account runs like a request of that account, even from within a system frame:
@@ -159,20 +159,20 @@ export async function inNamesOfJob<T>(
   a: Pick<JobRow, 'type' | 'user_id'>,
   f: () => Promise<T>,
 ): Promise<T> {
-  if (a.user_id == null) return imAuftragsrahmen(k, a, f);
+  if (a.user_id == null) return inJobFrame(k, a, f);
   const u = await k.auftraege.accountRole(a.user_id);
   return asRequest({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
 }
 
 /** A job without an account: in the system frame only if its kind is registered as
  * cross-account (Anmeldung.kontouebergreifend), otherwise without account and without system frame. */
-export function imAuftragsrahmen<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => Promise<T>): Promise<T> {
-  const grund = k.arten.von(a.type)?.kontouebergreifend;
+export function inJobFrame<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => Promise<T>): Promise<T> {
+  const grund = k.arten.fromValue(a.type)?.kontouebergreifend;
   return grund ? inSystemContext(`auftrag ${a.type}: ${grund}`, f) : asRequest({}, f);
 }
 
 /** Wakes on every status change of a job, also from the job process; returns the unsubscribe. */
-export function atJobStatus(k: JobsContext, f: (schluessel?: string) => void): () => void {
+export function atJobStatus(k: JobsContext, f: (key?: string) => void): () => void {
   return JOB_STATUS.horche(k.db.notification, f);
 }
 
@@ -186,10 +186,10 @@ export function atNewJob(k: JobsContext, f: () => void): () => void {
 export function checkMembership(
   k: JobsContext,
   runs: Iterable<{ a: JobRow; ac: AbortController }>,
-  schluessel?: string,
+  key?: string,
 ): void {
   for (const { a, ac } of runs) {
-    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.dedupe_key ?? a.id))) continue;
+    if (ac.signal.aborted || (key !== undefined && key !== (a.dedupe_key ?? a.id))) continue;
     void k.auftraege.belongsStill(a).then(
       ja => {
         if (!ja && !ac.signal.aborted) ac.abort(new JobLost());

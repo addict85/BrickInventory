@@ -27,8 +27,8 @@ export const REASONS = {
   platzhalterBild: 'Inhalt einer Datei aus public/, für jeden Zugang derselbe und beim Blättern dutzendfach gebraucht',
 } as const;
 
-const faecher = new Faecher();
+const compartments = new Faecher();
 
-export function prozessweit<T>(name: keyof typeof REASONS, create: () => T): T {
-  return faecher.fach(name, create);
+export function processWide<T>(name: keyof typeof REASONS, create: () => T): T {
+  return compartments.fach(name, create);
 }

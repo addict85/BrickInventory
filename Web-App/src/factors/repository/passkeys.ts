@@ -88,11 +88,11 @@ export function byCredentialId(db: DbInterface, credentialId: string, uid: numbe
 }
 
 /** Only if the counter is still the one read: two simultaneous logins do not both succeed. */
-export async function advanceCounter(db: DbInterface, id: number, neu: number, old: string): Promise<boolean> {
+export async function advanceCounter(db: DbInterface, id: number, fresh: number, old: string): Promise<boolean> {
   return !!(
     await db.run('UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3', [
       id,
-      neu,
+      fresh,
       old,
     ])
   ).changes;

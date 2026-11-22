@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
 import * as queries from './queries';
 import * as manualPartsService from './manualParts';
@@ -14,18 +14,18 @@ export function createParts(a: Omit<PartsDependencies, 'faecher'>, inspect?: Ins
     { ...a, faecher: new Faecher() },
     access,
     (k: PartsContext) => ({
-      partColors: mit(k)(queries.partColorsQuery),
-      readParts: mit(k)(queries.partsQuery),
-      partCategories: mit(k)(queries.partCategoriesQuery),
-      partStats: mit(k)(queries.partStatsQuery),
-      readManualParts: mit(k)(queries.manualPartsList),
-      ownedQuantities: mit(k)(queries.ownedQuantitiesQuery),
-      blColorMap: mit(k)(queries.blColorMapQuery),
-      addManualPart: mit(k)(manualPartsService.addManualPart),
-      changeManualPart: mit(k)(manualPartsService.changeManualPart),
-      partAcquisitions: mit(k)(manualPartsService.listPartAcquisitions),
-      importPartsCsv: mit(k)(manualPartsService.importPartsCsv),
-      changePartColor: mit(k)(changeColorService.changePartColor),
+      partColors: withValue(k)(queries.partColorsQuery),
+      readParts: withValue(k)(queries.partsQuery),
+      partCategories: withValue(k)(queries.partCategoriesQuery),
+      partStats: withValue(k)(queries.partStatsQuery),
+      readManualParts: withValue(k)(queries.manualPartsList),
+      ownedQuantities: withValue(k)(queries.ownedQuantitiesQuery),
+      blColorMap: withValue(k)(queries.blColorMapQuery),
+      addManualPart: withValue(k)(manualPartsService.addManualPart),
+      changeManualPart: withValue(k)(manualPartsService.changeManualPart),
+      partAcquisitions: withValue(k)(manualPartsService.listPartAcquisitions),
+      importPartsCsv: withValue(k)(manualPartsService.importPartsCsv),
+      changePartColor: withValue(k)(changeColorService.changePartColor),
       jobKinds: () => partsJobKinds(k),
     }),
     inspect,

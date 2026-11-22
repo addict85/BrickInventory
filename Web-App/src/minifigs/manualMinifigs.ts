@@ -27,8 +27,8 @@ export async function manualMinifigPurchase(
 ) {
   // Same rule as for parts (src/finances/priceRule.ts), so a minifig without a
   // market price doesn't count differently than a part.
-  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    k.finances.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, zustand),
+  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, condition =>
+    k.finances.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, condition),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -61,8 +61,8 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   // Allows several acquisitions of the same minifig at different times.
   const acquiredAt = String(body?.acquired_at || '').trim() || null;
   // Only looked-up data goes into the catalog as verified.
-  const eingabe = { name: V.optionalText(body?.fig_name, 200), bild: V.optionalImageUrl(body?.image_url) };
-  const { fig_name, found } = await minifigDescription(k, uid, num, eingabe);
+  const input = { name: V.optionalText(body?.fig_name, 200), bild: V.optionalImageUrl(body?.image_url) };
+  const { fig_name, found } = await minifigDescription(k, uid, num, input);
 
   const existing = await findManualMinifig(k, uid, num);
 
@@ -98,7 +98,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   // The catalog first: if the request fails in between, a description without
   // a holding is invisible, a holding without a name is not.
   await k.catalog.rememberMinifig(num, found?.fig_name, found?.image_url);
-  await k.catalog.rememberMinifig(num, eingabe.name, eingabe.bild, null, k.db, uid);
+  await k.catalog.rememberMinifig(num, input.name, input.bild, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
   await k.inventory.manuell.putRowAn('fig', uid, [num]);
   if (blNum) await k.catalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
@@ -121,21 +121,21 @@ async function minifigDescription(
   k: MinifigsContext,
   uid: number,
   num: string,
-  eingabe: { name: string | null; bild: string | null },
+  input: { name: string | null; bild: string | null },
 ) {
-  let fig_name = eingabe.name;
-  let image_url = eingabe.bild;
+  let fig_name = input.name;
+  let image_url = input.bild;
   let found: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, found };
 
-  const lokal = await k.catalog.catalogMinifig(num, uid);
-  if (lokal) {
-    fig_name = lokal.name;
-    image_url = image_url || lokal.bild;
+  const local = await k.catalog.catalogMinifig(num, uid);
+  if (local) {
+    fig_name = local.name;
+    image_url = image_url || local.bild;
   }
   // `hatImage`, not `image_url`: a local path would fail the URL check but
   // still proves there's nothing left to fetch.
-  if (!fig_name || !(image_url || lokal?.hatImage)) {
+  if (!fig_name || !(image_url || local?.hatImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
     const abruf = await versuche('figuren:getMinifigInfo', k.externalSources.quellen.getMinifigInfo(num));
     found = abruf.ok ? abruf.wert : null;
@@ -156,13 +156,13 @@ export async function updateManualMinifig(
   const existing = await k.manualMinifigs.minifigRowWithCondition(uid, figNumber);
   if (!existing) fachfehler('nicht_gefunden', 'minifig_nicht_manuell');
 
-  const raus: { quantity?: number } = {};
+  const out: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Degradations();
   const wish = mengenwunsch(body);
   if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    raus.quantity = await k.inventory.passeManualQuantityAn(
+    out.quantity = await k.inventory.passeManualQuantityAn(
       'fig',
       uid,
       [figNumber],
@@ -185,7 +185,7 @@ export async function updateManualMinifig(
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finances.currentMinifigMarketPrice(figNumber, uid, newBlNum, zustand),
+      condition => k.finances.currentMinifigMarketPrice(figNumber, uid, newBlNum, condition),
     );
     // Into the NEWEST acquisition, as with parts.
     await k.inventory.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);
@@ -194,7 +194,7 @@ export async function updateManualMinifig(
     const cond = V.zustand(body.condition);
     await k.inventory.setNewest('fig', 'zustand', cond, uid, [figNumber]);
   }
-  return { ...raus, ...ab.angabe() };
+  return { ...out, ...ab.detail() };
 }
 
 /** `uid` is the viewing scope (list). */
@@ -244,7 +244,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
         unitPrice,
         condition: rawCondition,
       });
-      const erfassung = {
+      const acquisition = {
         quantity: qty,
         price: acquisitionPrice,
         geschaetzt: estimated,
@@ -253,7 +253,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       };
 
       if (await findManualMinifig(k, uid, figNumber)) {
-        await k.inventory.bookDailyEntry('fig', uid, [figNumber], erfassung);
+        await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
@@ -262,7 +262,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       await k.catalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
       await k.inventory.manuell.putRowAn('fig', uid, [figNumber]);
       if (blFigNumber) await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
-      await k.inventory.bookDailyEntry('fig', uid, [figNumber], erfassung);
+      await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {

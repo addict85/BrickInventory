@@ -13,7 +13,7 @@ import { passwordLack } from '../infra/passwordRule';
 import { versuche, valueOr } from '../infra/result';
 import type { AccountContext } from './context';
 
-export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
+export type SignedIn = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
 /** What the token should be called and how long it applies; the contract checks both login paths. */
 export type TokenWish = { label?: unknown; never_expires?: boolean | undefined; scope?: string | undefined };
 
@@ -21,7 +21,7 @@ export type TokenWish = { label?: unknown; never_expires?: boolean | undefined; 
  * (httpOnly cookie); a token would be readable by script in the browser. */
 export async function loginResponse(
   k: AccountContext,
-  user: Angemeldet,
+  user: SignedIn,
   wish: TokenWish,
   withToken: boolean,
   ip: string | undefined,
@@ -29,21 +29,21 @@ export async function loginResponse(
   const uid = Number(user.id);
   let token: string | null = null;
   if (withToken) {
-    const dauerhaft = wish.never_expires === true;
+    const permanent = wish.never_expires === true;
     // A token the database never saw would run into a 401 in the SSE channel.
-    const neu = await versuche(
+    const fresh = await versuche(
       'login:token',
-      createToken(k, uid, tokenLabel(wish.label, 'webapp-session'), dauerhaft, null, {
+      createToken(k, uid, tokenLabel(wish.label, 'webapp-session'), permanent, null, {
         scope: tokenScope(wish.scope),
         ip,
       }),
     );
-    token = valueOr(neu, null);
+    token = valueOr(fresh, null);
     if (!token) fachfehler('intern', 'token_nicht_ausgestellt');
     hintInBackground(k, uid, 'token_neu', tokenLabel(wish.label, 'webapp-session'));
   }
   // Administrator rights are carried by the session and a token with scope `voll`, not `app`.
-  const verwalter = user.is_admin && (!withToken || tokenScope(wish.scope) === 'voll');
+  const admin = user.is_admin && (!withToken || tokenScope(wish.scope) === 'voll');
   return {
     ...(token ? { token, token_info: await tokenDetails(k, token) } : {}),
     // With a sliding deadline nothing is unlimited.
@@ -53,7 +53,7 @@ export async function loginResponse(
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: await K.openFactorRequired(k, uid, verwalter),
+      zweiterFaktorPflicht: await K.openFactorRequired(k, uid, admin),
     },
   };
 }
@@ -74,15 +74,15 @@ export async function devicesTokenIssue(
 
 /** Refuse instead of guessing without an address: a wrong address in the QR code would
  * only show up later in another network. */
-export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit: unknown) {
+export async function createQrAccess(k: AccountContext, uid: number, validity: unknown) {
   const basis = basisUrl();
   if (!basis) {
     hintWithoutBaseUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
     fachfehler('nicht_verfuegbar', 'qr_ohne_basis_url');
   }
   // The QR code says how long the access will run: the bound applies here already.
-  const tage = tokenDays(k, runtimeDays(gueltigkeit));
-  const { token, kopplung } = await QR.create(k, uid, tage);
+  const days = tokenDays(k, runtimeDays(validity));
+  const { token, kopplung } = await QR.create(k, uid, days);
   hintInBackground(k, uid, 'qr_zugang_neu');
   // `fp` only with TLS: the app pins the root of the internal CA with it.
   const ca = viaTls(basis) ? await tlsStand() : null;
@@ -90,18 +90,18 @@ export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit
     token,
     kopplung,
     expires_in: QR.QR_TTL_MS / 1000,
-    token_days: tage,
+    token_days: days,
     url: basis,
     ...(ca ? { fp: ca.fp, zert_sha256: ca.zert_sha256 } : {}),
   };
 }
 
 /** The name from the table: with an app token there is no session that carries it. */
-export async function eigenesPasswortAendern(k: AccountContext, uid: number, neu: string, passkeysWiderrufen: boolean) {
+export async function changeOwnPassword(k: AccountContext, uid: number, fresh: string, passkeysWiderrufen: boolean) {
   const konto = await k.konten.accountShort(uid);
-  const mangel = passwordLack(neu, konto?.username);
+  const mangel = passwordLack(fresh, konto?.username);
   if (mangel) fachfehler('ungueltig', mangel);
-  await K.aendereEigenesPasswort(k, uid, neu, { passkeysWiderrufen });
+  await K.aendereEigenesPasswort(k, uid, fresh, { passkeysWiderrufen });
   hintInBackground(k, uid, 'passwort_geaendert');
   return konto;
 }

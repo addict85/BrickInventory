@@ -1,13 +1,13 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/geldSql';
 
 export function dailyValuesFromHistory(
   db: DbInterface,
   currency: string,
   condition: string,
   setNumbers: string[],
-  mengen: number[],
+  quantities: number[],
   datumsFilter: string,
   bExpr: string,
 ) {
@@ -22,11 +22,11 @@ export function dailyValuesFromHistory(
               to_char(ph.recorded_at, 'YYYY-MM')            AS monat,
               ph.recorded_at,
               (ph.condition = $2)                           AS passender_zustand,
-              ${marktpreisSql('ph')}::numeric AS preis
+              ${marketPriceSql('ph')}::numeric AS preis
          FROM price_history ph
         WHERE ph.set_number = ANY($3::text[])
           AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-          AND ${marktpreisSql('ph')} IS NOT NULL
+          AND ${marketPriceSql('ph')} IS NOT NULL
           ${datumsFilter}
      ),
      werte AS (
@@ -68,7 +68,7 @@ export function dailyValuesFromHistory(
             ROUND(SUM(COALESCE(d.d, 0)) OVER (ORDER BY t.bucket), 2) AS total
        FROM tage t LEFT JOIN delta d ON d.bucket = t.bucket
       ORDER BY t.bucket`.replace('@BUCKET@', bExpr),
-    [currency, condition, setNumbers, mengen],
+    [currency, condition, setNumbers, quantities],
   );
 }
 
@@ -85,12 +85,12 @@ export function cachePricesTheSets(
     day: string;
     month: string;
   }>(
-    `SELECT set_number, ${marktpreisSql()} AS marktpreis,
+    `SELECT set_number, ${marketPriceSql()} AS marktpreis,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache
        WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholders})
-         AND ${marktpreisSql()} IS NOT NULL
+         AND ${marketPriceSql()} IS NOT NULL
        ORDER BY fetched_at ASC, (condition = $2) ASC`,
     [currency, condition, ...setNumbers],
   );
@@ -101,7 +101,7 @@ export function lastValuesBeforeStart(
   currency: string,
   condition: string,
   setNumbers: string[],
-  mengen: number[],
+  quantities: number[],
   firstTag: string,
   datumsFilter: string,
 ) {
@@ -111,11 +111,11 @@ export function lastValuesBeforeStart(
        ),
        letzte AS (
          SELECT DISTINCT ON (ph.set_number) ph.set_number,
-                ${marktpreisSql('ph')}::numeric AS preis
+                ${marketPriceSql('ph')}::numeric AS preis
            FROM price_history ph
           WHERE ph.set_number = ANY($3::text[])
             AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-            AND ${marktpreisSql('ph')} IS NOT NULL
+            AND ${marketPriceSql('ph')} IS NOT NULL
             -- Derselbe Zeitraumfilter wie oben: Daten VOR dem Fenster zählen
             -- auch beim Startpunkt nicht mit, sonst begänne „Jahr" höher als
             -- die Monatskurve.
@@ -133,7 +133,7 @@ export function lastValuesBeforeStart(
        )
        SELECT ROUND(SUM(m.qty * l.preis), 2) AS total
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`,
-    [currency, condition, setNumbers, mengen, firstTag],
+    [currency, condition, setNumbers, quantities, firstTag],
   );
 }
 

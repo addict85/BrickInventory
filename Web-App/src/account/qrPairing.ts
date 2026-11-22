@@ -18,12 +18,12 @@ export const OPEN_PAIRINGS_AT_MOST = 500;
 export async function create(
   k: AccountContext,
   uid: number,
-  tage: number | null,
+  days: number | null,
 ): Promise<{ token: string; kopplung: number }> {
   await k.qrKopplung.cleanQrPairingsOn();
   const nonce = crypto.randomBytes(32).toString('base64url');
   const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
-  const kopplung = await k.qrKopplung.putQrPairingAn(tokenDigest(nonce), uid, bis, tage, OPEN_PAIRINGS_AT_MOST);
+  const kopplung = await k.qrKopplung.putQrPairingAn(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
   if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
@@ -31,7 +31,7 @@ export async function create(
 export async function reportDevice(
   k: AccountContext,
   token: string | null | undefined,
-  geraet: unknown,
+  device: unknown,
   ip: string | null | undefined,
 ): Promise<{ abholung: string; code: string; uid: number } | null> {
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
@@ -40,14 +40,14 @@ export async function reportDevice(
   const z = await k.qrKopplung.melde(tokenDigest(token.slice(4)), {
     abholung: tokenDigest(abholung),
     codeHash: tokenDigest(code),
-    geraet: tokenLabel(geraet, 'Android App'),
+    geraet: tokenLabel(device, 'Android App'),
     ipArea: ipArea(ip),
     fristS: QR_TTL_MS / 1000,
   });
   return z ? { abholung, code, uid: z.user_id } : null;
 }
 
-export type Abholung =
+export type Pickup =
   | { stand: 'wartet' }
   | { stand: 'bereit'; uid: number }
   | { stand: 'fertig'; token: string; uid: number; keyNonce: string | null };
@@ -59,18 +59,18 @@ const rowTo = (k: AccountContext, abholung: string | null | undefined) =>
 
 /** With [vorschau] only the account: the app shows it and picks up the token only after the yes.
  * The nonce for the device key is created with the token and only applies to its family. */
-export async function holeQrTokenAb(
+export async function fetchQrToken(
   k: AccountContext,
   abholung: string | null | undefined,
   ip: string | null | undefined,
-  darf: (uid: number) => Promise<boolean>,
-  vorschau = false,
-): Promise<Abholung> {
+  may: (uid: number) => Promise<boolean>,
+  preview = false,
+): Promise<Pickup> {
   const z = await rowTo(k, abholung);
   if (z?.stand === 'wartet') return { stand: 'wartet' };
   if (z?.stand === 'abgelehnt') fachfehler('verboten', 'qr_abgelehnt');
-  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
-  if (vorschau) return { stand: 'bereit', uid: z.user_id };
+  if (z?.stand !== 'bestaetigt' || !(await may(z.user_id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+  if (preview) return { stand: 'bereit', uid: z.user_id };
   if (!(await k.qrKopplung.markPickedUp(z.id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
   const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? null, {
     scope: 'app',
@@ -88,15 +88,15 @@ export async function discardPickup(k: AccountContext, abholung: string | null |
   return true;
 }
 
-export async function kopplungsStand(k: AccountContext, kopplung: number, uid: number) {
+export async function pairingState(k: AccountContext, kopplung: number, uid: number) {
   const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
   return z ? { stand: z.stand, geraet: z.geraet, ip_range: z.ip_range } : null;
 }
 
-function codeFits(gespeichert: string | null, eingabe: string | number | null | undefined): boolean {
-  const digits = String(eingabe ?? '').replace(/\s+/g, '');
-  if (!gespeichert || !/^\d{6}$/.test(digits)) return false;
-  return crypto.timingSafeEqual(Buffer.from(tokenDigest(digits)), Buffer.from(gespeichert));
+function codeFits(saved: string | null, input: string | number | null | undefined): boolean {
+  const digits = String(input ?? '').replace(/\s+/g, '');
+  if (!saved || !/^\d{6}$/.test(digits)) return false;
+  return crypto.timingSafeEqual(Buffer.from(tokenDigest(digits)), Buffer.from(saved));
 }
 
 /** After QR_FAILED_ATTEMPTS wrong codes the pairing is rejected: six digits hold up long enough for that. */
@@ -117,7 +117,7 @@ export async function confirmPairing(
   if (!(await k.qrKopplung.markConfirmed(z.id))) fachfehler('konflikt', 'qr_nicht_wartend');
 }
 
-export async function rejectPairingAb(k: AccountContext, kopplung: number, uid: number): Promise<boolean> {
+export async function rejectPairing(k: AccountContext, kopplung: number, uid: number): Promise<boolean> {
   const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
   if (z) await k.qrKopplung.markRejected(z.id);
   return !!z;

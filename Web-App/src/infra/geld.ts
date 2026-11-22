@@ -4,13 +4,13 @@
 import { fachfehler, type ErrorCode } from './errorTexts';
 
 /** null means "unknown", not 0. */
-export type Zehntel4 = number;
+export type TenThousandths = number;
 
 const FACTOR = 10_000;
 
-export function inZehntel4(betrag: unknown): Zehntel4 | null {
-  if (betrag === null || betrag === undefined || betrag === '') return null;
-  const n = typeof betrag === 'number' ? betrag : Number(String(betrag).replace(',', '.'));
+export function inTenThousandths(amount: unknown): TenThousandths | null {
+  if (amount === null || amount === undefined || amount === '') return null;
+  const n = typeof amount === 'number' ? amount : Number(String(amount).replace(',', '.'));
   return Number.isFinite(n) ? Math.round(n * FACTOR) : null;
 }
 
@@ -32,28 +32,28 @@ export function moneyInput(v: unknown, feld: string, max = 1_000_000, oneCode?: 
 }
 
 /** Half cents away from zero. */
-export function aufRappen(z: Zehntel4): number {
+export function aufRappen(z: TenThousandths): number {
   const rappen = Math.sign(z) * Math.round(Math.abs(z) / 100);
   return rappen / 100 || 0;
 }
 
 /** The unit price is not rounded beforehand. */
 export function zeilenwert(unitPrice: unknown, menge: number): number | null {
-  const z = inZehntel4(unitPrice);
+  const z = inTenThousandths(unitPrice);
   return z === null ? null : aufRappen(z * menge);
 }
 
 /** Rows without a price do not count. */
-export function sumFrom(zeilen: Iterable<{ preis: unknown; menge: number }>): number {
+export function sumFrom(rows: Iterable<{ preis: unknown; menge: number }>): number {
   let z = 0;
-  for (const r of zeilen) {
-    const p = inZehntel4(r.preis);
+  for (const r of rows) {
+    const p = inTenThousandths(r.preis);
     if (p !== null) z += p * r.menge;
   }
   return aufRappen(z);
 }
 
-export function alsText(betrag: unknown): string | null {
-  const z = inZehntel4(betrag);
+export function alsText(amount: unknown): string | null {
+  const z = inTenThousandths(amount);
   return z === null ? null : aufRappen(z).toFixed(2);
 }

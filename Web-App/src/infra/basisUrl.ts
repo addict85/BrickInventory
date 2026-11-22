@@ -1,6 +1,6 @@
 /** Read once instead of in three places with their own spelling. */
 import { konfig } from './config';
-import { prozessweit } from './prozessweit';
+import { processWide } from './prozessweit';
 
 export function basisUrl(): string | null {
   return konfig().appBaseUrl;
@@ -8,7 +8,7 @@ export function basisUrl(): string | null {
 
 // Once per area: callers run in loops.
 export function hintWithoutBaseUrl(bereich: string, sequence: string): void {
-  const _reported = prozessweit('basisUrlGemeldet', () => new Set<string>());
+  const _reported = processWide('basisUrlGemeldet', () => new Set<string>());
   if (_reported.has(bereich)) return;
   _reported.add(bereich);
   console.warn(`⚠️  [${bereich}] APP_BASE_URL ist nicht gesetzt — ${sequence} Siehe README.md.`);

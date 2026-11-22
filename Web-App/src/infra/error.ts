@@ -7,23 +7,23 @@ import { transactionOfPath } from './accountContext';
  * but leave a trace.
  * @param kontext short origin information, e.g. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
-  return (e: unknown) => weiterTrotzFehler(kontext, e);
+  return (e: unknown) => continueDespiteError(kontext, e);
 }
 
-function weiterTrotzFehler(kontext: string, e: unknown) {
+function continueDespiteError(kontext: string, e: unknown) {
   checkFallbackInTransaction(kontext, e);
   logWarning(kontext, e);
 }
 
 function logWarning(kontext: string, e: unknown) {
-  const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
-  console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  const raw = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
+  console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(raw)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
 /** With a substitute value, where the caller keeps computing. */
 export function reportAndDeliver<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => {
-    weiterTrotzFehler(kontext, e);
+    continueDespiteError(kontext, e);
     return ersatz;
   };
 }
@@ -42,7 +42,7 @@ export function checkFallbackInTransaction(kontext: string, e: unknown): void {
 
 /** An error of the server (pg.DatabaseError) carries SQLSTATE and severity. */
 export function isDatabaseError(e: unknown): boolean {
-  const c = fehlerCode(e);
+  const c = errorCode(e);
   return !!c && /^[0-9A-Z]{5}$/.test(c) && typeof (e as { severity?: unknown }).severity === 'string';
 }
 
@@ -51,7 +51,7 @@ export function withoutMissingFile(kontext: string): (e: unknown) => void;
 export function withoutMissingFile<T>(kontext: string, ersatz: T): (e: unknown) => T;
 export function withoutMissingFile<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => {
-    if (fehlerCode(e) !== 'ENOENT') weiterTrotzFehler(kontext, e);
+    if (errorCode(e) !== 'ENOENT') continueDespiteError(kontext, e);
     return ersatz;
   };
 }
@@ -72,14 +72,14 @@ export function fehlertext(e: unknown): string {
   return String(e) || 'Unbekannter Fehler';
 }
 
-export function fehlerCode(e: unknown): string | undefined {
+export function errorCode(e: unknown): string | undefined {
   const c = (e as { code?: unknown } | null | undefined)?.code;
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
 /** split() always delivers a first element; TypeScript does not know that. */
-export function beforeThe(s: string, trenner: string): string {
-  return s.split(trenner)[0] ?? '';
+export function beforeThe(s: string, separator: string): string {
+  return s.split(separator)[0] ?? '';
 }
 
 /** For streams and bulk reports without a status code: a domain error names code and
@@ -89,7 +89,7 @@ export function publicError(
   kontext: string,
   req?: { headers?: Record<string, unknown> },
 ): { error: string; code: ErrorCode } {
-  const code = fehlerCode(e);
+  const code = errorCode(e);
   if (code && code in FEHLER) {
     return {
       code: code as ErrorCode,

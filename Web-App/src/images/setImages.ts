@@ -17,7 +17,7 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** The same browser identifier as the image proxy: the CDN rejects an own one with 403,
  * and the image job would then pause endlessly. IMG_USER_AGENT stays as a way out. */
-export function bildUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
+export function imageUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
   return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
@@ -29,8 +29,8 @@ export function rebrickableSetImage(setNumber: string): string {
 /** If image and preview already lie in images/sets, the image job needs nothing more. */
 export async function setImageComplete(setNumber: string): Promise<boolean> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  const da = (datei: string) =>
-    fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(
+  const da = (file: string) =>
+    fs.promises.access(path.join(SET_IMAGES_DIR, file)).then(
       () => true,
       () => false,
     );
@@ -43,7 +43,7 @@ export async function setBildHerunterladen(
   setNumber: string,
   info?: { status?: number },
 ) {
-  const userAgent = bildUserAgent(k.konfig);
+  const userAgent = imageUserAgent(k.konfig);
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);

@@ -1,6 +1,6 @@
 /** Per acquisition with the price of its condition, because mixed inventories would otherwise
  * get a wrong average. */
-import { inZehntel4, aufRappen, alsText } from '../infra/geld';
+import { inTenThousandths, aufRappen, alsText } from '../infra/geld';
 import { zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 
@@ -79,7 +79,7 @@ export function valueSet(
     const unit = priceFor(prices, setNumber, condition);
     by_condition.push({ condition, quantity: qty, unit_price: unit });
     quantity += qty;
-    const z = inZehntel4(unit);
+    const z = inTenThousandths(unit);
     if (z !== null) {
       totalZ += z * qty;
       priced += qty;
@@ -118,9 +118,12 @@ export async function getSetValue(
 /** The one rule for sets, parts, figures, tile and history. null for a
  * purchase price of 0: against a gift there is no percentage (against 0.01
  * it showed "+327,600 %"). */
-export function developmentPercent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
-  if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
-  return ((markt - kauf) / kauf) * 100;
+export function developmentPercent(
+  purchase: number | null | undefined,
+  market: number | null | undefined,
+): number | null {
+  if (purchase == null || !(purchase > 0) || market == null || !(market > 0)) return null;
+  return ((market - purchase) / purchase) * 100;
 }
 
 export function pnlProzent(purchase: number | null, market: number | null): number | null {
@@ -184,8 +187,8 @@ export function valueAcquisitionRows(
       quantity,
       purchase_price: purchase,
       avg_price: unit,
-      total_avg: unit != null ? alsText(aufRappen((inZehntel4(unit) ?? 0) * quantity)) : null,
-      wert_gesamt: unit != null ? aufRappen((inZehntel4(unit) ?? 0) * quantity) : null,
+      total_avg: unit != null ? alsText(aufRappen((inTenThousandths(unit) ?? 0) * quantity)) : null,
+      wert_gesamt: unit != null ? aufRappen((inTenThousandths(unit) ?? 0) * quantity) : null,
       pnl_pct: pnlPct(purchase, unit),
       pnl_prozent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
@@ -224,23 +227,23 @@ export interface TileSource {
 
 /** In the household the base price weighted by quantity counts: "any row"
  * would yield a different percentage depending on the order. */
-export function tileValues(zeilen: TileSource[]): Map<string, TileValue> {
+export function tileValues(rows: TileSource[]): Map<string, TileValue> {
   const jeSet = new Map<string, TileSource[]>();
-  for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
-  const aus = new Map<string, TileValue>();
+  for (const z of rows) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
+  const from = new Map<string, TileValue>();
   for (const [nr, zs] of jeSet) {
-    const markt = Number(zs[0]?.current_price) || 0;
-    const weighted = (feld: 'baseline_price' | 'purchase_price') => {
-      let summe = 0,
+    const market = Number(zs[0]?.current_price) || 0;
+    const weighted = (field: 'baseline_price' | 'purchase_price') => {
+      let sum = 0,
         menge = 0;
       for (const z of zs) {
-        const b = z[feld];
+        const b = z[field];
         if (b == null) continue;
         const m = Math.max(1, Number(z.quantity) || 1);
-        summe += Number(b) * m;
+        sum += Number(b) * m;
         menge += m;
       }
-      return menge > 0 ? summe / menge : null;
+      return menge > 0 ? sum / menge : null;
     };
     let pct: number | null;
     if (zs.length === 1) {
@@ -248,17 +251,21 @@ export function tileValues(zeilen: TileSource[]): Map<string, TileValue> {
       pct = t == null ? null : Number(t);
     } else {
       const basis = weighted('baseline_price');
-      const e = developmentPercent(basis, markt);
+      const e = developmentPercent(basis, market);
       pct = e == null ? null : Math.round(e * 10) / 10;
     }
-    const kauf = weighted('purchase_price');
-    const quelle = markt > 0 ? 'markt' : kauf != null ? 'kauf' : null;
-    aus.set(nr, {
+    const purchase = weighted('purchase_price');
+    const source = market > 0 ? 'markt' : purchase != null ? 'kauf' : null;
+    from.set(nr, {
       kachel_preis:
-        quelle === 'markt' ? aufRappen(inZehntel4(markt) ?? 0) : kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null,
+        source === 'markt'
+          ? aufRappen(inTenThousandths(market) ?? 0)
+          : purchase != null
+            ? aufRappen(inTenThousandths(purchase) ?? 0)
+            : null,
       kachel_pnl_pct: pct,
-      kachel_quelle: quelle,
+      kachel_quelle: source,
     });
   }
-  return aus;
+  return from;
 }

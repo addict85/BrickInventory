@@ -48,19 +48,19 @@ export const OVERLAP_MS = 5 * 60 * 1000;
 export const REUSE_GRACE_PERIOD_S = 60;
 
 /** `null` means "unlimited", not "expired immediately". */
-function deadlineReached(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
-  return !!zeitpunkt && new Date(zeitpunkt).getTime() <= jetzt;
+function deadlineReached(moment: string | Date | null | undefined, now: number): boolean {
+  return !!moment && new Date(moment).getTime() <= now;
 }
 
-const daysSince = (zeitpunkt: string | Date | null | undefined, jetzt: number): number =>
-  zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
+const daysSince = (moment: string | Date | null | undefined, now: number): number =>
+  moment ? (now - new Date(moment).getTime()) / TAG_MS : 0;
 
-export function rotationDue(u: TokenUser, jetzt = Date.now()): boolean {
-  return daysSince(u.rotated_at, jetzt) >= ROTATION_DUE_DAYS;
+export function rotationDue(u: TokenUser, now = Date.now()): boolean {
+  return daysSince(u.rotated_at, now) >= ROTATION_DUE_DAYS;
 }
 
-export function rotationRequired(u: TokenUser, jetzt = Date.now()): boolean {
-  return u.never_expires === true && daysSince(u.rotated_at, jetzt) >= ROTATION_REQUIRED_DAYS;
+export function rotationRequired(u: TokenUser, now = Date.now()): boolean {
+  return u.never_expires === true && daysSince(u.rotated_at, now) >= ROTATION_REQUIRED_DAYS;
 }
 
 /** /24 or /48: enough to recognize a foreign network; the exact address
@@ -70,12 +70,12 @@ export function ipArea(ip: string | null | undefined): string | null {
   const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
   if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
   if (!ip.includes(':')) return null;
-  const [kopf = '', rest] = ip.split('::');
-  const teile = kopf ? kopf.split(':') : [];
+  const [header = '', rest] = ip.split('::');
+  const parts = header ? header.split(':') : [];
   // "a::b" has fewer than three groups on the left: the missing ones are zeros.
-  while (teile.length < 3 && rest !== undefined) teile.push('0');
-  if (teile.length < 3 || teile.slice(0, 3).some(g => !/^[0-9a-f]{1,4}$/i.test(g))) return null;
-  return `${teile
+  while (parts.length < 3 && rest !== undefined) parts.push('0');
+  if (parts.length < 3 || parts.slice(0, 3).some(g => !/^[0-9a-f]{1,4}$/i.test(g))) return null;
+  return `${parts
     .slice(0, 3)
     .map(g => g.toLowerCase().replace(/^0+(?=.)/, ''))
     .join(':')}::/48`;
@@ -89,8 +89,8 @@ export interface TokenCheck {
 /** `zweck: 'rotation'` lets an unlimited token through even after the
  * mandatory deadline — only for the swap itself. */
 /** For the stream: is the access still alive? Asked with the plaintext; the hash stays in the account. */
-export async function tokenGilt(k: AccountContext, klartext: string): Promise<boolean> {
-  return !!(await k.zugaenge.validToken(tokenDigest(klartext)));
+export async function tokenGilt(k: AccountContext, plaintext: string): Promise<boolean> {
+  return !!(await k.zugaenge.validToken(tokenDigest(plaintext)));
 }
 
 export async function pruefeToken(
@@ -163,20 +163,20 @@ export async function nutzerZumToken(
  * decision is made on the record read, so it holds across several workers;
  * the WHERE clause catches the race. */
 function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null): void {
-  const jetzt = k.uhr.jetzt();
+  const now = k.uhr.jetzt();
   const u = entry.user;
-  const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
-  const ziel = jetzt + k.konfig.tokenIdleDays * TAG_MS;
-  const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < ziel - TAG_MS;
-  if ((jetzt - zuletzt < TAG_MS && !deadlineLags) || entry.schreibt) return;
+  const lastUsed = u.last_used ? new Date(u.last_used).getTime() : 0;
+  const target = now + k.konfig.tokenIdleDays * TAG_MS;
+  const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < target - TAG_MS;
+  if ((now - lastUsed < TAG_MS && !deadlineLags) || entry.schreibt) return;
   entry.schreibt = true;
   void k.zugaenge
     .touchToken(entry.dbKey, k.konfig.tokenIdleDays, ipArea(ip))
     .then(() => {
       // Update the cache too, otherwise the hit branch would once reject a just
       // renewed token at the old end of its deadline.
-      u.last_used = new Date(jetzt);
-      if (deadlineLags || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
+      u.last_used = new Date(now);
+      if (deadlineLags || (u.sliding === true && u.expires_at)) u.expires_at = new Date(target);
     })
     .catch((e: unknown) => reportError('token:last_used schreiben', e))
     .finally(() => {
@@ -206,9 +206,9 @@ export const RUNTIME_CHOICES: readonly string[] = Object.freeze(['1m', '2m']);
 
 /** fromTable instead of direct access: 'constructor' would otherwise return an inherited function.
  * @returns days, or null for "no fixed deadline" */
-export function runtimeDays(wahl: unknown): number | null {
-  if (wahl === undefined || wahl === null || wahl === '') return null;
-  return V.fromTable(TOKEN_RUNTIMES, String(wahl)) ?? null;
+export function runtimeDays(choice: unknown): number | null {
+  if (choice === undefined || choice === null || choice === '') return null;
+  return V.fromTable(TOKEN_RUNTIMES, String(choice)) ?? null;
 }
 
 export interface TokenOptions {
@@ -228,14 +228,14 @@ export function tokenDays(k: Pick<AccountContext, 'konfig'>, fixedDays: number |
   return fixedDays && fixedDays > 0 ? Math.min(fixedDays, max) : max;
 }
 
-/** @param dauerhaft  true = device access with sliding deadline; false = seven fixed
+/** @param permanent  true = device access with sliding deadline; false = seven fixed
  *                   days — use by an attacker should not extend it.
  * @param fixedDays  the wished end in days (tokenDays() bounds it). */
 export async function createToken(
   k: AccountContext,
   userId: number,
   label = 'Android App',
-  dauerhaft = false,
+  permanent = false,
   fixedDays: number | null = null,
   o: TokenOptions = {},
 ): Promise<string> {
@@ -247,7 +247,7 @@ export async function createToken(
     label,
     scope: o.scope === 'voll' ? 'voll' : 'app',
     bereich: ipArea(o.ip),
-    art: dauerhaft ? 'gleitend' : 'kurz',
+    art: permanent ? 'gleitend' : 'kurz',
     idleDays: k.konfig.tokenIdleDays,
     fixedDays: tokenDays(k, fixedDays),
   });
@@ -255,7 +255,7 @@ export async function createToken(
   return token;
 }
 
-export interface Tausch {
+export interface Swap {
   token: string;
   scope: TokenScope;
   expires_at: Date | null;
@@ -270,41 +270,41 @@ export const SWAP_LOCK_S = 30;
 
 /** The old one then applies at most OVERLAP_MS. A second swap replaces the unused
  * successor only from the same network (otherwise a copy: the family ends) and only after SWAP_LOCK_S. */
-export async function rotateToken(kx: AccountContext, alt: string, ip?: string | null): Promise<Tausch | null> {
+export async function rotateToken(kx: AccountContext, alt: string, ip?: string | null): Promise<Swap | null> {
   const altHash = tokenDigest(alt);
-  const neu = crypto.randomBytes(32).toString('hex');
-  const newHash = tokenDigest(neu);
-  let kopie: { user_id: number; label: string | null } | null = null;
+  const fresh = crypto.randomBytes(32).toString('hex');
+  const newHash = tokenDigest(fresh);
+  let copy: { user_id: number; label: string | null } | null = null;
   // The swap comes without a session: the old token is the only credential.
   const ergebnis = await inSystemContext('tokentausch', () =>
     kx.transaktion(async t => {
       const z = await repo.lockSwapSource(t.db, altHash);
       if (!z) return null;
-      const offen = z.replaced_by ? await repo.unusedSuccessor(t.db, z.replaced_by, altHash) : undefined;
+      const open = z.replaced_by ? await repo.unusedSuccessor(t.db, z.replaced_by, altHash) : undefined;
       const bereich = ipArea(ip);
-      if (offen?.ip_range && bereich && offen.ip_range !== bereich) {
+      if (open?.ip_range && bereich && open.ip_range !== bereich) {
         await repo.deleteFamily(t.db, z.user_id, z.created_at);
-        kopie = { user_id: z.user_id, label: z.label };
+        copy = { user_id: z.user_id, label: z.label };
         return null;
       }
-      if (offen && offen.alter_s < SWAP_LOCK_S) return 'laeuft' as const;
+      if (open && open.alter_s < SWAP_LOCK_S) return 'laeuft' as const;
       if (z.replaced_by) await repo.deleteUnusedSuccessor(t.db, z.replaced_by, altHash);
-      const zeile = await repo.putSuccessorAn(t.db, newHash, altHash, z, t.konfig.tokenIdleDays, ipArea(ip));
-      const vorher = await repo.limitTimePredecessor(t.db, altHash, newHash, OVERLAP_MS / 1000);
+      const row = await repo.createSuccessor(t.db, newHash, altHash, z, t.konfig.tokenIdleDays, ipArea(ip));
+      const before = await repo.limitTimePredecessor(t.db, altHash, newHash, OVERLAP_MS / 1000);
       return {
-        token: neu,
+        token: fresh,
         scope: z.scope,
-        expires_at: zeile!.expires_at,
-        hard_expires_at: zeile!.hard_expires_at,
+        expires_at: row!.expires_at,
+        hard_expires_at: row!.hard_expires_at,
         never_expires: z.never_expires,
-        rotated_at: zeile!.rotated_at,
-        alt_gueltig_bis: vorher!.expires_at,
+        rotated_at: row!.rotated_at,
+        alt_gueltig_bis: before!.expires_at,
       };
     }),
   );
-  if (ergebnis || kopie) emptyTokenCache(kx);
-  if (kopie) {
-    const k: { user_id: number; label: string | null } = kopie;
+  if (ergebnis || copy) emptyTokenCache(kx);
+  if (copy) {
+    const k: { user_id: number; label: string | null } = copy;
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
     hintInBackground(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
   }
@@ -312,7 +312,7 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
   return ergebnis;
 }
 
-export async function tokenLoeschen(k: AccountContext, token: string): Promise<void> {
+export async function deleteToken(k: AccountContext, token: string): Promise<void> {
   if (!token) return;
   await k.zugaenge.loescheToken(tokenDigest(token));
   tokenForgotten(k, token);
@@ -328,22 +328,22 @@ export async function revokeAllTokens(k: AccountContext, userId: number): Promis
 /** Legacy rows first get their sliding deadline, so they fall like new ones. Every step
  * runs; if one fails, the run throws afterwards, and the cleanup repeats it. */
 export async function tokensCleanup(k: AccountContext) {
-  const ohne: string[] = [];
-  const schritt = async (was: string, work: () => Promise<number>) => {
+  const without: string[] = [];
+  const step = async (was: string, work: () => Promise<number>) => {
     const r = await versuche(`tokens:${was}`, work);
-    if (!r.ok) ohne.push(was);
+    if (!r.ok) without.push(was);
     return r.ok ? r.wert : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
-  const g = await schritt('ohne Ende', () => k.zugaenge.boundUnlimited(k.konfig.tokenMaxDays));
+  const g = await step('ohne Ende', () => k.zugaenge.boundUnlimited(k.konfig.tokenMaxDays));
   if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.konfig.tokenMaxDays} Tage begrenzt`);
-  const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.pullAltzeilenAfter(k.konfig.tokenIdleDays));
+  const m = await step('Altzeilen nachziehen', () => k.zugaenge.pullAltzeilenAfter(k.konfig.tokenIdleDays));
   if (m)
     console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);
-  const abgelaufen = await schritt('abgelaufene', () => k.zugaenge.deleteExpired());
-  const n = await schritt('ungenutzte', () => k.zugaenge.deleteUnused(k.konfig.tokenIdleDays));
-  await schritt('verbrauchte', () => k.zugaenge.deleteOrphanedConsumed());
+  const expired = await step('abgelaufene', () => k.zugaenge.deleteExpired());
+  const n = await step('ungenutzte', () => k.zugaenge.deleteUnused(k.konfig.tokenIdleDays));
+  await step('verbrauchte', () => k.zugaenge.deleteOrphanedConsumed());
   if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenIdleDays} Tagen ungenutzt — entfernt`);
-  if (ohne.length) throw new Error(`Token-Aufräumen ohne: ${ohne.join(', ')}`);
-  return abgelaufen + n;
+  if (without.length) throw new Error(`Token-Aufräumen ohne: ${without.join(', ')}`);
+  return expired + n;
 }

@@ -70,7 +70,7 @@ export function handleRouteError(res: ErrorTarget, fehler: unknown, status?: num
   // requester's language.
   if (typeof e?.code === 'string' && e.code in FEHLER) {
     res.status(code).json({
-      ...(e instanceof Fachfehler ? e.zusatz : undefined),
+      ...(e instanceof Fachfehler ? e.extra : undefined),
       success: false,
       code: e.code,
       error: errorText(e.code as ErrorCode, responseLanguage(req), e.vars),

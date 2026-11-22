@@ -12,8 +12,8 @@ export async function targetThrottled(
   max: number,
   windowMs: number,
 ): Promise<{ waitMin: number } | null> {
-  const ziel = crypto.createHash('sha256').update(email.trim().toLowerCase()).digest('hex').slice(0, 32);
-  const st = await countRequest(k, bucket, `ziel:${ziel}`, windowMs);
+  const target = crypto.createHash('sha256').update(email.trim().toLowerCase()).digest('hex').slice(0, 32);
+  const st = await countRequest(k, bucket, `ziel:${target}`, windowMs);
   return st.count > max ? { waitMin: st.waitMin } : null;
 }
 

@@ -39,8 +39,8 @@ const ALLOWED = new Map([
 /** Technical envelopes that stand in almost every response. */
 const FRAME = new Set(['success', 'error', 'message', 'ok', 'status', 'data', 'code', 'detail']);
 
-/** @param {string} wurzel @param {string[]} extensions @param {string[]} aus */
-function dateien(wurzel, extensions, aus) {
+/** @param {string} wurzel @param {string[]} extensions @param {string[]} from */
+function files(wurzel, extensions, from) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
@@ -53,7 +53,7 @@ function dateien(wurzel, extensions, aus) {
     }
     for (const x of e) {
       const p = path.join(d, x.name);
-      if (aus.some(a => p.includes(a))) continue;
+      if (from.some(a => p.includes(a))) continue;
       if (x.isDirectory()) lauf(p);
       else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
@@ -69,76 +69,76 @@ function dateien(wurzel, extensions, aus) {
  */
 /** @param {string} s @param {RegExp} [re] */
 function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
-  const gefunden = new Set();
+  const found = new Set();
   while (re.exec(s) !== null) {
-    let tiefe = 1,
+    let depth = 1,
       i = re.lastIndex;
-    while (i < s.length && tiefe > 0) {
+    while (i < s.length && depth > 0) {
       const c = s[i];
-      if (c === '(' || c === '{' || c === '[') tiefe++;
-      else if (c === ')' || c === '}' || c === ']') tiefe--;
+      if (c === '(' || c === '{' || c === '[') depth++;
+      else if (c === ')' || c === '}' || c === ']') depth--;
       i++;
     }
     // Hide nested ones — foreign object shapes stand there.
     let layer = 0;
-    let oben = '';
+    let top = '';
     for (const c of s.slice(re.lastIndex, i - 1)) {
       if (c === '(' || c === '{' || c === '[') layer++;
       else if (c === ')' || c === '}' || c === ']') layer--;
-      oben += layer === 0 ? c : ' ';
+      top += layer === 0 ? c : ' ';
     }
-    for (const k of oben.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) gefunden.add(k[1]);
+    for (const k of top.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) found.add(k[1]);
   }
-  return gefunden;
+  return found;
 }
 
-const quellen = dateien(ROOT, ['.ts'], ['node_modules', `${path.sep}dist`, `${path.sep}test`, `${path.sep}scripts`]);
-if (quellen.length < 40) {
+const sources = files(ROOT, ['.ts'], ['node_modules', `${path.sep}dist`, `${path.sep}test`, `${path.sep}scripts`]);
+if (sources.length < 40) {
   console.error(
-    `❌ Nur ${quellen.length} TypeScript-Quellen gefunden — Pfad veraltet? ` + 'Eine leere Suche wäre still grün.',
+    `❌ Nur ${sources.length} TypeScript-Quellen gefunden — Pfad veraltet? ` + 'Eine leere Suche wäre still grün.',
   );
   process.exit(1);
 }
 
 /** @type {Map<string, string[]>} */
-const woher = new Map();
+const whence = new Map();
 /** @type {[string, string][]} */
-const texte = quellen.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
+const texts = sources.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
 // Routes answer with `{ success: true, ...(await dienst(…)) }`: the fields are in the service's return.
-const spread = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
-for (const [rel, s] of texte) {
-  const rumpfe = [...s.matchAll(/function (\w+)\s*[(<]/g)]
+const spread = new Set(texts.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
+for (const [rel, s] of texts) {
+  const bodies = [...s.matchAll(/function (\w+)\s*[(<]/g)]
     .filter(m => spread.has(m[1]))
     .map(m => {
       let i = s.indexOf('{', s.indexOf(')', m.index));
-      const anfang = i;
-      for (let tiefe = 0; i < s.length; i++) {
-        if (s[i] === '{') tiefe++;
-        else if (s[i] === '}' && --tiefe === 0) break;
+      const start = i;
+      for (let depth = 0; i < s.length; i++) {
+        if (s[i] === '{') depth++;
+        else if (s[i] === '}' && --depth === 0) break;
       }
       // Only the return statements of the body itself, not of inner functions.
-      const rumpf = s.slice(anfang, i);
-      let tiefe = 0,
-        oben = '';
-      for (let j = 0; j < rumpf.length; j++) {
-        if (rumpf[j] === '{') tiefe++;
-        else if (rumpf[j] === '}') tiefe--;
-        oben += tiefe === 1 && rumpf.startsWith('return', j) ? '§' : rumpf[j];
+      const body = s.slice(start, i);
+      let depth = 0,
+        top = '';
+      for (let j = 0; j < body.length; j++) {
+        if (body[j] === '{') depth++;
+        else if (body[j] === '}') depth--;
+        top += depth === 1 && body.startsWith('return', j) ? '§' : body[j];
       }
-      return oben;
+      return top;
     });
   // A route under routes/ returns the body; the contract router puts it into the envelope.
   // Helper functions stand before the first endpoint; counting starts from there.
   const ab = s.indexOf('.endpunkt(');
-  const eigen =
+  const own =
     rel.startsWith(`routes${path.sep}`) && ab >= 0
       ? new Set([...responseKey(s.slice(0, ab)), ...responseKey(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g)])
       : responseKey(s);
-  for (const k of [eigen, ...rumpfe.map(r => responseKey(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
-    woher.set(k, (woher.get(k) || []).concat(rel));
+  for (const k of [own, ...bodies.map(r => responseKey(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
+    whence.set(k, (whence.get(k) || []).concat(rel));
 }
 
-const consumer = dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']);
+const consumer = files(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']);
 if (consumer.length < 40) {
   console.error(
     `❌ Nur ${consumer.length} Verbraucherdateien gefunden — ohne sie ` +
@@ -157,14 +157,14 @@ if (!Array.isArray(appFields) || appFields.length < 100) {
 const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
 
 const fehler = [];
-for (const [k, filesList] of [...woher].sort()) {
+for (const [k, filesList] of [...whence].sort()) {
   if (FRAME.has(k) || ALLOWED.has(k)) continue;
   if (!new RegExp(`\\b${k}\\b`).test(customer)) {
     fehler.push(`${k}  (${[...new Set(filesList)].slice(0, 2).join(', ')})`);
   }
 }
 // A permission nobody needs any more is one nobody checks any more.
-const tot = [...ALLOWED.keys()].filter(k => !woher.has(k));
+const tot = [...ALLOWED.keys()].filter(k => !whence.has(k));
 
 if (fehler.length || tot.length) {
   console.error('❌ Antwortfelder:');
@@ -179,6 +179,6 @@ if (fehler.length || tot.length) {
   process.exit(1);
 }
 console.log(
-  `✅ Antwortfelder: ${woher.size} Schlüssel aus ${quellen.length} Quellen, ` +
+  `✅ Antwortfelder: ${whence.size} Schlüssel aus ${sources.length} Quellen, ` +
     `${consumer.length} Verbraucherdateien, ${ALLOWED.size} begründete Ausnahmen.`,
 );

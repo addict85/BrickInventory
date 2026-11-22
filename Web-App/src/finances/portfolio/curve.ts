@@ -30,13 +30,13 @@ export async function reconstructCurve(
 
   // Postgres calculates, with THE SAME rule as the valuation, not a similar one.
   {
-    const mengen = setNumbers.map(sn => setQty[sn] || 1);
+    const quantities = setNumbers.map(sn => setQty[sn] || 1);
     const mainQuery = (bExpr: string) =>
       kx.portfolioKurve.dailyValuesFromHistory(
         currency,
         condition,
         setNumbers,
-        mengen,
+        quantities,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
         bExpr,
       );
@@ -54,9 +54,9 @@ export async function reconstructCurve(
     }
     // Last resort price_cache; one row per set, the detour via SQL is not worth it.
     if (!rows.length) {
-      const roh = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
+      const raw = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
-      for (const r of roh) {
+      for (const r of raw) {
         const k = r.day;
         buckets[k] ??= { day: r.day, month: r.month, sets: {} };
         const b = buckets[k];
@@ -96,7 +96,7 @@ export async function reconstructCurve(
         currency,
         condition,
         setNumbers,
-        mengen,
+        quantities,
         firstTag,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
       );

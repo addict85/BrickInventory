@@ -2,7 +2,7 @@
 import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/area';
+import { imSystem, withValue, type Context } from '../infra/area';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
 import type { JobsServices } from '../jobQueue';
@@ -16,10 +16,10 @@ import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
 import type { SetsServices } from '../sets';
 import type { WantedServices } from '../wanted';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 
 export interface ManagementDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   db: Db;
   settings: SettingsServices;
   jobQueue: JobsServices;
@@ -37,7 +37,7 @@ export interface ManagementDependencies {
   mail: MailServices;
 }
 
-export const zugang = (db: Db) => ({
+export const access = (db: Db) => ({
   // Diagnostics and counts span all accounts; the routes themselves run without a system frame.
   management: {
     holdingMinifigImagesOpen: imSystem(db, 'management', management.holdingMinifigImagesOpen),
@@ -66,8 +66,8 @@ export const zugang = (db: Db) => ({
     thumbnailImageMisses: imSystem(db, 'management', management.thumbnailImageMisses),
     mappedParts: imSystem(db, 'management', management.mappedParts),
     // The price probe only sees the admin's own inventory: under row security.
-    sampleAcquisitions: mit(db)(management.sampleAcquisitions),
-    sampleSet: mit(db)(management.sampleSet),
+    sampleAcquisitions: withValue(db)(management.sampleAcquisitions),
+    sampleSet: withValue(db)(management.sampleSet),
   },
 });
-export type ManagementContext = Kontext<ManagementDependencies, ReturnType<typeof zugang>>;
+export type ManagementContext = Context<ManagementDependencies, ReturnType<typeof access>>;

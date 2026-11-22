@@ -1,16 +1,16 @@
-import { lagerorte } from '../../../db/inventoryView';
+import { storages } from '../../../db/inventoryView';
 import {
   quantitySumSql,
-  erfassungsTagSql,
+  acquisitionDaySql,
   mengeAus,
   mengeJoin,
-  inKontowaehrung,
-  kontowaehrungJoin,
+  inAccountCurrency,
+  accountCurrencyJoin,
 } from '../../../db/stockQuantity';
 import { fromTable } from '../../infra/validate';
-import type { DbInterface, Zeile } from '../../../db/database';
+import type { DbInterface, Row } from '../../../db/database';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
-import { setStammJoin, SET } from '../../../db/catalogView';
+import { setMasterJoin, SET } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { lockUntilToEnd } from '../../../db/txLock';
 
@@ -56,9 +56,9 @@ export function setRowOfAccount(db: DbInterface, userId: number, setNumber: stri
 }
 
 /** Per set number, then like every other change of this inventory (db/txLock.ts); until the end of the transaction. */
-export async function addLockSet(tx: DbInterface, setNumber: string, besitzer: number) {
+export async function addLockSet(tx: DbInterface, setNumber: string, owner: number) {
   await lockUntilToEnd(tx, LOCKS.SET_ADD, setNumber);
-  await lockUntilToEnd(tx, LOCKS.INVENTORY, `${besitzer}|${setNumber}`);
+  await lockUntilToEnd(tx, LOCKS.INVENTORY, `${owner}|${setNumber}`);
 }
 
 export function entriesWithoutPriceOfSets(db: DbInterface, userId: number, setNumber: string) {
@@ -112,7 +112,7 @@ const SETS_CSV_SQL = `
          a.purchase_price AS purchase_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${acquisitionDaySql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM sets s
     LEFT JOIN set_acquisitions a
            ON a.user_id = s.user_id AND a.set_number = s.set_number
@@ -202,8 +202,8 @@ function setsSource(uids: number[]): string {
           -- kommen. LEFT JOIN, weil ein Set ohne Katalogzeile sonst aus der
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
-          ${setStammJoin('s.set_number')}
-          LEFT JOIN ${lagerorte()} lo ON lo.id = s.storage_id
+          ${setMasterJoin('s.set_number')}
+          LEFT JOIN ${storages()} lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
@@ -217,8 +217,8 @@ function setsSource(uids: number[]): string {
                c.minifigs, c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
-          ${setStammJoin('s.set_number')}
-          LEFT JOIN ${lagerorte()} lo ON lo.id = s.storage_id
+          ${setMasterJoin('s.set_number')}
+          LEFT JOIN ${storages()} lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
 }
 
@@ -277,28 +277,28 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
   // The set query first: the instructions need the page's set numbers.
   const [sets, countRow, themeRows] = await Promise.all([
     // One grouped scan via LEFT JOIN instead of three correlated subqueries per row.
-    db.all<Zeile<SetListenRow>>(
+    db.all<Row<SetListenRow>>(
       `SELECT ${SET_COLS}${SET_OWNER_COL},
       a.max_purchase_price, a.avg_purchase_price, a.kaufpreis_geschaetzt, a.letzter_kauf,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
       FROM ${setsFrom}
       LEFT JOIN (
         SELECT set_number,
-               MAX(purchase_price) FILTER (WHERE ${inKontowaehrung('set_acquisitions')}) AS max_purchase_price,
+               MAX(purchase_price) FILTER (WHERE ${inAccountCurrency('set_acquisitions')}) AS max_purchase_price,
                -- Mengengewichteter Kaufpreis: 2x100 und 1x160 ergibt 120, nicht
                -- 130 — und nicht 160, was MAX() liefert. Die Kachel zeigt ihn,
                -- solange noch kein Marktpreis geladen ist.
-               SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
-                 / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0)
+               SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inAccountCurrency('set_acquisitions')})::numeric
+                 / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inAccountCurrency('set_acquisitions')}), 0)
                                                        AS avg_purchase_price,
                -- Nur geschätzte Kaufpreise: Die Kachel darf den Betrag nicht „bezahlt“ nennen.
-               bool_and(price_estimated) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})
+               bool_and(price_estimated) FILTER (WHERE purchase_price IS NOT NULL AND ${inAccountCurrency('set_acquisitions')})
                                                        AS kaufpreis_geschaetzt,
                -- Die Kachel zeigt den letzten Kauf, nicht die Aufnahme des Sets.
                MAX(set_acquisitions.created_at)        AS letzter_kauf,
                COUNT(*)                                AS acq_count,
                COUNT(*) FILTER (WHERE condition = 'U') AS used_count
-        FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
+        FROM set_acquisitions ${accountCurrencyJoin('set_acquisitions')}
         WHERE set_acquisitions.user_id = ANY($1)
         GROUP BY set_number
       ) a ON a.set_number = s.set_number
@@ -325,7 +325,7 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
 }
 
 export function sharedInstructions(db: DbInterface, setNumbers: string[], uids: number[]) {
-  return db.all<Zeile<{ set_number: string }>>(
+  return db.all<Row<{ set_number: string }>>(
     `SELECT si.* FROM shared_instructions si
                 WHERE si.set_number = ANY($1)
                   AND EXISTS (SELECT 1 FROM sets s
@@ -335,7 +335,7 @@ export function sharedInstructions(db: DbInterface, setNumbers: string[], uids: 
 }
 
 export function ownInstructions(db: DbInterface, uids: number[], setNumbers: string[]) {
-  return db.all<Zeile<{ set_number: string }>>(
+  return db.all<Row<{ set_number: string }>>(
     'SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = ANY($2)',
     [uids, setNumbers],
   );
@@ -358,9 +358,9 @@ export function setEntryMetrics(db: DbInterface, uids: number[], setNumber: stri
 }
 
 /** The own row wins. */
-export function setDetailRow(db: DbInterface, uids: number[], setNumber: string, eigenes: number | undefined) {
+export function setDetailRow(db: DbInterface, uids: number[], setNumber: string, own: number | undefined) {
   return db.get<
-    Zeile<{ set_number: string; name: string | null; image_local: string | null; owner_ids: number[] | null }>
+    Row<{ set_number: string; name: string | null; image_local: string | null; owner_ids: number[] | null }>
   >(
     `SELECT s.id, s.user_id, s.set_number, s.added_at, s.updated_at, s.storage_id,
               -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
@@ -384,26 +384,26 @@ export function setDetailRow(db: DbInterface, uids: number[], setNumber: string,
               -- liest kein Klient.
               (SELECT NULLIF(string_agg(DISTINCT lo.name, ', '), '')
                  FROM sets d
-                 JOIN ${lagerorte()} lo ON lo.id = d.storage_id
+                 JOIN ${storages()} lo ON lo.id = d.storage_id
                 WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage,
               -- Besitzer wie in setsLesen(); besitzerAnhaengen() macht daraus Plaketten.
               (SELECT array_agg(DISTINCT e.user_id ORDER BY e.user_id)
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
          LEFT JOIN set_catalog c ON c.set_number = s.set_number
-         ${setStammJoin('s.set_number')}
+         ${setMasterJoin('s.set_number')}
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`,
-    [uids, setNumber, eigenes],
+    [uids, setNumber, own],
   );
 }
 
 export function ownInstructionsOfSets(db: DbInterface, uids: number[], setNumber: string) {
-  return db.all<Zeile<{ set_number: string }>>(
-    'SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = $2',
-    [uids, setNumber],
-  );
+  return db.all<Row<{ set_number: string }>>('SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = $2', [
+    uids,
+    setNumber,
+  ]);
 }
 
 export function ownerOfSets(tx: DbInterface, uids: number[], setNumber: string) {

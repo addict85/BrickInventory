@@ -1,9 +1,9 @@
 import { guardFor } from './middleware';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { notFound } from '../../src/infra/errorTexts';
 
-export function buildCatalogRouter(d: Pick<Dienste, 'account' | 'catalog'>) {
+export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

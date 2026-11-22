@@ -9,7 +9,7 @@ import { kontoSchranke, guardFor } from './middleware';
 import { confirmWithFactor } from '../../src/account/http/login';
 import { pageFrom } from '../../src/infra/page';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 // Amount once as a number; `hat_pdf` instead of the path, which is nobody's business.
 function forOuter(z: VoucherRow) {
@@ -27,7 +27,7 @@ function forOuter(z: VoucherRow) {
 }
 
 /** `wartenSek` goes along, after that the frontend paces itself. */
-function gesperrt(grund: string, wartenSek: number): never {
+function locked(grund: string, wartenSek: number): never {
   const min = Math.ceil(wartenSek / 60);
   const [code, vars]: [ErrorCode, Record<string, number>] =
     grund === 'konto'
@@ -38,7 +38,7 @@ function gesperrt(grund: string, wartenSek: number): never {
   throw new Fachfehler('zu_viele', code, vars, { grund, wartenSek });
 }
 
-export function buildVouchersRouter(d: Pick<Dienste, 'account' | 'vouchers'>) {
+export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
@@ -147,7 +147,7 @@ export function buildVouchersRouter(d: Pick<Dienste, 'account' | 'vouchers'>) {
   router.endpunkt('POST /api/v1/vouchers/:id/guthaben', requireToken, async req => {
     const id = req.pfad.id;
     const r = await d.vouchers.checkBalance(req.apiUser.user_id, id);
-    if (r.art === 'gesperrt') gesperrt(r.grund, r.wartenSek);
+    if (r.art === 'gesperrt') locked(r.grund, r.wartenSek);
     return {
       voucher: forOuter(r.zeile),
       angezeigt: r.angezeigt,

@@ -1,6 +1,6 @@
 // CSV with correct quoting, so that an export can be read back unchanged with the matching import.
 import { parse } from 'csv-parse/sync';
-import { errorText, type Sprache } from './errorTexts';
+import { errorText, type Language } from './errorTexts';
 
 /** Tab and carriage return belong to it: Excel reads them as separators
  * and treats the following field as a formula again. Also after whitespace and in
@@ -92,8 +92,8 @@ export function csvReadIn(csvText: string): {
   const records = parse(text, {
     // Filter the header row: `columns: true` turns `__proto__` into a
     // key that writes into the prototype chain.
-    columns: (kopf: string[]) =>
-      kopf.map(name => {
+    columns: (header: string[]) =>
+      header.map(name => {
         const rein = String(name || '').trim();
         return DANGEROUS_COLUMNS.has(rein) ? false : rein;
       }),
@@ -107,17 +107,17 @@ export function csvReadIn(csvText: string): {
   }) as { record: CsvRow; info: { lines: number } }[];
 
   // Rows without content count as skipped — that is what `relax_column_count` makes of a crooked row.
-  const brauchbar: CsvRow[] = [];
+  const usable: CsvRow[] = [];
   const zeilen: number[] = [];
   records.forEach(({ record: r, info }) => {
     const werte = Object.values(r).map(v => String(v ?? '').trim());
     if (werte.some(v => v !== '')) {
-      brauchbar.push(r);
+      usable.push(r);
       zeilen.push(info.lines);
     } else uebersprungen.push(info.lines);
   });
 
-  return { records: brauchbar, delimiter, uebersprungen, zeilen };
+  return { records: usable, delimiter, uebersprungen, zeilen };
 }
 
 /** At most ten line numbers, otherwise the message gets longer than helpful. */
@@ -125,9 +125,9 @@ export function rowsList(zeilen: number[]): string {
   return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
 }
 
-export function skippedHint(zeilen: number[], sprache: Sprache = 'de'): string | null {
+export function skippedHint(zeilen: number[], language: Language = 'de'): string | null {
   if (!zeilen.length) return null;
-  return errorText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: rowsList(zeilen) });
+  return errorText('csv_uebersprungen', language, { anzahl: zeilen.length, zeilen: rowsList(zeilen) });
 }
 
 // The shared columns read once, so that every fix hits all imports.
@@ -171,7 +171,7 @@ export interface ImportRowsResult {
   error?: string | null;
   isWarning?: boolean;
   success?: boolean;
-  [feld: string]: unknown;
+  [field: string]: unknown;
 }
 export function csvImportReport(d: {
   added: number;

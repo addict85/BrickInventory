@@ -1,10 +1,10 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
-import type { Spalten, Tabellen } from '../../../db/rows';
+import { marketPriceSql } from '../../../db/geldSql';
+import type { Columns, Tables } from '../../../db/rows';
 
 /** An alert as overview and detail read it; `besitzt` from BESITZT. */
-export type AlarmRow = Spalten<
+export type AlarmRow = Columns<
   'price_alerts',
   | 'set_number'
   | 'condition'
@@ -28,7 +28,7 @@ export async function transferAlarm(db: DbInterface, zuId: number, ofId: number,
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [ofId, sn, c]);
 }
 
-const besitzt = (l: FinancesReadContract) =>
+const owns = (l: FinancesReadContract) =>
   `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
 
 export function writeAlarm(
@@ -38,7 +38,7 @@ export function writeAlarm(
   condition: string,
   direction: 'unter' | 'ueber',
   threshold: number,
-  waehrung: string,
+  currency: string,
 ) {
   return db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
@@ -46,7 +46,7 @@ export function writeAlarm(
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET direction = $4, threshold = $5, currency_code = $6,
             triggered = FALSE`,
-    [userId, setNumber, condition, direction, threshold, waehrung],
+    [userId, setNumber, condition, direction, threshold, currency],
   );
 }
 
@@ -59,19 +59,19 @@ export function alertsOfSets(
   l: FinancesReadContract,
   userId: number,
   setNumber: string,
-  blickfeld: number[],
+  scope: number[],
 ) {
   return db.all<AlarmRow>(
     `SELECT set_number, condition, direction, threshold, currency_code,
-            triggered, last_triggered_at, last_price, ${besitzt(l)}
+            triggered, last_triggered_at, last_price, ${owns(l)}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
-    [userId, setNumber, blickfeld],
+    [userId, setNumber, scope],
   );
 }
 
-export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: number, blickfeld: number[]) {
+export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: number, scope: number[]) {
   return db.all<
-    AlarmRow & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
+    AlarmRow & Columns<'rb_sets', 'name' | 'set_img_url'> & Columns<'set_catalog', 'image_local' | 'image_url'>
   >(
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.direction, a.threshold, a.currency_code,
@@ -86,7 +86,7 @@ export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: 
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
-    [userId, blickfeld],
+    [userId, scope],
   );
 }
 
@@ -94,33 +94,27 @@ export function databaseNow(db: DbInterface) {
   return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
 }
 
-export function alertsOfAccount(
-  db: DbInterface,
-  l: FinancesReadContract,
-  userId: number,
-  marke: Date,
-  blickfeld: number[],
-) {
+export function alertsOfAccount(db: DbInterface, l: FinancesReadContract, userId: number, mark: Date, scope: number[]) {
   return db.all<AlarmRow>(
     `SELECT set_number, condition, direction, threshold, currency_code,
-            triggered, last_triggered_at, last_price, ${besitzt(l)}
+            triggered, last_triggered_at, last_price, ${owns(l)}
        FROM price_alerts a
       WHERE user_id = $1 AND triggered = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
         -- geschrieben wurden, tragen noch Mikrosekunden.
         AND last_triggered_at IS NOT NULL AND date_trunc('milliseconds', last_triggered_at) > $2
       ORDER BY last_triggered_at`,
-    [userId, marke, blickfeld],
+    [userId, mark, scope],
   );
 }
 
 export function allActiveAlerts(db: DbInterface, setNumber: string) {
   return db.all<
-    Spalten<
+    Columns<
       'price_alerts',
       'user_id' | 'set_number' | 'condition' | 'direction' | 'threshold' | 'currency_code' | 'triggered'
     > &
-      Spalten<'users', 'email' | 'username'> & { sprache: NonNullable<Tabellen['user_settings']['value']> }
+      Columns<'users', 'email' | 'username'> & { sprache: NonNullable<Tables['user_settings']['value']> }
   >(
     `SELECT a.user_id, a.set_number, a.condition, a.direction, a.threshold,
             a.currency_code, a.triggered, u.email, u.username,
@@ -135,7 +129,7 @@ export function allActiveAlerts(db: DbInterface, setNumber: string) {
 
 export function cachePriceForAlarm(db: DbInterface, set_number: string, condition: string, currency_code: string) {
   return db.get<{ marktpreis: number | null }>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
+    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`,
     [set_number, condition, currency_code],
   );
@@ -154,12 +148,12 @@ export function resolveAlarmFrom(
   user_id: number,
   set_number: string,
   condition: string,
-  preis: number,
+  price: number,
 ) {
   return db.run(
     `UPDATE price_alerts SET triggered = TRUE, last_triggered_at = NOW(), last_price = $4
         WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
-    [user_id, set_number, condition, preis],
+    [user_id, set_number, condition, price],
   );
 }
 

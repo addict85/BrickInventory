@@ -15,47 +15,47 @@ export class BcryptOverload extends Error {
   }
 }
 
-export interface Schranke {
+export interface Gate {
   /** vorrang: to the front of the queue and never rejected because of its length. */
   mit<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
   stand(): { laufend: number; wartend: number };
 }
 
-export function newLimit(gleichzeitig: number, waitingAtMost: number, waitTimeMs: number): Schranke {
+export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: number): Gate {
   let laufend = 0;
   const queue: (() => void)[] = [];
-  const platz = (priority: boolean): Promise<void> => {
-    if (laufend < gleichzeitig) {
+  const slot = (priority: boolean): Promise<void> => {
+    if (laufend < concurrent) {
       laufend++;
       return Promise.resolve();
     }
     if (!priority && queue.length >= waitingAtMost) return Promise.reject(new BcryptOverload());
-    return new Promise((weiter, abbrechen) => {
+    return new Promise((next, cancel) => {
       const los = () => {
         clearTimeout(frist);
-        weiter();
+        next();
       };
       const frist = setTimeout(() => {
         queue.splice(queue.indexOf(los), 1);
-        abbrechen(new BcryptOverload());
+        cancel(new BcryptOverload());
       }, waitTimeMs);
       if (priority) queue.unshift(los);
       else queue.push(los);
     });
   };
   // The free slot goes directly to the next waiting one, `laufend` then stays the same.
-  const frei = () => {
-    const naechster = queue.shift();
-    if (naechster) naechster();
+  const free = () => {
+    const next = queue.shift();
+    if (next) next();
     else laufend--;
   };
   return {
     async mit(work, priority = false) {
-      await platz(priority);
+      await slot(priority);
       try {
         return await work();
       } finally {
-        frei();
+        free();
       }
     },
     stand: () => ({ laufend, wartend: queue.length }),
@@ -81,11 +81,11 @@ export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
 /** Every worker takes a good 12 MB; the host's cores say nothing about the
  * container's memory limit. BCRYPT_ARBEITER raises the default of 4. */
 export function bcryptArbeiter(
-  gesetzt = konfig().bcryptArbeiter,
+  assigned = konfig().bcryptArbeiter,
   kerne = os.availableParallelism(),
-  kontingent = quotaCores(),
+  quota = quotaCores(),
 ): number {
-  return gesetzt ?? Math.max(2, Math.min(kerne, kontingent ?? kerne, 4));
+  return assigned ?? Math.max(2, Math.min(kerne, quota ?? kerne, 4));
 }
 
 const KERNE = bcryptArbeiter();

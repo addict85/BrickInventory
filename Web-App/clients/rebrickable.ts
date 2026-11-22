@@ -1,5 +1,5 @@
 // An API client, not a router: that is why it does not live under routes/.
-import { KEINE_FARBE } from '../src/infra/validate';
+import { NO_COLOR } from '../src/infra/validate';
 
 import { pipeline } from 'node:stream/promises';
 import { holeHttps, openHttps, AbrufFehler, type FetchResponse, type FetchStream } from '../src/infra/fetch';
@@ -67,22 +67,22 @@ export function parseThrottleWait(body: string) {
  * failure (no key, quota, network, status) is null: the callers then
  * search further on the next path.
  */
-async function rebrickableJson<T extends z.ZodType>(kl: Rb, pfad: string, schema: T): Promise<z.output<T> | null> {
+async function rebrickableJson<T extends z.ZodType>(kl: Rb, path: string, schema: T): Promise<z.output<T> | null> {
   const key = await getRbKey(kl);
   if (!key) return null;
   if (!(await dailyQuotaFree(kl))) {
     console.log(
-      `[rebrickable] Tageslimit erreicht — ${pfad} übersprungen`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+      `[rebrickable] Tageslimit erreicht — ${path} übersprungen`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
     );
     return null;
   }
   await kl.zugang.drossel.foreground.waitForSlot();
   // Exception: one source among several; without an answer the own catalog applies.
   try {
-    const r = await httpsGetRobust(kl, `${BASE}${pfad}`, { Authorization: `key ${key}` }, 8000);
+    const r = await httpsGetRobust(kl, `${BASE}${path}`, { Authorization: `key ${key}` }, 8000);
     return r.status === 200 ? checkResponse('Rebrickable', schema, JSON.parse(r.body)) : null;
   } catch (e) {
-    return reportAndDeliver(`rebrickable:${pfad}`, null)(e);
+    return reportAndDeliver(`rebrickable:${path}`, null)(e);
   }
 }
 
@@ -201,7 +201,7 @@ async function holeSet(kl: Rb, nummer: string) {
  * The part list of a set through the API, page by page. `verweigert`: Rebrickable
  * answered 403 (set unknown or no access) — the caller should notice that.
  */
-async function holeSetTeile(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; verweigert: boolean }> {
+async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; verweigert: boolean }> {
   const key = await getRbKey(kl);
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   const allParts: RbSetTeil[] = [];
@@ -275,8 +275,8 @@ async function scrapeInstructions(kl: Rb, setNumber: string) {
   ]) {
     for (const m of body.matchAll(re)) {
       // As a constant, because the callback does not know `m` as non-null.
-      const treffer = m[1];
-      if (treffer && !found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
+      const hits = m[1];
+      if (hits && !found.find(f => f.url === hits)) found.push({ url: hits, description: `Anleitung ${n}` });
     }
   }
   return found;
@@ -289,14 +289,14 @@ async function scrapeInstructions(kl: Rb, setNumber: string) {
 export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
 
 /** `anfang`: what the file must start with (instructions: `%PDF-`), otherwise it does not land in the shared cache. */
-async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES, anfang?: Buffer) {
+async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES, start?: Buffer) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   // What lands here, the server delivers to every account: hence the
   // host list on every hop, not only on the first address.
-  let antwort: FetchStream;
+  let reply: FetchStream;
   try {
-    antwort = await openHttps(url, {
+    reply = await openHttps(url, {
       hosts: ALLOWED_DOWNLOAD_HOSTS,
       maxBytes,
       zeitlimitMs: 10 * 60_000,
@@ -310,12 +310,12 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
     console.warn(`[download] ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return false;
   }
-  if (antwort.status !== 200) {
-    antwort.verwerfen();
+  if (reply.status !== 200) {
+    reply.verwerfen();
     return false;
   }
   try {
-    await pipeline(antwort.strom(), fs.createWriteStream(destPath));
+    await pipeline(reply.strom(), fs.createWriteStream(destPath));
   } catch (e) {
     console.warn(`[download] Abgebrochen: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     await fs.promises.rm(destPath, { force: true });
@@ -325,7 +325,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
     await fs.promises.rm(destPath, { force: true });
     return false;
   }
-  if (anfang && !(await beginsWith(destPath, anfang))) {
+  if (start && !(await beginsWith(destPath, start))) {
     console.warn(
       `[download] Anfang der Datei passt nicht, verworfen: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
     );
@@ -335,12 +335,12 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
   return true;
 }
 
-async function beginsWith(datei: string, anfang: Buffer): Promise<boolean> {
-  const f = await fs.promises.open(datei, 'r');
+async function beginsWith(file: string, start: Buffer): Promise<boolean> {
+  const f = await fs.promises.open(file, 'r');
   try {
-    const kopf = Buffer.alloc(anfang.length);
-    const { bytesRead } = await f.read(kopf, 0, anfang.length, 0);
-    return bytesRead === anfang.length && kopf.equals(anfang);
+    const header = Buffer.alloc(start.length);
+    const { bytesRead } = await f.read(header, 0, start.length, 0);
+    return bytesRead === start.length && header.equals(start);
   } finally {
     await f.close();
   }
@@ -403,7 +403,7 @@ async function getBrickColors(kl: Rb) {
 }
 
 /** The parts of a minifig; null without key or answer (do not remember), an error is thrown. */
-async function holeFigurTeile(
+async function fetchMinifigParts(
   kl: Rb,
   figNumber: string,
 ): Promise<{ part_num: string; color_id: number; quantity: number; bl_part_num: string | null }[] | null> {
@@ -454,7 +454,7 @@ async function lookupPart(kl: Rb, partNumber: string, colorId?: number | null) {
   let image_url = part.part_img_url || null;
 
   // The image in the chosen color only comes through the parts/colors endpoint.
-  if (colorId !== null && colorId !== undefined && colorId !== KEINE_FARBE) {
+  if (colorId !== null && colorId !== undefined && colorId !== NO_COLOR) {
     try {
       await kl.zugang.drossel.hintergrund.waitForSlot();
       const colorResp = await httpsGetRobust(
@@ -492,13 +492,13 @@ function firstBlNumber(ext: Record<string, unknown> | null | undefined): string 
 
 function carriesBlNumber(teil: unknown, blId: string): boolean {
   const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;
-  const roh = ext?.BrickLink;
-  const liste: unknown[] = Array.isArray(roh)
-    ? roh
-    : Array.isArray((roh as { ext_ids?: unknown[] } | undefined)?.ext_ids)
-      ? (roh as { ext_ids: unknown[] }).ext_ids
+  const raw = ext?.BrickLink;
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { ext_ids?: unknown[] } | undefined)?.ext_ids)
+      ? (raw as { ext_ids: unknown[] }).ext_ids
       : [];
-  return liste.some(x => String(x).toLowerCase() === blId.toLowerCase());
+  return list.some(x => String(x).toLowerCase() === blId.toLowerCase());
 }
 
 /**
@@ -506,26 +506,26 @@ function carriesBlNumber(teil: unknown, blId: string): boolean {
  *
  * @returns the Rebrickable number, or null if none could be PROVEN.
  */
-async function blTeilZuRb(kl: Rb, blId: string): Promise<string | null> {
+async function blPartToRb(kl: Rb, blId: string): Promise<string | null> {
   // ── Path 1: check the number against itself ─────────────────────────────
   //
   // For most parts both services use the same number. Then
   // /lego/parts/{nr}/ returns the hit, and external_ids confirms it —
   // a GUESS ("the numbers are probably equal") becomes a mapping.
-  const direkt = await rbGet(kl, `/lego/parts/${pathSegment(blId)}/`, RbTeil);
-  if (direkt && carriesBlNumber(direkt, blId)) return String(direkt.part_num);
+  const direct = await rbGet(kl, `/lego/parts/${pathSegment(blId)}/`, RbTeil);
+  if (direct && carriesBlNumber(direct, blId)) return String(direct.part_num);
 
   // ── Path 2: the filter, with a cross-check ──────────────────────────────
   if (kl.filterWirkungslos) return null;
-  const gefiltert = await rbGet(kl, '/lego/parts/', rbPage(RbTeil), { bricklink_id: blId, page_size: 20 });
-  if (!gefiltert) return null;
+  const filtered = await rbGet(kl, '/lego/parts/', rbPage(RbTeil), { bricklink_id: blId, page_size: 20 });
+  if (!filtered) return null;
   // More than a thousand hits for ONE number cannot be what the filter
   // meant — then it was ignored.
-  if (Number(gefiltert.count) > 1000) {
+  if (Number(filtered.count) > 1000) {
     kl.filterWirkungslos = true;
     return null;
   }
-  for (const t of gefiltert.results ?? []) {
+  for (const t of filtered.results ?? []) {
     if (carriesBlNumber(t, blId)) return String(t.part_num);
   }
   return null;
@@ -553,26 +553,26 @@ interface Rb {
 /** One client per access: what it remembers applies only to it, not to the process. */
 export function createRebrickable(zugang: ClientsAccess) {
   const r: Rb = { zugang, themen: new Map(), farben: null, filterWirkungslos: false };
-  const mit =
+  const withValue =
     <A extends unknown[], E>(f: (r: Rb, ...a: A) => E) =>
     (...a: A) =>
       f(r, ...a);
   return {
-    rebrickableJson: <T extends z.ZodType>(pfad: string, schema: T) => rebrickableJson(r, pfad, schema),
-    checkRebrickableAccess: mit(checkRebrickableAccess),
-    lookupPart: mit(lookupPart),
-    holeSet: mit(holeSet),
-    holeSetTeile: mit(holeSetTeile),
-    holeFigurTeile: mit(holeFigurTeile),
-    getThemeName: mit(getThemeName),
-    scrapeInstructions: mit(scrapeInstructions),
-    getSetMinifigs: mit(getSetMinifigs),
-    getMinifigInfo: mit(getMinifigInfo),
-    getBrickColors: mit(getBrickColors),
-    getRbKey: mit(getRbKey),
-    httpsGetRobust: mit(httpsGetRobust),
-    blTeilZuRb: mit(blTeilZuRb),
-    blFilterIneffective: mit(blFilterIneffective),
+    rebrickableJson: <T extends z.ZodType>(path: string, schema: T) => rebrickableJson(r, path, schema),
+    checkRebrickableAccess: withValue(checkRebrickableAccess),
+    lookupPart: withValue(lookupPart),
+    holeSet: withValue(holeSet),
+    holeSetTeile: withValue(fetchSetParts),
+    holeFigurTeile: withValue(fetchMinifigParts),
+    getThemeName: withValue(getThemeName),
+    scrapeInstructions: withValue(scrapeInstructions),
+    getSetMinifigs: withValue(getSetMinifigs),
+    getMinifigInfo: withValue(getMinifigInfo),
+    getBrickColors: withValue(getBrickColors),
+    getRbKey: withValue(getRbKey),
+    httpsGetRobust: withValue(httpsGetRobust),
+    blTeilZuRb: withValue(blPartToRb),
+    blFilterIneffective: withValue(blFilterIneffective),
   };
 }
 

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/secondFactor';
 import type { FactorsContext } from './context';
-import { imSystemrahmen } from '../infra/area';
+import { inSystemFrame } from '../infra/area';
 
 const STEP_S = 30;
 /** One step forward and back: phone and server clocks never run exactly alike. */
@@ -19,33 +19,33 @@ export const secondFactorContext = (uid: number) => kontext('zweiter_faktor.gehe
 export function base32(buf: Buffer): string {
   let bits = 0,
     wert = 0,
-    aus = '';
+    from = '';
   for (const b of buf) {
     wert = (wert << 8) | b;
     bits += 8;
     while (bits >= 5) {
-      aus += BASE32[(wert >>> (bits - 5)) & 31];
+      from += BASE32[(wert >>> (bits - 5)) & 31];
       bits -= 5;
     }
   }
-  if (bits > 0) aus += BASE32[(wert << (5 - bits)) & 31];
-  return aus;
+  if (bits > 0) from += BASE32[(wert << (5 - bits)) & 31];
+  return from;
 }
 
 export function fromBase32(s: string): Buffer {
   const rein = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
   let bits = 0,
     wert = 0;
-  const aus: number[] = [];
+  const from: number[] = [];
   for (const z of rein) {
     wert = (wert << 5) | BASE32.indexOf(z);
     bits += 5;
     if (bits >= 8) {
-      aus.push((wert >>> (bits - 8)) & 255);
+      from.push((wert >>> (bits - 8)) & 255);
       bits -= 8;
     }
   }
-  return Buffer.from(aus);
+  return Buffer.from(from);
 }
 
 export function hotp(key: Buffer, counter: number, digits = DIGITS): string {
@@ -66,11 +66,11 @@ export function matchingStep(secret: string, code: string, nowMs: number): numbe
   if (!/^\d{6}$/.test(code)) return null;
   const key = fromBase32(secret);
   const now = timeStep(nowMs);
-  let treffer: number | null = null;
+  let hits: number | null = null;
   for (let s = now - WINDOW; s <= now + WINDOW; s++) {
-    if (crypto.timingSafeEqual(Buffer.from(hotp(key, s)), Buffer.from(code)) && treffer === null) treffer = s;
+    if (crypto.timingSafeEqual(Buffer.from(hotp(key, s)), Buffer.from(code)) && hits === null) hits = s;
   }
-  return treffer;
+  return hits;
 }
 
 /** Some authenticator apps (FreeOTP for one) show `image` as the entry's logo; they load it
@@ -143,13 +143,13 @@ export async function confirmSetup(k: FactorsContext, uid: number, code: string)
   return k.transaktion(async t => {
     const z = await repo.lockUnconfirmedSecret(t.db, uid);
     if (!z) return null;
-    const schritt = matchingStep(
+    const step = matchingStep(
       decrypt(z.secret, secondFactorContext(uid)) ?? '',
       String(code ?? '').trim(),
       t.uhr.jetzt(),
     );
-    if (schritt === null) return null;
-    await repo.activate(t.db, uid, schritt);
+    if (step === null) return null;
+    await repo.activate(t.db, uid, step);
     return regenerateCodes(t.db, uid);
   });
 }
@@ -162,30 +162,30 @@ export async function checkCode(
   code: string | number | null | undefined,
   withOneTimeCode = true,
 ): Promise<'totp' | 'wiederherstellung' | 'wiederherstellung_alt' | null> {
-  const eingabe = String(code ?? '').trim();
-  if (!eingabe) return null;
-  if (/^\d{6}$/.test(eingabe)) {
+  const input = String(code ?? '').trim();
+  if (!input) return null;
+  if (/^\d{6}$/.test(input)) {
     if (!withOneTimeCode) return null;
     const z = await k.secondFactor.activeSecret(uid);
-    const schritt = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', eingabe, k.uhr.jetzt()) : null;
-    if (schritt === null) return null;
-    return (await k.secondFactor.consumeStep(uid, schritt)) ? 'totp' : null;
+    const step = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', input, k.uhr.jetzt()) : null;
+    if (step === null) return null;
+    return (await k.secondFactor.consumeStep(uid, step)) ? 'totp' : null;
   }
   // Codes from before a key change: their plaintext isn't stored, rehashing isn't possible.
-  const beforeSwitch = searchValueAlt('zweiter-faktor-code', `${uid}:${normalizeCode(eingabe)}`);
+  const beforeSwitch = searchValueAlt('zweiter-faktor-code', `${uid}:${normalizeCode(input)}`);
   if (
-    (await k.secondFactor.consumeCode(uid, hashCode(uid, eingabe))) ||
+    (await k.secondFactor.consumeCode(uid, hashCode(uid, input))) ||
     (beforeSwitch && (await k.secondFactor.consumeCode(uid, beforeSwitch)))
   ) {
     await k.secondFactor.markCodesCurrent(uid);
     return 'wiederherstellung';
   }
-  if (normalizeCode(eingabe).length !== LEGACY_LENGTH) return null;
-  return (await k.secondFactor.consumeCode(uid, legacyHash(eingabe), true)) ? 'wiederherstellung_alt' : null;
+  if (normalizeCode(input).length !== LEGACY_LENGTH) return null;
+  return (await k.secondFactor.consumeCode(uid, legacyHash(input), true)) ? 'wiederherstellung_alt' : null;
 }
 
 export function disable(k: FactorsContext, uid: number): Promise<void> {
-  return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(t => t.secondFactor.remove(uid)));
+  return inSystemFrame(k.db, 'zugangsdaten', () => k.transaktion(t => t.secondFactor.remove(uid)));
 }
 
 export async function renewCodes(k: FactorsContext, uid: number): Promise<string[]> {

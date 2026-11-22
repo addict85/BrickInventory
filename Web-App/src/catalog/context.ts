@@ -1,5 +1,5 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
-import { mit, withContract, type Kontext } from '../infra/area';
+import { withValue, withContract, type Context } from '../infra/area';
 import type { CatalogReadContract } from './readContract';
 import type { Faecher } from '../infra/cache';
 import type { ThrottleServices } from '../throttle';
@@ -10,19 +10,19 @@ import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { ImagesServices } from '../images';
 import * as anleitungen from './repository/instructions';
-import * as bildlage from './repository/imageState';
-import * as blZuordnung from './repository/blMapping';
-import * as csvKatalog from './repository/csvCatalog';
-import * as katalogCache from './repository/catalogCache';
-import * as katalogStamm from './repository/catalogMaster';
-import * as katalogSuche from './repository/catalogSearch';
+import * as imageState from './repository/imageState';
+import * as blMapping from './repository/blMapping';
+import * as csvCatalog from './repository/csvCatalog';
+import * as catalogCache from './repository/catalogCache';
+import * as catalogMaster from './repository/catalogMaster';
+import * as catalogSearch from './repository/catalogSearch';
 import * as rebrickableCache from './repository/rebrickableCache';
-import * as setInhalt from './repository/setContent';
-import * as teileAnreicherung from './repository/partsEnrichment';
-import type { Uhr } from '../infra/clock';
+import * as setContent from './repository/setContent';
+import * as partsEnrichment from './repository/partsEnrichment';
+import type { Clock } from '../infra/clock';
 
 export interface CatalogDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   db: Db;
   faecher: Faecher;
   /** Clients, quota and throttles of this set of services (src/externalSources). */
@@ -38,112 +38,112 @@ export interface CatalogDependencies {
 }
 
 /** Instructions, BrickLink mapping and CSV catalog. */
-const anleitungszugang = (db: Db, l: CatalogReadContract) => ({
+const instructionAccess = (db: Db, l: CatalogReadContract) => ({
   anleitungen: {
-    zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
-    instructionsOfSets: mit(db)(anleitungen.instructionsOfSets),
-    deleteInstructionsOfSets: mit(db)(anleitungen.deleteInstructionsOfSets),
-    hatBrickinstructions: mit(db)(anleitungen.hatBrickinstructions),
-    rememberInstruction: mit(db)(anleitungen.storeInstruction),
-    setInstructionFile: mit(db)(anleitungen.setInstructionFile),
+    zaehleAnleitungen: withValue(db)(anleitungen.countInstructions),
+    instructionsOfSets: withValue(db)(anleitungen.instructionsOfSets),
+    deleteInstructionsOfSets: withValue(db)(anleitungen.deleteInstructionsOfSets),
+    hatBrickinstructions: withValue(db)(anleitungen.hatBrickinstructions),
+    rememberInstruction: withValue(db)(anleitungen.storeInstruction),
+    setInstructionFile: withValue(db)(anleitungen.setInstructionFile),
   },
   blZuordnung: {
-    writeBlNumber: mit(db)(blZuordnung.writeBlNumber),
-    writeBlNumberOwn: mit(db)(blZuordnung.writeBlNumberOwn),
-    noteLookedUp: mit(db)(blZuordnung.noteLookedUp),
-    differingNumber: mit(db)(blZuordnung.differingNumber),
-    effectiveNumber: mit(db)(blZuordnung.effectiveNumber),
-    effectiveNumbers: mit(db)(blZuordnung.effectiveNumbers),
-    writeBlColorNumber: mit(db)(blZuordnung.writeBlColorNumber),
+    writeBlNumber: withValue(db)(blMapping.writeBlNumber),
+    writeBlNumberOwn: withValue(db)(blMapping.writeBlNumberOwn),
+    noteLookedUp: withValue(db)(blMapping.noteLookedUp),
+    differingNumber: withValue(db)(blMapping.differingNumber),
+    effectiveNumber: withValue(db)(blMapping.effectiveNumber),
+    effectiveNumbers: withValue(db)(blMapping.effectiveNumbers),
+    writeBlColorNumber: withValue(db)(blMapping.writeBlColorNumber),
   },
   csvKatalog: {
-    catalogImageStatus: mit(db)(csvKatalog.catalogImageStatus),
-    inventoryPartsWithoutFallback: mit(db)(csvKatalog.inventoryPartsWithoutFallback),
-    inventoryMinifigs: mit(db)(csvKatalog.inventoryMinifigs),
-    setsWithoutPartCatalog: mit(db)(csvKatalog.setsWithoutPartCatalog),
-    manualColorParts: withContract(db, l)(csvKatalog.manualColorParts),
-    replacePartColorsImage: mit(db)(csvKatalog.replacePartColorsImage),
+    catalogImageStatus: withValue(db)(csvCatalog.catalogImageStatus),
+    inventoryPartsWithoutFallback: withValue(db)(csvCatalog.inventoryPartsWithoutFallback),
+    inventoryMinifigs: withValue(db)(csvCatalog.inventoryMinifigs),
+    setsWithoutPartCatalog: withValue(db)(csvCatalog.setsWithoutPartCatalog),
+    manualColorParts: withContract(db, l)(csvCatalog.manualColorParts),
+    replacePartColorsImage: withValue(db)(csvCatalog.replacePartColorsImage),
   },
   katalogCache: {
-    catalogEntryTo: mit(db)(katalogCache.catalogEntryTo),
-    setInCatalog: mit(db)(katalogCache.setInCatalog),
-    rememberBricklinkKind: mit(db)(katalogCache.rememberBricklinkKind),
-    emptySubsetsCache: mit(db)(katalogCache.emptySubsetsCache),
-    emptyCatalogCache: mit(db)(katalogCache.emptyCatalogCache),
-    cacheNumbers: mit(db)(katalogCache.cacheNumbers),
-    blTypesTheSets: mit(db)(katalogCache.blTypesTheSets),
-    rememberBlType: mit(db)(katalogCache.rememberBlType),
+    catalogEntryTo: withValue(db)(catalogCache.catalogEntryTo),
+    setInCatalog: withValue(db)(catalogCache.setInCatalog),
+    rememberBricklinkKind: withValue(db)(catalogCache.rememberBricklinkKind),
+    emptySubsetsCache: withValue(db)(catalogCache.emptySubsetsCache),
+    emptyCatalogCache: withValue(db)(catalogCache.emptyCatalogCache),
+    cacheNumbers: withValue(db)(catalogCache.cacheNumbers),
+    blTypesTheSets: withValue(db)(catalogCache.blTypesTheSets),
+    rememberBlType: withValue(db)(catalogCache.rememberBlType),
   },
 });
 
 /** Master data, search, cache and contents of the sets. */
-const stammzugang = (db: Db, l: CatalogReadContract) => ({
+const masterAccess = (db: Db, l: CatalogReadContract) => ({
   katalogStamm: {
-    inventoryAfterCandidates: mit(db)(katalogStamm.inventoryAfterCandidates),
-    loadedColors: mit(db)(katalogStamm.loadedColors),
-    partFromCatalog: mit(db)(katalogStamm.partFromCatalog),
-    minifigFromCatalog: mit(db)(katalogStamm.minifigFromCatalog),
+    inventoryAfterCandidates: withValue(db)(catalogMaster.inventoryAfterCandidates),
+    loadedColors: withValue(db)(catalogMaster.loadedColors),
+    partFromCatalog: withValue(db)(catalogMaster.partFromCatalog),
+    minifigFromCatalog: withValue(db)(catalogMaster.minifigFromCatalog),
   },
   katalogSuche: {
-    themen: mit(db)(katalogSuche.themen),
-    setsJeThema: mit(db)(katalogSuche.setsJeThema),
-    jahresspanne: mit(db)(katalogSuche.jahresspanne),
-    setsJeYear: mit(db)(katalogSuche.setsJeYear),
-    setsJeYearFiltered: mit(db)(katalogSuche.setsJeYearFiltered),
-    catalogCount: mit(db)(katalogSuche.catalogCount),
-    catalogRows: withContract(db, l)(katalogSuche.catalogRows),
-    catalogRow: withContract(db, l)(katalogSuche.catalogRow),
-    catalogEmpty: mit(db)(katalogSuche.catalogEmpty),
-    minifigsInInventory: mit(db)(katalogSuche.minifigsOfInventory),
+    themen: withValue(db)(catalogSearch.themes),
+    setsJeThema: withValue(db)(catalogSearch.setsJeThema),
+    jahresspanne: withValue(db)(catalogSearch.yearRange),
+    setsJeYear: withValue(db)(catalogSearch.setsJeYear),
+    setsJeYearFiltered: withValue(db)(catalogSearch.setsJeYearFiltered),
+    catalogCount: withValue(db)(catalogSearch.catalogCount),
+    catalogRows: withContract(db, l)(catalogSearch.catalogRows),
+    catalogRow: withContract(db, l)(catalogSearch.catalogRow),
+    catalogEmpty: withValue(db)(catalogSearch.catalogEmpty),
+    minifigsInInventory: withValue(db)(catalogSearch.minifigsOfInventory),
   },
   rebrickableCache: {
-    catalogSetTo: mit(db)(rebrickableCache.catalogSetTo),
-    rememberUnknownSet: mit(db)(rebrickableCache.rememberUnknownSet),
-    rememberSet: mit(db)(rebrickableCache.rememberSet),
-    partListFromCache: mit(db)(rebrickableCache.partListFromCache),
-    rememberPartList: mit(db)(rebrickableCache.rememberPartList),
-    minifigsPartsFromCache: mit(db)(rebrickableCache.minifigsPartsFromCache),
-    rememberMinifigsParts: mit(db)(rebrickableCache.rememberMinifigsParts),
-    inventoryParts: mit(db)(rebrickableCache.inventoryParts),
+    catalogSetTo: withValue(db)(rebrickableCache.catalogSetTo),
+    rememberUnknownSet: withValue(db)(rebrickableCache.rememberUnknownSet),
+    rememberSet: withValue(db)(rebrickableCache.rememberSet),
+    partListFromCache: withValue(db)(rebrickableCache.partListFromCache),
+    rememberPartList: withValue(db)(rebrickableCache.rememberPartList),
+    minifigsPartsFromCache: withValue(db)(rebrickableCache.minifigsPartsFromCache),
+    rememberMinifigsParts: withValue(db)(rebrickableCache.rememberMinifigsParts),
+    inventoryParts: withValue(db)(rebrickableCache.inventoryParts),
   },
   setInhalt: {
-    minifigsOfSetkatalogs: mit(db)(setInhalt.minifigsOfSetkatalogs),
-    partsWithoutBlMapping: withContract(db, l)(setInhalt.partsWithoutBlMapping),
+    minifigsOfSetkatalogs: withValue(db)(setContent.minifigsOfSetCatalog),
+    partsWithoutBlMapping: withContract(db, l)(setContent.partsWithoutBlMapping),
   },
   teileAnreicherung: {
-    partsOfInventory: mit(db)(teileAnreicherung.partsOfInventory),
-    setPartsCatalog: mit(db)(teileAnreicherung.setPartsCatalog),
-    blMappings: mit(db)(teileAnreicherung.blMappings),
-    minifigsInSetkatalog: mit(db)(teileAnreicherung.minifigsInSetkatalog),
-    imagesWithoutFile: mit(db)(teileAnreicherung.imagesWithoutFile),
-    minifigsOfSets: mit(db)(teileAnreicherung.minifigsOfSets),
-    inventoriesTheMinifigs: mit(db)(teileAnreicherung.inventoriesTheMinifigs),
-    localImagesWithAddress: mit(db)(teileAnreicherung.localImagesWithAddress),
-    forgetLocalImage: mit(db)(teileAnreicherung.forgetLocalImage),
-    lockConnection: mit(db)(teileAnreicherung.lockConnection),
+    partsOfInventory: withValue(db)(partsEnrichment.partsOfInventory),
+    setPartsCatalog: withValue(db)(partsEnrichment.setPartsCatalog),
+    blMappings: withValue(db)(partsEnrichment.blMappings),
+    minifigsInSetkatalog: withValue(db)(partsEnrichment.minifigsInSetCatalog),
+    imagesWithoutFile: withValue(db)(partsEnrichment.imagesWithoutFile),
+    minifigsOfSets: withValue(db)(partsEnrichment.minifigsOfSets),
+    inventoriesTheMinifigs: withValue(db)(partsEnrichment.inventoriesTheMinifigs),
+    localImagesWithAddress: withValue(db)(partsEnrichment.localImagesWithAddress),
+    forgetLocalImage: withValue(db)(partsEnrichment.forgetLocalImage),
+    lockConnection: withValue(db)(partsEnrichment.lockConnection),
   },
 });
 
-const bildzugang = (db: Db, l: CatalogReadContract) => ({
+const imageAccess = (db: Db, l: CatalogReadContract) => ({
   bildlage: {
-    setsWithMissingCatalogImages: mit(db)(bildlage.setsWithMissingCatalogImages),
-    manualPartsWithoutImage: withContract(db, l)(bildlage.manualPartsWithoutImage),
-    minifigsWithoutImage: withContract(db, l)(bildlage.minifigsWithoutImage),
-    setImagesWithoutFile: withContract(db, l)(bildlage.setImagesWithoutFile),
-    rememberSetImageLocal: mit(db)(bildlage.rememberSetImageLocal),
-    localCatalogImages: mit(db)(bildlage.localCatalogImages),
-    partImages: mit(db)(bildlage.partImages),
-    minifigImages: mit(db)(bildlage.minifigImages),
-    fillSetGaps: mit(db)(bildlage.fillSetGaps),
-    setsWithoutInstructionFetch: withContract(db, l)(bildlage.setsWithoutInstructionFetch),
-    missingCatalogImages: mit(db)(bildlage.missingCatalogImages),
-    setNames: mit(db)(bildlage.setNames),
+    setsWithMissingCatalogImages: withValue(db)(imageState.setsWithMissingCatalogImages),
+    manualPartsWithoutImage: withContract(db, l)(imageState.manualPartsWithoutImage),
+    minifigsWithoutImage: withContract(db, l)(imageState.minifigsWithoutImage),
+    setImagesWithoutFile: withContract(db, l)(imageState.setImagesWithoutFile),
+    rememberSetImageLocal: withValue(db)(imageState.rememberSetImageLocal),
+    localCatalogImages: withValue(db)(imageState.localCatalogImages),
+    partImages: withValue(db)(imageState.partImages),
+    minifigImages: withValue(db)(imageState.minifigImages),
+    fillSetGaps: withValue(db)(imageState.fillSetGaps),
+    setsWithoutInstructionFetch: withContract(db, l)(imageState.setsWithoutInstructionFetch),
+    missingCatalogImages: withValue(db)(imageState.missingCatalogImages),
+    setNames: withValue(db)(imageState.setNames),
   },
 });
 
-export const zugang = (db: Db, l: CatalogReadContract) => ({
-  ...anleitungszugang(db, l),
-  ...stammzugang(db, l),
-  ...bildzugang(db, l),
+export const access = (db: Db, l: CatalogReadContract) => ({
+  ...instructionAccess(db, l),
+  ...masterAccess(db, l),
+  ...imageAccess(db, l),
 });
-export type CatalogContext = Kontext<CatalogDependencies, ReturnType<typeof zugang>>;
+export type CatalogContext = Context<CatalogDependencies, ReturnType<typeof access>>;

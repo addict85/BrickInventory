@@ -5,7 +5,7 @@ import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { prozessweit } from '../../infra/prozessweit';
+import { processWide } from '../../infra/prozessweit';
 import type { AccountServices } from '../../account';
 import { userIdTheRequest } from '../../account/http/login';
 import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/error';
@@ -39,7 +39,7 @@ const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
  * anyway, and the browser console stays free of error lines. */
 function sendPlaceholder(res: Response) {
   // Once from disk: a few hundred bytes, needed dozens of times while paging.
-  const platzhalter = prozessweit('platzhalterBild', () => {
+  const placeholder = processWide('platzhalterBild', () => {
     try {
       return fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
@@ -48,13 +48,13 @@ function sendPlaceholder(res: Response) {
       return Buffer.alloc(0);
     }
   });
-  if (!platzhalter.length) {
+  if (!placeholder.length) {
     res.setHeader('Cache-Control', 'private, max-age=3600');
     return res.status(404).end();
   }
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'private, max-age=3600');
-  return res.status(200).end(platzhalter);
+  return res.status(200).end(placeholder);
 }
 
 /** First with referer, then without; a 404 is remembered. `ersatz` answers instead of
@@ -85,17 +85,17 @@ async function fromCdn(
       r = await holen(HEADER_SETS[1]);
     }
   } catch (e) {
-    const zeit = e instanceof AbrufFehler && e.grund === 'zeitlimit';
-    if (zeit) imgProxyFailures.timeout++;
+    const time = e instanceof AbrufFehler && e.grund === 'zeitlimit';
+    if (time) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = fehlertext(e);
     console.error(
-      `[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`
+      `[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );
     if (await ersatz()) return null;
-    if (!res.headersSent) res.status(zeit ? 504 : 502).end();
+    if (!res.headersSent) res.status(time ? 504 : 502).end();
     return null;
   }
   if (r.status !== 200) {
@@ -121,16 +121,16 @@ async function fromCdn(
 /** What the proxy has completely becomes the set image: a second fetch from the CDN
  * failed where the first worked. The preview is created by the job bildbedarf. */
 async function storeAsSetImage(d: ImageServices, cacheFile: string, setNummer: string): Promise<void> {
-  const ziel = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
-  const teil = `${ziel}.${process.pid}-${randomUUID()}.teil`;
+  const target = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
+  const teil = `${target}.${process.pid}-${randomUUID()}.teil`;
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
   await fs.promises.copyFile(cacheFile, teil);
-  await fs.promises.rename(teil, ziel);
-  rememberCacheGrowth((await fs.promises.stat(ziel)).size, d.images.imageLimits().cacheMaxBytes);
+  await fs.promises.rename(teil, target);
+  rememberCacheGrowth((await fs.promises.stat(target)).size, d.images.imageLimits().cacheMaxBytes);
 }
 
 /** The decompressed stream goes into the cache on the side — first into .tmp, then atomically. */
-function inDenCache(
+function intoCache(
   d: ImageServices,
   body: Readable,
   res: Response,
@@ -214,8 +214,8 @@ function inDenCache(
 
 /** Decompress, even if identity was requested: not every CDN sticks to it.
  * A wrong length makes the browser wait; it is counted. */
-function entpackt(roh: Readable, enc: string, res: Response, url: string, expected: number): Readable {
-  let body: Readable = roh;
+function unpacked(raw: Readable, enc: string, res: Response, url: string, expected: number): Readable {
+  let body: Readable = raw;
   if (enc === 'gzip' || enc === 'deflate' || enc === 'br') {
     const dec =
       enc === 'br' ? zlib.createBrotliDecompress() : enc === 'gzip' ? zlib.createGunzip() : zlib.createInflate();
@@ -223,7 +223,7 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
       if (!res.headersSent) res.status(502).end();
       else res.destroy();
     });
-    body = roh.pipe(dec);
+    body = raw.pipe(dec);
     // The announced length applies to the compressed body.
     res.removeHeader('Content-Length');
     console.log(`[img-proxy] entpacke ${enc}: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
@@ -246,18 +246,18 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
   return body;
 }
 
-const liesDa = (datei: string) =>
-  fs.promises.access(datei).then(
+const liesDa = (file: string) =>
+  fs.promises.access(file).then(
     () => true,
     () => false,
   );
 
 /** @returns true if image or preview are still missing under images/sets */
-async function setImageMissing(d: ImageServices, setNummer: string, quelle: string): Promise<boolean> {
+async function setImageMissing(d: ImageServices, setNummer: string, source: string): Promise<boolean> {
   if (!(await setImageComplete(setNummer))) return true;
   // If both are already there, often only the entry is missing: afterwards the UI no longer
   // asks here. Without waiting — a write error must not hold up delivery.
-  void d.images.reportSetImageLoaded(setNummer, quelle).then(ok => {
+  void d.images.reportSetImageLoaded(setNummer, source).then(ok => {
     if (!ok) countProxyError('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
   });
   return false;
@@ -277,12 +277,12 @@ function fromSetImages(
   setNummer: string,
   wantThumb: boolean,
 ): Promise<boolean> {
-  const stamm = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
+  const master = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
   return deliverFromCache(d.images, {
     res,
     req,
-    cacheFile: `${stamm}.jpg`,
-    thumbFile: `${stamm}_thumb.jpg`,
+    cacheFile: `${master}.jpg`,
+    thumbFile: `${master}_thumb.jpg`,
     wantThumb,
     createMay: false,
     note: () => {},
@@ -304,9 +304,9 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   // Without mandatory login an open proxy (bandwidth, IP obfuscation).
   const proxyUserId = await userIdTheRequest(d.account, req);
   if (!proxyUserId) return res.status(401).end();
-  const ziel = proxyTarget(String(req.query.url || ''));
-  if (typeof ziel === 'number') return res.status(ziel).end();
-  const url = ziel;
+  const target = proxyTarget(String(req.query.url || ''));
+  if (typeof target === 'number') return res.status(target).end();
+  const url = target;
   // Fetch every image only once; Content-Type lies next to it (.ct).
   const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
   const cacheKey = proxyCacheKey(url);
@@ -323,15 +323,15 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   const setMissing = setNummer ? await setImageMissing(d, setNummer, url) : false;
   // images/sets applies to all accounts and has no cap: store and reserve only for a set
   // in the account's scope, otherwise an account would fill the disk with invented numbers.
-  const ablegen = setMissing && !!setNummer && (await d.images.setNumberInScope(proxyUserId, setNummer));
+  const store = setMissing && !!setNummer && (await d.images.setNumberInScope(proxyUserId, setNummer));
   const note = () => {
-    if (ablegen && setNummer) d.images.rememberUsed(String(url), setNummer);
+    if (store && setNummer) d.images.rememberUsed(String(url), setNummer);
   };
   // If only the preview is left in the cache (maintenance deletes the unused original
   // after 30 days), the proxy fetches the original anew: the CDN rejects the image job's fetch
   // with its own identifier; without this path the set would never get a file.
-  const originalMissing = ablegen && !(await liesDa(cacheFile));
-  if (ablegen && setNummer && !originalMissing) await setImageFromCache(d, url, setNummer, cacheFile);
+  const originalMissing = store && !(await liesDa(cacheFile));
+  if (store && setNummer && !originalMissing) await setImageFromCache(d, url, setNummer, cacheFile);
 
   // If the set image including preview lies in images/sets, it comes from there instead of from
   // cache or CDN: maintenance clears the proxy cache after 30 days, images/sets not.
@@ -356,23 +356,23 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   if (d.images.isKnownMissing(cacheKey)) return sendPlaceholder(res);
 
   // Only fetches from the CDN count: each one fills disk and bandwidth, hits do not.
-  const takt = await d.account.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
-  if (takt.count > d.images.imageLimits().fetchesJeMinute) {
+  const tick = await d.account.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
+  if (tick.count > d.images.imageLimits().fetchesJeMinute) {
     if (await ersatz()) return;
-    res.setHeader('Retry-After', String(takt.waitMin * 60));
+    res.setHeader('Retry-After', String(tick.waitMin * 60));
     res.setHeader('Cache-Control', 'no-store');
     return res.status(429).end();
   }
 
   const r = await fromCdn(d, url, cacheKey, res, ersatz);
   if (!r) return;
-  const setTarget = ablegen ? setNummer : null;
+  const setTarget = store ? setNummer : null;
   return forward(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget });
 }
 
 /** The address from ?url=, or the status with which it is rejected. */
-function proxyTarget(roh: string): string | number {
-  let url = roh;
+function proxyTarget(raw: string): string | number {
+  let url = raw;
   if (!url?.startsWith('https://')) return 400;
   // Rebrickable sometimes delivers pre-encoded addresses — decode once.
   const decoded = onceDecoded(url);
@@ -420,12 +420,12 @@ function forward(
   if (expected > 0) res.setHeader('Content-Length', String(expected));
 
   const enc = String(r.kopf['content-encoding'] || '').toLowerCase();
-  const roh = r.strom();
-  const body = entpackt(roh, enc, res, url, expected);
+  const raw = r.strom();
+  const body = unpacked(raw, enc, res, url, expected);
   // Short: streamed unchecked, a long max-age would nail errors in the browser.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
-  inDenCache(d, body, res, {
+  intoCache(d, body, res, {
     url,
     cacheDir,
     cacheFile,
@@ -447,7 +447,7 @@ function forward(
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );
-    roh.destroy();
+    raw.destroy();
   });
 
   body.pipe(res);
@@ -456,8 +456,8 @@ function forward(
 /** The image is stored under this number for all accounts; that is why only
  * the whole path without the query part counts, otherwise `…/parts/x.png?/media/sets/10294-1.jpg`
  * would store a foreign image as a set. */
-export function setNumberFromImageAddress(adresse: string): string | null {
-  const u = urlOrNull(adresse);
+export function setNumberFromImageAddress(address: string): string | null {
+  const u = urlOrNull(address);
   if (u?.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
   // Only the main image: under /media/sets/<set>/<n>.jpg there are additional images; the first one requested
   // would otherwise become the set image for all accounts.

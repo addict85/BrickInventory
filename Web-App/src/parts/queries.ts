@@ -3,7 +3,7 @@ import { blColorNumberFrom } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../household';
-import { istErsatzteil, colorId } from '../infra/validate';
+import { isSparePart, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../inventory';
 import { reportError, logAndContinue } from '../infra/error';
@@ -44,7 +44,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
   // Rebrickable knows some sets only without the version suffix.
   const n = withVersion(set_number),
     alt = withoutVersion(n);
-  const invId = await ab.oder('katalog_inventar', k.catalog.newestInventory(set_number), null);
+  const invId = await ab.orElse('katalog_inventar', k.catalog.newestInventory(set_number), null);
   if (invId) {
     const csvParts = await k.partsList.inventoryAsParts(invId, set_number);
     if (csvParts.length > 0)
@@ -55,7 +55,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
         total: csvParts.length,
         source: 'csv_cache',
         page_size: csvParts.length,
-        ...ab.angabe(),
+        ...ab.detail(),
       };
   }
 
@@ -63,7 +63,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.catalog.allSetParts(sn), []);
+      const items = await ab.orElse('rebrickable_teile', k.catalog.allSetParts(sn), []);
       if (!items?.length) continue;
       const rbParts = items
         .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
@@ -88,7 +88,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
           total: rbParts.length,
           source: 'rebrickable',
           page_size: rbParts.length,
-          ...ab.angabe(),
+          ...ab.detail(),
         };
     }
   }
@@ -99,8 +99,8 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
 /** Same on both paths, otherwise the webapp and the app would paginate differently. */
 function resolvedPageSize(pageSize: unknown, withSet: boolean): number {
   if (!pageSize) return UNPAGED_LIMIT;
-  const obergrenze = withSet ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
-  return Math.min(obergrenze, Math.max(1, parseInt(String(pageSize), 10) || 100));
+  const upperLimit = withSet ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
+  return Math.min(upperLimit, Math.max(1, parseInt(String(pageSize), 10) || 100));
 }
 
 function partAsResponse(r: repo.PartRow) {
@@ -108,7 +108,7 @@ function partAsResponse(r: repo.PartRow) {
   return {
     ...r,
     total_quantity: parseInt(String(r.total_quantity), 10) || 0,
-    is_spare: istErsatzteil(r.is_spare),
+    is_spare: isSparePart(r.is_spare),
     image_local: resolveImageLocal(r.image_local) ?? null,
   };
 }
@@ -153,7 +153,7 @@ export async function partsQuery(
   }
   const groesse = resolvedPageSize(query.page_size, !!filter.set_number);
   const versatz = (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse;
-  const [{ total, zeilen }, gebraucht] = await Promise.all([
+  const [{ total, zeilen }, used] = await Promise.all([
     k.partsList.pageLive(uids, filter, {
       groesse,
       versatz,
@@ -163,7 +163,7 @@ export async function partsQuery(
     filter.withoutManual ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
   ]);
   // One "used" acquisition makes the part used; without one, 'N'.
-  const usedJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
+  const usedJe = new Set(used.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
   const parts = zeilen.map(p => ({
     ...partAsResponse(p),
     total_quantity: p.total_quantity,
@@ -186,7 +186,7 @@ export async function partsQuery(
     const fallback = await partsFallbackSource(k, String(query.set_number), ab);
     if (fallback) return fallback;
   }
-  return { parts, total, source: 'db', page_size: groesse, ...ab.angabe() };
+  return { parts, total, source: 'db', page_size: groesse, ...ab.detail() };
 }
 
 /** The category from the own catalog, else from rb_parts: Rebrickable's set-parts
@@ -232,7 +232,7 @@ export async function blColorMapQuery(k: PartsContext) {
     map: Record<string, unknown> = {},
     hasNext = true;
   while (hasNext) {
-    const { status, body } = await ab.oder(
+    const { status, body } = await ab.orElse(
       'rebrickable_farben',
       k.externalSources.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
@@ -253,7 +253,7 @@ export async function blColorMapQuery(k: PartsContext) {
     hasNext = !!data.next;
     page++;
   }
-  return { map, source: 'api', ...ab.angabe() };
+  return { map, source: 'api', ...ab.detail() };
 }
 
 /** @param viewerId whose settings (currency) apply; `userId` says whose data is read.
@@ -278,12 +278,12 @@ export async function manualPartsList(
   const withState = await k.inventory.setzeManuellenZustand(uids, rows, 'part');
   // One query for the whole list; the app reads `avg_price` in the detail view. Without
   // prices the list stays usable; `ab` collects why for `degradiert`.
-  const preise = await ab.oder(
+  const prices = await ab.orElse(
     'marktpreise',
     k.finances.marketPricesFromCacheForParts(withState, viewerId),
     new Map<string, number>(),
   );
-  const withPrice = withState.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
+  const withPrice = withState.map(t => ({ ...t, avg_price: prices.get(`${t.part_number}|${t.color_id}`) ?? null }));
   return k.household.besitzerAnhaengen(uids, withPrice);
 }
 
@@ -293,23 +293,23 @@ export const MAX_OWNED_PARTS = 5000;
 export async function ownedQuantitiesQuery(
   k: PartsContext,
   scopeChoice: Sicht | ScopeInput,
-  teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
+  parts: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
   const uids = await k.household.scopeFrom(scopeChoice);
   // Duplicate keys drop out: a list spanning several sets would otherwise ask
   // for the same part multiple times.
-  const gesehen = new Set<string>();
+  const seen = new Set<string>();
   const nums: string[] = [];
-  const farben: number[] = [];
-  for (const t of teile || []) {
+  const colors: number[] = [];
+  for (const t of parts || []) {
     const num = String(t?.part_number ?? '').trim();
     if (!num) continue;
-    const farbe = colorId(t?.color_id);
-    const key = `${num}|${farbe}`;
-    if (gesehen.has(key)) continue;
-    gesehen.add(key);
+    const color = colorId(t?.color_id);
+    const key = `${num}|${color}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     nums.push(num);
-    farben.push(farbe);
+    colors.push(color);
     if (nums.length >= MAX_OWNED_PARTS) break;
   }
   if (!nums.length) return {};
@@ -317,7 +317,7 @@ export async function ownedQuantitiesQuery(
   // Spare parts count TOO: they sit in the box and can be used
   // — "owned", not "needed" like on the shortage page.
   const out: Record<string, { gesamt: number; lose: number }> = {};
-  for (const r of await k.partsList.ownedParts(uids, nums, farben))
+  for (const r of await k.partsList.ownedParts(uids, nums, colors))
     out[`${r.part_number}|${r.color_id}`] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
   // Minifigs count too: a parts list also names a set's figures.
   for (const r of await k.partsList.ownedMinifigs(uids, nums)) {

@@ -1,84 +1,84 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
-import { Arten, type Anmeldung } from './kinds';
-import * as dienst from './service';
-import * as eigene from './own';
-import * as hintergrund from './background';
-import * as importAlsAuftrag from './importAsJob';
-import * as importAuftrag from './importJob';
+import { Kinds, type Login } from './kinds';
+import * as service from './service';
+import * as own from './own';
+import * as background from './background';
+import * as importAsJob from './importAsJob';
+import * as importJob from './importJob';
 import * as prozess from './process';
-import * as startZustand from './startState';
-import * as wiedervorlage from './resubmission';
-import * as zeitplan from './schedule';
-import { zugang, type JobsDependencies, type JobsContext } from './context';
+import * as startState from './startState';
+import * as resubmission from './resubmission';
+import * as schedule from './schedule';
+import { access, type JobsDependencies, type JobsContext } from './context';
 
 export type { JobsDependencies, JobsContext } from './context';
 
 /** The kinds are registered by the wiring (reportKindAn); until then the queue accepts none. */
 export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspect?: Inspect<JobsContext>) {
-  const arten = new Arten();
+  const arten = new Kinds();
   return buildArea(
     { ...a, faecher: new Faecher(), arten },
-    (db: Db) => zugang(db, a.lesevertrag),
+    (db: Db) => access(db, a.lesevertrag),
     (k: JobsContext) => ({
-      reportKindAn: (an: Anmeldung) => arten.melde(an),
-      signedInKinds: () => arten.alle(),
-      checkPayload: arten.pruefe.bind(arten) as Arten['pruefe'],
-      supplementListenJob: mit(k)(dienst.supplementListenJob),
-      setProgress: mit(k)(dienst.setProgress),
-      erledigt: mit(k)(dienst.erledigt),
-      fehlgeschlagen: mit(k)(dienst.fehlgeschlagen),
-      verschoben: mit(k)(dienst.verschoben),
-      endPause: mit(k)(dienst.endPause),
-      countKind: mit(k)(dienst.countKind),
-      atJobStatus: mit(k)(dienst.atJobStatus),
-      atNewJob: mit(k)(dienst.atNewJob),
-      checkMembership: mit(k)(dienst.checkMembership),
-      placeJobOne: mit(k)(dienst.placeJobOne),
-      placeOwnJobOne: mit(k)(dienst.placeOwnJobOne),
-      inNamesOfJob: mit(k)(dienst.inNamesOfJob),
-      jobsInOverview: mit(k)(hintergrund.jobsInOverview),
-      emptyJobKind: mit(k)(hintergrund.emptyJobKind),
-      auftragsArtJetzt: mit(k)(hintergrund.auftragsArtJetzt),
-      auftragAbbrechen: mit(k)(hintergrund.auftragAbbrechen),
-      retryJob: mit(k)(hintergrund.retryJob),
-      setResult: mit(k)(importAlsAuftrag.setResult),
-      setSlotError: mit(k)(importAlsAuftrag.setSlotError),
-      waitOnJob: mit(k)(importAlsAuftrag.waitOnJob),
-      reportJobStatus: mit(k)(importAuftrag.emitJobStatus),
-      jobGet: mit(k)(importAuftrag.jobGet),
-      jobSet: mit(k)(importAuftrag.jobSet),
-      jobUpdate: mit(k)(importAuftrag.jobUpdate),
-      setImportFort: mit(k)(importAuftrag.setImportFort),
-      atImportStatus: mit(k)(importAuftrag.atImportStatus),
-      startJob: mit(k)(importAuftrag.startJob),
-      reportJob: mit(k)(importAuftrag.reportJob),
-      beendeAuftrag: mit(k)(importAuftrag.beendeAuftrag),
-      isAborted: mit(k)(importAuftrag.isAborted),
+      reportKindAn: (an: Login) => arten.report(an),
+      signedInKinds: () => arten.all(),
+      checkPayload: arten.check.bind(arten) as Kinds['check'],
+      supplementListenJob: withValue(k)(service.supplementListenJob),
+      setProgress: withValue(k)(service.setProgress),
+      erledigt: withValue(k)(service.done),
+      fehlgeschlagen: withValue(k)(service.fehlgeschlagen),
+      verschoben: withValue(k)(service.verschoben),
+      endPause: withValue(k)(service.endPause),
+      countKind: withValue(k)(service.countKind),
+      atJobStatus: withValue(k)(service.atJobStatus),
+      atNewJob: withValue(k)(service.atNewJob),
+      checkMembership: withValue(k)(service.checkMembership),
+      placeJobOne: withValue(k)(service.placeJobOne),
+      placeOwnJobOne: withValue(k)(service.placeOwnJobOne),
+      inNamesOfJob: withValue(k)(service.inNamesOfJob),
+      jobsInOverview: withValue(k)(background.jobsInOverview),
+      emptyJobKind: withValue(k)(background.emptyJobKind),
+      auftragsArtJetzt: withValue(k)(background.jobKindNow),
+      auftragAbbrechen: withValue(k)(background.auftragAbbrechen),
+      retryJob: withValue(k)(background.retryJob),
+      setResult: withValue(k)(importAsJob.setResult),
+      setSlotError: withValue(k)(importAsJob.setSlotError),
+      waitOnJob: withValue(k)(importAsJob.waitOnJob),
+      reportJobStatus: withValue(k)(importJob.emitJobStatus),
+      jobGet: withValue(k)(importJob.jobGet),
+      jobSet: withValue(k)(importJob.jobSet),
+      jobUpdate: withValue(k)(importJob.jobUpdate),
+      setImportFort: withValue(k)(importJob.setImportFort),
+      atImportStatus: withValue(k)(importJob.atImportStatus),
+      startJob: withValue(k)(importJob.startJob),
+      reportJob: withValue(k)(importJob.reportJob),
+      beendeAuftrag: withValue(k)(importJob.finishJob),
+      isAborted: withValue(k)(importJob.isAborted),
       /** Jobs that an account tracks via their key. */
-      ownJob: mit(k)(eigene.ownJob),
-      deleteOwn: mit(k)(eigene.deleteOwn),
-      countRunning: mit(k)(eigene.countRunning),
-      deleteEnded: mit(k)(eigene.deleteEnded),
+      ownJob: withValue(k)(own.ownJob),
+      deleteOwn: withValue(k)(own.deleteOwn),
+      countRunning: withValue(k)(own.countRunning),
+      deleteEnded: withValue(k)(own.deleteEnded),
       wiedervorlage: {
-        rememberBefore: mit(k)(wiedervorlage.rememberBefore),
-        vergiss: mit(k)(wiedervorlage.vergiss),
-        jetzt: mit(k)(wiedervorlage.jetzt),
-        prefer: mit(k)(wiedervorlage.prefer),
-        wartende: mit(k)(wiedervorlage.wartende),
-        zahlen: mit(k)(wiedervorlage.zahlen),
+        rememberBefore: withValue(k)(resubmission.rememberBefore),
+        vergiss: withValue(k)(resubmission.forget),
+        jetzt: withValue(k)(resubmission.now),
+        prefer: withValue(k)(resubmission.prefer),
+        wartende: withValue(k)(resubmission.waiting),
+        zahlen: withValue(k)(resubmission.numbers),
       },
-      reportStartState: mit(k)(startZustand.reportStartState),
-      currentStartState: mit(k)(startZustand.currentStartState),
-      scheduleChanged: mit(k)(zeitplan.scheduleChanged),
-      pullPlanBefore: mit(k)(zeitplan.pullPlanBefore),
-      planeNext: mit(k)(zeitplan.planeNext),
-      planeAll: mit(k)(zeitplan.planeAll),
-      dailyTimeOfDay: mit(k)(zeitplan.dailyTimeOfDay),
-      reportProcessAn: mit(k)(prozess.reportProcessAn),
-      reportProcessAb: mit(k)(prozess.reportProcessAb),
+      reportStartState: withValue(k)(startState.reportStartState),
+      currentStartState: withValue(k)(startState.currentStartState),
+      scheduleChanged: withValue(k)(schedule.scheduleChanged),
+      pullPlanBefore: withValue(k)(schedule.pullPlanBefore),
+      planeNext: withValue(k)(schedule.planeNext),
+      planeAll: withValue(k)(schedule.planeAll),
+      dailyTimeOfDay: withValue(k)(schedule.dailyTimeOfDay),
+      reportProcessAn: withValue(k)(prozess.reportProcessAn),
+      reportProcessAb: withValue(k)(prozess.reportProcessAb),
       ...fromTheTable(k),
     }),
     inspect,

@@ -51,10 +51,10 @@ export function contextCheckSql(kontext: string): string {
 
 /** If the account changes in the middle of the transaction (asRequest), the setting follows. */
 export async function contextSync(stand: TxStand): Promise<void> {
-  const soll = contextSql();
-  if (soll === stand.kontext) return;
-  await stand.client.query(soll || CONTEXT_EMPTY);
-  stand.kontext = soll;
+  const expected = contextSql();
+  if (expected === stand.kontext) return;
+  await stand.client.query(expected || CONTEXT_EMPTY);
+  stand.kontext = expected;
 }
 
 /** What the body of a transaction gets: its queries and `db`, a whole access
@@ -64,10 +64,10 @@ export interface TxHandleOf<D> extends DbInterface {
 }
 
 /** The queries over the transaction's connection; `pruefe` guards the frame. */
-export function txQueries(stand: TxStand, pruefe: () => void): DbInterface {
+export function txQueries(stand: TxStand, check: () => void): DbInterface {
   const q = async (sql: string, p?: unknown[]) => {
     openStill(stand);
-    pruefe();
+    check();
     await contextSync(stand);
     return stand.client.query(sql, p);
   };
@@ -102,9 +102,9 @@ function openStill(stand: TxStand): void {
 }
 
 export class BesideTheTransaction extends Error {
-  constructor(transactionInSystemrahmen: boolean) {
+  constructor(transactionInSystemFrame: boolean) {
     super(
-      transactionInSystemrahmen
+      transactionInSystemFrame
         ? 'Abfrage ohne Systemrahmen in einer Transaktion des Systemrahmens: Sie liefe über eine zweite Verbindung neben ihr.'
         : 'Systemrahmen (imSystemkontext) mitten in einer Transaktion: Die Abfrage liefe über eine zweite ' +
             'Verbindung neben ihr. Den Rahmen vor der Transaktion betreten.',
@@ -125,9 +125,9 @@ export class UnboundQuery extends Error {
 }
 
 export class ConcurrentSavepoint extends Error {
-  constructor(offen: string) {
+  constructor(open: string) {
     super(
-      `Innere Transaktion, während ${offen} derselben Transaktion noch läuft (Promise.all über ` +
+      `Innere Transaktion, während ${open} derselben Transaktion noch läuft (Promise.all über ` +
         'db.transaction?): Sicherungspunkte einer Verbindung sind ein Stapel, nacheinander ausführen.',
     );
   }
@@ -140,11 +140,11 @@ export class ConcurrentSavepoint extends Error {
  * which one that is is told by the handle it is called through (`rahmen`). */
 export function innerTransaction<T>(
   stand: TxStand,
-  rahmen: string | null,
+  frame: string | null,
   nummer: number,
   fn: (name: string) => Promise<T>,
 ): Promise<T> {
-  if (stand.innerster !== rahmen) return Promise.reject(new ConcurrentSavepoint(stand.innerster ?? ''));
+  if (stand.innerster !== frame) return Promise.reject(new ConcurrentSavepoint(stand.innerster ?? ''));
   const name = `sp_${nummer}`;
   stand.innerster = name;
   return (async () => {
@@ -167,7 +167,7 @@ export function innerTransaction<T>(
         throw e;
       }
     } finally {
-      stand.innerster = rahmen;
+      stand.innerster = frame;
     }
   })();
 }

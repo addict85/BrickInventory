@@ -1,13 +1,13 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
+import { teilSichtJoin, minifigViewJoin, TEIL, MINIFIG } from '../../../db/catalogView';
 
 /** An entry holds the deleted rows of all tables of an inventory item as
  * JSON; restoring writes them back column by column. */
 export type PaperKind = 'set' | 'teil' | 'figur';
 
 /** The first table is the master row. */
-const TABELLEN: Record<PaperKind, { tabelle: string; wo: string }[]> = {
+const TABLES: Record<PaperKind, { tabelle: string; wo: string }[]> = {
   set: [
     { tabelle: 'sets', wo: 'user_id = $1 AND set_number = $2' },
     { tabelle: 'parts', wo: 'user_id = $1 AND set_number = $2' },
@@ -24,22 +24,22 @@ const TABELLEN: Record<PaperKind, { tabelle: string; wo: string }[]> = {
   ],
 };
 
-export const tablesTheKind = (art: PaperKind): string[] => TABELLEN[art].map(t => t.tabelle);
+export const tablesTheKind = (art: PaperKind): string[] => TABLES[art].map(t => t.tabelle);
 
 export async function inventoryRows(
   tx: DbInterface,
   art: PaperKind,
   werte: unknown[],
 ): Promise<Record<string, unknown[]>> {
-  const zeilen: Record<string, unknown[]> = {};
-  for (const { tabelle, wo } of TABELLEN[art]) {
+  const rows: Record<string, unknown[]> = {};
+  for (const { tabelle, wo } of TABLES[art]) {
     const r = await tx.get<{ z: unknown[] }>(
       `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`,
       werte,
     );
-    zeilen[tabelle] = r?.z ?? [];
+    rows[tabelle] = r?.z ?? [];
   }
-  return zeilen;
+  return rows;
 }
 
 const LABEL: Record<PaperKind, string> = {
@@ -47,13 +47,13 @@ const LABEL: Record<PaperKind, string> = {
   teil: `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
             ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,
-  figur: `SELECT ${FIGUR.name} AS b
+  figur: `SELECT ${MINIFIG.name} AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto) x
-            ${figurSichtJoin('x.konto', 'x.nr')}`,
+            ${minifigViewJoin('x.konto', 'x.nr')}`,
 };
 
 /** So that the list stays readable even without a catalog row. */
-export async function bezeichnung(
+export async function label(
   tx: DbInterface,
   art: PaperKind,
   userId: number,
@@ -67,19 +67,19 @@ export async function bezeichnung(
   return r?.b || null;
 }
 
-export async function putEntryAn(
+export async function createEntry(
   tx: DbInterface,
   userId: number,
   art: PaperKind,
   nummer: string,
   colorId: number | null,
   name: string | null,
-  zeilen: Record<string, unknown[]>,
+  rows: Record<string, unknown[]>,
 ): Promise<number | null> {
   const r = await tx.get<{ id: number }>(
     `INSERT INTO trash (user_id, type, number, color_id, label, rows)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING id`,
-    [userId, art, nummer, colorId, name, JSON.stringify(zeilen)],
+    [userId, art, nummer, colorId, name, JSON.stringify(rows)],
   );
   return r?.id ?? null;
 }
@@ -97,7 +97,7 @@ export interface TrashRow {
   endgueltig_am: string;
 }
 
-export function eintraege(db: DbInterface, uids: number[], retentionDays: number) {
+export function entries(db: DbInterface, uids: number[], retentionDays: number) {
   return db.all<TrashRow>(
     `SELECT id, user_id, type, number, color_id, label, rows, deleted_at,
             deleted_at + make_interval(days => $2) AS endgueltig_am
@@ -120,13 +120,13 @@ export function lockTrashEntry(tx: DbInterface, id: number, uids: number[]) {
 export async function writeBack(
   tx: DbInterface,
   art: PaperKind,
-  zeilen: Record<string, Record<string, unknown>[] | undefined>,
+  rows: Record<string, Record<string, unknown>[] | undefined>,
 ): Promise<void> {
-  for (const { tabelle } of TABELLEN[art]) {
-    const liste = zeilen[tabelle] ?? [];
-    const erste = liste[0];
-    if (!erste) continue;
-    const spalten = (
+  for (const { tabelle } of TABLES[art]) {
+    const list = rows[tabelle] ?? [];
+    const first = list[0];
+    if (!first) continue;
+    const columns = (
       await tx.all<{ column_name: string }>(
         `SELECT column_name FROM information_schema.columns
         WHERE table_schema = current_schema() AND table_name = $1
@@ -135,12 +135,12 @@ export async function writeBack(
       )
     )
       .map(s => s.column_name)
-      .filter(s => s in erste);
-    const namen = spalten.map(s => `"${s}"`).join(', ');
+      .filter(s => s in first);
+    const names = columns.map(s => `"${s}"`).join(', ');
     await tx.run(
-      `INSERT INTO ${tabelle} (${namen})
-       SELECT ${namen} FROM jsonb_populate_recordset(NULL::${tabelle}, $1::jsonb)`,
-      [JSON.stringify(liste)],
+      `INSERT INTO ${tabelle} (${names})
+       SELECT ${names} FROM jsonb_populate_recordset(NULL::${tabelle}, $1::jsonb)`,
+      [JSON.stringify(list)],
     );
   }
 }
@@ -169,6 +169,6 @@ export async function removeAll(db: DbInterface, uids: number[]): Promise<number
   return (await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [uids])).changes ?? 0;
 }
 
-export async function removeOlder(db: DbInterface, tage: number): Promise<number> {
-  return (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [tage])).changes ?? 0;
+export async function removeOlder(db: DbInterface, days: number): Promise<number> {
+  return (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [days])).changes ?? 0;
 }

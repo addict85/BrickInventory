@@ -6,7 +6,7 @@ export type Konten = `= $${number}` | `= ANY($${number})`;
 const FORM = /^= (?:\$\d+|ANY\(\$\d+\))$/;
 
 /** `column accounts`, e.g. `user_id = ANY($1)`; everything else throws. */
-export function aufKonten(spalte: string, konten: Konten): string {
+export function onAccounts(column: string, konten: Konten): string {
   if (!FORM.test(konten)) throw new Error(`Kontobedingung „${konten}“: erlaubt sind = $n und = ANY($n)`);
-  return `${spalte} ${konten}`;
+  return `${column} ${konten}`;
 }

@@ -5,12 +5,12 @@ import { normalizeLocation } from '../../src/inventory';
 import { pageFrom } from '../../src/infra/page';
 import { Degradations } from '../../src/infra/result';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 export function buildPartsRouter(
   d: Pick<
-    Dienste,
+    Services,
     'settings' | 'jobQueue' | 'household' | 'account' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
   >,
 ) {
@@ -124,7 +124,7 @@ export function buildPartsRouter(
       ab,
     );
     const { eintraege: parts, ...seite } = pageFrom(alle, req.abfrage);
-    return { parts, ...seite, ...ab.angabe() };
+    return { parts, ...seite, ...ab.detail() };
   });
 
   router.endpunkt('GET /api/v1/parts/colors', requireToken, async req => {

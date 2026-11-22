@@ -5,9 +5,9 @@ import { versuche, valueOr } from '../src/infra/result';
 import { errorText, responseLanguage } from '../src/infra/errorTexts';
 import { userIdTheRequest, istVerwalter } from '../src/account/http/login';
 import { publicStartState } from '../src/jobQueue';
-import type { Dienste } from '../src/services';
+import type { Services } from '../src/services';
 
-export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 'management'>) {
+export function buildGesundheitRouter(d: Pick<Services, 'jobQueue' | 'account' | 'management'>) {
   // Like the contract: a different spelling is a different route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -15,8 +15,8 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.account, req)), null);
-    res.json(publicStartState(await d.jobQueue.currentStartState(), angemeldet));
+    const signedIn = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.account, req)), null);
+    res.json(publicStartState(await d.jobQueue.currentStartState(), signedIn));
   });
 
   // live = process, ready = database.
@@ -36,9 +36,9 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 
   // Deliberately without step guard: the details carry nothing secret, and a
   // monitoring asks with a token without a device key.
   router.get('/health', async (req, res) => {
-    const verwalter =
+    const admin =
       !!valueOr(await versuche('health:anmeldung', userIdTheRequest(d.account, req)), null) && istVerwalter(req);
-    res.json(await d.management.healthReport(verwalter));
+    res.json(await d.management.healthReport(admin));
   });
   return router;
 }

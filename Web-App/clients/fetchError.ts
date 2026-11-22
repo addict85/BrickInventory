@@ -18,21 +18,21 @@ function asFetchError(e: unknown): AbrufFehler {
   if (e instanceof Error) return e as AbrufFehler;
   // Not an Error: we keep the extra fields in case there are some, and
   // give the message a text one can work with.
-  const roh = (e ?? {}) as Record<string, unknown>;
+  const raw = (e ?? {}) as Record<string, unknown>;
   const f = new Error(
     typeof e === 'string' && e
       ? e
-      : typeof roh.message === 'string' && roh.message
-        ? roh.message
+      : typeof raw.message === 'string' && raw.message
+        ? raw.message
         : 'Unbekannter Abruffehler',
   ) as AbrufFehler;
-  if (roh.isQuota) f.isQuota = true;
-  if (roh.isTransient) f.isTransient = true;
-  if (roh.isCloudflare) f.isCloudflare = true;
+  if (raw.isQuota) f.isQuota = true;
+  if (raw.isTransient) f.isTransient = true;
+  if (raw.isCloudflare) f.isCloudflare = true;
   // NonNullable, because exactOptionalPropertyTypes distinguishes "field missing" from
   // "field is undefined" — the assignment below only happens
   // when something is really there.
-  if (roh.detail) f.detail = roh.detail as NonNullable<AbrufFehler['detail']>;
+  if (raw.detail) f.detail = raw.detail as NonNullable<AbrufFehler['detail']>;
   return f;
 }
 

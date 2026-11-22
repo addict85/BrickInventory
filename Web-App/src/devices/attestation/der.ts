@@ -30,17 +30,17 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
       if (!(b7 & 0x80)) break;
     }
   }
-  let laenge = byte();
-  if (laenge === 0x80) throw new TheError('DER: unbestimmte Länge');
-  if (laenge > 0x80) {
-    const n = laenge & 0x7f;
+  let length = byte();
+  if (length === 0x80) throw new TheError('DER: unbestimmte Länge');
+  if (length > 0x80) {
+    const n = length & 0x7f;
     if (n > 3) throw new TheError('DER: Länge zu gross');
-    laenge = 0;
-    for (let i = 0; i < n; i++) laenge = laenge * 256 + byte();
+    length = 0;
+    for (let i = 0; i < n; i++) length = length * 256 + byte();
   }
-  if (p + laenge > b.length) throw new TheError('DER: Länge über das Ende');
-  const tlv = { klasse: erstes >> 6, nummer, zusammengesetzt: !!(erstes & 0x20), inhalt: b.subarray(p, p + laenge) };
-  return { tlv, ende: p + laenge };
+  if (p + length > b.length) throw new TheError('DER: Länge über das Ende');
+  const tlv = { klasse: erstes >> 6, nummer, zusammengesetzt: !!(erstes & 0x20), inhalt: b.subarray(p, p + length) };
+  return { tlv, ende: p + length };
 }
 
 /** Exactly one element, nothing behind it. */
@@ -52,13 +52,13 @@ export function readWhole(b: Buffer): Tlv {
 
 export function kinder(t: Tlv): Tlv[] {
   if (!t.zusammengesetzt) throw new TheError('DER: kein zusammengesetztes Element');
-  const liste: Tlv[] = [];
+  const list: Tlv[] = [];
   for (let p = 0; p < t.inhalt.length; ) {
     const { tlv, ende } = liesTlv(t.inhalt, p);
-    liste.push(tlv);
+    list.push(tlv);
     p = ende;
   }
-  return liste;
+  return list;
 }
 
 export const UNIVERSAL = {
@@ -72,8 +72,8 @@ export const UNIVERSAL = {
   SET: 17,
 };
 
-export function expect(t: Tlv | undefined, nummer: number, klasse = 0): Tlv {
-  if (!t || t.nummer !== nummer || t.klasse !== klasse) throw new TheError(`DER: Tag ${nummer} erwartet`);
+export function expect(t: Tlv | undefined, nummer: number, kind = 0): Tlv {
+  if (!t || t.nummer !== nummer || t.klasse !== kind) throw new TheError(`DER: Tag ${nummer} erwartet`);
   return t;
 }
 

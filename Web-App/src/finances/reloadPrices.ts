@@ -6,17 +6,17 @@ import { checkAbort, JobMove, type JobContext, type Nutzlast } from '../jobQueue
 import { reportError } from '../infra/error';
 import type { FinancesContext } from './context';
 
-type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
+type Item = Nutzlast<'preise_nachladen'>['posten'][number];
 
-async function fetchOne(k: FinancesContext, p: Posten, uid: number, waehrung: string, ttl: string): Promise<void> {
-  if (p.art === 'set') await fetchPrice(k, p.nummer, p.zustand, 'sold', waehrung, ttl);
-  else if (p.art === 'teil') await fetchPartPrice(k, p.nummer, p.farbe, p.zustand, waehrung, ttl);
-  else if (p.art === 'figur') await fetchMinifigPrice(k, p.nummer, p.zustand, waehrung, ttl);
+async function fetchOne(k: FinancesContext, p: Item, uid: number, currency: string, ttl: string): Promise<void> {
+  if (p.art === 'set') await fetchPrice(k, p.nummer, p.zustand, 'sold', currency, ttl);
+  else if (p.art === 'teil') await fetchPartPrice(k, p.nummer, p.farbe, p.zustand, currency, ttl);
+  else if (p.art === 'figur') await fetchMinifigPrice(k, p.nummer, p.zustand, currency, ttl);
   else await estimateMinifigsPrice(k, p.nummer, uid, p.zustand);
 }
 
 /** If the daily quota is exhausted, the rest waits until tomorrow; a single failure does not stop the list. */
-async function preiseNachladen(kx: FinancesContext, n: Nutzlast<'preise_nachladen'>, k: JobContext): Promise<void> {
+async function reloadPrices(kx: FinancesContext, n: Nutzlast<'preise_nachladen'>, k: JobContext): Promise<void> {
   const ttl = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {
     checkAbort(k);
@@ -29,4 +29,4 @@ async function preiseNachladen(kx: FinancesContext, n: Nutzlast<'preise_nachlade
   }
 }
 
-export { preiseNachladen };
+export { reloadPrices as preiseNachladen };

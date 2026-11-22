@@ -33,12 +33,12 @@ import {
   type Angemeldet,
   type TokenWish,
 } from '../src/account';
-import type { Dienste } from '../src/services';
-type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
+import type { Services } from '../src/services';
+type Refusal = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** The same path after password and passkey. Token OR session: the session would carry the rights past the
  * token's scope. keks_fehlt always, also as false: then the UI does not guess "without HTTPS" on a 401. */
 async function signedInResponses(
-  d: Pick<Dienste, 'account'>,
+  d: Pick<Services, 'account'>,
   req: Request,
   res: Response,
   user: Angemeldet,
@@ -64,22 +64,22 @@ async function signedInResponses(
 }
 
 /** `zweiter_faktor` shows the code field (or `passkey`), `unverified` shows "Resend email?". */
-function loginRejections(absage: Absage): never {
-  const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
-  const zusatz = zweiterFaktor
+function loginRejections(refusal: Refusal): never {
+  const { art, code, vars, unverified, zweiterFaktor, passkey } = refusal;
+  const extra = zweiterFaktor
     ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) }
     : unverified
       ? { unverified: true }
       : undefined;
-  throw new Fachfehler(art, code, vars, zusatz);
+  throw new Fachfehler(art, code, vars, extra);
 }
 
-type CheckedToken = NonNullable<Awaited<ReturnType<Dienste['account']['pruefeToken']>>['nutzer']>;
+type CheckedToken = NonNullable<Awaited<ReturnType<Services['account']['pruefeToken']>>['nutzer']>;
 
 /** is_admin is the right of THIS token: with scope `app` always false. */
-async function tokenUser(d: Pick<Dienste, 'account'>, res: Response, u: CheckedToken) {
-  const faellig = rotationDue(u);
-  if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
+async function tokenUser(d: Pick<Services, 'account'>, res: Response, u: CheckedToken) {
+  const due = rotationDue(u);
+  if (due) res.setHeader('X-Token-Rotation', 'faellig');
   return {
     success: true,
     loggedIn: true,
@@ -98,12 +98,12 @@ async function tokenUser(d: Pick<Dienste, 'account'>, res: Response, u: CheckedT
       hard_expires_at: u.hard_expires_at ?? null,
       never_expires: u.never_expires === true,
       rotated_at: u.rotated_at,
-      rotation_faellig: faellig,
+      rotation_faellig: due,
     },
   } as const;
 }
 
-async function sessionUser(d: Pick<Dienste, 'account'>, req: Request, uid: number) {
+async function sessionUser(d: Pick<Services, 'account'>, req: Request, uid: number) {
   const user = await d.account.accountShortOf(uid);
   if (!user) return null;
   return {
@@ -119,7 +119,7 @@ async function sessionUser(d: Pick<Dienste, 'account'>, req: Request, uid: numbe
   } as const;
 }
 
-export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account' | 'factors' | 'profile'>) {
+export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account' | 'factors' | 'profile'>) {
   const { requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 
@@ -298,8 +298,8 @@ export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'
       if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const user = await d.account.accountFullOf(uid);
       if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
-      const gesperrt = assertLoginAllowed(user);
-      if (gesperrt) fachfehler(gesperrt.art, gesperrt.code);
+      const locked = assertLoginAllowed(user);
+      if (locked) fachfehler(locked.art, locked.code);
       reportLogin({ ip: req.ip, konto: user.id, zugang: 'passkey' });
       await signedInResponses(d, req, res, user, req.eingabe, req.eingabe.mit_token === true);
     },

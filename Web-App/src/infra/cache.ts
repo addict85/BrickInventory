@@ -29,11 +29,11 @@ export class Zwischenspeicher<K, V> {
     this.eintraege.set(k, { wert, bis: Date.now() + fristMs });
   }
 
-  loesche(k: K): void {
+  remove(k: K): void {
     this.eintraege.delete(k);
   }
 
-  leere(): void {
+  empty(): void {
     this.eintraege.clear();
   }
 

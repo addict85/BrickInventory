@@ -53,9 +53,9 @@ export async function finishedFile(k: CatalogContext, id: string, uid: number): 
   const job = await readJob(k, id, uid);
   if (!job) notFound('job_nicht_gefunden');
   if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
-  const datei = pdfFilePath(id);
-  if (!datei || !fs.existsSync(datei)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
-  return datei;
+  const file = pdfFilePath(id);
+  if (!file || !fs.existsSync(file)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+  return file;
 }
 
 export async function deleteJob(k: CatalogContext, id: string, uid: number): Promise<void> {
@@ -67,14 +67,14 @@ export const PDF_JOB_TTL = 10 * 60 * 1000;
 export const MAX_JOBS_PRO_USER = 2;
 
 /** Not guessable, but sortable. */
-export function newJobId(jetzt: number): string {
-  return `${jetzt}-${crypto.randomBytes(6).toString('hex')}`;
+export function newJobId(now: number): string {
+  return `${now}-${crypto.randomBytes(6).toString('hex')}`;
 }
 
 export async function cleanOldPdfJobs(k: CatalogContext) {
-  for (const schluessel of await k.jobQueue.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
-    const datei = pdfFilePath(schluessel.slice('pdf:'.length));
-    if (datei) await fsp.unlink(datei).catch(withoutMissingFile('pdf:datei loeschen'));
+  for (const key of await k.jobQueue.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
+    const file = pdfFilePath(key.slice('pdf:'.length));
+    if (file) await fsp.unlink(file).catch(withoutMissingFile('pdf:datei loeschen'));
   }
   const files = await fsp.readdir(PDF_JOB_DIR).catch((e: unknown) => {
     withoutMissingFile('pdf:ordner lesen')(e);
@@ -95,15 +95,15 @@ async function fehlendeBilder(
   parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>,
 ) {
   let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
-  const nummern = new Set<string>();
+  const numbers = new Set<string>();
   for (const s of sets || []) {
     const raw = String(s?.set_number || '').trim();
     if (!raw) continue;
-    nummern.add(withVersion(raw));
+    numbers.add(withVersion(raw));
   }
-  if (!nummern.size) return fehlend;
+  if (!numbers.size) return fehlend;
   try {
-    const r = await k.bildlage.missingCatalogImages([...nummern]);
+    const r = await k.bildlage.missingCatalogImages([...numbers]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) fehlend = c;
   } catch (e) {

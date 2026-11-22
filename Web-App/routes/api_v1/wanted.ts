@@ -10,30 +10,30 @@ import { csvReceive, xmlReceive } from '../../src/http/fileUpload';
 import { WantedCorrections, type ImportInput } from '../../src/collection';
 import type { CsvImportReport } from '../../src/infra/csvExport';
 import type { z } from 'zod';
-import type { WantedXmlErgebnis } from '../../src/contract/wanted';
+import type { WantedXmlResult } from '../../src/contract/wanted';
 
 import { jsonOrNull } from '../../src/infra/validate';
 import { pageFrom } from '../../src/infra/page';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 type WantedXmlReport = Pick<
-  z.infer<typeof WantedXmlErgebnis>,
+  z.infer<typeof WantedXmlResult>,
   'vorschau' | 'gelesen' | 'angelegt' | 'aufgestockt' | 'fehler' | 'posten' | 'offen'
 >;
 
 /** Corrections as a field of the multipart request: with 224 items the address would be
  * longer than any proxy lets through. @returns null if they are invalid */
-function correctionsFrom(roh: string | undefined): Korrektur[] | undefined | null {
-  if (roh === undefined || roh.trim() === '') return undefined;
-  const geparst = WantedCorrections.safeParse(jsonOrNull(roh)?.wert);
-  return geparst.success ? geparst.data : null;
+function correctionsFrom(raw: string | undefined): Korrektur[] | undefined | null {
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const parsed = WantedCorrections.safeParse(jsonOrNull(raw)?.wert);
+  return parsed.success ? parsed.data : null;
 }
 
 /** The intermediate states as NDJSON lines. If the access ends, the stream ends; the
  * job keeps running on its own. The headers are out: an error comes
  * as the last LINE, otherwise the client waits for a report that never comes. */
 async function importInStream(
-  d: Pick<Dienste, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>,
+  d: Pick<Services, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -44,24 +44,24 @@ async function importInStream(
   // For proxies that buffer themselves (nginx & relatives).
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
-  const zeile = (o: unknown) => {
+  const row = (o: unknown) => {
     if (res.writableEnded) return;
     res.write(JSON.stringify(o) + '\n');
     (res as unknown as { flush?: () => void }).flush?.();
   };
-  const wache = watchViaAccess(d.account, req, () => {
-    zeile({ success: false, error: errorText('zugang_beendet', responseLanguage(req)), code: 'zugang_beendet' });
+  const watch = watchViaAccess(d.account, req, () => {
+    row({ success: false, error: errorText('zugang_beendet', responseLanguage(req)), code: 'zugang_beendet' });
     res.end();
   });
-  await d.collection.runImport(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
-    r => zeile({ success: true, ...r }),
-    (e: unknown) => zeile({ success: false, ...publicError(e, 'wanted-import:strom', req) }),
+  await d.collection.runImport(uid, 'wanted_xml', eingabe, { fortschritt: f => row({ fortschritt: f }) }).then(
+    r => row({ success: true, ...r }),
+    (e: unknown) => row({ success: false, ...publicError(e, 'wanted-import:strom', req) }),
   );
-  wache();
+  watch();
   if (!res.writableEnded) res.end();
 }
 
-export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>) {
+export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

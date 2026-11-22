@@ -11,10 +11,10 @@ import {
   consumeGracePeriod,
 } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 
-export function buildSecondFactorRouter(d: Pick<Dienste, 'account' | 'factors'>) {
+export function buildSecondFactorRouter(d: Pick<Services, 'account' | 'factors'>) {
   const { requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
   const requireLogin = requireLoginOrToken;
@@ -44,10 +44,10 @@ export function buildSecondFactorRouter(d: Pick<Dienste, 'account' | 'factors'>)
     const uid = signedInUserId(req);
     const codes = await d.account.confirmSetupThrottled(uid, accessOf(req), req.eingabe.code);
     if (!Array.isArray(codes)) fachfehler(codes.art, codes.code, codes.vars);
-    const kopf = String(req.headers.authorization || '');
+    const header = String(req.headers.authorization || '');
     const { version } = await d.account.sitzungen.endOther(uid, {
       sitzung: req.session?.userId ? req.sessionID : null,
-      token: kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+      token: header.startsWith('Bearer ') ? header.slice(7) : null,
       zugaenge: true,
     });
     if (req.session?.userId) req.session.sitzungsVersion = version;

@@ -3,8 +3,8 @@ const BASIS = 'https://www.toppreise.ch/produktsuche?q=';
 
 /** A SEARCH, not a product page: for the price comparison site the set number
  * is not a key, and which spelling it uses only it knows. */
-export function suchUrl(begriff: string): string {
-  const q = String(begriff ?? '').trim();
+export function suchUrl(term: string): string {
+  const q = String(term ?? '').trim();
   if (!q) return '';
   return BASIS + encodeURIComponent(q);
 }

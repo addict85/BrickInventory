@@ -33,8 +33,8 @@ export function renewHeartbeat(d: Dienste, worker: JobsLauf['worker']): Promise<
 /** The background work (ROLLE=jobs or beides) only runs via jobs; a
  * second job process would be harmless, because each claims jobs with SKIP LOCKED. */
 export async function startJobs(d: Dienste): Promise<JobsLauf> {
-  const uebernommen = await d.jobQueue.reportProcessAn();
-  if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);
+  const takenOver = await d.jobQueue.reportProcessAn();
+  if (takenOver) console.log(`[auftraege] ${takenOver} Aufträge eines beendeten Prozesses übernommen`);
   await d.jobQueue.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   await d.jobQueue.planeAll();
   await d.jobQueue.pullPlanBefore('csv_sync', 0, { onStart: true });

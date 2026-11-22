@@ -69,7 +69,7 @@ export async function portfolioVerlauf(
   // The curve shows TODAY's inventory over time: otherwise every
   // capture would appear as a price jump.
 
-  const kurve = await reconstructCurve(k, {
+  const curve = await reconstructCurve(k, {
     db,
     setNumbers,
     setQty,
@@ -80,24 +80,24 @@ export async function portfolioVerlauf(
     currency,
     monthResolution,
   });
-  let rawPoints = kurve.rawPoints;
-  monthResolution = kurve.monthResolution;
+  let rawPoints = curve.rawPoints;
+  monthResolution = curve.monthResolution;
   const messpunkte = rawPoints.length;
 
   // The labeling must know the condensing, otherwise the first point would get
   // a month abbreviation and the last one would no longer be "today".
-  const verdichtet = rawPoints.length > 120;
-  if (verdichtet) rawPoints = onMonths(rawPoints);
-  const downsampled = monthResolution || verdichtet;
+  const condensed = rawPoints.length > 120;
+  if (condensed) rawPoints = onMonths(rawPoints);
+  const downsampled = monthResolution || condensed;
 
-  const jetzt = k.uhr.datum();
-  if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, jetzt);
+  const now = k.uhr.datum();
+  if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, now);
 
   if (!rawPoints.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
 
-  const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, jetzt);
+  const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, now);
 
   return {
     currency,

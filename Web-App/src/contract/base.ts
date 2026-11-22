@@ -35,13 +35,13 @@ export function notRetryable(route: Route | undefined): boolean {
   return !!(route?.geheim || route?.bestaetigung);
 }
 
-export const ganz = z.number().int();
+export const whole = z.number().int();
 
 /** A duplicate field from the time before unified money: stays for older apps, dropped with API version 3. */
-export const veraltet = <T extends z.ZodType>(s: T, statt: string) =>
-  s.meta({ deprecated: true, description: `deprecated, dropped with API version 3; use ${statt} instead` });
+export const outdated = <T extends z.ZodType>(s: T, insteadOf: string) =>
+  s.meta({ deprecated: true, description: `deprecated, dropped with API version 3; use ${insteadOf} instead` });
 /** Percent as text ("12.3"); the number is in pnl_prozent. */
-export const PERCENT_TEXT = veraltet(z.string().nullable().optional(), 'pnl_prozent');
+export const PERCENT_TEXT = outdated(z.string().nullable().optional(), 'pnl_prozent');
 
 const inPath = (muster: RegExp) => z.string().regex(muster);
 /** A row identifier in the path; digits become a number. The upper bound (int4
@@ -67,19 +67,19 @@ export const PATH = {
   tokenId: inPath(/^[0-9a-f]{16}$/),
   barcode: inPath(/^[A-Za-z0-9-]{1,64}$/),
 } as const;
-type Namen<P extends string> = P extends `${string}/:${infer N}/${infer R}`
-  ? N | Namen<`/${R}`>
+type Names<P extends string> = P extends `${string}/:${infer N}/${infer R}`
+  ? N | Names<`/${R}`>
   : P extends `${string}/:${infer N}`
     ? N
     : never;
-export type PathOf<K extends string> = { [N in Namen<K> & keyof typeof PATH]: z.output<(typeof PATH)[N]> };
+export type PathOf<K extends string> = { [N in Names<K> & keyof typeof PATH]: z.output<(typeof PATH)[N]> };
 /** A point in time as ISO text. Only the TS type carries the brand: in the route
  * a Date may still stand there, res.json writes it as text (wire). */
-export const zeit = z.string().brand<'Zeit'>();
-type Zeit = z.output<typeof zeit>;
+export const time = z.string().brand<'Zeit'>();
+type Time = z.output<typeof time>;
 /** Without the index signature of the open objects: otherwise no interface would fit
  * (it lacks one), and a mistyped field name would go unnoticed. */
-export type Wire<T> = T extends Zeit
+export type Wire<T> = T extends Time
   ? string | Date
   : T extends readonly (infer E)[]
     ? Wire<E>[]
@@ -101,7 +101,7 @@ export const Fehler = z.looseObject({
  * sent as well (vertrag_verletzt). */
 export const Fehlercode = z.enum(Object.keys(FEHLER) as [ErrorCode, ...ErrorCode[]]);
 
-export const Erfolg = z.looseObject({ success: z.literal(true) });
+export const Success = z.looseObject({ success: z.literal(true) });
 
 const factorFields = {
   code: z
@@ -114,20 +114,20 @@ type Confirmation<P extends string, C extends string> = { [K in P]: z.ZodOptiona
   [K in C]: typeof factorFields.code;
 } & { passkey: typeof factorFields.passkey };
 /** Brand and input from one hand: the guard test sends exactly these fields. */
-export function bestaetigt<
+export function confirmed<
   F extends z.ZodRawShape = Record<never, z.ZodType>,
   const P extends string = 'password',
   const C extends string = 'code',
->(felder: F = {} as F, passwort: P = 'password' as P, code: C = 'code' as C) {
+>(fields: F = {} as F, password: P = 'password' as P, code: C = 'code' as C) {
   // null as missing: the app sends every field of its request, even an empty one.
-  const zusatz = {
-    [passwort]: z.string().max(1024).nullable().optional(),
+  const extra = {
+    [password]: z.string().max(1024).nullable().optional(),
     [code]: factorFields.code,
     passkey: factorFields.passkey,
   };
   return {
-    bestaetigung: { passwort: passwort as NoInfer<P>, code: code as NoInfer<C> },
-    eingabe: z.strictObject({ ...felder, ...(zusatz as Confirmation<P, C>) }),
+    bestaetigung: { passwort: password as NoInfer<P>, code: code as NoInfer<C> },
+    eingabe: z.strictObject({ ...fields, ...(extra as Confirmation<P, C>) }),
   };
 }
 
@@ -141,9 +141,9 @@ export const FLAT_INPUT = z.record(z.string(), z.union([SIMPLE, z.array(SIMPLE)]
 export const WITHOUT_BODY = z.strictObject({});
 
 /** A query: every value is a single text and may be missing. */
-export function abfrage<T extends Record<string, z.ZodType<unknown, string>>>(felder: T) {
+export function query<T extends Record<string, z.ZodType<unknown, string>>>(fields: T) {
   return z.strictObject(
-    Object.fromEntries(Object.entries(felder).map(([k, s]) => [k, s.optional()])) as {
+    Object.fromEntries(Object.entries(fields).map(([k, s]) => [k, s.optional()])) as {
       [K in keyof T]: z.ZodOptional<T[K]>;
     },
   );
@@ -170,14 +170,14 @@ export const Q = {
   konto: z.string().regex(/^\d{0,10}$/),
 };
 /** Pages of a long list; without page_size everything (older app versions). */
-export const SEITE = { page: Q.zahl(), page_size: Q.zahl() };
+export const PAGE = { page: Q.zahl(), page_size: Q.zahl() };
 /** What a page says about the whole list (src/infra/page.ts). */
-export const PAGES_DETAIL = { total: ganz, page: ganz, page_size: ganz };
+export const PAGES_DETAIL = { total: whole, page: whole, page_size: whole };
 /** An identifier in the body; app and UI send a number or digits, the route reads a number. */
-export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]).transform(Number);
+export const IDENTIFIER = z.union([whole, z.string().regex(/^-?\d{1,12}$/)]).transform(Number);
 export const TEXT = (max = 200) => z.string().max(max);
 /** Lower case counts as upper case; the route reads only 'N', 'U' or ''. */
-export const ZUSTAND = z
+export const CONDITION = z
   .union([z.enum(['N', 'U', 'n', 'u']), z.literal('')])
   .transform(v => v.toUpperCase() as 'N' | 'U' | '');
 /** A text that may be missing; the route then reads ''. */
@@ -190,10 +190,10 @@ export const TEXT_OR_EMPTY = (max = 200) =>
     .transform(v => v ?? '');
 export const JA_NO = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
 /** Settings as key and simple value; which ones apply is checked by the route. */
-export const EINSTELLUNGEN = z.record(
+export const SETTINGS = z.record(
   z.string().max(64),
   SIMPLE.transform(v => String(v)),
 );
 
 /** An account in owner lists. */
-export const KontoName = z.looseObject({ id: ganz, username: z.string() });
+export const AccountName = z.looseObject({ id: whole, username: z.string() });

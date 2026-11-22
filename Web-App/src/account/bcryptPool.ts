@@ -7,73 +7,73 @@ import bcrypt from 'bcryptjs';
  * requests for up to 100 ms. Workers are created only on demand and keep the
  * process alive only while they compute. If the file is missing (source instead of build), the
  * main thread computes as before. */
-type Auftrag = { art: 'hash' | 'vergleich'; passwort: string; wert: string | number };
-type Offen = { auftrag: Auftrag; ok: (v: unknown) => void; fehler: (e: Error) => void };
+type Job = { art: 'hash' | 'vergleich'; passwort: string; wert: string | number };
+type Pending = { auftrag: Job; ok: (v: unknown) => void; fehler: (e: Error) => void };
 
 export interface Pool {
-  hash(passwort: string, runden: number): Promise<string>;
+  hash(passwort: string, rounds: number): Promise<string>;
   vergleiche(passwort: string, hash: string): Promise<boolean>;
   stand(): { worker: number; frei: number; wartend: number; hauptthread: boolean };
   beende(): Promise<void>;
 }
 
-const imHauptthread = (a: Auftrag) =>
+const inMainThread = (a: Job) =>
   a.art === 'hash' ? bcrypt.hash(a.passwort, Number(a.wert)) : bcrypt.compare(a.passwort, String(a.wert));
 const NO_WORKER = '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:';
 
 /** idleMs: an idle worker ends after that and frees its memory. */
-export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
-  let hauptthread = !fs.existsSync(datei);
-  const frei: Worker[] = [],
-    alle = new Set<Worker>(),
-    queue: Offen[] = [];
+export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
+  let hauptthread = !fs.existsSync(file);
+  const free: Worker[] = [],
+    all = new Set<Worker>(),
+    queue: Pending[] = [];
   const rest = new Map<Worker, NodeJS.Timeout>();
-  const laufend = new Map<Worker, { id: number; o: Offen }>();
+  const running = new Map<Worker, { id: number; o: Pending }>();
   let nextId = 0,
-    beendet = false;
+    ended = false;
 
-  const starte = (w: Worker, o: Offen) => {
+  const start = (w: Worker, o: Pending) => {
     const id = ++nextId;
-    laufend.set(w, { id, o });
+    running.set(w, { id, o });
     w.ref();
     w.postMessage({ id, ...o.auftrag });
   };
-  const naechster = (w: Worker) => {
-    laufend.delete(w);
+  const next = (w: Worker) => {
+    running.delete(w);
     const o = queue.shift();
     if (o) {
-      starte(w, o);
+      start(w, o);
       return;
     }
     w.unref();
-    frei.push(w);
+    free.push(w);
     rest.set(
       w,
       setTimeout(() => {
         rest.delete(w);
-        frei.splice(frei.indexOf(w), 1);
+        free.splice(free.indexOf(w), 1);
         void w.terminate();
       }, idleMs).unref(),
     );
   };
   const takeFree = (): Worker | undefined => {
-    const w = frei.pop();
+    const w = free.pop();
     if (w) {
       clearTimeout(rest.get(w));
       rest.delete(w);
     }
     return w;
   };
-  const neu = (): Worker => {
-    const w = new Worker(datei);
-    let geantwortet = false,
+  const fresh = (): Worker => {
+    const w = new Worker(file);
+    let answered = false,
       grund: Error | null = null;
-    alle.add(w);
+    all.add(w);
     w.on('message', (m: { id: number; ergebnis?: unknown; fehler?: string }) => {
-      const l = laufend.get(w);
+      const l = running.get(w);
       if (!l || l.id !== m.id) return;
-      geantwortet = true;
-      naechster(w);
+      answered = true;
+      next(w);
       if (m.fehler !== undefined) l.o.fehler(new Error(m.fehler));
       else l.o.ok(m.ergebnis);
     });
@@ -81,42 +81,42 @@ export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptWor
       grund = e;
     });
     w.on('exit', () => {
-      alle.delete(w);
+      all.delete(w);
       clearTimeout(rest.get(w));
       rest.delete(w);
-      if (frei.includes(w)) frei.splice(frei.indexOf(w), 1);
-      const l = laufend.get(w);
-      laufend.delete(w);
-      if (beendet) return;
+      if (free.includes(w)) free.splice(free.indexOf(w), 1);
+      const l = running.get(w);
+      running.delete(w);
+      if (ended) return;
       // If a worker does not start at all, the next one will not start either.
-      if (!geantwortet) {
+      if (!answered) {
         hauptthread = true;
         console.warn(NO_WORKER, grund?.message ?? 'beendet');
       }
       if (l)
         void (
-          hauptthread ? imHauptthread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet'))
+          hauptthread ? inMainThread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet'))
         ).then(l.o.ok, l.o.fehler);
-      for (const o of queue.splice(0)) void auftrag(o.auftrag).then(o.ok, o.fehler);
+      for (const o of queue.splice(0)) void job(o.auftrag).then(o.ok, o.fehler);
     });
     return w;
   };
-  const auftrag = (a: Auftrag): Promise<unknown> => {
-    if (hauptthread) return imHauptthread(a);
+  const job = (a: Job): Promise<unknown> => {
+    if (hauptthread) return inMainThread(a);
     return new Promise((ok, fehler) => {
       const o = { auftrag: a, ok, fehler };
-      const w = takeFree() ?? (alle.size < groesse ? neu() : undefined);
-      if (w) starte(w, o);
+      const w = takeFree() ?? (all.size < size ? fresh() : undefined);
+      if (w) start(w, o);
       else queue.push(o);
     });
   };
   return {
-    hash: (passwort, runden) => auftrag({ art: 'hash', passwort, wert: runden }) as Promise<string>,
-    vergleiche: (passwort, hash) => auftrag({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
-    stand: () => ({ worker: alle.size, frei: frei.length, wartend: queue.length, hauptthread }),
+    hash: (passwort, rounds) => job({ art: 'hash', passwort, wert: rounds }) as Promise<string>,
+    vergleiche: (passwort, hash) => job({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
+    stand: () => ({ worker: all.size, frei: free.length, wartend: queue.length, hauptthread }),
     beende: async () => {
-      beendet = true;
-      await Promise.all([...alle].map(w => w.terminate()));
+      ended = true;
+      await Promise.all([...all].map(w => w.terminate()));
     },
   };
 }

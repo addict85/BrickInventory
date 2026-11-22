@@ -10,10 +10,10 @@ export async function deleteSetRows(t: SetsContext, uids: number[], setNumber: s
 /** By default in the whole write scope; an account selection narrows it, never widens it. */
 export async function deleteSetFor(sk: SetsContext, s: Sicht, setNumber: string) {
   const writable = await sk.household.schreibbereich(s.nutzer);
-  const gewaehlt = s.konten === undefined ? writable : await sk.household.scopeFrom(s);
+  const chosen = s.konten === undefined ? writable : await sk.household.scopeFrom(s);
   return deleteSet(
     sk,
-    gewaehlt.filter(id => writable.includes(id)),
+    chosen.filter(id => writable.includes(id)),
     setNumber,
   );
 }
@@ -24,11 +24,11 @@ export async function deleteSet(sk: SetsContext, userId: Blickfeld, setNumber: s
   // Atomic: an aborted DELETE would otherwise leave parts and figures without a set in
   // the parts list and finance sums.
   return sk.transaktion(async t => {
-    const besitzer = await repo.ownerOfSets(t.db, uids, setNumber);
-    if (!besitzer.length) return null;
+    const owner = await repo.ownerOfSets(t.db, uids, setNumber);
+    if (!owner.length) return null;
     // One entry per account: restoring goes into the account it belonged to.
     const papierkorb: number[] = [];
-    for (const b of besitzer) {
+    for (const b of owner) {
       const id = await t.inventory.putInTrash('set', b.user_id, setNumber);
       if (id !== null) papierkorb.push(id);
     }

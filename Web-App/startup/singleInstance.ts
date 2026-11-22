@@ -28,7 +28,7 @@ export interface Wait {
 }
 
 /** An error while closing changes nothing any more; it is reported anyway. */
-async function schliesse(c: Client): Promise<void> {
+async function close(c: Client): Promise<void> {
   try {
     await c.end();
   } catch (e) {
@@ -40,56 +40,56 @@ async function receiptsLock(db: Db, o: Required<Pick<Wait, 'wartenMs' | 'taktMs'
   const c = await db.ownConnection();
   // Without a listener, a disconnect while waiting would end the process unasked.
   c.on('error', () => {});
-  const ende = Date.now() + o.wartenMs;
-  let gemeldet = false;
+  const end = Date.now() + o.wartenMs;
+  let reported = false;
   for (;;) {
     if (await attemptsProcessLock(c, LOCKS.WEB_PROCESS)) return c;
-    if (!gemeldet)
+    if (!reported)
       console.warn(
         `[start] Ein anderer Web-Prozess hält die Sperre – warte bis zu ${o.wartenMs / 1000} s auf sein Ende`,
       );
-    gemeldet = true;
-    if (Date.now() >= ende) {
-      await schliesse(c);
+    reported = true;
+    if (Date.now() >= end) {
+      await close(c);
       throw new SecondWebProcess(Math.round(o.wartenMs / 1000));
     }
-    await new Promise(fertig => setTimeout(fertig, o.taktMs));
+    await new Promise(finished => setTimeout(finished, o.taktMs));
   }
 }
 
 /** @returns release (on shutdown). */
 export async function holdWebLock(db: Db, o: Wait = {}): Promise<() => Promise<void>> {
   const frist = { wartenMs: o.wartenMs ?? 20_000, taktMs: o.taktMs ?? 1000 };
-  const verloren =
+  const lost =
     o.atLoss ??
     ((e: Error) => {
       console.error(`❌ [start] Sperre des Web-Prozesses verloren: ${e.message}`);
       process.exit(1);
     });
   let client: Client | null = null;
-  let frei = false;
+  let free = false;
   // If the connection drops (database restart), the lock is gone: reclaim it,
   // again and again as long as the database is missing (live stays 200); give up only when
   // another web process holds it in the meantime.
   const retrieve = () => {
-    if (frei) return;
+    if (free) return;
     receiptsLock(db, frist).then(hold, (e: unknown) =>
-      e instanceof SecondWebProcess ? verloren(e) : setTimeout(retrieve, frist.taktMs),
+      e instanceof SecondWebProcess ? lost(e) : setTimeout(retrieve, frist.taktMs),
     );
   };
   const hold = (c: Client) => {
-    if (frei) return void schliesse(c);
+    if (free) return void close(c);
     client = c;
     c.on('error', () => {
-      if (frei || client !== c) return;
+      if (free || client !== c) return;
       client = null;
       retrieve();
     });
   };
   hold(await receiptsLock(db, frist));
   return async () => {
-    frei = true;
-    if (client) await schliesse(client);
+    free = true;
+    if (client) await close(client);
     client = null;
   };
 }

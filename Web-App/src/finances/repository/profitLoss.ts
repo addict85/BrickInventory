@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import { setStammJoin, SET } from '../../../db/catalogView';
+import { setMasterJoin, SET } from '../../../db/catalogView';
 import type { FinancesReadContract } from '../readContract';
 
 /** One row per set across all accounts: the calculation merges the purchases per
@@ -26,7 +26,7 @@ export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: 
      -- Name und Jahr aus rb_sets, die Bilder aus set_catalog (0105).
      FROM ${l.setBestand('= ANY($1)')} s
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
-     ${setStammJoin('s.set_number')}
+     ${setMasterJoin('s.set_number')}
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(quantity) AS total_qty,

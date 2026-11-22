@@ -19,34 +19,34 @@ export function proxyHintStatus(app: Application): ProxyStand | null {
  * the gateway, but a fixed proxy address. */
 export function proxyHinweis(
   trustProxy: string | undefined,
-  warne: (text: string) => void = console.warn,
-  uhr: () => number = Date.now,
+  warn: (text: string) => void = console.warn,
+  clock: () => number = Date.now,
   networkConfirmed = false,
 ) {
-  let vertrauen: ReturnType<typeof proxyVertrauen>;
+  let trust: ReturnType<typeof proxyVertrauen>;
   try {
-    vertrauen = proxyVertrauen(trustProxy, networkConfirmed);
+    trust = proxyVertrauen(trustProxy, networkConfirmed);
   } catch {
-    vertrauen = false;
+    trust = false;
   }
   // The same evaluation as in the server, so that hint and effect match.
   const checker = express();
-  checker.set('trust proxy', vertrauen);
-  const vertraut = checker.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
-  let warned = vertrauen === false;
+  checker.set('trust proxy', trust);
+  const trusted = checker.get('trust proxy fn') as (address: string, hop: number) => boolean;
+  let warned = trust === false;
   let stand: ProxyStand | null = null;
-  const eineAddress = onlyClientAddress(Array.isArray(vertrauen), warne, uhr, s => {
+  const eineAddress = onlyClientAddress(Array.isArray(trust), warn, clock, s => {
     stand = s;
   });
   const mw = (req: Request, _res: Response, next: NextFunction) => {
-    const von = req.socket?.remoteAddress || '';
-    if (req.headers['x-forwarded-for'] && vertraut(von, 0)) eineAddress(req.ip, von);
-    if (!warned && req.headers['x-forwarded-for'] && inDockerNetwork(von) && !vertraut(von, 0)) {
+    const fromValue = req.socket?.remoteAddress || '';
+    if (req.headers['x-forwarded-for'] && trusted(fromValue, 0)) eineAddress(req.ip, fromValue);
+    if (!warned && req.headers['x-forwarded-for'] && inDockerNetwork(fromValue) && !trusted(fromValue, 0)) {
       warned = true;
-      const ip = withoutV4Shell(von);
-      stand = { art: isDockerGateway(von) ? 'gateway' : 'docker_netz', vars: { ip } };
-      warne(
-        isDockerGateway(von)
+      const ip = withoutV4Shell(fromValue);
+      stand = { art: isDockerGateway(fromValue) ? 'gateway' : 'docker_netz', vars: { ip } };
+      warn(
+        isDockerGateway(fromValue)
           ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway ` +
               'erreichen auch Clients selbst den Server; ihm zu vertrauen hiesse, ihnen ihre Adresse zu glauben. Den ' +
               'Reverse-Proxy mit fester Adresse ins Netz brickinventory-net stellen und genau diese in TRUST_PROXY ' +
@@ -64,32 +64,32 @@ export function proxyHinweis(
 /** If a second proxy stands in front of Caddy, its address always arrives; a report only
  * happens after many requests over a long time, so that a single user does not count. */
 function onlyClientAddress(
-  aktiv: boolean,
-  warne: (text: string) => void,
-  uhr: () => number,
+  active: boolean,
+  warn: (text: string) => void,
+  clock: () => number,
   remember: (s: ProxyStand) => void,
 ) {
-  let fertig = !aktiv;
-  let erste: string | undefined;
+  let finished = !active;
+  let first: string | undefined;
   let seit = 0;
   let anzahl = 0;
-  return (ip: string | undefined, von: string) => {
+  return (ip: string | undefined, fromValue: string) => {
     // Without an evaluated X-Forwarded-For (outside production) there is nothing to count.
-    if (fertig || !ip || ip === von) return;
-    if (erste === undefined) {
-      erste = ip;
-      seit = uhr();
+    if (finished || !ip || ip === fromValue) return;
+    if (first === undefined) {
+      first = ip;
+      seit = clock();
     }
-    if (ip !== erste) {
-      fertig = true;
+    if (ip !== first) {
+      finished = true;
       return;
     }
     anzahl++;
-    const minuten = Math.floor((uhr() - seit) / 60_000);
-    if (anzahl < EINE_ADDRESS.anfragen || uhr() - seit < EINE_ADDRESS.ms) return;
-    fertig = true;
+    const minuten = Math.floor((clock() - seit) / 60_000);
+    if (anzahl < EINE_ADDRESS.anfragen || clock() - seit < EINE_ADDRESS.ms) return;
+    finished = true;
     remember({ art: 'eine_adresse', vars: { ip: withoutV4Shell(ip), minuten, anzahl } });
-    warne(
+    warn(
       `⚠️ [sicherheit] Seit ${minuten} Minuten kommen alle ${anzahl} Anfragen über den Proxy mit derselben ` +
         `Client-Adresse ${withoutV4Shell(ip)}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), ` +
         'teilen sich alle Clients diese Adresse: Fehlversuche eines Fremden sperren alle aus, Registrierung und ' +

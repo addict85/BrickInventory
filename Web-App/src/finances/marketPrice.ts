@@ -11,7 +11,7 @@ import {
 } from './calculation/prices';
 import { reportError, logAndContinue } from '../infra/error';
 import { marketPriceFrom } from '../catalog';
-import { KEINE_FARBE, zustand } from '../infra/validate';
+import { NO_COLOR, zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 
 // A leaf without back references, so that callers import properly instead of late with require().
@@ -58,11 +58,11 @@ export async function partState(k: FinancesContext, userId: number, partNumber: 
 /** Only from the cache, without fetching: the list should not wait for BrickLink. */
 export async function marketPricesFromCacheForMinifigs(
   kx: FinancesContext,
-  figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
+  minifigs: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
   viewerId: number,
 ): Promise<Map<string, number>> {
-  const treffer = new Map<string, number>();
-  if (!figuren.length) return treffer;
+  const hits = new Map<string, number>();
+  if (!minifigs.length) return hits;
 
   const [currency, ttlRaw] = await Promise.all([
     kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
@@ -72,19 +72,19 @@ export async function marketPricesFromCacheForMinifigs(
 
   // Both spellings: fetchMinifigPrice() stores under the BL number, the
   // estimate under the RB number.
-  const schluessel = [...new Set(figuren.flatMap(f => [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
-  if (!schluessel.length) return treffer;
+  const key = [...new Set(minifigs.flatMap(f => [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
+  if (!key.length) return hits;
 
   // No catch: the list treats the error as `degradiert` (reduced) and shows them without a price.
-  const zeilen = await kx.marktpreise.minifigsPricesFromCache(schluessel, String(currency), ttl);
+  const rows = await kx.marktpreise.minifigsPricesFromCache(key, String(currency), ttl);
 
   const cache = new Map<string, number>();
-  for (const z of zeilen) {
+  for (const z of rows) {
     const wert = marketPriceFrom(z);
     if (wert !== null) cache.set(`${z.fig_number}|${z.condition}`, wert);
   }
 
-  for (const f of figuren) {
+  for (const f of minifigs) {
     const nummer = String(f.fig_number ?? '');
     if (!nummer) continue;
     const zst = zustand(f.condition);
@@ -95,19 +95,19 @@ export async function marketPricesFromCacheForMinifigs(
       for (const c of [zst, anders]) {
         const wert = cache.get(`${k}|${c}`);
         if (wert != null) {
-          treffer.set(nummer, wert);
+          hits.set(nummer, wert);
           break;
         }
       }
-    if (treffer.has(nummer)) continue;
+    if (hits.has(nummer)) continue;
   }
-  return treffer;
+  return hits;
 }
 
 // The parts cache is keyed by BrickLink number and color; both are translated beforehand.
 export async function marketPricesFromCacheForParts(
   k: FinancesContext,
-  teile: Array<{
+  parts: Array<{
     part_number?: string | null;
     bl_part_number?: string | null;
     color_id?: number | null;
@@ -115,8 +115,8 @@ export async function marketPricesFromCacheForParts(
   }>,
   viewerId: number,
 ): Promise<Map<string, number>> {
-  const treffer = new Map<string, number>();
-  if (!teile.length) return treffer;
+  const hits = new Map<string, number>();
+  if (!parts.length) return hits;
 
   const [currency, ttlRaw] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
@@ -126,46 +126,46 @@ export async function marketPricesFromCacheForParts(
 
   await loadBlNumbersBefore(
     k,
-    teile.map(t => String(t.bl_part_number || t.part_number || '')),
+    parts.map(t => String(t.bl_part_number || t.part_number || '')),
   );
 
   // The keys under which fetchPartPrice would have written.
   const resolution = new Map<string, { nummer: string; farbe: number }>();
-  for (const t of teile) {
-    const roh = String(t.bl_part_number || t.part_number || '');
-    if (!roh) continue;
-    const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
-    if (resolution.has(schluessel)) continue;
-    resolution.set(schluessel, {
-      nummer: await resolveBlPartNumber(k, roh),
-      farbe: Number(await resolveBlColorId(k, Number(t.color_id ?? KEINE_FARBE))) || 0,
+  for (const t of parts) {
+    const raw = String(t.bl_part_number || t.part_number || '');
+    if (!raw) continue;
+    const key = `${t.part_number}|${t.color_id ?? NO_COLOR}`;
+    if (resolution.has(key)) continue;
+    resolution.set(key, {
+      nummer: await resolveBlPartNumber(k, raw),
+      farbe: Number(await resolveBlColorId(k, Number(t.color_id ?? NO_COLOR))) || 0,
     });
   }
 
-  const nummern = [...new Set([...resolution.values()].map(a => a.nummer))];
-  if (!nummern.length) return treffer;
-  const zeilen = await k.marktpreise.partsPricesFromCache(nummern, String(currency), ttl);
+  const numbers = [...new Set([...resolution.values()].map(a => a.nummer))];
+  if (!numbers.length) return hits;
+  const rows = await k.marktpreise.partsPricesFromCache(numbers, String(currency), ttl);
 
   const cache = new Map<string, number>();
-  for (const z of zeilen) {
+  for (const z of rows) {
     const wert = marketPriceFrom(z);
     if (wert !== null) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, wert);
   }
 
-  for (const t of teile) {
-    const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
-    const a = resolution.get(schluessel);
+  for (const t of parts) {
+    const key = `${t.part_number}|${t.color_id ?? NO_COLOR}`;
+    const a = resolution.get(key);
     if (!a) continue;
     const zst = zustand(t.condition);
     for (const c of [zst, zst === 'N' ? 'U' : 'N']) {
       const wert = cache.get(`${a.nummer}|${a.farbe}|${c}`);
       if (wert != null) {
-        treffer.set(schluessel, wert);
+        hits.set(key, wert);
         break;
       }
     }
   }
-  return treffer;
+  return hits;
 }
 
 /** With origin for the one place that shows it; all others take the number. */
@@ -253,9 +253,7 @@ export async function estimateMinifigsPrice(
       // filled memory.
       const blPartNum = p.bl_part_num || p.part_num;
       try {
-        const priceData = await priceOrNone(
-          fetchPartPrice(k, blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24),
-        );
+        const priceData = await priceOrNone(fetchPartPrice(k, blPartNum, p.color_id ?? NO_COLOR, cond, currency, 24));
         const unitPrice = marketPriceFrom(priceData);
         if (unitPrice !== null) {
           total += unitPrice * (p.quantity || 1);
@@ -323,12 +321,12 @@ export async function figMarketPriceWithOrigin(
     if (num === blFigNumber && blFigNumber === figNumber) break; // do not ask twice
   }
   // Without an origin: the estimate does not come from the other condition.
-  const schaetzung = await estimateMinifigsPrice(k, figNumber, userId, effCond);
+  const estimate = await estimateMinifigsPrice(k, figNumber, userId, effCond);
   return {
-    preis: schaetzung?.preis ?? null,
+    preis: estimate?.preis ?? null,
     fromState: null,
-    geschaetzt: schaetzung != null,
-    abdeckung: schaetzung?.abdeckung ?? null,
+    geschaetzt: estimate != null,
+    abdeckung: estimate?.abdeckung ?? null,
   };
 }
 

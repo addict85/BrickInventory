@@ -2,14 +2,14 @@
 import type { Konfig } from '../infra/config';
 import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/cache';
-import { imSystem, mit, type Kontext } from '../infra/area';
-import * as einrichtung from './repository/setup';
+import { imSystem, withValue, type Context } from '../infra/area';
+import * as setup from './repository/setup';
 import * as konten from './repository/accounts';
 import * as protokoll from './repository/log';
-import * as qrKopplung from './repository/qrPairing';
-import * as startVerwalter from './repository/startAdmin';
-import * as uebernahmen from './repository/takeovers';
-import * as zugaenge from './repository/accesses';
+import * as qrPairing from './repository/qrPairing';
+import * as startAdmin from './repository/startAdmin';
+import * as takeovers from './repository/takeovers';
+import * as accesses from './repository/accesses';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../jobQueue';
@@ -17,10 +17,10 @@ import type { MailServices } from '../mail';
 import type { ThrottleServices } from '../throttle';
 import type { DevicesServices } from '../devices';
 import type { FactorsServices } from '../factors';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 
 export interface AccountDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   konfig: Readonly<Konfig>;
   db: Db;
   /** State per access (token cache, session versions); createAccount creates them. */
@@ -39,33 +39,33 @@ export interface AccountDependencies {
 const WITHOUT_ACCOUNT = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const ALL_ACCOUNTS = 'Aufräumen über alle Konten';
 const FOREIGN_ACCOUNT = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
-const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
+const SYSTEM_ROLE_ONLY = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
 const TAKEOVER = 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten';
 const ACCESS = 'Passwort, Rechte, Adresse und Sitzungsversion schreibt nur die Systemrolle (0117)';
 const ADDRESS = 'Adressen und Links liest nur die Systemrolle (0121)';
 const ALL_NAMES = 'Fremde Konten: Die Laufzeitrolle sieht nur das eigene und den Haushalt (0121)';
 
 /** The setup state of the start page: accounts at all, and whether the start password still applies. */
-const einrichtungszugang = (db: Db) => ({
-  einrichtung: { accountsStatus: imSystem(db, ALL_NAMES, einrichtung.accountsStatus) },
+const setupAccess = (db: Db) => ({
+  einrichtung: { accountsStatus: imSystem(db, ALL_NAMES, setup.accountsStatus) },
 });
 
 /** Accounts and log. */
-const kontenzugang = (db: Db) => ({
+const accountAccess = (db: Db) => ({
   konten: {
     accountShort: imSystem(db, ALL_NAMES, konten.accountShort),
     accountToNames: imSystem(db, WITHOUT_ACCOUNT, konten.accountToNames),
     accountFull: imSystem(db, ADDRESS, konten.accountFull),
     profileRow: imSystem(db, ADDRESS, konten.profileRow),
     nameTaken: imSystem(db, ADDRESS, konten.nameTaken),
-    changeNames: mit(db)(konten.changeNames),
+    changeNames: withValue(db)(konten.changeNames),
     changeUsernames: imSystem(db, ACCESS, konten.changeUsernames),
     discardPendingAddress: imSystem(db, ACCESS, konten.discardPendingAddress),
     rememberEmailNew: imSystem(db, ACCESS, konten.rememberEmailNew),
     accountToEmailToken: imSystem(db, ADDRESS, konten.accountToEmailToken),
     adoptEmailNew: imSystem(db, ACCESS, konten.adoptEmailNew),
     discardEmailNew: imSystem(db, ACCESS, konten.discardEmailNew),
-    nameZuEmailToken: imSystem(db, ADDRESS, konten.nameZuEmailToken),
+    nameZuEmailToken: imSystem(db, ADDRESS, konten.nameForEmailToken),
     openRegistrations: imSystem(db, ADDRESS, konten.openRegistrations),
     switchRegistrationFree: imSystem(db, ACCESS, konten.switchRegistrationFree),
     pendingWithoutLink: imSystem(db, ADDRESS, konten.pendingWithoutLink),
@@ -84,16 +84,16 @@ const kontenzugang = (db: Db) => ({
     accountWithEmail: imSystem(db, ADDRESS, konten.accountWithEmail),
     registerAccount: imSystem(db, ACCESS, konten.registerAccount),
     activeAccountAfterEmail: imSystem(db, ADDRESS, konten.activeAccountAfterEmail),
-    setRuecksetzTokenIfFree: imSystem(db, ACCESS, konten.setRuecksetzTokenIfFree),
+    setRuecksetzTokenIfFree: imSystem(db, ACCESS, konten.setResetTokenIfFree),
     renewEmailTokenIfFree: imSystem(db, ACCESS, konten.renewEmailTokenIfFree),
-    accountAfterRuecksetzToken: imSystem(db, ADDRESS, konten.accountAfterRuecksetzToken),
+    accountAfterRuecksetzToken: imSystem(db, ADDRESS, konten.accountAfterResetToken),
     resetSetPasswordAfter: imSystem(db, ACCESS, konten.resetSetPasswordAfter),
-    accessesOfAccount: mit(db)(konten.accessesOfAccount),
+    accessesOfAccount: withValue(db)(konten.accessesOfAccount),
     tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', konten.tokenStand),
-    deleteAccess: mit(db)(konten.deleteAccess),
-    deleteOtherAccesses: mit(db)(konten.deleteOtherAccesses),
-    deleteOtherSessions: imSystem(db, NUR_SYSTEMROLLE, konten.deleteOtherSessions),
-    mussPasswortAendern: mit(db)(konten.mussPasswortAendern),
+    deleteAccess: withValue(db)(konten.deleteAccess),
+    deleteOtherAccesses: withValue(db)(konten.deleteOtherAccesses),
+    deleteOtherSessions: imSystem(db, SYSTEM_ROLE_ONLY, konten.deleteOtherSessions),
+    mussPasswortAendern: withValue(db)(konten.mustChangePassword),
   },
   protokoll: {
     protokolliere: imSystem(db, ALL_NAMES, protokoll.protokolliere),
@@ -103,64 +103,64 @@ const kontenzugang = (db: Db) => ({
 });
 
 /** Pairing, start administrator and tokens. */
-const sitzungszugang = (db: Db) => ({
+const sessionAccess = (db: Db) => ({
   qrKopplung: {
-    cleanQrPairingsOn: imSystem(db, ALL_ACCOUNTS, qrKopplung.cleanQrPairingsOn),
-    putQrPairingAn: imSystem(db, 'Das Gerät ohne Konto legt die Kopplung an', qrKopplung.putQrPairingAn),
-    melde: imSystem(db, WITHOUT_ACCOUNT, qrKopplung.melde),
-    afterPickup: imSystem(db, WITHOUT_ACCOUNT, qrKopplung.afterPickup),
-    qrPairingOfAccount: mit(db)(qrKopplung.qrPairingOfAccount),
-    markPickedUp: imSystem(db, WITHOUT_ACCOUNT, qrKopplung.markPickedUp),
-    markConfirmed: imSystem(db, 'Die Zeile trägt das Konto erst mit der Bestätigung', qrKopplung.markConfirmed),
-    countQrFailedAttempt: imSystem(db, 'wie markiereBestaetigt', qrKopplung.countQrFailedAttempt),
-    markRejected: imSystem(db, 'Auch das Gerät ohne Konto lehnt ab', qrKopplung.markRejected),
+    cleanQrPairingsOn: imSystem(db, ALL_ACCOUNTS, qrPairing.cleanQrPairingsOn),
+    putQrPairingAn: imSystem(db, 'Das Gerät ohne Konto legt die Kopplung an', qrPairing.createQrPairing),
+    melde: imSystem(db, WITHOUT_ACCOUNT, qrPairing.report),
+    afterPickup: imSystem(db, WITHOUT_ACCOUNT, qrPairing.afterPickup),
+    qrPairingOfAccount: withValue(db)(qrPairing.qrPairingOfAccount),
+    markPickedUp: imSystem(db, WITHOUT_ACCOUNT, qrPairing.markPickedUp),
+    markConfirmed: imSystem(db, 'Die Zeile trägt das Konto erst mit der Bestätigung', qrPairing.markConfirmed),
+    countQrFailedAttempt: imSystem(db, 'wie markiereBestaetigt', qrPairing.countQrFailedAttempt),
+    markRejected: imSystem(db, 'Auch das Gerät ohne Konto lehnt ab', qrPairing.markRejected),
   },
   uebernahmen: {
-    terminateAn: imSystem(db, TAKEOVER, uebernahmen.terminateAn),
-    adminOrJustBeen: imSystem(db, TAKEOVER, uebernahmen.adminOrJustBeen),
-    takeDue: imSystem(db, TAKEOVER, uebernahmen.takeDue),
-    abortTakeoversAb: imSystem(db, TAKEOVER, uebernahmen.abortTakeoversAb),
-    targetToAbort: imSystem(db, 'Abbruch-Link: Die Anfrage trägt kein Konto', uebernahmen.targetToAbort),
-    announced: imSystem(db, TAKEOVER, uebernahmen.announced),
+    terminateAn: imSystem(db, TAKEOVER, takeovers.scheduleTermination),
+    adminOrJustBeen: imSystem(db, TAKEOVER, takeovers.adminOrJustBeen),
+    takeDue: imSystem(db, TAKEOVER, takeovers.takeDue),
+    abortTakeoversAb: imSystem(db, TAKEOVER, takeovers.abortTakeovers),
+    targetToAbort: imSystem(db, 'Abbruch-Link: Die Anfrage trägt kein Konto', takeovers.targetToAbort),
+    announced: imSystem(db, TAKEOVER, takeovers.announced),
   },
   startVerwalter: {
-    accountsPresent: imSystem(db, ALL_NAMES, startVerwalter.accountsPresent),
-    openStartpasswort: imSystem(db, ALL_NAMES, startVerwalter.openStartpasswort),
-    putAdminAn: imSystem(db, ACCESS, startVerwalter.putAdminAn),
+    accountsPresent: imSystem(db, ALL_NAMES, startAdmin.accountsPresent),
+    openStartpasswort: imSystem(db, ALL_NAMES, startAdmin.openStartPassword),
+    putAdminAn: imSystem(db, ACCESS, startAdmin.createAdmin),
   },
   zugaenge: {
-    validToken: imSystem(db, WITHOUT_ACCOUNT, zugaenge.validToken),
-    endOverlap: imSystem(db, WITHOUT_ACCOUNT, zugaenge.endOverlap),
-    touchToken: imSystem(db, WITHOUT_ACCOUNT, zugaenge.touchToken),
-    putTokenAn: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', zugaenge.putTokenAn),
-    lockSwapSource: mit(db)(zugaenge.lockSwapSource),
-    unusedSuccessor: mit(db)(zugaenge.unusedSuccessor),
-    deleteFamily: mit(db)(zugaenge.deleteFamily),
-    deleteUnusedSuccessor: mit(db)(zugaenge.deleteUnusedSuccessor),
-    putSuccessorAn: mit(db)(zugaenge.putSuccessorAn),
-    limitTimePredecessor: mit(db)(zugaenge.limitTimePredecessor),
-    lockFamily: imSystem(db, WITHOUT_ACCOUNT, zugaenge.lockFamily),
-    deleteOrphanedConsumed: imSystem(db, ALL_ACCOUNTS, zugaenge.deleteOrphanedConsumed),
+    validToken: imSystem(db, WITHOUT_ACCOUNT, accesses.validToken),
+    endOverlap: imSystem(db, WITHOUT_ACCOUNT, accesses.endOverlap),
+    touchToken: imSystem(db, WITHOUT_ACCOUNT, accesses.touchToken),
+    putTokenAn: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', accesses.createToken),
+    lockSwapSource: withValue(db)(accesses.lockSwapSource),
+    unusedSuccessor: withValue(db)(accesses.unusedSuccessor),
+    deleteFamily: withValue(db)(accesses.deleteFamily),
+    deleteUnusedSuccessor: withValue(db)(accesses.deleteUnusedSuccessor),
+    putSuccessorAn: withValue(db)(accesses.createSuccessor),
+    limitTimePredecessor: withValue(db)(accesses.limitTimePredecessor),
+    lockFamily: imSystem(db, WITHOUT_ACCOUNT, accesses.lockFamily),
+    deleteOrphanedConsumed: imSystem(db, ALL_ACCOUNTS, accesses.deleteOrphanedConsumed),
     loescheToken: imSystem(
       db,
       'Abmelden mit einem Token, dessen Konto die Anfrage nicht mehr trägt',
-      zugaenge.loescheToken,
+      accesses.deleteToken,
     ),
-    deleteTokensOfAccount: imSystem(db, FOREIGN_ACCOUNT, zugaenge.deleteTokensOfAccount),
-    capSessions: imSystem(db, NUR_SYSTEMROLLE, zugaenge.capSessions),
-    capTokens: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', zugaenge.capTokens),
-    deleteSessionsOfAccount: imSystem(db, NUR_SYSTEMROLLE, zugaenge.deleteSessionsOfAccount),
-    sitzungsVersion: imSystem(db, WITHOUT_ACCOUNT, zugaenge.sitzungsVersion),
-    countSessionVersionHigh: imSystem(db, ACCESS, zugaenge.countSessionVersionHigh),
-    boundUnlimited: imSystem(db, ALL_ACCOUNTS, zugaenge.boundUnlimited),
-    pullAltzeilenAfter: imSystem(db, ALL_ACCOUNTS, zugaenge.pullAltzeilenAfter),
-    deleteExpired: imSystem(db, ALL_ACCOUNTS, zugaenge.deleteExpiredAccesses),
-    deleteUnused: imSystem(db, ALL_ACCOUNTS, zugaenge.deleteUnused),
-    accountToLogin: imSystem(db, NUR_SYSTEMROLLE, zugaenge.accountToLogin),
-    passwortHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.passwortHash),
-    replacePasswordHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.replacePasswordHash),
+    deleteTokensOfAccount: imSystem(db, FOREIGN_ACCOUNT, accesses.deleteTokensOfAccount),
+    capSessions: imSystem(db, SYSTEM_ROLE_ONLY, accesses.capSessions),
+    capTokens: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', accesses.capTokens),
+    deleteSessionsOfAccount: imSystem(db, SYSTEM_ROLE_ONLY, accesses.deleteSessionsOfAccount),
+    sitzungsVersion: imSystem(db, WITHOUT_ACCOUNT, accesses.sessionVersion),
+    countSessionVersionHigh: imSystem(db, ACCESS, accesses.countSessionVersionHigh),
+    boundUnlimited: imSystem(db, ALL_ACCOUNTS, accesses.boundUnlimited),
+    pullAltzeilenAfter: imSystem(db, ALL_ACCOUNTS, accesses.pullOldRowsAfter),
+    deleteExpired: imSystem(db, ALL_ACCOUNTS, accesses.deleteExpiredAccesses),
+    deleteUnused: imSystem(db, ALL_ACCOUNTS, accesses.deleteUnused),
+    accountToLogin: imSystem(db, SYSTEM_ROLE_ONLY, accesses.accountToLogin),
+    passwortHash: imSystem(db, SYSTEM_ROLE_ONLY, accesses.passwortHash),
+    replacePasswordHash: imSystem(db, SYSTEM_ROLE_ONLY, accesses.replacePasswordHash),
   },
 });
 
-export const zugang = (db: Db) => ({ ...einrichtungszugang(db), ...kontenzugang(db), ...sitzungszugang(db) });
-export type AccountContext = Kontext<AccountDependencies, ReturnType<typeof zugang>>;
+export const access = (db: Db) => ({ ...setupAccess(db), ...accountAccess(db), ...sessionAccess(db) });
+export type AccountContext = Context<AccountDependencies, ReturnType<typeof access>>;

@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
-import type { Tabellen } from '../../../db/rows';
+import { marketPriceSql } from '../../../db/geldSql';
+import type { Tables } from '../../../db/rows';
 
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
@@ -43,21 +43,21 @@ export function setPriceFresh(
   setNumber: string,
   condition: string,
   currency: string,
-  ttlStunden: number,
+  ttlHours: number,
 ) {
   return db.get<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
       WHERE set_number = $1 AND condition = $2 AND currency_code = $3
         AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [setNumber, condition, currency, ttlStunden],
+    [setNumber, condition, currency, ttlHours],
   );
 }
 
-export function setPricesFresh(db: DbInterface, setNumbers: string[], currency: string, ttlStunden: number) {
+export function setPricesFresh(db: DbInterface, setNumbers: string[], currency: string, ttlHours: number) {
   return db.all<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [setNumbers, currency, ttlStunden],
+    [setNumbers, currency, ttlHours],
   );
 }
 
@@ -91,7 +91,7 @@ export function rememberSetHistory(
   );
 }
 
-export function blFarben(db: DbInterface) {
+export function blColors(db: DbInterface) {
   return db.all<{ id: number; bl_color_id: number }>(
     'SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL',
   );
@@ -99,10 +99,10 @@ export function blFarben(db: DbInterface) {
 
 export function partsPricesFresh(
   db: DbInterface,
-  nummern: string[],
-  farben: number[],
+  numbers: string[],
+  colors: number[],
   currency: string,
-  ttlStunden: number,
+  ttlHours: number,
 ) {
   return db.all<Preiszeile & { part_number: string; color_id: number }>(
     `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price, c.fetched_at
@@ -110,17 +110,17 @@ export function partsPricesFresh(
        JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
          ON c.part_number = k.nr AND c.color_id = k.farbe
       WHERE c.currency_code = $3 AND c.fetched_at > NOW() - make_interval(hours => $4)`,
-    [nummern, farben, currency, ttlStunden],
+    [numbers, colors, currency, ttlHours],
   );
 }
 
 /** Only real ones, no estimated ones. */
-export function minifigsPricesFresh(db: DbInterface, figuren: string[], currency: string, ttlStunden: number) {
+export function minifigsPricesFresh(db: DbInterface, minifigs: string[], currency: string, ttlHours: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT estimated
         AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [figuren, currency, ttlStunden],
+    [minifigs, currency, ttlHours],
   );
 }
 
@@ -130,11 +130,11 @@ export function partPriceFresh(
   blColorId: number,
   condition: string,
   currency: string,
-  ttlStunden: number,
+  ttlHours: number,
 ) {
   return db.get<Preiszeile>(
     `SELECT avg_price, qty_avg_price, fetched_at FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
-    [blPartNumber, blColorId, condition, currency, ttlStunden],
+    [blPartNumber, blColorId, condition, currency, ttlHours],
   );
 }
 
@@ -143,11 +143,11 @@ export function minifigPriceFresh(
   figNumber: string,
   condition: string,
   currency: string,
-  ttlStunden: number,
+  ttlHours: number,
 ) {
   return db.get<Preiszeile>(
     `SELECT avg_price, qty_avg_price, fetched_at FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT estimated AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [figNumber, condition, currency, ttlStunden],
+    [figNumber, condition, currency, ttlHours],
   );
 }
 
@@ -217,24 +217,24 @@ export function rememberMinifigHistory(
 }
 
 /** The market price (marktpreisSql) is one of the price columns of price_cache. */
-type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
+type MarketPrice = { marktpreis: NonNullable<Tables['price_cache']['avg_price']> };
 
 /** The requested condition wins if it has a price. */
-export function marketPriceFromCache(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<Marktpreis>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
-     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
+export function marketPriceFromCache(dbh: DbInterface, setNumber: string, currency: string, condition: string) {
+  return dbh.get<MarketPrice>(
+    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
+     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marketPriceSql()} IS NOT NULL
      ORDER BY (condition = $3) DESC LIMIT 1`,
-    [setNumber, currency, zustand],
+    [setNumber, currency, condition],
   );
 }
 
 /** Fallback if the cache is empty (CSV import without quota). */
-export function marketPriceFromHistory(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<Marktpreis>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
-        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
+export function marketPriceFromHistory(dbh: DbInterface, setNumber: string, currency: string, condition: string) {
+  return dbh.get<MarketPrice>(
+    `SELECT ${marketPriceSql()} AS marktpreis FROM price_history
+        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marketPriceSql()} IS NOT NULL
         ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
-    [setNumber, currency, zustand],
+    [setNumber, currency, condition],
   );
 }

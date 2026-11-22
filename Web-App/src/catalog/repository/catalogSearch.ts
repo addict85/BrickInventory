@@ -6,7 +6,7 @@ import { fromTable } from '../../infra/validate';
 
 export type Thema = { id: number; name: string; parent_id: number | null };
 
-export function themen(db: DbInterface) {
+export function themes(db: DbInterface) {
   return db.all<Thema>('SELECT id, name, parent_id FROM rb_themes');
 }
 
@@ -14,7 +14,7 @@ export function setsJeThema(db: DbInterface) {
   return db.all<{ theme_id: number; n: number }>('SELECT theme_id, COUNT(*)::int AS n FROM rb_sets GROUP BY theme_id');
 }
 
-export function jahresspanne(db: DbInterface) {
+export function yearRange(db: DbInterface) {
   return db.get<{ year_min: number | null; year_max: number | null }>(
     'SELECT MIN(year)::int AS year_min, MAX(year)::int AS year_max FROM rb_sets WHERE year > 0',
   );
@@ -34,11 +34,11 @@ export interface CatalogChoice {
 }
 
 /** A capture placeholder ('Set …' without data) would only reveal that someone captured the number. */
-const PLATZHALTER = `(rb.source = 'api' AND rb.name = 'Set ' || rb.set_num
+const PLACEHOLDER = `(rb.source = 'api' AND rb.name = 'Set ' || rb.set_num
   AND rb.year IS NULL AND rb.theme_id IS NULL AND rb.num_parts IS NULL)`;
 
-function katalogWo(f: CatalogChoice, params: unknown[]): string {
-  const where: string[] = [`NOT ${PLATZHALTER}`];
+function catalogWhere(f: CatalogChoice, params: unknown[]): string {
+  const where: string[] = [`NOT ${PLACEHOLDER}`];
   // "75192" also matches "75192-1".
   if (f.q) {
     params.push(containsPattern(f.q));
@@ -59,11 +59,11 @@ function katalogWo(f: CatalogChoice, params: unknown[]): string {
   return `WHERE ${where.join(' AND ')}`;
 }
 
-export function setsJeYearFiltered(db: DbInterface, f: CatalogChoice, absteigend: boolean) {
+export function setsJeYearFiltered(db: DbInterface, f: CatalogChoice, descending: boolean) {
   const params: unknown[] = [];
   return db.all<{ year: number | null; n: number }>(
-    `SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}
-                  GROUP BY rb.year ORDER BY rb.year ${absteigend ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'}`,
+    `SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${catalogWhere(f, params)}
+                  GROUP BY rb.year ORDER BY rb.year ${descending ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'}`,
     params,
   );
 }
@@ -88,19 +88,22 @@ export interface CatalogSet {
   owned: boolean;
   owned_quantity: number;
 }
-const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts,
+const SET_COLUMNS = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts,
             c.image_url, c.image_local,
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
-const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
+const IMAGE_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Ownership via the scope ($1) as in wishlist and collection; one row per set, quantities summed. */
-const besitzJoin = (l: CatalogReadContract) => `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
+const ownershipJoin = (
+  l: CatalogReadContract,
+) => `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
                     FROM ${l.setBestand('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function catalogCount(db: DbInterface, f: CatalogChoice): Promise<number> {
   const params: unknown[] = [];
   return (
-    (await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}`, params))?.n ?? 0
+    (await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM rb_sets rb ${catalogWhere(f, params)}`, params))?.n ??
+    0
   );
 }
 
@@ -109,20 +112,20 @@ export function catalogRows(
   l: CatalogReadContract,
   konten: number[],
   f: CatalogChoice,
-  ordnung: unknown,
+  order: unknown,
   limit: number,
   offset: number,
 ) {
   // fromTable: ?sort=constructor must not yield an inherited property.
-  const sortSql = fromTable(ORDERS, ordnung, ORDERS.year_desc);
+  const sortSql = fromTable(ORDERS, order, ORDERS.year_desc);
   const params: unknown[] = [konten];
-  const wo = katalogWo(f, params);
+  const wo = catalogWhere(f, params);
   params.push(limit, offset);
   return db.all<CatalogSet>(
-    `SELECT ${SET_SPALTEN}
+    `SELECT ${SET_COLUMNS}
        FROM rb_sets rb
-       ${BILD_JOIN}
-       ${besitzJoin(l)}
+       ${IMAGE_JOIN}
+       ${ownershipJoin(l)}
        ${wo}
       ORDER BY ${sortSql}
       LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -132,11 +135,11 @@ export function catalogRows(
 
 export function catalogRow(db: DbInterface, l: CatalogReadContract, konten: number[], setNumber: string) {
   return db.get<CatalogSet>(
-    `SELECT ${SET_SPALTEN}
+    `SELECT ${SET_COLUMNS}
        FROM rb_sets rb
-       ${BILD_JOIN}
-       ${besitzJoin(l)}
-      WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLATZHALTER})`,
+       ${IMAGE_JOIN}
+       ${ownershipJoin(l)}
+      WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLACEHOLDER})`,
     [konten, setNumber],
   );
 }

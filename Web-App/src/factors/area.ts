@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import * as legacySecrets from './legacySecrets';
 import * as passkeys from './passkeys';
 import * as secondFactor from './secondFactor';
@@ -13,24 +13,24 @@ export function createFactors(a: FactorsDependencies, inspect?: Inspect<FactorsC
     a,
     access,
     (k: FactorsContext) => ({
-      isActive: mit(k)(secondFactor.isActive),
-      activeAmong: mit(k)(secondFactor.activeAmong),
-      status: mit(k)(secondFactor.status),
-      beginSetup: mit(k)(secondFactor.beginSetup),
-      confirmSetup: mit(k)(secondFactor.confirmSetup),
-      otpauthFor: mit(k)(secondFactor.otpauthFor),
-      checkCode: mit(k)(secondFactor.checkCode),
-      disable: mit(k)(secondFactor.disable),
-      renewCodes: mit(k)(secondFactor.renewCodes),
-      registrationOptions: mit(k)(passkeys.registrationOptions),
-      verifyRegistration: mit(k)(passkeys.verifyRegistration),
-      authenticationOptions: mit(k)(passkeys.authenticationOptions),
-      verifyAuthentication: mit(k)(passkeys.verifyAuthentication),
-      accountPasskeys: mit(k)(passkeys.accountPasskeys),
-      hasPasskeys: mit(k)(passkeys.hasPasskeys),
-      deletePasskey: mit(k)(passkeys.deletePasskey),
-      revokePasskeys: mit(k)(passkeys.revokePasskeys),
-      encryptLegacySecrets: mit(k)(legacySecrets.encryptLegacySecrets),
+      isActive: withValue(k)(secondFactor.isActive),
+      activeAmong: withValue(k)(secondFactor.activeAmong),
+      status: withValue(k)(secondFactor.status),
+      beginSetup: withValue(k)(secondFactor.beginSetup),
+      confirmSetup: withValue(k)(secondFactor.confirmSetup),
+      otpauthFor: withValue(k)(secondFactor.otpauthFor),
+      checkCode: withValue(k)(secondFactor.checkCode),
+      disable: withValue(k)(secondFactor.disable),
+      renewCodes: withValue(k)(secondFactor.renewCodes),
+      registrationOptions: withValue(k)(passkeys.registrationOptions),
+      verifyRegistration: withValue(k)(passkeys.verifyRegistration),
+      authenticationOptions: withValue(k)(passkeys.authenticationOptions),
+      verifyAuthentication: withValue(k)(passkeys.verifyAuthentication),
+      accountPasskeys: withValue(k)(passkeys.accountPasskeys),
+      hasPasskeys: withValue(k)(passkeys.hasPasskeys),
+      deletePasskey: withValue(k)(passkeys.deletePasskey),
+      revokePasskeys: withValue(k)(passkeys.revokePasskeys),
+      encryptLegacySecrets: withValue(k)(legacySecrets.encryptLegacySecrets),
     }),
     inspect,
   );

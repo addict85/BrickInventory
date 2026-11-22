@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit, ganz, WITHOUT_BODY, TEXT, JA_NO, abfrage, Q, SEITE, PAGES_DETAIL } from './base';
+import { type Route, time, whole, WITHOUT_BODY, TEXT, JA_NO, query, Q, PAGE, PAGES_DETAIL } from './base';
 import { GenericAdminResponse, ImportZeile } from './shared';
 
 export { ImportZeile };
@@ -16,24 +16,24 @@ export const ApiLimitsResponse = z.looseObject({
   limits: ApiLimits,
 });
 
-export const AuftragFortschritt = z.looseObject({
+export const JobProgress = z.looseObject({
   erledigt: z.number().int().nullable().optional(),
   gesamt: z.number().int().nullable().optional(),
   text: z.string().nullable().optional(),
 });
 
-export const Auftrag = z.looseObject({
+export const Job = z.looseObject({
   id: z.string(),
   type: z.string(),
   status: z.string(),
   attempts: z.number().int(),
   max_attempts: z.number().int(),
-  due_at: zeit.nullable(),
-  deadline_at: zeit.nullable(),
-  started_at: zeit.nullable(),
-  created_at: zeit.nullable(),
-  updated_at: zeit.nullable(),
-  progress: AuftragFortschritt.nullable(),
+  due_at: time.nullable(),
+  deadline_at: time.nullable(),
+  started_at: time.nullable(),
+  created_at: time.nullable(),
+  updated_at: time.nullable(),
+  progress: JobProgress.nullable(),
   error_message: z.string().nullable(),
   geplant: z.boolean(),
   /** Postponed (quota, throttling): waits until due_at, `error_message` names the reason. */
@@ -41,19 +41,19 @@ export const Auftrag = z.looseObject({
   set_number: z.string().nullable(),
 });
 
-export const AuftragZaehler = z.looseObject({
+export const JobCounter = z.looseObject({
   type: z.string(),
   status: z.string(),
   anzahl: z.number().int(),
 });
 
-export const AuftragPause = z.looseObject({
+export const JobPause = z.looseObject({
   type: z.string(),
-  until_at: zeit.nullable(),
+  until_at: time.nullable(),
   reason: z.string().nullable(),
 });
 
-export const JobProzess = z.looseObject({
+export const JobProcess = z.looseObject({
   lebenszeichen: z.string().nullable(),
   alter_sekunden: z.number().int().nullable(),
   laeuft: z.boolean(),
@@ -61,33 +61,33 @@ export const JobProzess = z.looseObject({
 
 export const AuftraegeResponse = z.looseObject({
   success: z.boolean(),
-  auftraege: z.array(Auftrag),
-  zusammenfassung: z.array(AuftragZaehler),
-  pausen: z.array(AuftragPause),
+  auftraege: z.array(Job),
+  zusammenfassung: z.array(JobCounter),
+  pausen: z.array(JobPause),
   bildbedarf: z.number().int(),
-  job_prozess: JobProzess,
+  job_prozess: JobProcess,
 });
 
-export const AuftragAenderung = z.looseObject({
+export const JobChange = z.looseObject({
   success: z.boolean(),
   id: z.string(),
   status: z.string(),
 });
 
-export const AuftragsArtLeerung = z.looseObject({
+export const JobKindDrain = z.looseObject({
   success: z.boolean(),
   art: z.string(),
   entfernt: z.number().int(),
 });
 
-export const AuftragsArtStart = z.looseObject({
+export const JobKindStart = z.looseObject({
   success: z.boolean(),
   art: z.string(),
   gestartet: z.boolean(),
 });
 
 export const BricksetQueueEntry = z.looseObject({
-  created_at: zeit.nullable(),
+  created_at: time.nullable(),
   set_number: z.string(),
   name: z.string().nullable(),
   attempts: z.number().int(),
@@ -144,12 +144,12 @@ export const CsvImportStatus = z.looseObject({
   warn: z.number().int().optional(),
   err: z.number().int().optional(),
   error: z.string().nullable(),
-  beendet_am: zeit.optional(),
+  beendet_am: time.optional(),
 });
 
 export const JobSchedule = z.looseObject({
   type: z.string(),
-  time: zeit.nullable().optional(),
+  time: time.nullable().optional(),
   minutes: z.number().int().nullable().optional(),
 });
 
@@ -183,67 +183,67 @@ export const JobsResponse = z.looseObject({
   proxy_hinweis: z
     .object({
       art: z.enum(['gateway', 'docker_netz', 'eine_adresse']),
-      vars: z.object({ ip: z.string(), minuten: ganz.optional(), anzahl: ganz.optional() }),
+      vars: z.object({ ip: z.string(), minuten: whole.optional(), anzahl: whole.optional() }),
     })
     .nullable()
     .optional(),
 });
 
-export const ProtokollZeile = z.looseObject({
+export const LogRow = z.looseObject({
   id: z.number().int().nullable().optional(),
   level: z.string().nullable().optional(),
   message: z.string().nullable().optional(),
-  logged_at: zeit.nullable().optional(),
+  logged_at: time.nullable().optional(),
 });
 
-export const ProtokollResponse = z.looseObject({
+export const LogResponse = z.looseObject({
   success: z.boolean(),
   minutes: z.number().int(),
   count: z.number().int(),
-  logs: z.array(ProtokollZeile),
+  logs: z.array(LogRow),
 });
 
-export const PreisJobStand = z.looseObject({
+export const PriceJobState = z.looseObject({
   success: z.boolean(),
   job: z.looseObject({
     running: z.boolean(),
-    lastRun: zeit.nullable(),
-    nextRun: zeit.nullable(),
-    lastErrors: ganz,
+    lastRun: time.nullable(),
+    nextRun: time.nullable(),
+    lastErrors: whole,
     log: z.array(z.unknown()),
     lastDuration: z.number().nullable().optional(),
     lastUpdated: z.number().nullable().optional(),
     progress: z.looseObject({ current: z.unknown(), total: z.unknown(), set: z.unknown() }).nullable().optional(),
   }),
-  rate_limit: z.looseObject({ count: ganz, limit: ganz, remaining: ganz, date: z.string().nullable().optional() }),
+  rate_limit: z.looseObject({ count: whole, limit: whole, remaining: whole, date: z.string().nullable().optional() }),
 });
 /** The admin shows the entries raw; their fields are the columns of app_logs. */
-export const ProtokollEintraege = z.looseObject({
+export const LogEntries = z.looseObject({
   success: z.literal(true),
   eintraege: z.array(z.record(z.string(), z.unknown())),
 });
-export const BildDiagnose = z.looseObject({
+export const ImageDiagnosis = z.looseObject({
   success: z.literal(true),
   set_number: z.string(),
   hinweise: z.array(z.string()),
   datenbank: z.looseObject({
-    anzahl_konten: ganz,
+    anzahl_konten: whole,
     image_local: z.string().nullable(),
     image_url: z.string().nullable(),
     katalog_bild: z.string().nullable(),
   }),
   lokal: z.looseObject({
-    original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
-    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
+    original: z.looseObject({ vorhanden: z.boolean(), bytes: whole, geaendert: time.nullable().optional() }),
+    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: whole, geaendert: time.nullable().optional() }),
   }),
   proxy: z.looseObject({ gecacht: z.boolean(), adresse: z.string().nullable().optional() }),
-  merker: z.looseObject({ seit: zeit.nullable(), grund: z.string().nullable() }).nullable(),
+  merker: z.looseObject({ seit: time.nullable(), grund: z.string().nullable() }).nullable(),
 });
-export const BildMerkerVergessen = z.looseObject({ success: z.literal(true), entfernt: ganz, hinweis: z.string() });
+export const ImageMarkerForgotten = z.looseObject({ success: z.literal(true), entfernt: whole, hinweis: z.string() });
 
 /** Diagnostics for the admin: the UI shows their fields raw. */
 export const Diagnose = z.record(z.string(), z.unknown());
-export const Endpunkte = z.looseObject({
+export const Endpoints = z.looseObject({
   auth: z.record(z.string(), z.unknown()).optional(),
   api: z.string(),
   version: z.string(),
@@ -253,17 +253,17 @@ export const Endpunkte = z.looseObject({
 /** The admin's bulk responses with what the individual route says about it. */
 export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string() });
 /** Instructions re-queued; without missing ones, `message` says why none. */
-export const AnleitungenEingereiht = GenericAdminResponse.extend({ enqueued: ganz, message: z.string().optional() });
+export const AnleitungenEingereiht = GenericAdminResponse.extend({ enqueued: whole, message: z.string().optional() });
 export const KatalogBilderEingereiht = GenericAdminResponse.extend({
-  queued: ganz,
-  pending: ganz,
-  skipped: ganz,
-  verworfen: ganz,
-  dauer_minuten: ganz,
+  queued: whole,
+  pending: whole,
+  skipped: whole,
+  verworfen: whole,
+  dauer_minuten: whole,
 });
 export const VerwaltungGestartet = GenericAdminResponse.extend({ started: z.boolean() });
 export const VerwaltungSet = GenericAdminResponse.extend({ set_number: z.string() });
-export const VerwaltungTtl = GenericAdminResponse.extend({ ttl: z.union([z.string(), ganz]) });
+export const VerwaltungTtl = GenericAdminResponse.extend({ ttl: z.union([z.string(), whole]) });
 export const VerwaltungZustand = GenericAdminResponse.extend({ condition: z.string().nullable() });
 export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() });
 
@@ -273,18 +273,18 @@ export const routen = {
   'GET /api/v1/sets/import/csv/stream': {
     art: 'strom',
     ereignis: CsvImportStatus,
-    abfrage: abfrage({ sprache: Q.text(2) }),
+    abfrage: query({ sprache: Q.text(2) }),
   },
-  'GET /api/v1/admin/logs': { klein: true, antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
+  'GET /api/v1/admin/logs': { klein: true, antwort: LogResponse, abfrage: query({ minutes: Q.zahl() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
-  'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: abfrage(SEITE) },
+  'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: query(PAGE) },
   'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse, klein: true },
   'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
   'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
   'GET /api/v1/admin/auftraege': {
     klein: true,
     antwort: AuftraegeResponse,
-    abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }),
+    abfrage: query({ status: Q.text(20), art: Q.text(40) }),
   },
   'POST /api/v1/sets/import/csv/cancel': { eingabe: WITHOUT_BODY, antwort: GenericAdminResponse },
   'POST /api/v1/admin/job-schedule': {
@@ -318,10 +318,10 @@ export const routen = {
     antwort: GenericAdminResponse,
   },
   'POST /api/v1/admin/redownload-missing-images': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: WITHOUT_BODY, antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: WITHOUT_BODY, antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: WITHOUT_BODY, antwort: AuftragsArtStart },
-  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: WITHOUT_BODY, antwort: AuftragsArtLeerung },
+  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: WITHOUT_BODY, antwort: JobChange },
+  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: WITHOUT_BODY, antwort: JobChange },
+  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: WITHOUT_BODY, antwort: JobKindStart },
+  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: WITHOUT_BODY, antwort: JobKindDrain },
   'POST /api/v1/admin/trigger-csv-sync': { eingabe: WITHOUT_BODY, antwort: VerwaltungMeldung },
   'POST /api/v1/admin/reimport-instructions': { eingabe: WITHOUT_BODY, antwort: AnleitungenEingereiht },
   'POST /api/v1/admin/trigger-price-job': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
@@ -329,17 +329,17 @@ export const routen = {
     eingabe: z.strictObject({ condition: GLOBAL_RULES.default_price_condition }),
     antwort: VerwaltungZustand,
   },
-  'GET /api/v1/admin/job-status': { antwort: PreisJobStand },
-  'GET /api/v1/admin/protokoll': { klein: true, antwort: ProtokollEintraege },
-  'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: BildDiagnose },
+  'GET /api/v1/admin/job-status': { antwort: PriceJobState },
+  'GET /api/v1/admin/protokoll': { klein: true, antwort: LogEntries },
+  'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: ImageDiagnosis },
   'POST /api/v1/admin/forget-image-misses': {
     eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NO.optional() }),
-    antwort: BildMerkerVergessen,
+    antwort: ImageMarkerForgotten,
   },
   'POST /api/v1/admin/img-probe': { antwort: Diagnose, eingabe: z.strictObject({ url: TEXT(2048).optional() }) },
   'POST /api/v1/admin/price-probe': {
     antwort: Diagnose,
     eingabe: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }),
   },
-  'GET /api/v1/': { antwort: Endpunkte },
+  'GET /api/v1/': { antwort: Endpoints },
 } satisfies Record<string, Route>;

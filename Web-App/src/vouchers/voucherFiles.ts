@@ -1,14 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import {
-  encryptBuffer,
-  decryptBuffer,
-  isEncryptedBuffer,
-  readOldBuffer,
-  kontext,
-  pufferUmschluesseln,
-} from '../infra/secret';
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer, readOldBuffer, kontext, rekeyBuffer } from '../infra/secret';
 import { withoutMissingFile } from '../infra/error';
 
 /** The PDFs carry the card number and PIN in plain text; encrypted, a copy of
@@ -66,9 +59,9 @@ export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Pro
       const file = path.join(dir, name);
       const raw = await fs.promises.readFile(file);
       if (isEncryptedBuffer(raw)) {
-        const neu = o.alle ? pufferUmschluesseln(raw, fileContext(file)) : undefined;
-        if (neu) {
-          await replaceFile(file, neu);
+        const fresh = o.alle ? rekeyBuffer(raw, fileContext(file)) : undefined;
+        if (fresh) {
+          await replaceFile(file, fresh);
           n++;
         }
         continue;

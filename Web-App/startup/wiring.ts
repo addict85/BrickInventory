@@ -26,10 +26,10 @@ import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
 import { createDevices } from '../src/devices';
 import { konfig, type Konfig } from '../src/infra/config';
-import { systemClock, type Uhr } from '../src/infra/clock';
-import { LESEVERTRAG, type Dienste } from '../src/services';
+import { systemClock, type Clock } from '../src/infra/clock';
+import { LESEVERTRAG, type Services } from '../src/services';
 
-export type { Dienste } from '../src/services';
+export type { Services as Dienste } from '../src/services';
 
 /** What a test provides instead of the real thing: own image works, own external sources. */
 export interface Components {
@@ -41,9 +41,9 @@ export interface Components {
   /** The configuration; without a value that of the process (src/infra/config.ts). */
   konfig?: Readonly<Konfig>;
   /** The services' time (k.uhr); without a value that of the system. */
-  uhr?: Uhr;
+  uhr?: Clock;
 }
-type Gesetzt = Components & { konfig: Readonly<Konfig>; uhr: Uhr };
+type Assigned = Components & { konfig: Readonly<Konfig>; uhr: Clock };
 
 // The catalog import runs in a process of its own; its entry point lives in the build under jobs/.
 const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
@@ -51,13 +51,13 @@ const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
 /** All areas over one access, from bottom to top: each gets the services
  * of the lower ones it needs as part of its context. Whoever needs a higher one
  * listens to an event of the lower one (e.g. atSetImageLoaded); there is no late binding. */
-export function buildServices(db: Db, components: Components = {}): Dienste {
+export function buildServices(db: Db, components: Components = {}): Services {
   const d = buildAreas(db, {
     ...components,
     konfig: components.konfig ?? konfig(),
     uhr: components.uhr ?? systemClock,
   });
-  reportJobTypesAn(d);
+  registerJobTypes(d);
   return d;
 }
 
@@ -87,8 +87,8 @@ export const DECLARED_KINDS: Record<JobKind, true> = {
 export class KindNotSignedIn extends Error {}
 
 /** Every area registers its job kinds with payload and executor; the queue knows none. */
-function reportJobTypesAn(d: Dienste): void {
-  const arten: Anmeldung[] = [
+function registerJobTypes(d: Services): void {
+  const kinds: Anmeldung[] = [
     ...d.images.auftragsarten(),
     ...d.account.auftragsarten(),
     ...d.catalog.auftragsarten(IMPORT_PROCESS),
@@ -98,9 +98,9 @@ function reportJobTypesAn(d: Dienste): void {
     ...d.parts.jobKinds(),
     ...d.management.jobTypes(),
   ];
-  for (const a of arten) d.jobQueue.reportKindAn(a);
-  const angemeldet = new Set(d.jobQueue.signedInKinds().map(a => a.art));
-  const fehlt = Object.keys(DECLARED_KINDS).filter(a => !angemeldet.has(a as JobKind));
+  for (const a of kinds) d.jobQueue.reportKindAn(a);
+  const signedIn = new Set(d.jobQueue.signedInKinds().map(a => a.art));
+  const fehlt = Object.keys(DECLARED_KINDS).filter(a => !signedIn.has(a as JobKind));
   if (fehlt.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
 }
 
@@ -117,7 +117,7 @@ function inspectIn(contexts: Record<string, unknown> | undefined) {
 }
 
 /** The areas up to the catalog: they only need each other and the access. */
-function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Show) {
+function buildRationale(db: Db, { bildwerk, quellen, konfig, uhr }: Assigned, zeige: Show) {
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
   const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
@@ -144,7 +144,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     zeige('catalog'),
   );
   // The entry on the set is made by the catalog (higher); it listens to the images instead of them calling it.
-  images.atSetImageLoaded((sn, quelle) => catalog.enterSetImageLocal(sn, quelle));
+  images.atSetImageLoaded((sn, source) => catalog.enterSetImageLocal(sn, source));
   return {
     throttle,
     settings: einstellungen,
@@ -162,9 +162,9 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
   };
 }
 
-function buildAreas(db: Db, components: Gesetzt): Dienste {
+function buildAreas(db: Db, components: Assigned): Services {
   const zeige = inspectIn(components.contexts);
-  const grund = buildReason(db, components, zeige);
+  const grund = buildRationale(db, components, zeige);
   const { throttle, settings: einstellungen, mail, jobQueue, household, factors } = grund;
   const { account, idempotency, externalSources, images, catalog } = grund;
   const { konfig, uhr } = components;
@@ -236,14 +236,14 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
 
 /** The process's access including the first start, wired. The first start creates the first
  * account via the services that only arise after the access. */
-export function wireProcess(): { db: Db; dienste: Dienste } {
-  const fertig: { d: Dienste | null } = { d: null };
+export function wireProcess(): { db: Db; dienste: Services } {
+  const finished: { d: Services | null } = { d: null };
   const db = createDb(dbKonfigFromEnvironment(), {
     firstStart: async () => {
-      if (!fertig.d) throw new Error('Erststart vor der Verdrahtung');
-      await fertig.d.account.putStartAdminAn();
+      if (!finished.d) throw new Error('Erststart vor der Verdrahtung');
+      await finished.d.account.putStartAdminAn();
     },
   });
-  fertig.d = buildServices(db);
-  return { db, dienste: fertig.d };
+  finished.d = buildServices(db);
+  return { db, dienste: finished.d };
 }

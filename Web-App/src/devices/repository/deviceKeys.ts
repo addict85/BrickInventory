@@ -2,19 +2,19 @@ import type { DbInterface } from '../../../db/database';
 import type { DevicesReadContract } from '../readContract';
 
 /** A token family: account and created_at (to the millisecond, as it travels through JavaScript). */
-export interface Familie {
+export interface Family {
   uid: number;
   seit: string;
 }
 
 /** An unconfirmed key (registered before the attestation) only applies until [altBis]. */
 /** The family of a token just issued, to the millisecond like familieLebt. */
-export async function familyOfTokens(db: DbInterface, l: DevicesReadContract, hash: string): Promise<Familie | null> {
+export async function familyOfTokens(db: DbInterface, l: DevicesReadContract, hash: string): Promise<Family | null> {
   const z = await db.get<{ uid: number; seit: Date }>(l.tokenFamilySql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 
-export async function keyThe(db: DbInterface, f: Familie, altBis: Date): Promise<string | null> {
+export async function keyThe(db: DbInterface, f: Family, altBis: Date): Promise<string | null> {
   const z = await db.get<{ public_key: string }>(
     `SELECT public_key FROM device_keys WHERE user_id = $1 AND token_family = $2::timestamptz
        AND (attested OR NOW() < $3)`,
@@ -23,7 +23,7 @@ export async function keyThe(db: DbInterface, f: Familie, altBis: Date): Promise
   return z?.public_key ?? null;
 }
 
-export async function entryThe(db: DbInterface, f: Familie): Promise<{ public_key: string; attested: boolean } | null> {
+export async function entryThe(db: DbInterface, f: Family): Promise<{ public_key: string; attested: boolean } | null> {
   return (
     (await db.get<{ public_key: string; attested: boolean }>(
       'SELECT public_key, attested FROM device_keys WHERE user_id = $1 AND token_family = $2::timestamptz',
@@ -35,10 +35,10 @@ export async function entryThe(db: DbInterface, f: Familie): Promise<{ public_ke
 /** Only for a living, young family; an unconfirmed key may give way to an
  * attested one in the process. Remnants of revoked families are dropped.
  * @returns whether it applies now */
-export async function putKeyAn(
+export async function createKey(
   db: DbInterface,
   l: DevicesReadContract,
-  f: Familie,
+  f: Family,
   public_key: string,
   fristS: number,
 ): Promise<boolean> {
@@ -57,10 +57,10 @@ export async function putKeyAn(
 }
 
 /** A nonce for the attestation challenge; at most [offen] per family, only for a young family. */
-export async function putNonceAn(
+export async function createNonce(
   db: DbInterface,
   l: DevicesReadContract,
-  f: Familie,
+  f: Family,
   nonce: string,
   o: { fristS: number; offen: number; fromQr: boolean },
 ): Promise<boolean> {
@@ -79,7 +79,7 @@ export async function putNonceAn(
 }
 
 /** The nonce issued at the QR pickup, as long as it is valid. */
-export async function qrNonceThe(db: DbInterface, f: Familie): Promise<{ nonce: string; expires_at: Date } | null> {
+export async function qrNonceThe(db: DbInterface, f: Family): Promise<{ nonce: string; expires_at: Date } | null> {
   return (
     (await db.get<{ nonce: string; expires_at: Date }>(
       `SELECT nonce, expires_at FROM device_nonces WHERE user_id = $1 AND token_family = $2::timestamptz AND from_qr
@@ -90,7 +90,7 @@ export async function qrNonceThe(db: DbInterface, f: Familie): Promise<{ nonce: 
 }
 
 /** Delete and read in one step: a nonce applies exactly once and only for its family. */
-export async function takeNonce(db: DbInterface, f: Familie, nonce: string): Promise<boolean> {
+export async function takeNonce(db: DbInterface, f: Family, nonce: string): Promise<boolean> {
   return !!(await db.get<{ nonce: string }>(
     `DELETE FROM device_nonces WHERE nonce = $1 AND user_id = $2 AND token_family = $3::timestamptz AND expires_at > NOW()
      RETURNING nonce`,
@@ -99,19 +99,19 @@ export async function takeNonce(db: DbInterface, f: Familie, nonce: string): Pro
 }
 
 /** At most [offen] at the same time per family: picking up without redeeming does not fill the table. */
-export async function putChallengeAn(
+export async function createChallenge(
   db: DbInterface,
-  f: Familie,
+  f: Family,
   challenge: string,
   action: string,
   fristS: number,
-  offen: number,
+  open: number,
 ): Promise<Date> {
   await db.run(
     `DELETE FROM step_up_challenges WHERE user_id = $1 AND token_family = $2::timestamptz AND (expires_at <= NOW()
     OR challenge NOT IN (SELECT challenge FROM step_up_challenges WHERE user_id = $1 AND token_family = $2::timestamptz
                          ORDER BY created_at DESC LIMIT $3))`,
-    [f.uid, f.seit, offen - 1],
+    [f.uid, f.seit, open - 1],
   );
   const z = await db.get<{ expires_at: Date }>(
     `INSERT INTO step_up_challenges (challenge, user_id, token_family, action, expires_at)
@@ -123,7 +123,7 @@ export async function putChallengeAn(
 }
 
 /** Delete and read in one step: a challenge applies exactly once, and only for its family. */
-export async function takeChallenge(db: DbInterface, f: Familie, challenge: string): Promise<string | null> {
+export async function takeChallenge(db: DbInterface, f: Family, challenge: string): Promise<string | null> {
   const z = await db.get<{ action: string }>(
     `DELETE FROM step_up_challenges WHERE challenge = $1 AND user_id = $2 AND token_family = $3::timestamptz
        AND expires_at > NOW() RETURNING action`,
@@ -134,7 +134,7 @@ export async function takeChallenge(db: DbInterface, f: Familie, challenge: stri
 
 export async function openRelease(
   db: DbInterface,
-  f: Familie,
+  f: Family,
   action: string,
   idleS: number,
   atMostS: number,
@@ -151,7 +151,7 @@ export async function openRelease(
 }
 
 /** Check and extend in one step, never beyond `max_until`. */
-export async function useRelease(db: DbInterface, f: Familie, action: string, idleS: number): Promise<boolean> {
+export async function useRelease(db: DbInterface, f: Family, action: string, idleS: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE step_up_approvals SET until_at = LEAST(NOW() + make_interval(secs => $4), max_until)

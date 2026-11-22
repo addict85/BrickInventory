@@ -119,8 +119,8 @@ const userHandle = (uid: number) =>
 export async function registrationOptions(k: FactorsContext, uid: number, name: string) {
   const rp = relyingParty();
   if (!rp) return null;
-  const vorhanden = await k.passkeys.accountCredentialIds(uid);
-  const optionen = await generateRegistrationOptions({
+  const present = await k.passkeys.accountCredentialIds(uid);
+  const options = await generateRegistrationOptions({
     rpName: rp.rpName,
     rpID: rp.rpID,
     userName: name,
@@ -128,10 +128,10 @@ export async function registrationOptions(k: FactorsContext, uid: number, name: 
     attestationType: 'none',
     // Discoverable, so these same passkeys can also log in without a username.
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
-    excludeCredentials: vorhanden.map(v => ({ id: v.credential_id, ...transports(v.transports) })),
+    excludeCredentials: present.map(v => ({ id: v.credential_id, ...transports(v.transports) })),
   });
-  await rememberChallenge(k, optionen.challenge, 'registrieren', uid);
-  return optionen;
+  await rememberChallenge(k, options.challenge, 'registrieren', uid);
+  return options;
 }
 
 export async function verifyRegistration(
@@ -141,12 +141,12 @@ export async function verifyRegistration(
   name: string,
 ): Promise<{ id: number; name: string } | null> {
   const rp = relyingParty();
-  const antwort = asResponse<RegistrationResponseJSON>(raw);
-  if (!rp || !antwort) return null;
-  const challenge = await resolveChallenge(k, antwort.response.clientDataJSON, 'registrieren', uid);
+  const reply = asResponse<RegistrationResponseJSON>(raw);
+  if (!rp || !reply) return null;
+  const challenge = await resolveChallenge(k, reply.response.clientDataJSON, 'registrieren', uid);
   if (!challenge) return null;
   const v = await verifyRegistrationResponse({
-    response: antwort,
+    response: reply,
     expectedChallenge: challenge,
     expectedOrigin: rp.origin,
     expectedRPID: rp.rpID,
@@ -186,26 +186,26 @@ export async function verifyAuthentication(
   uid: number | null = null,
 ): Promise<number | null> {
   const rp = relyingParty();
-  const antwort = asResponse<AuthenticationResponseJSON>(raw);
-  if (!rp || !antwort) return null;
+  const reply = asResponse<AuthenticationResponseJSON>(raw);
+  if (!rp || !reply) return null;
   let challenge: string;
   try {
-    challenge = decodeClientDataJSON(antwort.response.clientDataJSON).challenge;
+    challenge = decodeClientDataJSON(reply.response.clientDataJSON).challenge;
   } catch (e) {
     return rejected(e);
   }
   const until = signedDeadline(challenge, purpose, kx.uhr.jetzt());
   if (until === null) return null;
-  const k = await kx.passkeys.byCredentialId(antwort.id, uid);
+  const k = await kx.passkeys.byCredentialId(reply.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     // Registration only happens in the browser; logging in may also use the enrolled app.
-    response: antwort,
+    response: reply,
     expectedChallenge: challenge,
     expectedOrigin: [rp.origin, ...androidOrigins(kx.konfig)],
     expectedRPID: rp.rpID,
     credential: {
-      id: antwort.id,
+      id: reply.id,
       publicKey: new Uint8Array(k.public_key),
       counter: Number(k.sign_count),
       ...transports(k.transports),

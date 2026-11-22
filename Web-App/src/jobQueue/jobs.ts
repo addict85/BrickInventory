@@ -6,12 +6,12 @@ import type { z } from 'zod';
 export interface JobPayloads {}
 export type JobKind = keyof JobPayloads & string;
 export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType ? JobPayloads[A] : never;
-export type Nutzlast<A extends JobKind> = z.output<PayloadSchema<A>>;
+export type Payload<A extends JobKind> = z.output<PayloadSchema<A>>;
 export type PayloadInput<A extends JobKind> = z.input<PayloadSchema<A>>;
 
 export type JobStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 
-export interface Fortschritt {
+export interface Progress {
   erledigt?: number;
   gesamt?: number;
   text?: string | null;
@@ -21,7 +21,7 @@ export interface Fortschritt {
 /** What a service needs from the running job: report state, stop at the signal. */
 export interface JobRun {
   readonly signal?: AbortSignal;
-  fortschritt?(f: Fortschritt): Promise<boolean>;
+  fortschritt?(f: Progress): Promise<boolean>;
 }
 
 /** Throws the reason for the abort; between two steps of a long run. */
@@ -42,7 +42,7 @@ export interface JobRow {
   error_message: string | null;
 }
 
-export interface Einstellen {
+export interface Enqueue {
   userId?: number | null;
   /** If an open job with this key already exists, no second one is added. */
   schluessel?: string;
@@ -50,10 +50,10 @@ export interface Einstellen {
   afterSeconds?: number;
   /** Takes precedence over afterSeconds. */
   dueAb?: Date;
-  fortschritt?: Fortschritt;
+  fortschritt?: Progress;
 }
 
-export type Belegung = Pick<JobRow, 'id' | 'locked_by'>;
+export type Claim = Pick<JobRow, 'id' | 'locked_by'>;
 
 /** If a remote side throttles, the whole kind waits, not one job. */
 
@@ -68,11 +68,11 @@ export interface Pause {
 export interface JobContext {
   /** false: the job no longer belongs to this run (aborted, reassigned). */
   lebenszeichen(): Promise<boolean>;
-  fortschritt(f: Fortschritt): Promise<boolean>;
+  fortschritt(f: Progress): Promise<boolean>;
   /** Aborted, reassigned or the process ends: fetches and loops stop. */
   readonly signal: AbortSignal;
   /** A long job stops at the next safe point. */
-  readonly beendet: boolean;
+  readonly ended: boolean;
   readonly versuch: number;
 }
 
@@ -95,7 +95,7 @@ export class JobMove extends Error {
   constructor(
     readonly bis: Date,
     readonly grund: string,
-    readonly zaehlt = false,
+    readonly counts = false,
   ) {
     super(grund);
   }

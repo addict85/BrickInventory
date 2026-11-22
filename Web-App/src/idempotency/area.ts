@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import * as service from './service';
 import { access, type IdempotencyDependencies, type IdempotencyContext } from './context';
 
@@ -10,14 +10,14 @@ export function createIdempotency(a: IdempotencyDependencies, inspect?: Inspect<
     a,
     access,
     (k: IdempotencyContext) => ({
-      deleteOldFingerprints: mit(k)(service.deleteOldFingerprints),
-      reencryptResponses: mit(k)(service.reencryptResponses),
-      forgetAll: mit(k)(service.forgetAll),
-      cleanupIdempotency: mit(k)(service.cleanupIdempotency),
-      begin: mit(k)(service.begin),
-      end: mit(k)(service.end),
-      release: mit(k)(service.release),
-      withEffectMark: mit(k)(service.withEffectMark),
+      deleteOldFingerprints: withValue(k)(service.deleteOldFingerprints),
+      reencryptResponses: withValue(k)(service.reencryptResponses),
+      forgetAll: withValue(k)(service.forgetAll),
+      cleanupIdempotency: withValue(k)(service.cleanupIdempotency),
+      begin: withValue(k)(service.begin),
+      end: withValue(k)(service.end),
+      release: withValue(k)(service.release),
+      withEffectMark: withValue(k)(service.withEffectMark),
     }),
     inspect,
   );

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { konfig } from './config';
-import { prozessweit } from './prozessweit';
+import { processWide } from './prozessweit';
 
 export interface TlsStand {
   /** The format of the QR code. */
@@ -15,19 +15,19 @@ export interface TlsStand {
   pem: string;
 }
 
-const Z = prozessweit('tlsStand', () => ({ v: null as { pfad: string; mtimeMs: number; stand: TlsStand } | null }));
+const Z = processWide('tlsStand', () => ({ v: null as { pfad: string; mtimeMs: number; stand: TlsStand } | null }));
 
 export function tlsStatusFrom(pem: string): TlsStand {
-  const zert = new crypto.X509Certificate(pem);
-  const spki = zert.publicKey.export({ type: 'spki', format: 'der' });
-  const roh = crypto.createHash('sha256').update(spki).digest();
+  const cert = new crypto.X509Certificate(pem);
+  const spki = cert.publicKey.export({ type: 'spki', format: 'der' });
+  const raw = crypto.createHash('sha256').update(spki).digest();
   return {
-    fp: roh.toString('base64'),
-    fp_hex: (roh.toString('hex').toUpperCase().match(/../g) ?? []).join(':'),
-    zert_sha256: zert.fingerprint256,
-    subject: zert.subject,
-    gueltig_bis: new Date(zert.validTo).toISOString(),
-    pem: zert.toString(),
+    fp: raw.toString('base64'),
+    fp_hex: (raw.toString('hex').toUpperCase().match(/../g) ?? []).join(':'),
+    zert_sha256: cert.fingerprint256,
+    subject: cert.subject,
+    gueltig_bis: new Date(cert.validTo).toISOString(),
+    pem: cert.toString(),
   };
 }
 
@@ -38,15 +38,15 @@ export async function tlsStand(): Promise<TlsStand | null> {
   if (!pfad) return null;
   try {
     // State and content from the same opened file: if Caddy swaps it in between, the intermediate state would otherwise not match.
-    const datei = await fs.promises.open(pfad, 'r');
+    const file = await fs.promises.open(pfad, 'r');
     try {
-      const st = await datei.stat();
+      const st = await file.stat();
       if (Z.v?.pfad === pfad && Z.v.mtimeMs === st.mtimeMs) return Z.v.stand;
-      const stand = tlsStatusFrom(await datei.readFile('utf8'));
+      const stand = tlsStatusFrom(await file.readFile('utf8'));
       Z.v = { pfad, mtimeMs: st.mtimeMs, stand };
       return stand;
     } finally {
-      await datei.close();
+      await file.close();
     }
   } catch (e) {
     if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT')

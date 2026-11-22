@@ -95,9 +95,9 @@ async function barcodeResult(
 
 async function inCatalog(
   sk: SetsContext,
-  ...nummern: string[]
+  ...numbers: string[]
 ): Promise<{ set_number: string; name: string | null } | undefined> {
-  return repo.firstCatalogHits(sk.db, nummern);
+  return repo.firstCatalogHits(sk.db, numbers);
 }
 
 /** Order: own catalog, EAN via Rebrickable, Brickset and UPCitemdb,
@@ -135,14 +135,14 @@ export async function setToBarcode(sk: SetsContext, rawBarcode: string): Promise
 
     // The title is retailer text: first the candidates the catalog knows; otherwise the first stays as a
     // marked guess.
-    const titel = await sk.externalSources.quellen.productTitle(ean13);
-    if (titel) {
-      const kandidaten = setnummerCandidates(titel, sk.uhr.datum().getFullYear());
-      for (const k of kandidaten) {
-        const bekannt = await inCatalog(sk, k, normalisiereSetNummer(k));
-        if (bekannt) return barcodeResult(sk, bekannt.set_number, titel, 'upcitemdb');
+    const title = await sk.externalSources.quellen.productTitle(ean13);
+    if (title) {
+      const candidates = setnummerCandidates(title, sk.uhr.datum().getFullYear());
+      for (const k of candidates) {
+        const known = await inCatalog(sk, k, normalisiereSetNummer(k));
+        if (known) return barcodeResult(sk, known.set_number, title, 'upcitemdb');
       }
-      if (kandidaten[0]) return barcodeResult(sk, normalisiereSetNummer(kandidaten[0]), titel, 'upcitemdb');
+      if (candidates[0]) return barcodeResult(sk, normalisiereSetNummer(candidates[0]), title, 'upcitemdb');
     }
   }
 

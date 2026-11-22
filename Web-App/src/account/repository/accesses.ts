@@ -1,4 +1,4 @@
-import type { Zeile, DbInterface } from '../../../db/database';
+import type { Row, DbInterface } from '../../../db/database';
 /** Tokens are only stored as SHA-256 in the table; every function takes the hash,
  * never the plaintext. */
 
@@ -40,13 +40,13 @@ export function validToken(db: DbInterface, hash: string) {
 }
 
 /** created_at travels through JavaScript on the swap and loses the microseconds. */
-const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
+const family = (column: string) => `date_trunc('milliseconds', ${column})`;
 
 export async function endOverlap(db: DbInterface, previous_token: string, hash: string): Promise<void> {
   await db.run(
     `WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND replaced_by = $2 RETURNING token, user_id, created_at)
     INSERT INTO api_tokens_consumed (token, user_id, token_family)
-    SELECT token, user_id, ${familie('created_at')} FROM weg WHERE created_at IS NOT NULL ON CONFLICT DO NOTHING`,
+    SELECT token, user_id, ${family('created_at')} FROM weg WHERE created_at IS NOT NULL ON CONFLICT DO NOTHING`,
     [previous_token, hash],
   );
   await db.run('UPDATE api_tokens SET previous_token = NULL WHERE token = $1', [hash]);
@@ -86,7 +86,7 @@ export type NewToken = {
   fixedDays: number;
 };
 
-export async function putTokenAn(db: DbInterface, t: NewToken): Promise<void> {
+export async function createToken(db: DbInterface, t: NewToken): Promise<void> {
   if (t.art === 'gleitend') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
@@ -153,10 +153,10 @@ export function unusedSuccessor(tx: DbInterface, successor: string, alt: string)
 
 /** The whole family of a token (same created_at), including successors. */
 export async function deleteFamily(tx: DbInterface, userId: number, seit: Date): Promise<void> {
-  await tx.run(
-    `DELETE FROM api_tokens WHERE user_id = $1 AND ${familie('created_at')} = ${familie('$2::timestamptz')}`,
-    [userId, seit],
-  );
+  await tx.run(`DELETE FROM api_tokens WHERE user_id = $1 AND ${family('created_at')} = ${family('$2::timestamptz')}`, [
+    userId,
+    seit,
+  ]);
 }
 
 export async function deleteUnusedSuccessor(tx: DbInterface, successor: string, alt: string): Promise<void> {
@@ -164,9 +164,9 @@ export async function deleteUnusedSuccessor(tx: DbInterface, successor: string, 
 }
 
 /** The successor inherits label, scope and deadlines; the sliding deadline starts again. */
-export function putSuccessorAn(
+export function createSuccessor(
   tx: DbInterface,
-  neu: string,
+  fresh: string,
   alt: string,
   z: SwapSource,
   idleDays: number,
@@ -180,7 +180,7 @@ export function putSuccessorAn(
              $5, $8, $9, $10, $11, NOW(), $12)
      RETURNING LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, rotated_at`,
     [
-      neu,
+      fresh,
       z.user_id,
       z.label,
       z.created_at,
@@ -196,13 +196,13 @@ export function putSuccessorAn(
   );
 }
 
-export function limitTimePredecessor(tx: DbInterface, alt: string, neu: string, seconds: number) {
+export function limitTimePredecessor(tx: DbInterface, alt: string, fresh: string, seconds: number) {
   return tx.get<{ expires_at: Date }>(
     `UPDATE api_tokens
         SET replaced_by = $2, sliding = FALSE, never_expires = FALSE,
             expires_at = LEAST(COALESCE(expires_at, 'infinity'::timestamptz), NOW() + make_interval(secs => $3))
       WHERE token = $1 RETURNING expires_at`,
-    [alt, neu, seconds],
+    [alt, fresh, seconds],
   );
 }
 
@@ -213,7 +213,7 @@ export function lockFamily(db: DbInterface, hash: string, gracePeriodSec: number
     `
     WITH v AS (DELETE FROM api_tokens_consumed WHERE token = $1 AND consumed_at < NOW() - make_interval(secs => $2)
                RETURNING user_id, token_family),
-         t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${familie('a.created_at')} = v.token_family RETURNING a.label),
+         t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${family('a.created_at')} = v.token_family RETURNING a.label),
          r AS (DELETE FROM api_tokens_consumed x USING v WHERE x.user_id = v.user_id AND x.token_family = v.token_family AND x.token <> $1)
     SELECT v.user_id, (SELECT label FROM t LIMIT 1) AS label FROM v`,
     [hash, gracePeriodSec],
@@ -224,46 +224,46 @@ export async function deleteOrphanedConsumed(db: DbInterface): Promise<number> {
   return (
     (
       await db.run(`DELETE FROM api_tokens_consumed v WHERE NOT EXISTS
-    (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${familie('t.created_at')} = v.token_family)`)
+    (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${family('t.created_at')} = v.token_family)`)
     ).changes || 0
   );
 }
 
-export async function loescheToken(db: DbInterface, hash: string): Promise<void> {
+export async function deleteToken(db: DbInterface, hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hash]);
 }
 
 export async function deleteTokensOfAccount(
   db: DbInterface,
   userId: number,
-  ausser: string | null = null,
+  except: string | null = null,
 ): Promise<void> {
-  if (ausser) await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, ausser]);
+  if (except) await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, except]);
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
 /** Keeps the `behalten` most recently used besides `eigene` (the hash of the id); the others fall. */
-export async function capSessions(db: DbInterface, userId: number, eigene: string, behalten: number): Promise<number> {
+export async function capSessions(db: DbInterface, userId: number, own: string, keep: number): Promise<number> {
   return (
     (
       await db.run(
         `DELETE FROM user_sessions WHERE sid IN (SELECT sid FROM user_sessions
     WHERE sess::jsonb->>'userId' = $1 AND sid <> $2 ORDER BY expire DESC OFFSET $3)`,
-        [String(userId), eigene, behalten],
+        [String(userId), own, keep],
       )
     ).changes || 0
   );
 }
 
 /** Counts only tokens without a successor: a swapped one in its overlap is the same device. */
-export async function capTokens(db: DbInterface, userId: number, eigener: string, behalten: number): Promise<number> {
+export async function capTokens(db: DbInterface, userId: number, own: string, keep: number): Promise<number> {
   return (
     (
       await db.run(
         `DELETE FROM api_tokens WHERE token IN (SELECT token FROM api_tokens
     WHERE user_id = $1 AND token <> $2 AND replaced_by IS NULL
     ORDER BY COALESCE(last_used, created_at) DESC OFFSET $3)`,
-        [userId, eigener, behalten],
+        [userId, own, keep],
       )
     ).changes || 0
   );
@@ -272,18 +272,18 @@ export async function capTokens(db: DbInterface, userId: number, eigener: string
 export async function deleteSessionsOfAccount(
   db: DbInterface,
   userId: number,
-  ausser: string | null = null,
+  except: string | null = null,
 ): Promise<void> {
-  if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
+  if (except === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else
     await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2", [
       String(userId),
-      ausser,
+      except,
     ]);
 }
 
 /** null: account missing or locked. */
-export async function sitzungsVersion(db: DbInterface, uid: number): Promise<number | null> {
+export async function sessionVersion(db: DbInterface, uid: number): Promise<number | null> {
   const r = await db.get<{ v: number | null }>(
     'SELECT CASE WHEN is_active THEN session_version END AS v FROM users WHERE id = $1',
     [uid],
@@ -299,7 +299,7 @@ export async function countSessionVersionHigh(db: DbInterface, uid: number): Pro
   return r?.v ?? 0;
 }
 
-export async function pullAltzeilenAfter(db: DbInterface, idleDays: number): Promise<number> {
+export async function pullOldRowsAfter(db: DbInterface, idleDays: number): Promise<number> {
   return (
     (
       await db.run(
@@ -343,8 +343,8 @@ export async function deleteUnused(db: DbInterface, idleDays: number): Promise<n
 /** Two hits (a name equal to another account's address, only possible in
  * legacy data) mean "no account": which one was meant cannot be decided. */
 export async function accountToLogin(db: DbInterface, name: string) {
-  const treffer = await db.all<
-    Zeile<{
+  const hits = await db.all<
+    Row<{
       id: number;
       password_hash: string;
       is_active: boolean;
@@ -354,14 +354,14 @@ export async function accountToLogin(db: DbInterface, name: string) {
       registration_pending: boolean;
     }>
   >('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
-  if (treffer.length > 1)
+  if (hits.length > 1)
     console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
-  return treffer.length === 1 ? treffer[0] : undefined;
+  return hits.length === 1 ? hits[0] : undefined;
 }
 
 /** Only if the old hash still applies: a password changed concurrently stays. */
-export async function replacePasswordHash(db: DbInterface, id: number, alt: string, neu: string): Promise<void> {
-  await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, neu]);
+export async function replacePasswordHash(db: DbInterface, id: number, alt: string, fresh: string): Promise<void> {
+  await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, fresh]);
 }
 
 export function passwortHash(db: DbInterface, id: number) {

@@ -20,26 +20,26 @@ const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json'];
 function pruefe(config, extra = []) {
   const r = spawnSync(TSC, ['-p', path.join(ROOT, config), ...extra], { cwd: ROOT, encoding: 'utf8' });
   if (r.status === null) throw new Error(`tsc lief nicht: ${r.error?.message}`);
-  const meldungen = (r.stdout + r.stderr).split('\n').filter(z => /error TS\d+:/.test(z));
-  if (r.status !== 0 && !meldungen.length) throw new Error(`tsc scheiterte ohne Meldung:\n${r.stdout}${r.stderr}`);
-  return meldungen;
+  const messages = (r.stdout + r.stderr).split('\n').filter(z => /error TS\d+:/.test(z));
+  if (r.status !== 0 && !messages.length) throw new Error(`tsc scheiterte ohne Meldung:\n${r.stdout}${r.stderr}`);
+  return messages;
 }
 
 if (require.main === module) {
-  let summe = 0;
+  let sum = 0;
   /** @type {Record<string, string[]>} */
   const ergebnis = {};
   for (const c of RUNS) {
     const m = pruefe(c);
     ergebnis[c] = m;
-    summe += m.length;
+    sum += m.length;
     if (!process.argv.includes('--json')) {
       for (const z of m) console.error(z);
       console.log(`[typecheck:frontend] ${c}: ${m.length} Meldungen`);
     }
   }
   if (process.argv.includes('--json')) console.log(JSON.stringify(ergebnis));
-  process.exit(summe ? 1 : 0);
+  process.exit(sum ? 1 : 0);
 }
 
 module.exports = { pruefe, RUNS };

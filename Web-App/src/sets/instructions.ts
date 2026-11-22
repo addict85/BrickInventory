@@ -12,20 +12,14 @@ import * as repo from './repository/setDetail';
 import { versuche, valueOr } from '../infra/result';
 import type { SetsContext } from './context';
 
-export async function rememberInstruction(
-  sk: SetsContext,
-  uid: number,
-  sn: string,
-  pfad: string,
-  beschreibung: string,
-) {
-  await repo.addInstructionOne(sk.db, uid, sn, pfad, beschreibung, pfad);
+export async function rememberInstruction(sk: SetsContext, uid: number, sn: string, pfad: string, description: string) {
+  await repo.addInstructionOne(sk.db, uid, sn, pfad, description, pfad);
 }
 
 /** The file stays as long as another row points to it. */
-export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number): Promise<void> {
+export async function deleteInstruction(sk: SetsContext, uid: number, id: number): Promise<void> {
   const instr = (await repo.instructionPath(sk.db, id, uid)) ?? notFound();
-  await repo.loescheAnleitung(sk.db, id, uid);
+  await repo.deleteInstruction(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return;
   // If the database does not know whether anyone still needs the file, it stays. Another
   // account's row is hidden by row security; that is why the question is asked in the system frame.
@@ -46,10 +40,10 @@ export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number
 
 /** The instructions are shared: only the admin may replace them (an empty
  * fetch would otherwise delete them for everyone). Others fetch what is missing, once per set and day. */
-export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: string, verwalter: boolean) {
-  const sn = normalisiereSetNummer(roh);
+export async function loadInstructionsNew(sk: SetsContext, uid: number, raw: string, admin: boolean) {
+  const sn = normalisiereSetNummer(raw);
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  if (verwalter) await sk.catalog.deleteInstructions(sn);
+  if (admin) await sk.catalog.deleteInstructions(sn);
   else {
     if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
     if ((await sk.catalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
@@ -62,4 +56,4 @@ export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: str
 }
 
 /** Uploaded instructions live per account in a folder of its own below. */
-export const ANLEITUNGS_WURZEL = path.join(DATA_DIR, 'uploads');
+export const INSTRUCTION_ROOT = path.join(DATA_DIR, 'uploads');

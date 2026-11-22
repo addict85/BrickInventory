@@ -5,12 +5,12 @@ import type { CsvImportReport } from '../../src/infra/csvExport';
 import { pageFrom } from '../../src/infra/page';
 import { Degradations } from '../../src/infra/result';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 export function buildMinifigsRouter(
   d: Pick<
-    Dienste,
+    Services,
     'settings' | 'jobQueue' | 'household' | 'account' | 'finances' | 'inventory' | 'minifigs' | 'collection'
   >,
 ) {
@@ -65,7 +65,7 @@ export function buildMinifigsRouter(
       ab,
     );
     const { eintraege: figs, ...seite } = pageFrom(alle, req.abfrage);
-    return { figs, ...seite, ...ab.angabe() };
+    return { figs, ...seite, ...ab.detail() };
   });
 
   /** The same grouping as the list, so metric and list agree. */

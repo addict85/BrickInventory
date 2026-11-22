@@ -9,12 +9,12 @@ import * as repo from './repository/priceAlerts';
 import { versuche } from '../infra/result';
 import type { FinancesContext } from './context';
 
-export type Richtung = 'unter' | 'ueber';
+export type Direction = 'unter' | 'ueber';
 
-export interface Preisalarm {
+export interface PriceAlert {
   set_number: string;
   condition: string;
-  direction: Richtung;
+  direction: Direction;
   threshold: number;
   currency_code: string;
   triggered: boolean;
@@ -28,8 +28,8 @@ const STATES = new Set(['N', 'U']);
 
 /** The row as read (db/rows.ts); a CHECK keeps `direction` to two values, the point in time
  * goes out as ISO text as in JSON. */
-function alsAlarm<Z extends repo.AlarmRow>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & Preisalarm {
-  return { ...z, direction: z.direction as Richtung, last_triggered_at: z.last_triggered_at?.toISOString() ?? null };
+function alsAlarm<Z extends repo.AlarmRow>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & PriceAlert {
+  return { ...z, direction: z.direction as Direction, last_triggered_at: z.last_triggered_at?.toISOString() ?? null };
 }
 
 export interface AlarmInput {
@@ -47,21 +47,21 @@ function checkInput(direction: string, threshold: AlarmInput['threshold'], condi
   if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
   const c = (condition ?? 'N').toUpperCase();
   if (!STATES.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
-  return { direction: r as Richtung, threshold: s, condition: c };
+  return { direction: r as Direction, threshold: s, condition: c };
 }
 
 /** At most ONE alert per set and condition (primary key). */
-export async function setzeAlarm(
+export async function setAlert(
   k: FinancesContext,
   userId: number,
   setNumber: string,
   currency: string,
-  eingabe: AlarmInput,
-): Promise<Preisalarm> {
-  const { direction, threshold, condition } = checkInput(eingabe.direction, eingabe.threshold, eingabe.condition);
+  input: AlarmInput,
+): Promise<PriceAlert> {
+  const { direction, threshold, condition } = checkInput(input.direction, input.threshold, input.condition);
   await repo.writeAlarm(k.db, userId, setNumber, condition, direction, threshold, currency);
-  const alarme = await alertsFor(k, userId, setNumber);
-  return alarme.find(a => a.condition === condition)!;
+  const alerts = await alertsFor(k, userId, setNumber);
+  return alerts.find(a => a.condition === condition)!;
 }
 
 /** The alert moves along with a reservation into the other account (src/wanted). */
@@ -76,20 +76,20 @@ export async function alarmTransfer(
 }
 
 /** No error if there was none — the wish is fulfilled. */
-export async function loescheAlarm(k: FinancesContext, userId: number, setNumber: string, condition: string) {
+export async function deleteAlert(k: FinancesContext, userId: number, setNumber: string, condition: string) {
   const c = String(condition ?? 'N').toUpperCase();
   const r = await repo.removeAlarm(k.db, userId, setNumber, c);
   return r.changes ?? 0;
 }
 
-export async function alertsFor(k: FinancesContext, userId: number, setNumber: string): Promise<Preisalarm[]> {
+export async function alertsFor(k: FinancesContext, userId: number, setNumber: string): Promise<PriceAlert[]> {
   // No catch: an empty list would mean "no alert", and setzeAlarm() would deliver nothing.
   const rows = await repo.alertsOfSets(k.db, k.lesevertrag, userId, setNumber, await k.household.scopeIds(userId));
   return rows.map(alsAlarm);
 }
 
 /** So that alerts can be found without knowing the set. */
-export interface AlarmWithName extends Preisalarm {
+export interface AlarmWithName extends PriceAlert {
   name: string | null;
   set_img_url: string | null;
   /** The same order as in the finances, otherwise the overview would show a
@@ -100,11 +100,11 @@ export interface AlarmWithName extends Preisalarm {
   besitzt: boolean;
 }
 
-export async function alleAlarme(k: FinancesContext, userId: number): Promise<AlarmWithName[]> {
+export async function allAlerts(k: FinancesContext, userId: number): Promise<AlarmWithName[]> {
   // The scope only asks whether the set is visible; the alert stays with the
   // own account.
-  const blickfeld = await k.household.scopeIds(userId);
-  return (await repo.alertsInScope(k.db, k.lesevertrag, userId, blickfeld)).map(alsAlarm);
+  const scope = await k.household.scopeIds(userId);
+  return (await repo.alertsInScope(k.db, k.lesevertrag, userId, scope)).map(alsAlarm);
 }
 
 /** The app asks instead of the server pushing: push would go via third-party servers. */
@@ -112,27 +112,27 @@ export async function triggeredSince(k: FinancesContext, userId: number, seit: D
   // The database's time: Postgres stores micro-, JavaScript only
   // milliseconds; with the JS clock a notification would come twice.
   const nowRow = await repo.databaseNow(k.db);
-  const jetzt = nowRow?.jetzt ?? k.uhr.datum();
+  const now = nowRow?.jetzt ?? k.uhr.datum();
 
   // `instanceof Date` FIRST: String(date) loses the milliseconds, and a
   // notification from the same second would come a second time.
-  const marke =
+  const mark =
     seit instanceof Date
       ? seit
       : seit === undefined || seit === null || String(seit).trim() === ''
         ? null
         : new Date(String(seit));
   // Unreadable like missing, NOT "since the beginning of time": a typo must not trigger a flood.
-  if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
+  if (!mark || Number.isNaN(mark.getTime())) return { alerts: [], now: now };
 
   // No catch: the app would otherwise advance its marker and lose the notifications in between.
-  const rows = await repo.alertsOfAccount(k.db, k.lesevertrag, userId, marke, await k.household.scopeIds(userId));
-  return { alerts: rows.map(alsAlarm), now: jetzt };
+  const rows = await repo.alertsOfAccount(k.db, k.lesevertrag, userId, mark, await k.household.scopeIds(userId));
+  return { alerts: rows.map(alsAlarm), now: now };
 }
 
 /** A function of its own: the only place where "below" and "above" mean
  * something — and where a sign error arises. That way it is testable. */
-export function reisst(direction: Richtung, price: number, threshold: number): boolean {
+export function crosses(direction: Direction, price: number, threshold: number): boolean {
   return direction === 'unter' ? price < threshold : price > threshold;
 }
 
@@ -141,10 +141,10 @@ export function reisst(direction: Richtung, price: number, threshold: number): b
 export type AlarmPost = Pick<MailServices, 'buildAlertMail' | 'sendMail'>;
 
 export async function checkSet(k: FinancesContext, setNumber: string, post: AlarmPost): Promise<number> {
-  const alarme = await repo.allActiveAlerts(k.db, setNumber);
-  if (!alarme?.length) return 0;
-  let verschickt = 0;
-  for (const a of alarme) {
+  const alerts = await repo.allActiveAlerts(k.db, setNumber);
+  if (!alerts?.length) return 0;
+  let sent = 0;
+  for (const a of alerts) {
     const priceRow = await repo.cachePriceForAlarm(k.db, a.set_number, a.condition, a.currency_code).catch(e => {
       reportError('preisalarm:preis-lesen', e);
       return null;
@@ -153,9 +153,9 @@ export async function checkSet(k: FinancesContext, setNumber: string, post: Alar
     // No price in THIS currency: the alert stays, and so does the flag.
     if (price == null || !(price > 0)) continue;
 
-    const jetzt = reisst(a.direction as Richtung, price, a.threshold);
+    const now = crosses(a.direction as Direction, price, a.threshold);
 
-    if (!jetzt) {
+    if (!now) {
       // Back to the other side — the next transition reports again.
       if (a.triggered) {
         await repo
@@ -169,7 +169,7 @@ export async function checkSet(k: FinancesContext, setNumber: string, post: Alar
     if (a.email) {
       try {
         await send(k, post, a, price, a.threshold);
-        verschickt++;
+        sent++;
       } catch (e) {
         // Do NOT set the flag — try again on the next run.
         reportError('preisalarm:versand', e);
@@ -182,7 +182,7 @@ export async function checkSet(k: FinancesContext, setNumber: string, post: Alar
       // but better than silent.
       .catch(e => reportError('preisalarm:merker-setzen', e));
   }
-  return verschickt;
+  return sent;
 }
 
 /** Separate, so that checkSet() decides on the WHEN, not on the HOW. */
@@ -197,7 +197,7 @@ async function send(k: FinancesContext, post: AlarmPost, a: ActiveAlarm, price: 
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
-    direction: a.direction as Richtung,
+    direction: a.direction as Direction,
     threshold,
     price,
     currency: a.currency_code,
@@ -206,7 +206,7 @@ async function send(k: FinancesContext, post: AlarmPost, a: ActiveAlarm, price: 
 }
 
 /** A file of its own instead of columns in sets.csv: an alert does not require owning the set. */
-export async function preisalarmeAlsCsv(k: FinancesContext, uid: number): Promise<string> {
+export async function priceAlertsAsCsv(k: FinancesContext, uid: number): Promise<string> {
   const rows = await repo.alertsForExport(k.db, uid);
 
   return toCsv(
@@ -226,17 +226,17 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
     foreignCurrency = 0;
   const results: Array<Record<string, unknown>> = [];
   for (const row of cleaned) {
-    const roh = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
-    if (!roh) continue;
-    const sn = normalisiereSetNummer(roh);
+    const raw = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
+    if (!raw) continue;
+    const sn = normalisiereSetNummer(raw);
     // Ask before writing: setzeAlarm() creates or changes without saying so.
-    const schon = await alertsFor(k, uid, sn);
+    const already = await alertsFor(k, uid, sn);
     const fileCurrency = String(row.currency_code || row.currency || '')
       .trim()
       .toUpperCase();
-    const abweichend = fileCurrency !== '' && fileCurrency !== currency.toUpperCase();
+    const divergent = fileCurrency !== '' && fileCurrency !== currency.toUpperCase();
     try {
-      const alarm = await setzeAlarm(k, uid, sn, currency, {
+      const alarm = await setAlert(k, uid, sn, currency, {
         // Both the new English header and an older export's German one are accepted on import.
         direction: String(row.direction || row.richtung || row.Richtung || '')
           .trim()
@@ -248,15 +248,15 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
           .trim()
           .toUpperCase(),
       });
-      const war = schon.some(a => a.condition === alarm.condition);
+      const war = already.some(a => a.condition === alarm.condition);
       if (war) updated++;
       else added++;
-      if (abweichend) foreignCurrency++;
+      if (divergent) foreignCurrency++;
       results.push({
         set_number: sn,
         condition: alarm.condition,
         action: war ? 'updated' : 'added',
-        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: fileCurrency, waehrung_konto: currency } : {}),
+        ...(divergent ? { waehrung_angepasst: true, waehrung_datei: fileCurrency, waehrung_konto: currency } : {}),
       });
     } catch (e) {
       errors++;

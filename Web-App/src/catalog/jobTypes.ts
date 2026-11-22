@@ -2,16 +2,16 @@
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../jobQueue';
 import { bricksetJobType } from '../externalSources';
-import * as anleitungLaden from './loadInstruction';
-import * as bildNachlauf from './imageFollowUp';
-import * as bilderNachladen from './reloadImages';
-import * as bricksetNachlauf from './bricksetFollowUp';
-import * as csvAbgleich from './csvSync';
-import * as pdfErzeugung from './pdf/pdfGeneration';
-import * as widerrufsliste from './revocationList';
+import * as loadInstruction from './loadInstruction';
+import * as imageFollowUp from './imageFollowUp';
+import * as reloadImages from './reloadImages';
+import * as bricksetFollowUp from './bricksetFollowUp';
+import * as csvReconcile from './csvSync';
+import * as pdfGeneration from './pdf/pdfGeneration';
+import * as revocationList from './revocationList';
 import type { CatalogContext } from './context';
 
-const SETNR = z.string().min(1).max(64);
+const SET_NUMBER = z.string().min(1).max(64);
 const LEER = z.object({});
 
 const PdfTeil = z.object({
@@ -34,8 +34,8 @@ export const PdfPayload = z.object({
   parts: z.array(PdfTeil),
 });
 /** Queued by the catalog and by the sets; executed by the sets (src/sets/jobTypes.ts). */
-export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolean().optional() });
-const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
+export const ImagesPayload = z.object({ set_number: SET_NUMBER, only_images: z.boolean().optional() });
+const InstructionPayload = z.object({ set_number: SET_NUMBER, nur_ausweichquelle: z.boolean().optional() });
 const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
 
 declare module '../jobQueue/jobs' {
@@ -58,22 +58,22 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmel
     auftragsart({
       art: 'pdf',
       nutzlast: PdfPayload,
-      ausfuehren: (n, l) => pdfErzeugung.createPdf(k, n, l),
-      aufgegeben: (n, fehler) => pdfErzeugung.pdfGivenUp(n, fehler),
+      ausfuehren: (n, l) => pdfGeneration.createPdf(k, n, l),
+      aufgegeben: (n, fehler) => pdfGeneration.pdfGivenUp(n, fehler),
       discardPayload: true,
     }),
     auftragsart({
       art: 'anleitung',
       nutzlast: InstructionPayload,
-      ausfuehren: (n, l) => anleitungLaden.anleitungLaden(k, n, l),
+      ausfuehren: (n, l) => loadInstruction.anleitungLaden(k, n, l),
       exklusiv: true,
     }),
-    bricksetJobType((n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l)),
+    bricksetJobType((n, l) => bricksetFollowUp.bricksetNachlauf(k, n, l)),
     auftragsart({
       art: 'bilder_neu_laden',
       nutzlast: LEER,
       ausfuehren: async (_n, l) => {
-        await bilderNachladen.redownloadMissingImages(k, l);
+        await reloadImages.redownloadMissingImages(k, l);
       },
       exklusiv: true,
       kontouebergreifend: 'fehlende Bilder aller Bestände',
@@ -81,7 +81,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmel
     auftragsart({
       art: 'csv_sync',
       nutzlast: CatalogSyncPayload,
-      ausfuehren: (n, l) => csvAbgleich.csvAbgleich(k, n, l, importProcess),
+      ausfuehren: (n, l) => csvReconcile.csvAbgleich(k, n, l, importProcess),
       exklusiv: true,
       kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
       zeitplan: { taeglich: CATALOG_SYNC_TIME_OF_DAY },
@@ -89,7 +89,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmel
     auftragsart({
       art: 'bild_nachlauf',
       nutzlast: LEER,
-      ausfuehren: (_n, l) => bildNachlauf.bildNachlauf(k, l),
+      ausfuehren: (_n, l) => imageFollowUp.bildNachlauf(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bilder aller Bestände',
       zeitplan: { minuten: { vorgabe: 60 } },
@@ -97,7 +97,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmel
     auftragsart({
       art: 'widerrufsliste',
       nutzlast: LEER,
-      ausfuehren: (_n, l) => widerrufsliste.loadRevocationList(k, l),
+      ausfuehren: (_n, l) => revocationList.loadRevocationList(k, l),
       zeitplan: { minuten: { vorgabe: 6 * 60 } },
     }),
   ];

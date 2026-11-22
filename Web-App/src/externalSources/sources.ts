@@ -19,7 +19,7 @@ export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/imag
 import { legoFetch } from '../../clients/legoBalance';
 export { legoFetch };
 export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoBalance';
-export type { Abruf, Kurs } from '../../clients/ecb';
+export type { Fetch as Abruf, Rate as Kurs } from '../../clients/ecb';
 export type { RbSetTeil } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
@@ -51,4 +51,4 @@ export function buildSources(z: ClientsAccess) {
   };
 }
 
-export type Quellen = ReturnType<typeof buildSources>;
+export type Sources = ReturnType<typeof buildSources>;

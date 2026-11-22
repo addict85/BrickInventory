@@ -25,10 +25,10 @@ function pdfImagePath(p: PdfTeil): string | null {
       return null;
     }
   }
-  const roh = resolveWebPath(src);
-  if (!roh) return null;
-  const voll = path.resolve(roh);
-  return voll.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? voll : null;
+  const raw = resolveWebPath(src);
+  if (!raw) return null;
+  const full = path.resolve(raw);
+  return full.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? full : null;
 }
 
 /** If an image is missing, the row stands without an image — the PDF is created anyway. */
@@ -56,8 +56,8 @@ function afterColor(parts: PdfTeil[]) {
     byColor.get(name)!.push(p);
   }
   colorOrder.sort((a, b) => a.localeCompare(b, 'de'));
-  for (const liste of byColor.values()) {
-    liste.sort((a, b) =>
+  for (const list of byColor.values()) {
+    list.sort((a, b) =>
       (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, {
         numeric: true,
       }),
@@ -67,7 +67,7 @@ function afterColor(parts: PdfTeil[]) {
 }
 
 type Doc = InstanceType<typeof PDFDocument>;
-type Zeile = PdfTeil & { quantity: number };
+type Row = PdfTeil & { quantity: number };
 const PAGE_H = 841.89,
   PAGE_W = 595.28;
 const COL = { num: 40, name: 200 };
@@ -78,11 +78,11 @@ const START_X = 40;
 async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
   const teil = `${ziel}.teil`;
-  const datei = fs.createWriteStream(teil);
-  doc.pipe(datei);
+  const file = fs.createWriteStream(teil);
+  doc.pipe(file);
   const pdfDone = new Promise((resolve, reject) => {
-    datei.on('finish', resolve);
-    datei.on('error', reject);
+    file.on('finish', resolve);
+    file.on('error', reject);
     doc.on('error', reject);
   });
 
@@ -95,7 +95,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   for (const colorName of colorOrder) {
     const colorParts = byColor.get(colorName) ?? [];
     await loadImages(colorParts, bilder);
-    drawFarbGroup(doc, colorName, colorParts, bilder, seiten.newPage);
+    drawColorGroup(doc, colorName, colorParts, bilder, seiten.newPage);
   }
 
   seiten.footer();
@@ -106,7 +106,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
 
 /** Page number at the bottom center; the margin is lifted briefly for it, otherwise pdfkit wraps. */
 function pagesLead(doc: Doc) {
-  let seite = 1;
+  let page = 1;
   const footer = () => {
     const savedY = doc.y,
       savedX = doc.x,
@@ -116,7 +116,7 @@ function pagesLead(doc: Doc) {
     doc
       .fontSize(8)
       .fillColor('#94a3b8')
-      .text(`Seite ${seite}`, 0, PAGE_H - 28, { width: PAGE_W, align: 'center', lineBreak: false });
+      .text(`Seite ${page}`, 0, PAGE_H - 28, { width: PAGE_W, align: 'center', lineBreak: false });
     doc.page.margins = origMargins;
     doc.y = savedY;
     doc.x = savedX;
@@ -124,7 +124,7 @@ function pagesLead(doc: Doc) {
   };
   const newPage = () => {
     footer();
-    seite++;
+    page++;
     doc.addPage();
     doc.y = 40;
   };
@@ -144,22 +144,22 @@ function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.moveDown(1);
 }
 
-async function loadImages(gruppe: PdfTeil[], bilder: Map<string, Buffer | null>) {
+async function loadImages(group: PdfTeil[], bilder: Map<string, Buffer | null>) {
   bilder.clear();
-  const pfade = [...new Set(gruppe.map(pdfImagePath).filter((fp): fp is string => !!fp))];
-  for (let i = 0; i < pfade.length; i += 32) {
-    const stueck = pfade.slice(i, i + 32);
-    const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(withoutImage)));
-    stueck.forEach((fp, j) => {
+  const paths = [...new Set(group.map(pdfImagePath).filter((fp): fp is string => !!fp))];
+  for (let i = 0; i < paths.length; i += 32) {
+    const piece = paths.slice(i, i + 32);
+    const bufs = await Promise.all(piece.map(fp => fsp.readFile(fp).catch(withoutImage)));
+    piece.forEach((fp, j) => {
       bilder.set(fp, bufs[j] ?? null);
     });
   }
 }
 
-function drawFarbGroup(
+function drawColorGroup(
   doc: Doc,
   colorName: string,
-  colorParts: Zeile[],
+  colorParts: Row[],
   bilder: Map<string, Buffer | null>,
   newPage: () => void,
 ) {
@@ -192,7 +192,7 @@ function drawFarbGroup(
   doc.moveDown(0.6);
 }
 
-function drawPart(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, newPage: () => void) {
+function drawPart(doc: Doc, p: Row, bilder: Map<string, Buffer | null>, newPage: () => void) {
   const rowHeight = 36;
   if (doc.y > 730 - rowHeight) newPage();
   const rowY = doc.y;

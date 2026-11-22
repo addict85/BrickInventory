@@ -15,8 +15,8 @@ const ROOT = path.resolve(__dirname, '..');
 
 /** @param {Record<string, string | undefined>} env @returns {string} */
 function buildVersion(env = process.env, cwd = ROOT) {
-  const gesetzt = (env.APP_VERSION || '').trim();
-  if (gesetzt) return gesetzt;
+  const assigned = (env.APP_VERSION || '').trim();
+  if (assigned) return assigned;
   // The Android tags (android-v…, apk-neuste) belong to the app; the web app would otherwise name their number.
   try {
     return (
@@ -47,9 +47,9 @@ function schreibe(outdir, version) {
 
 if (require.main === module) {
   const i = process.argv.indexOf('--outdir');
-  const ziel = i !== -1 ? process.argv[i + 1] : undefined;
+  const target = i !== -1 ? process.argv[i + 1] : undefined;
   const version = buildVersion();
-  if (ziel) schreibe(path.resolve(ziel), version);
+  if (target) schreibe(path.resolve(target), version);
   console.log(`[version] ${version}`);
 }
 

@@ -5,7 +5,7 @@ import { bookEntry } from './addSet';
 import { fachfehler } from '../infra/errorTexts';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
-import type { Eingabe } from '../contract';
+import type { Input } from '../contract';
 import { versuche, valueOr, Degradations } from '../infra/result';
 import { normalizeLocation } from '../inventory';
 import { normalisiereSetNummer } from '../infra/setNumber';
@@ -20,8 +20,8 @@ export type { CatalogPart, ListenTeil, SetMaster } from './rows';
  * src/inventory/purchasePriceBackfill.ts fills it in later. */
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
   // Via the scope: with a bare ID the main account would not find the sub-account's set.
-  const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
-  const cond = await sk.finances.setState(blickfeld, setNumber);
+  const scope = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
+  const cond = await sk.finances.setState(scope, setNumber);
   // The ACCOUNT's currency: the price is looked up and stored in it.
   const currency = String(await sk.einstellungen.userValue(userId, 'currency', 'EUR'));
   const cached = valueOr(
@@ -48,7 +48,7 @@ async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: stri
 
 /** @param pricePlan determined beforehand; without it, it is fetched here — then
  *        sk must NOT be a transaction, because a network call is involved. */
-async function entriesAnQuantityAlign(
+async function alignEntriesToQuantity(
   sk: SetsContext,
   userId: number,
   setNumber: string,
@@ -98,8 +98,8 @@ async function entriesAnQuantityAlign(
   for (const r of rows) {
     if (delta === 0) break;
     const take = Math.min(r.quantity, -delta);
-    const zeile = await repo.setEntryAsJson(sk.db, r.id);
-    if (zeile) entfallen.push({ ...zeile, quantity: take });
+    const row = await repo.setEntryAsJson(sk.db, r.id);
+    if (row) entfallen.push({ ...row, quantity: take });
     if (take >= r.quantity) await sk.inventory.erfassung.loesche('set', r.id, userId);
     else await sk.inventory.erfassung.aendere('set', r.id, [userId], { menge: r.quantity - take });
     delta += take;
@@ -108,8 +108,8 @@ async function entriesAnQuantityAlign(
 }
 
 /** What a reduction removed, in the shape of the response: the UI names the purchase in the undo toast. */
-function droppedResponse(zeilen: Record<string, unknown>[]) {
-  return zeilen.map(z => ({
+function droppedResponse(rows: Record<string, unknown>[]) {
+  return rows.map(z => ({
     id: Number(z.id),
     quantity: Number(z.quantity),
     purchase_price: z.purchase_price == null ? null : Number(z.purchase_price),
@@ -121,23 +121,18 @@ function droppedResponse(zeilen: Record<string, unknown>[]) {
 }
 
 /** The LAST acquisition, because the detail dialog edits exactly that one.
- * @param feld  fixed column name, NOT an input from outside */
+ * @param field  fixed column name, NOT an input from outside */
 async function writeInLastEntry(
   sk: SetsContext,
-  feld: 'purchase_price' | 'condition',
+  field: 'purchase_price' | 'condition',
   wert: number | string | null,
   ownerId: number,
   sn: string,
 ) {
-  await sk.inventory.setNewest('set', feld === 'purchase_price' ? 'preis' : 'zustand', wert, ownerId, [sn]);
+  await sk.inventory.setNewest('set', field === 'purchase_price' ? 'preis' : 'zustand', wert, ownerId, [sn]);
 }
 
-export async function changeSet(
-  sk: SetsContext,
-  uid: number,
-  sn: string,
-  body: Eingabe<'PUT /api/v1/sets/:setNumber'>,
-) {
+export async function changeSet(sk: SetsContext, uid: number, sn: string, body: Input<'PUT /api/v1/sets/:setNumber'>) {
   // WRITE scope instead of the own ID, otherwise a set of the sub-account would find no row.
   const _wids = await sk.household.schreibbereich(uid);
   // The OWN row wins, otherwise the table order would decide.
@@ -159,43 +154,43 @@ export async function changeSet(
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999))
       fachfehler('ungueltig', 'wert_ungueltig');
     // In the household every quantity belongs to one account; without a value to the own one. A foreign one only in the write scope.
-    const ziel = body.owner_user_id == null ? uid : Number(body.owner_user_id);
-    if (!_wids.includes(ziel)) fachfehler('verboten', 'kein_schreibrecht');
+    const target = body.owner_user_id == null ? uid : Number(body.owner_user_id);
+    if (!_wids.includes(target)) fachfehler('verboten', 'kein_schreibrecht');
     const desiredTotal = delta === null ? inventoryQuantity(body.quantity) : null;
     const readField = await sk.household.scopeIds(uid);
     // The household is displayed, only the target account is changed.
     const eigenesZiel = async (s: SetsContext) => {
       const totalBefore = await repo.setMenge(s.db, 'blickfeld', readField, sn);
-      const ownBefore = await repo.setMenge(s.db, 'eines', ziel, sn);
+      const ownBefore = await repo.setMenge(s.db, 'eines', target, sn);
       // Capped at 0: I cannot take away copies of another account.
-      const aenderung = delta ?? Number(desiredTotal) - totalBefore;
-      return { ownBefore, eigenZiel: Math.max(0, ownBefore + aenderung) };
+      const change = delta ?? Number(desiredTotal) - totalBefore;
+      return { ownBefore, eigenZiel: Math.max(0, ownBefore + change) };
     };
     // The market price is fetched BEFORE the lock (network call); what counts is the calculation within the lock.
     const upfront = await eigenesZiel(sk);
     const plan =
       upfront.eigenZiel > upfront.ownBefore
-        ? await ab.oder('kaufpreis', priceForNewEntry(sk, ziel, sn), { price: null, condition: 'N' })
+        ? await ab.orElse('kaufpreis', priceForNewEntry(sk, target, sn), { price: null, condition: 'N' })
         : { price: null, condition: 'N' };
     await sk.transaktion(
       async t => {
         const { ownBefore, eigenZiel } = await eigenesZiel(t);
         if (eigenZiel === ownBefore) return;
         // If the set so far only belonged to another account, the adjustment would otherwise come to nothing.
-        if (ownBefore === 0 && eigenZiel > 0) await t.inventory.putSetAn(ziel, sn);
+        if (ownBefore === 0 && eigenZiel > 0) await t.inventory.putSetAn(target, sn);
         // Quantity 0 goes through the trash, so that a typo can be undone.
         if (eigenZiel === 0) {
-          entfallen = droppedResponse(await repo.setEntriesAsJson(t.db, ziel, sn));
-          papierkorb = await t.inventory.putInTrash('set', ziel, sn);
-          await deleteSetRows(t, [ziel], sn);
+          entfallen = droppedResponse(await repo.setEntriesAsJson(t.db, target, sn));
+          papierkorb = await t.inventory.putInTrash('set', target, sn);
+          await deleteSetRows(t, [target], sn);
         } else {
           // Individual purchases go through the trash too: otherwise a purchase price would vanish without a way back.
-          const weg = await entriesAnQuantityAlign(t, ziel, sn, eigenZiel, plan);
-          entfallen = droppedResponse(weg);
-          papierkorb = await t.inventory.putPurchasesInTrash(ziel, sn, weg);
+          const route = await alignEntriesToQuantity(t, target, sn, eigenZiel, plan);
+          entfallen = droppedResponse(route);
+          papierkorb = await t.inventory.putPurchasesInTrash(target, sn, route);
         }
       },
-      { sperren: [{ konto: ziel, schluessel: sn }] },
+      { sperren: [{ konto: target, schluessel: sn }] },
     );
   }
   // With a quantity change the app sends the old price and condition as an echo; applied, they would overwrite
@@ -217,16 +212,16 @@ export async function changeSet(
     await writeInLastEntry(sk, 'condition', zustand(body.condition), ownerId, sn);
   }
   // Writing is already done; if only reading back fails, the response says "unknown" instead of 0.
-  const nachher = await ab.oder(
+  const after = await ab.orElse(
     'menge',
     async () => (await repo.setMenge(sk.db, 'blickfeld', await sk.household.scopeIds(uid), sn)) ?? 0,
     null,
   );
   return {
-    quantity: nachher,
+    quantity: after,
     ...(papierkorb ? { papierkorb } : {}),
     ...(entfallen.length ? { entfallen } : {}),
-    ...ab.angabe(),
+    ...ab.detail(),
   };
 }
 

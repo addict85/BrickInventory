@@ -1,17 +1,17 @@
 import crypto from 'node:crypto';
-import { eingabe } from '../infra/validate';
+import { input } from '../infra/validate';
 import { fachfehler, type ErrorCode } from '../infra/errorTexts';
 
 /** The same list as ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** A global value is stored as text, even if it comes as a number. */
-const wert = (gueltig: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'wert_ungueltig') =>
-  eingabe.regel((v): string => {
-    if ((typeof v !== 'string' && typeof v !== 'number') || !gueltig(String(v))) fachfehler('ungueltig', code);
+const wert = (valid: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'wert_ungueltig') =>
+  input.regel((v): string => {
+    if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) fachfehler('ungueltig', code);
     return String(v);
   }, json);
-const ganzzahl = (min: number, max: number, code?: ErrorCode) =>
+const integer = (min: number, max: number, code?: ErrorCode) =>
   wert(
     v => /^\d{1,9}$/.test(v) && +v >= min && +v <= max,
     { type: ['integer', 'string'], minimum: min, maximum: max },
@@ -20,9 +20,9 @@ const ganzzahl = (min: number, max: number, code?: ErrorCode) =>
 const text = (max: number) =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: filtering out control characters is the purpose of this spot.
   wert(v => v.length <= max && !/[\u0000-\u001f\u007f]/.test(v), { type: 'string', maxLength: max });
-const auswahl = (werte: readonly string[], code?: ErrorCode) =>
+const selection = (werte: readonly string[], code?: ErrorCode) =>
   wert(v => werte.includes(v), { enum: [...werte] }, code);
-const JA_NO_VALUE = auswahl(['0', '1']);
+const JA_NO_VALUE = selection(['0', '1']);
 const TIME_OF_DAY = wert(v => /^([01]\d|2[0-3]):[0-5]\d$/.test(v), {
   type: 'string',
   pattern: '^([01]\\d|2[0-3]):[0-5]\\d$',
@@ -37,11 +37,11 @@ export const GLOBAL_RULES = {
   bricklink_token_secret: text(200),
   brickset_api_key: text(200),
   rebrickable_api_key: text(200),
-  price_job_interval_minutes: ganzzahl(5, 10_080),
-  price_cache_ttl: auswahl(['12', '24', '168']),
-  api_limit_rebrickable: ganzzahl(1, 100_000, 'tageslimit_bereich'),
-  api_limit_bricklink: ganzzahl(1, 100_000, 'tageslimit_bereich'),
-  api_limit_brickset: ganzzahl(1, 100_000, 'tageslimit_bereich'),
+  price_job_interval_minutes: integer(5, 10_080),
+  price_cache_ttl: selection(['12', '24', '168']),
+  api_limit_rebrickable: integer(1, 100_000, 'tageslimit_bereich'),
+  api_limit_bricklink: integer(1, 100_000, 'tageslimit_bereich'),
+  api_limit_brickset: integer(1, 100_000, 'tageslimit_bereich'),
   registration_enabled: JA_NO_VALUE,
   smtp_secure: JA_NO_VALUE,
   einrichtung_erledigt: JA_NO_VALUE,
@@ -69,9 +69,9 @@ export const GLOBAL_RULES = {
     },
     { type: 'string', maxLength: 20_000 },
   ),
-  default_price_condition: auswahl(['N', 'U'], 'zustand_n_oder_u'),
+  default_price_condition: selection(['N', 'U'], 'zustand_n_oder_u'),
   gutschein_land: wert(v => v === '' || /^[A-Z]{2}$/.test(v), { type: 'string', pattern: '^([A-Z]{2})?$' }),
-  app_theme: auswahl(DESIGNS, 'design_ungueltig'),
+  app_theme: selection(DESIGNS, 'design_ungueltig'),
   job_time_brickset_retry: TIME_OF_DAY,
   job_time_csv_sync: TIME_OF_DAY,
 } as const;

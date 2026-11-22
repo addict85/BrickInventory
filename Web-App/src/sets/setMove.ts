@@ -81,18 +81,18 @@ type AccountWish = string | number | null | undefined;
 export async function moveSet(
   sk: SetsContext,
   uid: number,
-  roh: string,
-  von: AccountWish,
+  raw: string,
+  fromValue: AccountWish,
   nach: AccountWish,
-  erfassungen: number[],
+  acquisitions: number[],
 ) {
-  if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
-  const sn = withVersion(roh);
-  const fromId = await sk.household.schreibziel(uid, von ?? uid);
+  if (!acquisitions.length) fachfehler('ungueltig', 'kaufpreise_angeben');
+  const sn = withVersion(raw);
+  const fromId = await sk.household.schreibziel(uid, fromValue ?? uid);
   const toId = await sk.household.schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   // Two moves in opposite directions lock the rows of both accounts in reverse order.
-  const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, erfassungen), {
+  const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, acquisitions), {
     sperren: [{ konto: fromId, schluessel: sn }],
     repeatAtConflict: true,
   });

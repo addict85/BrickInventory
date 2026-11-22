@@ -25,23 +25,23 @@ export async function protokolliere(
   db: DbInterface,
   adminId: number,
   targetId: number,
-  aktion: AdminAction,
-  einzelheiten: string | null = null,
+  action: AdminAction,
+  details: string | null = null,
 ): Promise<void> {
   await db.run(
     `INSERT INTO admin_log (admin_id, target_id, target_name, action, details)
      VALUES ($1, $2, (SELECT username FROM users WHERE id = $2), $3, $4)`,
-    [adminId, targetId, aktion, einzelheiten],
+    [adminId, targetId, action, details],
   );
-  console.log(`[verwaltung] Konto ${adminId}: ${aktion} für Konto ${targetId}`);
+  console.log(`[verwaltung] Konto ${adminId}: ${action} für Konto ${targetId}`);
 }
 
-export async function lastEntries(db: DbInterface, anzahl = 200) {
+export async function lastEntries(db: DbInterface, count = 200) {
   return db.all<Record<string, unknown>>(
     `SELECT p.id, p.occurred_at, p.action, p.details, p.target_id, p.target_name, p.admin_id, u.username AS verwalter_name
        FROM admin_log p LEFT JOIN users u ON u.id = p.admin_id
       ORDER BY p.occurred_at DESC, p.id DESC LIMIT $1`,
-    [anzahl],
+    [count],
   );
 }
 

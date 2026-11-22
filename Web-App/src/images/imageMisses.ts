@@ -25,33 +25,33 @@ export async function setUpImageGaps(k: ImagesContext): Promise<void> {
   // Process-local: must therefore run in EVERY worker process.
   _ticks.push(
     setInterval(() => {
-      auffrischen(k).catch(e => reportError('bild-fehlanzeige:auffrischen', e));
+      refresh(k).catch(e => reportError('bild-fehlanzeige:auffrischen', e));
     }, REFRESH_MS),
     setInterval(() => {
-      schreibePuffer(k).catch(e => reportError('bild-fehlanzeige:schreibePuffer', e));
+      writeBuffer(k).catch(e => reportError('bild-fehlanzeige:schreibePuffer', e));
     }, 10_000),
   );
   for (const t of _ticks) t.unref();
-  await auffrischen(k);
+  await refresh(k);
 }
 
 /** Before closing the pool: stop ticks, still write the remembered failures. */
 export async function stopNone(k: ImagesContext): Promise<void> {
   for (const t of stand(k).takte.splice(0)) clearInterval(t);
-  await schreibePuffer(k);
+  await writeBuffer(k);
 }
 
 /** Synchronous and without database; at most one refresh interval old. */
 export function isKnownMissing(k: ImagesContext, key: string): boolean {
   const _front = stand(k).vorne;
-  const vorne = _front.get(key);
-  if (vorne === undefined) return false;
-  if (k.uhr.jetzt() - vorne < AGAIN_CHECK_MS) return true;
+  const front = _front.get(key);
+  if (front === undefined) return false;
+  if (k.uhr.jetzt() - front < AGAIN_CHECK_MS) return true;
   _front.delete(key);
   return false;
 }
 
-async function auffrischen(k: ImagesContext): Promise<void> {
+async function refresh(k: ImagesContext): Promise<void> {
   // Not readable: the previous state in memory stays until the next reconciliation succeeds.
   const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
@@ -97,7 +97,7 @@ export async function forgetMissing(kx: ImagesContext, keys?: string[]): Promise
   return r?.changes || 0;
 }
 
-async function schreibePuffer(kx: ImagesContext): Promise<void> {
+async function writeBuffer(kx: ImagesContext): Promise<void> {
   const _writeTo = stand(kx).writeTo;
   if (!_writeTo.size) return;
   const keys = [..._writeTo.keys()];
@@ -115,4 +115,4 @@ export function _emptyForeground(k: ImagesContext): void {
   stand(k).vorne.clear();
   stand(k).reasons.clear();
 }
-export { schreibePuffer as _writeBuffer, auffrischen as _refresh };
+export { writeBuffer as _writeBuffer, refresh as _refresh };

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './management';
-import { type Route, Erfolg, ganz, zeit, bestaetigt, WITHOUT_BODY, TEXT, ZUSTAND, EINSTELLUNGEN, SIMPLE } from './base';
+import { type Route, Success, whole, time, confirmed, WITHOUT_BODY, TEXT, CONDITION, SETTINGS, SIMPLE } from './base';
 import { GLOBAL_RULES } from './globalRules';
 
 /** What POST /settings accepts: global only from the admin, per account from everyone. */
@@ -29,10 +29,10 @@ export const GLOBAL_SETTINGS = [
   'gutschein_land',
 ] as const;
 export const ACCOUNT_SETTINGS = ['currency', 'language', 'user_default_condition'] as const;
-type Einstellung = (typeof GLOBAL_SETTINGS)[number] | (typeof ACCOUNT_SETTINGS)[number];
+type Setting = (typeof GLOBAL_SETTINGS)[number] | (typeof ACCOUNT_SETTINGS)[number];
 const settingFields = Object.fromEntries(
   [...GLOBAL_SETTINGS, ...ACCOUNT_SETTINGS].map(k => [k, SIMPLE.optional()]),
-) as Record<Einstellung, z.ZodOptional<typeof SIMPLE>>;
+) as Record<Setting, z.ZodOptional<typeof SIMPLE>>;
 import { DEGRADED, GenericResponse } from './shared';
 
 export const AppThemeResponse = z.looseObject({
@@ -73,7 +73,7 @@ export const StartupStatus = z.looseObject({
   sub: z.string().nullable(),
 });
 
-export const Einrichtung = z.looseObject({
+export const Setup = z.looseObject({
   success: z.literal(true),
   offen: z.boolean(),
   passwort_aendern: z.boolean(),
@@ -81,7 +81,7 @@ export const Einrichtung = z.looseObject({
 });
 /** State of the initial setup for the login page: switches and the public
  * root certificate, no accounts and no keys. */
-export const EinrichtungStand = z.looseObject({
+export const SetupState = z.looseObject({
   success: z.literal(true),
   erledigt: z.boolean(),
   konfiguriert: z.boolean(),
@@ -98,7 +98,7 @@ export const EinrichtungStand = z.looseObject({
   degradiert: DEGRADED,
 });
 /** The settings as text, as they are stored; secrets masked. */
-export const RoheEinstellungen = z.looseObject({
+export const RawSettings = z.looseObject({
   success: z.literal(true),
   settings: z.record(z.string(), z.string()),
 });
@@ -109,27 +109,27 @@ export const TlsStand = z.looseObject({
   fp_hex: z.string().optional(),
   zert_sha256: z.string().optional(),
   subject: z.string().optional(),
-  gueltig_bis: zeit.optional(),
+  gueltig_bis: time.optional(),
   download: z.string().optional(),
 });
-export const Sicherung = z.looseObject({
+export const Backup = z.looseObject({
   version: z.string(),
-  exported_at: zeit,
+  exported_at: time,
   exported_by: z.string().nullable(),
   global: z.record(z.string(), z.string()),
   user_settings: z.record(z.string(), z.string()),
 });
 /** The import file: what the export writes, older versions included. Values are checked by GLOBAL_RULES. */
-export const KonfigExport = z.looseObject({
+export const ConfigExport = z.looseObject({
   version: z.string().max(20).optional(),
   exported_at: z.string().max(40).optional(),
   exported_by: z.string().max(200).nullable().optional(),
   global: z.record(z.string().max(64), SIMPLE).optional(),
   user_settings: z.record(z.string().max(64), SIMPLE).optional(),
 });
-export const SicherungEingespielt = z.looseObject({
+export const BackupRestored = z.looseObject({
   success: z.literal(true),
-  imported: ganz,
+  imported: whole,
   note: z.string(),
   smtp_uebergangen: z.array(z.string()),
 });
@@ -138,10 +138,10 @@ export const Gesundheit = z.looseObject({
   status: z.enum(['ok', 'starting']),
   startup: StartupStatus.optional(),
   db_pool: z.record(z.string(), z.unknown()).optional(),
-  uptime_seconds: ganz.optional(),
+  uptime_seconds: whole.optional(),
 });
 /** `ready` answers 503 in the shape of every error response, plus status "unavailable". */
-export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
+export const Heartbeat = z.strictObject({ status: z.literal('ok') });
 
 /** Result of the sending; without error text on success. */
 export const SmtpProbe = z.looseObject({
@@ -149,7 +149,7 @@ export const SmtpProbe = z.looseObject({
   success: z.boolean(),
 });
 
-export const EinstellungenGespeichert = GenericResponse.extend({ updated: ganz });
+export const EinstellungenGespeichert = GenericResponse.extend({ updated: whole });
 
 export const routen = {
   'GET /api/v1/settings/theme': { antwort: AppThemeResponse },
@@ -160,9 +160,9 @@ export const routen = {
     eingabe: z.strictObject({ theme: TEXT(40).nullable().optional() }),
     antwort: AppThemeResponse,
   },
-  'PUT /api/v1/settings': { eingabe: EINSTELLUNGEN, antwort: EinstellungenGespeichert },
+  'PUT /api/v1/settings': { eingabe: SETTINGS, antwort: EinstellungenGespeichert },
   'POST /api/v1/settings/user/default-condition': {
-    eingabe: z.strictObject({ condition: ZUSTAND.nullable().optional() }),
+    eingabe: z.strictObject({ condition: CONDITION.nullable().optional() }),
     antwort: VerwaltungZustand,
   },
   'POST /api/v1/settings/admin/theme': {
@@ -170,19 +170,19 @@ export const routen = {
     antwort: VerwaltungDesign,
   },
   // `klein`: six fixed check steps that do not grow with the inventory.
-  'GET /api/v1/einrichtung/stand': { antwort: EinrichtungStand, klein: true },
-  'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
-  'POST /api/v1/settings/einrichtung/fertig': { eingabe: WITHOUT_BODY, antwort: Erfolg },
-  'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },
+  'GET /api/v1/einrichtung/stand': { antwort: SetupState, klein: true },
+  'GET /api/v1/settings/einrichtung': { antwort: Setup },
+  'POST /api/v1/settings/einrichtung/fertig': { eingabe: WITHOUT_BODY, antwort: Success },
+  'GET /api/v1/settings/raw': { antwort: RawSettings },
   'GET /api/v1/settings/tls': { antwort: TlsStand },
   'GET /api/v1/settings/user/default-condition': { antwort: DefaultConditionResponse },
-  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt(settingFields, 'admin_password') },
-  'GET /api/v1/settings/export': { antwort: Sicherung },
-  'POST /api/v1/settings/import': { formular: true, antwort: SicherungEingespielt },
+  'POST /api/v1/settings': { antwort: Success, ...confirmed(settingFields, 'admin_password') },
+  'GET /api/v1/settings/export': { antwort: Backup },
+  'POST /api/v1/settings/import': { formular: true, antwort: BackupRestored },
   'GET /api/v1/health': { antwort: Gesundheit },
-  'GET /api/v1/health/live': { antwort: Lebenszeichen },
-  'GET /api/v1/health/ready': { antwort: Lebenszeichen },
+  'GET /api/v1/health/live': { antwort: Heartbeat },
+  'GET /api/v1/health/ready': { antwort: Heartbeat },
   'GET /api/v1/settings/export/data': { art: 'zip' },
-  'POST /api/v1/settings/smtp-test': { antwort: SmtpProbe, ...bestaetigt({ to: TEXT(320).optional() }) },
-  'POST /api/v1/settings/quelle-testen': { eingabe: z.strictObject({ quelle: TEXT(40) }), antwort: Erfolg },
+  'POST /api/v1/settings/smtp-test': { antwort: SmtpProbe, ...confirmed({ to: TEXT(320).optional() }) },
+  'POST /api/v1/settings/quelle-testen': { eingabe: z.strictObject({ quelle: TEXT(40) }), antwort: Success },
 } satisfies Record<string, Route>;

@@ -13,25 +13,25 @@ import {
   DEFAULT_PRICE_CONDITION,
   parallelLimit,
   loadBlNumbersBefore,
-  ladeTeilepreiseVor,
-  ladeFigurenpreiseVor,
+  preloadPartPrices,
+  preloadMinifigPrices,
   priceFromStock,
   setPriceFromStock,
   partKey,
   type Blickfeld,
   type PriceData,
 } from './prices';
-import { zaehle } from './queries';
+import { count } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
-import { KEINE_FARBE, zustand } from '../../infra/validate';
-import { aufRappen, inZehntel4 } from '../../infra/geld';
+import { NO_COLOR, zustand } from '../../infra/validate';
+import { aufRappen, inTenThousandths } from '../../infra/geld';
 import type { Nutzlast } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
 import { errorText } from '../../infra/errorTexts';
 import type { FinancesContext } from '../context';
 
 type Zustand = 'N' | 'U';
-type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
+type Item = Nutzlast<'preise_nachladen'>['posten'][number];
 type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → acquisition rows; key is `konto|nummer|farbe` or `konto|nummer` */
@@ -42,7 +42,7 @@ async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 
   const out = new Map<string, repo.ManualEntry[]>();
   for (const r of rows) {
     const key =
-      kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? KEINE_FARBE}` : `${r.user_id}|${r.fig_number}`;
+      kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? NO_COLOR}` : `${r.user_id}|${r.fig_number}`;
     const list = out.get(key);
     if (list) list.push(r);
     else out.set(key, [r]);
@@ -52,7 +52,7 @@ async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 
 
 function foreignPurchasePrices(jeEntry: Map<string, Array<{ kaufpreis_fremd?: boolean }>>): number {
   let n = 0;
-  for (const zeilen of jeEntry.values()) n += zeilen.filter(z => z.kaufpreis_fremd).length;
+  for (const rows of jeEntry.values()) n += rows.filter(z => z.kaufpreis_fremd).length;
   return n;
 }
 
@@ -61,13 +61,13 @@ async function rememberPricesForAccountBefore(
   k: FinancesContext,
   viewerId: number,
   waehrung: string,
-  posten: Posten[],
+  item: Item[],
 ): Promise<number> {
-  if (!posten.length) return 0;
-  await rememberPricesBefore(k, { user_id: viewerId, waehrung, posten: posten.slice(0, PRICE_ITEM_AT_MOST) }).catch(
+  if (!item.length) return 0;
+  await rememberPricesBefore(k, { user_id: viewerId, waehrung, posten: item.slice(0, PRICE_ITEM_AT_MOST) }).catch(
     logAndContinue('bewertung:preise vormerken'),
   );
-  return posten.length;
+  return item.length;
 }
 
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsToValuation>>[number];
@@ -77,7 +77,7 @@ type Bewertungslage = {
   ttl: number;
   jetzt: number;
   pre: Parameters<typeof setPriceFromStock>[4];
-  fehlt: Posten[];
+  fehlt: Item[];
   withoutAccess: string | null;
 };
 
@@ -92,8 +92,8 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   );
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
-    const markt = marketPriceFrom(p);
-    if (markt !== null) preisMap.set(`${set.set_number}|${cond}`, markt);
+    const market = marketPriceFrom(p);
+    if (market !== null) preisMap.set(`${set.set_number}|${cond}`, market);
     if (p.ausstehend) l.fehlt.push({ art: 'set', nummer: set.set_number, zustand: cond });
   }
   const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
@@ -107,7 +107,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
       .map(bc => (preise.get(bc.condition as Zustand)?.[key] ?? 0) * bc.quantity)
       .reduce((a, b) => a + b, 0) / qty;
   const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
-  const ausstehend = needed.some(c => preise.get(c)?.ausstehend === true);
+  const pending = needed.some(c => preise.get(c)?.ausstehend === true);
   const unitAvg = valued.unit_price ?? 0;
   const conditions = valued.by_condition.map(bc => bc.condition);
   return {
@@ -131,17 +131,17 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     // From the unrounded unit price: 120.3333 × 2 is 240.67, not 240.66.
     total_avg: aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
     wert_gesamt: aufRappen((valued.unit_z ?? 0) * qty),
-    total_qty_avg: aufRappen((inZehntel4(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
+    total_qty_avg: aufRappen((inTenThousandths(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
     pnl_pct: calcPnlPct(purchase, unitAvg),
     pnl_prozent: pnlProzent(purchase, unitAvg),
     acquisitions: rows,
     from_cache: true,
     is_fallback: onePrice?.is_fallback === true,
     // A pending price is not a price yet; a check mark would mean "loaded".
-    no_price: (!!onePrice || ausstehend) && valued.unit_price == null,
+    no_price: (!!onePrice || pending) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
-    preis_ausstehend: ausstehend,
-    ...(ausstehend && l.withoutAccess && valued.unit_price == null
+    preis_ausstehend: pending,
+    ...(pending && l.withoutAccess && valued.unit_price == null
       ? { error: l.withoutAccess, error_code: 'kein_bricklink_zugang' }
       : {}),
   };
@@ -149,18 +149,18 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
 
 /** Sums from the row values, rounded only at the end. */
 function valuationSums(
-  zeilen: Array<{ quantity: number; min_price: number; max_price: number; qty_avg_price: number; total_avg: string }>,
+  rows: Array<{ quantity: number; min_price: number; max_price: number; qty_avg_price: number; total_avg: string }>,
 ) {
   let zMin = 0,
     zMax = 0,
     zQtyAvg = 0,
     zAvg = 0;
-  for (const r of zeilen) {
+  for (const r of rows) {
     const q = r.quantity || 1;
-    zMin += (inZehntel4(r.min_price) ?? 0) * q;
-    zMax += (inZehntel4(r.max_price) ?? 0) * q;
-    zQtyAvg += (inZehntel4(r.qty_avg_price) ?? 0) * q;
-    zAvg += inZehntel4(r.total_avg) ?? 0;
+    zMin += (inTenThousandths(r.min_price) ?? 0) * q;
+    zMax += (inTenThousandths(r.max_price) ?? 0) * q;
+    zQtyAvg += (inTenThousandths(r.qty_avg_price) ?? 0) * q;
+    zAvg += inTenThousandths(r.total_avg) ?? 0;
   }
   return {
     min: aufRappen(zMin).toFixed(2),
@@ -180,7 +180,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     kx.einstellungen.userValue(viewerId, 'price_cache_ttl', '24'),
     kx.einstellungen.userValue(viewerId, 'price_guide_type', 'sold'),
   ]);
-  const kopf = {
+  const header = {
     currency,
     condition: DEFAULT_PRICE_CONDITION,
     guide_type: guideType,
@@ -191,7 +191,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   const sets = await kx.bewertung.setsToValuation(uids);
   if (!sets.length)
     return {
-      ...kopf,
+      ...header,
       kaufpreise_fremde_waehrung: 0,
       kaufpreise_umgerechnet: 0,
       sets: [],
@@ -238,10 +238,10 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     sets.map(set => bewerteSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
   );
   return {
-    ...kopf,
+    ...header,
     // Foreign purchase prices are missing from the sums (no rates); the number says how many there are.
-    kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd'),
-    kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
+    kaufpreise_fremde_waehrung: count(acqRows, 'kaufpreis_fremd'),
+    kaufpreise_umgerechnet: count(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: valuationSums(results),
     preise_ausstehend: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
@@ -295,8 +295,8 @@ function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string
 }
 
 /** Sum of the row values, rounded only at the end; as a number and (deprecated) as text. */
-function gesamt(zeilen: Array<{ total_value: string }>) {
-  const z = zeilen.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
+function total(rows: Array<{ total_value: string }>) {
+  const z = rows.reduce((s, r) => s + (inTenThousandths(r.total_value) ?? 0), 0);
   return { wert_gesamt: aufRappen(z), total_value: aufRappen(z).toFixed(2) };
 }
 
@@ -313,7 +313,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     return {
       currency,
       figs: [],
-      ...gesamt([]),
+      ...total([]),
       kaufpreise_fremde_waehrung: 0,
       kaufpreise_umgerechnet: 0,
       preise_ausstehend: 0,
@@ -322,7 +322,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
   const acqByFig = await loadManualAcquisitions(k, uids, 'fig', currency);
   const withBl = manualFigs.filter(f => f.bl_fig_number);
   const [figStock, estimates] = await Promise.all([
-    ladeFigurenpreiseVor(
+    preloadMinifigPrices(
       k,
       withBl.map(f => String(f.bl_fig_number)),
       currency,
@@ -334,7 +334,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       ttl,
     ),
   ]);
-  const fehlt: Posten[] = [];
+  const fehlt: Item[] = [];
 
   const results = await k.household.besitzerAnhaengen(
     uids,
@@ -377,9 +377,9 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
   return {
     currency,
     figs: results,
-    ...gesamt(results),
+    ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByFig),
-    kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
+    kaufpreise_umgerechnet: count([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
     preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
   };
 }
@@ -396,7 +396,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     return {
       currency,
       parts: [],
-      ...gesamt([]),
+      ...total([]),
       kaufpreise_fremde_waehrung: 0,
       kaufpreise_umgerechnet: 0,
       preise_ausstehend: 0,
@@ -405,25 +405,25 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
   const blNumber = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
   await loadBlNumbersBefore(k, manualParts.map(blNumber));
   const acqByPart = await loadManualAcquisitions(k, uids, 'part', currency);
-  const partStock = await ladeTeilepreiseVor(
+  const partStock = await preloadPartPrices(
     k,
     manualParts.map(p => ({
       partNumber: blNumber(p),
-      rbColorId: p.color_id ?? KEINE_FARBE,
+      rbColorId: p.color_id ?? NO_COLOR,
     })),
     currency,
     ttlHours,
   );
-  const fehlt: Posten[] = [];
+  const fehlt: Item[] = [];
 
   const tasks = manualParts.map(part => async () => {
-    const key = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
+    const key = `${part.part_number}|${part.color_id ?? NO_COLOR}`;
     const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
-    const stockKey = await partKey(k, blNumber(part), part.color_id ?? KEINE_FARBE);
+    const stockKey = await partKey(k, blNumber(part), part.color_id ?? NO_COLOR);
     const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), cond => {
       const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.uhr.jetzt());
       if (p.ausstehend)
-        fehlt.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? KEINE_FARBE, zustand: cond });
+        fehlt.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? NO_COLOR, zustand: cond });
       return p;
     });
     const wert = valueManual(key, acqs, priceMap, part.quantity || 1);
@@ -451,9 +451,9 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
   return {
     currency,
     parts: results,
-    ...gesamt(results),
+    ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByPart),
-    kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
+    kaufpreise_umgerechnet: count([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
     preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
   };
 }

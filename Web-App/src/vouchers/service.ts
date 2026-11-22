@@ -14,7 +14,7 @@ import { combineVouchers } from './pdfExport';
 import { issueTicket } from './pdfTicket';
 import { MAX_PAGES, readInBackground } from './pdfReader';
 import type { VoucherContext } from './context';
-import { PIN_MASK, gutscheinNummer, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
+import { PIN_MASK, voucherNumber, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
 
 export type { VoucherRow } from './repository/vouchers';
 
@@ -54,15 +54,15 @@ const checked = (w: NewVoucher, zeroAllowed = false): Checked => ({
 type Raw = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
 
 /** Only for values the server reads from a PDF itself: input is checked by the contract. */
-export function checkValues(roh: Raw): ({ ok: true } & Checked) | { ok: false; code: ErrorCode } {
+export function checkValues(raw: Raw): ({ ok: true } & Checked) | { ok: false; code: ErrorCode } {
   try {
     return {
       ok: true,
-      number: gutscheinNummer(roh.number == null ? '' : String(roh.number)),
-      pin: voucherPin(roh.pin == null ? null : String(roh.pin)),
+      number: voucherNumber(raw.number == null ? '' : String(raw.number)),
+      pin: voucherPin(raw.pin == null ? null : String(raw.pin)),
       // Number('') is 0 and fails the amount check.
-      amount: amountRule(Number(roh.amount)),
-      currency: voucherCurrency(roh.currency == null ? null : String(roh.currency)),
+      amount: amountRule(Number(raw.amount)),
+      currency: voucherCurrency(raw.currency == null ? null : String(raw.currency)),
     };
   } catch (e) {
     if (e instanceof Fachfehler) return { ok: false, code: e.code };

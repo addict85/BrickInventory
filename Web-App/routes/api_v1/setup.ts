@@ -3,9 +3,9 @@
  * root certificate — both are already available under /ca.crt. */
 import { istVerwalter, ipThrottle } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
-export function buildSetupRouter(d: Pick<Dienste, 'account' | 'profile'>) {
+export function buildSetupRouter(d: Pick<Services, 'account' | 'profile'>) {
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt(

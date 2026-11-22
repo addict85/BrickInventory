@@ -16,14 +16,14 @@ const FRIST_MS = 30 * 60_000;
 export interface CsvLaden {
   signal?: AbortSignal;
   /** Packed bytes read and the announced total (0: unknown). */
-  atProgress?: (bytes: number, gesamt: number) => void;
+  atProgress?: (bytes: number, total: number) => void;
 }
 
 /** Loads `datei` (e.g. parts.csv.gz) unpacked into `ziel`. */
-export async function loadCatalogCsv(datei: string, ziel: string, o: CsvLaden = {}): Promise<void> {
-  if (!/^[a-z_]+\.csv\.gz$/.test(datei))
-    throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${datei.slice(0, 60)}`);
-  const a = await openHttps(CSV_BASIS + datei, {
+export async function loadCatalogCsv(file: string, target: string, o: CsvLaden = {}): Promise<void> {
+  if (!/^[a-z_]+\.csv\.gz$/.test(file))
+    throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${file.slice(0, 60)}`);
+  const a = await openHttps(CSV_BASIS + file, {
     hosts: CSV_HOSTS,
     maxBytes: PACKED_AT_MOST,
     zeitlimitMs: FRIST_MS,
@@ -31,30 +31,30 @@ export async function loadCatalogCsv(datei: string, ziel: string, o: CsvLaden = 
   });
   if (a.status !== 200) {
     a.verwerfen();
-    throw new AbrufFehler('netz', `HTTP ${a.status} für ${datei}`);
+    throw new AbrufFehler('netz', `HTTP ${a.status} für ${file}`);
   }
-  const gesamt = Number(a.kopf['content-length']) || 0;
+  const total = Number(a.kopf['content-length']) || 0;
   let gelesen = 0,
-    entpackt = 0;
-  const zaehler = new Transform({
-    transform(stueck: Buffer, _k, weiter) {
-      gelesen += stueck.length;
-      o.atProgress?.(gelesen, gesamt);
-      weiter(null, stueck);
+    unpacked = 0;
+  const counter = new Transform({
+    transform(piece: Buffer, _k, next) {
+      gelesen += piece.length;
+      o.atProgress?.(gelesen, total);
+      next(null, piece);
     },
   });
   // A gzip bomb ends at the cap, not at the disk.
   const deckel = new Transform({
-    transform(stueck: Buffer, _k, weiter) {
-      entpackt += stueck.length;
-      weiter(
-        entpackt > UNPACKED_AT_MOST
-          ? new AbrufFehler('zu-gross', `${datei} entpackt über ${UNPACKED_AT_MOST} Byte`)
+    transform(piece: Buffer, _k, next) {
+      unpacked += piece.length;
+      next(
+        unpacked > UNPACKED_AT_MOST
+          ? new AbrufFehler('zu-gross', `${file} entpackt über ${UNPACKED_AT_MOST} Byte`)
           : null,
-        stueck,
+        piece,
       );
     },
   });
   // An abort ends the request (fetch.ts) and thereby the whole chain.
-  await pipeline(a.strom(), zaehler, createGunzip(), deckel, fs.createWriteStream(ziel));
+  await pipeline(a.strom(), counter, createGunzip(), deckel, fs.createWriteStream(target));
 }

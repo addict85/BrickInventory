@@ -9,10 +9,10 @@ export function rememberAdminAction(
   k: AccountContext,
   adminId: number,
   targetId: number,
-  aktion: AdminAction,
-  einzelheiten: string | null = null,
+  action: AdminAction,
+  details: string | null = null,
 ): Promise<void> {
-  return k.protokoll.protokolliere(adminId, targetId, aktion, einzelheiten);
+  return k.protokoll.protokolliere(adminId, targetId, action, details);
 }
 
 export function managementLog(k: AccountContext) {

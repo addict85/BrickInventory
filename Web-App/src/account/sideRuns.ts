@@ -5,10 +5,10 @@ import { cleanLoginCounterOn } from './loginLimiter';
 import { runDueTakeoversFrom } from './adminActions';
 import type { AccountContext } from './context';
 
-type Schritt = [name: string, lauf: () => Promise<unknown>];
+type Step = [name: string, lauf: () => Promise<unknown>];
 
-export function onRaeumSteps(k: AccountContext, takt: 'stuendlich' | 'taeglich'): Schritt[] {
-  if (takt === 'stuendlich')
+export function onCleanupSteps(k: AccountContext, tick: 'stuendlich' | 'taeglich'): Step[] {
+  if (tick === 'stuendlich')
     return [
       ['abgelaufene Tokens', () => tokensCleanup(k)],
       ['Anmeldezähler', () => cleanLoginCounterOn(k)],
@@ -21,7 +21,7 @@ export function onRaeumSteps(k: AccountContext, takt: 'stuendlich' | 'taeglich')
 }
 
 /** Only hints in the log: which address was meant is known only to the owner. */
-export function adressHints(k: AccountContext): Schritt[] {
+export function addressHints(k: AccountContext): Step[] {
   return [
     ['start:adressen', () => reportInvalidAddresses(k)],
     ['start:ausstehende-adressen', () => reportPendingAddresses(k)],

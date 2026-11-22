@@ -14,7 +14,7 @@ import { logAndContinue, reportError } from '../infra/error';
 import path from 'node:path';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
-import { KEINE_FARBE } from '../infra/validate';
+import { NO_COLOR } from '../infra/validate';
 import type { CatalogContext } from './context';
 async function syncSetCatalog(k: CatalogContext, setNumber: string) {
   // withVersion(): otherwise `alt` would yield the same value as `n`, and the bare
@@ -42,7 +42,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
   for (const p of parts) {
     let imageLocal: string | null = null;
     if (p.image_url) {
-      const imgFile = `${p.part_number}_${p.color_id ?? KEINE_FARBE}.jpg`;
+      const imgFile = `${p.part_number}_${p.color_id ?? NO_COLOR}.jpg`;
       const dest = path.join(IMG_DIR, imgFile);
       const rel = `/images/parts/${imgFile}`;
 
@@ -65,15 +65,15 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
       await rememberPartColor(
         k,
         p.part_number,
-        p.color_id ?? KEINE_FARBE,
+        p.color_id ?? NO_COLOR,
         p.color_name,
         p.color_hex,
         p.image_url,
         imageLocal,
       );
-      await rememberSetPart(k, n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+      await rememberSetPart(k, n, p.part_number, p.color_id ?? NO_COLOR, p.quantity || 1, false);
     } else if (imageLocal) {
-      await setPartImageLocal(k, p.part_number, p.color_id ?? KEINE_FARBE, imageLocal);
+      await setPartImageLocal(k, p.part_number, p.color_id ?? NO_COLOR, imageLocal);
     }
   }
 

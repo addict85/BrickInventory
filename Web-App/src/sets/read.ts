@@ -7,16 +7,16 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } 
 
 // Read queries; condition from the acquisitions.
 
-import type { Abfrage } from '../contract';
+import type { Query } from '../contract';
 import { versuche } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** Filtering and sorting on the server, so that they work together with page-wise
  * loading. Without page_size everything — that is how the Android app calls. */
-export async function setsLesen(
+export async function readSets(
   sk: SetsContext,
   userIdChoice: Sicht | Blickfeld,
-  query: Abfrage<'GET /api/v1/sets'> = {},
+  query: Query<'GET /api/v1/sets'> = {},
 ) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
@@ -122,7 +122,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
   // detail.
   const agg = await zustandsAggregat(sk, uids, setNumber);
   // The purchase addresses from the server: one address in four places would be four truths.
-  const [bricklink, preisvergleich] = await Promise.all([
+  const [bricklink, priceComparison] = await Promise.all([
     sk.catalog.resolveBlLink(setNumber).catch((e: unknown) => {
       reportError('setdetail:bricklink', e);
       return null;
@@ -137,7 +137,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     ...withOwners,
     ...agg,
     bricklink,
-    preisvergleich_url: preisvergleich,
+    preisvergleich_url: priceComparison,
     image_local: resolveImageLocal(set.image_local),
     instructions: mergeInstructions(shared, uploaded),
   };

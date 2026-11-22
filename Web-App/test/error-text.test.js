@@ -6,7 +6,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { fehlertext, fehlerCode } = require('./helpers/sources').buildAndRequire()('src/infra/error.js');
+const { fehlertext, errorCode } = require('./helpers/sources').buildAndRequire()('src/infra/error.js');
 
 test('fehlertext never returns "undefined"', () => {
   // The normal case.
@@ -53,16 +53,16 @@ test('fehlertext does NOT give away the whole object', () => {
 });
 
 test('fehlerCode reads Node and Postgres codes', () => {
-  assert.equal(fehlerCode(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })), 'ECONNREFUSED');
+  assert.equal(errorCode(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })), 'ECONNREFUSED');
   // Postgres delivers numeric codes (23505 = uniqueness violation).
   assert.equal(
-    fehlerCode(Object.assign(new Error('x'), { code: 23505 })),
+    errorCode(Object.assign(new Error('x'), { code: 23505 })),
     '23505',
     'ein numerischer Code wird zur Zeichenkette — sonst schluege jeder Vergleich fehl',
   );
   // Without a code undefined is the right answer: every comparison with it
   // fails cleanly instead of hitting by chance.
-  assert.equal(fehlerCode(new Error('x')), undefined);
-  assert.equal(fehlerCode('kaputt'), undefined);
-  assert.equal(fehlerCode(null), undefined);
+  assert.equal(errorCode(new Error('x')), undefined);
+  assert.equal(errorCode('kaputt'), undefined);
+  assert.equal(errorCode(null), undefined);
 });

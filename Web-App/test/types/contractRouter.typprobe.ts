@@ -9,10 +9,10 @@
  *      allen vier Zeilen (unbekannter Schlüssel, Präfix, Antwort, Pfadparameter).
  *   C  `Ergebnis<K>` durch `Record<string, unknown>` ersetzt → rot an „Antwort weicht ab“.
  */
-import type { VertragsRouter } from '../../src/http/contractRouter';
+import type { ContractRouter } from '../../src/http/contractRouter';
 
-declare const api: VertragsRouter<'/api/v1'>;
-declare const auth: VertragsRouter<'/api/v1/auth'>;
+declare const api: ContractRouter<'/api/v1'>;
+declare const auth: ContractRouter<'/api/v1/auth'>;
 
 // Richtig: Methode und Pfad aus dem Schlüssel, die Antwort ohne Hülle.
 api.endpunkt('GET /api/v1/sets', req => ({ count: 0, total: req.abfrage.page ?? 0, sets: [] }));

@@ -20,7 +20,7 @@ export async function loadSetMinifigs(
   setNumber: string,
 ): Promise<{ figuren: Figur[]; fromSource: boolean }> {
   const fromCatalog = await minifigsFromCatalog(k, withVersion(setNumber));
-  const roh: Figur[] = fromCatalog.length
+  const raw: Figur[] = fromCatalog.length
     ? fromCatalog.map(f => ({
         fig_number: f.fig_number,
         fig_name: f.fig_name || f.fig_number,
@@ -29,7 +29,7 @@ export async function loadSetMinifigs(
       }))
     : await k.externalSources.quellen.getSetMinifigs(setNumber);
   const jeNumber = new Map<string, Figur>();
-  for (const f of roh) {
+  for (const f of raw) {
     if (!f.fig_number) continue;
     const alt = jeNumber.get(f.fig_number);
     jeNumber.set(

@@ -260,7 +260,7 @@ async function buildPage(g: ExportVoucher): Promise<Buffer> {
 export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf: Buffer; results: ExportResult[] }> {
   const target = await PdfLibDocument.create();
   const mark = await target.embedFont(StandardFonts.Helvetica);
-  const befunde: ExportResult[] = [];
+  const findings: ExportResult[] = [];
 
   for (const g of vouchers) {
     let source: Buffer;
@@ -269,14 +269,14 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
       if (r.data) {
         source = r.data;
         // No hit does NOT mean "failed" here: the amount was already correct.
-        befunde.push({ id: g.id, number: g.number, art: r.hits ? 'ersetzt' : 'stimmte_schon', grund: null });
+        findings.push({ id: g.id, number: g.number, art: r.hits ? 'ersetzt' : 'stimmte_schon', grund: null });
       } else {
         source = g.pdf;
-        befunde.push({ id: g.id, number: g.number, art: 'unveraendert', grund: r.grund });
+        findings.push({ id: g.id, number: g.number, art: 'unveraendert', grund: r.grund });
       }
     } else {
       source = await buildPage(g);
-      befunde.push({ id: g.id, number: g.number, art: 'erzeugt', grund: null });
+      findings.push({ id: g.id, number: g.number, art: 'erzeugt', grund: null });
     }
 
     const doc = await PdfLibDocument.load(source);
@@ -296,7 +296,7 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
     });
   }
 
-  return { pdf: Buffer.from(await target.save()), results: befunde };
+  return { pdf: Buffer.from(await target.save()), results: findings };
 }
 
 /** Exception: a PDF that cannot be read page by page is a single voucher — the

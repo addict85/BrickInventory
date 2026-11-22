@@ -1,17 +1,17 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/geldSql';
 
-export type Zustand = 'N' | 'U';
-type Preiszeile = { avg_price: string | null; qty_avg_price: string | null; condition: Zustand };
+export type State = 'N' | 'U';
+type PriceRow = { avg_price: string | null; qty_avg_price: string | null; condition: State };
 
 /** Only real prices above zero. */
-export function setPriceFromCache(db: DbInterface, setNumber: string, zustand: string, waehrung: string) {
+export function setPriceFromCache(db: DbInterface, setNumber: string, condition: string, currency: string) {
   return db.get<{ marktpreis: string }>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
-       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND ${marktpreisSql()} IS NOT NULL
+    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
+       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND ${marketPriceSql()} IS NOT NULL
        ORDER BY (condition = $2) DESC LIMIT 1`,
-    [setNumber, zustand, waehrung],
+    [setNumber, condition, currency],
   );
 }
 
@@ -35,89 +35,84 @@ export function minifigEntryState(db: DbInterface, l: FinancesReadContract, user
   );
 }
 
-export function minifigsPricesFromCache(db: DbInterface, nummern: string[], waehrung: string, ttlStunden: number) {
-  return db.all<Preiszeile & { fig_number: string }>(
+export function minifigsPricesFromCache(db: DbInterface, numbers: string[], currency: string, ttlHours: number) {
+  return db.all<PriceRow & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [nummern, waehrung, ttlStunden],
+    [numbers, currency, ttlHours],
   );
 }
 
-export function partsPricesFromCache(db: DbInterface, nummern: string[], waehrung: string, ttlStunden: number) {
-  return db.all<Preiszeile & { part_number: string; color_id: number }>(
+export function partsPricesFromCache(db: DbInterface, numbers: string[], currency: string, ttlHours: number) {
+  return db.all<PriceRow & { part_number: string; color_id: number }>(
     `SELECT part_number, color_id, condition, avg_price, qty_avg_price FROM part_price_cache
       WHERE part_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [nummern, waehrung, ttlStunden],
+    [numbers, currency, ttlHours],
   );
 }
 
 /** Like estimatedMinifigsPrice for many figures in one query; key `nummer|zustand`. */
-export async function estimatedMinifigsPrices(
-  db: DbInterface,
-  figuren: string[],
-  waehrung: string,
-  ttlStunden: number,
-) {
-  const aus = new Map<string, { preis: number; abdeckung: number | null }>();
-  if (!figuren.length) return aus;
-  const zeilen = await db.all<{ fig_number: string; condition: string; marktpreis: string; coverage: string | null }>(
-    `SELECT fig_number, condition, ${marktpreisSql()} AS marktpreis, coverage FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2 AND estimated AND ${marktpreisSql()} IS NOT NULL
+export async function estimatedMinifigsPrices(db: DbInterface, minifigs: string[], currency: string, ttlHours: number) {
+  const from = new Map<string, { preis: number; abdeckung: number | null }>();
+  if (!minifigs.length) return from;
+  const rows = await db.all<{ fig_number: string; condition: string; marktpreis: string; coverage: string | null }>(
+    `SELECT fig_number, condition, ${marketPriceSql()} AS marktpreis, coverage FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND estimated AND ${marketPriceSql()} IS NOT NULL
         AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [[...new Set(figuren)], waehrung, ttlStunden],
+    [[...new Set(minifigs)], currency, ttlHours],
   );
-  for (const z of zeilen)
-    aus.set(`${z.fig_number}|${z.condition}`, {
+  for (const z of rows)
+    from.set(`${z.fig_number}|${z.condition}`, {
       preis: Number(z.marktpreis),
       abdeckung: z.coverage == null ? null : Number(z.coverage),
     });
-  return aus;
+  return from;
 }
 
 export function estimatedMinifigsPrice(
   db: DbInterface,
   figNumber: string,
-  zustand: string,
-  waehrung: string,
-  ttlStunden: number,
+  condition: string,
+  currency: string,
+  ttlHours: number,
 ) {
   return db.get<{ marktpreis: string | null; coverage: string | null }>(
-    `SELECT ${marktpreisSql()} AS marktpreis, coverage FROM minifig_price_cache
+    `SELECT ${marketPriceSql()} AS marktpreis, coverage FROM minifig_price_cache
         WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND estimated
           AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [figNumber, zustand, waehrung, ttlStunden],
+    [figNumber, condition, currency, ttlHours],
   );
 }
 
 export function rememberEstimatedMinifigsPrice(
   db: DbInterface,
   figNumber: string,
-  zustand: string,
-  waehrung: string,
-  preis: number,
-  abdeckung: number,
+  condition: string,
+  currency: string,
+  price: number,
+  coverage: number,
 ) {
   return db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT (fig_number,condition,currency_code)
        DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), estimated=TRUE, coverage=$5`,
-    [figNumber, zustand, waehrung, preis, abdeckung],
+    [figNumber, condition, currency, price, coverage],
   );
 }
 
 export function rememberEstimatedMinifigsHistory(
   db: DbInterface,
   figNumber: string,
-  zustand: string,
-  waehrung: string,
-  preis: number,
-  abdeckung: number,
+  condition: string,
+  currency: string,
+  price: number,
+  coverage: number,
 ) {
   return db.run(
     `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
-    [figNumber, zustand, waehrung, preis, abdeckung],
+    [figNumber, condition, currency, price, coverage],
   );
 }

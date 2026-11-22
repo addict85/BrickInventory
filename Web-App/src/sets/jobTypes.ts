@@ -1,15 +1,15 @@
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../jobQueue';
 import { ImagesPayload } from '../catalog';
-import * as nachErfassung from './afterAdd';
+import * as afterAcquisition from './afterAdd';
 import type { SetsContext } from './context';
 
-const KONTO = z.number().int().positive();
-const SETNR = z.string().min(1).max(64);
+const ACCOUNT = z.number().int().positive();
+const SET_NUMBER = z.string().min(1).max(64);
 
 const ReworkPayload = z.object({
-  set_number: SETNR,
-  user_id: KONTO,
+  set_number: SET_NUMBER,
+  user_id: ACCOUNT,
   art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
 });
 
@@ -24,14 +24,14 @@ export function setsJobTypes(sk: SetsContext): Anmeldung[] {
     auftragsart({
       art: 'nacharbeit',
       nutzlast: ReworkPayload,
-      ausfuehren: (n, l) => nachErfassung.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
+      ausfuehren: (n, l) => afterAcquisition.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
     }),
     auftragsart({
       art: 'bilder',
       nutzlast: ImagesPayload,
       ausfuehren: async (n, l) => {
         if (n.only_images) await sk.catalog.loadSetImages(n.set_number);
-        else await nachErfassung.loadSetImages(sk, n.set_number, l);
+        else await afterAcquisition.loadSetImages(sk, n.set_number, l);
       },
     }),
   ];

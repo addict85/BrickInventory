@@ -22,23 +22,23 @@ export function bricksetJobType(ausfuehren: Bearbeiter<'brickset'>['ausfuehren']
   return auftragsart({ art: 'brickset', nutzlast: BricksetPayload, ausfuehren, exklusiv: true });
 }
 
-const schluessel = (sn: string) => `brickset:${sn}`;
+const key = (sn: string) => `brickset:${sn}`;
 
 /** Soon (disruption on the remote side) or at the time of day. */
-export async function bricksetDueAb(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
+export async function bricksetDueFrom(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
   if (bald) return new Date(k.uhr.jetzt() + 30 * 60_000);
-  const zeit = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
-  return nextTimeOfDay(zeit, k.uhr.datum());
+  const time = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
+  return nextTimeOfDay(time, k.uhr.datum());
 }
 
 /** @returns vorgemerkt false if it was already queued BRICKSET_AT_MOST times */
 export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehler: string, bald = false) {
   const r = await k.jobQueue.wiedervorlage.rememberBefore(
     'brickset',
-    schluessel(sn),
+    key(sn),
     versuch => ({ set_number: sn, versuch }),
     {
-      dueAb: await bricksetDueAb(k, bald),
+      dueAb: await bricksetDueFrom(k, bald),
       fehler,
       hoechstens: BRICKSET_AT_MOST,
     },
@@ -47,13 +47,13 @@ export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehl
 }
 
 export function bricksetForgotten(k: ForeignSourcesContext, sn: string): Promise<void> {
-  return k.jobQueue.wiedervorlage.vergiss(schluessel(sn));
+  return k.jobQueue.wiedervorlage.vergiss(key(sn));
 }
 
 /** Without a number, all; the kind's pause (quota exhausted) ends as well. */
 export async function bricksetNow(k: ForeignSourcesContext, sn?: string): Promise<void> {
   await k.jobQueue.endPause('brickset');
-  await k.jobQueue.wiedervorlage.jetzt('brickset', sn ? schluessel(sn) : undefined);
+  await k.jobQueue.wiedervorlage.jetzt('brickset', sn ? key(sn) : undefined);
 }
 
 export function bricksetPrefer(k: ForeignSourcesContext, bis: Date): Promise<void> {

@@ -62,16 +62,15 @@ async function backfillMinifigsEntries(k: InventoryContext) {
 /** Every step runs; afterwards the run throws so that the job repeats and shows it. */
 async function run(k: InventoryContext) {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
-  const schritte: [string, () => Promise<unknown>][] = [
+  const steps: [string, () => Promise<unknown>][] = [
     ['set-erfassungen', () => backfillAcquisitions(k)],
     ['figuren-erfassungen', () => backfillMinifigsEntries(k)],
     ['teile-erfassungen', () => backfillPartsEntries(k)],
     ['teilfarbenbilder', () => k.catalog.backfillPartColorsImages()],
   ];
-  const ohne: string[] = [];
-  for (const [name, schritt] of schritte)
-    if (!(await versuche(`kaufpreis-nachtrag:${name}`, schritt)).ok) ohne.push(name);
-  if (ohne.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${ohne.join(', ')}`);
+  const without: string[] = [];
+  for (const [name, step] of steps) if (!(await versuche(`kaufpreis-nachtrag:${name}`, step)).ok) without.push(name);
+  if (without.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${without.join(', ')}`);
   log('Migration abgeschlossen.');
 }
 

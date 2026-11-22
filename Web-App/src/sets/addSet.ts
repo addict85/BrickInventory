@@ -8,7 +8,7 @@ import { versuche, valueOr } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** An acquisition: one row in set_acquisitions, the only place for purchase price and condition. */
-export interface Erfassung {
+export interface Acquisition {
   konto: number;
   setNumber: string;
   menge: number;
@@ -21,7 +21,7 @@ export interface Erfassung {
 }
 
 /** Call in a transaction with its context (`t`). */
-export async function bookEntry(sk: SetsContext, e: Erfassung) {
+export async function bookEntry(sk: SetsContext, e: Acquisition) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
   await sk.inventory.bookDailyEntry('set', e.konto, [e.setNumber], {
@@ -56,8 +56,8 @@ export async function findSetInScope(
 
 /** For "does this already exist?": without a hit the number as it would be created. */
 export async function setPresent(sk: SetsContext, viewerId: number, setNumber: string) {
-  const treffer = await findSetInScope(sk, viewerId, setNumber);
-  return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
+  const hits = await findSetInScope(sk, viewerId, setNumber);
+  return { exists: !!hits, ...(hits ?? { set_number: normalisiereSetNummer(setNumber) }) };
 }
 
 /** ergaenzen (= new): created; zweit: an existing set topped up; csv: from the CSV import. */
@@ -101,17 +101,17 @@ export type SetRecorded =
 
 /** THE one way to capture, without network and under the lock per set number: otherwise two
  * requests (even from two accounts in the household) would create the set twice. The job fetches the catalog. */
-export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecorded> {
-  const roh = String(e.setNumber ?? '').trim();
-  if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
-  if (e.streng && !TYPED_NUMBER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const sn = normalisiereSetNummer(roh);
+export async function acquireSet(sk: SetsContext, e: NewSet): Promise<SetRecorded> {
+  const raw = String(e.setNumber ?? '').trim();
+  if (!raw) fachfehler('ungueltig', 'set_number_erforderlich');
+  if (e.streng && !TYPED_NUMBER.test(raw)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  const sn = normalisiereSetNummer(raw);
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await sk.household.schreibziel(e.requester, e.ownerWish);
   const zustand = await sk.einstellungen.conditionForPrice(e.zustand ?? null, null, besitzer);
   const ort = await sk.inventory.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
-  const erfassung = {
+  const acquisition = {
     konto: besitzer,
     setNumber: sn,
     menge: e.menge ?? 1,
@@ -123,7 +123,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
 
   return sk.transaktion(async t => {
     await repo.addLockSet(t.db, sn, besitzer);
-    const nacharbeit = (art: ReworkKind) =>
+    const followUp = (art: ReworkKind) =>
       // In the same transaction: a created set without a job would stay without a catalog forever.
       t.jobQueue.placeOwnJobOne(
         'nacharbeit',
@@ -136,21 +136,21 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
         },
       );
     if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, besitzer, sn))) {
-      await bookEntry(t, erfassung);
+      await bookEntry(t, acquisition);
       // Only a named place: the account's default would otherwise move an already sorted set.
       if (ort && e.lagerort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], ort);
-      await nacharbeit('zweit');
+      await followUp('zweit');
       return { action: 'updated' as const, set_number: sn, besitzer };
     }
     if (e.ifPresent !== 'aufstocken') {
-      const vorhanden = await findSetInScope(t, e.requester, sn);
-      if (vorhanden) return { action: 'exists' as const, ...vorhanden };
+      const present = await findSetInScope(t, e.requester, sn);
+      if (present) return { action: 'exists' as const, ...present };
     }
     const katalog = await t.catalog.rememberCatalogPlaceholder(sn);
     await t.inventory.putSetAn(besitzer, sn);
-    await bookEntry(t, erfassung);
+    await bookEntry(t, acquisition);
     if (ort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], ort);
-    await nacharbeit('ergaenzen');
+    await followUp('ergaenzen');
     return {
       action: 'added' as const,
       set_number: sn,
@@ -162,11 +162,11 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
   });
 }
 
-export type Fortschritt = (n: { step: string; set: string }) => void;
+export type Progress = (n: { step: string; set: string }) => void;
 
 /** Rebrickable, then Brickset for gaps, then the image. `disrupted`: Rebrickable
  * did not answer (unlike "does not know the number"). */
-async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, sendProgress: Fortschritt | null) {
+async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, sendProgress: Progress | null) {
   let name: string | null = null,
     year: number | null = null,
     theme: string | null = null,
@@ -200,12 +200,12 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   imageUrl ??= rebrickableSetImage(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.images.setBildLaden(imageUrl, sn), frist]));
-  const lokal = valueOr(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.images.createPreview(lokal));
+  const image = await versuche('set-anlegen:bild-laden', Promise.race([sk.images.setBildLaden(imageUrl, sn), frist]));
+  const local = valueOr(image, null);
+  if (local) void versuche('set-anlegen:vorschau', sk.images.createPreview(local));
   // No catch: the catalog is the only place with name, year and image.
-  await sk.catalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
-  return { name, disrupted: !rbResult.ok, bild: !!lokal };
+  await sk.catalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, local, themeId);
+  return { name, disrupted: !rbResult.ok, bild: !!local };
 }
 
 /** What setErfassen(sk) left open; idempotent, so that stream and job do not
@@ -214,7 +214,7 @@ export async function setSupplement(
   sk: SetsContext,
   sn: string,
   konto: number,
-  sendProgress: Fortschritt | null = null,
+  sendProgress: Progress | null = null,
   withBrickset = true,
 ): Promise<{ name: string | null }> {
   const stand = await sk.catalog.catalogStatus(sn);
@@ -225,8 +225,8 @@ export async function setSupplement(
     name = k.name ?? name;
   }
   for (const z of await repo.entriesWithoutPriceOfSets(sk.db, konto, sn)) {
-    const preis = await sk.finances.aktuellerMarktpreis(sn, konto, z.condition || null);
-    if (preis) await sk.inventory.setEstimatedPrice('set', z.id, preis);
+    const price = await sk.finances.aktuellerMarktpreis(sn, konto, z.condition || null);
+    if (price) await sk.inventory.setEstimatedPrice('set', z.id, price);
   }
   return { name };
 }

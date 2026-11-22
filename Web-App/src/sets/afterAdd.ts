@@ -21,7 +21,7 @@ async function pullAfter(
   const art = kindWish === 'ergaenzen' ? 'neu' : kindWish;
   // A failed step does not hold up the others, but it is recorded in the job's state.
   const ohne: string[] = [];
-  const schritt = async (name: string, work: () => Promise<unknown>) => {
+  const step = async (name: string, work: () => Promise<unknown>) => {
     if (!(await versuche(`nacharbeit:${name} ${setNumber}`, work)).ok) ohne.push(name);
   };
   // The figures in every branch: the import keeps the storage location of existing
@@ -30,20 +30,20 @@ async function pullAfter(
   await importParts(sk, setNumber, userId);
   checkAbort(lauf);
 
-  if (art === 'zweit') await schritt('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
+  if (art === 'zweit') await step('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
   if (art === 'neu') {
-    await schritt('preis', () => sk.finances.preisFuerSetHolen(setNumber, userId));
-    await schritt('anleitung', () => sk.catalog.loadSetInstructions(setNumber));
+    await step('preis', () => sk.finances.preisFuerSetHolen(setNumber, userId));
+    await step('anleitung', () => sk.catalog.loadSetInstructions(setNumber));
   } else {
-    await schritt('anleitung-einreihen', () => sk.catalog.anleitungEinreihen(setNumber));
+    await step('anleitung-einreihen', () => sk.catalog.anleitungEinreihen(setNumber));
   }
   checkAbort(lauf);
-  await schritt('teile-anreichern', () => sk.catalog.enrichSetPartsAn(setNumber));
-  await schritt('figuren-anreichern', () => sk.catalog.enrichSetMinifigsAn(setNumber));
+  await step('teile-anreichern', () => sk.catalog.enrichSetPartsAn(setNumber));
+  await step('figuren-anreichern', () => sk.catalog.enrichSetMinifigsAn(setNumber));
   // Brickset only fills gaps; the CSV import does not ask it when creating.
-  if (art === 'csv') await schritt('brickset', () => sk.catalog.fillFromBrickset(setNumber));
+  if (art === 'csv') await step('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
-  await schritt('bilder', () => sk.catalog.loadSetImages(setNumber));
+  await step('bilder', () => sk.catalog.loadSetImages(setNumber));
   if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 

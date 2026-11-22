@@ -6,13 +6,13 @@ import type { ClientsAccess, KeyName } from './access';
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
 async function getCredentials(kl: Pick<ClientsAccess, 'schluessel'>) {
-  const schluessel: KeyName[] = [
+  const key: KeyName[] = [
     'bricklink_consumer_key',
     'bricklink_consumer_secret',
     'bricklink_token',
     'bricklink_token_secret',
   ];
-  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await kl.schluessel(key) })));
+  const rows = await Promise.all(key.map(async key => ({ key, value: await kl.schluessel(key) })));
   const c: Record<string, string> = {};
   rows.forEach(r => {
     c[r.key] = r.value;
@@ -106,12 +106,12 @@ async function bricklinkRequest(
   path: string,
   queryParams: Record<string, string | number> = {},
 ) {
-  const roh = await getCredentials(kl);
+  const raw = await getCredentials(kl);
   if (
-    !roh.bricklink_consumer_key ||
-    !roh.bricklink_consumer_secret ||
-    !roh.bricklink_token ||
-    !roh.bricklink_token_secret
+    !raw.bricklink_consumer_key ||
+    !raw.bricklink_consumer_secret ||
+    !raw.bricklink_token ||
+    !raw.bricklink_token_secret
   )
     throw Object.assign(new Error('BrickLink API Zugangsdaten nicht vollständig.'), { code: 'bricklink_zugang_fehlt' });
   // The guard above checks exactly these four fields — so it must also
@@ -120,10 +120,10 @@ async function bricklinkRequest(
   // from truthiness checks. This way each of the four names appears exactly once, and
   // a typo is a compile error instead of a 401.
   const creds: BricklinkAccess = {
-    bricklink_consumer_key: roh.bricklink_consumer_key,
-    bricklink_consumer_secret: roh.bricklink_consumer_secret,
-    bricklink_token: roh.bricklink_token,
-    bricklink_token_secret: roh.bricklink_token_secret,
+    bricklink_consumer_key: raw.bricklink_consumer_key,
+    bricklink_consumer_secret: raw.bricklink_consumer_secret,
+    bricklink_token: raw.bricklink_token,
+    bricklink_token_secret: raw.bricklink_token_secret,
   };
   const baseUrl = `${BASE}${path}`;
   const qs = Object.keys(queryParams).length

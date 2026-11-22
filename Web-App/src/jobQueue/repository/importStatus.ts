@@ -2,12 +2,12 @@ import type { DbInterface } from '../../../db/database';
 
 /** A run without writes for `minuten` belongs to a vanished process;
  * "running" would otherwise block every further import. */
-export async function markOrphaned(db: DbInterface, userId: number, fehler: string, minuten: number): Promise<void> {
+export async function markOrphaned(db: DbInterface, userId: number, fehler: string, minutes: number): Promise<void> {
   await db.run(
     `UPDATE import_status SET status = 'error', current = NULL, error = $2, updated_at = NOW()
       WHERE user_id = $1 AND status IN ('running', 'pending')
         AND updated_at < NOW() - make_interval(mins => $3)`,
-    [userId, fehler, minuten],
+    [userId, fehler, minutes],
   );
 }
 
@@ -33,7 +33,7 @@ export function importStand(db: DbInterface, userId: number) {
  * helps — hence the allow list. */
 const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at', 'run_id']);
 
-function spalten(fields: Record<string, unknown>): string[] {
+function columns(fields: Record<string, unknown>): string[] {
   const keys = Object.keys(fields);
   for (const k of keys) if (!JOB_COLUMNS.has(k)) throw new Error(`jobSet: unerlaubte Spalte "${k}"`);
   return keys;
@@ -44,7 +44,7 @@ export async function writeImportStatus(
   userId: number,
   fields: Record<string, unknown>,
 ): Promise<void> {
-  const keys = spalten(fields);
+  const keys = columns(fields);
   await db.run(
     `INSERT INTO import_status (user_id, ${keys.join(', ')}, updated_at)
      VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}, NOW())
@@ -60,7 +60,7 @@ export async function changeImportStatus(
   fields: Record<string, unknown>,
   lauf?: string,
 ): Promise<number> {
-  const keys = spalten(fields);
+  const keys = columns(fields);
   const werte = [userId, ...keys.map(k => fields[k])];
   const r = await db.run(
     `UPDATE import_status SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()

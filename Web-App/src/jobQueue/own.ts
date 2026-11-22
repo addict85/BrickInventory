@@ -3,12 +3,12 @@
 import type { JobKind } from './jobs';
 import type { JobsContext } from './context';
 
-export function ownJob(k: JobsContext, art: JobKind, schluessel: string, uid: number) {
-  return k.eigene.ownRow(art, schluessel, uid);
+export function ownJob(k: JobsContext, art: JobKind, key: string, uid: number) {
+  return k.eigene.ownRow(art, key, uid);
 }
 
-export async function deleteOwn(k: JobsContext, art: JobKind, schluessel: string, uid: number) {
-  await k.eigene.deleteOwnRow(art, schluessel, uid);
+export async function deleteOwn(k: JobsContext, art: JobKind, key: string, uid: number) {
+  await k.eigene.deleteOwnRow(art, key, uid);
 }
 
 export async function countRunning(k: JobsContext, art: JobKind, uid: number, deadlineSec: number) {

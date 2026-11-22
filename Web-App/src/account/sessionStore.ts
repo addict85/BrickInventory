@@ -7,16 +7,16 @@ export function sessionDigest(sid: string): string {
   return createHash('sha256').update(sid).digest('hex');
 }
 
-type Methode = (sid: string, ...rest: never[]) => unknown;
-type Speicher = { get?: Methode; set?: Methode; destroy?: Methode; touch?: Methode };
+type Method = (sid: string, ...rest: never[]) => unknown;
+type Store = { get?: Method; set?: Method; destroy?: Method; touch?: Method };
 
 /** Every store method that takes a session id gets the hash; express-session's own
  * regenerate/load call these methods and are covered with them. */
-export function hashSessionIds<T extends object>(speicher: T): T {
-  const s = speicher as Speicher;
+export function hashSessionIds<T extends object>(store: T): T {
+  const s = store as Store;
   for (const name of ['get', 'set', 'destroy', 'touch'] as const) {
-    const echt = s[name]?.bind(speicher);
+    const echt = s[name]?.bind(store);
     if (echt) s[name] = (sid: string, ...rest: never[]) => echt(sessionDigest(sid), ...rest);
   }
-  return speicher;
+  return store;
 }

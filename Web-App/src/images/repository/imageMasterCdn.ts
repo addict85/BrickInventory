@@ -13,6 +13,6 @@ export const CDN_QUERY = `
       WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL LIMIT 1)
   ) t ORDER BY r LIMIT 1`;
 
-export function cdnZuBildstamm(db: DbInterface, stamm: string) {
-  return db.get<{ url: string }>(CDN_QUERY, [stamm]);
+export function cdnToImageMaster(db: DbInterface, master: string) {
+  return db.get<{ url: string }>(CDN_QUERY, [master]);
 }

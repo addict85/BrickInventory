@@ -1,10 +1,10 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/geldSql';
 
 export function cachePricesForSets(db: DbInterface, werte: (string[] | string | number)[], ttlClause: string) {
   return db.all<{ set_number: string; condition: string; marktpreis: number | null }>(
-    `SELECT set_number, condition, ${marktpreisSql()} AS marktpreis
+    `SELECT set_number, condition, ${marketPriceSql()} AS marktpreis
        FROM price_cache
       WHERE set_number = ANY($1) AND condition IN ('N','U') AND currency_code = $2${ttlClause}`,
     werte,

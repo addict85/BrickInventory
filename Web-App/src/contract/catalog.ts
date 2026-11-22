@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, abfrage, Q, SEITE, veraltet } from './base';
+import { type Route, query, Q, PAGE, outdated } from './base';
 import { BrickLinkRef } from './shared';
 
 export const CatalogTheme = z.looseObject({
@@ -64,38 +64,38 @@ export const CatalogSetsResponse = z.looseObject({
   sets: z.array(CatalogSetItem),
 });
 
-export const JahrAnzahl = z.looseObject({
+export const YearCount = z.looseObject({
   year: z.number().int().nullable(),
   n: z.number().int(),
 });
 
-export const CatalogYearVerteilungResponse = z.looseObject({
+export const CatalogYearDistributionResponse = z.looseObject({
   success: z.boolean(),
-  years: z.array(JahrAnzahl),
+  years: z.array(YearCount),
 });
 
 /** BrickLink references per set number of the request. */
-export const BricklinkVerweise = z.looseObject({ success: z.literal(true), links: z.record(z.string(), z.unknown()) });
+export const BricklinkLinks = z.looseObject({ success: z.literal(true), links: z.record(z.string(), z.unknown()) });
 
 export const routen = {
   'GET /api/v1/catalog/meta': { klein: true, antwort: CatalogMetaResponse },
   'GET /api/v1/catalog/sets': {
     antwort: CatalogSetsResponse,
-    abfrage: abfrage({
+    abfrage: query({
       q: Q.text(),
       theme_id: Q.numberOrEmpty,
       year_from: Q.numberOrEmpty,
       year_to: Q.numberOrEmpty,
       sort: Q.text(40),
-      ...SEITE,
-      limit: veraltet(Q.zahl(), 'page_size'),
+      ...PAGE,
+      limit: outdated(Q.zahl(), 'page_size'),
     }),
   },
   'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },
   'GET /api/v1/catalog/year-verteilung': {
     klein: true,
-    antwort: CatalogYearVerteilungResponse,
-    abfrage: abfrage({ q: Q.text(), theme_id: Q.numberOrEmpty, sort: Q.text(40) }),
+    antwort: CatalogYearDistributionResponse,
+    abfrage: query({ q: Q.text(), theme_id: Q.numberOrEmpty, sort: Q.text(40) }),
   },
-  'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise, abfrage: abfrage({ sets: Q.text(4000) }) },
+  'GET /api/v1/catalog/bricklink': { antwort: BricklinkLinks, abfrage: query({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

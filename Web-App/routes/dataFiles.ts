@@ -7,18 +7,18 @@ import { deliverFile, FOREIGN_FILE_CSP } from '../src/http/serveFile';
 import { safeDataPath } from '../src/infra/dataPath';
 
 import { signedInUserId } from '../src/account/http/login';
-import type { Dienste } from '../src/services';
+import type { Services } from '../src/services';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 
 /** Foreign uploads (only the first bytes checked) thus never run under the app's
  * origin; the own viewer loads via fetch and needs no inline display. */
-function asAttachment(res: Response, datei: string): void {
+function asAttachment(res: Response, file: string): void {
   res.setHeader('Content-Security-Policy', FOREIGN_FILE_CSP);
-  res.attachment(path.basename(datei));
+  res.attachment(path.basename(file));
 }
 
-export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 'images'>) {
+export function buildDataFilesRouter(d: Pick<Services, 'household' | 'account' | 'images'>) {
   const { inboundLock, requireLoginOrToken } = guardFor(d.account);
   const router = express.Router();
 
@@ -41,10 +41,10 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 
       const segments = pathSegments(req, 'pfad');
       const filePath = safeDataPath('uploads', segments);
       if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
-      const besitzer = Number(segments[0]);
+      const owner = Number(segments[0]);
       // Even administrators do not read foreign uploads (invoices, vouchers). Foreign
       // answers like missing, so one cannot tell which accounts have files.
-      if (!(await d.household.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
+      if (!(await d.household.seesAccount(userId, owner))) return res.status(404).send('Datei nicht gefunden');
       asAttachment(res, filePath);
       deliverFile(res, filePath);
     },
@@ -57,9 +57,9 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 
     requireLoginOrToken,
     inboundLock,
     async (req: WildcardRequest, res: Response) => {
-      const segmente = pathSegments(req, 'pfad');
-      const filePath = safeDataPath('instructions', segmente);
-      if (!filePath || !(await d.images.instructionReleased(signedInUserId(req), segmente)))
+      const segments = pathSegments(req, 'pfad');
+      const filePath = safeDataPath('instructions', segments);
+      if (!filePath || !(await d.images.instructionReleased(signedInUserId(req), segments)))
         return res.status(404).send('Datei nicht gefunden');
       asAttachment(res, filePath);
       deliverFile(res, filePath);

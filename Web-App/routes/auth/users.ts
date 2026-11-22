@@ -5,10 +5,10 @@ import { nutzerId, signedInUserId, confirmWithFactor, nutzerName } from '../../s
 import { passwordLack } from '../../src/infra/passwordRule';
 import { vertragsRouter } from '../../src/http/contractRouter';
 import { USERNAME_RE } from '../../src/account';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
-export function buildUserRouter(d: Pick<Dienste, 'account'>) {
+export function buildUserRouter(d: Pick<Services, 'account'>) {
   const { requireApiAdmin: requireAdmin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 

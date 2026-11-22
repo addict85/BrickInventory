@@ -1,9 +1,9 @@
 import type { DbInterface } from '../../../db/database';
-import { kaufpreisSpalten } from '../../../db/geldSql';
-import { mengeAus, teilmengeAus } from '../../../db/stockQuantity';
+import { purchasePriceColumns } from '../../../db/geldSql';
+import { mengeAus, subsetFrom } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
-import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
+import { teilSichtJoin, minifigViewJoin, setMasterJoin, TEIL, MINIFIG, SET } from '../../../db/catalogView';
 
 /** An acquisition of a manual part or a figure, purchase price in the account currency. */
 export interface ManualEntry {
@@ -27,19 +27,19 @@ export function manualEntries(
   l: FinancesReadContract,
   art: 'part' | 'fig',
   uids: number[],
-  waehrung: string,
+  currency: string,
 ) {
   return db.all<ManualEntry>(
     art === 'part'
       ? `SELECT id, user_id, part_number, color_id, quantity,
-              ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
+              ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
          FROM ${l.teilErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
       : `SELECT id, user_id, fig_number, quantity,
-              ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
+              ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
          FROM ${l.figurErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
-    [uids, waehrung],
+    [uids, currency],
   );
 }
 
@@ -62,7 +62,7 @@ export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: 
             c.image_local, c.image_url, s.added_at
        FROM ${l.setBestand('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
-       ${setStammJoin('s.set_number')}
+       ${setMasterJoin('s.set_number')}
        ${l.mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`,
     [uids],
@@ -95,14 +95,14 @@ export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContra
   return db.all<ManuelleFigur>(
     `
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
-           ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
-           ${teilmengeAus('m', 'fig')} AS quantity,
+           ${blNumberSql('m.fig_number', 'blzf')} AS bl_fig_number,
+           ${subsetFrom('m', 'fig')} AS quantity,
            m.source, m.storage_id,
-           ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local
+           ${MINIFIG.name} AS fig_name, ${MINIFIG.bild} AS image_url, ${MINIFIG.bildDatei} AS image_local
       FROM ${l.figurBestand('= ANY($1)')} m
       ${l.teilmengeJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
-      ${figurSichtJoin('m.user_id', 'm.fig_number')}
+      ${minifigViewJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`,
     [uids],
   );
@@ -131,9 +131,9 @@ export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract,
   return db.all<ManuellesTeil>(
     `
     SELECT p.id, p.user_id, p.set_number, p.part_number,
-           ${blNummerSql('p.part_number')} AS bl_part_number,
+           ${blNumberSql('p.part_number')} AS bl_part_number,
            p.color_id,
-           ${teilmengeAus('p', 'part')} AS quantity,
+           ${subsetFrom('p', 'part')} AS quantity,
            p.source,
            p.storage_id, p.added_at,
            ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,

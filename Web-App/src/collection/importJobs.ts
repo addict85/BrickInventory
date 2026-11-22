@@ -8,7 +8,7 @@ import { SetCsvPayload } from '../sets';
 import { importWantedXml } from './wantedXmlImport';
 import type { CollectionContext } from './context';
 
-const KONTO = z.number().int().positive();
+const ACCOUNT = z.number().int().positive();
 const text = z.string();
 
 /** A correction to the wanted-list preview; the import matches `blId` against the entry. */
@@ -25,16 +25,16 @@ export const WantedCorrection = z.object({
 export const WantedCorrections = z.array(WantedCorrection).max(100_000);
 
 const ImportPayloadSchema = z.discriminatedUnion('quelle', [
-  z.object({ user_id: KONTO, quelle: z.literal('teile_csv'), eingabe: z.object({ text }) }),
-  z.object({ user_id: KONTO, quelle: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
-  z.object({ user_id: KONTO, quelle: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: KONTO }) }),
+  z.object({ user_id: ACCOUNT, quelle: z.literal('teile_csv'), eingabe: z.object({ text }) }),
+  z.object({ user_id: ACCOUNT, quelle: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
+  z.object({ user_id: ACCOUNT, quelle: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: ACCOUNT }) }),
   z.object({
-    user_id: KONTO,
+    user_id: ACCOUNT,
     quelle: z.literal('alarme_csv'),
     eingabe: z.object({ text, waehrung: z.string().min(1).max(8) }),
   }),
   z.object({
-    user_id: KONTO,
+    user_id: ACCOUNT,
     quelle: z.literal('wanted_xml'),
     eingabe: z.object({
       xml: text,
@@ -69,8 +69,8 @@ export function runImport<T = Record<string, unknown>, Q extends ImportSource = 
   o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
-  const nutzlast = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
-  return k.jobQueue.waitOnJob<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
+  const payload = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
+  return k.jobQueue.waitOnJob<T, 'csv_import'>('csv_import', payload, { ...o, userId: uid });
 }
 
 export type ImportPayload = z.output<typeof ImportPayloadSchema>;

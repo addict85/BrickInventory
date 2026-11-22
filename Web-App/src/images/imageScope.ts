@@ -20,9 +20,9 @@ const HITS_MS = 60_000,
   ACCOUNTS_AT_MOST = 1000;
 
 async function lade(k: ImagesContext, uid: number): Promise<Stand> {
-  const zeilen = await k.bildBlickfeld.setsInScope(await k.household.scopeIds(uid));
+  const rows = await k.bildBlickfeld.setsInScope(await k.household.scopeIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.uhr.jetzt() };
-  for (const z of zeilen) {
+  for (const z of rows) {
     s.nummern.add(fileMaster(z.set_number));
     if (z.besitz) s.anleitungen.add(fileMaster(z.set_number));
   }
@@ -32,23 +32,28 @@ async function lade(k: ImagesContext, uid: number): Promise<Stand> {
   return s;
 }
 
-async function inScope(k: ImagesContext, uid: number, stamm: string, art: 'nummern' | 'anleitungen'): Promise<boolean> {
+async function inScope(
+  k: ImagesContext,
+  uid: number,
+  master: string,
+  art: 'nummern' | 'anleitungen',
+): Promise<boolean> {
   const s = merker(k).get(uid);
   const alter = s ? k.uhr.jetzt() - s.am : Infinity;
-  const drin = !!s?.[art].has(stamm);
-  if (drin && alter < HITS_MS) return true;
-  if (s && !drin && alter < REJECTION_MS) return false;
-  return (await lade(k, uid))[art].has(stamm);
+  const inside = !!s?.[art].has(master);
+  if (inside && alter < HITS_MS) return true;
+  if (s && !inside && alter < REJECTION_MS) return false;
+  return (await lade(k, uid))[art].has(master);
 }
 
 /** Path under /images/: under sets/ only files, no subfolders. */
-export async function imageReleased(_uid: number, segmente: string[]): Promise<boolean> {
-  return segmente[0] !== 'sets' || segmente.length === 2;
+export async function imageReleased(_uid: number, segments: string[]): Promise<boolean> {
+  return segments[0] !== 'sets' || segments.length === 2;
 }
 
 /** Names as src/catalog/instructions.ts assigns them: <set>_<n|bdp|brickinstructions>.pdf */
-export async function instructionReleased(k: ImagesContext, uid: number, segmente: string[]): Promise<boolean> {
-  const m = segmente.length === 1 ? /^(.+)_(\d+|bdp|brickinstructions)\.pdf$/.exec(segmente[0]!) : null;
+export async function instructionReleased(k: ImagesContext, uid: number, segments: string[]): Promise<boolean> {
+  const m = segments.length === 1 ? /^(.+)_(\d+|bdp|brickinstructions)\.pdf$/.exec(segments[0]!) : null;
   return !!m && inScope(k, uid, m[1]!, 'anleitungen');
 }
 

@@ -9,7 +9,7 @@ const HEARTBEAT_APPLIES_SEC = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
 
 function checkKind(k: JobsContext, art: string): JobKind {
-  if (!k.arten.von(art)) fachfehler('ungueltig', 'unbekannter_job');
+  if (!k.arten.fromValue(art)) fachfehler('ungueltig', 'unbekannter_job');
   return art as JobKind;
 }
 
@@ -64,7 +64,7 @@ export async function emptyJobKind(k: JobsContext, kindRaw: string) {
   return { art, entfernt: await k.auftraege.emptyKind(art) };
 }
 
-export async function auftragsArtJetzt(k: JobsContext, kindRaw: string) {
+export async function jobKindNow(k: JobsContext, kindRaw: string) {
   const art = checkKind(k, kindRaw);
   await endPause(k, art);
   const gestartet = hatSchedule(k, art) ? await pullPlanBefore(k, art) : (await pullBefore(k, art)) > 0;

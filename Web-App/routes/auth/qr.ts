@@ -3,18 +3,18 @@ import { guardFor } from '../api_v1/middleware';
 import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
 import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } from '../../src/account';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 /** The account must still be allowed to log in at the report and at the pickup. */
-async function signInMay(d: Pick<Dienste, 'account'>, uid: number): Promise<boolean> {
+async function signInMay(d: Pick<Services, 'account'>, uid: number): Promise<boolean> {
   const user = await d.account.accountFullOf(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
 /** No session: it would carry the account's full rights past scope `app`. */
 async function qrPickedUp(
-  d: Pick<Dienste, 'account'>,
+  d: Pick<Services, 'account'>,
   user: { id: number; username: string },
   token: string,
   nonce?: string | null,
@@ -32,7 +32,7 @@ async function qrPickedUp(
   } as const;
 }
 
-export function buildQrRouter(d: Pick<Dienste, 'account'>) {
+export function buildQrRouter(d: Pick<Services, 'account'>) {
   const { requireLoginOrToken: requireLogin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 

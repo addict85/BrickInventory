@@ -5,11 +5,11 @@ import { readWantedList, type WantedArt, type WantedItem } from './wantedParser'
 import {
   resolveLocalOn,
   resolveViaRebrickableOn,
-  applyCorrectionsAn,
+  applyCorrections,
   backfillColors,
   describeItem,
-  type Aufloesung,
-  type Korrektur,
+  type Resolution,
+  type Correction,
   type WantedProgress,
 } from './wantedResolution';
 import type { RebrickableAbort } from './wantedResolution';
@@ -27,7 +27,7 @@ export interface WantedReport {
   rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbort };
   /** `abgewiesen`: corrections whose item did not match — then a different
    * file was chosen. They are NAMED, not skipped. */
-  korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
+  korrekturen?: { angewandt: number; abgewiesen: Correction[] };
   angelegt: number;
   aufgestockt: number;
   fehler: number;
@@ -41,7 +41,7 @@ export interface WantedReport {
   posten: ItemResult[];
 }
 
-function countLevels(auf: Aufloesung[]): Record<string, number> {
+function countLevels(auf: Resolution[]): Record<string, number> {
   const z: Record<string, number> = {};
   for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
   return z;
@@ -49,8 +49,8 @@ function countLevels(auf: Aufloesung[]): Record<string, number> {
 
 /** The corrections after resolving, because they override it; before counting,
  * because the report would otherwise name numbers from before the correction. */
-async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: number, opt: WantedOptions) {
-  let auf = await resolveLocalOn(kx, posten, uid);
+async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: number, opt: WantedOptions) {
+  let auf = await resolveLocalOn(kx, item, uid);
   let rebrickable: WantedReport['rebrickable'];
   if (opt.viaRebrickable) {
     const r = await resolveViaRebrickableOn(kx, auf, 250, opt.fortschritt);
@@ -64,7 +64,7 @@ async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: n
   }
   let korrekturen: WantedReport['korrekturen'];
   if (opt.korrekturen?.length) {
-    const k = applyCorrectionsAn(auf, opt.korrekturen);
+    const k = applyCorrections(auf, opt.korrekturen);
     auf = await backfillColors(kx, k.auf);
     korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
   }
@@ -74,7 +74,7 @@ async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: n
 export interface WantedOptions extends WriteOptions {
   vorschau?: boolean;
   viaRebrickable?: boolean;
-  korrekturen?: Korrektur[];
+  korrekturen?: Correction[];
   /** Is called SYNCHRONOUSLY and must not throw. */
   fortschritt?: (stand: WantedProgress) => void;
   /** The bar in the UI carries a cross; without this question it would have a
@@ -125,29 +125,29 @@ export async function importiereWantedListe(
     }
     // An own binding: TypeScript does not narrow `a.rbId` via a helper variable.
     const rbId = a.rbId;
-    const offen = rbId === null || a.farbeOffen;
+    const open = rbId === null || a.farbeOffen;
     seq++;
-    const zeile = reportRow(a);
+    const row = reportRow(a);
     if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In the preview "created" means "would be created".
-      if (offen) zeile.ausgang = 'offen';
-      bericht.posten.push(zeile);
+      if (open) row.ausgang = 'offen';
+      bericht.posten.push(row);
       // A skipped item is done too, otherwise the bar would stand still.
       melde();
       continue;
     }
 
     try {
-      const wie = await writeItem(uid, a, rbId, opt);
-      if (wie === 'angelegt') bericht.angelegt++;
+      const how = await writeItem(uid, a, rbId, opt);
+      if (how === 'angelegt') bericht.angelegt++;
       else bericht.aufgestockt++;
-      zeile.ausgang = wie;
+      row.ausgang = how;
     } catch (e: unknown) {
       bericht.fehler++;
-      zeile.ausgang = 'fehler';
-      zeile.grund = e instanceof Error ? e.message : String(e);
+      row.ausgang = 'fehler';
+      row.grund = e instanceof Error ? e.message : String(e);
     }
-    bericht.posten.push(zeile);
+    bericht.posten.push(row);
     // After success AND failure, otherwise the bar would stand still on errors.
     melde();
   }
@@ -158,13 +158,13 @@ export async function importiereWantedListe(
 
 /** After writing too: the dialog redraws the same table with the
  * response and would otherwise show empty cells. */
-async function describeRows(k: WantedContext, zeilen: ItemResult[], auf: Aufloesung[]): Promise<void> {
-  const beschreibung = await describeItem(k, auf);
-  zeilen.forEach((zeile, i) => {
-    const b = beschreibung.get(i);
+async function describeRows(k: WantedContext, rows: ItemResult[], auf: Resolution[]): Promise<void> {
+  const description = await describeItem(k, auf);
+  rows.forEach((row, i) => {
+    const b = description.get(i);
     if (!b) return;
-    zeile.name = b.name;
-    zeile.bild = b.bild;
-    zeile.nameGeraten = b.geraten;
+    row.name = b.name;
+    row.bild = b.bild;
+    row.nameGeraten = b.geraten;
   });
 }

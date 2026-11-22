@@ -5,7 +5,7 @@ import { reportError } from '../infra/error';
 import type { WantedArt, WantedItem } from './wantedParser';
 import type { WantedContext } from './context';
 
-export type Sicherheit =
+export type Confidence =
   | 'zuordnung'
   | 'gleich_vermerkt'
   /** The number appears like this in the Rebrickable catalog — probably, not certainly. */
@@ -17,14 +17,14 @@ export type Sicherheit =
    * catalog delivered what someone typed. */
   | 'korrigiert';
 
-export interface Aufloesung {
+export interface Resolution {
   posten: WantedItem;
   rbId: string | null;
   rbFarbe: number | null;
   /** Travel along, because the parts list reads the color name from the row. */
   rbFarbName: string | null;
   rbFarbHex: string | null;
-  sicherheit: Sicherheit | null;
+  sicherheit: Confidence | null;
   farbeOffen: boolean;
 }
 
@@ -32,63 +32,63 @@ export interface Aufloesung {
  * certain. */
 export async function resolveLocalOn(
   k: WantedContext,
-  posten: WantedItem[],
+  item: WantedItem[],
   uid: number | null = null,
-): Promise<Aufloesung[]> {
-  if (!posten.length) return [];
+): Promise<Resolution[]> {
+  if (!item.length) return [];
 
   // Three queries for the whole list instead of one per item.
-  const nummern = [...new Set(posten.map(p => p.blId))];
-  const farben = [...new Set(posten.map(p => p.blFarbe).filter((f): f is number => f !== null))];
+  const numbers = [...new Set(item.map(p => p.blId))];
+  const colors = [...new Set(item.map(p => p.blFarbe).filter((f): f is number => f !== null))];
 
-  const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
-  const eigene = new Set<string>();
-  for (const z of await k.wantedListe.mappings(nummern, uid)) {
-    const schluessel = `${z.type}:${z.bl_id ?? z.rb_id}`;
-    const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
-    const schon = zuordnung.get(schluessel);
-    if (z.eigen) eigene.add(schluessel);
-    else if (eigene.has(schluessel)) continue;
-    if (!schon || (schon.sicherheit !== 'zuordnung' && stufe === 'zuordnung')) {
-      zuordnung.set(schluessel, { rbId: z.rb_id, sicherheit: stufe });
+  const mapping = new Map<string, { rbId: string; sicherheit: Confidence }>();
+  const own = new Set<string>();
+  for (const z of await k.wantedListe.mappings(numbers, uid)) {
+    const key = `${z.type}:${z.bl_id ?? z.rb_id}`;
+    const level: Confidence = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
+    const already = mapping.get(key);
+    if (z.eigen) own.add(key);
+    else if (own.has(key)) continue;
+    if (!already || (already.sicherheit !== 'zuordnung' && level === 'zuordnung')) {
+      mapping.set(key, { rbId: z.rb_id, sicherheit: level });
     }
   }
 
   const katalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await k.wantedListe.numbersInCatalog(art, nummern)) katalog.add(`${art}:${n}`);
+    for (const n of await k.wantedListe.numbersInCatalog(art, numbers)) katalog.add(`${art}:${n}`);
   }
 
-  const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await k.wantedListe.colorsToBlColors(farben)) {
-    farbMap.set(Number(z.bl_color_id), {
+  const colorMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
+  for (const z of await k.wantedListe.colorsToBlColors(colors)) {
+    colorMap.set(Number(z.bl_color_id), {
       id: Number(z.id),
       name: z.name ?? null,
       hex: z.rgb ?? null,
     });
   }
 
-  return posten.map(p => {
-    const treffer = zuordnung.get(`${p.art}:${p.blId}`);
+  return item.map(p => {
+    const hits = mapping.get(`${p.art}:${p.blId}`);
     let rbId: string | null = null;
-    let sicherheit: Sicherheit | null = null;
-    if (treffer) {
-      rbId = treffer.rbId;
-      sicherheit = treffer.sicherheit;
+    let sicherheit: Confidence | null = null;
+    if (hits) {
+      rbId = hits.rbId;
+      sicherheit = hits.sicherheit;
     } else if (katalog.has(`${p.art}:${p.blId}`)) {
       rbId = p.blId;
       sicherheit = 'katalogtreffer';
     }
 
-    const farbe = p.blFarbe === null ? null : (farbMap.get(p.blFarbe) ?? null);
+    const color = p.blFarbe === null ? null : (colorMap.get(p.blFarbe) ?? null);
     return {
       posten: p,
       rbId,
-      rbFarbe: farbe?.id ?? null,
-      rbFarbName: farbe?.name ?? null,
-      rbFarbHex: farbe?.hex ?? null,
+      rbFarbe: color?.id ?? null,
+      rbFarbName: color?.name ?? null,
+      rbFarbHex: color?.hex ?? null,
       sicherheit,
-      farbeOffen: rbId !== null && p.blFarbe !== null && farbe === null,
+      farbeOffen: rbId !== null && p.blFarbe !== null && color === null,
     };
   });
 }
@@ -104,11 +104,11 @@ export type WantedProgress = {
 
 export async function resolveViaRebrickableOn(
   k: WantedContext,
-  auf: Aufloesung[],
-  grenze = 250,
-  fortschritt?: (stand: WantedProgress) => void,
+  auf: Resolution[],
+  limit = 250,
+  progress?: (stand: WantedProgress) => void,
 ): Promise<{
-  auf: Aufloesung[];
+  auf: Resolution[];
   gefragt: number;
   gefunden: number;
   filterWirkungslos: boolean;
@@ -120,12 +120,12 @@ export async function resolveViaRebrickableOn(
   const ergebnis = [...auf];
   // Exactly the conditions of the loop below, otherwise the bar counts against
   // a different number than it fills.
-  const gesamt = Math.min(grenze, ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
+  const gesamt = Math.min(limit, ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
   for (let i = 0; i < ergebnis.length; i++) {
     const a = ergebnis[i]!;
     if (a.rbId !== null) continue;
     if (a.posten.art !== 'part') continue;
-    if (gefragt >= grenze) break;
+    if (gefragt >= limit) break;
 
     gefragt++;
     let rbId: string | null;
@@ -149,13 +149,13 @@ export async function resolveViaRebrickableOn(
       ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
     }
     // After the fetch: "37 of 50" means 37 done.
-    fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
+    progress?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
 }
 
 /** Addressed via the index: the same number may appear several times in the list. */
-export interface Korrektur {
+export interface Correction {
   index: number;
   /** Cross-check — must match the item at [index]. */
   blId: string;
@@ -174,82 +174,82 @@ export interface Korrektur {
 /** Three queries for the whole list, not one per item. */
 export async function describeItem(
   k: WantedContext,
-  auf: Aufloesung[],
+  auf: Resolution[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
-  const raus = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
+  const out = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
 
   // Without a Rebrickable number the BrickLink number serves as the key.
-  const teile: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
-  const figuren: { i: number; nr: string; geraten: boolean }[] = [];
+  const parts: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
+  const minifigs: { i: number; nr: string; geraten: boolean }[] = [];
   const sets: { i: number; nr: string; geraten: boolean }[] = [];
   auf.forEach((a, i) => {
     const nr = a.rbId ?? a.posten.blId;
     const geraten = a.rbId === null;
     if (!nr) return;
-    if (a.posten.art === 'part') teile.push({ i, nr, farbe: a.rbFarbe, geraten });
-    else if (a.posten.art === 'fig') figuren.push({ i, nr, geraten });
+    if (a.posten.art === 'part') parts.push({ i, nr, farbe: a.rbFarbe, geraten });
+    else if (a.posten.art === 'fig') minifigs.push({ i, nr, geraten });
     else sets.push({ i, nr, geraten });
   });
 
-  if (teile.length) {
-    const nummern = [...new Set(teile.map(t => t.nr))];
-    const zeilen = await k.wantedListe.partsDescription(nummern);
-    const afterNumber = new Map(zeilen.map(z => [z.part_number, z]));
-    const pairs = teile.filter(t => t.farbe !== null);
+  if (parts.length) {
+    const numbers = [...new Set(parts.map(t => t.nr))];
+    const rows = await k.wantedListe.partsDescription(numbers);
+    const afterNumber = new Map(rows.map(z => [z.part_number, z]));
+    const pairs = parts.filter(t => t.farbe !== null);
     const bilder = new Map<string, string>();
     if (pairs.length) {
-      const farbRows = await k.wantedListe.partColorImages(
+      const colorRows = await k.wantedListe.partColorImages(
         pairs.map(t => t.nr),
         pairs.map(t => t.farbe as number),
       );
-      for (const z of farbRows) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
+      for (const z of colorRows) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
     }
-    for (const t of teile) {
+    for (const t of parts) {
       const z = afterNumber.get(t.nr);
       const name = z?.name ?? null;
       const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
       // `geraten` only on a find: calling an empty row "guessed" would be
       // a claim about nothing.
-      raus.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
+      out.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
     }
   }
 
-  if (figuren.length) {
-    const zeilen = await k.wantedListe.minifigsDescription([...new Set(figuren.map(f => f.nr))]);
-    const nach = new Map(zeilen.map(z => [z.fig_number, z]));
-    for (const f of figuren) {
+  if (minifigs.length) {
+    const rows = await k.wantedListe.minifigsDescription([...new Set(minifigs.map(f => f.nr))]);
+    const nach = new Map(rows.map(z => [z.fig_number, z]));
+    for (const f of minifigs) {
       const z = nach.get(f.nr);
       const name = z?.fig_name ?? null,
         bild = z?.bild ?? null;
-      raus.set(f.i, { name, bild, geraten: f.geraten && !!(name || bild) });
+      out.set(f.i, { name, bild, geraten: f.geraten && !!(name || bild) });
     }
   }
 
   if (sets.length) {
-    const nummern = [...new Set(sets.map(x => x.nr))];
-    const zeilen = await k.wantedListe.setsDescription(nummern);
-    const nach = new Map(zeilen.map(z => [z.set_number, z]));
+    const numbers = [...new Set(sets.map(x => x.nr))];
+    const rows = await k.wantedListe.setsDescription(numbers);
+    const nach = new Map(rows.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
       const name = z?.name ?? null,
         bild = z?.bild ?? null;
-      raus.set(x.i, { name, bild, geraten: x.geraten && !!(name || bild) });
+      out.set(x.i, { name, bild, geraten: x.geraten && !!(name || bild) });
     }
   }
 
-  return raus;
+  return out;
 }
 
 /** Every correction is checked against kind and number at the index, otherwise after a file change
  * it would silently act on a foreign item. */
-export function applyCorrectionsAn(
-  auf: Aufloesung[],
-  korrekturen: Korrektur[],
-): { auf: Aufloesung[]; angewandt: number; abgewiesen: Korrektur[] } {
+export function applyCorrections(
+  auf: Resolution[],
+  corrections: Correction[],
+): { auf: Resolution[]; angewandt: number; abgewiesen: Correction[] } {
   const ergebnis = [...auf];
-  const abgewiesen: Korrektur[] = [];
+  const abgewiesen: Correction[] = [];
   let angewandt = 0;
-  for (const k of korrekturen) {
+  for (const k of corrections) {
     const a = ergebnis[k.index];
     if (!a || a.posten.art !== k.art || a.posten.blId !== k.blId) {
       abgewiesen.push(k);
@@ -320,11 +320,11 @@ export function applyCorrectionsAn(
 
 /** A color entered by hand was not part of the resolution; without
  * this step it would go to the creator without a name. */
-export async function backfillColors(k: WantedContext, auf: Aufloesung[]): Promise<Aufloesung[]> {
-  const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
-  if (!offen.length) return auf;
-  const zeilen = await k.wantedListe.colorsToIds([...new Set(offen)]);
-  const nach = new Map(zeilen.map(z => [Number(z.id), z]));
+export async function backfillColors(k: WantedContext, auf: Resolution[]): Promise<Resolution[]> {
+  const open = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
+  if (!open.length) return auf;
+  const rows = await k.wantedListe.colorsToIds([...new Set(open)]);
+  const nach = new Map(rows.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;
     const z = nach.get(a.rbFarbe);

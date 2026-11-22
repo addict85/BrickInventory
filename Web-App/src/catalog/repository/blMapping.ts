@@ -6,11 +6,11 @@ import type { BlArt } from '../../../db/blMappingSql';
 
 /** Only verified sources write shared data, and an existing value stays:
  * only an empty row ("looked up") is filled. */
-const NUR_LEERE_FUELLEN = `ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()
+const ONLY_FILL_EMPTY = `ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()
      WHERE bl_mapping.bl_id IS NULL AND EXCLUDED.bl_id IS NOT NULL`;
 
 export async function writeBlNumber(db: DbInterface, art: BlArt, rbId: string, blId: string): Promise<void> {
-  await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2)) ${NUR_LEERE_FUELLEN}`, [
+  await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2)) ${ONLY_FILL_EMPTY}`, [
     art,
     rbId,
     blId,
@@ -41,7 +41,7 @@ export async function writeBlNumbers(
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id)
      SELECT $1, r, NULLIF(b, r) FROM unnest($2::text[], $3::text[]) AS x(r, b)
-     ${NUR_LEERE_FUELLEN}`,
+     ${ONLY_FILL_EMPTY}`,
     [art, rbIds, blIds],
   );
 }
@@ -52,7 +52,7 @@ export async function noteLookedUp(db: DbInterface, art: BlArt, rbId: string): P
 }
 
 /** The own row of the accounts `konten` (in their order) before the shared one. */
-const EIGENE_ZUERST = `(SELECT e.bl_id FROM bl_mapping_custom e
+const OWN_FIRST = `(SELECT e.bl_id FROM bl_mapping_custom e
       WHERE e.user_id = ANY($3::int[]) AND e.type = $1 AND e.rb_id = q.rb_id
       ORDER BY array_position($3::int[], e.user_id) LIMIT 1)`;
 
@@ -64,7 +64,7 @@ export async function differingNumber(
 ): Promise<string | null> {
   const z = konten.length
     ? await db.get<{ bl_id: string | null }>(
-        `SELECT NULLIF(COALESCE(${EIGENE_ZUERST}, g.bl_id), q.rb_id) AS bl_id
+        `SELECT NULLIF(COALESCE(${OWN_FIRST}, g.bl_id), q.rb_id) AS bl_id
          FROM (SELECT $2::text AS rb_id) q LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id`,
         [art, rbId, konten],
       )
@@ -95,10 +95,10 @@ export function effectiveNumbers(db: DbInterface, art: BlArt, rbIds: string[], k
       [art, rbIds],
     );
   return db.all<{ rb_id: string; nr: string }>(
-    `SELECT q.rb_id, COALESCE(${EIGENE_ZUERST}, g.bl_id, q.rb_id) AS nr
+    `SELECT q.rb_id, COALESCE(${OWN_FIRST}, g.bl_id, q.rb_id) AS nr
        FROM unnest($2::text[]) AS q(rb_id)
        LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id
-      WHERE g.rb_id IS NOT NULL OR ${EIGENE_ZUERST} IS NOT NULL`,
+      WHERE g.rb_id IS NOT NULL OR ${OWN_FIRST} IS NOT NULL`,
     [art, rbIds, konten],
   );
 }

@@ -2,13 +2,13 @@ import { z } from 'zod';
 import type { PayloadInput } from '../jobQueue';
 import type { FinancesContext } from './context';
 
-const SETNR = z.string().min(1).max(64);
-const ZUSTAND = z.enum(['N', 'U']);
+const SET_NUMBER = z.string().min(1).max(64);
+const CONDITION = z.enum(['N', 'U']);
 const PriceItem = z.discriminatedUnion('art', [
-  z.object({ art: z.literal('set'), nummer: SETNR, zustand: ZUSTAND }),
-  z.object({ art: z.literal('teil'), nummer: SETNR, farbe: z.number().int(), zustand: ZUSTAND }),
-  z.object({ art: z.literal('figur'), nummer: SETNR, zustand: ZUSTAND }),
-  z.object({ art: z.literal('schaetzung'), nummer: SETNR, zustand: ZUSTAND }),
+  z.object({ art: z.literal('set'), nummer: SET_NUMBER, zustand: CONDITION }),
+  z.object({ art: z.literal('teil'), nummer: SET_NUMBER, farbe: z.number().int(), zustand: CONDITION }),
+  z.object({ art: z.literal('figur'), nummer: SET_NUMBER, zustand: CONDITION }),
+  z.object({ art: z.literal('schaetzung'), nummer: SET_NUMBER, zustand: CONDITION }),
 ]);
 export const PRICE_ITEM_AT_MOST = 2000;
 export const PricesReload = z.object({

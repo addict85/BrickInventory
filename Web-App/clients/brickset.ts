@@ -53,20 +53,20 @@ class BricksetQuotaError extends Error {
 }
 
 function parseResponse<T extends z.ZodType>(body: string, schema: T): z.output<T> {
-  let roh: unknown;
+  let raw: unknown;
   try {
-    roh = JSON.parse(body);
+    raw = JSON.parse(body);
   } catch (_) {
     throw new Error(`Brickset: invalid JSON response: ${excerpt(body)}`);
   }
   // The envelope first: an error response only carries status and message.
-  const data = checkResponse('Brickset', BsResponse, roh);
+  const data = checkResponse('Brickset', BsResponse, raw);
   if (data.status === 'error') {
     if (data.message?.toLowerCase().includes('daily api key usage limit')) throw new BricksetQuotaError();
     const err = Object.assign(new Error(`Brickset API error: ${data.message}`), { detail: data });
     throw err;
   }
-  return checkResponse('Brickset', schema, roh);
+  return checkResponse('Brickset', schema, raw);
 }
 
 // Check HTTP status — throws BricksetQuotaError on 429 daily limit,
@@ -260,7 +260,7 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
 /**
  * Find a set through a free search query — EAN, barcode or order number.
  */
-async function findSetByQuery(kl: ClientsAccess, query: string, herkunft: string) {
+async function findSetByQuery(kl: ClientsAccess, query: string, origin: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
   try {
@@ -268,7 +268,7 @@ async function findSetByQuery(kl: ClientsAccess, query: string, herkunft: string
     const { status, body } = await httpsGet(
       `${BASE}/getSets?apiKey=${encodeURIComponent(key)}&userHash=&params=${params}`,
     );
-    if (!checkStatus(status, body, `${herkunft}:${query}`)) return null;
+    if (!checkStatus(status, body, `${origin}:${query}`)) return null;
     const s = parseResponse(body, BsSets).sets?.[0];
     if (!s) return null;
     return {
@@ -282,11 +282,11 @@ async function findSetByQuery(kl: ClientsAccess, query: string, herkunft: string
   } catch (e) {
     const f = asFetchError(e);
     if (f.isQuota) {
-      console.log(`[brickset] Quota exceeded for ${herkunft} ${query}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.log(`[brickset] Quota exceeded for ${origin} ${query}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return null;
     }
     console.log(
-      `[brickset] ${herkunft}-Suche für ${query} fehlgeschlagen: ${fehlertext(e)}`
+      `[brickset] ${origin}-Suche für ${query} fehlgeschlagen: ${fehlertext(e)}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );

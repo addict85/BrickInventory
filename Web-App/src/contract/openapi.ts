@@ -16,46 +16,46 @@ const URI = (id: string) => `#/components/schemas/${id}`;
 
 /** All named schemas: export name → schema. A duplicate name is an error. */
 export function namedSchemas(): Map<string, z.ZodType> {
-  const aus = new Map<string, z.ZodType>([
+  const from = new Map<string, z.ZodType>([
     ['Fehler', Fehler],
     ['Fehlercode', Fehlercode],
   ]);
   for (const [bereich, modul] of Object.entries(AREAS)) {
     for (const [name, wert] of Object.entries(modul)) {
-      if (!(wert instanceof z.ZodType) || aus.get(name) === wert) continue;
-      if (aus.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${bereich})`);
-      aus.set(name, wert);
+      if (!(wert instanceof z.ZodType) || from.get(name) === wert) continue;
+      if (from.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${bereich})`);
+      from.set(name, wert);
     }
   }
-  return aus;
+  return from;
 }
 
-function komponenten() {
+function components() {
   const register = z.registry<{ id: string }>();
   const benannt = new Map<z.ZodType, string>();
-  const nimm = (schema: z.ZodType | undefined, id: string) => {
+  const take = (schema: z.ZodType | undefined, id: string) => {
     if (!schema || benannt.has(schema)) return;
     register.add(schema, { id });
     benannt.set(schema, id);
   };
-  for (const [name, schema] of namedSchemas()) nimm(schema, name);
+  for (const [name, schema] of namedSchemas()) take(schema, name);
   for (const modul of Object.values(AREAS))
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const id = schluessel.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
-      nimm(r.antwort, id);
-      nimm(r.ereignis, `${id}_ereignis`);
+      take(r.antwort, id);
+      take(r.ereignis, `${id}_ereignis`);
     }
   return { register, benannt };
 }
 
-function erfolg(r: Route, benannt: Map<z.ZodType, string>) {
+function success(r: Route, benannt: Map<z.ZodType, string>) {
   const ref = (s: z.ZodType) => ({ schema: { $ref: URI(benannt.get(s) ?? '') } });
   if (r.antwort) return { description: 'Success', content: { 'application/json': ref(r.antwort) } };
   return { description: 'Success', content: { [MIME[r.art ?? 'datei']]: r.ereignis ? ref(r.ereignis) : {} } };
 }
 
 export function openapi(): Record<string, unknown> {
-  const { register, benannt } = komponenten();
+  const { register, benannt } = components();
   const { schemas } = z.toJSONSchema(register, { uri: URI, unrepresentable: 'any' });
   for (const s of Object.values(schemas)) {
     delete s.$schema;
@@ -65,8 +65,8 @@ export function openapi(): Record<string, unknown> {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const [bereich, modul] of Object.entries(AREAS)) {
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
-      const [methode = '', pfad = ''] = schluessel.split(' ');
-      const parameters: Record<string, unknown>[] = [...pfad.matchAll(/:(\w+)/g)].map(m => {
+      const [method = '', path = ''] = schluessel.split(' ');
+      const parameters: Record<string, unknown>[] = [...path.matchAll(/:(\w+)/g)].map(m => {
         const p = z.toJSONSchema((PATH as Record<string, z.ZodType>)[m[1] ?? ''] ?? z.never(), {
           io: 'input',
           unrepresentable: 'any',
@@ -86,7 +86,7 @@ export function openapi(): Record<string, unknown> {
             ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}),
           });
       }
-      const ok = erfolg(r, benannt);
+      const ok = success(r, benannt);
       const op: Record<string, unknown> = {
         tags: [bereich],
         ...(parameters.length ? { parameters } : {}),
@@ -95,30 +95,30 @@ export function openapi(): Record<string, unknown> {
           default: { description: 'Error', content: { 'application/json': { schema: { $ref: URI('Fehler') } } } },
         },
       };
-      const rumpf = r.eingabe ? z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' }) : undefined;
-      delete rumpf?.$schema;
+      const body = r.eingabe ? z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' }) : undefined;
+      delete body?.$schema;
       if (r.formular)
         op.requestBody = {
           content: {
             'multipart/form-data': {
               schema: {
-                ...rumpf,
+                ...body,
                 type: 'object',
-                properties: { file: { type: 'string', format: 'binary' }, ...rumpf?.properties },
+                properties: { file: { type: 'string', format: 'binary' }, ...body?.properties },
               },
             },
           },
         };
-      else if (rumpf) op.requestBody = { content: { 'application/json': { schema: rumpf } } };
+      else if (body) op.requestBody = { content: { 'application/json': { schema: body } } };
       if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
       if (r.geheim) op['x-geheim'] = true;
       if (r.klein) op['x-klein'] = true;
-      const oaPath = pfad.replace(/:(\w+)/g, '{$1}');
+      const oaPath = path.replace(/:(\w+)/g, '{$1}');
       paths[oaPath] ??= {};
-      paths[oaPath][methode.toLowerCase()] = op;
+      paths[oaPath][method.toLowerCase()] = op;
     }
   }
-  const sortiert = <T>(o: Record<string, T>) =>
+  const sorted = <T>(o: Record<string, T>) =>
     Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
   return {
     openapi: '3.1.0',
@@ -127,7 +127,7 @@ export function openapi(): Record<string, unknown> {
       version: String(API_VERSION),
       description: 'Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand.',
     },
-    paths: sortiert(paths),
-    components: { schemas: sortiert(schemas) },
+    paths: sorted(paths),
+    components: { schemas: sorted(schemas) },
   };
 }

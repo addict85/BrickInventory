@@ -16,12 +16,12 @@ import type { CatalogContext } from './context';
 // For all three image kinds; otherwise the follow-up discarded set and figure images.
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
-  const bereiche: Array<[string, string]> = [
+  const areas: Array<[string, string]> = [
     ['/images/parts/', PART_IMAGES_DIR],
     ['/images/minifigs/', MINIFIG_IMAGES_DIR],
     ['/images/sets/', SET_IMAGES_DIR],
   ];
-  for (const [prefix, dir] of bereiche) {
+  for (const [prefix, dir] of areas) {
     if (!imageLocal.startsWith(prefix)) continue;
     const file = imageLocal.slice(prefix.length);
     // Path separators and .. stay forbidden: even a value from the database is
@@ -33,7 +33,7 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 // With await, otherwise the final state would be lost on a restart.
-async function _redlSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
+async function _redownloadSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
   await k.jobQueue
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
@@ -73,13 +73,13 @@ type MissingImage = { image_local: string; image_url: string | null; fp: string 
 async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    await _redlSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
+    await _redownloadSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
     const { missing, withoutPreview } = await searchMissingFiles(k);
     const thumbsCreated = await catchUpPreviews(k, withoutPreview);
     const total = missing.length;
-    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
+    await _redownloadSetStatus(k, { running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
     if (!total) {
-      await _redlSetStatus(k, {
+      await _redownloadSetStatus(k, {
         running: false,
         phase: 'done',
         total: 0,
@@ -94,7 +94,7 @@ async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     const { done, redownloaded, cleared } = await reloadMissing(k, missing, lauf);
     checkAbort(lauf);
 
-    await _redlSetStatus(k, {
+    await _redownloadSetStatus(k, {
       running: false,
       phase: 'done',
       total,
@@ -108,7 +108,7 @@ async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     );
     return { total, redownloaded, cleared, thumbs: thumbsCreated };
   } catch (e) {
-    await _redlSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
+    await _redownloadSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
     if (lauf?.signal?.aborted) throw e;
     console.error('[img-redl] Fehler:', fehlertext(e));
     return { error: fehlertext(e) };
@@ -143,7 +143,7 @@ async function searchMissingFiles(k: CatalogContext) {
 async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Promise<number> {
   let thumbsCreated = 0;
   if (!withoutPreview.length) return 0;
-  await _redlSetStatus(k, {
+  await _redownloadSetStatus(k, {
     running: true,
     phase: 'thumbs',
     total: withoutPreview.length,
@@ -171,7 +171,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
     const now = k.uhr.jetzt();
     if (!force && now - _lastFlush < 1000) return;
     _lastFlush = now;
-    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });
+    await _redownloadSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });
   };
 
   let idx = 0;

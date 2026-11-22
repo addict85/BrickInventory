@@ -1,5 +1,5 @@
 import { reportError } from '../infra/error';
-import { ereignis } from '../infra/event';
+import { event } from '../infra/event';
 import { Zwischenspeicher } from '../infra/cache';
 import type { ImagesContext } from './context';
 
@@ -7,26 +7,26 @@ import type { ImagesContext } from './context';
  * job 'bildbedarf', which fetches in batches with consideration for the CDN. */
 
 /** Ten images per pass, every 20 seconds: thirty requests per minute. */
-export const STAPEL = 10;
-export const TAKT_MS = 20_000;
+export const BATCH = 10;
+export const TICK_MS = 20_000;
 /** What nobody has looked at for days is not urgent. */
-export const NOTIZ_GILT_MS = 3 * 24 * 60 * 60 * 1000;
+export const NOTE_VALID_MS = 3 * 24 * 60 * 60 * 1000;
 export const IMAGE_DEMAND_KEY = 'bildbedarf';
 
 export function requestsJeMinute(): number {
-  return STAPEL * (60_000 / TAKT_MS);
+  return BATCH * (60_000 / TICK_MS);
 }
 
-const setBildGeladen = (k: ImagesContext) =>
-  k.faecher.fach('setBildGeladen', () => ereignis<[setNummer: string, quelle: string | null]>('setBildGeladen'));
+const setImageLoaded = (k: ImagesContext) =>
+  k.faecher.fach('setBildGeladen', () => event<[setNummer: string, quelle: string | null]>('setBildGeladen'));
 /** The entry on the set is made by the catalog (higher); it listens here instead of the images calling it. */
-export function atSetImageLoaded(k: ImagesContext, fn: (setNummer: string, quelle: string | null) => unknown) {
-  return setBildGeladen(k).horche(fn);
+export function atSetImageLoaded(k: ImagesContext, fn: (setNummer: string, source: string | null) => unknown) {
+  return setImageLoaded(k).horche(fn);
 }
 
 /** @returns false if a listener failed (it is logged) */
-export function reportSetImageLoaded(k: ImagesContext, setNummer: string, quelle: string | null = null) {
-  return setBildGeladen(k).melde(setNummer, quelle);
+export function reportSetImageLoaded(k: ImagesContext, setNummer: string, source: string | null = null) {
+  return setImageLoaded(k).melde(setNummer, source);
 }
 
 /** If one is already open, it stays at one. */
@@ -37,14 +37,17 @@ export async function imageDemandKick(k: ImagesContext): Promise<void> {
 /** One INSERT per image request drained the pool with a tile wall. Whatever is in the buffer
  * during a crash is requested again by the next call. */
 const puffer = (k: ImagesContext) => k.faecher.fach('bildbedarf:puffer', () => new Map<string, string>()); // url → set_number
-const takte = (k: ImagesContext) => k.faecher.fach('bildbedarf:takte', (): NodeJS.Timeout[] => []);
+const ticks = (k: ImagesContext) => k.faecher.fach('bildbedarf:takte', (): NodeJS.Timeout[] => []);
 
 /** Once per set in 15 minutes, at most 5000 remembered: the image proxy asks for every
  * tile, and an account with invented numbers would otherwise fill the notes. */
 export function imageOnceReserve(k: ImagesContext, url: string, setNummer: string): void {
-  const gemerkt = k.faecher.fach('bildbedarf:vorgemerkt', () => new Zwischenspeicher<string, true>(5000, 15 * 60_000));
-  if (gemerkt.hole(setNummer)) return;
-  gemerkt.setze(setNummer, true);
+  const remembered = k.faecher.fach(
+    'bildbedarf:vorgemerkt',
+    () => new Zwischenspeicher<string, true>(5000, 15 * 60_000),
+  );
+  if (remembered.hole(setNummer)) return;
+  remembered.setze(setNummer, true);
   rememberUsed(k, url, setNummer);
 }
 
@@ -59,7 +62,7 @@ export async function noteImageDemand(k: ImagesContext, urls: string[], sets: (s
 }
 
 /** Written via the context of whoever started the tick (setUpImageDemand). */
-export async function schreibePuffer(k: ImagesContext): Promise<void> {
+export async function writeBuffer(k: ImagesContext): Promise<void> {
   const _puffer = puffer(k);
   if (!_puffer.size) return;
   const urls = [..._puffer.keys()];
@@ -76,11 +79,11 @@ export async function schreibePuffer(k: ImagesContext): Promise<void> {
 }
 
 export async function setUpImageDemand(k: ImagesContext): Promise<void> {
-  const _ticks = takte(k);
+  const _ticks = ticks(k);
   if (_ticks.length) return;
   _ticks.push(
     setInterval(() => {
-      schreibePuffer(k).catch(e => reportError('bild-job:schreibePuffer', e));
+      writeBuffer(k).catch(e => reportError('bild-job:schreibePuffer', e));
     }, 10_000),
   );
   _ticks[0]?.unref();
@@ -88,13 +91,13 @@ export async function setUpImageDemand(k: ImagesContext): Promise<void> {
 
 /** Before closing the pool: whatever is in the buffer still needs a connection. */
 export async function stopImageDemand(k: ImagesContext): Promise<void> {
-  for (const t of takte(k).splice(0)) clearInterval(t);
-  await schreibePuffer(k);
+  for (const t of ticks(k).splice(0)) clearInterval(t);
+  await writeBuffer(k);
 }
 
 // Otherwise old notes remain.
 export async function deleteExpired(k: ImagesContext): Promise<number> {
-  const r = await k.bildbedarf.deleteOldImageRequests(String(NOTIZ_GILT_MS));
+  const r = await k.bildbedarf.deleteOldImageRequests(String(NOTE_VALID_MS));
   return r?.changes || 0;
 }
 
@@ -112,10 +115,10 @@ export async function emptyImageDemand(k: ImagesContext): Promise<number> {
 }
 
 /** Taken out in one step so that two runs do not fetch the same images. */
-export function nimmBildwuensche(
+export function takeImageRequests(
   k: ImagesContext,
   validMs: number,
-  anzahl: number,
+  count: number,
 ): Promise<{ url: string; set_number: string | null }[]> {
-  return k.bildbedarf.entnimmBildwuensche(String(validMs), anzahl);
+  return k.bildbedarf.entnimmBildwuensche(String(validMs), count);
 }

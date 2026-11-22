@@ -35,9 +35,9 @@ async function downloadImage(
   // For manual parts, number and address come from the user: they may neither
   // form a path nor determine the extension.
   const nummer = filePart(partNum),
-    farbe = filePart(colorId);
-  if (!nummer || !farbe) return null;
-  const file = `${nummer}_${farbe}.${imageExtension(imgUrl)}`;
+    color = filePart(colorId);
+  if (!nummer || !color) return null;
+  const file = `${nummer}_${color}.${imageExtension(imgUrl)}`;
   const dest = targetInFolder(IMG_DIR, file);
   if (!dest) return null;
   const rel = `${webBase}${file}`;
@@ -65,13 +65,13 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
   }
 
   const nummer = filePart(p.id),
-    farbe = filePart(p.color_id);
-  if (!nummer || (p.kind !== 'fig' && !farbe)) {
+    color = filePart(p.color_id);
+  if (!nummer || (p.kind !== 'fig' && !color)) {
     console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
     return;
   }
   const file =
-    p.kind === 'fig' ? `${nummer}.${imageExtension(cdnUrl)}` : `${nummer}_${farbe}.${imageExtension(cdnUrl)}`;
+    p.kind === 'fig' ? `${nummer}.${imageExtension(cdnUrl)}` : `${nummer}_${color}.${imageExtension(cdnUrl)}`;
   const dest = targetInFolder(PART_IMAGES_DIR, file);
   if (!dest) return;
   const rel = `/images/parts/${file}`;

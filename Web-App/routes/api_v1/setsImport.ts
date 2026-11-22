@@ -6,24 +6,24 @@ import { csvReceive } from '../../src/http/fileUpload';
 import { skippedHint } from '../../src/infra/csvExport';
 import { sendCsv } from '../../src/http/csvResponse';
 import { responseLanguage, fachfehler } from '../../src/infra/errorTexts';
-import { openStream, StromGeschlossen, type Strom } from '../../src/account/http/stream';
+import { openStream, StromGeschlossen, type Stream } from '../../src/account/http/stream';
 import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 /** The set is created; if the access ends or the client disconnects, only the
  * supplement aborts. The stream is open: an error becomes the last event, no
  * status code anymore. `success` belongs to it: the clients read it like a response. */
 async function supplementInStream(
-  dienste: Pick<Dienste, 'account' | 'sets'>,
-  strom: Strom,
+  services: Pick<Services, 'account' | 'sets'>,
+  strom: Stream,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
 ) {
   const send = (d: object) => strom.sende(d);
   const ergebnis = { success: true, action: 'added', set_number: r.set_number };
   send({ step: 'meta', set: r.set_number });
-  await dienste.sets
+  await services.sets
     .setSupplement(r.set_number, r.besitzer, d => strom.sendOrAbortAb(d))
     .then(
       k => {
@@ -39,7 +39,7 @@ async function supplementInStream(
   strom.ende();
 }
 
-export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
+export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
@@ -63,8 +63,8 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
     // Subscribe first, then send the first state: otherwise an event between
     // read and subscribe is lost. Other workers report via LISTEN/NOTIFY; the tick catches anything missed.
     strom.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
-    const takt = setInterval(sendStatus, 120000);
-    strom.atEnd(() => clearInterval(takt));
+    const tick = setInterval(sendStatus, 120000);
+    strom.atEnd(() => clearInterval(tick));
     await sendStatus();
   });
 

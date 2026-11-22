@@ -2,7 +2,7 @@ import { Zwischenspeicher } from '../infra/cache';
 /** First the own data (CSV tables, cache), then the client:
  * the quota is scarce. The client only queries; storing is done by this service. */
 import type { Quellen } from '../externalSources';
-import { istErsatzteil } from '../infra/validate';
+import { isSparePart } from '../infra/validate';
 import { withVersion } from '../infra/setNumber';
 import { newestInventory } from './rbInventory';
 
@@ -62,7 +62,7 @@ async function setPartsFromCsv(k: CatalogContext, setNumber: string) {
     },
     color: { id: p.color_id, name: p.color_name || '', rgb: p.color_rgb || null },
     quantity: p.quantity,
-    is_spare: istErsatzteil(p.is_spare),
+    is_spare: isSparePart(p.is_spare),
   }));
 }
 
@@ -76,10 +76,10 @@ export async function alleTeileDesSets(k: CatalogContext, setNumber: string) {
   const csvParts = await setPartsFromCsv(k, setNumber);
   if (csvParts) return csvParts;
   const n = withVersion(setNumber);
-  const gemerkt = fromCache<Awaited<ReturnType<Quellen['holeSetTeile']>>['teile']>(
+  const remembered = fromCache<Awaited<ReturnType<Quellen['holeSetTeile']>>['teile']>(
     await k.rebrickableCache.partListFromCache(n),
   );
-  if (gemerkt) return gemerkt;
+  if (remembered) return remembered;
   if (leer(k).hole(n)) return [];
   const { teile, verweigert } = await k.externalSources.quellen.holeSetTeile(n);
   // A refusal (403) is remembered as an empty list so that not every import asks again.
@@ -90,10 +90,10 @@ export async function alleTeileDesSets(k: CatalogContext, setNumber: string) {
 
 /** Shared cache: the data rarely changes, the quota is scarce. */
 export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
-  const gemerkt = fromCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
+  const remembered = fromCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
     await k.rebrickableCache.minifigsPartsFromCache(figNumber),
   );
-  if (gemerkt) return gemerkt;
+  if (remembered) return remembered;
   const parts = await k.externalSources.quellen.holeFigurTeile(figNumber);
   if (!parts) return [];
   // The cache only saves the next fetch; the parts apply without it as well.

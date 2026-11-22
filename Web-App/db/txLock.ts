@@ -10,20 +10,20 @@ import { reportError } from '../src/infra/error';
  * Inventory locks are taken by k.transaktion(…, { sperren }) (src/infra/area.ts). The class
  * LOCKS.INVENTORY instead of the account id as first value: otherwise account 42 would lock the
  * image download (LOCKS.IMAGE_DOWNLOAD = 42) of the same set. */
-async function lockUntilToEnd(tx: DbInterface, klasse: number, schluessel: string): Promise<void> {
-  await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
+async function lockUntilToEnd(tx: DbInterface, kind: number, key: string): Promise<void> {
+  await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [kind, key]);
 }
 
-import type { Bestandssperre } from '../src/infra/access';
+import type { HoldingLock } from '../src/infra/access';
 
-export type { Bestandssperre };
+export type { HoldingLock as Bestandssperre };
 
 /** Ascending by account, so two opposite directions (something moves between accounts) do not deadlock. */
-async function lockInventories(tx: DbInterface, sperren: readonly Bestandssperre[]): Promise<void> {
-  const schluessel = [...new Set(sperren.map(s => `${s.konto}|${s.schluessel}`))];
+async function lockInventories(tx: DbInterface, lock: readonly HoldingLock[]): Promise<void> {
+  const key = [...new Set(lock.map(s => `${s.konto}|${s.schluessel}`))];
   const konto = (x: string) => Number(x.slice(0, x.indexOf('|')));
-  schluessel.sort((x, y) => konto(x) - konto(y) || (x < y ? -1 : x > y ? 1 : 0));
-  for (const s of schluessel) await lockUntilToEnd(tx, LOCKS.INVENTORY, s);
+  key.sort((x, y) => konto(x) - konto(y) || (x < y ? -1 : x > y ? 1 : 0));
+  for (const s of key) await lockUntilToEnd(tx, LOCKS.INVENTORY, s);
 }
 
 /**
@@ -36,7 +36,7 @@ function inventoryKey(kind: 'set' | 'part' | 'fig', keys: unknown[]): string {
 }
 
 /** Lock for household currency and linking: both check or change the same rule. */
-async function sperreHaushaltswaehrung(tx: DbInterface): Promise<void> {
+async function lockHouseholdCurrency(tx: DbInterface): Promise<void> {
   await tx.run('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.HOUSEHOLD_CURRENCY]);
 }
 
@@ -45,22 +45,22 @@ async function sperreHaushaltswaehrung(tx: DbInterface): Promise<void> {
  * session); if it is taken, `belegt` decides what happens.
  */
 async function withSessionLock<T>(
-  zugang: { pool: Pool },
-  schluessel: number,
+  access: { pool: Pool },
+  key: number,
   lauf: () => Promise<T>,
-  belegt: () => never,
+  claimed: () => never,
 ): Promise<T> {
-  const client = await zugang.pool.connect();
+  const client = await access.pool.connect();
   // If releasing fails, the connection must not go back into the pool with the lock
   // held; it is discarded (the lock ends with the session).
   let broken: Error | undefined;
   try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
-    if (!rows[0]?.ok) belegt();
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [key]);
+    if (!rows[0]?.ok) claimed();
     try {
       return await lauf();
     } finally {
-      await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]).catch((e: unknown) => {
+      await client.query('SELECT pg_advisory_unlock($1, 0)', [key]).catch((e: unknown) => {
         broken = e instanceof Error ? e : new Error(String(e));
         reportError('txLock:freigabe', e);
       });
@@ -74,10 +74,10 @@ async function withSessionLock<T>(
  * Take a session lock for a whole lifetime.
  * @returns release, or null if another process holds it
  */
-async function receiptsSessionLock(zugang: { pool: Pool }, schluessel: number): Promise<(() => Promise<void>) | null> {
-  const client = await zugang.pool.connect();
+async function receiptsSessionLock(access: { pool: Pool }, key: number): Promise<(() => Promise<void>) | null> {
+  const client = await access.pool.connect();
   try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [key]);
     if (!rows[0]?.ok) {
       client.release();
       return null;
@@ -88,7 +88,7 @@ async function receiptsSessionLock(zugang: { pool: Pool }, schluessel: number): 
   }
   return async () => {
     let broken: Error | undefined;
-    await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]).catch((e: unknown) => {
+    await client.query('SELECT pg_advisory_unlock($1, 0)', [key]).catch((e: unknown) => {
       broken = e instanceof Error ? e : new Error(String(e));
       reportError('txLock:freigabe', e);
     });
@@ -96,25 +96,25 @@ async function receiptsSessionLock(zugang: { pool: Pool }, schluessel: number): 
   };
 }
 
-type Abfrager = Pick<import('pg').ClientBase, 'query'>;
+type Querier = Pick<import('pg').ClientBase, 'query'>;
 
 /** Session lock without waiting; the second value is hashtext(schluessel). */
-async function attemptsKeyLock(c: Abfrager, namensraum: number, schluessel: string): Promise<boolean> {
+async function attemptsKeyLock(c: Querier, namespace: number, key: string): Promise<boolean> {
   const { rows } = await c.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [
-    namensraum,
-    schluessel,
+    namespace,
+    key,
   ]);
   return !!rows[0]?.ok;
 }
 
-async function giveKeyLockFree(c: Abfrager, namensraum: number, schluessel: string): Promise<void> {
-  await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namensraum, schluessel]);
+async function giveKeyLockFree(c: Querier, namespace: number, key: string): Promise<void> {
+  await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namespace, key]);
 }
 
 export {
   lockInventories,
   inventoryKey,
-  sperreHaushaltswaehrung,
+  lockHouseholdCurrency as sperreHaushaltswaehrung,
   withSessionLock,
   receiptsSessionLock,
   attemptsKeyLock,

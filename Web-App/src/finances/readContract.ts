@@ -10,6 +10,6 @@ export interface FinancesReadContract {
   teilErfassungen(konten?: Konten): string;
   figurErfassungen(konten?: Konten): string;
   merkliste(konten?: Konten): string;
-  mengeJoin(bezug: string, alias?: string, konten?: Konten): string;
-  teilmengeJoin(bezug: string, art: 'part' | 'fig', alias?: string, konten?: Konten): string;
+  mengeJoin(basis: string, alias?: string, konten?: Konten): string;
+  teilmengeJoin(basis: string, art: 'part' | 'fig', alias?: string, konten?: Konten): string;
 }

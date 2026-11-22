@@ -4,11 +4,11 @@ import type { Sicht } from '../household';
 import { Degradations } from '../infra/result';
 import { inventoryKey } from '../../db/txLock';
 import { fachfehler, type ErrorCode } from '../infra/errorTexts';
-import { quantityOfSets, quantityThePosition, priceColumn, type ErfassungsArt } from '../../db/stockQuantity';
+import { quantityOfSets, quantityThePosition, priceColumn, type AcquisitionKind } from '../../db/stockQuantity';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import type { CollectionContext } from './context';
 
-export type { ErfassungsArt } from '../../db/stockQuantity';
+export type { AcquisitionKind as ErfassungsArt } from '../../db/stockQuantity';
 type Keys = Array<string | number>;
 
 interface Kind {
@@ -19,7 +19,7 @@ interface Kind {
   cleanupWhenEmpty: (t: CollectionContext, ownerId: number, keys: Keys) => Promise<unknown>;
 }
 
-const kinds = (k: CollectionContext): Record<ErfassungsArt, Kind> => ({
+const kinds = (k: CollectionContext): Record<AcquisitionKind, Kind> => ({
   set: {
     notFound: 'erfassung_nicht_gefunden',
     resolvePrice: (uid, [sn], cond) => k.finances.aktuellerMarktpreis(String(sn), uid, cond || null),
@@ -57,7 +57,7 @@ interface Row {
 }
 
 /** Only for the lock key and price fallback; the query inside the transaction checks the rights. */
-async function beforehand(k: CollectionContext, art: ErfassungsArt, uid: number, id: number, keys: Keys) {
+async function beforehand(k: CollectionContext, art: AcquisitionKind, uid: number, id: number, keys: Keys) {
   return k.inventory.erfassung.imSchreibfeld(art, id, await k.household.schreibbereich(uid), keys);
 }
 
@@ -65,7 +65,7 @@ async function beforehand(k: CollectionContext, art: ErfassungsArt, uid: number,
  * cause inside the transaction (every command after is lost then, 25P02). */
 function holdingQuantity(
   t: CollectionContext,
-  art: ErfassungsArt,
+  art: AcquisitionKind,
   ownerId: number,
   keys: Keys,
 ): Promise<number | null> {
@@ -76,7 +76,7 @@ const isEmpty = (q: number | null) => q === null || q <= 0;
 /** Write scope: a sub-account must not write backwards. */
 async function rowInWriteScope(
   t: CollectionContext,
-  art: ErfassungsArt,
+  art: AcquisitionKind,
   wids: number[],
   id: number,
   keys: Keys,
@@ -89,7 +89,7 @@ async function rowInWriteScope(
 
 async function response(
   k: CollectionContext,
-  art: ErfassungsArt,
+  art: AcquisitionKind,
   uid: number,
   keys: Keys,
   payload: Record<string, unknown>,
@@ -102,12 +102,12 @@ export interface Change {
   condition?: unknown;
   date?: unknown;
   owner_user_id?: unknown;
-  [preis: string]: unknown;
+  [price: string]: unknown;
 }
 
 export async function changeAcquisition(
   k: CollectionContext,
-  art: ErfassungsArt,
+  art: AcquisitionKind,
   uid: number,
   id: number,
   keys: Keys,
@@ -145,12 +145,12 @@ export async function changeAcquisition(
     if (p === null) {
       priceEstimated = true;
       const bisher = condition ? null : ((await beforehand(k, art, uid, id, keys))?.condition ?? null);
-      p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
+      p = await ab.orElse('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
   }
 
-  const besitzer = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
+  const owner = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
   await k.transaktion(
     async t => {
       const wids = await t.household.schreibbereich(uid);
@@ -184,15 +184,21 @@ export async function changeAcquisition(
       if (hasQuantity && isEmpty(await holdingQuantity(t, art, ownerId, keys)))
         await a.cleanupWhenEmpty(t, ownerId, keys);
     },
-    { sperren: [{ konto: besitzer, schluessel: inventoryKey(art, keys) }] },
+    { sperren: [{ konto: owner, schluessel: inventoryKey(art, keys) }] },
   );
-  return response(k, art, uid, keys, { ...ab.angabe() });
+  return response(k, art, uid, keys, { ...ab.detail() });
 }
 
 /** If nothing is left afterwards, the holding row goes with it. */
-export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt, uid: number, id: number, keys: Keys) {
+export async function deleteAcquisition(
+  k: CollectionContext,
+  art: AcquisitionKind,
+  uid: number,
+  id: number,
+  keys: Keys,
+) {
   const a = kinds(k)[art];
-  const besitzer = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
+  const owner = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
   const menge = await k.transaktion(
     async t => {
       const acq = await rowInWriteScope(t, art, await t.household.schreibbereich(uid), id, keys);
@@ -202,7 +208,7 @@ export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt
       if (isEmpty(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;
     },
-    { sperren: [{ konto: besitzer, schluessel: inventoryKey(art, keys) }] },
+    { sperren: [{ konto: owner, schluessel: inventoryKey(art, keys) }] },
   );
   return response(k, art, uid, keys, { new_quantity: menge ?? 0 });
 }

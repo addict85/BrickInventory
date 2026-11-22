@@ -19,22 +19,22 @@ export type ConfirmationRejection = {
   vars?: Record<string, string | number>;
   passkey?: boolean;
 };
-export type Faktor = { code?: string | number | null | undefined; passkey?: unknown };
+export type Factor = { code?: string | number | null | undefined; passkey?: unknown };
 
 const leer = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
 
-async function gebremst(
+async function braked(
   k: AccountContext,
   art: Brake,
   uid: number,
   zugang: string,
   check: () => Promise<boolean>,
-  absage: ErrorCode,
+  refusal: ErrorCode,
 ): Promise<ConfirmationRejection | null> {
-  const gesperrt = await confirmationLocked(k, art, uid, zugang);
-  if (gesperrt) {
+  const locked = await confirmationLocked(k, art, uid, zugang);
+  if (locked) {
     reportLoginEvent('bestaetigung_gesperrt', { konto: uid, art, zugang });
-    return { art: 'zu_viele', ...gesperrt };
+    return { art: 'zu_viele', ...locked };
   }
   if (!(await check())) {
     reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
@@ -44,7 +44,7 @@ async function gebremst(
       if (!(await accountThrottled(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
         hintInBackground(k, uid, 'bestaetigung_gebremst');
     }
-    return { art: 'ungueltig', code: absage };
+    return { art: 'ungueltig', code: refusal };
   }
   await confirmationSucceeded(k, art, uid, zugang);
   return null;
@@ -58,24 +58,24 @@ export async function checkConfirmation(
   k: AccountContext,
   uid: number,
   zugang: string,
-  passwort: string | null | undefined,
-  faktor: Faktor,
+  password: string | null | undefined,
+  factor: Factor,
 ): Promise<ConfirmationRejection | null> {
   const withFactor = await k.factors.isActive(uid);
-  if (withFactor && leer(faktor.code) && leer(faktor.passkey))
+  if (withFactor && leer(factor.code) && leer(factor.passkey))
     return {
       art: 'ungueltig',
       code: 'zweiter_faktor_noetig',
       ...((await k.factors.hasPasskeys(uid)) ? { passkey: true } : {}),
     };
-  const pw = await gebremst(
+  const pw = await braked(
     k,
     'passwort',
     uid,
     zugang,
     async () => {
       const u = await k.zugaenge.passwortHash(uid);
-      return !!u && typeof passwort === 'string' && passwort !== '' && passwordFits(passwort, u.password_hash);
+      return !!u && typeof password === 'string' && password !== '' && passwordFits(password, u.password_hash);
     },
     'aktuelles_passwort_falsch',
   ).catch((e: unknown) => {
@@ -84,21 +84,21 @@ export async function checkConfirmation(
     throw e;
   });
   if (pw || !withFactor) return pw;
-  return leer(faktor.passkey)
-    ? gebremst(
+  return leer(factor.passkey)
+    ? braked(
         k,
         'faktor',
         uid,
         zugang,
-        async () => !!(await k.factors.checkCode(uid, faktor.code)),
+        async () => !!(await k.factors.checkCode(uid, factor.code)),
         'zweiter_faktor_falsch',
       )
-    : gebremst(
+    : braked(
         k,
         'faktor',
         uid,
         zugang,
-        async () => (await k.factors.verifyAuthentication(faktor.passkey, 'zweiter_faktor', uid)) === uid,
+        async () => (await k.factors.verifyAuthentication(factor.passkey, 'zweiter_faktor', uid)) === uid,
         'passkey_ungueltig',
       );
 }
@@ -110,7 +110,7 @@ export function checkCodeConfirmation(
   zugang: string,
   code: string | number | null | undefined,
 ): Promise<ConfirmationRejection | null> {
-  return gebremst(
+  return braked(
     k,
     'faktor',
     uid,
@@ -130,7 +130,7 @@ export async function confirmSetupThrottled(
   code: string | number | null | undefined,
 ): Promise<string[] | ConfirmationRejection> {
   let codes: string[] | null = null;
-  const absage = await gebremst(
+  const refusal = await braked(
     k,
     'faktor',
     uid,
@@ -141,5 +141,5 @@ export async function confirmSetupThrottled(
     },
     'zweiter_faktor_falsch',
   );
-  return absage ?? codes ?? { art: 'ungueltig', code: 'zweiter_faktor_falsch' };
+  return refusal ?? codes ?? { art: 'ungueltig', code: 'zweiter_faktor_falsch' };
 }

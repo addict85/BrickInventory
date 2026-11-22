@@ -7,10 +7,10 @@ import type { ManagementContext } from './context';
 
 type Step = [name: string, lauf: () => Promise<unknown>];
 
-async function runSteps(schritte: Step[], auftrag?: JobRun): Promise<void> {
+async function runSteps(steps: Step[], job?: JobRun): Promise<void> {
   const fehler: string[] = [];
-  for (const [name, lauf] of schritte) {
-    checkAbort(auftrag);
+  for (const [name, lauf] of steps) {
+    checkAbort(job);
     try {
       const n = await lauf();
       if (typeof n === 'number' && n > 0) console.log(`[cleanup] ${name}: ${n} entfernt`);

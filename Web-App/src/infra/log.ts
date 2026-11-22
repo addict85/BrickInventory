@@ -2,27 +2,27 @@
  * app_logs for the admin. Report write errors there at most once per
  * minute. */
 import * as logs from './repository/appLogs';
-import { prozessweit } from './prozessweit';
+import { processWide } from './prozessweit';
 
 export { requestContext } from './accountContext';
 import { requestContext } from './accountContext';
 
 /** No whitespace, no control characters or quotes. */
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
-const K = prozessweit('anfrageKennung', () => ({ sequence: 0 }));
+const K = processWide('anfrageKennung', () => ({ sequence: 0 }));
 
 /** Unfiltered, a client could write line breaks or foreign identifiers into the
  * log and fake entries. */
-export function anfrageKennung(roh: unknown): string {
-  const wert = typeof roh === 'string' ? roh : '';
+export function anfrageKennung(raw: unknown): string {
+  const wert = typeof raw === 'string' ? raw : '';
   if (ID_RE.test(wert)) return wert;
   K.sequence = (K.sequence + 1) % 1_679_616;
   return K.sequence.toString(36).padStart(4, '0');
 }
 
-type Stufe = 'debug' | 'info' | 'warn' | 'error';
-const LEVELS: Stufe[] = ['debug', 'info', 'warn', 'error'];
-const LOG_LEVEL: Record<Stufe | 'log', Stufe> = {
+type Level = 'debug' | 'info' | 'warn' | 'error';
+const LEVELS: Level[] = ['debug', 'info', 'warn', 'error'];
+const LOG_LEVEL: Record<Level | 'log', Level> = {
   log: 'info',
   debug: 'debug',
   info: 'info',
@@ -31,12 +31,12 @@ const LOG_LEVEL: Record<Stufe | 'log', Stufe> = {
 };
 
 /** Replaced in tests. */
-export interface Ausgabe {
-  out(zeile: string): void;
-  err(zeile: string): void;
+export interface Output {
+  out(row: string): void;
+  err(row: string): void;
   jetzt(): number;
 }
-const PROCESS: Ausgabe = {
+const PROCESS: Output = {
   out: z => {
     process.stdout.write(z + '\n');
   },
@@ -46,7 +46,7 @@ const PROCESS: Ausgabe = {
   jetzt: () => Date.now(),
 };
 
-type Abfrager = logs.Abfrager;
+type Querier = logs.Querier;
 
 const MAX_TEXT = 4000;
 const REPORT_GAP_MS = 60_000;
@@ -67,25 +67,25 @@ const isContext = (a: unknown): a is Record<string, unknown> =>
   typeof a === 'object' && a !== null && !Array.isArray(a) && !(a instanceof Error);
 
 export function split(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
-  const teile = [...args];
+  const parts = [...args];
   let kontext: Record<string, unknown> | undefined;
-  const letztes = teile[teile.length - 1];
-  if (teile.length > 1 && isContext(letztes)) {
-    kontext = letztes;
-    teile.pop();
+  const last = parts[parts.length - 1];
+  if (parts.length > 1 && isContext(last)) {
+    kontext = last;
+    parts.pop();
   }
-  const fehler = teile.find((t): t is Error => t instanceof Error);
+  const fehler = parts.find((t): t is Error => t instanceof Error);
   if (fehler) kontext = { ...kontext, fehler: { name: fehler.name, message: fehler.message, stack: fehler.stack } };
-  const nachricht = teile
+  const nachricht = parts
     .map(t => (t instanceof Error ? t.message : logText(t)))
     .join(' ')
     .substring(0, MAX_TEXT);
   return kontext ? { nachricht, kontext } : { nachricht };
 }
 
-interface Zustand {
-  output: Ausgabe;
-  pool: Abfrager | null;
+interface State {
+  output: Output;
+  pool: Querier | null;
   puffer: { level: string; message: string }[];
   timer: NodeJS.Timeout | null;
   fehlgeschlagen: number;
@@ -94,14 +94,14 @@ interface Zustand {
   reportTimer: NodeJS.Timeout | null;
   onRaeumTick: NodeJS.Timeout | null;
 }
-const P = prozessweit('protokoll', () => ({ z: null as Zustand | null }));
+const P = processWide('protokoll', () => ({ z: null as State | null }));
 const pidTag = String(process.pid).slice(-4);
 
 /** Fields in a fixed order. */
-export function jsonRow(stufe: Stufe, args: unknown[], zeit: number, rid?: string): string {
+export function jsonRow(stufe: Level, args: unknown[], time: number, rid?: string): string {
   const { nachricht, kontext } = split(args);
   return JSON.stringify({
-    zeit: new Date(zeit).toISOString(),
+    zeit: new Date(time).toISOString(),
     stufe,
     nachricht,
     pid: process.pid,
@@ -110,9 +110,9 @@ export function jsonRow(stufe: Stufe, args: unknown[], zeit: number, rid?: strin
   });
 }
 
-function writeError(anzahl: number, e: unknown): void {
+function writeError(count: number, e: unknown): void {
   if (!P.z) return;
-  P.z.fehlgeschlagen += anzahl;
+  P.z.fehlgeschlagen += count;
   P.z.lastError = e instanceof Error ? e.message : String(e);
   if (P.z.output.jetzt() - P.z.lastlyReported >= REPORT_GAP_MS) {
     reportWriteError();
@@ -152,7 +152,7 @@ export function emptyLog(): Promise<void> {
   );
 }
 
-export function logInDieDatabase(pool: Abfrager): void {
+export function logInDieDatabase(pool: Querier): void {
   if (!P.z) return;
   P.z.pool = pool;
   void emptyLog();
@@ -179,7 +179,7 @@ export async function stopLog(): Promise<void> {
 }
 
 /** Returns a function that restores the old state (tests). */
-export function installLog(output: Ausgabe = PROCESS): () => void {
+export function installLog(output: Output = PROCESS): () => void {
   const alt = { log: console.log, debug: console.debug, info: console.info, warn: console.warn, error: console.error };
   P.z = {
     output,
@@ -197,8 +197,8 @@ export function installLog(output: Ausgabe = PROCESS): () => void {
     console[name] = (...args: unknown[]) => {
       if (!P.z) return;
       const rid = requestContext.getStore()?.rid;
-      const zeile = jsonRow(stufe, args, P.z.output.jetzt(), rid);
-      (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(zeile);
+      const row = jsonRow(stufe, args, P.z.output.jetzt(), rid);
+      (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(row);
       // app_logs keeps the previous text format; the log view reads it like that.
       const { nachricht, kontext } = split(args);
       const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;

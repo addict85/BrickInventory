@@ -23,6 +23,6 @@ export function cookieStaysFrom(req: Pick<Request, 'secure'>, k: Konfig = konfig
 }
 
 /** Both names: every session cookie counts for the origin check. */
-export function carriesSessionCookie(kopf: string): boolean {
-  return /(?:^|;\s*)(?:__Host-)?bim\.sid=/.test(kopf);
+export function carriesSessionCookie(header: string): boolean {
+  return /(?:^|;\s*)(?:__Host-)?bim\.sid=/.test(header);
 }

@@ -60,15 +60,16 @@ export async function rememberPartList(db: DbInterface, nummer: string, json: st
   );
 }
 
-export async function minifigsPartsFromCache(db: DbInterface, figur: string): Promise<string | undefined> {
-  return (await db.get<{ data: string }>('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figur]))?.data;
+export async function minifigsPartsFromCache(db: DbInterface, minifig: string): Promise<string | undefined> {
+  return (await db.get<{ data: string }>('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [minifig]))
+    ?.data;
 }
 
-export async function rememberMinifigsParts(db: DbInterface, figur: string, json: string): Promise<void> {
+export async function rememberMinifigsParts(db: DbInterface, minifig: string, json: string): Promise<void> {
   await db.run(
     `INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW())
     ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()`,
-    [figur, json],
+    [minifig, json],
   );
 }
 

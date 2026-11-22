@@ -5,12 +5,12 @@ import { buildSettingsGlobalRouter } from './settingsGlobal';
 import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { tlsInfo } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 import { ownAccess } from '../../src/account';
 
 export function buildSettingsRouter(
-  d: Pick<Dienste, 'settings' | 'mail' | 'household' | 'account' | 'profile' | 'management'>,
+  d: Pick<Services, 'settings' | 'mail' | 'household' | 'account' | 'profile' | 'management'>,
 ) {
   const { requireToken, requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
@@ -98,11 +98,11 @@ export function buildSettingsRouter(
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
     // readSettings(): price_cache_ttl and default_price_condition are global.
-    const alle = await d.settings.readSettings(uid, false);
-    const gespeichert = Object.fromEntries(APP_FIELDS.map(feld => [feld, alle[feld] ?? APP_DEFAULTS[feld] ?? '']));
+    const all = await d.settings.readSettings(uid, false);
+    const saved = Object.fromEntries(APP_FIELDS.map(field => [field, all[field] ?? APP_DEFAULTS[field] ?? '']));
     return {
       settings: {
-        ...(gespeichert as Record<(typeof APP_FIELDS)[number], string>),
+        ...(saved as Record<(typeof APP_FIELDS)[number], string>),
         // The rule stands once, in src/settings/settings.ts.
         effective_condition: await d.settings.userDefaultCondition(uid),
         // The account's effective theme, not the administrator's default.

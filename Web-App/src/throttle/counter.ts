@@ -1,7 +1,7 @@
 /** Counter with fallback: when the database locks up, the process keeps counting in memory so
  * a brake doesn't end up wide open. It only counts per process; reported at most once per minute. */
 import { fehlertext } from '../infra/error';
-import { prozessweit } from '../infra/prozessweit';
+import { processWide } from '../infra/prozessweit';
 import type { ThrottleContext } from './context';
 
 export interface CounterState {
@@ -11,9 +11,8 @@ export interface CounterState {
 }
 export type State = CounterState & { laufend: number };
 
-type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-const fallback = () =>
-  prozessweit('anmeldeRueckfall', () => ({ eintraege: new Map<string, Eintrag>(), reportedAt: 0 }));
+type Entry = { count: number; firstAt: number; lastAt: number | null; laufend: number };
+const fallback = () => processWide('anmeldeRueckfall', () => ({ eintraege: new Map<string, Entry>(), reportedAt: 0 }));
 const MEMORY_AT_MOST = 5000;
 
 function inMemory(wo: string, e: unknown): void {
@@ -25,12 +24,12 @@ function inMemory(wo: string, e: unknown): void {
 
 function trim(windowMs: number): void {
   if (fallback().eintraege.size <= MEMORY_AT_MOST) return;
-  const grenze = Date.now() - windowMs;
-  for (const [k, v] of fallback().eintraege) if (v.firstAt < grenze) fallback().eintraege.delete(k);
+  const limit = Date.now() - windowMs;
+  for (const [k, v] of fallback().eintraege) if (v.firstAt < limit) fallback().eintraege.delete(k);
 }
 
-const restMin = (firstAt: number, windowMin: number, jetzt: number) =>
-  Math.max(1, Math.ceil((firstAt + windowMin * 60000 - jetzt) / 60000));
+const restMin = (firstAt: number, windowMin: number, now: number) =>
+  Math.max(1, Math.ceil((firstAt + windowMin * 60000 - now) / 60000));
 
 export async function counterState(k: ThrottleContext, key: string, windowMin: number): Promise<CounterState | null> {
   try {
@@ -44,12 +43,12 @@ export async function counterState(k: ThrottleContext, key: string, windowMin: n
   } catch (fehler) {
     inMemory('read', fehler);
     const e = fallback().eintraege.get(key);
-    const jetzt = k.uhr.jetzt();
-    if (!e || jetzt - e.firstAt > windowMin * 60000) return null;
+    const now = k.uhr.jetzt();
+    if (!e || now - e.firstAt > windowMin * 60000) return null;
     return {
       count: e.count,
-      waitMin: restMin(e.firstAt, windowMin, jetzt),
-      sinceLast: (jetzt - (e.lastAt ?? e.firstAt)) / 1000,
+      waitMin: restMin(e.firstAt, windowMin, now),
+      sinceLast: (now - (e.lastAt ?? e.firstAt)) / 1000,
     };
   }
 }
@@ -60,13 +59,13 @@ export async function countAttempt(k: ThrottleContext, key: string, windowMin: n
     return await k.counter.increase(key, windowMin);
   } catch (fehler) {
     inMemory('count', fehler);
-    const jetzt = k.uhr.jetzt();
+    const now = k.uhr.jetzt();
     const e = fallback().eintraege.get(key);
-    if (!e || jetzt - e.firstAt > windowMin * 60000)
-      fallback().eintraege.set(key, { count: 1, firstAt: jetzt, lastAt: jetzt, laufend: 0 });
+    if (!e || now - e.firstAt > windowMin * 60000)
+      fallback().eintraege.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
     else {
       e.count++;
-      e.lastAt = jetzt;
+      e.lastAt = now;
       e.laufend = Math.max(0, (e.laufend || 0) - 1);
     }
     trim(windowMin * 60000);
@@ -99,17 +98,17 @@ export async function reserve(
   } catch (fehler) {
     inMemory('reserve', fehler);
     // In process memory this block without await is atomic.
-    const jetzt = k.uhr.jetzt();
+    const now = k.uhr.jetzt();
     let e = fallback().eintraege.get(key);
-    if (!e || jetzt - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: jetzt, lastAt: null, laufend: 0 };
+    if (!e || now - e.firstAt > windowMin * 60000) {
+      e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
       fallback().eintraege.set(key, e);
     }
     const s: State = {
       count: e.count,
       laufend: e.laufend || 0,
-      waitMin: restMin(e.firstAt, windowMin, jetzt),
-      sinceLast: (jetzt - (e.lastAt ?? e.firstAt)) / 1000,
+      waitMin: restMin(e.firstAt, windowMin, now),
+      sinceLast: (now - (e.lastAt ?? e.firstAt)) / 1000,
     };
     if (!allowed(s)) return { ok: false, stand: s };
     e.laufend = s.laufend + 1;
@@ -152,16 +151,16 @@ export async function countInWindow(
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     inMemory('request', fehler);
-    const jetzt = k.uhr.jetzt();
+    const now = k.uhr.jetzt();
     let e = fallback().eintraege.get(key);
-    if (!e || jetzt - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: jetzt, lastAt: jetzt, laufend: 0 };
+    if (!e || now - e.firstAt > windowMin * 60000) {
+      e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
       fallback().eintraege.set(key, e);
     }
     e.count++;
-    e.lastAt = jetzt;
+    e.lastAt = now;
     trim(windowMin * 60000);
-    return { count: e.count, waitMin: restMin(e.firstAt, windowMin, jetzt) };
+    return { count: e.count, waitMin: restMin(e.firstAt, windowMin, now) };
   }
 }
 

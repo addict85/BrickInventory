@@ -19,7 +19,7 @@ export interface PathTransaction {
   readonly streng: boolean;
 }
 
-interface Rahmen {
+interface Frame {
   /** Read only when asking: login sets the account later on the same object. */
   quelle: AccountSource | null;
   system: string | null;
@@ -29,13 +29,13 @@ interface Rahmen {
   companion: unknown;
   rid: string | null;
 }
-const LEER: Rahmen = { quelle: null, system: null, web: false, transaktion: null, companion: null, rid: null };
-const rahmen = new AsyncLocalStorage<Rahmen>();
-const jetzt = (): Rahmen => rahmen.getStore() ?? LEER;
-const withFrame = <T>(teil: Partial<Rahmen>, f: () => T): T => rahmen.run({ ...jetzt(), ...teil }, f);
+const LEER: Frame = { quelle: null, system: null, web: false, transaktion: null, companion: null, rid: null };
+const frame = new AsyncLocalStorage<Frame>();
+const now = (): Frame => frame.getStore() ?? LEER;
+const withFrame = <T>(teil: Partial<Frame>, f: () => T): T => frame.run({ ...now(), ...teil }, f);
 
 export function currentAccount(): { id: number; verwalter: boolean } | null {
-  const q = jetzt().quelle;
+  const q = now().quelle;
   if (!q) return null;
   const id = Number(q.apiUser?.user_id ?? q.session?.userId ?? q.tokenUserId);
   if (!Number.isInteger(id) || id <= 0) return null;
@@ -60,7 +60,7 @@ export function asWebRequest<T>(quelle: AccountSource, f: () => T): T {
 }
 
 export function rowsContext(): { system: boolean; web: boolean; konto: number | null } {
-  const r = jetzt();
+  const r = now();
   return { system: !!r.system, web: r.web, konto: currentAccount()?.id ?? null };
 }
 
@@ -72,7 +72,7 @@ export class ForeignAccount extends Error {
 }
 
 export function checkRequester(uid: number): void {
-  if (jetzt().system) return;
+  if (now().system) return;
   // Without an account in the frame (startup, before login) no row security filters silently.
   const konto = currentAccount()?.id;
   if (konto !== undefined && konto !== uid) throw new ForeignAccount(uid, konto);
@@ -83,20 +83,20 @@ export function inTransactionPath<T>(transaktion: PathTransaction, f: () => T): 
   return withFrame({ transaktion }, f);
 }
 export function transactionOfPath(): PathTransaction | null {
-  return jetzt().transaktion;
+  return now().transaktion;
 }
 
 export function withCompanion<T>(companion: unknown, f: () => T): T {
   return withFrame({ companion }, f);
 }
 export function companionOfPath(): unknown {
-  return jetzt().companion;
+  return now().companion;
 }
 
 export const requestContext = {
   run: <T>(w: { rid: string }, f: () => T): T => withFrame({ rid: w.rid }, f),
   getStore: (): { rid: string } | undefined => {
-    const rid = jetzt().rid;
+    const rid = now().rid;
     return rid === null ? undefined : { rid };
   },
 };

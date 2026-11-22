@@ -23,61 +23,61 @@ const defOf = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._z
 const SHELL = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
 
 /** Paths like `sets.0.letzter_kauf`; at most `grenze` so that a long list does not flood. */
-export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20): string[] {
-  const funde = new Set<string>();
-  const lauf = (s: z.ZodType | undefined, w: unknown, pfad: string): void => {
-    if (!s || w === null || w === undefined || funde.size >= grenze) return;
+export function unbekannteFelder(schema: z.ZodType, wert: unknown, limit = 20): string[] {
+  const findings = new Set<string>();
+  const lauf = (s: z.ZodType | undefined, w: unknown, path: string): void => {
+    if (!s || w === null || w === undefined || findings.size >= limit) return;
     const d = defOf(s);
     if (SHELL.has(d.type)) {
-      lauf(d.innerType, w, pfad);
+      lauf(d.innerType, w, path);
       return;
     }
     if (d.type === 'lazy') {
-      lauf(d.getter?.(), w, pfad);
+      lauf(d.getter?.(), w, path);
       return;
     }
     if (d.type === 'pipe') {
-      lauf(d.in, w, pfad);
+      lauf(d.in, w, path);
       return;
     }
     if (d.type === 'intersection') {
       // Known together is what either of the two sides names.
-      const links = unbekannteFelder(d.left as z.ZodType, w, grenze);
-      const rechts = new Set(unbekannteFelder(d.right as z.ZodType, w, grenze));
-      for (const p of links) if (rechts.has(p)) funde.add(pfad + p);
+      const links = unbekannteFelder(d.left as z.ZodType, w, limit);
+      const right = new Set(unbekannteFelder(d.right as z.ZodType, w, limit));
+      for (const p of links) if (right.has(p)) findings.add(path + p);
       return;
     }
     if (d.type === 'union') {
-      const passt = d.options?.find(o => o.safeParse(w).success);
-      lauf(passt, w, pfad);
+      const fits = d.options?.find(o => o.safeParse(w).success);
+      lauf(fits, w, path);
       return;
     }
     if (d.type === 'array' && Array.isArray(w)) {
       w.forEach((x, i) => {
-        lauf(d.element, x, `${pfad}${i}.`);
+        lauf(d.element, x, `${path}${i}.`);
       });
       return;
     }
     if (d.type === 'tuple' && Array.isArray(w)) {
       w.forEach((x, i) => {
-        lauf(d.items?.[i], x, `${pfad}${i}.`);
+        lauf(d.items?.[i], x, `${path}${i}.`);
       });
       return;
     }
     if (d.type === 'record' && typeof w === 'object') {
-      for (const [k, x] of Object.entries(w as object)) lauf(d.valueType, x, `${pfad}${k}.`);
+      for (const [k, x] of Object.entries(w as object)) lauf(d.valueType, x, `${path}${k}.`);
       return;
     }
     if (d.type !== 'object' || typeof w !== 'object' || Array.isArray(w)) return;
     // looseObject has catchall unknown: open, but not described in the contract.
-    const offen = !d.catchall || defOf(d.catchall).type === 'unknown';
+    const open = !d.catchall || defOf(d.catchall).type === 'unknown';
     for (const [k, x] of Object.entries(w as object)) {
-      const feld = d.shape?.[k];
-      if (feld) lauf(feld, x, `${pfad}${k}.`);
-      else if (offen) funde.add(pfad + k);
-      else lauf(d.catchall, x, `${pfad}${k}.`);
+      const field = d.shape?.[k];
+      if (field) lauf(field, x, `${path}${k}.`);
+      else if (open) findings.add(path + k);
+      else lauf(d.catchall, x, `${path}${k}.`);
     }
   };
   lauf(schema, wert, '');
-  return [...funde];
+  return [...findings];
 }

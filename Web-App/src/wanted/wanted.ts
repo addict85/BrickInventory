@@ -25,7 +25,7 @@ export async function pricesForBothConditions(k: WantedContext, uid: number, set
   // "none" after a fetch failure is not "BrickLink knows none".
   const ab = new Degradations();
   for (const c of ['N', 'U']) {
-    const pd = await ab.oder(
+    const pd = await ab.orElse(
       `marktpreis_${c}`,
       k.finances.fetchPrice(setNumber, c, guideType, currency, ttlHours),
       null,
@@ -34,7 +34,7 @@ export async function pricesForBothConditions(k: WantedContext, uid: number, set
     if (pd && !pd.is_fallback)
       current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
   }
-  return { currency, current, ...ab.angabe() };
+  return { currency, current, ...ab.detail() };
 }
 
 export interface WantedItem {
@@ -65,12 +65,12 @@ export interface WantedItem {
  * booked an acquisition with the wrong price. */
 export async function conditionOrDefault(
   k: WantedContext,
-  roh: string | null | undefined,
+  raw: string | null | undefined,
   userId: number,
 ): Promise<V.Zustand> {
   return (
     V.optionalCondition(
-      String(roh ?? '')
+      String(raw ?? '')
         .trim()
         .toUpperCase(),
     ) ?? V.zustand(await k.einstellungen.userDefaultCondition(userId))
@@ -88,8 +88,8 @@ export async function addWantedItem(
   const sn = normalisiereSetNummer(setNumber);
   const c = await conditionOrDefault(k, condition, userId);
   const r = await k.wanted.markSetWanted(userId, sn, c, capturedAt ?? null);
-  const liste = await wantedItemsOf(k, [userId], sn);
-  return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
+  const list = await wantedItemsOf(k, [userId], sn);
+  return { merkposten: list.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
 
 /** No error if there was none — the goal is already met. */
@@ -131,9 +131,9 @@ export async function moveWantedItem(
 
   return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
     if (await t.wanted.isWanted(zuId, sn, c)) {
-      const weg = await removeWantedItem(t, ofId, sn, c);
+      const route = await removeWantedItem(t, ofId, sn, c);
       await t.finances.preisalarm.loescheAlarm(ofId, sn, c);
-      return { verschoben: weg > 0, zusammengefuehrt: true };
+      return { verschoben: route > 0, zusammengefuehrt: true };
     }
     const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
     const verschoben = (r.changes ?? 0) > 0;
@@ -180,14 +180,14 @@ export async function wantedItemsOf(
   return rows.map(({ alarm_direction, alarm_threshold, alarm_triggered, ...r }) => {
     // Synchronous and cached — no filesystem access per row. Same naming rule
     // as when storing it (src/images/setImages.ts).
-    const lokal = imageIfPresent(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) k.images.rememberUsed(String(r.image_url), String(r.set_number));
+    const local = imageIfPresent(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
+    if (!local && r.image_url) k.images.rememberUsed(String(r.image_url), String(r.set_number));
     return {
       ...r,
       waehrung,
       owned: !!r.owned,
       preisvergleich_url: forSet(r.set_number, r.name),
-      image_local: lokal,
+      image_local: local,
       alarm:
         alarm_direction == null
           ? null

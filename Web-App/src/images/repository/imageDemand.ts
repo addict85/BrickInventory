@@ -25,14 +25,14 @@ export function deleteAllImageRequests(db: DbInterface) {
   return db.run('DELETE FROM image_wanted');
 }
 
-export function entnimmBildwuensche(db: DbInterface, validMs: string, anzahl: number) {
+export function takeImageRequests(db: DbInterface, validMs: string, count: number) {
   return db.all<{ url: string; set_number: string | null }>(
     `DELETE FROM image_wanted
       WHERE url IN (SELECT url FROM image_wanted
                      WHERE requested_at > NOW() - ($1 || ' milliseconds')::interval
                      ORDER BY requested_at ASC LIMIT $2)
       RETURNING url, set_number`,
-    [validMs, anzahl],
+    [validMs, count],
   );
 }
 

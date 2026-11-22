@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import * as queries from './queries';
 import * as service from './service';
 import * as manualMinifigs from './manualMinifigs';
@@ -12,14 +12,14 @@ export function createMinifigs(a: MinifigsDependencies, inspect?: Inspect<Minifi
     a,
     access,
     (k: MinifigsContext) => ({
-      readMinifigs: mit(k)(queries.readMinifigs),
-      minifigStats: mit(k)(queries.computeMinifigStats),
-      readManualMinifigs: mit(k)(queries.readManualMinifigs),
-      partsOfMinifig: mit(k)(service.partsOfMinifig),
-      addManualMinifig: mit(k)(manualMinifigs.addManualMinifig),
-      updateManualMinifig: mit(k)(manualMinifigs.updateManualMinifig),
-      minifigAcquisitions: mit(k)(manualMinifigs.minifigAcquisitionsInScope),
-      importMinifigsCsv: mit(k)(manualMinifigs.importMinifigsCsv),
+      readMinifigs: withValue(k)(queries.readMinifigs),
+      minifigStats: withValue(k)(queries.computeMinifigStats),
+      readManualMinifigs: withValue(k)(queries.readManualMinifigs),
+      partsOfMinifig: withValue(k)(service.partsOfMinifig),
+      addManualMinifig: withValue(k)(manualMinifigs.addManualMinifig),
+      updateManualMinifig: withValue(k)(manualMinifigs.updateManualMinifig),
+      minifigAcquisitions: withValue(k)(manualMinifigs.minifigAcquisitionsInScope),
+      importMinifigsCsv: withValue(k)(manualMinifigs.importMinifigsCsv),
     }),
     inspect,
   );

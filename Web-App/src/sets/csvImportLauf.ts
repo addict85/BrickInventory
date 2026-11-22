@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { type ImportResult, JobInterrupted, type JobContext } from '../jobQueue';
-import { setErfassen } from './addSet';
+import { acquireSet } from './addSet';
 import { fehlertext } from '../infra/error';
 import { Fachfehler, errorText, type ErrorCode } from '../infra/errorTexts';
 import type { SetsContext } from './context';
@@ -51,7 +51,7 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
   let alarm: NodeJS.Timeout | undefined;
   try {
     const r = await Promise.race([
-      setErfassen(sk, {
+      acquireSet(sk, {
         requester: userId,
         setNumber: z.sn,
         menge: z.qty,
@@ -95,7 +95,7 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
   const stand = await sk.jobQueue.setImportFort(userId, lauf);
   if (!stand) return;
   const results = stand.results;
-  const schreibe = () =>
+  const write = () =>
     sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
 
   if (stand.current && results.length < rows.length) {
@@ -106,16 +106,16 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
       code: 'import_zeile_unterbrochen',
       error: errorText('import_zeile_unterbrochen', 'de'),
     });
-    if (!(await schreibe())) return;
+    if (!(await write())) return;
   }
   for (let i = results.length; i < rows.length; i++) {
-    if (k.beendet) throw new JobInterrupted();
+    if (k.ended) throw new JobInterrupted();
     const z = rows[i]!;
     // Aborted, superseded or assigned elsewhere: stop without writing into foreign rows.
     if (!(await k.lebenszeichen()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, lauf))) return;
     await sk.jobQueue.reportJobStatus(userId);
     results.push(await importRow(sk, z, userId));
-    if (!(await schreibe())) return;
+    if (!(await write())) return;
     await sk.jobQueue.reportJobStatus(userId);
   }
   await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, lauf);

@@ -43,33 +43,33 @@ export async function reloadRates(
 
 /** 15:30 UTC is after the ECB's publication. One key of its own per
  * day: a failed attempt must not block the next day. */
-export async function planeKursabruf(
+export async function scheduleRateFetch(
   k: FinancesContext,
-  jetzt = k.uhr.datum(),
+  now = k.uhr.datum(),
   morgen = false,
 ): Promise<string | null> {
-  const ziel = new Date(
-    Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
+  const target = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
-  const sek = Math.max(0, Math.round((ziel.getTime() - jetzt.getTime()) / 1000));
+  const sec = Math.max(0, Math.round((target.getTime() - now.getTime()) / 1000));
   return k.jobQueue.placeJobOne(
     'wechselkurse',
     {},
     {
-      schluessel: `wechselkurse:${ziel.toISOString().slice(0, 10)}`,
-      afterSeconds: morgen ? sek : 0,
+      schluessel: `wechselkurse:${target.toISOString().slice(0, 10)}`,
+      afterSeconds: morgen ? sec : 0,
       maxAttempts: 6,
     },
   );
 }
 
 /** Schedule the next day first, then load: if loading fails, the schedule is already in place. */
-export async function kursauftrag(
+export async function rateJob(
   k: FinancesContext,
   abruf: Abruf = k.externalSources.quellen.ecbFetch,
   lauf?: JobRun,
 ): Promise<void> {
-  await planeKursabruf(k, k.uhr.datum(), true);
+  await scheduleRateFetch(k, k.uhr.datum(), true);
   const r = await reloadRates(k, abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.rates} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

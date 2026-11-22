@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { withValue, buildArea, type Inspect } from '../infra/area';
 import * as wantedService from './wanted';
 import * as wantedListService from './wantedList';
 import { access, type WantedDependencies, type WantedContext } from './context';
@@ -11,15 +11,15 @@ export function createWanted(a: WantedDependencies, inspect?: Inspect<WantedCont
     a,
     access,
     (k: WantedContext) => ({
-      addWantedItem: mit(k)(wantedService.addWantedItem),
-      removeWantedItem: mit(k)(wantedService.removeWantedItem),
-      moveWantedItem: mit(k)(wantedService.moveWantedItem),
-      wantedItemsOf: mit(k)(wantedService.wantedItemsOf),
-      fulfillWantedItem: mit(k)(wantedService.fulfillWantedItem),
-      wantedListCsv: mit(k)(wantedService.wantedListCsv),
-      pricesForBothConditions: mit(k)(wantedService.pricesForBothConditions),
-      importWantedListCsv: mit(k)(wantedService.importWantedListCsv),
-      importWantedList: mit(k)(wantedListService.importiereWantedListe),
+      addWantedItem: withValue(k)(wantedService.addWantedItem),
+      removeWantedItem: withValue(k)(wantedService.removeWantedItem),
+      moveWantedItem: withValue(k)(wantedService.moveWantedItem),
+      wantedItemsOf: withValue(k)(wantedService.wantedItemsOf),
+      fulfillWantedItem: withValue(k)(wantedService.fulfillWantedItem),
+      wantedListCsv: withValue(k)(wantedService.wantedListCsv),
+      pricesForBothConditions: withValue(k)(wantedService.pricesForBothConditions),
+      importWantedListCsv: withValue(k)(wantedService.importWantedListCsv),
+      importWantedList: withValue(k)(wantedListService.importiereWantedListe),
     }),
     inspect,
   );

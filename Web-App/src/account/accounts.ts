@@ -6,7 +6,7 @@ import { emptyTokenCache } from './tokenCache';
 import { withAccessEnd, endAllSessions, accessTransaction } from './accessEnd';
 import { tokenDigest, revokeAllTokens } from './deviceToken';
 import { emailValid } from '../infra/validate';
-import { removeStartpasswort } from '../infra/startpasswort';
+import { removeStartPassword } from '../infra/startpasswort';
 import { rememberAdminAction } from './adminLog';
 import { asDuplicate, fachfehler, notFound } from '../infra/errorTexts';
 import type { ResetSideEffects } from '../mail';
@@ -41,16 +41,16 @@ export async function accountsList(k: AccountContext) {
   const konten = await k.konten.allAccounts();
   const withFactor = await k.factors.activeAmong(konten.map(z => z.id));
   // Announced changes to administrators (24 h): the other administrators should see them, not only by mail.
-  const angekuendigt = new Map<number, { type: TakeoverKind; effective_at: string }[]>();
+  const announced = new Map<number, { type: TakeoverKind; effective_at: string }[]>();
   for (const a of await k.uebernahmen.announced())
-    angekuendigt.set(a.target_id, [
-      ...(angekuendigt.get(a.target_id) ?? []),
+    announced.set(a.target_id, [
+      ...(announced.get(a.target_id) ?? []),
       { type: a.type, effective_at: new Date(a.effective_at).toISOString() },
     ]);
-  return konten.map(z => ({ ...z, zweiter_faktor: withFactor.has(z.id), angekuendigt: angekuendigt.get(z.id) ?? [] }));
+  return konten.map(z => ({ ...z, zweiter_faktor: withFactor.has(z.id), angekuendigt: announced.get(z.id) ?? [] }));
 }
 
-export async function profil(k: AccountContext, id: number) {
+export async function profile(k: AccountContext, id: number) {
   return k.konten.profileRow(id);
 }
 
@@ -72,14 +72,14 @@ export async function accountDisplayName(k: AccountContext, id: number): Promise
 }
 
 /** The password alone does not carry administrator rights; a passkey does not replace TOTP here. */
-export async function openFactorRequired(k: AccountContext, uid: number, verwalter: boolean): Promise<boolean> {
-  return verwalter && !(await k.factors.isActive(uid));
+export async function openFactorRequired(k: AccountContext, uid: number, admin: boolean): Promise<boolean> {
+  return admin && !(await k.factors.isActive(uid));
 }
 
 /** The setup step "account": one exists, and an administrator has replaced the start password. */
-export async function accountConfigured(k: AccountContext, verwalter: boolean): Promise<boolean> {
+export async function accountConfigured(k: AccountContext, admin: boolean): Promise<boolean> {
   const s = await k.einrichtung.accountsStatus();
-  return s.vorhanden && (!verwalter || !s.startpasswort);
+  return s.vorhanden && (!admin || !s.startpasswort);
 }
 
 export function passwordSwitchDue(k: AccountContext, id: number): Promise<boolean> {
@@ -93,8 +93,8 @@ export async function endAccesses(k: AccountContext, uid: number): Promise<void>
   await endAllSessions(k, uid);
 }
 
-async function startpasswortDone(k: AccountContext, uid: number): Promise<void> {
-  if ((await k.konten.accountShort(uid))?.is_admin) removeStartpasswort();
+async function startPasswordDone(k: AccountContext, uid: number): Promise<void> {
+  if ((await k.konten.accountShort(uid))?.is_admin) removeStartPassword();
 }
 
 /** Password, accesses and log entry of the administrator `durch` together or not at all. */
@@ -102,13 +102,13 @@ export async function setForeignPassword(
   k: AccountContext,
   uid: number,
   passwort: string,
-  durch: number | null = null,
+  through: number | null = null,
 ): Promise<boolean> {
   const hash = await hashe(passwort);
   return withAccessEnd(k, uid, async t => {
     if (!(await t.konten.setPasswordHash(uid, hash))) return false;
     await endAccesses(t, uid);
-    if (durch !== null) await rememberAdminAction(t, durch, uid, 'passwort_gesetzt');
+    if (through !== null) await rememberAdminAction(t, through, uid, 'passwort_gesetzt');
     return true;
   });
 }
@@ -127,7 +127,7 @@ export async function aendereEigenesPasswort(
     await endAccesses(t, uid);
     if (o.passkeysWiderrufen) await t.factors.revokePasskeys(uid);
   });
-  await startpasswortDone(k, uid);
+  await startPasswordDone(k, uid);
 }
 
 /** The link carries the token in plaintext; only its hash is stored. */
@@ -148,15 +148,15 @@ export async function setPasswordBack(k: AccountContext, tokenHash: string, pass
       if (!uid) return null;
       await endAccesses(t, uid);
       await t.factors.revokePasskeys(uid);
-      const haushalt = await t.household.unlinkForeignAccess(uid);
+      const household = await t.household.unlinkForeignAccess(uid);
       const adresse = await t.konten.discardPendingAddress(uid);
       await deleteDailyLimit(t, uid);
-      return { uid, resolved: { haushalt: haushalt.hauptkonten, einladungen: haushalt.einladungen, adresse } };
+      return { uid, resolved: { haushalt: household.hauptkonten, einladungen: household.einladungen, adresse } };
     },
   );
   if (!r) return null;
   k.household.reportHouseholdChange();
-  await startpasswortDone(k, r.uid);
+  await startPasswordDone(k, r.uid);
   hintInBackground(k, r.uid, 'passwort_zurueckgesetzt', undefined, { resolved: r.resolved });
   return r.uid;
 }
@@ -175,9 +175,9 @@ export function cleanOpenRegistrationsOn(k: AccountContext): Promise<number> {
 /** Account and log entry in one transaction: an account without an entry
  * would conceal who created it. Hashing happens before, so bcrypt holds no
  * connection. @returns the new id, or null if the name is taken */
-export async function putAccountAn(
+export async function createAccount(
   k: AccountContext,
-  verwalter: number,
+  admin: number,
   username: string,
   passwort: string,
   asAdmin: boolean,
@@ -186,11 +186,11 @@ export async function putAccountAn(
   return accessTransaction(k, async t => {
     // Also against the addresses: the login searches both columns.
     if (await t.konten.nameTaken(username, 0)) return null;
-    const neu = await t.konten.addAccountOne(username, hash, asAdmin);
-    if (neu === null) return null;
-    await rememberAdminAction(t, verwalter, neu, 'konto_angelegt');
-    if (asAdmin) await rememberAdminAction(t, verwalter, neu, 'verwalter_ernannt');
-    return neu;
+    const fresh = await t.konten.addAccountOne(username, hash, asAdmin);
+    if (fresh === null) return null;
+    await rememberAdminAction(t, admin, fresh, 'konto_angelegt');
+    if (asAdmin) await rememberAdminAction(t, admin, fresh, 'verwalter_ernannt');
+    return fresh;
   }).catch(asDuplicate('benutzername_vergeben'));
 }
 
@@ -219,12 +219,12 @@ export async function register(
 
 /** Lock first, then delete accesses (the token query checks is_active). Sessions
  * fall through the session version, even a row written again. */
-export async function setzeAktiv(k: AccountContext, uid: number, soll: boolean): Promise<{ geaendert: boolean }> {
-  const r = await accessTransaction(k, t => t.konten.writeActive(uid, soll));
+export async function setzeAktiv(k: AccountContext, uid: number, expected: boolean): Promise<{ geaendert: boolean }> {
+  const r = await accessTransaction(k, t => t.konten.writeActive(uid, expected));
   if (!r) notFound('benutzer_nicht_gefunden');
   if (r === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
-  if (!soll) await endAccesses(k, uid);
-  return { geaendert: r.vorher !== soll };
+  if (!expected) await endAccesses(k, uid);
+  return { geaendert: r.vorher !== expected };
 }
 
 /** If the role changes, the browser sessions end: they carry the role
@@ -233,12 +233,12 @@ export async function setzeAktiv(k: AccountContext, uid: number, soll: boolean):
 export async function setzeVerwalterRolle(
   k: AccountContext,
   uid: number,
-  soll: boolean,
+  expected: boolean,
 ): Promise<{ geaendert: boolean }> {
-  const vorher = await accessTransaction(k, t => t.konten.setAdmin(uid, soll));
+  const vorher = await accessTransaction(k, t => t.konten.setAdmin(uid, expected));
   if (!vorher) notFound('benutzer_nicht_gefunden');
   if (vorher === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
-  const geaendert = vorher.vorher !== soll;
+  const geaendert = vorher.vorher !== expected;
   if (geaendert) {
     await endAllSessions(k, uid);
     emptyTokenCache(k);

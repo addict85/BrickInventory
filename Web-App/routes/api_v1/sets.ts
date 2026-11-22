@@ -2,10 +2,10 @@
  * import and instructions hang beside it as routers of their own (index.ts). The work lives in src/sets/. */
 import { viewOf, guardFor } from './middleware';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
-export function buildSetsRouter(d: Pick<Dienste, 'household' | 'account' | 'sets'>) {
+export function buildSetsRouter(d: Pick<Services, 'household' | 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
@@ -83,8 +83,8 @@ export function buildSetsRouter(d: Pick<Dienste, 'household' | 'account' | 'sets
       waehrung: e.currency ?? null,
       streng: true,
     });
-    const { besitzer: _owner, ...antwort } = r.action === 'added' ? r : { ...r, besitzer: null };
-    return { ...antwort };
+    const { besitzer: _owner, ...reply } = r.action === 'added' ? r : { ...r, besitzer: null };
+    return { ...reply };
   });
 
   router.endpunkt('PUT /api/v1/sets/:setNumber', requireToken, async req => {

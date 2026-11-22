@@ -8,25 +8,21 @@ export const ARGON2_COST = { memoryCost: 19_456, timeCost: 2, parallelism: 1 } a
 export const ARGON2_PREFIX = `$argon2id$v=19$m=${ARGON2_COST.memoryCost},t=${ARGON2_COST.timeCost},p=${ARGON2_COST.parallelism}$`;
 
 /** A hash with a different method or different costs is rebuilt after the login. */
-export const needsNewHash = (gespeichert: string): boolean => !gespeichert.startsWith(ARGON2_PREFIX);
+export const needsNewHash = (saved: string): boolean => !saved.startsWith(ARGON2_PREFIX);
 
-export function passwordFits(
-  passwort: string | null | undefined,
-  gespeichert: string,
-  priority = false,
-): Promise<boolean> {
-  const p = String(passwort);
+export function passwordFits(password: string | null | undefined, saved: string, priority = false): Promise<boolean> {
+  const p = String(password);
   return bcryptSchranke.mit(
-    () => (gespeichert.startsWith('$argon2') ? verify(gespeichert, p) : bcryptPool.vergleiche(p, gespeichert)),
+    () => (saved.startsWith('$argon2') ? verify(saved, p) : bcryptPool.vergleiche(p, saved)),
     priority,
   );
 }
 
-export function hashePassword(passwort: string | null | undefined): Promise<string> {
-  return bcryptSchranke.mit(() => hash(String(passwort), ARGON2_COST));
+export function hashePassword(password: string | null | undefined): Promise<string> {
+  return bcryptSchranke.mit(() => hash(String(password), ARGON2_COST));
 }
 
 /** Only at startup (first account, comparison value for unknown names), before requests come. */
-export function hashePasswordImmediately(passwort: string): string {
-  return hashSync(passwort, ARGON2_COST);
+export function hashPasswordImmediately(password: string): string {
+  return hashSync(password, ARGON2_COST);
 }

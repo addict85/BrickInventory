@@ -9,18 +9,18 @@ import type { SetsContext } from './context';
 
 /** In the inventory's condition. null: no set in scope. */
 export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht | number[], sn: string) {
-  const blickfeld = await sk.household.scopeFrom(scopeChoice);
-  const set = await repo.setInField(sk.db, sn, blickfeld);
+  const scope = await sk.household.scopeFrom(scopeChoice);
+  const set = await repo.setInField(sk.db, sn, scope);
   if (!set) return null;
   // The currency from the setting: the app sent its local start value before it knew
   // the setting.
   const currency = await currencyOf(sk, uid);
   const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
-  const preis = await versuche('sets:preis', async () =>
-    sk.finances.fetchPrice(sn, await sk.finances.setState(blickfeld, sn), guideType, currency, ttlHours, null),
+  const price = await versuche('sets:preis', async () =>
+    sk.finances.fetchPrice(sn, await sk.finances.setState(scope, sn), guideType, currency, ttlHours, null),
   );
-  if (!preis.ok)
+  if (!price.ok)
     return {
       set_number: sn,
       currency,
@@ -29,9 +29,9 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
       max_price: null,
       qty_avg_price: null,
       no_price: true,
-      error: preis.fehler.grund,
+      error: price.fehler.grund,
     };
-  const pd = preis.wert;
+  const pd = price.wert;
   return {
     set_number: sn,
     currency,
@@ -58,9 +58,9 @@ export async function setAlarmOfSets(
   sk: SetsContext,
   uid: number,
   sn: string,
-  eingabe: Parameters<SetsContext['finances']['preisalarm']['setzeAlarm']>[3],
+  input: Parameters<SetsContext['finances']['preisalarm']['setzeAlarm']>[3],
 ) {
-  return sk.finances.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), eingabe);
+  return sk.finances.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), input);
 }
 
 export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: Zustand | undefined) {

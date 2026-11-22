@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import type { CatalogReadContract } from '../readContract';
 
-export function minifigsOfSetkatalogs(db: DbInterface, setNumber: string) {
+export function minifigsOfSetCatalog(db: DbInterface, setNumber: string) {
   return db.all<{ fig_number: string; fig_name: string | null; quantity: number | null; image_url: string | null }>(
     `SELECT fig_number, fig_name, quantity, image_url
        FROM set_minifigs_catalog

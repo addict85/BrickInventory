@@ -31,7 +31,7 @@ import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
 import { guardFor, readBody } from '../routes/api_v1/middleware';
-import { stepChutzAtInbox } from '../src/account/http/stepGuard';
+import { stepProtectionAtInbox } from '../src/account/http/stepGuard';
 import { apiDrossel } from '../src/http/apiThrottle';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/dataFiles';
@@ -275,7 +275,7 @@ function apiInbox(app: express.Express, d: Dienste): void {
   // no longer read its body (src/http/apiThrottle.ts).
   app.use('/api/v1', apiDrossel);
   // Sensitive steps of an app token only after the device lock (src/account/http/stepGuard.ts).
-  app.use('/api/v1', stepChutzAtInbox(d.account));
+  app.use('/api/v1', stepProtectionAtInbox(d.account));
   // Read bodies only after login: unauthenticated there are only 16 KB (readBody).
   app.use('/api/v1', readBody);
   app.use('/api/v1', idempotency(d.idempotency));

@@ -1,14 +1,14 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { SetsDependencies, SetsContext } from './context';
-import { mit, buildArea, type Inspect } from '../infra/area';
-import * as erfassen from './addSet';
+import { withValue, buildArea, type Inspect } from '../infra/area';
+import * as acquire from './addSet';
 import * as lesen from './read';
-import * as loeschen from './delete';
+import * as remove from './delete';
 import * as setMove from './setMove';
-import * as dienst from './service';
-import * as inhalt from './content';
+import * as service from './service';
+import * as content from './content';
 import * as barcode from './barcode';
-import * as preise from './prices';
+import * as prices from './prices';
 import * as anleitungen from './instructions';
 import * as csvImport from './csvImport';
 import { setsJobTypes } from './jobTypes';
@@ -20,47 +20,47 @@ export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) 
     a,
     () => ({}),
     (sk: SetsContext) => ({
-      setPresent: mit(sk)(erfassen.setPresent),
-      setsOfAccount: mit(sk.db, setsRepo.setsOfAccount),
-      setErfassen: mit(sk)(erfassen.setErfassen),
-      setSupplement: mit(sk)(erfassen.setSupplement),
-      changeSet: mit(sk)(dienst.changeSet),
-      setsAlsCsv: mit(sk)(dienst.setsAlsCsv),
-      setsLesen: mit(sk)(lesen.setsLesen),
-      readSet: mit(sk)(lesen.readSet),
-      withSetAggregate: mit(sk)(lesen.withSetAggregate),
-      deleteSet: mit(sk)(loeschen.deleteSet),
-      deleteSetFor: mit(sk)(loeschen.deleteSetFor),
-      deleteSetRows: mit(sk)(loeschen.deleteSetRows),
-      moveSet: mit(sk)(setMove.moveSet),
-      setEntriesReassign: mit(sk)(setMove.setEntriesReassign),
-      setInfo: mit(sk)(inhalt.setInfo),
-      setInfoForAccount: mit(sk)(inhalt.setInfoForAccount),
-      minifigsListOfSets: mit(sk)(inhalt.minifigsListOfSets),
-      importPartsOfSets: mit(sk)(inhalt.importPartsOfSets),
-      partListWithRework: mit(sk)(inhalt.partListWithRework),
-      setToBarcode: mit(sk)(barcode.setToBarcode),
-      setPrice: mit(sk)(preise.setPrice),
-      readSetAlerts: mit(sk)(preise.readSetAlerts),
-      setAlarmOfSets: mit(sk)(preise.setAlarmOfSets),
-      deleteAlarmOfSets: mit(sk)(preise.deleteAlarmOfSets),
-      startAlarmCsvImport: mit(sk)(preise.startAlarmCsvImport),
-      setPriceHistory: mit(sk)(preise.setPriceHistory),
-      rememberInstruction: mit(sk)(anleitungen.rememberInstruction),
-      anleitungLoeschen: mit(sk)(anleitungen.anleitungLoeschen),
-      loadInstructionsNew: mit(sk)(anleitungen.loadInstructionsNew),
-      startSetCsvImport: mit(sk)(csvImport.startSetCsvImport),
-      cancelSetCsvImport: mit(sk)(csvImport.cancelSetCsvImport),
-      csvImportStand: mit(sk)(csvImport.csvImportStand),
-      csvImportStatusForStream: mit(sk)(csvImport.csvImportStatusForStream),
-      subscribeCsvImportStatus: mit(sk)(csvImport.subscribeCsvImportStatus),
-      rebrickableList: mit(sk)(dienst.rebrickableList),
-      setBelongsAccount: mit(sk)(dienst.setBelongsAccount),
-      setLocationOfSets: mit(sk)(dienst.setLocationOfSets),
-      locationsWithDefault: mit(sk)(dienst.locationsWithDefault),
+      setPresent: withValue(sk)(acquire.setPresent),
+      setsOfAccount: withValue(sk.db, setsRepo.setsOfAccount),
+      setErfassen: withValue(sk)(acquire.acquireSet),
+      setSupplement: withValue(sk)(acquire.setSupplement),
+      changeSet: withValue(sk)(service.changeSet),
+      setsAlsCsv: withValue(sk)(service.setsAlsCsv),
+      setsLesen: withValue(sk)(lesen.readSets),
+      readSet: withValue(sk)(lesen.readSet),
+      withSetAggregate: withValue(sk)(lesen.withSetAggregate),
+      deleteSet: withValue(sk)(remove.deleteSet),
+      deleteSetFor: withValue(sk)(remove.deleteSetFor),
+      deleteSetRows: withValue(sk)(remove.deleteSetRows),
+      moveSet: withValue(sk)(setMove.moveSet),
+      setEntriesReassign: withValue(sk)(setMove.setEntriesReassign),
+      setInfo: withValue(sk)(content.setInfo),
+      setInfoForAccount: withValue(sk)(content.setInfoForAccount),
+      minifigsListOfSets: withValue(sk)(content.minifigsListOfSets),
+      importPartsOfSets: withValue(sk)(content.importPartsOfSets),
+      partListWithRework: withValue(sk)(content.partListWithRework),
+      setToBarcode: withValue(sk)(barcode.setToBarcode),
+      setPrice: withValue(sk)(prices.setPrice),
+      readSetAlerts: withValue(sk)(prices.readSetAlerts),
+      setAlarmOfSets: withValue(sk)(prices.setAlarmOfSets),
+      deleteAlarmOfSets: withValue(sk)(prices.deleteAlarmOfSets),
+      startAlarmCsvImport: withValue(sk)(prices.startAlarmCsvImport),
+      setPriceHistory: withValue(sk)(prices.setPriceHistory),
+      rememberInstruction: withValue(sk)(anleitungen.rememberInstruction),
+      anleitungLoeschen: withValue(sk)(anleitungen.deleteInstruction),
+      loadInstructionsNew: withValue(sk)(anleitungen.loadInstructionsNew),
+      startSetCsvImport: withValue(sk)(csvImport.startSetCsvImport),
+      cancelSetCsvImport: withValue(sk)(csvImport.cancelSetCsvImport),
+      csvImportStand: withValue(sk)(csvImport.csvImportStand),
+      csvImportStatusForStream: withValue(sk)(csvImport.csvImportStatusForStream),
+      subscribeCsvImportStatus: withValue(sk)(csvImport.subscribeCsvImportStatus),
+      rebrickableList: withValue(sk)(service.rebrickableList),
+      setBelongsAccount: withValue(sk)(service.setBelongsAccount),
+      setLocationOfSets: withValue(sk)(service.setLocationOfSets),
+      locationsWithDefault: withValue(sk)(service.locationsWithDefault),
       auftragsarten: () => setsJobTypes(sk),
-      runCsvImportFrom: mit(sk)(csvImportLauf.runCsvImportFrom),
-      csvImportGivenUp: mit(sk)(csvImportLauf.csvImportGivenUp),
+      runCsvImportFrom: withValue(sk)(csvImportLauf.runCsvImportFrom),
+      csvImportGivenUp: withValue(sk)(csvImportLauf.csvImportGivenUp),
     }),
     inspect,
   );

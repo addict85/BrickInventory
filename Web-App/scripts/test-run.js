@@ -15,9 +15,9 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'roles.js'));
 const args = process.argv.slice(2);
-const seriell = args.includes('--seriell');
-const abdeckung = args.includes('--abdeckung');
-const auswahl = args.filter(a => a !== '--seriell' && a !== '--abdeckung');
+const serial = args.includes('--seriell');
+const coverage = args.includes('--abdeckung');
+const selection = args.filter(a => a !== '--seriell' && a !== '--abdeckung');
 const COVERAGE = path.join(ROOT, 'coverage');
 
 /** @param {string} url @param {string} name */
@@ -39,11 +39,11 @@ function deadlineAtLast(/** @type {number} */ grund) {
 /**
  * A TAP report additionally goes into a file: from it the run reads which
  * files only failed on the deadline.
- * @param {string[]} dateien @param {number} n @param {Record<string, string>} env @param {number} frist
+ * @param {string[]} files @param {number} n @param {Record<string, string>} env @param {number} frist
  * @returns {Promise<{ code: number, frist: string[], andere: number }>}
  */
-function lauf(dateien, n, env, frist = 60_000) {
-  if (!dateien.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
+function lauf(files, n, env, frist = 60_000) {
+  if (!files.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
   // text-output.js keeps text out of the stream of the report frames, expiry.js
   // ends a child that does not end (reasoning there).
   const preloader = [
@@ -55,7 +55,7 @@ function lauf(dateien, n, env, frist = 60_000) {
   ];
   const bericht = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
   const reporter = process.stdout.isTTY ? 'spec' : 'tap';
-  return new Promise(fertig => {
+  return new Promise(finished => {
     const p = spawn(
       process.execPath,
       [
@@ -67,7 +67,7 @@ function lauf(dateien, n, env, frist = 60_000) {
         '--test-reporter-destination=stdout',
         '--test-reporter=tap',
         `--test-reporter-destination=${bericht}`,
-        ...dateien,
+        ...files,
       ],
       // The file as a whole may take longer than a test, but not forever.
       {
@@ -79,14 +79,14 @@ function lauf(dateien, n, env, frist = 60_000) {
     p.on('exit', code => {
       const tap = fs.existsSync(bericht) ? fs.readFileSync(bericht, 'utf8') : '';
       fs.rmSync(bericht, { force: true });
-      fertig({ code: code ?? 1, ...deadlineError(tap, dateien) });
+      finished({ code: code ?? 1, ...deadlineError(tap, files) });
     });
   });
 }
 
 /** Red files at the top level: which ones only failed on the deadline, how many for other reasons.
- * @param {string} tap @param {string[]} dateien */
-function deadlineError(tap, dateien) {
+ * @param {string} tap @param {string[]} files */
+function deadlineError(tap, files) {
   /** @type {string[]} */
   const frist = [];
   let andere = 0;
@@ -94,9 +94,9 @@ function deadlineError(tap, dateien) {
     // The name is the file (it itself ran too long) or a test in it (location).
     const name = /^not ok \d+ - (.*)/.exec(block)?.[1]?.trim() ?? '';
     const ort = /location: '(.+?):\d+:\d+'/.exec(block)?.[1] ?? name;
-    const datei = dateien.find(d => [name, ort].some(x => path.resolve(ROOT, d) === path.resolve(ROOT, x)));
-    if (datei && /testTimeoutFailure|timed out after/.test(block)) {
-      if (!frist.includes(datei)) frist.push(datei);
+    const file = files.find(d => [name, ort].some(x => path.resolve(ROOT, d) === path.resolve(ROOT, x)));
+    if (file && /testTimeoutFailure|timed out after/.test(block)) {
+      if (!frist.includes(file)) frist.push(file);
     } else andere++;
   }
   return { frist, andere };
@@ -105,7 +105,7 @@ function deadlineError(tap, dateien) {
 /** Files that only turned green in the follow-up run: they stand at the end of the run
  * and as a warning in the CI, so that a slow test does not stay silent. */
 /** @type {string[]} */
-const nachgelaufen = [];
+const trailing = [];
 
 /** Whatever only failed on the deadline runs again individually: under load a
  * slip, red individually an error. With TEST_NACHLAUF=aus there is no
@@ -124,14 +124,14 @@ async function withFollowUp(
   console.log(`[test-lauf] Frist überschritten, Nachlauf einzeln: ${r.frist.join(', ')}`);
   const nach = await lauf(r.frist, 1, env, frist * 2);
   console.log(`[test-lauf] Nachlauf ${nach.code === 0 ? 'grün' : 'ROT'}: ${r.frist.length} Dateien`);
-  if (nach.code === 0) nachgelaufen.push(...r.frist);
+  if (nach.code === 0) trailing.push(...r.frist);
   return r.andere > 0 ? r.code || 1 : nach.code;
 }
 
 /** At the end of the run, not between hundreds of test lines. */
 function reportFollowUp() {
-  if (!nachgelaufen.length) return;
-  const text = `${nachgelaufen.length} Datei(en) nur im Nachlauf grün — unter Last zu langsam: ${nachgelaufen.join(', ')}`;
+  if (!trailing.length) return;
+  const text = `${trailing.length} Datei(en) nur im Nachlauf grün — unter Last zu langsam: ${trailing.join(', ')}`;
   console.log(`[test-lauf] WARNUNG: ${text}`);
   console.log(`::warning title=Nachlauf::${text}`);
   if (process.env.GITHUB_STEP_SUMMARY) {
@@ -145,17 +145,17 @@ function reportFollowUp() {
 
 /** Report from the V8 files (scripts/coverage.js); the raw data is superfluous afterwards. */
 async function reportsCoverage() {
-  const bereiche = await require('./coverage').bericht(path.join(COVERAGE, 'v8'));
-  console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(bereiche)}`);
+  const areas = await require('./coverage').bericht(path.join(COVERAGE, 'v8'));
+  console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(areas)}`);
   fs.rmSync(path.join(COVERAGE, 'v8'), { recursive: true, force: true });
 }
 
 /**
  * How many files only skip for lack of a tool: without Chrome the browser files are green without
  * having checked. With REQUIRE_BROWSER=1 or REQUIRE_CADDY=1 they fail instead and do not count.
- * @param {string[]} browser @param {string[]} alle @param {(f: string) => string} quelle
+ * @param {string[]} browser @param {string[]} all @param {(f: string) => string} source
  */
-function withoutTool(browser, alle, quelle) {
+function withoutTool(browser, all, source) {
   let chromeDa = true;
   // The same search as the browser tests; the path as an expression, so that tsc does not check the test helper too.
   try {
@@ -167,7 +167,7 @@ function withoutTool(browser, alle, quelle) {
     process.env.REQUIRE_CADDY === '1' ||
     !!process.env.CADDY_BIN ||
     spawnSync('caddy', ['version'], { stdio: 'ignore' }).status === 0;
-  const caddy = alle.filter(f => /CADDY_BIN/.test(quelle(f))).length;
+  const caddy = all.filter(f => /CADDY_BIN/.test(source(f))).length;
   return (
     `übersprungen: ${chromeDa ? 0 : browser.length} Browser-Dateien ohne Chrome (CHROME_BIN, REQUIRE_BROWSER=1), ` +
     `${caddyDa ? 0 : caddy} Caddy-Dateien ohne Caddy (CADDY_BIN, REQUIRE_CADDY=1)`
@@ -186,19 +186,19 @@ async function main() {
   }
   /** @type {Record<string, string>} */
   const measurement = { TEST_LAUF_GEBAUT: '1' };
-  if (abdeckung) {
+  if (coverage) {
     // An own bundle with an embedded source map: the delivered one stays without.
     const withCard = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
     require('./build-frontend').buildBundle(withCard, { quellkarte: true });
     fs.rmSync(COVERAGE, { recursive: true, force: true });
     fs.mkdirSync(path.join(COVERAGE, 'v8'), { recursive: true });
     Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUENDEL: withCard });
-    const erledigt = new Set();
-    setInterval(() => require('./coverage').compact(path.join(COVERAGE, 'v8'), erledigt), 5000).unref();
+    const done = new Set();
+    setInterval(() => require('./coverage').compact(path.join(COVERAGE, 'v8'), done), 5000).unref();
   }
 
-  const dateien = auswahl.length
-    ? auswahl
+  const files = selection.length
+    ? selection
     : fs
         .readdirSync(path.join(ROOT, 'test'))
         .filter(f => f.endsWith('.test.js'))
@@ -207,20 +207,20 @@ async function main() {
   // Browser files each have their own database, port and Chrome profile; they run
   // separately, because several Chrome per core miss the deadlines (TEST_PARALLEL_BROWSER).
   // Files with `@einzeln` share something outside their database (data/) and run alone.
-  const quelle = (/** @type {string} */ f) => fs.readFileSync(path.resolve(ROOT, f), 'utf8');
+  const source = (/** @type {string} */ f) => fs.readFileSync(path.resolve(ROOT, f), 'utf8');
   const isBrowser = (/** @type {string} */ f) =>
-    /-browser\.test\.js$/.test(f) || /CHROME_BIN|helpers\/app-browser|helpers\/oberflaeche-pruefung/.test(quelle(f));
-  const browser = dateien.filter(isBrowser);
-  if (seriell) {
-    const { code } = await lauf(dateien, 1, measurement, deadlineAtLast(60_000));
-    if (abdeckung) await reportsCoverage();
+    /-browser\.test\.js$/.test(f) || /CHROME_BIN|helpers\/app-browser|helpers\/oberflaeche-pruefung/.test(source(f));
+  const browser = files.filter(isBrowser);
+  if (serial) {
+    const { code } = await lauf(files, 1, measurement, deadlineAtLast(60_000));
+    if (coverage) await reportsCoverage();
     console.log(
-      `[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, dateien, quelle)}`,
+      `[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, files, source)}`,
     );
     process.exit(code);
   }
-  const einzeln = dateien.filter(f => !isBrowser(f) && /@einzeln\b/.test(quelle(f)));
-  const remaining = dateien.filter(f => !browser.includes(f) && !einzeln.includes(f));
+  const single = files.filter(f => !isBrowser(f) && /@einzeln\b/.test(source(f)));
+  const remaining = files.filter(f => !browser.includes(f) && !single.includes(f));
   // Twice as many as cores: many files wait for the database or timers.
   const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(2 * os.availableParallelism(), 8));
   const nb = Math.max(1, Number(process.env.TEST_PARALLEL_BROWSER) || 1);
@@ -237,7 +237,7 @@ async function main() {
     const a = new Client({ connectionString: basis });
     admin = a;
     await a.connect();
-    await raeumeAuf(a, vorlage, true);
+    await cleanUp(a, vorlage, true);
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
     // As in production: first the roles (db-rolle), then the schema as owner (migration).
     const r = rollen(vorlage);
@@ -269,22 +269,22 @@ async function main() {
     if (frist > 60_000)
       console.log(`[test-lauf] Last ${(os.loadavg()[0] ?? 0).toFixed(1)}: Frist je Datei ${frist / 1000} s`);
     code = await withFollowUp(await lauf(remaining, n, env, frist), env, frist);
-    code = (await withFollowUp(await lauf(einzeln, 1, env, frist), env, frist)) || code;
+    code = (await withFollowUp(await lauf(single, 1, env, frist), env, frist)) || code;
     // Browser tests allow themselves 300 s; the runner's deadline applies per
     // file and must not cut them off before that.
     code = (await withFollowUp(await lauf(browser, nb, env, 300_000), env, 300_000)) || code;
   } finally {
     if (admin) {
-      await raeumeAuf(admin, vorlage, true).catch(() => {});
+      await cleanUp(admin, vorlage, true).catch(() => {});
       await admin.end();
     }
   }
   reportFollowUp();
-  if (abdeckung) await reportsCoverage();
+  if (coverage) await reportsCoverage();
   console.log(
-    `[test-lauf] ${remaining.length} Dateien zu ${n} parallel, ${einzeln.length} @einzeln, ` +
+    `[test-lauf] ${remaining.length} Dateien zu ${n} parallel, ${single.length} @einzeln, ` +
       `${browser.length} Browser zu ${nb}, ` +
-      `${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, dateien, quelle)}`,
+      `${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, files, source)}`,
   );
   process.exit(code);
 }
@@ -322,11 +322,7 @@ function createRoles(basis, vorlage, r) {
  * plus databases and roles that tests created under the same stem
  * (test/helpers/test-names.js). Roles afterwards: they can own databases.
  */
-async function raeumeAuf(
-  /** @type {import('pg').Client} */ admin,
-  /** @type {string} */ vorlage,
-  alsoTemplate = false,
-) {
+async function cleanUp(/** @type {import('pg').Client} */ admin, /** @type {string} */ vorlage, alsoTemplate = false) {
   const { rows } = await admin.query(
     `SELECT datname FROM pg_database WHERE datname LIKE $1 || '\\_%' OR ($2 AND datname = $1)`,
     [vorlage, alsoTemplate],

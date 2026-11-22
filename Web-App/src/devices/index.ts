@@ -2,5 +2,5 @@
 export { createDevices } from './area';
 export type { DevicesServices, DevicesContext } from './area';
 export { familyFrom } from './deviceChallenge';
-export type { Familie, Pruefung, Schrittaktion } from './deviceChallenge';
+export type { Familie, Check as Pruefung, StepAction as Schrittaktion } from './deviceChallenge';
 export { REVOCATION_STATE, readRevocationList } from './attestation/revocationList';

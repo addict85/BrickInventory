@@ -1,7 +1,7 @@
 /** The error messages in ONE place, in both languages: the route knows
  * the requester's language, the service does not. */
 
-export type Sprache = 'de' | 'en';
+export type Language = 'de' | 'en';
 
 // Every text once, in both languages.
 export const FEHLER = {
@@ -632,9 +632,9 @@ export const FEHLER = {
 export type ErrorCode = keyof typeof FEHLER;
 
 // From Accept-Language; without a match German.
-export function responseLanguage(req: { headers?: Record<string, unknown> } | undefined): Sprache {
-  const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
-  return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
+export function responseLanguage(req: { headers?: Record<string, unknown> } | undefined): Language {
+  const raw = String(req?.headers?.['accept-language'] || '').toLowerCase();
+  return raw.startsWith('en') || raw.includes(',en') ? 'en' : 'de';
 }
 
 /** What went wrong, in domain terms. Which HTTP status belongs to it is only known by
@@ -667,7 +667,7 @@ export class Fachfehler extends Error {
     readonly art: ErrorKind,
     readonly code: ErrorCode,
     readonly vars?: Record<string, string | number>,
-    readonly zusatz?: Record<string, unknown>,
+    readonly extra?: Record<string, unknown>,
   ) {
     super(errorText(code, 'de', vars));
     this.name = 'Fachfehler';
@@ -707,15 +707,15 @@ export function fileError(art: ErrorKind, code: ErrorCode, vars?: Record<string,
   return new Fachfehler(art, code, vars);
 }
 
-export function errorText(code: ErrorCode, sprache: Sprache = 'de', vars?: Record<string, string | number>): string {
-  const eintrag = FEHLER[code];
+export function errorText(code: ErrorCode, language: Language = 'de', vars?: Record<string, string | number>): string {
+  const entry = FEHLER[code];
   // An error message must not crash itself: a missing entry passes through
   // as a code in plaintext and tells the log what is missing.
-  if (!eintrag) {
+  if (!entry) {
     console.error(`[fehlerTexte] Unbekannter Fehlercode: ${String(code)}`);
     return String(code);
   }
-  let text: string = eintrag[sprache] || eintrag.de;
+  let text: string = entry[language] || entry.de;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) text = text.split(`{${k}}`).join(String(v));
   }

@@ -8,10 +8,10 @@ import { released, asAdmin } from '../../src/account/http/stepGuard';
 import { fachfehler, Fachfehler } from '../../src/infra/errorTexts';
 import { emailValid } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 export function buildSettingsGlobalRouter(
-  d: Pick<Dienste, 'settings' | 'mail' | 'account' | 'profile' | 'management'>,
+  d: Pick<Services, 'settings' | 'mail' | 'account' | 'profile' | 'management'>,
 ) {
   const { requireApiAdmin: requireAdmin, requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
@@ -114,8 +114,8 @@ export function buildSettingsGlobalRouter(
         )
       ).every(Boolean),
     };
-    const erledigt = await wert('einrichtung_erledigt');
-    return { offen: !erledigt && (passwort || !quellen.rebrickable), passwort_aendern: passwort, quellen };
+    const done = await wert('einrichtung_erledigt');
+    return { offen: !done && (passwort || !quellen.rebrickable), passwort_aendern: passwort, quellen };
   });
 
   router.endpunkt('POST /api/v1/settings/einrichtung/fertig', requireAdmin, async _req => {

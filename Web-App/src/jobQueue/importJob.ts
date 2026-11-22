@@ -1,5 +1,5 @@
 import { reportError, logAndContinue } from '../infra/error';
-import { errorText, responseLanguage, type ErrorCode, type Sprache } from '../infra/errorTexts';
+import { errorText, responseLanguage, type ErrorCode, type Language } from '../infra/errorTexts';
 
 /** ONE row per account, so that all UIs show the same bar. */
 
@@ -33,13 +33,13 @@ type ImportJob =
 export function buildJobStatus(
   job: ImportJob,
   req?: { headers?: Record<string, unknown> },
-  sprache: Sprache = responseLanguage(req),
+  language: Language = responseLanguage(req),
 ) {
   if (!job?.status) {
-    return { success: false, code: 'kein_import_laeuft', error: errorText('kein_import_laeuft', sprache) };
+    return { success: false, code: 'kein_import_laeuft', error: errorText('kein_import_laeuft', language) };
   }
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportResult) =>
-    r.code ? { ...r, error: errorText(r.code as ErrorCode, sprache, r.vars) } : r,
+    r.code ? { ...r, error: errorText(r.code as ErrorCode, language, r.vars) } : r,
   );
   // A set the catalog does not know is booked but worth a warning: green would mean "all known".
   const ok = results.filter((r: ImportResult) => r.success && !r.katalog_offen).length;
@@ -113,20 +113,20 @@ const REPORT_GAP_MS = 300;
 export async function startJob(
   k: JobsContext,
   userId: number,
-  angaben: { total: number; current?: string | null },
+  details: { total: number; current?: string | null },
 ): Promise<boolean> {
   // If reading fails, nothing is started: overwriting a foreign import when in doubt
   // is the more expensive mistake.
-  const laufend = await jobGet(k, userId).catch(e => {
+  const running = await jobGet(k, userId).catch(e => {
     reportError('import-auftrag:stand lesen', e);
     return { status: 'running' };
   });
-  if (laufend && (laufend.status === 'running' || laufend.status === 'pending')) return false;
+  if (running && (running.status === 'running' || running.status === 'pending')) return false;
   await jobSet(k, userId, {
     status: 'running',
-    total: angaben.total,
+    total: details.total,
     done: 0,
-    current: angaben.current ?? null,
+    current: details.current ?? null,
     results: JSON.stringify([]),
     error: null,
     started_at: k.uhr.datum().toISOString(),
@@ -135,46 +135,46 @@ export async function startJob(
   return true;
 }
 
-const gemeldet = (k: JobsContext) => k.faecher.fach('importGemeldet', () => new Map<number, number>());
+const reported = (k: JobsContext) => k.faecher.fach('importGemeldet', () => new Map<number, number>());
 
 /** Throttled, so that a fast import does not write every row to the database. */
 export async function reportJob(
   k: JobsContext,
   userId: number,
-  angaben: { done: number; total?: number; current?: string | null },
-  unbedingt = false,
+  details: { done: number; total?: number; current?: string | null },
+  unconditional = false,
 ): Promise<void> {
-  const jetzt = k.uhr.jetzt();
-  const _lastly = gemeldet(k);
-  if (!unbedingt && jetzt - (_lastly.get(userId) ?? 0) < REPORT_GAP_MS) return;
-  _lastly.set(userId, jetzt);
+  const now = k.uhr.jetzt();
+  const _lastly = reported(k);
+  if (!unconditional && now - (_lastly.get(userId) ?? 0) < REPORT_GAP_MS) return;
+  _lastly.set(userId, now);
   await jobUpdate(k, userId, {
-    done: angaben.done,
-    ...(angaben.total !== undefined ? { total: angaben.total } : {}),
-    ...(angaben.current !== undefined ? { current: angaben.current } : {}),
+    done: details.done,
+    ...(details.total !== undefined ? { total: details.total } : {}),
+    ...(details.current !== undefined ? { current: details.current } : {}),
   });
   await emitJobStatus(k, userId);
 }
 
 // Results per item, otherwise the bar shows "0 ok"; open remains an outcome of its own (warn).
-export async function beendeAuftrag(
+export async function finishJob(
   k: JobsContext,
   userId: number,
-  angaben: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
-  zeilen?: ImportResult[],
+  details: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
+  rows?: ImportResult[],
 ): Promise<void> {
-  const results = zeilen ?? [
-    ...Array.from({ length: angaben.ok }, () => ({ success: true })),
-    ...Array.from({ length: angaben.warn ?? 0 }, () => ({ success: false, isWarning: true })),
-    ...Array.from({ length: angaben.fehler }, () => ({ success: false })),
+  const results = rows ?? [
+    ...Array.from({ length: details.ok }, () => ({ success: true })),
+    ...Array.from({ length: details.warn ?? 0 }, () => ({ success: false, isWarning: true })),
+    ...Array.from({ length: details.fehler }, () => ({ success: false })),
   ];
   await jobUpdate(k, userId, {
-    status: angaben.abgebrochen ? 'cancelled' : 'done',
+    status: details.abgebrochen ? 'cancelled' : 'done',
     current: null,
-    done: angaben.done,
+    done: details.done,
     results: JSON.stringify(results),
   });
-  gemeldet(k).delete(userId);
+  reported(k).delete(userId);
   await emitJobStatus(k, userId);
 }
 

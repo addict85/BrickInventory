@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { buildArea, mit, type Inspect } from '../infra/area';
+import { buildArea, withValue, type Inspect } from '../infra/area';
 import * as counter from './counter';
 import { access, type ThrottleDependencies, type ThrottleContext } from './context';
 
@@ -11,14 +11,14 @@ export function createThrottle(a: ThrottleDependencies, inspect?: Inspect<Thrott
     a,
     access,
     (k: ThrottleContext) => ({
-      counterState: mit(k)(counter.counterState),
-      countAttempt: mit(k)(counter.countAttempt),
-      reserve: mit(k)(counter.reserve),
-      releaseSlot: mit(k)(counter.releaseSlot),
-      forgetCounter: mit(k)(counter.forgetCounter),
-      countInWindow: mit(k)(counter.countInWindow),
-      cleanUp: mit(k)(counter.cleanUp),
-      oncePerDay: mit(k)(counter.oncePerDay),
+      counterState: withValue(k)(counter.counterState),
+      countAttempt: withValue(k)(counter.countAttempt),
+      reserve: withValue(k)(counter.reserve),
+      releaseSlot: withValue(k)(counter.releaseSlot),
+      forgetCounter: withValue(k)(counter.forgetCounter),
+      countInWindow: withValue(k)(counter.countInWindow),
+      cleanUp: withValue(k)(counter.cleanUp),
+      oncePerDay: withValue(k)(counter.oncePerDay),
       hourlyState: k.counter.hourlyState,
       countHour: k.counter.countHour,
     }),

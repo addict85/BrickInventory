@@ -1,8 +1,8 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { kaufpreisIn, marktpreisSql, mittelUeber } from '../../../db/geldSql';
+import { purchasePriceIn, marketPriceSql, averageOver } from '../../../db/geldSql';
 
-export function dailyPricesOfSets(db: DbInterface, setNumber: string, currency: string, zustand: string) {
+export function dailyPricesOfSets(db: DbInterface, setNumber: string, currency: string, condition: string) {
   return db.all<{
     qty_avg_price: number | null;
     avg_price: number | null;
@@ -16,7 +16,7 @@ export function dailyPricesOfSets(db: DbInterface, setNumber: string, currency: 
        FROM price_history
       WHERE set_number = $1 AND currency_code = $2 AND condition = $3
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
-    [setNumber, currency, zustand],
+    [setNumber, currency, condition],
   );
 }
 
@@ -31,7 +31,7 @@ export function cachePricesOfSets(db: DbInterface, setNumber: string, currency: 
   }>(
     `SELECT condition, avg_price, qty_avg_price, min_price, max_price, fetched_at
        FROM price_cache
-      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL`,
+      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marketPriceSql()} IS NOT NULL`,
     [setNumber, currency],
   );
 }
@@ -48,7 +48,7 @@ export function firstPurchaseOfSets(
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
        FROM ${l.setBestand('= ANY($1)')} s
        LEFT JOIN LATERAL (
-         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${l.setErfassungen()} e
+         SELECT ${purchasePriceIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${l.setErfassungen()} e
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -60,7 +60,7 @@ export function firstPurchaseOfSets(
   );
 }
 
-export function purchaseChnittOfSets(
+export function purchaseAverageOfSets(
   db: DbInterface,
   l: FinancesReadContract,
   uids: number[],
@@ -68,8 +68,8 @@ export function purchaseChnittOfSets(
   currency: string,
 ) {
   return db.all<{ condition: string; avg_purchase: number | null; qty: string }>(
-    `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
-       FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
+    `SELECT condition, ${averageOver('k')} AS avg_purchase, SUM(quantity) AS qty
+       FROM (SELECT condition, quantity, ${purchasePriceIn('purchase_price', '$3')} AS k
                FROM ${l.setErfassungen('= ANY($1)')} x
               -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
               -- die auch die Bewertung im Haushalt anwendet.
@@ -79,16 +79,16 @@ export function purchaseChnittOfSets(
   );
 }
 
-export function deleteOldHistory(db: DbInterface, tage: string) {
+export function deleteOldHistory(db: DbInterface, days: string) {
   return db.run(
     `DELETE FROM price_history
       WHERE recorded_at < NOW() - ($1 || ' days')::interval`,
-    [tage],
+    [days],
   );
 }
 
 /** The kind chooses the tables here, not the caller: that way the repository states what it reads. */
-const PREISTABELLEN = {
+const PRICE_TABLES = {
   part: { verlauf: 'part_price_history', cache: 'part_price_cache' },
   fig: { verlauf: 'minifig_price_history', cache: 'minifig_price_cache' },
 } as const;
@@ -105,7 +105,7 @@ export function manualSeries(
   return db.all<{ avg_price: number | null; qty_avg_price: number | null; recorded_at: string }>(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM ${PREISTABELLEN[art].verlauf}
+       FROM ${PRICE_TABLES[art].verlauf}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [...keyVals, currency, cond],
@@ -120,14 +120,14 @@ export function cachePricesAfterKey(
   currency: string,
 ) {
   return db.all<{ condition: string; avg_price: number | null; qty_avg_price: number | null }>(
-    `SELECT condition, avg_price, qty_avg_price FROM ${PREISTABELLEN[art].cache}
-      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND ${marktpreisSql()} IS NOT NULL
+    `SELECT condition, avg_price, qty_avg_price FROM ${PRICE_TABLES[art].cache}
+      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND ${marketPriceSql()} IS NOT NULL
       ORDER BY fetched_at DESC`,
     [...keyVals, currency],
   );
 }
 
-export function purchaseChnitteAfterKey(
+export function purchaseAveragesByKey(
   db: DbInterface,
   l: FinancesReadContract,
   art: 'part' | 'fig',
@@ -137,8 +137,8 @@ export function purchaseChnitteAfterKey(
   currency: string,
 ) {
   return db.all<{ condition: string; avg_purchase: number | null }>(
-    `SELECT condition, ${mittelUeber('k')} AS avg_purchase
-       FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
+    `SELECT condition, ${averageOver('k')} AS avg_purchase
+       FROM (SELECT condition, quantity, ${purchasePriceIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
                FROM ${art === 'part' ? l.teilErfassungen() : l.figurErfassungen()} x
               WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,

@@ -12,11 +12,11 @@ export { reportAccessChange } from '../accessChange';
 export const WATCH_TICK_MS = 15_000;
 
 function sessionAlive(req: Request): Promise<boolean> {
-  const speicher = req.sessionStore;
-  if (!speicher || !req.sessionID) return Promise.resolve(true);
-  return new Promise((fertig, scheitern) =>
-    speicher.get(req.sessionID, (e: unknown, s?: { userId?: number } | null) =>
-      e ? scheitern(e) : fertig(s?.userId === req.session.userId),
+  const store = req.sessionStore;
+  if (!store || !req.sessionID) return Promise.resolve(true);
+  return new Promise((finished, fail) =>
+    store.get(req.sessionID, (e: unknown, s?: { userId?: number } | null) =>
+      e ? fail(e) : finished(s?.userId === req.session.userId),
     ),
   );
 }
@@ -29,9 +29,9 @@ export async function accessAppliesStill(konto: AccountServices, req: Request): 
     // Logging out only deletes this one session, the version stays.
     return sessionAlive(req);
   }
-  const kopf = String(req.headers.authorization || '');
-  if (!kopf.startsWith('Bearer ')) return false;
-  return konto.tokenGilt(kopf.slice(7));
+  const header = String(req.headers.authorization || '');
+  if (!header.startsWith('Bearer ')) return false;
+  return konto.tokenGilt(header.slice(7));
 }
 
 /** `beenden` runs at most once, as soon as the access no longer applies. A
@@ -40,34 +40,34 @@ export async function accessAppliesStill(konto: AccountServices, req: Request): 
 export function watchViaAccess(
   konto: AccountServices,
   req: Request,
-  beenden: () => void,
-  taktMs = WATCH_TICK_MS,
+  end: () => void,
+  tickMs = WATCH_TICK_MS,
 ): () => void {
-  let aus = false,
-    laeuft = false;
-  const pruefe = async () => {
-    if (aus || laeuft) return;
-    laeuft = true;
+  let from = false,
+    running = false;
+  const check = async () => {
+    if (from || running) return;
+    running = true;
     try {
-      if (!(await accessAppliesStill(konto, req)) && !aus) {
-        abmelden();
-        beenden();
+      if (!(await accessAppliesStill(konto, req)) && !from) {
+        deregister();
+        end();
       }
     } catch (e) {
       reportError('strom:zugang', e);
     } finally {
-      laeuft = false;
+      running = false;
     }
   };
-  const uhr = setInterval(pruefe, taktMs);
-  uhr.unref?.();
-  const weg = atAccessChange(() => void pruefe());
-  function abmelden() {
-    aus = true;
-    clearInterval(uhr);
-    weg();
+  const clock = setInterval(check, tickMs);
+  clock.unref?.();
+  const route = atAccessChange(() => void check());
+  function deregister() {
+    from = true;
+    clearInterval(clock);
+    route();
   }
-  return abmelden;
+  return deregister;
 }
 
 /** The last event of an SSE stream whose access ended. */

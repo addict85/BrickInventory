@@ -12,8 +12,8 @@ import { asDuplicate } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
 const HOUR_MS = 60 * 60 * 1000;
-const RUECKSETZ_VALID_MIN = 60,
-  RUECKSETZ_PAUSE_MIN = 15,
+const RESET_VALID_MIN = 60,
+  RESET_PAUSE_MIN = 15,
   MIN_DURATION_MS = 400;
 
 /** Exception: the mail goes out even without a readable setting, then in German.
@@ -36,7 +36,7 @@ async function withMinDuration(work: () => Promise<void>): Promise<void> {
   await new Promise(r => setTimeout(r, Math.max(0, MIN_DURATION_MS - (Date.now() - start))));
 }
 
-export interface Registrierung {
+export interface Registration {
   username: string;
   email: string;
   first_name?: string | null | undefined;
@@ -47,12 +47,12 @@ export interface Registrierung {
 
 /** A taken address or a taken name computes as long as a new account.
  * @returns whether the mail went out */
-export async function tryRegistration(k: AccountContext, r: Registrierung): Promise<boolean> {
-  const inhaber = await k.konten.accountWithEmail(r.email);
-  if (inhaber) {
+export async function tryRegistration(k: AccountContext, r: Registration): Promise<boolean> {
+  const holder = await k.konten.accountWithEmail(r.email);
+  if (holder) {
     await computeHowRegistration(r.passwort);
-    const sprache = await mailLanguage(k, inhaber.id);
-    return sendOut(() => k.mail.mailRegistrationAttempt(inhaber.email, sprache));
+    const language = await mailLanguage(k, holder.id);
+    return sendOut(() => k.mail.mailRegistrationAttempt(holder.email, language));
   }
   if (await k.konten.nameTaken(r.username, 0)) {
     await computeHowRegistration(r.passwort);
@@ -61,7 +61,7 @@ export async function tryRegistration(k: AccountContext, r: Registrierung): Prom
   return newAccount(k, r);
 }
 
-async function newAccount(k: AccountContext, r: Registrierung): Promise<boolean> {
+async function newAccount(k: AccountContext, r: Registration): Promise<boolean> {
   const token = crypto.randomBytes(32).toString('hex');
   // Only as SHA-256: with a database leak a pending link would otherwise be redeemable.
   const newId = await register(k, {
@@ -77,18 +77,18 @@ async function newAccount(k: AccountContext, r: Registrierung): Promise<boolean>
     await inSystemContext('registrierung', () => k.einstellungen.setUserSetting(newId, 'language', r.lang)).catch(
       logAndContinue(`registrierung:sprache ${newId}`),
     );
-  const mehrere = (await k.konten.openRegistrations(r.email)) > 1;
-  return sendOut(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', mehrere));
+  const several = (await k.konten.openRegistrations(r.email)) > 1;
+  return sendOut(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', several));
 }
 
 /** Above the limit silently no mail: a rejection would reveal that someone is harassing the address. */
 export function confirmationAgainRequest(k: AccountContext, email: string): Promise<void> {
   return withMinDuration(async () => {
-    const gedrosselt = await targetThrottled(k, 'bestaetigung-ziel', email, 3, HOUR_MS);
+    const throttled = await targetThrottled(k, 'bestaetigung-ziel', email, 3, HOUR_MS);
     const token = crypto.randomBytes(32).toString('hex');
-    const konto = gedrosselt
+    const konto = throttled
       ? null
-      : await k.konten.renewEmailTokenIfFree(email, tokenDigest(token), 24, RUECKSETZ_PAUSE_MIN);
+      : await k.konten.renewEmailTokenIfFree(email, tokenDigest(token), 24, RESET_PAUSE_MIN);
     // Do not await, otherwise the duration of the SMTP send would reveal the address.
     if (konto)
       mailLanguage(k, konto.id)
@@ -98,16 +98,13 @@ export function confirmationAgainRequest(k: AccountContext, email: string): Prom
 }
 
 /** At most one link per account and RUECKSETZ_PAUSE_MIN: otherwise a stranger floods the mailbox. */
-export function ruecksetzLinkRequest(kx: AccountContext, email: string): Promise<void> {
+export function resetLinkRequest(kx: AccountContext, email: string): Promise<void> {
   return withMinDuration(async () => {
-    const gedrosselt = await targetThrottled(kx, 'forgot-ziel', email, 3, HOUR_MS);
-    const user = gedrosselt ? null : await kx.konten.activeAccountAfterEmail(email);
+    const throttled = await targetThrottled(kx, 'forgot-ziel', email, 3, HOUR_MS);
+    const user = throttled ? null : await kx.konten.activeAccountAfterEmail(email);
     const token = crypto.randomBytes(32).toString('hex');
     const k = kx.konten;
-    if (
-      !user ||
-      !(await k.setRuecksetzTokenIfFree(user.id, tokenDigest(token), RUECKSETZ_VALID_MIN, RUECKSETZ_PAUSE_MIN))
-    )
+    if (!user || !(await k.setRuecksetzTokenIfFree(user.id, tokenDigest(token), RESET_VALID_MIN, RESET_PAUSE_MIN)))
       return;
     mailLanguage(kx, user.id)
       // To the STORED address: the entered one also matches via LOWER() as a Unicode variant.
@@ -120,6 +117,6 @@ export function nameToConfirmation(k: AccountContext, token: string): Promise<st
   return k.konten.nameZuEmailToken(tokenDigest(token));
 }
 
-export function accountToRuecksetzLink(k: AccountContext, token: string) {
+export function accountToResetLink(k: AccountContext, token: string) {
   return k.konten.accountAfterRuecksetzToken(tokenDigest(token));
 }

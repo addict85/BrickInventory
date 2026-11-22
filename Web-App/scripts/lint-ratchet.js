@@ -26,9 +26,9 @@ const r = spawnSync(process.execPath, [biome, art, '--reporter=json', '--max-dia
   maxBuffer: 256 * 1024 * 1024,
 });
 /** @type {{ diagnostics: { category: string, location?: { path?: string } }[] }} */
-let bericht;
+let report;
 try {
-  bericht = JSON.parse(r.stdout);
+  report = JSON.parse(r.stdout);
 } catch {
   console.error(`[lint] Biome lieferte keinen Bericht (Exit ${r.status}):\n${(r.stderr || r.stdout).slice(-2000)}`);
   process.exit(2);
@@ -36,21 +36,21 @@ try {
 
 // Own rules (biome/*.grit) report as "plugin"; they count like any other lint rule.
 const isLint = (/** @type {{ category: string }} */ d) => d.category.startsWith('lint/') || d.category === 'plugin';
-const funde = bericht.diagnostics.filter(d => (art === 'lint' ? isLint(d) : d.category === 'format'));
-const fremd = bericht.diagnostics.filter(d => !isLint(d) && d.category !== 'format');
+const findings = report.diagnostics.filter(d => (art === 'lint' ? isLint(d) : d.category === 'format'));
+const fremd = report.diagnostics.filter(d => !isLint(d) && d.category !== 'format');
 if (fremd.length) {
   console.error(
     `[${art}] Biome meldet Fehler ausserhalb der Regeln:\n${fremd.map(d => `${d.category}: ${d.location?.path ?? ''}`).join('\n')}`,
   );
   process.exit(2);
 }
-const ist = funde.length;
+const actual = findings.length;
 const je = new Map();
-for (const d of funde) je.set(d.category, (je.get(d.category) || 0) + 1);
+for (const d of findings) je.set(d.category, (je.get(d.category) || 0) + 1);
 const was = art === 'lint' ? 'Lint-Funde' : 'nicht formatierte Dateien';
-if (ist > limit) {
+if (actual > limit) {
   console.error(
-    `[${art}] ${ist} ${was}, erlaubt sind ${limit}. Neue Funde mit \`npx biome ${art} <datei>\` ansehen` +
+    `[${art}] ${actual} ${was}, erlaubt sind ${limit}. Neue Funde mit \`npx biome ${art} <datei>\` ansehen` +
       (art === 'format' ? ' und mit `npx biome format --write <datei>` beheben.' : '.'),
   );
   if (art === 'lint')
@@ -64,5 +64,5 @@ if (ist > limit) {
   process.exit(1);
 }
 console.log(
-  `[${art}] ${ist} ${was} (Schranke ${limit})${ist < limit ? ' — Schranke in scripts/lint-schranken.json nachziehen' : ''}`,
+  `[${art}] ${actual} ${was} (Schranke ${limit})${actual < limit ? ' — Schranke in scripts/lint-schranken.json nachziehen' : ''}`,
 );

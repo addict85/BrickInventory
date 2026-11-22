@@ -4,11 +4,11 @@ import { guardFor } from './middleware';
 import { proxyHintStatus } from '../../src/http/proxyHint';
 import { pageFrom } from '../../src/infra/page';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 import { fachfehler } from '../../src/infra/errorTexts';
 
 export function buildAdminRouter(
-  d: Pick<Dienste, 'settings' | 'jobQueue' | 'catalog' | 'account' | 'externalSources' | 'management'>,
+  d: Pick<Services, 'settings' | 'jobQueue' | 'catalog' | 'account' | 'externalSources' | 'management'>,
 ) {
   const { requireApiAdmin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1', { largeIds: true });

@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { EntryRow } from '../../../db/stockQuantity';
-import type { Spalten } from '../../../db/rows';
+import type { Columns } from '../../../db/rows';
 
 /** Price and condition live in the LATEST acquisition, the stock row only holds the key —
  * the quantity is the sum of the acquisitions. */
@@ -11,7 +11,7 @@ export function manualPartRow(
   partNumber: string,
   colorId: number,
 ): Promise<{ id: number } | undefined> {
-  return db.get<Spalten<'parts', 'id'>>(
+  return db.get<Columns<'parts', 'id'>>(
     "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, partNumber, colorId],
   );

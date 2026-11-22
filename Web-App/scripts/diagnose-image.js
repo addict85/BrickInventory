@@ -18,7 +18,7 @@ const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
 const { DATA_DIR } = require(path.join(ROOT, 'dist/src/infra/appPaths.js'));
 
-const zeile = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
+const row = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
 
 /** @param {string} url */
 function hole(url) {
@@ -74,8 +74,8 @@ function hole(url) {
   if (!rows.length) console.log('   ⚠️  Kein Konto besitzt dieses Set.');
   for (const r of rows) {
     console.log(`   ── ${r.username || r.user_id}`);
-    zeile('image_url', r.image_url || '∅ leer');
-    zeile('image_local', r.image_local || '∅ leer');
+    row('image_url', r.image_url || '∅ leer');
+    row('image_local', r.image_local || '∅ leer');
   }
 
   // ── 2. The shared catalog ───────────────────────────────────────────────────
@@ -87,26 +87,26 @@ function hole(url) {
   console.log('\n2. set_catalog (kontoübergreifend):');
   if (!cat) console.log('   ⚠️  Kein Katalogeintrag — dann kann auch der Rückfall nichts liefern.');
   else {
-    zeile('name', cat.name || '∅');
-    zeile('image_url', cat.image_url || '∅ leer');
-    zeile('image_local', cat.image_local || '∅ leer');
+    row('name', cat.name || '∅');
+    row('image_url', cat.image_url || '∅ leer');
+    row('image_local', cat.image_local || '∅ leer');
   }
 
   // ── 3. What the API makes of it ─────────────────────────────────────────────
   const effective = rows[0]?.image_url || cat?.image_url || null;
-  const lokal = rows[0]?.image_local || cat?.image_local || null;
+  const local = rows[0]?.image_local || cat?.image_local || null;
   console.log('\n3. Was die API ausliefert (COALESCE seither):');
-  zeile('image_local', lokal || '∅ leer');
-  zeile('image_url', effective || '∅ leer');
-  if (!lokal && !effective) {
+  row('image_local', local || '∅ leer');
+  row('image_url', effective || '∅ leer');
+  if (!local && !effective) {
     console.log('   ⚠️  BEIDE leer — die Clients haben nichts anzuzeigen. Das ist die Ursache.');
   }
 
   // ── 4. Are the files really there? ──────────────────────────────────────────
   console.log('\n4. Dateien auf der Platte:');
-  if (!lokal) console.log('   (keine lokale Adresse hinterlegt)');
+  if (!local) console.log('   (keine lokale Adresse hinterlegt)');
   else {
-    const abs = path.join(DATA_DIR, lokal.replace(/^\//, ''));
+    const abs = path.join(DATA_DIR, local.replace(/^\//, ''));
     const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
     const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
     /** @type {Array<[string, string]>} */
@@ -116,7 +116,7 @@ function hole(url) {
     ];
     for (const [was, p] of pairs) {
       const st = fs.existsSync(p) ? fs.statSync(p) : null;
-      zeile(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
+      row(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
     }
     console.log('   Hinweis: Fehlt nur die Vorschau, liefert die Route seither');
     console.log('   das Original aus — das ist KEIN Fehler.');
@@ -127,8 +127,8 @@ function hole(url) {
   if (!effective || effective.startsWith('/')) console.log('   (keine externe Adresse zu prüfen)');
   else {
     const r = await hole(effective);
-    zeile('Adresse', effective);
-    zeile('Antwort', `${r.status}${r.typ ? '  ' + r.typ : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
+    row('Adresse', effective);
+    row('Antwort', `${r.status}${r.typ ? '  ' + r.typ : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
     if (r.status === 404) {
       console.log('   ⚠️  404 — die hinterlegte Adresse zeigt ins Leere. Bei ganz neuen Sets');
       console.log('   ist das oft der geratene BrickLink-Rückfall aus clients/bricklink.ts');

@@ -1,18 +1,18 @@
 /** What the image services receive: access, compartments, jobs, household, external sources and the
  * image works. Separate from area.ts so that a service knows its type without an import cycle. */
 import type { Konfig } from '../infra/config';
-import { mit, withContract, type Kontext } from '../infra/area';
+import { withValue, withContract, type Context } from '../infra/area';
 import type { ImagesReadContract } from './readContract';
 import type { Faecher } from '../infra/cache';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { HouseholdServices } from '../household';
-import * as bildBlickfeld from './repository/imageScope';
-import * as bildFehlschlaege from './repository/imageFailures';
-import * as bildStammCdn from './repository/imageMasterCdn';
-import * as bildbedarf from './repository/imageDemand';
-import type { Uhr } from '../infra/clock';
+import * as imageScope from './repository/imageScope';
+import * as imageFailures from './repository/imageFailures';
+import * as imageMasterCdn from './repository/imageMasterCdn';
+import * as imageDemand from './repository/imageDemand';
+import type { Clock } from '../infra/clock';
 
 /** Fetch and shrink the set image via the context instead of the import: that way a
  * test replaces network and sharp at the wiring (buildServices) instead of bending modules. */
@@ -24,7 +24,7 @@ export interface ImageWorker {
 }
 
 export interface ImagesDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   konfig: Readonly<Konfig>;
   db: Db;
   faecher: Faecher;
@@ -35,26 +35,26 @@ export interface ImagesDependencies {
   lesevertrag: ImagesReadContract;
 }
 
-export const zugang = (db: Db, l: ImagesReadContract) => ({
+export const access = (db: Db, l: ImagesReadContract) => ({
   bildBlickfeld: {
-    setsInScope: withContract(db, l)(bildBlickfeld.setsInScope),
+    setsInScope: withContract(db, l)(imageScope.setsInScope),
   },
   bildFehlschlaege: {
-    freshFailures: mit(db)(bildFehlschlaege.freshFailures),
-    forgetFailures: mit(db)(bildFehlschlaege.forgetFailures),
-    forgetAllFailures: mit(db)(bildFehlschlaege.forgetAllFailures),
-    rememberFailures: mit(db)(bildFehlschlaege.rememberFailures),
+    freshFailures: withValue(db)(imageFailures.freshFailures),
+    forgetFailures: withValue(db)(imageFailures.forgetFailures),
+    forgetAllFailures: withValue(db)(imageFailures.forgetAllFailures),
+    rememberFailures: withValue(db)(imageFailures.rememberFailures),
   },
   bildStammCdn: {
-    cdnZuBildstamm: mit(db)(bildStammCdn.cdnZuBildstamm),
+    cdnZuBildstamm: withValue(db)(imageMasterCdn.cdnToImageMaster),
   },
   bildbedarf: {
-    rememberImageRequests: mit(db)(bildbedarf.rememberImageRequests),
-    deleteOldImageRequests: mit(db)(bildbedarf.deleteOldImageRequests),
-    countImageRequests: mit(db)(bildbedarf.countImageRequests),
-    deleteAllImageRequests: mit(db)(bildbedarf.deleteAllImageRequests),
-    entnimmBildwuensche: mit(db)(bildbedarf.entnimmBildwuensche),
-    seriesCatalogImagesOne: mit(db)(bildbedarf.seriesCatalogImagesOne),
+    rememberImageRequests: withValue(db)(imageDemand.rememberImageRequests),
+    deleteOldImageRequests: withValue(db)(imageDemand.deleteOldImageRequests),
+    countImageRequests: withValue(db)(imageDemand.countImageRequests),
+    deleteAllImageRequests: withValue(db)(imageDemand.deleteAllImageRequests),
+    entnimmBildwuensche: withValue(db)(imageDemand.takeImageRequests),
+    seriesCatalogImagesOne: withValue(db)(imageDemand.seriesCatalogImagesOne),
   },
 });
-export type ImagesContext = Kontext<ImagesDependencies, ReturnType<typeof zugang>>;
+export type ImagesContext = Context<ImagesDependencies, ReturnType<typeof access>>;

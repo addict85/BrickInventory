@@ -9,7 +9,7 @@ import { logAndContinue } from '../src/infra/error';
 
 /** What happens after loading the base into an empty database (the first
  * account). The database layer knows no accounts; whoever creates the access passes it along. */
-export type Erststart = () => Promise<void>;
+export type FirstStart = () => Promise<void>;
 
 // The oldest migration an existing database may build on: db/basis.sql
 // and all migrations after it only know schemas from here on. Anything older first
@@ -19,7 +19,7 @@ const MINIMUM_VERSION = '0050-teilezaehler-nur-bestehende-konten.sql';
 /** An EMPTY database gets db/basis.sql (an image of the migrations), then
  * only the newer migrations; an existing one stays untouched.
  * true if the base was loaded. */
-export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: Erststart): Promise<boolean> {
+export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: FirstStart): Promise<boolean> {
   const c = await ownConnection();
   try {
     const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
@@ -49,7 +49,7 @@ export async function initSchema(ownConnection: () => Promise<Client>, firstStar
 export async function initSchemaOnce(
   pool: Pool,
   initSchema: () => Promise<boolean>,
-  zeitzone: string,
+  timeZone: string,
   systemPool: Pool = pool,
 ): Promise<void> {
   const client = await pool.connect();
@@ -60,15 +60,15 @@ export async function initSchemaOnce(
     await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
     await client.query('RESET statement_timeout');
-    if (!(await maySchemaChangeOn(client))) return await checkOnlyStatus(client, zeitzone, systemPool);
-    const neu = await initSchema();
-    if (!neu) await checkMinimumVersion(client);
+    if (!(await maySchemaChangeOn(client))) return await checkOnlyStatus(client, timeZone, systemPool);
+    const fresh = await initSchema();
+    if (!fresh) await checkMinimumVersion(client);
     // Before open migrations a copy of the user data — not for a
     // freshly created, empty database.
-    const applied = await runMigrations(client, { sichern: !neu });
-    await writeEntryTimeZone(client, zeitzone);
+    const applied = await runMigrations(client, { sichern: !fresh });
+    await writeEntryTimeZone(client, timeZone);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
-    else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
+    else if (!fresh) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
     // Cleanup after the actual result: its error counts, not one from here.
     for (const sql of [
@@ -83,12 +83,12 @@ export async function initSchemaOnce(
 
 /** The configured time zone for the trigger erfassung_tag() (migration
  * 0078) — in the database, so every connection computes the same day. */
-async function writeEntryTimeZone(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
+async function writeEntryTimeZone(client: import('pg').ClientBase, timeZone: string): Promise<void> {
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
      WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`,
-    [zeitzone],
+    [timeZone],
   );
 }
 
@@ -99,20 +99,20 @@ async function maySchemaChangeOn(client: import('pg').ClientBase): Promise<boole
 
 /** For the runtime role: an empty or unmigrated schema stops the start
  * instead of requests hitting missing columns. */
-async function checkOnlyStatus(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
+async function checkOnlyStatus(client: import('pg').ClientBase, timeZone: string, systemPool: Pool): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-  const offen = leer ? [] : await openMigrations(client);
-  if (leer || offen.length)
+  const open = leer ? [] : await openMigrations(client);
+  if (leer || open.length)
     throw new Error(
-      `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
+      `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${open.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
         'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
   // Usually the migration service has already written the same value; otherwise the system role.
   const da = await client.query("SELECT value FROM global_settings WHERE key = 'erfassung_zeitzone'");
-  if (da.rows[0]?.value !== zeitzone) {
+  if (da.rows[0]?.value !== timeZone) {
     const sys = await systemPool.connect();
     try {
-      await writeEntryTimeZone(sys, zeitzone);
+      await writeEntryTimeZone(sys, timeZone);
     } finally {
       sys.release();
     }

@@ -1,6 +1,6 @@
 /** Only this repository encrypts and decrypts number and PIN: even the number unlocks it. */
 import type { DbInterface } from '../../../db/database';
-import { encrypt, decrypt, searchValue, kontext, umschluesseln, readOldValue } from '../../infra/secret';
+import { encrypt, decrypt, searchValue, kontext, rekey, readOldValue } from '../../infra/secret';
 
 export interface VoucherRow {
   id: number;
@@ -175,14 +175,14 @@ export async function reencryptNumbers(db: DbInterface): Promise<number> {
   )) {
     const number = readOldValue(z.number, numberContext(z.user_id, z.id));
     if (number === null) continue;
-    const neu = z.number.startsWith('v2:') ? z.number : numberColumns(z.user_id, z.id, number).number;
-    const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
+    const fresh = z.number.startsWith('v2:') ? z.number : numberColumns(z.user_id, z.id, number).number;
+    const pin = rekey(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
     n +=
       (
         await db.run(
           `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
-          [neu, numberSearch(z.user_id, number), pin, z.id, z.number, z.pin],
+          [fresh, numberSearch(z.user_id, number), pin, z.id, z.number, z.pin],
         )
       ).changes || 0;
   }
@@ -202,16 +202,16 @@ export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
   }>("SELECT id, user_id, number, pin, number_search FROM vouchers WHERE number LIKE 'v2:%'")) {
     const number = decrypt(z.number, numberContext(z.user_id, z.id));
     if (number === null) continue;
-    const neu = umschluesseln(z.number, numberContext(z.user_id, z.id)) ?? z.number;
-    const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
+    const fresh = rekey(z.number, numberContext(z.user_id, z.id)) ?? z.number;
+    const pin = rekey(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
     const search = numberSearch(z.user_id, number);
-    if (neu === z.number && pin === z.pin && search === z.number_search) continue;
+    if (fresh === z.number && pin === z.pin && search === z.number_search) continue;
     n +=
       (
         await db.run(
           `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
-          [neu, search, pin, z.id, z.number, z.pin],
+          [fresh, search, pin, z.id, z.number, z.pin],
         )
       ).changes || 0;
   }
@@ -219,17 +219,17 @@ export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
 }
 
 /** Copies before a migration (schema name checked by the pattern); `all` after a key rotation. */
-export async function reencryptCopies(db: DbInterface, alle = false): Promise<number> {
+export async function reencryptCopies(db: DbInterface, all = false): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(
     `SELECT table_schema AS schema FROM information_schema.tables
       WHERE table_name = 'vouchers' AND table_schema ~ '^vor_migration_[0-9]+$'`,
   )) {
     for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null }>(
-      `SELECT id, user_id, number, pin FROM ${schema}.vouchers${alle ? '' : " WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'"}`,
+      `SELECT id, user_id, number, pin FROM ${schema}.vouchers${all ? '' : " WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'"}`,
     )) {
-      const number = umschluesseln(z.number, numberContext(z.user_id, z.id));
-      const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id));
+      const number = rekey(z.number, numberContext(z.user_id, z.id));
+      const pin = rekey(z.pin, pinContext(z.user_id, z.id));
       if (number === undefined && pin === undefined) continue;
       n +=
         (

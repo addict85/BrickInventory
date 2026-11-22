@@ -27,11 +27,11 @@ const VARIANTS = [
 /** Reports what the proxy would deliver of it — with and without referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
-  const adresse = urlOrNull(url);
-  if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
+  const address = urlOrNull(url);
+  if (!address) fachfehler('ungueltig', 'url_ungueltig');
   // The same hosts as the image proxy: the fetch runs from the internal network;
   // allowing every address would be server-side request forgery.
-  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: address.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
   for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
@@ -51,21 +51,21 @@ export async function imageProbe(k: ManagementContext, url: string) {
 const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
   k.externalSources.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
 
-function readStream(a: FetchStream, genug = Infinity) {
-  return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
+function readStream(a: FetchStream, enough = Infinity) {
+  return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(finished => {
     const teile: Buffer[] = [];
     let bytes = 0;
     const s = a.strom();
     s.on('data', (c: Buffer) => {
       teile.push(c);
       bytes += c.length;
-      if (bytes >= genug) {
+      if (bytes >= enough) {
         s.destroy();
-        fertig({ teile, bytes, truncated: false });
+        finished({ teile, bytes, truncated: false });
       }
     });
-    s.on('end', () => fertig({ teile, bytes, truncated: false }));
-    s.on('error', () => fertig({ teile, bytes, truncated: true }));
+    s.on('end', () => finished({ teile, bytes, truncated: false }));
+    s.on('error', () => finished({ teile, bytes, truncated: true }));
   });
 }
 
@@ -100,9 +100,9 @@ async function probeVariant(kx: ManagementContext, url: string, v: { name: strin
   }
 }
 
-const fileSize = (datei: string) =>
+const fileSize = (file: string) =>
   fs.promises
-    .stat(datei)
+    .stat(file)
     .then(st => ({ bytes: st.size }))
     .catch(withoutMissingFile('management:stat', null));
 
@@ -141,7 +141,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
     k.management.sampleAcquisitions(uid, setNumber),
     k.management.samplePriceCache(setNumber),
     k.management.samplePriceHistory(setNumber),
-    ab.oder(
+    ab.orElse(
       'waehrung',
       k.settings.foreignUserValue(uid, 'currency').then(value => (value === null ? undefined : { value })),
       null,
@@ -154,7 +154,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
   const chosen = anyUsed ? 'U' : 'N';
 
   const out: Record<string, unknown> & { currency: string; ttl_hours: number } = {
-    ...ab.angabe(),
+    ...ab.detail(),
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
@@ -209,35 +209,35 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
 /** The recurring questions about an empty tile in one response: database, disk, proxy, negative result. */
 export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const ab = new Degradations();
-  const konten: AccountImageRow = await ab.oder('konten', kx.management.accountImageRows(sn), {
+  const konten: AccountImageRow = await ab.orElse('konten', kx.management.accountImageRows(sn), {
     anzahl_konten: 0,
     image_local: null,
     image_url: null,
   });
-  const katalog = await ab.oder('katalog', kx.management.catalogImage(sn), null);
+  const katalog = await ab.orElse('katalog', kx.management.catalogImage(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
-  const datei = async (p: string) => {
+  const file = async (p: string) => {
     const st = await fs.promises.stat(p).catch(withoutMissingFile('management:bilddatei', null));
     return st
       ? { vorhanden: true, bytes: st.size, geaendert: st.mtime }
       : { vorhanden: false, bytes: 0, geaendert: null };
   };
-  const original = await datei(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
-  const vorschau = await datei(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
+  const original = await file(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
+  const vorschau = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
 
   const cdnUrl = konten.image_url || katalog?.image_url || null;
   let proxy: { gecacht: boolean; [k: string]: unknown } = { adresse: cdnUrl, gecacht: false };
   if (cdnUrl) {
     const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
     if (cf) {
-      const cache = await datei(cf);
-      proxy = { adresse: cdnUrl, gecacht: cache.vorhanden, cache, vorschau: await datei(cf + '_thumb.jpg') };
+      const cache = await file(cf);
+      proxy = { adresse: cdnUrl, gecacht: cache.vorhanden, cache, vorschau: await file(cf + '_thumb.jpg') };
     }
   }
 
-  const merker = await ab.oder('fehlanzeige', kx.management.setImageMiss(sn), null);
-  const previewMarker = await ab.oder('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
+  const merker = await ab.orElse('fehlanzeige', kx.management.setImageMiss(sn), null);
+  const previewMarker = await ab.orElse('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
 
   // A diagnosis from substitute values would mislead: say first what was not readable.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];

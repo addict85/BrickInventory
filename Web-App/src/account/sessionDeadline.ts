@@ -1,7 +1,7 @@
 // Log out after hours of idleness.
-import { type Konfig, VORGABE } from '../infra/config';
+import { type Konfig, DEFAULT } from '../infra/config';
 
-export const IDLE_DEFAULT_MIN = VORGABE.sitzungLeerlaufMin;
+export const IDLE_DEFAULT_MIN = DEFAULT.sitzungLeerlaufMin;
 
 export const sessionIdleMs = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
 
@@ -12,7 +12,7 @@ export const sessionIdleSec = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => Math.ro
 // logged in forever. The maximum duration counts from login.
 export const sessionMaxMs = (k: Pick<Konfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
 
-export interface Sitzungsfristen {
+export interface SessionDeadlines {
   maxMs: number;
   adminMaxMs: number;
   adminIdleMs: number;
@@ -24,7 +24,7 @@ export const sitzungsfristen = (
     Konfig,
     'sitzungHoechstStd' | 'sitzungLeerlaufMin' | 'sitzungVerwalterHoechstStd' | 'sitzungVerwalterLeerlaufMin'
   >,
-): Sitzungsfristen => ({
+): SessionDeadlines => ({
   maxMs: sessionMaxMs(k),
   adminMaxMs: Math.min(k.sitzungVerwalterHoechstStd, k.sitzungHoechstStd) * 3_600_000,
   adminIdleMs: Math.min(k.sitzungVerwalterLeerlaufMin, k.sitzungLeerlaufMin) * 60_000,
@@ -40,18 +40,18 @@ type SessionWithDeadline = {
 
 /** The idleness of admins is measured by the session itself (the store knows one deadline for all),
  * written at most once per minute, otherwise every request would save the session anew. */
-export function sessionMaxDuration(f: Sitzungsfristen) {
+export function sessionMaxDuration(f: SessionDeadlines) {
   return (req: { session?: SessionWithDeadline }, _res: unknown, next: (e?: unknown) => void) => {
     const s = req.session;
     if (!s?.userId) return next();
-    const jetzt = Date.now();
-    const verwalter = s.isAdmin === true;
-    if (typeof s.angemeldetAm !== 'number') s.angemeldetAm = jetzt;
-    if (verwalter && typeof s.lastlyAt !== 'number') s.lastlyAt = jetzt;
-    const zuletzt = s.lastlyAt ?? jetzt;
-    const zuAlt = jetzt - s.angemeldetAm > (verwalter ? f.adminMaxMs : f.maxMs);
-    if (zuAlt || (verwalter && jetzt - zuletzt > f.adminIdleMs)) return s.destroy((e?: unknown) => next(e));
-    if (verwalter && jetzt - zuletzt >= Math.min(60_000, f.adminIdleMs / 4)) s.lastlyAt = jetzt;
+    const now = Date.now();
+    const admin = s.isAdmin === true;
+    if (typeof s.angemeldetAm !== 'number') s.angemeldetAm = now;
+    if (admin && typeof s.lastlyAt !== 'number') s.lastlyAt = now;
+    const lastUsed = s.lastlyAt ?? now;
+    const zuAlt = now - s.angemeldetAm > (admin ? f.adminMaxMs : f.maxMs);
+    if (zuAlt || (admin && now - lastUsed > f.adminIdleMs)) return s.destroy((e?: unknown) => next(e));
+    if (admin && now - lastUsed >= Math.min(60_000, f.adminIdleMs / 4)) s.lastlyAt = now;
     next();
   };
 }

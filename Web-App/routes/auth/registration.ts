@@ -7,10 +7,10 @@ import { basisUrl, hintWithoutBaseUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type OpenRequest } from '../../src/http/contractRouter';
 import { USERNAME_RE, emailValid, nameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 /** The reason of the first rejection, or null if the input is sufficient. */
-function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eingabe']) {
+function registrationShortfall(e: OpenRequest<'POST /api/v1/auth/register'>['eingabe']) {
   if (!e.username || !e.email || !e.password) return 'registrierung_felder' as const;
   const mangel = passwordLack(e.password, e.username);
   if (mangel) return mangel;
@@ -20,7 +20,7 @@ function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eing
   return null;
 }
 
-export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'>) {
+export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 'account'>) {
   const router = vertragsRouter('/api/v1/auth');
 
   // The login form only shows paths this server supports; without mail, registration would end in an account nobody can confirm.
@@ -38,12 +38,12 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
     const { username, email, first_name, last_name, password, language } = req.eingabe;
     if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
       fachfehler('verboten', 'registrierung_deaktiviert');
-    const mangel = registrierungsMangel(req.eingabe);
+    const mangel = registrationShortfall(req.eingabe);
     if (mangel || !username || !email || !password) fachfehler('ungueltig', mangel ?? 'registrierung_felder');
     // Counts every attempt, whether the address exists or not: the rejection reveals nothing.
-    const ziel = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
-    if (ziel) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: ziel.waitMin });
-    const gesendet = await d.account.tryRegistration({
+    const target = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
+    if (target) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: target.waitMin });
+    const sent = await d.account.tryRegistration({
       username,
       email,
       first_name,
@@ -52,10 +52,10 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
       lang: language === 'en' ? 'en' : 'de',
     });
     return {
-      message: gesendet
+      message: sent
         ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
         : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
-      email_sent: gesendet,
+      email_sent: sent,
       // Registration requires a mail server (above): the console never prints the link.
       console_mode: false,
     };

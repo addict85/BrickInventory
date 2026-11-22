@@ -19,9 +19,9 @@ export function requireRelease(
   req: Request,
   res: Response,
   next: NextFunction,
-  aktion: Schrittaktion,
+  action: Schrittaktion,
 ): void {
-  void released(konto, req, res, aktion).then(ok => {
+  void released(konto, req, res, action).then(ok => {
     if (ok) next();
   });
 }
@@ -32,13 +32,13 @@ export async function released(
   konto: AccountServices,
   req: Request,
   res: Response,
-  aktion: Schrittaktion,
+  action: Schrittaktion,
 ): Promise<boolean> {
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
   try {
     // Without a family (no created_at) there is no key: closed, not open.
-    const p = f ? await konto.pruefeFreigabe(f, aktion) : 'kein_schluessel';
+    const p = f ? await konto.pruefeFreigabe(f, action) : 'kein_schluessel';
     if (p === 'frei') return true;
     sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
   } catch (e) {
@@ -60,11 +60,11 @@ export async function asAdmin(konto: AccountServices, req: Request): Promise<boo
 /** Behind loginAtInbox, before reading the body. Which steps are protected is said by
  * the marker `schritt` on the contract; res.locals.schritt records what was released here,
  * so vertragsRouter checks at the route itself (a second line, in case the mapping here goes wrong). */
-export function stepChutzAtInbox(konto: AccountServices) {
+export function stepProtectionAtInbox(konto: AccountServices) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const aktion = routeForRequest(req.method, req.baseUrl + req.path)?.schritt;
-    res.locals.schritt = aktion ?? null;
-    if (aktion) requireRelease(konto, req, res, next, aktion);
+    const action = routeForRequest(req.method, req.baseUrl + req.path)?.schritt;
+    res.locals.schritt = action ?? null;
+    if (action) requireRelease(konto, req, res, next, action);
     else next();
   };
 }

@@ -1,14 +1,14 @@
-import { WITHOUT_BODY, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, PAGES_DETAIL, type Route } from './base';
+import { WITHOUT_BODY, TEXT, CONDITION, IDENTIFIER, query, Q, PAGE, PAGES_DETAIL, type Route } from './base';
 import { z } from 'zod';
-import { eingabe } from '../infra/validate';
+import { input } from '../infra/validate';
 import {
-  CsvImportErgebnis,
+  CsvImportResult,
   DEGRADED,
   ManuelleFigur,
   StueckGeaendert,
   MinifigsResponse,
-  VerwendendeSetsResponse,
-  InDenTrash,
+  UsingSetsResponse,
+  MovedToTrash,
 } from './shared';
 
 export { ManuelleFigur, StueckGeaendert };
@@ -42,7 +42,7 @@ export const MinifigStatsResponse = z.looseObject({
 });
 
 /** A figure's parts from the Rebrickable catalog; `source` says from where. */
-export const FigurTeile = z.looseObject({
+export const MinifigParts = z.looseObject({
   success: z.literal(true),
   source: z.string(),
   parts: z.array(z.record(z.string(), z.unknown())),
@@ -51,7 +51,7 @@ export const FigurTeile = z.looseObject({
 export const routen = {
   'GET /api/v1/minifigs': {
     antwort: MinifigsResponse,
-    abfrage: abfrage({
+    abfrage: query({
       accounts: Q.konten,
       search: Q.text(),
       source: Q.text(20),
@@ -62,45 +62,45 @@ export const routen = {
   },
   'GET /api/v1/minifigs/:figNumber/sets': {
     klein: true,
-    antwort: VerwendendeSetsResponse,
-    abfrage: abfrage({ accounts: Q.konten }),
+    antwort: UsingSetsResponse,
+    abfrage: query({ accounts: Q.konten }),
   },
   'GET /api/v1/minifigs/manual': {
     antwort: ManualFigsResponse,
-    abfrage: abfrage({ accounts: Q.konten, search: Q.text(), ...SEITE }),
+    abfrage: query({ accounts: Q.konten, search: Q.text(), ...PAGE }),
   },
-  'GET /api/v1/minifigs/stats': { antwort: MinifigStatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/minifigs/stats': { antwort: MinifigStatsResponse, abfrage: query({ accounts: Q.konten }) },
   'POST /api/v1/minifigs': {
     antwort: AddMinifigResponse,
     eingabe: z.strictObject({
-      fig_number: eingabe.itemNumber('fig_number'),
-      quantity: eingabe.stueckzahl(),
-      condition: eingabe.zustand(),
-      unit_price: eingabe.geld('Stückpreis'),
-      fig_name: eingabe.text(200),
-      image_url: eingabe.imageUrl(),
+      fig_number: input.itemNumber('fig_number'),
+      quantity: input.stueckzahl(),
+      condition: input.zustand(),
+      unit_price: input.geld('Stückpreis'),
+      fig_name: input.text(200),
+      image_url: input.imageUrl(),
       bl_fig_number: TEXT(64).nullable().optional(),
-      owner_user_id: KENNUNG.nullable().optional(),
+      owner_user_id: IDENTIFIER.nullable().optional(),
       storage: TEXT().nullable().optional(),
       acquired_at: TEXT(40).nullable().optional(),
     }),
   },
   'PUT /api/v1/minifigs/:figNumber': {
-    abfrage: abfrage({ owner: Q.konto }),
+    abfrage: query({ owner: Q.konto }),
     eingabe: z.strictObject({
-      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
-      quantity_delta: eingabe.quantitiesDelta(),
-      unit_price: eingabe.geld('Stückpreis'),
-      condition: ZUSTAND.nullable().optional(),
+      quantity: input.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: input.quantitiesDelta(),
+      unit_price: input.geld('Stückpreis'),
+      condition: CONDITION.nullable().optional(),
       bl_fig_number: TEXT(40).nullable().optional(),
     }),
     antwort: StueckGeaendert,
   },
   'DELETE /api/v1/minifigs/:figNumber': {
     eingabe: WITHOUT_BODY,
-    antwort: InDenTrash,
-    abfrage: abfrage({ owner: Q.konto }),
+    antwort: MovedToTrash,
+    abfrage: query({ owner: Q.konto }),
   },
-  'POST /api/v1/minifigs/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'GET /api/v1/minifigs/:figNumber/parts': { klein: true, antwort: FigurTeile },
+  'POST /api/v1/minifigs/import/csv': { formular: true, antwort: CsvImportResult },
+  'GET /api/v1/minifigs/:figNumber/parts': { klein: true, antwort: MinifigParts },
 } satisfies Record<string, Route>;

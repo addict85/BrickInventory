@@ -4,16 +4,16 @@ import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DESIGNS } from '../settings';
-import { stempleAssetsGecacht } from '../infra/assetStempel';
+import { stampAssetsCached } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/result';
 import type { ProfileContext } from './context';
-import { prozessweit } from '../infra/prozessweit';
+import { processWide } from '../infra/prozessweit';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
 /** index.html and its style hash, last-read theme: once per process. */
-const Z = prozessweit('indexHtml', () => ({
+const Z = processWide('indexHtml', () => ({
   stil: null as { mtime: number; hash: string } | null,
   html: null as string | null,
   mtime: 0,
@@ -50,15 +50,15 @@ export function forgetTheme() {
 async function readIndex(production: boolean): Promise<string> {
   if (Z.html !== null && production) return Z.html;
   // One handle for stat and content: both are then guaranteed to belong to the same file.
-  const datei = await fs.promises.open(INDEX_PATH, 'r');
+  const file = await fs.promises.open(INDEX_PATH, 'r');
   try {
-    const st = await datei.stat();
+    const st = await file.stat();
     if (Z.html === null || st.mtimeMs !== Z.mtime) {
-      Z.html = stripComments(await datei.readFile('utf8'));
+      Z.html = stripComments(await file.readFile('utf8'));
       Z.mtime = st.mtimeMs;
     }
   } finally {
-    await datei.close();
+    await file.close();
   }
   return Z.html;
 }
@@ -119,8 +119,8 @@ async function currentLang(k: ProfileContext, userId?: number): Promise<string> 
   if (!userId) return 'de';
   // Only the user's own setting: without it German applies, not a global default.
   // A read error goes to startPageHtml(), which then serves the file unchanged.
-  const sprache = String((await k.einstellungen.userSettings(userId)).language ?? 'de');
-  return LANGS.includes(sprache) ? sprache : 'de';
+  const language = String((await k.einstellungen.userSettings(userId)).language ?? 'de');
+  return LANGS.includes(language) ? language : 'de';
 }
 
 // Theme and language already in the HTML.
@@ -152,7 +152,7 @@ export async function startPageHtml(k: ProfileContext, userId?: number): Promise
 
     // Stamp LAST, or the German locale file's stamp would end up on the English one.
     out = insertVersion(out, appVersion());
-    return stempleAssetsGecacht(out, PUBLIC_DIR);
+    return stampAssetsCached(out, PUBLIC_DIR);
   } catch (_) {
     return html;
   }

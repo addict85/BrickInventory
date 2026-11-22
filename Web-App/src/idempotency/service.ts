@@ -2,7 +2,7 @@
  * same key and gets the stored response back — without a second effect. The
  * same key with different content is a client error. */
 import { HTTP_DEADLINES } from '../infra/httpDeadlines';
-import { encrypt, decrypt, isEncrypted, kontext, umschluesseln, searchValue } from '../infra/secret';
+import { encrypt, decrypt, isEncrypted, kontext, rekey, searchValue } from '../infra/secret';
 import { withEffectNote as markEffect } from './repository';
 import type { IdempotencyContext } from './context';
 
@@ -86,7 +86,7 @@ export const withEffectMark = <T>(k: IdempotencyContext, uid: number, key: strin
 export async function reencryptResponses(k: IdempotencyContext): Promise<number> {
   let n = 0;
   for (const z of await k.repository.oldResponses()) {
-    const reencrypted = umschluesseln(z.response, responseContext(z.user_id, z.key));
+    const reencrypted = rekey(z.response, responseContext(z.user_id, z.key));
     if (reencrypted) n += await k.repository.replaceResponse(z.user_id, z.key, z.response, reencrypted);
   }
   return n;

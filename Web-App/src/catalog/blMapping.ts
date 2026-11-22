@@ -35,19 +35,19 @@ export async function rememberBlNumbers(
   pairs: { rbId: string; blId: string }[],
   dbh?: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
 ) {
-  const eindeutig = [...new Map(pairs.filter(p => p.rbId && p.blId).map(p => [p.rbId, p])).values()];
-  if (!eindeutig.length) return;
+  const unique = [...new Map(pairs.filter(p => p.rbId && p.blId).map(p => [p.rbId, p])).values()];
+  if (!unique.length) return;
   await writeBlNumbers(
     dbh ?? k.db,
     art,
-    eindeutig.map(p => p.rbId),
-    eindeutig.map(p => p.blId),
+    unique.map(p => p.rbId),
+    unique.map(p => p.blId),
   );
 }
 
 /** So that the same part is not queried again and again; a mapping
  * once found stays. */
-export function merkeBlNummerUnveraendert(k: CatalogContext, art: BlArt, rbId: string): Promise<void> {
+export function rememberBlNumberUnchanged(k: CatalogContext, art: BlArt, rbId: string): Promise<void> {
   return k.blZuordnung.noteLookedUp(art, rbId);
 }
 
@@ -80,20 +80,20 @@ export async function blFetchNumbers(
   rbIds: string[],
   konto?: number | number[] | null,
 ): Promise<Map<string, string>> {
-  const raus = new Map<string, string>();
-  if (!rbIds.length) return raus;
-  const zeilen = await k.blZuordnung.effectiveNumbers(art, rbIds, konten(konto));
-  for (const z of zeilen) raus.set(String(z.rb_id), String(z.nr));
-  return raus;
+  const out = new Map<string, string>();
+  if (!rbIds.length) return out;
+  const rows = await k.blZuordnung.effectiveNumbers(art, rbIds, konten(konto));
+  for (const z of rows) out.set(String(z.rb_id), String(z.nr));
+  return out;
 }
 
-export function merkeBlFarbnummer(k: CatalogContext, colorId: number, blColorId: number): Promise<void> {
+export function rememberBlColorNumber(k: CatalogContext, colorId: number, blColorId: number): Promise<void> {
   return k.blZuordnung.writeBlColorNumber(colorId, blColorId);
 }
 
 /** Rebrickable delivers `ext_ids` as a list or the list directly. */
 type ExterneNumbers = { external_ids?: { BrickLink?: { ext_ids?: number[] } & number[] } } | null | undefined;
-export function blColorNumberFrom(farbe: ExterneNumbers): number | null {
-  const id = farbe?.external_ids?.BrickLink?.ext_ids?.[0] ?? farbe?.external_ids?.BrickLink?.[0];
+export function blColorNumberFrom(color: ExterneNumbers): number | null {
+  const id = color?.external_ids?.BrickLink?.ext_ids?.[0] ?? color?.external_ids?.BrickLink?.[0];
   return id ?? null;
 }

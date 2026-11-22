@@ -2,7 +2,7 @@
  * into the inventory. */
 import { logAndContinue } from '../infra/error';
 import type { WantedArt } from './wantedParser';
-import type { Aufloesung, Sicherheit } from './wantedResolution';
+import type { Resolution, Confidence } from './wantedResolution';
 
 /** Image and name travel along, because the preview shows them like the parts list. */
 export interface ItemResult {
@@ -15,7 +15,7 @@ export interface ItemResult {
   maxPreis: number | null;
   rbId: string | null;
   rbFarbe: number | null;
-  sicherheit: Sicherheit | null;
+  sicherheit: Confidence | null;
   ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
   grund?: string;
   /** Identifier instead of a sentence, so that the UI renders it in the viewer's language. */
@@ -38,8 +38,8 @@ export interface Creator {
     uid: number,
     setNummer: string,
     menge: number,
-    zustand: string | null,
-    kaufpreis: number | null,
+    condition: string | null,
+    purchasePrice: number | null,
   ) => Promise<unknown>;
 }
 
@@ -50,12 +50,12 @@ export interface WriteOptions {
     art: WantedArt,
     rbId: string,
     blId: string,
-    quelle: 'korrigiert' | 'rebrickable',
+    source: 'korrigiert' | 'rebrickable',
   ) => Promise<unknown>;
 }
 
 /** The report row of an item, before writing. */
-export function reportRow(a: Aufloesung): ItemResult {
+export function reportRow(a: Resolution): ItemResult {
   // A color that cannot be mapped is not invented: color_id 0 is black at
   // Rebrickable, not "no color".
   const grund =
@@ -87,16 +87,16 @@ export function reportRow(a: Aufloesung): ItemResult {
 /** Creates a resolved item. @returns whether it is new or was topped up */
 export async function writeItem(
   uid: number,
-  a: Aufloesung,
+  a: Resolution,
   rbId: string,
   opt: WriteOptions,
 ): Promise<'angelegt' | 'aufgestockt'> {
   if (!opt.creator) throw new Error('Kein Anleger übergeben — siehe Anleger');
-  let rueckmeldung: unknown;
+  let feedback: unknown;
   if (a.posten.art === 'part') {
     // The color name travels along: the parts list reads it from the row; without it
     // it does not fall back to the catalog.
-    rueckmeldung = await opt.creator.teil(uid, {
+    feedback = await opt.creator.teil(uid, {
       part_number: rbId,
       color_id: a.rbFarbe ?? 0,
       ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
@@ -108,14 +108,14 @@ export async function writeItem(
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else if (a.posten.art === 'fig') {
-    rueckmeldung = await opt.creator.figur(uid, {
+    feedback = await opt.creator.figur(uid, {
       fig_number: rbId,
       quantity: a.posten.menge,
       condition: a.posten.zustand ?? undefined,
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else {
-    rueckmeldung = await opt.creator.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
+    feedback = await opt.creator.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
   }
   // 'rebrickable' is remembered too: blTeilZuRb checks every hit against the
   // searched BL number; it is a mapping, not a guess.
@@ -127,5 +127,5 @@ export async function writeItem(
   }
   // The creator knows whether created or topped up; without the question a
   // second import would count everything as created.
-  return (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated' ? 'angelegt' : 'aufgestockt';
+  return (feedback as { action?: string } | null | undefined)?.action !== 'updated' ? 'angelegt' : 'aufgestockt';
 }

@@ -21,16 +21,16 @@ const PRICE_JOB_LOCK = LOCKS.PRICE_JOB;
  * run in other processes, `state.running` does not see them.
  * @returns release function, or null if a run is already going on elsewhere */
 async function acquireRunLock(k: FinancesContext): Promise<(() => Promise<void>) | null> {
-  let freigabe: (() => Promise<void>) | null;
+  let approval: (() => Promise<void>) | null;
   try {
-    freigabe = await receiptsSessionLock(k.db, PRICE_JOB_LOCK);
+    approval = await receiptsSessionLock(k.db, PRICE_JOB_LOCK);
   } catch (e) {
     // Exception: better to run without a lock than not at all; within the process the kind's exclusivity protects.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
-  if (!freigabe) return null;
-  const f = freigabe;
+  if (!approval) return null;
+  const f = approval;
   return () => f().catch(e => log(`Sperre konnte nicht freigegeben werden: ${fehlertext(e)}`));
 }
 
@@ -54,8 +54,8 @@ async function fetchAndCachePrice(
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // The same freshness rule as in the request path: a zero row is retried after six hours as well.
-  const vorhanden = await priceFromCache(k, setNumber, condition, currency, ttl);
-  if (cacheUsable(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
+  const present = await priceFromCache(k, setNumber, condition, currency, ttl);
+  if (cacheUsable(present, ttl, k.uhr.jetzt())) return 'skipped';
 
   const rl = await k.externalSources.quotaFree('bricklink');
   if (!rl.allowed) return 'rate_limited';
@@ -89,7 +89,7 @@ async function fetchAndCachePrice(
 }
 
 /** Counters and abort reasons of a run, shared by all parallel sets. */
-interface Laufstand {
+interface RunState {
   updated: number;
   skipped: number;
   errors: number;
@@ -103,14 +103,14 @@ interface Laufstand {
 
 /** Wishlist items too: /price-history only reads the cache; without this run their history would stay empty. */
 async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, string[]>> {
-  const eigene = await k.preisLauf.inventoryPlaces();
+  const own = await k.preisLauf.inventoryPlaces();
   const gewuenschte = await versuche('preis-job:gewuenschte', k.preisLauf.wantedListsPlaces());
   if (!gewuenschte.ok) log('Merkliste nicht lesbar — nur eigene Sets');
   const jeAccount = new Map<number, string[]>();
-  for (const r of [...eigene, ...(gewuenschte.ok ? gewuenschte.wert : [])].sort((a, b) => a.user_id - b.user_id)) {
-    const liste = jeAccount.get(r.user_id) ?? [];
-    if (!liste.includes(r.set_number)) liste.push(r.set_number);
-    jeAccount.set(r.user_id, liste);
+  for (const r of [...own, ...(gewuenschte.ok ? gewuenschte.wert : [])].sort((a, b) => a.user_id - b.user_id)) {
+    const list = jeAccount.get(r.user_id) ?? [];
+    if (!list.includes(r.set_number)) list.push(r.set_number);
+    jeAccount.set(r.user_id, list);
   }
   return jeAccount;
 }
@@ -122,7 +122,7 @@ async function refreshSet(
   states: string[],
   currency: string,
   ttl: string,
-  st: Laufstand,
+  st: RunState,
 ) {
   let last = 'skipped';
   for (const c of states) {
@@ -152,13 +152,7 @@ async function refreshSet(
 }
 
 /** 'sold' = prices actually achieved in the last six months; five sets in parallel. */
-async function refreshAccount(
-  kx: FinancesContext,
-  userId: number,
-  setNumbers: string[],
-  st: Laufstand,
-  k?: JobContext,
-) {
+async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: string[], st: RunState, k?: JobContext) {
   const currency = await kx.einstellungen.userValue(userId, 'currency', 'EUR');
   const ttlHours = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
@@ -179,21 +173,21 @@ async function refreshAccount(
 }
 
 /** Once per run, not per fetch; a failure is recorded in the state, throwing it would repeat the whole run. */
-async function afterTheRun(k: FinancesContext, auftrag?: JobContext) {
+async function afterTheRun(k: FinancesContext, job?: JobContext) {
   log('Writing daily price_history snapshot from price_cache...');
   const stand = await versuche('preis-job:tagesstand', k.preisLauf.writeDailyStatus());
   if (stand.ok) log(`Daily snapshot: ${stand.wert} price history entries inserted`);
-  const alarme = await versuche('preis-job:preisalarme', async () => {
-    const wartende = await k.preisLauf.setsWithAlarm();
-    let gemeldet = 0;
-    for (const sn of wartende) gemeldet += await checkSet(k, sn, k.mail);
-    if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
+  const alerts = await versuche('preis-job:preisalarme', async () => {
+    const waiting = await k.preisLauf.setsWithAlarm();
+    let reported = 0;
+    for (const sn of waiting) reported += await checkSet(k, sn, k.mail);
+    if (waiting?.length) log(`Preisalarm: ${waiting.length} Sets geprueft, ${reported} gemeldet`);
   });
-  const ohne = [stand.ok ? null : 'tagesstand', alarme.ok ? null : 'preisalarme'].filter(x => x !== null);
-  if (ohne.length) await auftrag?.fortschritt({ text: `ohne ${ohne.join(', ')}`, ohne });
+  const ohne = [stand.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
+  if (ohne.length) await job?.fortschritt({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
-async function reportResult(kx: FinancesContext, st: Laufstand, duration: number, k?: JobContext) {
+async function reportResult(kx: FinancesContext, st: RunState, duration: number, k?: JobContext) {
   const grund = st.notReachable ? 'BrickLink nicht erreichbar' : 'Tageslimit';
   log(
     `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.omitted ? `, ${st.omitted} wegen ${grund} ausgelassen` : ''} — ${(duration / 1000).toFixed(1)}s`,
@@ -221,7 +215,7 @@ async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
   const releaseLock = await acquireRunLock(kx);
   if (!releaseLock) throw new JobMove(new Date(kx.uhr.jetzt() + 60_000), 'Läuft bereits in einem anderen Prozess');
   const t0 = kx.uhr.jetzt();
-  const st: Laufstand = { updated: 0, skipped: 0, errors: 0, omitted: 0, current: 0, total: 0 };
+  const st: RunState = { updated: 0, skipped: 0, errors: 0, omitted: 0, current: 0, total: 0 };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
     const jeAccount = await pricePlacesJeAccount(kx);
@@ -257,27 +251,27 @@ async function statesJeSet(
   if (!setNumbers.length) return ergebnis;
 
   type StateRow = { set_number: string; c?: string | null };
-  const collect = async (abfrage: Promise<StateRow[]>): Promise<Map<string, Set<string>>> => {
+  const collect = async (query: Promise<StateRow[]>): Promise<Map<string, Set<string>>> => {
     // No catch: without the conditions every set would fall back to 'N', and the used price would be silently missing.
-    const zeilen = await abfrage;
+    const rows = await query;
     const m = new Map<string, Set<string>>();
-    for (const r of zeilen) {
+    for (const r of rows) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
       m.get(r.set_number)!.add(zustand(r.c));
     }
     return m;
   };
 
-  const erfasst = await collect(k.preisLauf.recordedStates(userId, setNumbers));
+  const recorded = await collect(k.preisLauf.recordedStates(userId, setNumbers));
   const gewuenscht = await collect(k.preisLauf.desiredStates(userId, setNumbers));
 
   for (const sn of setNumbers) {
     // Without an acquisition the hint is the only source: the new set's acquisition is not yet
     // written (conditionsNeededFor).
-    const eigene = new Set<string>(erfasst.get(sn) ?? []);
-    if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
-    for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);
-    ergebnis.set(sn, eigene.size ? [...eigene] : ['N']);
+    const own = new Set<string>(recorded.get(sn) ?? []);
+    if (hintCondition === 'U' || hintCondition === 'N') own.add(hintCondition);
+    for (const c of gewuenscht.get(sn) ?? []) own.add(c);
+    ergebnis.set(sn, own.size ? [...own] : ['N']);
   }
   return ergebnis;
 }
@@ -294,7 +288,7 @@ async function conditionsNeededFor(
   return (await statesJeSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
-async function preisFuerSetHolen(
+async function fetchPriceForSet(
   k: FinancesContext,
   setNumber: string,
   userId: number,
@@ -330,14 +324,14 @@ async function preisFuerSetHolen(
   }
 }
 
-async function rememberStatus(k: FinancesContext, neu: Record<string, unknown>): Promise<void> {
+async function rememberStatus(k: FinancesContext, fresh: Record<string, unknown>): Promise<void> {
   const alt = await k.jobQueue.liesZustand(PRICE_STATUS).then(
     r => (r ? JSON.parse(r) : {}),
     () => ({}),
   );
   await k.jobQueue
-    .setzeZustand(PRICE_STATUS, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))
+    .setzeZustand(PRICE_STATUS, JSON.stringify({ ...alt, ...fresh, log: _log.slice(0, 15) }))
     .catch(logAndContinue('preis-job:stand'));
 }
 
-export { runPriceRefresh, preisFuerSetHolen, fetchAndCachePrice, statesJeSet, conditionsNeededFor };
+export { runPriceRefresh, fetchPriceForSet as preisFuerSetHolen, fetchAndCachePrice, statesJeSet, conditionsNeededFor };

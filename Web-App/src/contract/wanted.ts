@@ -1,14 +1,26 @@
 import { z } from 'zod';
-import { eingabe } from '../infra/validate';
-import { type Route, zeit, ganz, WITHOUT_BODY, KENNUNG, TEXT, ZUSTAND, abfrage, Q, SEITE, PAGES_DETAIL } from './base';
-import { CsvImportErgebnis, DEGRADED, GenericResponse } from './shared';
+import { input } from '../infra/validate';
+import {
+  type Route,
+  time,
+  whole,
+  WITHOUT_BODY,
+  IDENTIFIER,
+  TEXT,
+  CONDITION,
+  query,
+  Q,
+  PAGE,
+  PAGES_DETAIL,
+} from './base';
+import { CsvImportResult, DEGRADED, GenericResponse } from './shared';
 
 export const CurrentPrice = z.looseObject({
   condition: z.string(),
   avg_price: z.number().nullable().optional(),
   min_price: z.number().nullable().optional(),
   max_price: z.number().nullable().optional(),
-  fetched_at: zeit.nullable().optional(),
+  fetched_at: time.nullable().optional(),
 });
 
 export const CurrentByCondition = z.looseObject({
@@ -16,17 +28,17 @@ export const CurrentByCondition = z.looseObject({
   U: CurrentPrice.nullable().optional(),
 });
 
-export const MerkpostenAlarm = z.looseObject({
+export const WantedItemAlert = z.looseObject({
   direction: z.string(),
   threshold: z.number(),
   triggered: z.boolean(),
 });
 
-export const Merkposten = z.looseObject({
+export const WantedItem = z.looseObject({
   theme_id: z.number().int().nullable(),
   set_number: z.string(),
   condition: z.string(),
-  created_at: zeit,
+  created_at: time,
   user_id: z.number().int(),
   name: z.string().nullable(),
   year: z.number().int().nullable(),
@@ -36,30 +48,30 @@ export const Merkposten = z.looseObject({
   marktpreis: z.number().nullable(),
   waehrung: z.string(),
   owned: z.boolean(),
-  alarm: MerkpostenAlarm.nullable(),
+  alarm: WantedItemAlert.nullable(),
   preisvergleich_url: z.string().nullable(),
 });
 
-export const MerklisteResponse = z.looseObject({
+export const WantedListResponse = z.looseObject({
   success: z.boolean(),
   ...PAGES_DETAIL,
-  merkposten: z.array(Merkposten),
+  merkposten: z.array(WantedItem),
 });
 
-export const MerkpostenAntwort = z.looseObject({
+export const WantedItemReply = z.looseObject({
   success: z.boolean(),
   war_neu: z.boolean(),
-  merkposten: Merkposten.nullable(),
+  merkposten: WantedItem.nullable(),
 });
 
-export const MerkpostenInhaberAntwort = z.looseObject({
+export const WantedItemOwnerReply = z.looseObject({
   success: z.boolean(),
   verschoben: z.boolean(),
   zusammengefuehrt: z.boolean(),
   owner_user_id: z.number().int().nullable(),
 });
 
-export const MerkpostenPreiseResponse = z.looseObject({
+export const WantedItemPricesResponse = z.looseObject({
   success: z.boolean(),
   set_number: z.string(),
   currency: z.string(),
@@ -67,7 +79,7 @@ export const MerkpostenPreiseResponse = z.looseObject({
   degradiert: DEGRADED,
 });
 
-export const MerkpostenUebernahmeResponse = z.looseObject({
+export const WantedItemTakeoverResponse = z.looseObject({
   katalog_offen: z.boolean().optional(),
   name: z.string().nullable().optional(),
   success: z.boolean(),
@@ -76,22 +88,22 @@ export const MerkpostenUebernahmeResponse = z.looseObject({
 });
 
 /** Reading in a BrickLink wanted list; with `vorschau` without saving. */
-export const WantedXmlErgebnis = z.looseObject({
+export const WantedXmlResult = z.looseObject({
   success: z.literal(true),
   vorschau: z.boolean(),
-  gelesen: ganz,
-  angelegt: ganz,
-  aufgestockt: ganz,
-  fehler: ganz,
+  gelesen: whole,
+  angelegt: whole,
+  aufgestockt: whole,
+  fehler: whole,
   posten: z.array(
     z.looseObject({
       art: z.string(),
       blId: z.string(),
-      menge: ganz,
+      menge: whole,
       ausgang: z.string(),
-      blFarbe: ganz.nullable().optional(),
+      blFarbe: whole.nullable().optional(),
       rbId: z.string().nullable().optional(),
-      rbFarbe: ganz.nullable().optional(),
+      rbFarbe: whole.nullable().optional(),
       farbName: z.string().nullable().optional(),
       farbHex: z.string().nullable().optional(),
       sicherheit: z.string().nullable().optional(),
@@ -104,74 +116,74 @@ export const WantedXmlErgebnis = z.looseObject({
       grundCode: z.string().nullable().optional(),
     }),
   ),
-  offen: z.array(z.looseObject({ art: z.string(), blId: z.string(), blFarbe: ganz.nullable().optional() })),
-  fremdeArten: z.record(z.string(), ganz).optional(),
-  ohneNummer: ganz.optional(),
-  stufen: z.record(z.string(), ganz).optional(),
-  farbeOffen: ganz.optional(),
+  offen: z.array(z.looseObject({ art: z.string(), blId: z.string(), blFarbe: whole.nullable().optional() })),
+  fremdeArten: z.record(z.string(), whole).optional(),
+  ohneNummer: whole.optional(),
+  stufen: z.record(z.string(), whole).optional(),
+  farbeOffen: whole.optional(),
   standardZustand: z.string().optional(),
   abgebrochen: z.boolean().optional(),
-  korrekturen: z.looseObject({ angewandt: ganz, abgewiesen: z.array(z.unknown()) }).optional(),
+  korrekturen: z.looseObject({ angewandt: whole, abgewiesen: z.array(z.unknown()) }).optional(),
   rebrickable: z
     .looseObject({
-      gefragt: ganz,
-      gefunden: ganz,
+      gefragt: whole,
+      gefunden: whole,
       filterWirkungslos: z.boolean(),
       abgebrochen: z.enum(['kontingent', 'kein_schluessel', 'stoerung']).optional(),
     })
     .optional(),
 });
 
-export const MerkpostenGeloescht = GenericResponse.extend({ geloescht: ganz });
+export const MerkpostenGeloescht = GenericResponse.extend({ geloescht: whole });
 
 export const routen = {
   'GET /api/v1/wanted': {
-    antwort: MerklisteResponse,
-    abfrage: abfrage({
+    antwort: WantedListResponse,
+    abfrage: query({
       accounts: Q.konten,
       search: Q.text(),
       condition: z.enum(['N', 'U', 'n', 'u', '']),
       sort: Q.text(40),
-      ...SEITE,
+      ...PAGE,
     }),
   },
-  'GET /api/v1/wanted/:setNumber/preise': { klein: true, antwort: MerkpostenPreiseResponse },
+  'GET /api/v1/wanted/:setNumber/preise': { klein: true, antwort: WantedItemPricesResponse },
   'POST /api/v1/wanted': {
     eingabe: z.strictObject({
       set_number: TEXT(40),
-      condition: ZUSTAND.nullable().optional(),
-      owner_user_id: KENNUNG.nullable().optional(),
+      condition: CONDITION.nullable().optional(),
+      owner_user_id: IDENTIFIER.nullable().optional(),
     }),
-    antwort: MerkpostenAntwort,
+    antwort: WantedItemReply,
   },
   'PUT /api/v1/wanted/:setNumber/:condition/inhaber': {
-    eingabe: z.strictObject({ owner_user_id: KENNUNG.nullable().optional(), neuer_inhaber: KENNUNG }),
-    antwort: MerkpostenInhaberAntwort,
+    eingabe: z.strictObject({ owner_user_id: IDENTIFIER.nullable().optional(), neuer_inhaber: IDENTIFIER }),
+    antwort: WantedItemOwnerReply,
   },
   'DELETE /api/v1/wanted/:setNumber/:condition': {
     eingabe: WITHOUT_BODY,
     antwort: MerkpostenGeloescht,
-    abfrage: abfrage({ owner_user_id: Q.konto }),
+    abfrage: query({ owner_user_id: Q.konto }),
   },
   'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': {
-    antwort: MerkpostenUebernahmeResponse,
+    antwort: WantedItemTakeoverResponse,
     eingabe: z.strictObject({
-      quantity: eingabe.stueckzahl(),
-      purchase_price: eingabe.geld('Kaufpreis'),
-      condition: ZUSTAND.nullable().optional(),
-      owner_user_id: KENNUNG.nullable().optional(),
+      quantity: input.stueckzahl(),
+      purchase_price: input.geld('Kaufpreis'),
+      condition: CONDITION.nullable().optional(),
+      owner_user_id: IDENTIFIER.nullable().optional(),
       storage: TEXT().nullable().optional(),
     }),
   },
   'POST /api/v1/wanted/import/csv': {
     formular: true,
-    antwort: CsvImportErgebnis,
+    antwort: CsvImportResult,
     eingabe: z.strictObject({ owner_user_id: Q.konto.optional() }),
   },
   'POST /api/v1/wanted-list/import/xml': {
-    antwort: WantedXmlErgebnis,
+    antwort: WantedXmlResult,
     formular: true,
     eingabe: z.strictObject({ korrekturen: z.string().max(5_000_000).optional() }),
-    abfrage: abfrage({ schreiben: Q.schalter, rebrickable: Q.schalter, strom: Q.schalter }),
+    abfrage: query({ schreiben: Q.schalter, rebrickable: Q.schalter, strom: Q.schalter }),
   },
 } satisfies Record<string, Route>;

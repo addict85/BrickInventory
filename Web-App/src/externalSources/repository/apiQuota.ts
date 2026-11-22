@@ -3,14 +3,14 @@ import type { DbInterface } from '../../../db/database';
 /** Account 0 is the sum. */
 
 /** In one step so that concurrent calls do not jump the limit together. */
-export function countApiCall(tx: DbInterface, day: string, apiName: string, id: number, grenze: number) {
+export function countApiCall(tx: DbInterface, day: string, apiName: string, id: number, limit: number) {
   return tx.get<{ count: number }>(
     `
       INSERT INTO api_calls (day, api, account_id, count) VALUES ($1, $2, $3, 1)
       ON CONFLICT (day, api, account_id) DO UPDATE SET count = api_calls.count + 1
        WHERE api_calls.count < $4
       RETURNING count`,
-    [day, apiName, id, grenze],
+    [day, apiName, id, limit],
   );
 }
 

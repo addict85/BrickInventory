@@ -3,7 +3,7 @@ import { auftragsart, type Anmeldung } from '../jobQueue';
 import { PricesReload } from './priceItems';
 import { preiseNachladen } from './reloadPrices';
 import { runPriceRefresh } from './priceRun';
-import { kursauftrag } from './exchangeRates';
+import { rateJob } from './exchangeRates';
 import type { FinancesContext } from './context';
 
 const LEER = z.object({});
@@ -17,7 +17,7 @@ declare module '../jobQueue/jobs' {
 
 export function financesJobTypes(k: FinancesContext): Anmeldung[] {
   return [
-    auftragsart({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => kursauftrag(k, undefined, l) }),
+    auftragsart({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => rateJob(k, undefined, l) }),
     auftragsart({
       art: 'preise',
       nutzlast: LEER,

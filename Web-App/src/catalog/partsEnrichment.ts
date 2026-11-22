@@ -18,7 +18,7 @@ type JobHttpResult = { status: number; body: string };
 
 import { pathSegment, numbersList } from '../infra/foreignAddresses';
 import type * as repo from './repository/partsEnrichment';
-import { KEINE_FARBE } from '../infra/validate';
+import { NO_COLOR } from '../infra/validate';
 import type { CatalogContext } from './context';
 
 async function apiGet(k: CatalogContext, url: string, rbKey: string) {
@@ -175,8 +175,8 @@ async function rememberPartsOfSets(
     if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);
     // No name without a Rebrickable response — the part number does not belong in the catalog as a verified name.
     await rememberPart(k, p.part_num, info.part_name);
-    await rememberPartColor(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
-    await rememberSetPart(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+    await rememberPartColor(k, p.part_num, p.color_id ?? NO_COLOR, info.color_name, info.color_hex, info.image_url);
+    await rememberSetPart(k, n, p.part_num, p.color_id ?? NO_COLOR, p.quantity || 1, false);
   }
 }
 
@@ -272,7 +272,7 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Without the BrickLink number: it is stored once per part in bl_mapping.
-      await rememberSetPart(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+      await rememberSetPart(k, figNum, p.part_num, p.color_id ?? NO_COLOR, p.quantity || 1, false);
     }
   }
 }

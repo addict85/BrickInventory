@@ -94,12 +94,12 @@ export async function readManualMinifigs(
 
   // The market price ONLY from the cache, in one query for the whole list: a
   // live lookup per entry would make the list wait on BrickLink.
-  const preise = await ab.oder(
+  const prices = await ab.orElse(
     'marktpreise',
     k.finances.marketPricesFromCacheForMinifigs(withCondition, viewerId),
     new Map<string, number>(),
   );
-  const withPrice = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
+  const withPrice = withCondition.map(f => ({ ...f, avg_price: prices.get(String(f.fig_number)) ?? null }));
 
   return k.household.besitzerAnhaengen(uids, withPrice);
 }

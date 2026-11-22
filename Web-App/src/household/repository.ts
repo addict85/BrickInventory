@@ -11,7 +11,7 @@ export async function subAccounts(db: DbInterface, id: number): Promise<number[]
   return rows.map(r => zahl(r.sub_user_id));
 }
 
-export async function elternkonten(db: DbInterface, id: number): Promise<number[]> {
+export async function parentAccounts(db: DbInterface, id: number): Promise<number[]> {
   const rows = await db.all<{ main_user_id: number | string }>(
     'SELECT main_user_id FROM account_links WHERE sub_user_id = $1 ORDER BY main_user_id',
     [id],
@@ -26,7 +26,7 @@ export async function isLinked(db: DbInterface, main: number, sub: number, d: Db
   ]));
 }
 
-export interface KontoName {
+export interface AccountName {
   id: number;
   username: string;
 }
@@ -35,10 +35,10 @@ export async function accountNames(
   db: DbInterface,
   l: HouseholdReadContract,
   ids: number[],
-  ordnung: 'id' | 'username' = 'id',
-): Promise<KontoName[]> {
+  order: 'id' | 'username' = 'id',
+): Promise<AccountName[]> {
   const rows = await db.all<{ id: number | string; username: string }>(
-    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`,
+    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1) ORDER BY ${order === 'id' ? 'id' : 'username'}`,
     [ids],
   );
   return rows.map(r => ({ id: zahl(r.id), username: r.username }));
@@ -53,7 +53,7 @@ export async function cleanInvitationsOn(db: DbInterface): Promise<void> {
   await db.run('DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL');
 }
 
-export async function putInvitationAn(db: DbInterface, tokenHash: string, main: number, bis: Date): Promise<void> {
+export async function createInvitation(db: DbInterface, tokenHash: string, main: number, bis: Date): Promise<void> {
   await db.run('INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ($1,$2,$3)', [
     tokenHash,
     main,
@@ -107,12 +107,12 @@ export async function resolveSubAccountAndInvitations(
   tx: DbInterface,
   sub: number,
 ): Promise<{ hauptkonten: number[]; einladungen: number }> {
-  const weg = await tx.all<{ main_user_id: number | string }>(
+  const route = await tx.all<{ main_user_id: number | string }>(
     'DELETE FROM account_links WHERE sub_user_id = $1 RETURNING main_user_id',
     [sub],
   );
-  const einl = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
-  return { hauptkonten: weg.map(z => zahl(z.main_user_id)), einladungen: einl.changes ?? 0 };
+  const instr = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
+  return { hauptkonten: route.map(z => zahl(z.main_user_id)), einladungen: instr.changes ?? 0 };
 }
 
 export async function deleteSeparatedHint(db: DbInterface, main: number, sub: number): Promise<number> {
@@ -155,19 +155,20 @@ export async function separateChains(
 }
 
 /** A fixed list so that a request value never gets into the name. */
-const ERFASSUNGEN = { set: 'setErfassungen', part: 'teilErfassungen', fig: 'figurErfassungen' } as const;
-export type ErfassungsArt = keyof typeof ERFASSUNGEN;
+const ACQUISITIONS = { set: 'setErfassungen', part: 'teilErfassungen', fig: 'figurErfassungen' } as const;
+export type AcquisitionKind = keyof typeof ACQUISITIONS;
 
 /** The owner of an acquisition row, or null if it does not exist. */
 export async function ownerTheEntry(
   db: DbInterface,
   l: HouseholdReadContract,
-  art: ErfassungsArt,
+  art: AcquisitionKind,
   id: number,
 ): Promise<number | null> {
-  const r = await db.get<{ user_id: number | string }>(`SELECT user_id FROM ${l[ERFASSUNGEN[art]]()} e WHERE id = $1`, [
-    id,
-  ]);
+  const r = await db.get<{ user_id: number | string }>(
+    `SELECT user_id FROM ${l[ACQUISITIONS[art]]()} e WHERE id = $1`,
+    [id],
+  );
   return r ? zahl(r.user_id) : null;
 }
 

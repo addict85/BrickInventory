@@ -20,11 +20,11 @@ import { buildTrashRouter } from './trash';
 import { buildDeviceRouter } from './device';
 import { buildSetupRouter } from './setup';
 import { vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 export function buildApiRouter(
   d: Pick<
-    Dienste,
+    Services,
     | 'settings'
     | 'mail'
     | 'jobQueue'

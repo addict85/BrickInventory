@@ -9,13 +9,13 @@ import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
-import type { Kontext } from '../infra/area';
-import type { Uhr } from '../infra/clock';
+import type { Context } from '../infra/area';
+import type { Clock } from '../infra/clock';
 
 /** What the area gets from outside, so that a test can give it its own access; that
  * all areas use the same one is ensured by buildServices (startup/wiring.ts). */
 export interface SetsDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   konfig: Readonly<Konfig>;
   db: Db;
   externalSources: ForeignSourcesServices;
@@ -28,4 +28,4 @@ export interface SetsDependencies {
   einstellungen: SettingsServices;
   account: AccountServices;
 }
-export type SetsContext = Kontext<SetsDependencies, object>;
+export type SetsContext = Context<SetsDependencies, object>;

@@ -7,13 +7,13 @@ import type { AccountContext } from './context';
 
 const CACHE_MS = 5_000;
 /** Per access; `stand` counts every clearing so that an older read state does not get back in. */
-const speicher = (k: AccountContext) =>
+const store = (k: AccountContext) =>
   k.faecher.fach('sitzungsVersion', () => ({
     eintraege: new Map<number, { version: number | null; bis: number }>(),
     stand: 0,
     verteilt: false,
   }));
-const gemerkt = (k: AccountContext) => speicher(k).eintraege;
+const remembered = (k: AccountContext) => store(k).eintraege;
 
 /** A second web process would otherwise keep the old version for up to five seconds: every increment
  * is announced via NOTIFY. Without a standing listen connection only the database counts (fail closed). */
@@ -25,21 +25,21 @@ const increased = (k: AccountContext) =>
     return e;
   });
 function forgetAllSessionVersions(k: AccountContext): void {
-  const s = speicher(k);
+  const s = store(k);
   s.eintraege.clear();
   s.stand++;
 }
 export function listenOnSessionVersion(k: AccountContext): void {
-  speicher(k).verteilt = true;
+  store(k).verteilt = true;
   increased(k).connect(k.db.notification);
 }
-function nutzbar(k: AccountContext): boolean {
-  if (speicher(k).verteilt && k.db.notification.listensTo(CHANNEL)) return true;
+function usable(k: AccountContext): boolean {
+  if (store(k).verteilt && k.db.notification.listensTo(CHANNEL)) return true;
   forgetAllSessionVersions(k);
   return false;
 }
 function reportIncrease(k: AccountContext): void {
-  if (speicher(k).verteilt) void increased(k).melde(k.db.notification);
+  if (store(k).verteilt) void increased(k).melde(k.db.notification);
 }
 
 /** null: account missing or locked. */
@@ -48,12 +48,12 @@ export function sessionVersionFromDb(k: AccountContext, uid: number): Promise<nu
 }
 
 export async function currentSessionVersion(k: AccountContext, uid: number): Promise<number | null> {
-  if (!nutzbar(k)) return k.zugaenge.sitzungsVersion(uid);
-  const g = gemerkt(k).get(uid);
+  if (!usable(k)) return k.zugaenge.sitzungsVersion(uid);
+  const g = remembered(k).get(uid);
   if (g && g.bis > k.uhr.jetzt()) return g.version;
-  const vorher = speicher(k).stand;
+  const before = store(k).stand;
   const version = await k.zugaenge.sitzungsVersion(uid);
-  if (speicher(k).stand === vorher) gemerkt(k).set(uid, { version, bis: k.uhr.jetzt() + CACHE_MS });
+  if (store(k).stand === before) remembered(k).set(uid, { version, bis: k.uhr.jetzt() + CACHE_MS });
   return version;
 }
 

@@ -25,8 +25,8 @@ async function masse(datei: string): Promise<{ width: number; height: number } |
 }
 
 /** Only the old crop looked like this: exactly 200 × 200 for an original that is not square. */
-async function cropped(original: string, vorschau: string): Promise<boolean> {
-  const v = await masse(vorschau);
+async function cropped(original: string, preview: string): Promise<boolean> {
+  const v = await masse(preview);
   if (!v || v.width !== OLD_EDGE || v.height !== OLD_EDGE) return false;
   const o = await masse(original);
   return !!o && o.height > 0 && Math.abs(o.width / o.height - 1) > 0.02;
@@ -38,30 +38,30 @@ const pause = () => new Promise(r => setTimeout(r, 10));
  * @returns how many previews were replaced, or null if it already ran once */
 export async function fitTailoredPreviews(
   k: Pick<ImagesContext, 'jobQueue' | 'uhr'>,
-  lokale: { web: string; datei: string }[],
-  proxyOrdner = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
+  local: { web: string; datei: string }[],
+  proxyFolder = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
   if (await k.jobQueue.liesZustand(FITTED_MARKER)) return null;
-  let ersetzt = 0,
-    geprueft = 0;
-  for (const { web, datei } of lokale) {
-    const vorschau = datei.replace(path.extname(datei), '_thumb.jpg');
-    if (++geprueft % 10 === 0) await pause();
-    if (!(await cropped(datei, vorschau))) continue;
-    await fs.promises.rm(vorschau, { force: true });
-    if ((await versuche('vorschau:einpassen', vorschauErzeugenAus(web))).ok) ersetzt++;
+  let replaced = 0,
+    checked = 0;
+  for (const { web, datei } of local) {
+    const preview = datei.replace(path.extname(datei), '_thumb.jpg');
+    if (++checked % 10 === 0) await pause();
+    if (!(await cropped(datei, preview))) continue;
+    await fs.promises.rm(preview, { force: true });
+    if ((await versuche('vorschau:einpassen', vorschauErzeugenAus(web))).ok) replaced++;
   }
-  const namen = await fs.promises
-    .readdir(proxyOrdner)
+  const names = await fs.promises
+    .readdir(proxyFolder)
     .catch(withoutMissingFile('vorschau:proxy-ordner', [] as string[]));
-  for (const name of namen.filter(n => n.endsWith('_thumb.jpg'))) {
-    if (++geprueft % 10 === 0) await pause();
-    const vorschau = path.join(proxyOrdner, name);
-    if (!(await cropped(vorschau.slice(0, -'_thumb.jpg'.length), vorschau))) continue;
-    await fs.promises.rm(vorschau, { force: true });
-    ersetzt++;
+  for (const name of names.filter(n => n.endsWith('_thumb.jpg'))) {
+    if (++checked % 10 === 0) await pause();
+    const preview = path.join(proxyFolder, name);
+    if (!(await cropped(preview.slice(0, -'_thumb.jpg'.length), preview))) continue;
+    await fs.promises.rm(preview, { force: true });
+    replaced++;
   }
   await k.jobQueue.setzeZustand(FITTED_MARKER, k.uhr.datum().toISOString());
-  if (ersetzt) console.log(`  🖼️  ${ersetzt} zugeschnittene Vorschauen neu eingepasst`);
-  return ersetzt;
+  if (replaced) console.log(`  🖼️  ${replaced} zugeschnittene Vorschauen neu eingepasst`);
+  return replaced;
 }

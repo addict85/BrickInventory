@@ -1,14 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ErrorCode } from './errorTexts';
-import { prozessweit } from './prozessweit';
+import { processWide } from './prozessweit';
 
 /** One constant for all paths that set a password. Existing passwords
  * stay valid; the rule applies on the next set. */
 export const PASSWORD_MIN_CHARS = 12;
 
-export function passwordToShort(passwort: unknown): boolean {
-  return String(passwort ?? '').length < PASSWORD_MIN_CHARS;
+export function passwordToShort(password: unknown): boolean {
+  return String(password ?? '').length < PASSWORD_MIN_CHARS;
 }
 
 /** argon2id reads the whole password; the limit only keeps oversized inputs away
@@ -16,8 +16,8 @@ export function passwordToShort(passwort: unknown): boolean {
 export const PASSWORD_MAX_CHARS = 1024;
 
 /** Shipped along (haeufige-passwoerter.txt next to this file), without a network query. */
-function haeufige(): Set<string> {
-  return prozessweit(
+function common(): Set<string> {
+  return processWide(
     'haeufigePasswoerter',
     () =>
       new Set(
@@ -31,12 +31,12 @@ function haeufige(): Set<string> {
 }
 
 /** For every path that sets a password: the reason for rejection or null. */
-export function passwordLack(passwort: unknown, benutzername?: unknown): ErrorCode | null {
-  if (passwordToShort(passwort)) return 'passwort_zu_kurz';
-  const p = String(passwort);
+export function passwordLack(password: unknown, benutzername?: unknown): ErrorCode | null {
+  if (passwordToShort(password)) return 'passwort_zu_kurz';
+  const p = String(password);
   if (p.length > PASSWORD_MAX_CHARS) return 'passwort_zu_lang';
-  const klein = p.toLowerCase();
-  if (haeufige().has(klein) || (typeof benutzername === 'string' && klein === benutzername.toLowerCase()))
+  const small = p.toLowerCase();
+  if (common().has(small) || (typeof benutzername === 'string' && small === benutzername.toLowerCase()))
     return 'passwort_zu_haeufig';
   return null;
 }

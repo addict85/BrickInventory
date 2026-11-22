@@ -2,7 +2,7 @@
 import { fachfehler } from './errorTexts';
 
 /** Digits; spaces and hyphens are dropped, that is how retailers print the number. */
-export function gutscheinNummer(v: unknown): string {
+export function voucherNumber(v: unknown): string {
   const n = typeof v === 'string' && v.length <= 40 ? v.replace(/[\s-]/g, '') : '';
   if (!/^\d{4,25}$/.test(n)) fachfehler('ungueltig', 'nummer_ungueltig');
   return n;
@@ -29,7 +29,7 @@ export const PIN_MASK = '•••';
 export const numberMask = (nummer: string) => `…${nummer.slice(-4)}`;
 
 export function voucherNumberOrMask(v: unknown): string {
-  return typeof v === 'string' && /^…\d{4}$/.test(v) ? v : gutscheinNummer(v);
+  return typeof v === 'string' && /^…\d{4}$/.test(v) ? v : voucherNumber(v);
 }
 
 /** When changing, null means "stays" and empty means "remove": that is why the empty value stays. */

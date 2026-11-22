@@ -1,14 +1,14 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/area';
+import { imSystem, withValue, type Context } from '../infra/area';
 import type { Faecher } from '../infra/cache';
 import * as repository from './repository/values';
 import type { ThrottleServices } from '../throttle';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 import type { SettingsReadContract } from './readContract';
 
 export interface SettingsDependencies {
-  uhr: Uhr;
+  uhr: Clock;
   db: Db;
   /** Who listens for changes to global values; createSettings sets it up. */
   faecher: Faecher;
@@ -21,17 +21,17 @@ const GLOBAL = 'global settings: only the system role writes them';
 
 export const access = (db: Db) => ({
   repository: {
-    userValue: mit(db)(repository.userValue),
-    globalValue: mit(db)(repository.globalValue),
-    writeUserValue: mit(db)(repository.writeUserValue),
-    deleteUserValue: mit(db)(repository.deleteUserValue),
-    userValues: mit(db)(repository.userValues),
-    firstValueIn: mit(db)(repository.firstValueIn),
+    userValue: withValue(db)(repository.userValue),
+    globalValue: withValue(db)(repository.globalValue),
+    writeUserValue: withValue(db)(repository.writeUserValue),
+    deleteUserValue: withValue(db)(repository.deleteUserValue),
+    userValues: withValue(db)(repository.userValues),
+    firstValueIn: withValue(db)(repository.firstValueIn),
     foreignUserValue: imSystem(db, 'Verwaltung: reads another account’s value', repository.userValue),
     writeGlobalValue: imSystem(db, GLOBAL, repository.writeGlobalValue),
     deleteGlobalValues: imSystem(db, GLOBAL, repository.deleteGlobalValueRows),
-    globalValues: mit(db)(repository.globalValues),
+    globalValues: withValue(db)(repository.globalValues),
     replaceGlobalValue: imSystem(db, GLOBAL, repository.replaceGlobalValue),
   },
 });
-export type SettingsContext = Kontext<SettingsDependencies, ReturnType<typeof access>>;
+export type SettingsContext = Context<SettingsDependencies, ReturnType<typeof access>>;

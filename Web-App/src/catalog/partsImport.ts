@@ -7,14 +7,14 @@ import { alleTeileDesSets } from './rebrickableCatalog';
 import { logAndContinue, reportError } from '../infra/error';
 import { withVersion } from '../infra/setNumber';
 import { numbersList } from '../infra/foreignAddresses';
-import { rememberBlNumber, rememberBlNumbers, merkeBlNummerUnveraendert } from './blMapping';
+import { rememberBlNumber, rememberBlNumbers, rememberBlNumberUnchanged } from './blMapping';
 import { merkeSetTeile, type SetPartRow } from './catalogMaintenance';
 import type { CatalogContext } from './context';
 
 /** Sorted by part and color: a fixed lock order against deadlocks. */
-function setPartRows(roh: RbSetTeil[]): SetPartRow[] {
+function setPartRows(raw: RbSetTeil[]): SetPartRow[] {
   const zeilen: SetPartRow[] = [];
-  for (const t of roh) {
+  for (const t of raw) {
     const p = t.part || ({} as RbSetTeil['part']),
       color = t.color || ({} as RbSetTeil['color']);
     if (!p.part_num) continue;
@@ -23,8 +23,8 @@ function setPartRows(roh: RbSetTeil[]): SetPartRow[] {
     let imageLocal: string | null = null;
     if (imageUrl) {
       try {
-        const datei = `${p.part_num}_${colorId}${path.extname(new URL(imageUrl).pathname) || '.png'}`;
-        if (fs.existsSync(path.join(PART_IMAGES_DIR, datei))) imageLocal = `/images/parts/${datei}`;
+        const file = `${p.part_num}_${colorId}${path.extname(new URL(imageUrl).pathname) || '.png'}`;
+        if (fs.existsSync(path.join(PART_IMAGES_DIR, file))) imageLocal = `/images/parts/${file}`;
       } catch (e) {
         reportError('teile-import:bildpfad', e);
       }
@@ -54,9 +54,9 @@ export async function loadSetParts(
   setNumber: string,
 ): Promise<{ n: string; zeilen: SetPartRow[] } | null> {
   const n = withVersion(setNumber);
-  const roh: RbSetTeil[] | null = await alleTeileDesSets(k, n);
-  if (!roh?.length) return null;
-  const zeilen = setPartRows(roh);
+  const raw: RbSetTeil[] | null = await alleTeileDesSets(k, n);
+  if (!raw?.length) return null;
+  const zeilen = setPartRows(raw);
   return zeilen.length ? { n, zeilen } : null;
 }
 
@@ -136,7 +136,7 @@ export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
     }
     const returned = new Set((data?.results || []).map(p => p.part_num));
     for (const pn of batch) {
-      if (!returned.has(pn)) await merkeBlNummerUnveraendert(k, 'part', pn).catch(logAndContinue('bl-nummern:merken'));
+      if (!returned.has(pn)) await rememberBlNumberUnchanged(k, 'part', pn).catch(logAndContinue('bl-nummern:merken'));
     }
   }
 }

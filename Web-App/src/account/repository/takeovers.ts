@@ -1,14 +1,19 @@
 import type { DbInterface } from '../../../db/database';
 
 export type TakeoverKind = 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
-export interface Uebernahme {
+export interface Takeover {
   target_id: number;
   type: TakeoverKind;
   initiated_by: number;
   password_hash: string | null;
 }
 
-export async function terminateAn(db: DbInterface, u: Uebernahme, hours: number, abortHash: string): Promise<Date> {
+export async function scheduleTermination(
+  db: DbInterface,
+  u: Takeover,
+  hours: number,
+  abortHash: string,
+): Promise<Date> {
   const r = await db.get<{ effective_at: Date }>(
     `INSERT INTO admin_takeovers (target_id, type, initiated_by, password_hash, effective_at, cancel_hash)
      VALUES ($1, $2, $3, $4, NOW() + make_interval(hours => $5), $6)
@@ -21,20 +26,20 @@ export async function terminateAn(db: DbInterface, u: Uebernahme, hours: number,
 }
 
 /** Whoever just lost the role still counts as admin: otherwise one would revoke it first and then take over immediately. */
-export async function adminOrJustBeen(db: DbInterface, ziel: number, hours: number): Promise<boolean> {
+export async function adminOrJustBeen(db: DbInterface, target: number, hours: number): Promise<boolean> {
   const r = await db.get<{ ja: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND is_admin)
          OR EXISTS (SELECT 1 FROM admin_log WHERE target_id = $1 AND action = 'verwalter_entzogen'
                      AND occurred_at > NOW() - make_interval(hours => $2)) AS ja`,
-    [ziel, hours],
+    [target, hours],
   );
   return r?.ja === true;
 }
 
 /** Due and still backed by the admin who announced it. Not password and factor if the
  * target has been deactivated since or is being deactivated now: it could no longer log in to cancel. */
-export async function takeDue(db: DbInterface): Promise<{ gilt: Uebernahme[]; verworfen: number }> {
-  const weg = await db.all<Uebernahme & { gilt: boolean }>(
+export async function takeDue(db: DbInterface): Promise<{ gilt: Takeover[]; verworfen: number }> {
+  const route = await db.all<Takeover & { gilt: boolean }>(
     `WITH weg AS (DELETE FROM admin_takeovers WHERE effective_at <= NOW() RETURNING *)
      SELECT w.target_id, w.type, w.initiated_by, w.password_hash,
        EXISTS (SELECT 1 FROM users d WHERE d.id = w.initiated_by AND d.is_admin AND d.is_active)
@@ -44,12 +49,12 @@ export async function takeDue(db: DbInterface): Promise<{ gilt: Uebernahme[]; ve
          OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deaktivieren'))) AS gilt
        FROM weg w`,
   );
-  return { gilt: weg.filter(z => z.gilt), verworfen: weg.filter(z => !z.gilt).length };
+  return { gilt: route.filter(z => z.gilt), verworfen: route.filter(z => !z.gilt).length };
 }
 
-export async function abortTakeoversAb(db: DbInterface, ziel: number): Promise<TakeoverKind[]> {
+export async function abortTakeovers(db: DbInterface, target: number): Promise<TakeoverKind[]> {
   const r = await db.all<{ type: TakeoverKind }>('DELETE FROM admin_takeovers WHERE target_id = $1 RETURNING type', [
-    ziel,
+    target,
   ]);
   return r.map(z => z.type);
 }

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt, WITHOUT_BODY, KENNUNG, TEXT_OR_EMPTY } from './base';
+import { AccountName, type Route, confirmed, WITHOUT_BODY, IDENTIFIER, TEXT_OR_EMPTY } from './base';
 import { DEGRADED, GenericResponse } from './shared';
 
-export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: KontoName });
+export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: AccountName });
 
 export const HaushaltGeloest = GenericResponse.extend({ removed: z.number().int() });
 
-export const GetrenntesKonto = z.looseObject({
+export const SeparatedAccount = z.looseObject({
   id: z.number().int(),
   username: z.string(),
   via: z.string().nullable(),
@@ -20,7 +20,7 @@ export const HouseholdInviteResponse = z.looseObject({
 
 export const HouseholdInviteCheckResponse = z.looseObject({
   success: z.boolean(),
-  inviter: KontoName,
+  inviter: AccountName,
 });
 
 export const HouseholdMember = z.looseObject({
@@ -41,11 +41,11 @@ export const HouseholdStatusResponse = z.looseObject({
   is_main: z.boolean(),
   is_sub: z.boolean(),
   currency: z.string(),
-  linked_to: KontoName.nullable(),
-  parents: z.array(KontoName),
+  linked_to: AccountName.nullable(),
+  parents: z.array(AccountName),
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),
-  former_links: z.array(GetrenntesKonto),
+  former_links: z.array(SeparatedAccount),
   degradiert: DEGRADED,
 });
 
@@ -59,17 +59,17 @@ export const routen = {
   },
   'POST /api/v1/settings/household/redeem': {
     antwort: HaushaltBeigetreten,
-    ...bestaetigt({ code: TEXT_OR_EMPTY(64) }, 'password', 'faktor_code'),
+    ...confirmed({ code: TEXT_OR_EMPTY(64) }, 'password', 'faktor_code'),
   },
   'POST /api/v1/settings/household/unlink': {
     eingabe: z.strictObject({
-      sub_user_id: KENNUNG.nullable().optional(),
-      main_user_id: KENNUNG.nullable().optional(),
+      sub_user_id: IDENTIFIER.nullable().optional(),
+      main_user_id: IDENTIFIER.nullable().optional(),
     }),
     antwort: HaushaltGeloest,
   },
   'POST /api/v1/settings/household/former/dismiss': {
-    eingabe: z.strictObject({ sub_user_id: KENNUNG }),
+    eingabe: z.strictObject({ sub_user_id: IDENTIFIER }),
     antwort: HaushaltGeloest,
   },
 } satisfies Record<string, Route>;

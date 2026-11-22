@@ -29,7 +29,7 @@ async function getTransporter(k: MailContext) {
   const fp = normalizeFingerprint(await setting(k, 'smtp_tls_fingerprint'));
   if (!host || !user) return null;
   // Resolved and checked here, then connected to exactly this address; the name stays for SNI and the certificate.
-  const adresse = await resolveOn(host, ip => mailServerAddress(ip));
+  const address = await resolveOn(host, ip => mailServerAddress(ip));
   const checkPeer = (name: string, cert: PeerCertificate) => {
     if (!fp) return tls.checkServerIdentity(name, cert);
     if (normalizeFingerprint(cert.fingerprint256) === fp) return undefined;
@@ -40,8 +40,8 @@ async function getTransporter(k: MailContext) {
   // requireTLS: without STARTTLS in the EHLO reply nodemailer would otherwise fall back
   // to plain text and send password and reset links readable across the network.
   return nodemailer.createTransport({
-    host: adresse,
-    ...(adresse !== host ? { servername: host } : {}),
+    host: address,
+    ...(address !== host ? { servername: host } : {}),
     port,
     secure,
     requireTLS: !secure,
@@ -110,10 +110,10 @@ export function linkForConsole(link: string | undefined, flag: string | undefine
 }
 
 /** The console ends up in app_logs, which every administrator reads; in full only with the developer flag, like the links. */
-export function maskAddress(adresse: string, full: boolean): string {
-  if (full) return adresse;
-  const at = adresse.lastIndexOf('@');
-  return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
+export function maskAddress(address: string, full: boolean): string {
+  if (full) return address;
+  const at = address.lastIndexOf('@');
+  return at < 1 ? '…' : `${address[0]}…${address.slice(at)}`;
 }
 
 /** For nodemailer the string must be exactly this one address, otherwise the

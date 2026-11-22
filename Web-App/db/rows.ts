@@ -2,7 +2,7 @@
 // Regenerate after every migration: npm run schema:stand && npm run schema:zeilen
 
 /** Per table the columns as node-pg delivers them (NUMERIC as a number, BIGINT as text). */
-export interface Tabellen {
+export interface Tables {
   account_link_invites: {
     token_hash: string;
     main_user_id: number;
@@ -657,4 +657,4 @@ export interface Tabellen {
 }
 
 /** Selected columns of a table: `Spalten<"sets", "user_id" | "set_number">`. */
-export type Spalten<T extends keyof Tabellen, S extends keyof Tabellen[T]> = Pick<Tabellen[T], S>;
+export type Columns<T extends keyof Tables, S extends keyof Tables[T]> = Pick<Tables[T], S>;

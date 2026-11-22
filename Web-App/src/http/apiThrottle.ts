@@ -1,10 +1,10 @@
 /** A budget per account for the logged-in API, weighted by cost (PDF, imports, catalog), so that
  * an account cannot call expensive paths in rapid succession. Counted in the process: there is exactly one web process. */
 import type { Request, Response, NextFunction } from 'express';
-import { nutzerId } from './userId';
+import { userId } from './userId';
 import { sendError } from './httpResponse';
-import { prozessweit } from '../infra/prozessweit';
-import { keyForRequest, type Schluessel } from '../contract';
+import { processWide } from '../infra/prozessweit';
+import { keyForRequest, type Key } from '../contract';
 
 export const WINDOW_MS = 5 * 60 * 1000;
 /** Units per account and window; a read call counts 1. */
@@ -18,7 +18,7 @@ export const COST = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
  * Deliberately enumerated instead of "everything under /admin": a new route should
  * stand out here and not silently land in the normal budget. Contract keys instead of path patterns:
  * what gets classified is the route Express will find, not a spelling of it. */
-const JOBS: ReadonlySet<Schluessel> = new Set<Schluessel>([
+const JOBS: ReadonlySet<Key> = new Set<Key>([
   'POST /api/v1/sets/partslist-pdf',
   'POST /api/v1/sets/import/csv',
   'POST /api/v1/sets/add-stream',
@@ -34,14 +34,14 @@ const JOBS: ReadonlySet<Schluessel> = new Set<Schluessel>([
 
 /** Up to four BrickLink calls per request (two conditions, one fallback each), all from
  * the daily quota that ALL accounts share. */
-const PREISABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
+const PRICE_FETCH: ReadonlySet<Key> = new Set<Key>([
   'GET /api/v1/wanted/:setNumber/preise',
   'GET /api/v1/sets/:setNumber/price',
 ]);
 
 /** Trigger a fetch from Rebrickable, Brickset, a barcode service or
  * the voucher shop per request. The catalog asks Rebrickable per search; the daily quota there is finite. */
-const FREMDABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
+const FOREIGN_FETCH: ReadonlySet<Key> = new Set<Key>([
   'GET /api/v1/sets/info/:setNumber',
   'GET /api/v1/sets/barcode/:barcode',
   'POST /api/v1/sets',
@@ -54,19 +54,19 @@ const FREMDABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'POST /api/v1/vouchers/:id/guthaben',
 ]);
 
-/** @param pfad relative to /api/v1, as apiDrossel sees it there */
-export function classification(methode: string, pfad: string): { kosten: number; auftrag: boolean } {
-  const k = keyForRequest(methode === 'HEAD' ? 'GET' : methode, `/api/v1${pfad}`);
+/** @param path relative to /api/v1, as apiDrossel sees it there */
+export function classification(method: string, path: string): { kosten: number; auftrag: boolean } {
+  const k = keyForRequest(method === 'HEAD' ? 'GET' : method, `/api/v1${path}`);
   if (!k) return { kosten: COST.normal, auftrag: false };
   if (JOBS.has(k)) return { kosten: COST.auftrag, auftrag: true };
-  if (PREISABRUF.has(k)) return { kosten: COST.preis, auftrag: false };
-  if (FREMDABRUF.has(k) || k.startsWith('GET /api/v1/catalog')) return { kosten: COST.abruf, auftrag: false };
+  if (PRICE_FETCH.has(k)) return { kosten: COST.preis, auftrag: false };
+  if (FOREIGN_FETCH.has(k) || k.startsWith('GET /api/v1/catalog')) return { kosten: COST.abruf, auftrag: false };
   return { kosten: COST.normal, auftrag: false };
 }
 
 type Stand = { start: number; units: number; auftraege: number };
 /** Per process, not per access: the throttle protects this process (src/infra/prozessweit.ts). */
-const states = () => prozessweit('apiDrossel', () => new Map<number, Stand>());
+const states = () => processWide('apiDrossel', () => new Map<number, Stand>());
 
 /** Only for tests: a state that does not depend on the previous run. */
 export function clearThrottle(): void {
@@ -75,21 +75,21 @@ export function clearThrottle(): void {
 
 /** An expired window starts anew; rejected requests do not count,
  * otherwise an attack would extend its own lock endlessly. */
-function statusFor(uid: number, jetzt: number): Stand {
+function statusFor(uid: number, now: number): Stand {
   const _states = states();
   let s = _states.get(uid);
-  if (!s || jetzt - s.start >= WINDOW_MS) {
-    s = { start: jetzt, units: 0, auftraege: 0 };
+  if (!s || now - s.start >= WINDOW_MS) {
+    s = { start: now, units: 0, auftraege: 0 };
     _states.set(uid, s);
   }
-  if (_states.size > 5000) for (const [id, x] of _states) if (jetzt - x.start >= WINDOW_MS) _states.delete(id);
+  if (_states.size > 5000) for (const [id, x] of _states) if (now - x.start >= WINDOW_MS) _states.delete(id);
   return s;
 }
 
-export function checkBudget(uid: number, methode: string, pfad: string, jetzt = Date.now()) {
-  const { kosten, auftrag } = classification(methode, pfad);
-  const s = statusFor(uid, jetzt);
-  const restSec = Math.max(1, Math.ceil((s.start + WINDOW_MS - jetzt) / 1000));
+export function checkBudget(uid: number, method: string, path: string, now = Date.now()) {
+  const { kosten, auftrag } = classification(method, path);
+  const s = statusFor(uid, now);
+  const restSec = Math.max(1, Math.ceil((s.start + WINDOW_MS - now) / 1000));
   if (s.units + kosten > BUDGET || (auftrag && s.auftraege >= JOB_BUDGET))
     return { erlaubt: false as const, kosten, auftrag, restSec, units: s.units, auftraege: s.auftraege };
   s.units += kosten;
@@ -100,7 +100,7 @@ export function checkBudget(uid: number, methode: string, pfad: string, jetzt = 
 /** Behind loginAtInbox: without an account there is nothing to limit, and
  * login has its own brakes (src/account/loginLimiter.ts). */
 export function apiDrossel(req: Request, res: Response, next: NextFunction): void {
-  const uid = nutzerId(req);
+  const uid = userId(req);
   if (uid === null) {
     next();
     return;

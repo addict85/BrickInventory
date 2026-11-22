@@ -23,7 +23,7 @@ export function normalizeLocation(v: unknown): string | null {
 
 /** `user_id`, because a list can span several accounts and the
  * UI must know whose entry it is editing. */
-export interface Lagerort {
+export interface Storage {
   id: number;
   user_id: number;
   name: string;
@@ -37,10 +37,10 @@ function nameOrError(v: unknown): string {
 }
 
 /** Who may see whose list is decided by the household; the IDs come along. */
-export async function locationsOf(k: InventoryContext, userIds: number[]): Promise<Lagerort[]> {
+export async function locationsOf(k: InventoryContext, userIds: number[]): Promise<Storage[]> {
   const rows = await orte.locationsTheAccounts(k.db, userIds);
-  type Zeile = { id: string | number; user_id: string | number; name: string };
-  return ((rows as Zeile[]) || []).map(r => ({
+  type Row = { id: string | number; user_id: string | number; name: string };
+  return ((rows as Row[]) || []).map(r => ({
     id: parseInt(String(r.id), 10),
     user_id: parseInt(String(r.user_id), 10),
     name: r.name,
@@ -48,11 +48,11 @@ export async function locationsOf(k: InventoryContext, userIds: number[]): Promi
 }
 
 /** No error if it exists: when setting a storage location a refusal would be nonsense. */
-export async function putLocationAn(
+export async function createStorage(
   k: InventoryContext,
   userId: number,
   name: string | undefined,
-): Promise<{ ort: Lagerort; war_neu: boolean }> {
+): Promise<{ ort: Storage; war_neu: boolean }> {
   const n = nameOrError(name);
   const neu = await orte.addLocationOne(k.db, userId, n);
   if (neu) return { ort: { id: parseInt(String(neu.id), 10), user_id: userId, name: neu.name }, war_neu: true };
@@ -64,12 +64,12 @@ export async function putLocationAn(
 }
 
 /** The assignment is an ID; the new name thus applies everywhere immediately. */
-export async function benenneOrtUm(
+export async function renameStorage(
   k: InventoryContext,
   userId: number,
   id: number,
   name: string | undefined,
-): Promise<Lagerort> {
+): Promise<Storage> {
   const neu = nameOrError(name);
   const alt = await orte.ortName(k.db, id, userId);
   if (!alt) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
@@ -82,7 +82,7 @@ export async function benenneOrtUm(
 
 /** Refusal as long as something is still in it: silent clearing would lose assignments
  * the deleting user did not have in view, with no way back. */
-export async function loescheOrt(k: InventoryContext, userId: number, id: number): Promise<void> {
+export async function deleteStorage(k: InventoryContext, userId: number, id: number): Promise<void> {
   const ort = await orte.ortName(k.db, id, userId);
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // All three tables, via the ID: otherwise a place could be deleted that
@@ -94,14 +94,14 @@ export async function loescheOrt(k: InventoryContext, userId: number, id: number
 
 /** ONE query over all tables, so that not every UI merges by itself. */
 export async function lagerorte(k: InventoryContext, scopeChoice: Sicht | ScopeInput) {
-  const blickfeld = await k.household.scopeFrom(scopeChoice);
-  const uids = asIds(blickfeld);
+  const scope = await k.household.scopeFrom(scopeChoice);
+  const uids = asIds(scope);
   // Grouped by NAME, on purpose: "basement" of grandfather and grandchild
   // are two stock rows, but belong together in the overview.
   const rows = await orte.locationsWithInventory(k.db, k.lesevertrag, uids);
   // SUM() comes from the driver as a string; hence parseInt below.
-  type Zeile = { ort: string; sets: string | number; teile: string | number; figuren: string | number };
-  return ((rows as Zeile[]) || []).map(r => ({
+  type Row = { ort: string; sets: string | number; teile: string | number; figuren: string | number };
+  return ((rows as Row[]) || []).map(r => ({
     ort: r.ort,
     sets: parseInt(String(r.sets), 10) || 0,
     teile: parseInt(String(r.teile), 10) || 0,
@@ -113,7 +113,7 @@ export async function lagerorte(k: InventoryContext, scopeChoice: Sicht | ScopeI
 export const DEFAULT_KEY = 'default_storage_id';
 
 /** Only a place of the account: a default whose place was deleted is none, and a foreign ID does not count. */
-export async function vorgabeVon(k: InventoryContext, userId: number): Promise<Lagerort | null> {
+export async function defaultOf(k: InventoryContext, userId: number): Promise<Storage | null> {
   const id = Number.parseInt(String((await k.einstellungen.userValue(userId, DEFAULT_KEY)) ?? '').trim(), 10);
   const row = Number.isInteger(id) ? await orte.locationOfAccount(k.db, id, userId) : undefined;
   if (!row) return null;
@@ -127,5 +127,5 @@ export async function locationForNewEntry(k: InventoryContext, userId: number, g
   const ort = normalizeLocation(given);
   if (ort) return ort;
   if (given !== undefined && given !== null) return null;
-  return (await vorgabeVon(k, userId))?.name ?? null;
+  return (await defaultOf(k, userId))?.name ?? null;
 }

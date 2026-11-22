@@ -1,5 +1,5 @@
 import type { Db } from '../db/database';
-import { altKey, datenSchluessel } from '../src/infra/secret';
+import { altKey, dataKey } from '../src/infra/secret';
 import { konfig } from '../src/infra/config';
 import type { Dienste } from './wiring';
 
@@ -63,10 +63,10 @@ export async function keySwitch(d: Dienste): Promise<number | null> {
 
 /** The web process alone must not touch vouchers (web system role): it waits
  * until the jobs service has converted the legacy data, instead of reading old rows. */
-export async function waitOnLegacyStock(d: Dienste, takt = 2000): Promise<void> {
+export async function waitOnLegacyStock(d: Dienste, tick = 2000): Promise<void> {
   for (let n = 0; !(await d.jobQueue.liesZustand(LEGACY_STOCK_BRAND)); n++) {
     if (n % 15 === 0) console.log('[geheimnis] warte, bis der Dienst jobs die Geheimnisse auf v2 umgestellt hat');
-    await new Promise(r => setTimeout(r, takt));
+    await new Promise(r => setTimeout(r, tick));
   }
 }
 
@@ -79,7 +79,7 @@ export async function waitOnLegacyStock(d: Dienste, takt = 2000): Promise<void> 
 export async function prepareDatabaseBefore(db: Db, d: Dienste, o: { jobs?: boolean } = {}): Promise<void> {
   // At startup instead of at the first encryption: a wrong or old
   // location of the key should appear in the startup log.
-  datenSchluessel();
+  dataKey();
   await warnAtSuperuser(db);
   await db.initSchemaOnce();
   // Otherwise jobs, admin and login would silently see no row of the account tables.

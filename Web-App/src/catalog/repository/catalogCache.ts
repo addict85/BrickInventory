@@ -59,9 +59,9 @@ export async function emptyCatalogCache(db: DbInterface, nummer: string | null):
 
 /** Only the own caches; prices are counted by finances (price_cache belongs to it). */
 export async function cacheNumbers(db: DbInterface): Promise<{ subsets: number; catalog: number }> {
-  const zaehle = async (tabelle: 'subsets_cache' | 'catalog_cache') =>
-    parseInt(String((await db.get<{ c: string }>(`SELECT COUNT(*) AS c FROM ${tabelle}`))?.c ?? 0), 10);
-  const [subsets, catalog] = await Promise.all([zaehle('subsets_cache'), zaehle('catalog_cache')]);
+  const count = async (table: 'subsets_cache' | 'catalog_cache') =>
+    parseInt(String((await db.get<{ c: string }>(`SELECT COUNT(*) AS c FROM ${table}`))?.c ?? 0), 10);
+  const [subsets, catalog] = await Promise.all([count('subsets_cache'), count('catalog_cache')]);
   return { subsets, catalog };
 }
 

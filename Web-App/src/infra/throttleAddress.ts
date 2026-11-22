@@ -6,12 +6,12 @@ export function drosselAdresse(ip: string): string {
   const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
   if (v4 && isIPv4(v4[1]!)) return v4[1]!;
   if (!isIPv6(ip)) return ip;
-  const [links = '', rechts = ''] = ip.toLowerCase().split('::');
+  const [links = '', right = ''] = ip.toLowerCase().split('::');
   const l = links ? links.split(':') : [],
-    r = rechts ? rechts.split(':') : [];
-  const gruppen = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
+    r = right ? right.split(':') : [];
+  const groups = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
   return (
-    gruppen
+    groups
       .slice(0, 4)
       .map(g => g.replace(/^0+(?=.)/, ''))
       .join(':') + '::/64'

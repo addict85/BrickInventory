@@ -13,8 +13,8 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const DATEI = path.join(ROOT, 'docs', 'openapi.json');
 
-/** The text as it should stand in the file. @param {Record<string, unknown>} dok */
-const alsText = dok => JSON.stringify(dok, null, 2) + '\n';
+/** The text as it should stand in the file. @param {Record<string, unknown>} doc */
+const alsText = doc => JSON.stringify(doc, null, 2) + '\n';
 
 if (require.main === module) {
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {

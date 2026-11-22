@@ -4,17 +4,17 @@ import { Degradations } from '../../src/infra/result';
 import { viewOf, guardFor } from './middleware';
 import type { ErfassungsArt } from '../../src/collection';
 import { vertragsRouter, type Anfrage } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 /** Without a known price the amount is missing instead of null: money has a type in the contract. */
-function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
-  const { amount, ...rest } = summe;
+function withoutClearAmount<T extends { amount: number | null }>(sum: T) {
+  const { amount, ...rest } = sum;
   return amount === null ? rest : { ...rest, amount };
 }
 
 /** Sum in the account currency (src/inventory/acquisitions.ts), in the shape of the contract. */
-async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+async function inKontowaehrung<T extends Parameters<Services['inventory']['erfassungenInKontowaehrung']>[0][number]>(
+  d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
   viewer: number,
 ) {
@@ -22,7 +22,7 @@ async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfass
   return { acquisitions, totals: withoutClearAmount(totals) };
 }
 
-type Schluessel = (pfad: Record<string, string | number>) => Array<string | number>;
+type Key = (pfad: Record<string, string | number>) => Array<string | number>;
 /** What the three routes share: the id in the path and a contract schema (Erfassungsaenderung). */
 type Erfassungsanfrage<E = unknown> = AuthedRequest & {
   pfad: Record<string, string | number> & { acqId: number };
@@ -31,28 +31,20 @@ type Erfassungsanfrage<E = unknown> = AuthedRequest & {
 type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisitions/:acqId'>['eingabe']>;
 
 const aendern =
-  (
-    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
-    art: ErfassungsArt,
-    schluessel: Schluessel,
-  ) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, art: ErfassungsArt, key: Key) =>
   (req: Aenderung) =>
-    d.collection.changeAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe);
+    d.collection.changeAcquisition(art, req.apiUser.user_id, req.pfad.acqId, key(req.pfad), req.eingabe);
 
 const loeschen =
-  (
-    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
-    art: ErfassungsArt,
-    schluessel: Schluessel,
-  ) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, art: ErfassungsArt, key: Key) =>
   (req: Erfassungsanfrage) =>
-    d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
-const setKey: Schluessel = p => [String(p.setNumber)];
-const partKey: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
-const minifigKey: Schluessel = p => [String(p.figNumber)];
+    d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, key(req.pfad));
+const setKey: Key = p => [String(p.setNumber)];
+const partKey: Key = p => [String(p.partNumber), Number(p.colorId)];
+const minifigKey: Key = p => [String(p.figNumber)];
 
 export function buildAcquisitionsRouter(
-  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+  d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
 ) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
@@ -63,12 +55,12 @@ export function buildAcquisitionsRouter(
     // If reading fails, the app shows an empty list instead of an error page;
     // `degradiert` tells it that it is not really empty.
     const ab = new Degradations();
-    const rows = await ab.oder(
+    const rows = await ab.orElse(
       'erfassungen',
       d.collection.setAcquisitionsForSet(viewOf(req), req.pfad.setNumber),
       null,
     );
-    if (!rows) return { acquisitions: [], totals: withoutClearAmount(acquisitionTotals([])), ...ab.angabe() };
+    if (!rows) return { acquisitions: [], totals: withoutClearAmount(acquisitionTotals([])), ...ab.detail() };
     return { ...(await inKontowaehrung(d, rows, uid)), owner_user_id: uid };
   });
   router.endpunkt('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, aendern(d, 'set', setKey));

@@ -3,13 +3,13 @@
 import { reportError, withoutMissingFile } from '../../src/infra/error';
 import { streamFileToResponse } from '../../src/http/httpResponse';
 import { kontoSchranke, guardFor } from './middleware';
-import { openStream, type Strom } from '../../src/account/http/stream';
+import { openStream, type Stream } from '../../src/account/http/stream';
 import _pdfFs from 'node:fs/promises';
 import { pdfKey } from '../../src/catalog';
 import { responseLanguage, fachfehler, notFound } from '../../src/infra/errorTexts';
 import type { Request, Response } from 'express';
 import { inShell, vertragsRouter } from '../../src/http/contractRouter';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 function streamStatus(job: {
   status: string;
@@ -26,42 +26,42 @@ function streamStatus(job: {
 }
 
 /** The only way of the three fetch routes to a job: only the own one; a read error goes on. */
-function pdfJobReadFor(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
+function pdfJobReadFor(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
   return d.catalog.pdf.lies(id, userId);
 }
 /** The inflection is a placeholder in the table, not here. */
-function runningInflection(anzahl: number, sprache: string) {
-  const en = sprache === 'en',
-    eins = anzahl === 1;
+function runningInflection(anzahl: number, language: string) {
+  const en = language === 'en',
+    one = anzahl === 1;
   return {
     anzahl,
-    laufenVerb: eins ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
-    auftragWort: eins ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
+    laufenVerb: one ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
+    auftragWort: one ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
   };
 }
 
-const fertig = (s: string | undefined) => s === 'done' || s === 'error';
+const finished = (s: string | undefined) => s === 'done' || s === 'error';
 
 /** NOTIFY reports the state, no matter in which process the job runs; without a
  * payload (on reconnect) and in the fallback tick it also checks,
  * in case a signal got lost during a connection outage. */
-function sequenceJob(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, strom: Strom, jobId: string, uid: number) {
-  const pruefe = async () => {
+function sequenceJob(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>, strom: Stream, jobId: string, uid: number) {
+  const check = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
     if (job) strom.sende(streamStatus(job));
-    if (!job || fertig(job.status)) strom.ende();
+    if (!job || finished(job.status)) strom.ende();
   };
-  strom.atEnd(d.jobQueue.atJobStatus(nutzlast => (!nutzlast || nutzlast === pdfKey(jobId) ? pruefe() : undefined)));
-  const rueckfall = setInterval(pruefe, 15000);
-  strom.atEnd(() => clearInterval(rueckfall));
+  strom.atEnd(d.jobQueue.atJobStatus(payload => (!payload || payload === pdfKey(jobId) ? check() : undefined)));
+  const fallback = setInterval(check, 15000);
+  strom.atEnd(() => clearInterval(fallback));
 }
 
 /** streamFileToResponse instead of pipe(): the cleanup can remove the file between check
  * and open, and a read stream error without a listener ends the process.
  * Cleanup only happens after complete delivery. */
 function deliverAndCleanOn(
-  d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>,
+  d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>,
   req: Request,
   res: Response,
   jobId: string,
@@ -70,14 +70,14 @@ function deliverAndCleanOn(
 ) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
-  const aufraeumen = () => {
+  const cleanUp = () => {
     _pdfFs.unlink(pdfPath).catch(withoutMissingFile('pdf:datei loeschen'));
     d.catalog.pdf.loesche(jobId, uid).catch((e: unknown) => reportError('pdf:auftrag-loeschen', e));
   };
-  streamFileToResponse(res, pdfPath, aufraeumen, req);
+  streamFileToResponse(res, pdfPath, cleanUp, req);
 }
 
-export function buildPdfRouter(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>) {
+export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
@@ -116,7 +116,7 @@ export function buildPdfRouter(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'accoun
       if (!initial) notFound('job_nicht_gefunden');
       const strom = openStream(d.account, req, res, { onlyChanges: true });
       strom.sende(streamStatus(initial));
-      if (fertig(initial.status)) strom.ende();
+      if (finished(initial.status)) strom.ende();
       else sequenceJob(d, strom, jobId, req.apiUser.user_id);
     },
   );

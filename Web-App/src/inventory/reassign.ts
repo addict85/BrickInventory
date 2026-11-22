@@ -1,7 +1,7 @@
 import { fachfehler } from '../infra/errorTexts';
 import { addPurchaseAtTag } from './acquisitions';
-import { putRowAn } from './content';
-import * as mengen from './repository/manualQuantities';
+import { createRow } from './content';
+import * as quantities from './repository/manualQuantities';
 import * as repo from './repository/reassign';
 import type { InventoryContext } from './context';
 
@@ -22,10 +22,10 @@ export async function manualEntryReassign(
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity), 10) || 1);
-  const remaining = Math.max(0, (await mengen.sumTheEntries(t.db, kind, fromId, keyValues)) - movingQty);
+  const remaining = Math.max(0, (await quantities.sumTheEntries(t.db, kind, fromId, keyValues)) - movingQty);
 
   const dst = await repo.manualRow(t.db, kind, toId, keyValues);
-  if (!dst) await putRowAn(t, kind, toId, keyValues);
+  if (!dst) await createRow(t, kind, toId, keyValues);
 
   await addPurchaseAtTag(t, kind, toId, keyValues, {
     quantity: movingQty,
@@ -35,7 +35,7 @@ export async function manualEntryReassign(
     geschaetzt: acq.price_estimated,
     currency: acq.currency,
   });
-  await mengen.removeEntry(t.db, kind, acq.id, [fromId]);
+  await quantities.removeEntry(t.db, kind, acq.id, [fromId]);
 
   if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
   await repo.removeManual(t.db, kind, fromId, keyValues, src.id);

@@ -17,7 +17,7 @@ export const SHARE_JE_ACCOUNT = 0.25;
 export const SHARE_ALL_ACCOUNTS = 0.5;
 const ALL_ACCOUNTS = -1;
 
-const heute = (k: ForeignSourcesContext) => k.uhr.datum().toISOString().slice(0, 10);
+const today = (k: ForeignSourcesContext) => k.uhr.datum().toISOString().slice(0, 10);
 
 export async function limitTheSource(k: ForeignSourcesContext, apiName: ApiName): Promise<number> {
   return parseInt(await k.einstellungen.globalValue(`api_limit_${apiName}`, ''), 10) || DEFAULTS[apiName] || 4000;
@@ -30,23 +30,23 @@ const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_
  * fails, the total count falls back as well. */
 export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
   const limit = await limitTheSource(k, apiName);
-  const tag = heute(k);
+  const tag = today(k);
   const konto = currentAccount();
-  const zaehle = async (tx: DbInterface, id: number, grenze: number): Promise<number | null> => {
-    const z = await repo.countApiCall(tx, tag, apiName, id, grenze);
+  const count = async (tx: DbInterface, id: number, limit: number): Promise<number | null> => {
+    const z = await repo.countApiCall(tx, tag, apiName, id, limit);
     return z ? Number(z.count) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
   return k
     .transaktion(async t => {
-      const gesamt = await zaehle(t.db, 0, limit);
-      if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
+      const total = await count(t.db, 0, limit);
+      if (total === null) return { allowed: false, count: limit, limit, remaining: 0 };
       if (konto && !konto.verwalter) {
-        const alle = await zaehle(t.db, ALL_ACCOUNTS, limitAllAccounts(limit));
-        const eigen = alle === null ? null : await zaehle(t.db, konto.id, limitJeAccount(limit));
-        if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { accountFull: true });
+        const all = await count(t.db, ALL_ACCOUNTS, limitAllAccounts(limit));
+        const own = all === null ? null : await count(t.db, konto.id, limitJeAccount(limit));
+        if (own === null) throw Object.assign(new Error('kontingent_je_konto'), { accountFull: true });
       }
-      return { allowed: true, count: gesamt, limit, remaining: limit - gesamt };
+      return { allowed: true, count: total, limit, remaining: limit - total };
     })
     .catch((e: { accountFull?: boolean }) => {
       if (e?.accountFull) return { allowed: false, count: 0, limit, remaining: 0, jeAccount: true };
@@ -55,7 +55,7 @@ export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiN
 }
 
 export async function kontingentUebersicht(k: ForeignSourcesContext, apiName: ApiName) {
-  const tag = heute(k);
+  const tag = today(k);
   const [z, limit] = await Promise.all([k.apiKontingent.callsToday(tag, apiName), limitTheSource(k, apiName)]);
   const count = Number(z?.count || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
@@ -76,5 +76,5 @@ export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
 }
 
 export async function setQuotaBack(k: ForeignSourcesContext, apiName: ApiName): Promise<void> {
-  await k.apiKontingent.setApiCounterBack(heute(k), apiName);
+  await k.apiKontingent.setApiCounterBack(today(k), apiName);
 }

@@ -1,4 +1,4 @@
-import { umschluesseln } from '../infra/secret';
+import { rekey } from '../infra/secret';
 import { secondFactorContext } from './secondFactor';
 import type { FactorsContext } from './context';
 
@@ -7,8 +7,8 @@ import type { FactorsContext } from './context';
 export async function encryptLegacySecrets(k: FactorsContext, o: { alle?: boolean } = {}): Promise<number> {
   let n = await k.einstellungen.reencryptLegacyGlobalValues();
   for (const z of await k.legacySecrets.legacyFactorSecrets(o.alle)) {
-    const neu = umschluesseln(z.v, secondFactorContext(z.uid));
-    if (neu) n += await k.legacySecrets.replaceFactorSecret(z.uid, z.v, neu);
+    const fresh = rekey(z.v, secondFactorContext(z.uid));
+    if (fresh) n += await k.legacySecrets.replaceFactorSecret(z.uid, z.v, fresh);
   }
   return n;
 }

@@ -17,20 +17,20 @@ const r = spawnSync(
   [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.test.json'],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 );
-const meldungen = `${r.stdout}${r.stderr}`.split('\n').filter(z => /error TS\d+:/.test(z));
-if (r.status !== 0 && !meldungen.length) {
+const messages = `${r.stdout}${r.stderr}`.split('\n').filter(z => /error TS\d+:/.test(z));
+if (r.status !== 0 && !messages.length) {
   console.error(`[typecheck:tests] tsc scheiterte ohne Meldung:\n${r.stdout}${r.stderr}`);
   process.exit(2);
 }
-if (meldungen.some(z => /^tsconfig\.test\.json/.test(z))) {
-  console.error(`[typecheck:tests] Konfiguration fehlerhaft:\n${meldungen.join('\n')}`);
+if (messages.some(z => /^tsconfig\.test\.json/.test(z))) {
+  console.error(`[typecheck:tests] Konfiguration fehlerhaft:\n${messages.join('\n')}`);
   process.exit(2);
 }
-if (meldungen.length > limit) {
-  console.error(meldungen.slice(0, 30).join('\n'));
-  console.error(`[typecheck:tests] ${meldungen.length} Meldungen, erlaubt sind ${limit}`);
+if (messages.length > limit) {
+  console.error(messages.slice(0, 30).join('\n'));
+  console.error(`[typecheck:tests] ${messages.length} Meldungen, erlaubt sind ${limit}`);
   process.exit(1);
 }
 console.log(
-  `[typecheck:tests] ${meldungen.length} Meldungen (Schranke ${limit})${meldungen.length < limit ? ' — Schranke nachziehen' : ''}`,
+  `[typecheck:tests] ${messages.length} Meldungen (Schranke ${limit})${messages.length < limit ? ' — Schranke nachziehen' : ''}`,
 );

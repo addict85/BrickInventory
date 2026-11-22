@@ -13,17 +13,17 @@ export const ECB_DAILY_RATES = 'https://www.ecb.europa.eu/stats/eurofxref/eurofx
 export const ALLOWED_RATE_HOSTS = ['www.ecb.europa.eu'] as const;
 
 /** One rate: how many units of `waehrung` one euro costs on `tag`. */
-export interface Kurs {
+export interface Rate {
   tag: string;
   waehrung: string;
   je_eur: number;
 }
 
 /** Loads an address; replaced by a local server in tests. */
-export type Abruf = (url: string, signal?: AbortSignal) => Promise<Buffer>;
+export type Fetch = (url: string, signal?: AbortSignal) => Promise<Buffer>;
 
 /** The real fetch: rejects everything except HTTPS to the ECB host. */
-export const ecbFetch: Abruf = async (url, signal) => {
+export const ecbFetch: Fetch = async (url, signal) => {
   if (!url.startsWith('https://') || !hostAllowed(url, ALLOWED_RATE_HOSTS))
     throw new Error(`Kursabruf nur von https://${ALLOWED_RATE_HOSTS.join(', ')}: ${url.slice(0, 120)}`);
   const r = await holeHttps(url, {
@@ -41,34 +41,34 @@ const CURRENCY = /^[A-Z]{3}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The daily file: <Cube time="…"><Cube currency="USD" rate="1.08"/>…</Cube>. */
-export function readDailyRates(xml: string): Kurs[] {
-  const aus: Kurs[] = [];
+export function readDailyRates(xml: string): Rate[] {
+  const from: Rate[] = [];
   for (const tagBlock of xml.matchAll(/<Cube\s+time=['"](\d{4}-\d{2}-\d{2})['"]\s*>([\s\S]*?)<\/Cube>/g)) {
     for (const k of (tagBlock[2] ?? '').matchAll(/<Cube\s+currency=['"]([A-Z]{3})['"]\s+rate=['"]([0-9.]+)['"]/g)) {
       const je = Number(k[2]);
-      if (Number.isFinite(je) && je > 0) aus.push({ tag: tagBlock[1] ?? '', waehrung: k[1] ?? '', je_eur: je });
+      if (Number.isFinite(je) && je > 0) from.push({ tag: tagBlock[1] ?? '', waehrung: k[1] ?? '', je_eur: je });
     }
   }
-  return aus;
+  return from;
 }
 
 /** The history as CSV: header "Date,USD,JPY,…", missing values as "N/A" or empty. */
-export function readHistory(csv: string): Kurs[] {
-  const zeilen = csv.split(/\r?\n/).filter(z => z.trim());
-  const kopf = (zeilen.shift() ?? '').split(',').map(s => s.trim());
-  const aus: Kurs[] = [];
-  for (const z of zeilen) {
-    const felder = z.split(',').map(s => s.trim());
-    const tag = felder[0] ?? '';
+export function readHistory(csv: string): Rate[] {
+  const rows = csv.split(/\r?\n/).filter(z => z.trim());
+  const header = (rows.shift() ?? '').split(',').map(s => s.trim());
+  const from: Rate[] = [];
+  for (const z of rows) {
+    const fields = z.split(',').map(s => s.trim());
+    const tag = fields[0] ?? '';
     if (!TAG.test(tag)) continue;
-    for (let i = 1; i < kopf.length; i++) {
-      const w = kopf[i] ?? '',
-        je = Number(felder[i]);
-      if (CURRENCY.test(w) && w !== 'EUR' && felder[i] && Number.isFinite(je) && je > 0)
-        aus.push({ tag, waehrung: w, je_eur: je });
+    for (let i = 1; i < header.length; i++) {
+      const w = header[i] ?? '',
+        je = Number(fields[i]);
+      if (CURRENCY.test(w) && w !== 'EUR' && fields[i] && Number.isFinite(je) && je > 0)
+        from.push({ tag, waehrung: w, je_eur: je });
     }
   }
-  return aus;
+  return from;
 }
 
 /**
@@ -78,17 +78,17 @@ export function readHistory(csv: string): Kurs[] {
  * local header may omit them (bit 3).
  */
 export function firstZipFile(zip: Buffer): Buffer {
-  const ende = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-  if (ende < 0) throw new Error('kein ZIP-Archiv');
-  const directory = zip.readUInt32LE(ende + 16);
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (end < 0) throw new Error('kein ZIP-Archiv');
+  const directory = zip.readUInt32LE(end + 16);
   if (zip.readUInt32LE(directory) !== 0x02014b50) throw new Error('ZIP: zentrales Verzeichnis fehlt');
-  const methode = zip.readUInt16LE(directory + 10);
+  const method = zip.readUInt16LE(directory + 10);
   const packed = zip.readUInt32LE(directory + 20);
-  const lokal = zip.readUInt32LE(directory + 42);
-  if (zip.readUInt32LE(lokal) !== 0x04034b50) throw new Error('ZIP: lokaler Kopf fehlt');
-  const daten = lokal + 30 + zip.readUInt16LE(lokal + 26) + zip.readUInt16LE(lokal + 28);
-  const roh = zip.subarray(daten, daten + packed);
-  if (methode === 0) return Buffer.from(roh);
-  if (methode === 8) return inflateRawSync(roh);
-  throw new Error(`ZIP: Kompression ${methode} unbekannt`);
+  const local = zip.readUInt32LE(directory + 42);
+  if (zip.readUInt32LE(local) !== 0x04034b50) throw new Error('ZIP: lokaler Kopf fehlt');
+  const data = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+  const raw = zip.subarray(data, data + packed);
+  if (method === 0) return Buffer.from(raw);
+  if (method === 8) return inflateRawSync(raw);
+  throw new Error(`ZIP: Kompression ${method} unbekannt`);
 }

@@ -2,23 +2,18 @@
  * same rows in the trash. */
 import type { CollectionContext } from './context';
 
-export async function deletePart(
-  k: CollectionContext,
-  besitzer: number,
-  pn: string,
-  cid: number,
-): Promise<number | null> {
+export async function deletePart(k: CollectionContext, owner: number, pn: string, cid: number): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await t.inventory.putInTrash('teil', besitzer, pn, cid);
-    const r = await t.inventory.deleteManual('part', besitzer, [pn, cid]);
+    const id = await t.inventory.putInTrash('teil', owner, pn, cid);
+    const r = await t.inventory.deleteManual('part', owner, [pn, cid]);
     return r.changes === 0 ? null : id;
   });
 }
 
-export async function deleteMinifig(k: CollectionContext, besitzer: number, fn: string): Promise<number | null> {
+export async function deleteMinifig(k: CollectionContext, owner: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await t.inventory.putInTrash('figur', besitzer, fn);
-    const r = await t.inventory.deleteManual('fig', besitzer, [fn]);
+    const id = await t.inventory.putInTrash('figur', owner, fn);
+    const r = await t.inventory.deleteManual('fig', owner, [fn]);
     return r.changes === 0 ? null : id;
   });
 }
@@ -27,7 +22,7 @@ export async function deleteMinifig(k: CollectionContext, besitzer: number, fn: 
  * each can be restored on its own. */
 export async function deleteEverythingOwn(k: CollectionContext, uid: number) {
   const sets = await k.sets.setsOfAccount(uid);
-  const teile = await k.inventory.manuell.partsOfAccount(uid);
+  const parts = await k.inventory.manuell.partsOfAccount(uid);
   const minifigs = await k.inventory.manuell.minifigsOfAccount(uid);
   const papierkorb: number[] = [];
   // Field names below (sets, teile, figuren) are the API contract (src/contract/inventory.ts)
@@ -40,7 +35,7 @@ export async function deleteEverythingOwn(k: CollectionContext, uid: number) {
       n.sets++;
     }
   }
-  for (const t of teile) {
+  for (const t of parts) {
     const id = await deletePart(k, uid, t.part_number, t.color_id);
     if (id !== null) {
       papierkorb.push(id);

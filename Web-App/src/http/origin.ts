@@ -8,9 +8,9 @@ import { sendError } from './httpResponse';
 
 const READING = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function hostOf(adresse: string): string | null {
+function hostOf(address: string): string | null {
   try {
-    const u = new URL(adresse);
+    const u = new URL(address);
     return u.protocol === 'https:' || u.protocol === 'http:' ? u.host.toLowerCase() : null;
   } catch {
     return null;
@@ -19,10 +19,10 @@ function hostOf(adresse: string): string | null {
 
 function ownHosts(req: Request): Set<string> {
   const hosts = new Set<string>();
-  const kopf = String(req.headers.host || '').toLowerCase();
-  if (kopf) hosts.add(kopf);
-  const adresse = konfig().appBaseUrl;
-  const basis = adresse ? hostOf(adresse) : null;
+  const header = String(req.headers.host || '').toLowerCase();
+  if (header) hosts.add(header);
+  const address = konfig().appBaseUrl;
+  const basis = address ? hostOf(address) : null;
   if (basis) hosts.add(basis);
   return hosts;
 }
@@ -34,12 +34,12 @@ export function onlyOwnOrigin(req: Request, res: Response, next: NextFunction) {
   if (!withSession && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
   const fremd = () => sendError(req, res, 'verboten', 'fremde_herkunft');
 
-  const herkunft = String(req.headers['sec-fetch-site'] || '');
-  if (herkunft) return herkunft === 'same-origin' || herkunft === 'none' ? next() : fremd();
+  const origin = String(req.headers['sec-fetch-site'] || '');
+  if (origin) return origin === 'same-origin' || origin === 'none' ? next() : fremd();
 
-  const quelle = req.headers.origin ?? req.headers.referer;
-  if (quelle !== undefined) {
-    const host = hostOf(String(quelle));
+  const source = req.headers.origin ?? req.headers.referer;
+  if (source !== undefined) {
+    const host = hostOf(String(source));
     return host && ownHosts(req).has(host) ? next() : fremd();
   }
   // A browser that reports nothing cannot be checked.
@@ -60,9 +60,10 @@ function ownIp(req: Request): string {
  * IP addresses (the Android app; only a name can be redirected), root certificate, health. */
 export function onlyOwnHost(req: Request, res: Response, next: NextFunction) {
   if (FREE.test(req.path)) return next();
-  const adresse = konfig().appBaseUrl;
+  const address = konfig().appBaseUrl;
   const name = (h: string) => h.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
-  const kopf = name(String(req.headers.host || ''));
-  if (LOOPBACK.has(kopf) || IP_ADDRESS.test(kopf) || (adresse && kopf === name(hostOf(adresse) ?? ''))) return next();
-  sendError(req, res, 'falscher_host', 'fremder_host', { adresse: adresse ?? ownIp(req) });
+  const header = name(String(req.headers.host || ''));
+  if (LOOPBACK.has(header) || IP_ADDRESS.test(header) || (address && header === name(hostOf(address) ?? '')))
+    return next();
+  sendError(req, res, 'falscher_host', 'fremder_host', { adresse: address ?? ownIp(req) });
 }
