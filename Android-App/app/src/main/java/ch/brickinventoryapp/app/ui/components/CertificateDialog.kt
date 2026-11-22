@@ -43,9 +43,11 @@ fun CertificateDialog(
     trustOn: (eingabe: String?) -> Boolean,
     onNutzerCa: () -> Unit,
     onAbbrechen: () -> Unit,
+    /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
+    deviceSecure: Boolean = true,
 ) {
     if (frage.art == CertificateUnresolved.Art.CODE_ABWEICHUNG) CodeDeviationDialog(frage, onAbbrechen)
-    else CertificateQuestionDialog(frage, userCaAn, trustOn, onNutzerCa, onAbbrechen)
+    else CertificateQuestionDialog(frage, userCaAn, trustOn, onNutzerCa, onAbbrechen, deviceSecure)
 }
 
 /** Everything except CODE_ABWEICHUNG: trust after comparing or typing. */
@@ -56,6 +58,7 @@ private fun CertificateQuestionDialog(
     trustOn: (eingabe: String?) -> Boolean,
     onNutzerCa: () -> Unit,
     onAbbrechen: () -> Unit,
+    deviceSecure: Boolean,
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var finding by remember(frage.fingerabdruck) { mutableStateOf<Transcript?>(null) }
@@ -66,7 +69,8 @@ private fun CertificateQuestionDialog(
     val geaendert = frage.art == CertificateUnresolved.Art.GEAENDERT || frage.art == CertificateUnresolved.Art.SCHLUESSEL_NEU
     val firstContact = frage.art == CertificateUnresolved.Art.ERSTKONTAKT
     val oeffentlich = firstContact || frage.art == CertificateUnresolved.Art.SCHLUESSEL_NEU
-    val writeOff = frage.transcriptNeeded || firstContact && typeInSelected
+    val byDevice = frage.deviceConfirmationNeeded && deviceSecure
+    val writeOff = mustTranscribe(frage, typeInSelected, deviceSecure)
     val fenster = stringResource(titel)
     AlertDialog(
         containerColor = fensterFlaeche(),
@@ -79,6 +83,7 @@ private fun CertificateQuestionDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
                 FingerprintDisplay(frage, writeOff, geaendert)
+                if (byDevice) Text(stringResource(R.string.zert_geraet_bestaetigen), style = MaterialTheme.typography.bodySmall)
                 if (firstContact && !writeOff) {
                     TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
                 }
@@ -108,6 +113,11 @@ private fun CertificateQuestionDialog(
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
+
+/** Without CT, when chosen on first contact, or a new key from Android 16 without a screen lock. */
+private fun mustTranscribe(frage: CertificateUnresolved, typeInSelected: Boolean, deviceSecure: Boolean): Boolean =
+    frage.transcriptNeeded || frage.art == CertificateUnresolved.Art.ERSTKONTAKT && typeInSelected ||
+        frage.deviceConfirmationNeeded && !deviceSecure
 
 /** A changed key colors the button as a warning; otherwise the usual button. */
 @Composable

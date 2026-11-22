@@ -495,7 +495,8 @@
     <string name="vm_set_added">“%1$s” added</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">That did not work: %1$s</string>
-    <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
+    <string name="vm_anmeldung_zu_alt">Your sign-in has expired (at most 90 days) or could not be checked. Please sign in again.</string>
+    <string name="vm_anmeldung_laeuft_ab">Your sign-in expires in less than a week. Please sign in again so the app keeps working without interruption.</string>
     <string name="vm_session_expired">Session expired — please sign in again</string>
     <string name="vm_abmelden_nachgeholt">Signed out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
     <string name="abmeldung_kanal">Sign-out</string>
@@ -1035,6 +1036,8 @@
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
+    <string name="zert_geraet_bestaetigen">The server uses a new key. After tapping, confirm with your screen lock that it is really you.</string>
+    <string name="zert_geraet_titel">Confirm the new server key</string>
     <string name="zert_titel_schluessel_neu">The server has a new key</string>
     <string name="zert_text_schluessel_neu">%1$s shows a valid certificate from the same certificate authority, but with a different key than before. That is normal after the server renewed its certificate – but it can also be a certificate issued to someone else. Nothing has been sent. Only accept it if the server\'s certificate was just renewed.</string>
     <string name="zert_erstkontakt_abtippen">Type the fingerprint instead</string>

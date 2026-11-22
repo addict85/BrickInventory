@@ -53,9 +53,10 @@ Danach:
 | Befehl | Ergebnis |
 | --- | --- |
 | `./gradlew testDebugUnitTest :core-model:test` | JVM-Unit-Tests aller Module (core-model ist reines Kotlin und hat `test`), Bericht je Modul unter `*/build/reports/tests/` |
-| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
+| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, als eigenes Paket `ch.brickinventoryapp.debug` neben der Release-App installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
+| `./gradlew resolveLockedClasspaths --write-locks` | erneuert die `gradle.lockfile` je Modul nach einer Änderung an Abhängigkeiten; ohne das bricht der Bau ab, sobald sich eine Fassung ändert |
 | `./gradlew detekt` | Kotlin-Prüfung je Modul, Funde unter `*/build/reports/detekt/detekt.txt`; rot bei jedem Fund |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |
@@ -312,11 +313,37 @@ für heikle Schritte zählt (gesperrter Bootloader, verifizierter Start, echte
 App), prüft der Server über die Key Attestation des Geräteschlüssels
 (`docs/SICHERHEIT.md`, „Android: Resilienz“).
 
+**Kein Play Integrity:** Die App kommt über GitHub-Releases, nicht nur über Google Play.
+Play Integrity setzt die Play-Dienste und eine Prüfung über Googles Server voraus: Geräte
+ohne Google-Dienste (GrapheneOS, /e/) wären ausgesperrt, jeder Aufruf gäbe Google
+Gerätesignale, und der selbst gehostete Server bräuchte ein Google-Cloud-Projekt. Schützen
+würde es nichts, was der Server nicht ohnehin prüft (Rechte je Anfrage, Key Attestation).
+
 **App-Sperre:** ein Sichtschutz der Oberfläche, keine Verschlüsselung. Sie
 verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
 weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
 Widget verdeckt seine Beträge, sobald die Sperre greifen kann
-(`AppLock.hiddenWidget`).
+(`AppLock.hiddenWidget`). Entsperrt nur eine Signatur des eigenen Keystore-Schlüssels
+(Biometrie oder Displaysperre, `CryptoObject`); der Zustand auf der Platte trägt ein
+HMAC-Siegel aus dem Keystore (`AppLockStore`). Wer die Datei auf „entsperrt“ oder „aus“
+ändert, bricht das Siegel, und die App startet gesperrt.
+
+**Gerätesperre:** Geht der Bildschirm bei gesicherter Displaysperre aus, verwirft die App
+den Schlüssel der lokalen Ablagen und das Token aus dem Speicher (`LockWipe`); beide kommen
+erst nach dem Entsperren wieder aus dem Keystore. Anfragen in dieser Zeit scheitern wie ohne
+Netz und werden nachgeholt, statt ohne Token zu gehen.
+
+**Anmeldung:** Kein Token gilt ohne Ende. `never_expires` heisst nur noch „dauerhaft bis zur
+Höchstdauer“ (Server: `TOKEN_MAX_DAYS`, Standard 90 Tage; der Tausch verlängert nicht), und die
+App meldet sich nach 90 Tagen auch selbst ab. Eine Woche vor dem Ende (das kürzere aus den 90 Tagen
+und `token_info.hard_expires_at` aus `/auth/me`) bittet sie um eine neue Anmeldung; ein 401 danach
+meldet „Sitzung abgelaufen — bitte erneut anmelden“. Das Anmeldedatum liegt verschlüsselt und an das Token gebunden
+(`TokenAblage.SIGNED_IN_SECRET`): Ein gelöschtes oder verändertes Datum gilt als abgelaufen.
+
+**Neuer Serverschlüssel ab Android 16:** Dort prüft das System Certificate Transparency, und
+ein neuer Schlüssel unter derselben öffentlichen Wurzel braucht kein Abtippen mehr. Ein
+Tippen allein genügt trotzdem nicht: Die App fragt die Displaysperre (ohne Displaysperre:
+Abtippen wie bis Android 15).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
@@ -665,7 +692,9 @@ die Meldung nennt jeweils die Einstellung:
   des Baulaufs (ohne Projektcode).
 - **Environments `release` und `release-beschreibung`:** mindestens ein Pflichtprüfer,
   nur der Zweig `main` und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
-  *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
+  *Prevent self-review* **an** (Fehler, nicht mehr Warnung: eine zweite Person prüft).
+- **Keine Umgehung:** Kein Ruleset für `main` hat einen Bypass-Akteur; bei den Etiketten
+  nur die Rolle *Repository admin*. Gelesen mit `REGELN_LESETOKEN` (`docs/ANDROID-RELEASE.md`, Schritt 6).
 - **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
   Ziel `main`): *Require a pull request before merging*, *Require status checks to
   pass* (Android-App, Sicherheit) und *Block force pushes*. Gelesen wird

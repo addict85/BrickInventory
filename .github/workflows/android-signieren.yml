@@ -2,8 +2,9 @@ name: Android-Signieren
 
 # Signiert das unsignierte APK eines Baulaufs, signiert die Fassungsbeschreibung und
 # prüft beides. Nur als wiederverwendbarer Workflow: android.yml ruft ihn mit
-# Probeschlüsseln, android-release.yml (läuft aus main) mit den echten. Die
-# Environments erlauben nur main; ein Etikett mit eigenem Workflow kommt nie heran.
+# Probeschlüsseln, android-release.yml (läuft aus main) für das Release. Dort
+# signiert der Inhaber offline (ANDROID_SIGNIERWEG=offline) oder, im Übergang, der
+# Schlüssel aus der Environment release. Ein Etikett mit eigenem Workflow kommt nie heran.
 on:
   workflow_call:
     inputs:
@@ -103,8 +104,10 @@ jobs:
             echo "::error::Die Environment $UMGEBUNG lässt Administratoren die Regeln umgehen (Allow administrators to bypass: aus). Nichts wird signiert."
             exit 1
           fi
+          # Vier Augen: Wer das Etikett setzt, gibt den eigenen Lauf nicht selbst frei.
           if [ "$SELBST" != true ]; then
-            echo "::warning title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review). Einschalten, sobald zwei Personen prüfen."
+            echo "::error title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review: an, docs/ANDROID-RELEASE.md). Nichts wird signiert."
+            exit 1
           fi
           if [ "$EIGENE" != true ]; then
             echo "::error::Die Environment $UMGEBUNG lässt jeden Zweig zu (Deployment branches and tags: Selected, nur der Zweig main). Nichts wird signiert."
@@ -116,17 +119,94 @@ jobs:
             echo "::error::Die Environment $UMGEBUNG erlaubt „$REGELN“ statt nur des Zweigs main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
             exit 1
           fi
-          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, nur der Zweig main."
+          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, keine Selbstfreigabe, nur der Zweig main."
+
+      # Ein Umgehungsrecht im Ruleset von main machte Review und CI zur Bitte. Die Liste
+      # sieht nur, wer Rulesets bearbeiten darf; GITHUB_TOKEN sieht sie meist nicht. Dann
+      # liest das Secret REGELN_LESETOKEN (fine-grained, Administration: Read-only).
+      - name: Rulesets ohne Umgehung
+        if: inputs.echt
+        env:
+          LESETOKEN: ${{ secrets.REGELN_LESETOKEN }}
+          STANDARD: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export GH_TOKEN="${LESETOKEN:-$STANDARD}"
+          if ! MAIN=$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" --jq '[.[].ruleset_id] | unique | .[]'); then
+            echo "::error::Die Regeln von main liessen sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          if ! TAGS=$(gh api "repos/$GITHUB_REPOSITORY/rulesets?targets=tag&includes_parents=true&per_page=100" \
+                --jq '.[] | select(.enforcement == "active") | .id'); then
+            echo "::error::Die Tag-Rulesets liessen sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          for ID in $MAIN $TAGS; do
+            if ! R=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$ID?includes_parents=true"); then
+              echo "::error::Das Ruleset $ID liess sich nicht lesen. Nichts wird signiert."
+              exit 1
+            fi
+            NAME=$(printf '%s' "$R" | jq -r '.name')
+            if ! printf '%s' "$R" | jq -e 'has("bypass_actors")' >/dev/null; then
+              echo "::error title=Umgehung nicht lesbar::Das Token sieht die Bypass-Liste von „$NAME“ nicht. Secret REGELN_LESETOKEN in der Environment release anlegen (docs/ANDROID-RELEASE.md, Schritt 6). Nichts wird signiert."
+              exit 1
+            fi
+            # Ein Etikett anlegen darf nur die Rolle Repository admin (Schritt 3); für main niemand.
+            if [ "$(printf '%s' "$R" | jq -r '.target')" = tag ]; then
+              FREMD=$(printf '%s' "$R" | jq '[.bypass_actors[] | select(.actor_type != "RepositoryRole" or .actor_id != 5)] | length')
+            else
+              FREMD=$(printf '%s' "$R" | jq '.bypass_actors | length')
+            fi
+            if [ "$FREMD" != 0 ]; then
+              echo "::error title=Umgehung erlaubt::Das Ruleset „$NAME“ ($ID) hat Bypass-Akteure: $(printf '%s' "$R" | jq -c '[.bypass_actors[] | {actor_type, actor_id, bypass_mode}]'). Entfernen (docs/ANDROID-RELEASE.md). Nichts wird signiert."
+              exit 1
+            fi
+            echo "Ruleset „$NAME“ ($ID): keine unerlaubte Umgehung."
+          done
+
+      # Wie signiert wird, legt die Variable ANDROID_SIGNIERWEG fest (docs/ANDROID-RELEASE.md):
+      # offline – der Inhaber signiert ausserhalb von GitHub, der Lauf prüft nur;
+      # secret – Schlüssel als Environment-Secret (Übergang, wird entfernt).
+      - name: Signierweg bestimmen
+        id: weg
+        env:
+          ECHT: ${{ inputs.echt }}
+          WEG: ${{ vars.ANDROID_SIGNIERWEG }}
+          AAB: ${{ vars.ANDROID_AAB_SCHLUESSEL }}
+        run: |
+          set -euo pipefail
+          if [ "$ECHT" != true ]; then WEG=probe; AAB=upload; fi
+          case "${WEG:-secret}" in
+            probe|offline) ;;
+            secret)
+              WEG=secret
+              echo "::warning title=Schlüssel als Secret::Der Release-Schlüssel liegt als GitHub-Secret. Auf ANDROID_SIGNIERWEG=offline umstellen und die Secrets löschen (docs/ANDROID-RELEASE.md, Schritt 7)." ;;
+            *) echo "::error::ANDROID_SIGNIERWEG=„$WEG“ ist weder offline noch secret. Nichts wird signiert."; exit 1 ;;
+          esac
+          case "${AAB:-app}" in
+            upload) ;;
+            app)
+              AAB=app
+              echo "::warning title=Kein Upload-Schlüssel::Das App-Bundle trägt den App-Schlüssel. Für Google Play einen eigenen Upload-Schlüssel einrichten (ANDROID_AAB_SCHLUESSEL=upload, docs/ANDROID-RELEASE.md, Schritt 8)." ;;
+            *) echo "::error::ANDROID_AAB_SCHLUESSEL=„$AAB“ ist weder upload noch app. Nichts wird signiert."; exit 1 ;;
+          esac
+          { echo "weg=$WEG"; echo "aab=$AAB"; } >> "$GITHUB_OUTPUT"
+          echo "Signierweg: $WEG, App-Bundle mit dem Schlüssel: $AAB"
 
       # Die Secrets nennt nur dieser Schritt, und er läuft nur in der Environment
       # release. Gleichnamige Repository-Secrets gehören gelöscht.
       - name: Release-Schlüssel bereitstellen
-        if: inputs.echt
+        if: inputs.echt && steps.weg.outputs.weg == 'secret'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASSWORT }}
+          UPLOAD_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          UPLOAD_KS_PASS: ${{ secrets.UPLOAD_KEYSTORE_PASSWORT }}
+          UPLOAD_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          UPLOAD_PASS: ${{ secrets.UPLOAD_KEY_PASSWORT }}
+          AAB: ${{ steps.weg.outputs.aab }}
         run: |
           set -euo pipefail
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
@@ -136,16 +216,56 @@ jobs:
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$S/signatur.jks"
           printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
+          if [ "$AAB" = upload ]; then
+            if [ -z "$UPLOAD_BASE64" ] || [ -z "$UPLOAD_KS_PASS" ] || [ -z "$UPLOAD_ALIAS" ] || [ -z "$UPLOAD_PASS" ]; then
+              echo "::error::ANDROID_AAB_SCHLUESSEL=upload, aber UPLOAD_KEYSTORE_BASE64, UPLOAD_KEYSTORE_PASSWORT, UPLOAD_KEY_ALIAS oder UPLOAD_KEY_PASSWORT fehlt in der Environment release. Nichts wird signiert."
+              exit 1
+            fi
+            printf '%s' "$UPLOAD_BASE64" | base64 -d > "$S/upload.jks"
+            printf '%s' "$UPLOAD_KS_PASS" > "$S/upload_ks_pass"; printf '%s' "$UPLOAD_PASS" > "$S/upload_key_pass"
+            printf '%s' "$UPLOAD_ALIAS" > "$S/upload_alias"
+          fi
 
+      # Zwei Probeschlüssel: So läuft auch der Weg mit eigenem Upload-Schlüssel bei jedem Bau.
       - name: Probe-Schlüssel erzeugen
-        if: ${{ !inputs.echt }}
+        if: steps.weg.outputs.weg == 'probe'
         run: |
           set -euo pipefail
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
-          P=probe-$RANDOM$RANDOM
-          keytool -genkeypair -keystore "$S/signatur.jks" -storepass "$P" -keypass "$P" \
-            -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
-          printf '%s' "$P" > "$S/ks_pass"; printf '%s' "$P" > "$S/key_pass"; printf probe > "$S/alias"
+          for ZWECK in signatur upload; do
+            P=probe-$RANDOM$RANDOM
+            keytool -genkeypair -keystore "$S/$ZWECK.jks" -storepass "$P" -keypass "$P" \
+              -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Probe $ZWECK" >/dev/null
+            if [ "$ZWECK" = signatur ]; then
+              printf '%s' "$P" > "$S/ks_pass"; printf '%s' "$P" > "$S/key_pass"; printf probe > "$S/alias"
+            else
+              printf '%s' "$P" > "$S/upload_ks_pass"; printf '%s' "$P" > "$S/upload_key_pass"; printf probe > "$S/upload_alias"
+            fi
+          done
+
+      # Offline: Der Inhaber hat das unsignierte APK und Bundle dieses Baulaufs ausserhalb
+      # von GitHub signiert und als Vorab-Release signiert-<Etikett> abgelegt. Der
+      # Lauf sieht keinen Schlüssel; er prüft, dass genau die gebauten Dateien signiert sind.
+      - name: Offline signierte Dateien holen
+        if: steps.weg.outputs.weg == 'offline'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIKETT: ${{ inputs.etikett }}
+          APK_SOLL: ${{ inputs.sha256_apk }}
+          AAB_SOLL: ${{ inputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          O="$RUNNER_TEMP/offline"; mkdir -p "$O"
+          # Unveränderliche Releases lassen kein Ersetzen zu; ein zweiter Versuch heisst …-2, …-3.
+          MUSTER="^signiert-$(printf '%s' "$ETIKETT" | sed 's/[.]/\\./g')(-[0-9]+)?\$"
+          NAME=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '[.[] | select(.prerelease and (.draft | not))] | sort_by(.created_at) | .[].tag_name' | grep -E "$MUSTER" | tail -1 || true)
+          if [ -z "$NAME" ]; then
+            echo "::error title=Offline-Signatur fehlt::Keine Vorab-Release signiert-$ETIKETT. Unsigniertes APK (SHA-256 $APK_SOLL) und Bundle ($AAB_SOLL) aus dem Artefakt apk-unsigniert dieses Baulaufs offline signieren und ablegen (docs/ANDROID-RELEASE.md, „Offline signieren“), dann diesen Workflow von Hand neu starten. Nichts wird veröffentlicht."
+            exit 1
+          fi
+          gh release download "$NAME" --repo "$GITHUB_REPOSITORY" -p BrickInventory.apk -p app-release.aab -D "$O"
+          echo "Offline signiert aus $NAME."
 
       - name: Signieren
         id: signiert
@@ -153,6 +273,9 @@ jobs:
           ECHT: ${{ inputs.echt }}
           ETIKETT: ${{ inputs.etikett }}
           COMMIT: ${{ inputs.commit }}
+          WEG: ${{ steps.weg.outputs.weg }}
+          AAB_SCHLUESSEL: ${{ steps.weg.outputs.aab }}
+          UPLOAD_SOLL: ${{ vars.ANDROID_UPLOAD_ZERT_SHA256 }}
         run: |
           set -euo pipefail
           # Festgelegt statt „das neueste des Images“; eine andere Fassung oder andere
@@ -166,30 +289,78 @@ jobs:
           EIN="$RUNNER_TEMP/eingang"
           AUS="$RUNNER_TEMP/ausgang"
           mkdir -p "$AUS/apk/release" "$AUS/bundle/release"
+          APK_AUS="$AUS/apk/release/BrickInventory.apk"
           S="$RUNNER_TEMP/schluessel"
           trap 'rm -rf "$S"' EXIT
-          KS="$S/signatur.jks"
-          KS_PASS=$(cat "$S/ks_pass"); KEY_PASS=$(cat "$S/key_pass"); KEY_ALIAS=$(cat "$S/alias")
-          export KS_PASS KEY_PASS
-          # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
-          # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
-          "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
-          # v1 (JAR) braucht kein Gerät ab minSdk 30; v3 trägt eine spätere Schlüsselrotation.
-          "${APKSIGNER[@]}" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
-            --key-pass env:KEY_PASS --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
-            --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
-          "${APKSIGNER[@]}" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
+          if [ "$WEG" = offline ]; then
+            O="$RUNNER_TEMP/offline"
+            install -m 644 "$O/BrickInventory.apk" "$APK_AUS"
+            install -m 644 "$O/app-release.aab" "$RUNNER_TEMP/bundle.aab"
+            "$WERKZEUGE/zipalign" -c -P 16 4 "$APK_AUS"
+            # Dieselben Einträge mit denselben Bytes (CRC, Grösse) wie im Bau; nur die
+            # Signatur darf dazukommen. Beim Bundle die JAR-Signatur unter META-INF.
+            eintraege() {
+              unzip -lv "$1" | awk 'NR > 3 && NF >= 8 && $1 ~ /^[0-9]+$/ {
+                n = $8; for (i = 9; i <= NF; i++) n = n " " $i; print $1, $7, n }' | sort
+            }
+            JAR='^[0-9]+ [0-9a-f]{8} META-INF/([^/]+[.](SF|RSA|EC|DSA)|MANIFEST[.]MF)$'
+            if ! diff <(eintraege "$EIN/apk/release/app-release-unsigned.apk") <(eintraege "$APK_AUS"); then
+              echo "::error::Das offline signierte APK ist nicht der gebaute Stand (oder trägt eine v1-Signatur). Nichts wird veröffentlicht."
+              exit 1
+            fi
+            if ! diff <(eintraege "$EIN/bundle/release/app-release.aab" | grep -Ev "$JAR") \
+                      <(eintraege "$RUNNER_TEMP/bundle.aab" | grep -Ev "$JAR"); then
+              echo "::error::Das offline signierte App-Bundle ist nicht der gebaute Stand. Nichts wird veröffentlicht."
+              exit 1
+            fi
+          else
+            KS="$S/signatur.jks"
+            KS_PASS=$(cat "$S/ks_pass"); KEY_PASS=$(cat "$S/key_pass"); KEY_ALIAS=$(cat "$S/alias")
+            export KS_PASS KEY_PASS
+            # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
+            # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
+            "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+            # v1 (JAR) braucht kein Gerät ab minSdk 30; v3 trägt eine spätere Schlüsselrotation.
+            "${APKSIGNER[@]}" sign --min-sdk-version 30 --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
+              --key-pass env:KEY_PASS --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
+              --out "$APK_AUS" "$RUNNER_TEMP/ausgerichtet.apk"
+            install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
+            # Das Bundle geht an Google Play; Play signiert die App selbst neu und kennt
+            # nur den Upload-Schlüssel. Wer ihn verliert, verliert nicht die App.
+            if [ "$AAB_SCHLUESSEL" = upload ]; then
+              KS="$S/upload.jks"; KS_PASS=$(cat "$S/upload_ks_pass"); KEY_PASS=$(cat "$S/upload_key_pass"); KEY_ALIAS=$(cat "$S/upload_alias")
+            fi
+            jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
+          fi
+          "${APKSIGNER[@]}" verify --print-certs "$APK_AUS" > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
+          if ! jarsigner -verify "$RUNNER_TEMP/bundle.aab" | grep -q '^jar verified'; then
+            echo "::error::Das App-Bundle ist nicht (gültig) signiert. Nichts wird veröffentlicht."
+            exit 1
+          fi
           install -m 644 "$EIN/apk/release/output-metadata.json" "$AUS/apk/release/output-metadata.json"
-          install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
-          jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
-          jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
+
+          # Der Upload-Schlüssel ist ein anderer als der App-Schlüssel, und wenn hinterlegt, genau der.
+          APK_ZERT=$(grep -Eo 'certificate SHA-256 digest: [0-9a-f]{64}' "$RUNNER_TEMP/zertifikat.txt" | head -1 | awk '{print $NF}' || true)
+          AAB_ZERT=$(keytool -printcert -jarfile "$RUNNER_TEMP/bundle.aab" | sed -nE 's/^[[:space:]]*SHA256: ([0-9A-F:]+)$/\1/p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')
+          if [ -z "$APK_ZERT" ] || [ -z "$AAB_ZERT" ]; then
+            echo "::error::Das Zertifikat von APK oder Bundle liess sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          if [ "$AAB_SCHLUESSEL" = upload ] && [ "$AAB_ZERT" = "$APK_ZERT" ]; then
+            echo "::error::Das App-Bundle trägt den App-Schlüssel, nicht den Upload-Schlüssel. Nichts wird signiert."
+            exit 1
+          fi
+          SOLL=$(printf '%s' "$UPLOAD_SOLL" | tr -d ': ' | tr 'A-F' 'a-f')
+          if [ "$WEG" != probe ] && [ "$AAB_SCHLUESSEL" = upload ] && [ -n "$SOLL" ] && [ "$AAB_ZERT" != "$SOLL" ]; then
+            echo "::error::Das App-Bundle trägt das Zertifikat $AAB_ZERT, hinterlegt ist ANDROID_UPLOAD_ZERT_SHA256=$SOLL. Nichts wird signiert."
+            exit 1
+          fi
 
           # Die Fassungsbeschreibung: Die App prüft nur `beschreibungssignatur` (Job
           # beschreibung) und die Frist `gueltigBis`. Sieben Tage: Eine zurückgehaltene
           # Beschreibung fällt nach einer Woche auf, nicht erst nach einem Monat.
           META="$EIN/apk/release/output-metadata.json"
-          APK_AUS="$AUS/apk/release/BrickInventory.apk"
           V_CODE=$(jq -r '.elements[0].versionCode' "$META")
           AUSGESTELLT=$(date -u +%s)
           jq -n --argjson code "$V_CODE" --arg name "$(jq -r '.elements[0].versionName' "$META")" \
@@ -205,7 +376,7 @@ jobs:
 
           if [ "$ECHT" = "true" ]; then
             install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
-            echo "signiert mit dem Release-Schlüssel"
+            echo "signiert ($WEG)"
           else
             install -m 644 "$EIN/bundle/release/app-release.aab" "$AUS/bundle/release/app-release.aab"
             echo "Probe-Signatur gelungen; geprüft wird das probe-signierte APK, veröffentlicht wird nichts."
@@ -283,8 +454,13 @@ jobs:
           PRUEFER=$(printf '%s' "$U" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
           EIGENE=$(printf '%s' "$U" | jq -r '.deployment_branch_policy.custom_branch_policies // false')
           UMGEHEN=$(printf '%s' "$U" | jq -r '.can_admins_bypass')
+          SELBST=$(printf '%s' "$U" | jq -r '[.protection_rules[]? | select(.type == "required_reviewers") | .prevent_self_review] | any')
           if [ "$PRUEFER" -lt 1 ] || [ "$UMGEHEN" != false ] || [ "$EIGENE" != true ]; then
             echo "::error::Die Environment $UMGEBUNG braucht Pflichtprüfer, keine Umgehung durch Administratoren und nur den Zweig main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
+            exit 1
+          fi
+          if [ "$SELBST" != true ]; then
+            echo "::error title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review: an). Nichts wird signiert."
             exit 1
           fi
           REGELN=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG/deployment-branch-policies" \

@@ -59,6 +59,7 @@ class StorageSessionStore : Sitzungsablage {
     val waehrung = MutableStateFlow(Waehrung.EUR)
     val sprache = MutableStateFlow("system")
     var abgelaufen = false
+    var laeuftBaldAb = false
     val gescheitert: MutableSet<String> = mutableSetOf()
 
     override val serverUrl: Flow<String> = server
@@ -69,6 +70,7 @@ class StorageSessionStore : Sitzungsablage {
     override suspend fun serverUrlJetzt() = server.value
     override suspend fun tokenJetzt() = token.value
     override suspend fun loginExpired(jetzt: Long) = abgelaufen
+    override suspend fun loginExpiresSoon(jetzt: Long) = laeuftBaldAb
     override suspend fun saveAppTheme(theme: Design) { design.value = theme }
     override suspend fun saveCurrency(cur: Waehrung) { waehrung.value = cur }
     override fun failedRedemptions(): Set<String> = gescheitert.toSet()

@@ -139,6 +139,9 @@ import javax.net.ssl.SSLEngine
  *      first contact, no tap is enough …”; gegenproben/erstkontakt-ein-tipp-ohne-ct.patch
  *   AI pruefe() reports first contact without ctForced → red “on first contact with
  *      a CT requirement, the comparison is enough”; gegenproben/erstkontakt-ohne-ct-wissen.patch
+ * Counter-check for the key change from Android 16 (local JUnit):
+ *   AJ in confirm() the line with deviceConfirmationNeeded removed → red “with CT requirement a
+ *      new server key needs the screen lock …” (“a tap alone …”)
  */
 class CertificatePinTest {
 
@@ -728,7 +731,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `with CT requirement a tap suffices for a new server key`() {
+    fun `with CT requirement a new server key needs the screen lock, not a transcript`() {
         starte(OEFF_SHEET_B_KEY, listOf(OEFF_SHEET_B, OEFF_ZW_B))
         pins.rememberPin(eigener(), spkiFingerprint(zert(OEFF_ROOT)))
         pins.rememberPin(sheetPinKey(eigener()), spkiFingerprint(zert(OEFF_SHEET_A)))
@@ -736,7 +739,9 @@ class CertificatePinTest {
         val f = frage.offen.value!!
         assertEquals(CertificateUnresolved.Art.SCHLUESSEL_NEU, f.art)
         assertFalse("Das System hat CT geprüft", f.transcriptNeeded)
-        assertTrue(frage.confirm(pins))
+        assertTrue(f.deviceConfirmationNeeded)
+        assertFalse("Ein Tipp allein wechselt den Schlüssel nicht", frage.confirm(pins))
+        assertTrue("Nach der Displaysperre gilt der neue Schlüssel", frage.confirm(pins, deviceConfirmed = true))
         assertTrue(fetch(system(OEFF_ROOT), ct = true))
     }
 

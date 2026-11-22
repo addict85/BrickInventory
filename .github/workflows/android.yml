@@ -138,6 +138,12 @@ jobs:
       - name: Gradle-Prüfsumme gegen die amtliche
         run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
 
+      # Krypto-, Netz- und Sicherheitsbibliotheken nur mit Prüfsumme und Schlüssel je
+      # Artefakt, nie über einen Schlüssel für die ganze Gruppe: Eine neue Fassung braucht
+      # so einen eigenen, geprüften Eintrag. Die Fassungen selbst halten die gradle.lockfile fest.
+      - name: Kritische Bibliotheken einzeln festgehalten?
+        run: python3 tools/verification-pin.py --check gradle/verification-metadata.xml
+
       # Ein Etikett baut, was ausgeliefert wird: mit leerem Gradle-Benutzerverzeichnis,
       # denn Transform-Ausgaben, instrumentierte Jars und übersetzte Skripte nimmt Gradle
       # von dort ungeprüft. Ein Cache aus einem anderen Lauf käme so ins APK (sec17 M1).
@@ -588,9 +594,9 @@ jobs:
       - name: Prüfsummen erzeugen
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys --write-locks \
             testDebugUnitTest :core-model:test :core-contract:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
-            :app:assembleDebugAndroidTest \
+            :app:assembleDebugAndroidTest resolveLockedClasspaths \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
@@ -603,6 +609,13 @@ jobs:
           path: |
             Android-App/gradle/verification-metadata.xml
             Android-App/gradle/verification-keyring.*
+          if-no-files-found: error
+      # Die Sperrdateien je Modul (build-logic, lockClasspaths) im selben Lauf erneuert.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() }}
+        with:
+          name: gradle-lockfiles
+          path: Android-App/*/gradle.lockfile
           if-no-files-found: error
 
   # Die Zusammenfassung, auf die sich das Review verlässt, entsteht ohne Gradle:
@@ -627,6 +640,9 @@ jobs:
         run: |
           set -euo pipefail
           git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
+          # Wie im Vorschlag: kritische Bibliotheken je Artefakt statt über den Gruppen-Schlüssel.
+          python3 Android-App/tools/verification-pin.py "$RUNNER_TEMP/neu/verification-metadata.xml" ||
+            echo "::warning title=Prüfsumme fehlt::Eine kritische Bibliothek hat keine SHA-256 (siehe oben); der Bau wird sie ablehnen."
           python3 Android-App/tools/checksum-compare.py "$RUNNER_TEMP/alt.xml" "$RUNNER_TEMP/neu/verification-metadata.xml" \
             > "$RUNNER_TEMP/pruefsummen-zusammenfassung.md"
           cat "$RUNNER_TEMP/pruefsummen-zusammenfassung.md" >> "$GITHUB_STEP_SUMMARY"
@@ -634,6 +650,11 @@ jobs:
         with:
           name: pruefsummen-zusammenfassung
           path: ${{ runner.temp }}/pruefsummen-zusammenfassung.md
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: verification-metadata-festgehalten
+          path: ${{ runner.temp }}/neu/verification-metadata.xml
           if-no-files-found: error
 
   # Neue Prüfsummen kommen als Pull-Request, nie als Push: Sie entscheiden, welche
@@ -656,6 +677,14 @@ jobs:
         with:
           name: pruefsummen-zusammenfassung
           path: ${{ runner.temp }}/pruefsummen
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: gradle-lockfiles
+          path: ${{ runner.temp }}/sperren
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: verification-metadata-festgehalten
+          path: ${{ runner.temp }}/festgehalten
       # Ein eigener Zweig je Lauf; der Zweig des Laufs bleibt unberührt. Ein mit
       # GITHUB_TOKEN angelegter Pull-Request startet keine CI von selbst.
       - name: Zweig und Pull-Request anlegen
@@ -664,9 +693,15 @@ jobs:
         run: |
           set -euo pipefail
           NEU="$RUNNER_TEMP/pruefsummen"
-          install -m 644 "$NEU/verification-metadata.xml" Android-App/gradle/verification-metadata.xml
+          # Die festgehaltene Fassung aus pruefsummen-zusammenfassen (ohne Schreibrecht erzeugt).
+          install -m 644 "$RUNNER_TEMP/festgehalten/verification-metadata.xml" Android-App/gradle/verification-metadata.xml
           for f in "$NEU"/verification-keyring.*; do install -m 644 "$f" Android-App/gradle/; done
-          git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
+          # Nur Sperrdateien bestehender Module; ein fremder Pfad im Artefakt bleibt draussen.
+          for f in "$RUNNER_TEMP"/sperren/*/gradle.lockfile; do
+            m=$(basename "$(dirname "$f")")
+            if [ -d "Android-App/$m" ] && printf '%s' "$m" | grep -Eq '^[a-z-]+$'; then install -m 644 "$f" "Android-App/$m/gradle.lockfile"; fi
+          done
+          git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.* Android-App/*/gradle.lockfile
           if git diff --cached --quiet; then echo "Prüfsummen unverändert." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           git diff --cached -U2 -- Android-App/gradle/verification-metadata.xml
           ZWEIG="pruefsummen/$GITHUB_RUN_ID"

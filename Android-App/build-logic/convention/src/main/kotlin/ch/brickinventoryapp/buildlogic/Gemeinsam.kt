@@ -48,6 +48,27 @@ internal fun Project.androidxMindestens() {
     }
 }
 
+/**
+ * What a module compiles against and ships is pinned in its gradle.lockfile: a version
+ * that changes behind the catalog (a transitive raise, a dynamic range) fails the build
+ * instead of slipping in. Renew after a change: `./gradlew resolveLockedClasspaths --write-locks`.
+ */
+internal fun Project.lockClasspaths() {
+    val locked = { name: String -> name.endsWith("CompileClasspath") || name.endsWith("RuntimeClasspath") }
+    configurations.configureEach { c ->
+        if (locked(c.name)) c.resolutionStrategy.activateDependencyLocking()
+    }
+    tasks.register("resolveLockedClasspaths") { task ->
+        task.group = "verification"
+        task.description = "Resolves every locked classpath; with --write-locks it writes gradle.lockfile."
+        task.notCompatibleWithConfigurationCache("resolves configurations at execution time")
+        task.doLast {
+            project.configurations.filter { it.isCanBeResolved && locked(it.name) }
+                .forEach { it.incoming.resolutionResult.allDependencies }
+        }
+    }
+}
+
 internal fun Project.gruppe(configuration: String, alias: String) {
     dependencies.add(configuration, libs.findBundle(alias).get())
 }

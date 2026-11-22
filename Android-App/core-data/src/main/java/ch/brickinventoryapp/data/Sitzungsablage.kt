@@ -20,6 +20,9 @@ interface Sitzungsablage {
 
     /** Older than the server lets a sign-in apply: then sign out instead of loading. */
     suspend fun loginExpired(jetzt: Long = System.currentTimeMillis()): Boolean
+
+    /** The end is near (last week): ask for a new sign-in before requests start failing. */
+    suspend fun loginExpiresSoon(jetzt: Long = System.currentTimeMillis()): Boolean = false
     suspend fun saveAppTheme(theme: Design)
     suspend fun saveCurrency(cur: Waehrung)
 

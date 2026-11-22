@@ -31,6 +31,7 @@ class AndroidLibraryKonvention : Plugin<Project> {
         target.java17(android.compileOptions)
         target.guavaMindestens()
         target.androidxMindestens()
+        target.lockClasspaths()
     }
 }
 
@@ -47,6 +48,7 @@ class AndroidApplicationKonvention : Plugin<Project> {
         target.java17(android.compileOptions)
         target.guavaMindestens()
         target.androidxMindestens()
+        target.lockClasspaths()
     }
 }
 
@@ -84,6 +86,7 @@ class JvmLibraryKonvention : Plugin<Project> {
             it.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
         }
         target.tasks.withType(Test::class.java).configureEach { testLog(it) }
+        target.lockClasspaths()
     }
 }
 

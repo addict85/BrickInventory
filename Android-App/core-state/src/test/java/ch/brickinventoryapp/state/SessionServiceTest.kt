@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import ch.brickinventoryapp.contract.MeResponse
 import ch.brickinventoryapp.contract.StartupStatus
 import ch.brickinventoryapp.contract.User
+import ch.brickinventoryapp.contract.TokenInfo
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.Abmeldevorgang
 import ch.brickinventoryapp.session.SitzungsDienst
@@ -68,6 +69,10 @@ import ch.brickinventoryapp.model.ui.Meldung
  *   waehrung-zurueckgespiegelt      in starte() restored `sitzung.state.map { it.currency }…
  *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design
  *                                   kommen aus der Ablage …“ (one write instead of none)
+ *   ablauf-ohne-hinweis             the loginExpiresSoon() check in anmeldung() removed → red
+ *                                   „a sign-in near its end asks …“ (no notification)
+ *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end
+ *                                   within a week …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionServiceTest {
@@ -173,6 +178,32 @@ class SessionServiceTest {
         assertEquals("t${R.string.vm_anmeldung_zu_alt}", t.meldungen.text)
         assertEquals(0, fake.callsOf("getMe"))
         assertEquals(0, vorgewaermt)
+    }
+
+    @Test
+    fun `a sign-in near its end asks for a new one and keeps loading`() = withVm {
+        ablage.laeuftBaldAb = true
+        angemeldet()
+        advanceUntilIdle()
+        assertEquals(0, signOuts)
+        assertEquals("t${R.string.vm_anmeldung_laeuft_ab}", t.meldungen.text)
+        assertEquals("Das Konto lädt trotzdem", 1, fake.callsOf("getMe"))
+    }
+
+    @Test
+    fun `a server end within a week asks for a new sign-in, a later one does not`() = withVm {
+        val tag = 24L * 60 * 60 * 1000
+        val bald = java.time.Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
+        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna"),
+            tokenInfo = TokenInfo(scope = "app", hardExpiresAt = bald, neverExpires = false))
+        angemeldet()
+        advanceUntilIdle()
+        assertEquals(0, signOuts)
+        assertEquals("t${R.string.vm_anmeldung_laeuft_ab}", t.meldungen.text)
+        assertTrue(ch.brickinventoryapp.session.tokenEndsSoon(bald, System.currentTimeMillis()))
+        val spaeter = java.time.Instant.ofEpochMilli(System.currentTimeMillis() + 30 * tag).toString()
+        assertFalse(ch.brickinventoryapp.session.tokenEndsSoon(spaeter, System.currentTimeMillis()))
+        assertFalse("Unlesbar sagt nichts", ch.brickinventoryapp.session.tokenEndsSoon("morgen", System.currentTimeMillis()))
     }
 
     @Test

@@ -147,6 +147,13 @@ class CertificateUnresolved(
         Art.UNBEKANNTE_CA, Art.NUTZER_CA, Art.GEAENDERT -> true
     }
 
+    /**
+     * From Android 16 a new key under the same public root needs no transcript (the system
+     * checked CT), but a single tap must still not move the pin: whoever briefly holds the
+     * unlocked phone could confirm an intercepted key. The screen lock confirms it instead.
+     */
+    val deviceConfirmationNeeded: Boolean get() = art == Art.SCHLUESSEL_NEU && ctForced
+
     enum class Art {
         /**
          * First contact, the chain is publicly valid: show the fingerprint and have it
@@ -183,7 +190,8 @@ class CertificateUnresolved(
 interface CertificateQuestion {
     val offen: StateFlow<CertificateUnresolved?>
     fun melde(frage: CertificateUnresolved)
-    fun confirm(pins: PinStore, eingabe: String? = null): Boolean
+    /** [deviceConfirmed]: the screen lock was just passed ([CertificateUnresolved.deviceConfirmationNeeded]). */
+    fun confirm(pins: PinStore, eingabe: String? = null, deviceConfirmed: Boolean = false): Boolean
     fun verwerfen()
 
     /** For tests without Hilt. */
@@ -209,11 +217,13 @@ internal class CertificatePrompt @Inject constructor() : CertificateQuestion {
      * between would need. On first contact with a CT requirement, typing it in is optional; whoever
      * does it must type it correctly.
      */
-    override fun confirm(pins: PinStore, eingabe: String?): Boolean {
+    override fun confirm(pins: PinStore, eingabe: String?, deviceConfirmed: Boolean): Boolean {
         val f = _open.value ?: return false
         if (f.art == CertificateUnresolved.Art.CODE_ABWEICHUNG) return false
         val pruefen = f.transcriptNeeded || f.art == CertificateUnresolved.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
         if (pruefen && !Transcript.confirmed(eingabe, f.fingerabdruck)) return false
+        // Without a screen lock there is nothing to confirm with; then the transcript counts instead.
+        if (f.deviceConfirmationNeeded && !deviceConfirmed && !Transcript.confirmed(eingabe, f.fingerabdruck)) return false
         pins.rememberPin(f.storeKey, f.fingerabdruck)
         f.blatt?.let { pins.rememberPin(sheetPinKey(f.schluessel), it) }
         _open.value = null
