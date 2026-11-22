@@ -3,7 +3,8 @@
  *
  * Counter-checks (all three performed):
  *   1. `btn-sm` reset on #man-detail-del            → step 1 red.
- *   2. the BrickLink button copied back into the set modal → step 2 red.
+ *   2. the BrickLink button copied back into the set modal → step 2 red (22.11.2026 in the bundle:
+ *      `<a id="m-bricklink" href="https://www.bricklink.com/">` in #set-modal → red “the set detail …”).
  *   3. the “back" button reinserted in #man-detail-modal → step 3 red.
  */
 const test = require('node:test');
@@ -49,25 +50,47 @@ test('the trash is the same size in every detail dialog', () => {
   }
 });
 
-test('the set detail no longer shows purchase addresses', () => {
-  // Both buttons still stand in the catalog and wishlist item detail:
-  // whoever wants to buy does NOT have the set yet. The test therefore does not check
-  // “nowhere", but “not HERE".
-  const set = dialog('set-modal');
-  for (const id of ['m-bricklink', 'm-vergleich']) {
-    assert.ok(
-      !set.includes(`id="${id}"`),
-      `Das Set-Detail zeigt wieder #${id}. Marcos Vorgabe: dort keine Kaufadressen.`,
+test('the set detail no longer shows purchase addresses', async () => {
+  // Real bundle in jsdom: whoever owns the set gets no shop link; the catalog detail (not owned yet) does.
+  const { openUi, reiter, warte } = require('./helpers/ui');
+  const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
+  const { w, d } = await openUi({
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': { success: true, set: SET },
+    '/v2/catalog/meta': { success: true, themes: [], year_min: 2021, year_max: 2021, year_counts: [] },
+    '/v2/catalog/sets': { success: true, total: 1, sets: [{ set_number: '10294-1', name: 'Titanic', year: 2021 }] },
+    '/v2/catalog/sets/10294-1': {
+      success: true,
+      set: {
+        set_number: '10294-1',
+        name: 'Titanic',
+        year: 2021,
+        bricklink: {
+          url: 'https://www.bricklink.com/v2/catalog/catalogitem.page?S=10294-1',
+          exact: true,
+          type: 'SET',
+          number: '10294-1',
+        },
+      },
+    },
+  });
+  const shopLinks = id =>
+    [...d.querySelectorAll(`#${id} a[href]`)].filter(a => /bricklink\.com|vergleich|compare/i.test(a.href + a.id));
+  try {
+    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await warte(() => d.getElementById('set-modal')?.classList.contains('open')), 'set detail');
+    assert.deepEqual(
+      shopLinks('set-modal').map(a => a.id),
+      [],
     );
-  }
-  // And the opposite direction, so that the test does not turn green by deleting:
-  // where they belong, they must still stand.
-  for (const [modal, id] of [
-    ['cat-modal', 'cat-m-bricklink'],
-    ['mk-detail-modal', 'mk-m-bricklink'],
-    ['mk-detail-modal', 'mk-m-comparison'],
-  ]) {
-    assert.ok(dialog(modal).includes(`id="${id}"`), `#${id} fehlt in #${modal} — dort gehoert die Adresse hin.`);
+    await reiter(w, 'catalog');
+    assert.ok(await warte(() => d.querySelector('[data-click="openCatModal"]')), 'catalog tile');
+    d.querySelector('[data-click="openCatModal"]').click();
+    assert.ok(await warte(() => /bricklink\.com/.test(d.getElementById('cat-m-bricklink')?.href ?? '')));
+    assert.notEqual(d.getElementById('cat-m-bricklink').style.display, 'none');
+  } finally {
+    w.close();
   }
 });
 

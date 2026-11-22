@@ -147,21 +147,28 @@ test('unhandled errors do not only end up in the console', async () => {
   // In the real bundle: a rejected promise and a script error from our own code show a message.
   const { openUi, warte } = require('./helpers/ui');
   const { de } = require('./helpers/sources').loadTranslations();
-  const { w, d } = await openUi();
-  const toasts = () => d.getElementById('toasts')?.textContent || '';
   const ours = { stack: 'Error: kaputt\n    at http://localhost/js/app.bundle.js:1:1' };
-  w.console.error = () => {};
-  try {
-    const rejection = new w.Event('unhandledrejection');
-    Object.assign(rejection, { reason: ours });
-    w.dispatchEvent(rejection);
-    assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `promise: ${toasts()}`);
-    for (const el of d.querySelectorAll('#toasts > *')) el.remove();
-    await new Promise(r => setTimeout(r, 5100)); // one message per five seconds
-    w.dispatchEvent(new w.ErrorEvent('error', { error: ours, message: 'kaputt' }));
-    assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `script: ${toasts()}`);
-  } finally {
-    w.close();
+  // One window per kind: the net reports at most one message per five seconds.
+  for (const [kind, raise] of [
+    [
+      'promise',
+      w => {
+        const rejection = new w.Event('unhandledrejection');
+        Object.assign(rejection, { reason: ours });
+        w.dispatchEvent(rejection);
+      },
+    ],
+    ['script', w => w.dispatchEvent(new w.ErrorEvent('error', { error: ours, message: 'kaputt' }))],
+  ]) {
+    const { w, d } = await openUi();
+    w.console.error = () => {};
+    try {
+      raise(w);
+      const toasts = () => d.getElementById('toasts')?.textContent || '';
+      assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `${kind}: ${toasts()}`);
+    } finally {
+      w.close();
+    }
   }
 });
 

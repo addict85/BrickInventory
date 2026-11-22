@@ -163,12 +163,12 @@ test('a cut-off response is neither cached nor kept', async t => {
   await fetch(proxied(u))
     .then(r => r.arrayBuffer())
     .catch(() => {});
-  await new Promise(r => setTimeout(r, 300));
-  assert.equal(fs.existsSync(cached(u)), false);
-  assert.deepEqual(
-    fs.readdirSync(cacheDir).filter(f => f.startsWith(proxyCacheKey(u))),
-    [],
-  );
+  const { imgProxyFailures } = _req('src/images/imgProxyStats.js');
+  assert.ok(await bis(() => String(imgProxyFailures.lastError).includes(u), 3000), 'the cut was not noticed');
+  const left = () => fs.readdirSync(cacheDir).filter(f => f.startsWith(proxyCacheKey(u)));
+  // The temp file is removed asynchronously after the discard.
+  await bis(() => left().length === 0, 3000);
+  assert.deepEqual(left(), []);
 });
 
 test('streamed briefly, cached with ETag', async t => {

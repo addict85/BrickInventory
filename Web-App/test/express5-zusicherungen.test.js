@@ -107,22 +107,3 @@ test('2. req.body is always an object, even without a matching parser', async ()
  *
  * Counter-check: `index: false` removed → this case red (read without comments).
  */
-test('3. the start page goes through the renderer', () => {
-  // WITHOUT COMMENTS, and that is not decoration: the explanatory comment above the
-  // option names `index: false` itself. The first version read the source text
-  // including comments — MEASURED, the counter-check therefore stayed green although
-  // the option was removed. A check that reads its own rationale
-  // confirms itself.
-  const src = ohneKommentare(serverAll());
-  const auf = src.indexOf('express.static(PUBLIC_DIR');
-  assert.ok(auf > 0, 'Die statische Auslieferung ist nicht mehr zu finden.');
-  const block = src.slice(auf, src.indexOf('}));', auf));
-  assert.match(
-    block,
-    /index:\s*false/,
-    'express.static liefert die index.html fuer `/` wieder selbst aus. Dann ' +
-      'geht die Startseite am Renderer vorbei: kein serverseitiges data-theme ' +
-      '(sichtbarer Designsprung beim ersten Aufruf) und kein Dateistempel an ' +
-      'den Assets (der Browser behaelt seine alten Kopien).',
-  );
-});

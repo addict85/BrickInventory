@@ -105,6 +105,8 @@ const STRUCTURE_CHECKS = {
   'detail-dialogs.test.js: the part/figure dialog has no second way out': 'exits of the dialog in the markup',
   'detail-dialogs.test.js: title and footer bar stick — and can do so': 'position rules in the stylesheet',
   'foreign-error.test.js: no leftover debugging in the delivered state': 'ban on debugging output',
+  'gift-menu-value-chart-ui.test.js: set without image: the same cube as in the tile':
+    'two asset files (placeholder image, icon symbol) draw the same shape',
   'household.test.js: web app and app get the same endpoints': 'the route table names each household route once',
   'img-proxy-v1.test.js: the migration covers EVERY table with image_url':
     'the migration against every schema table with image_url',
