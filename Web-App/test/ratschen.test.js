@@ -781,7 +781,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const LIMIT = 370;
+  const LIMIT = 363;
   const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -799,7 +799,7 @@ function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
   // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
   // a file without a reading case → red „without a reading case“.
   const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
-  const LIMIT = 75;
+  const LIMIT = 68;
   assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
   const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
   assert.ok(
