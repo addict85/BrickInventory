@@ -128,7 +128,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
       SESSION_SECRET: 'runde-elf-test-geheimnis-lang-genug-12345',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
       APP_BASE_URL: `http://nas.example.lan:${port}`,
     },
   });

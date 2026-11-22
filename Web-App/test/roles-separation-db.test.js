@@ -23,7 +23,7 @@ const { accessOrSkip, missingPrecondition } = require('./helpers/db');
 const { asSuperuser, inSystemFrame } = require('./helpers/roles');
 const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 
-const ROLLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,
+const ROLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,
                       pg_has_role(current_user, c.relowner, 'USAGE') AS eigentum
                  FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`;
 
@@ -34,12 +34,12 @@ test('the suite separates the roles as in production, exceptions become fewer', 
   if (!process.env.TEST_DB_VORLAGE) return missingPrecondition(t, 'nur npm test trennt Rollen');
 
   assert.deepEqual(
-    (await zugang.pool.query(ROLLE)).rows[0],
+    (await zugang.pool.query(ROLE)).rows[0],
     { super: false, bypass: false, eigentum: false },
     'die App fragt als Laufzeitrolle',
   );
   assert.deepEqual(
-    (await zugang.systemPool.query(ROLLE)).rows[0],
+    (await zugang.systemPool.query(ROLE)).rows[0],
     { super: false, bypass: true, eigentum: false },
     'der Systemrahmen fragt als Systemrolle',
   );
@@ -47,7 +47,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
   const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   try {
     assert.deepEqual(
-      (await eigen.pool.query(ROLLE)).rows[0],
+      (await eigen.pool.query(ROLE)).rows[0],
       { super: false, bypass: false, eigentum: true },
       'Testdaten schreibt die Eigentümerin',
     );

@@ -132,7 +132,7 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
   ]);
   // A network above eight addresses only when confirmed, and even then at most /16 or /64.
   for (const weit of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
-    assert.throws(() => proxyTrust(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
+    assert.throws(() => proxyTrust(weit), /PROXY_NETWORK_CONFIRMED=1/, `ohne Bestätigung angenommen: ${weit}`);
     assert.deepEqual(proxyTrust(weit, true), [weit]);
   }
   for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
@@ -256,8 +256,8 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
       PORT: String(port),
       NODE_ENV: 'production',
       TRUST_PROXY: 'false',
-      DB_SUPERUSER_ERLAUBT: '1',
-      APP_BASE_URL_FEHLT_OK: '1',
+      DB_SUPERUSER_ALLOWED: '1',
+      APP_BASE_URL_MISSING_OK: '1',
     },
   });
   let log = '';

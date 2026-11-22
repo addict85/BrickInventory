@@ -1,4 +1,4 @@
-/** Sets and purchases belong to the inventory (docs/architektur.md); the areas above write via this. */
+/** Sets and purchases belong to the inventory (docs/architecture.md); the areas above write via this. */
 import type { AcquisitionKind } from '../../db/stockQuantity';
 import { bound } from '../infra/area';
 import * as acquisitions from './repository/acquisitions';

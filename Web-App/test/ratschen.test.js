@@ -94,7 +94,7 @@ test('silent catches (server, only reported, UI) become fewer, never more', () =
 });
 
 test('“report and continue” becomes fewer, never more; src/sets does without', () => {
-  // The rule stands in docs/architektur.md („Fehler“): write paths throw, read paths take
+  // The rule stands in docs/architecture.md („Fehler“): write paths throw, read paths take
   // versuche()/Abstriche, logAndContinue only for side effects without consequences; a substitute value
   // (reportAndDeliver) justifies itself as „Ausnahme:“ in the code. Outside of src/catalog an own limit.
   // Counter-checks: in src/catalog/colors.ts again `.catch(reportAndDeliver('x', []))` → red (8, limit 7);
@@ -246,7 +246,7 @@ test('the compatibility path to the database and module-wide state become fewer,
 
   // Module-wide state (let and empty-created Map/Set/WeakMap/WeakSet): all accesses of a process
   // share it. An area keeps its own in compartments (src/infra/cache.ts),
-  // deliberately process-wide state stands with a reason in src/infra/prozessweit.ts.
+  // deliberately process-wide state stands with a reason in src/infra/processWide.ts.
   // Counter-checks (13.11.2026): `const _probe = new Map<string, number>();` in src/catalog/context.ts
   // → red with 60; `let _probe = 0;` in the same place → red with 60. (14.11.2026) limit 2 (transaction guard,
   // savepoints in db/); `const sitzungen = new Map<string, Sitzung>();` back in
@@ -365,7 +365,7 @@ function bindingWithoutNamesAndProxy() {
       .filter(f => /\bAsyncLocalStorage\b/.test(text(f)))
       .map(rel),
     ['src/infra/accountContext.ts'],
-    'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architektur.md)',
+    'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architecture.md)',
   );
 }
 

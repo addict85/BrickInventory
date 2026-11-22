@@ -25,14 +25,14 @@
  *   G  the line 'db/schemaStart.ts → global_settings' deleted from FREMDSCHREIBER
  *      → red: the same check
  *
- * The owners stand in docs/architektur.md („Tabellen und Besitzer“), exactly one per table.
+ * The owners stand in docs/architecture.md („Tabellen und Besitzer“), exactly one per table.
  * Foreign scopes read via read building blocks in db/ or the owner's service; the direct
  * read places are counted by a ratchet, upwards zero applies. Counter-checks (H 15.11., I/J 14.11.2026 measured):
  *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → red: “foreign scopes never read
  *      upwards …” (27 downwards of 26)
  *   I  `DELETE FROM user_settings` in src/account/repository/accounts.ts → red: “every table has
  *      an owner, only it writes into it”
- *   J  the line of src/drossel deleted in docs/architektur.md → red: the same check
+ *   J  the line of src/drossel deleted in docs/architecture.md → red: the same check
  *      (rate_limit_attempts without owner)
  *   K  setWert.ts again reads `FROM set_acquisitions` instead of setErfassungen() → red: the same
  *      check, upwards ['src/finances → set_acquisitions'] (15.11.2026)
@@ -426,9 +426,9 @@ async function measureFile(datei, bekannt) {
   return { liest: [...liest].sort(), schreibt: [...schreibt].sort() };
 }
 
-/** Per scope the tables into which only it writes: the table in docs/architektur.md. */
+/** Per scope the tables into which only it writes: the table in docs/architecture.md. */
 function besitzerAusDoku() {
-  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
   const abschnitt = doc.slice(doc.indexOf('## Tabellen und Besitzer'), doc.indexOf('## API-Vertrag'));
   return Object.fromEntries(
     [...abschnitt.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map(m => [
@@ -461,9 +461,9 @@ const TRIGGER_FREMDZIELE = {
 const KATALOG_LESER_HOECHSTENS = 49;
 const ABWAERTS_LESER_HOECHSTENS = 24;
 
-/** Per scope its level from docs/architektur.md („Rangfolge der Bereiche“). */
+/** Per scope its level from docs/architecture.md („Rangfolge der Bereiche“). */
 function stufenAusDoku() {
-  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
   const abschnitt = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## Schema'));
   return new Map(
     [...abschnitt.matchAll(/^\| (\d+) \| (.+) \|$/gm)].flatMap(m =>
@@ -753,9 +753,9 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
 
   await t.test('foreign scopes never read upwards, otherwise fewer tables directly', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architektur.md — greift die Suche noch?`);
+    assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architecture.md — greift die Suche noch?`);
     const stufen = stufenAusDoku();
-    assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architektur.md — greift die Suche noch?`);
+    assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architecture.md — greift die Suche noch?`);
     const je = { aufwärts: [], katalog: [], abwärts: [] };
     const pairs = new Set(foreignReader(besitzer));
     assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');

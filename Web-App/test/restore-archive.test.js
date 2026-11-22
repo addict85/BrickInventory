@@ -1,12 +1,12 @@
 /**
  * scripts/restore.sh only unpacks a data archive if it consists of files and
- * folders under data/ (scripts/archiv-pruefen.sh). The real
+ * folders under data/ (scripts/check-archive.sh). The real
  * script runs with a valid dump: a malicious archive aborts BEFORE the
  * confirmation prompt, a good one gets as far as the prompt (ended there with „nein",
  * docker is never reached).
  *
  * Counter-checks (measured 01.11.2026, each on its own):
- *   A  call of archiv-pruefen.sh removed in restore.sh → red for all
+ *   A  call of check-archive.sh removed in restore.sh → red for all
  *      malicious archives („erreicht die Rückfrage nicht")
  *   B  check for links removed → red: „Verknüpfung nach aussen"
  *      and „harter Link"

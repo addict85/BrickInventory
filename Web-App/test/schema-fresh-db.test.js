@@ -14,7 +14,7 @@
  *   C  the second start via initSchema() instead of initSchemaOnce() → red: “a
  *      second start changes nothing in the schema” — initSchema creates the columns
  *      deleted by 0036 to 0038 again. That is why it runs only once.
- *   F  a column deleted in db/schema-stand.sql → red: “db/schema-stand.sql
+ *   F  a column deleted in db/schema-snapshot.sql → red: “db/schema-snapshot.sql
  *      shows the schema that results”; likewise a new migration without a newly
  *      generated file
  *   D  (08.11.) initSchema() without the check for an empty database → red:
@@ -154,13 +154,13 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('db/schema-stand.sql shows the schema that results', async () => {
+  await t.test('db/schema-snapshot.sql shows the schema that results', async () => {
     const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
     assert.equal(
       await schemaText(db),
       eingecheckt,
-      'db/schema-stand.sql ist veraltet — neu erzeugen: npm run build && npm run schema:stand',
+      'db/schema-snapshot.sql ist veraltet — neu erzeugen: npm run build && npm run schema:snapshot',
     );
   });
 

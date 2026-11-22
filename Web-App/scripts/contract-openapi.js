@@ -4,7 +4,7 @@
 /**
  * Writes docs/openapi.json from the contract in src/contract/.
  * The file is checked in; test/contract-openapi.test.js checks that it
- * matches the code. Call: npm run vertrag:openapi
+ * matches the code. Call: npm run contract:openapi
  */
 const fs = require('node:fs');
 const path = require('node:path');

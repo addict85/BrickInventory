@@ -79,7 +79,7 @@ export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
 }
 
 /** Every worker takes a good 12 MB; the host's cores say nothing about the
- * container's memory limit. BCRYPT_ARBEITER raises the default of 4. */
+ * container's memory limit. BCRYPT_WORKERS raises the default of 4. */
 export function bcryptWorkers(
   assigned = konfig().bcryptArbeiter,
   kerne = os.availableParallelism(),

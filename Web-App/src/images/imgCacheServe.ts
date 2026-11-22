@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
 import { previewType } from './thumbs';
 import { beforeThe, withoutMissingFile, reportError } from '../infra/error';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 import path from 'node:path';
 import { APP_ROOT, SET_IMAGES_DIR } from '../infra/appPaths';
 import type { ImagesContext } from './context';

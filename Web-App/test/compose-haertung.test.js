@@ -73,7 +73,7 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   assert.match(block, /^\s*-\s*\.\/data:\/app\/data\s*$/m, 'app: ./data ist nicht nach /app/data eingehängt');
 
   const ep = fs
-    .readFileSync(path.join(ROOT, 'daten-rechte.sh'), 'utf8')
+    .readFileSync(path.join(ROOT, 'data-permissions.sh'), 'utf8')
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
@@ -150,7 +150,7 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
   assert.equal(rechte.user, 'root');
   assert.equal(rechte.network_mode, 'none', 'daten-rechte braucht kein Netz');
   assert.equal(rechte.read_only, true);
-  assert.deepEqual(rechte.entrypoint, ['sh', '/app/daten-rechte.sh']);
+  assert.deepEqual(rechte.entrypoint, ['sh', '/app/data-permissions.sh']);
   // Only ./data: a symlink of the service must lead root to nothing else.
   assert.deepEqual(
     (rechte.volumes || []).map(v => `${path.relative(ROOT, v.source)}:${v.target}`),
@@ -158,7 +158,7 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
     'daten-rechte sieht mehr als ./data',
   );
   assert.equal(rechte.secrets, undefined, 'daten-rechte sieht mehr als ./data');
-  assert.equal(rechte.image, d.app.image, 'daten-rechte.sh kommt aus dem App-Image');
+  assert.equal(rechte.image, d.app.image, 'data-permissions.sh kommt aus dem App-Image');
   for (const n of ['app', 'jobs']) {
     assert.equal(d[n].user, 'brickinv', `${n} läuft als root`);
     assert.equal(
@@ -405,15 +405,15 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
     'eine neue Datenbank bekommt die Migrationsrolle nicht beim Anlegen',
   );
   const rolle = readService(compose, 'db-rolle');
-  assert.match(rolle, /^\s*entrypoint: \["sh", "\/rolle\/app-rolle\.sh"\]\s*$/m);
-  assert.match(rolle, /^\s*-\s*\.\/postgres\/app-rolle\.sh:\/rolle\/app-rolle\.sh:ro\s*$/m);
+  assert.match(rolle, /^\s*entrypoint: \["sh", "\/rolle\/app-role\.sh"\]\s*$/m);
+  assert.match(rolle, /^\s*-\s*\.\/postgres\/app-role\.sh:\/rolle\/app-role\.sh:ro\s*$/m);
   assert.match(
     readService(compose, 'postgres'),
-    /^\s*-\s*\.\/postgres\/app-rolle\.sh:\/docker-entrypoint-initdb\.d\/10-app-rolle\.sh:ro\s*$/m,
+    /^\s*-\s*\.\/postgres\/app-role\.sh:\/docker-entrypoint-initdb\.d\/10-app-role\.sh:ro\s*$/m,
     'eine neue Datenbank bekommt die Rolle nicht beim Anlegen',
   );
   assert.ok(
-    fs.statSync(path.join(ROOT, 'postgres', 'app-rolle.sh')).mode & 0o111,
+    fs.statSync(path.join(ROOT, 'postgres', 'app-role.sh')).mode & 0o111,
     'docker-entrypoint-initdb.d führt das Skript nur aus, wenn es ausführbar ist',
   );
 });

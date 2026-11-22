@@ -1,7 +1,7 @@
 /** Profile of the own account: name, username and address. A new address only applies
  * after the link; the mails go through the mail area. */
 import crypto from 'node:crypto';
-import { mailBasisUrl } from '../infra/basisUrl';
+import { mailBasisUrl } from '../infra/baseUrl';
 import { failDomain } from '../infra/errorTexts';
 import { attempts, valueOr } from '../infra/result';
 import { inSystemContext } from '../infra/accountContext';

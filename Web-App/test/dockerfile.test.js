@@ -174,7 +174,7 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
       spur = path.join(ort, 'spur');
     fs.mkdirSync(path.join(app, 'data'), { recursive: true });
     fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(app, 'daten-rechte.sh'), 'echo daten-rechte >> "$SPUR"\n');
+    fs.writeFileSync(path.join(app, 'data-permissions.sh'), 'echo daten-rechte >> "$SPUR"\n');
     const ersatz = (name, rumpf) => fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${rumpf}\n`, { mode: 0o755 });
     ersatz('id', '[ "$1" = -u ] && echo "$KENNUNG" || echo brickinv');
     ersatz('chown', 'exit 0');

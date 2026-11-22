@@ -1,6 +1,6 @@
 /**
  * The Android app as a party of the passkeys: /.well-known/assetlinks.json and the
- * origin `android:apk-key-hash:…` come from PASSKEY_ANDROID_ZERTIFIKATE.
+ * origin `android:apk-key-hash:…` come from PASSKEY_ANDROID_CERTIFICATES.
  * Whether the server accepts the response of an app is checked by passkeys-db.test.js.
  *
  * Counter-checks (measured on 31.10.2026):
@@ -40,18 +40,18 @@ function withEnvironment(t, werte) {
 }
 
 test('without an entry there is no document and no app origin', async t => {
-  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
+  withEnvironment(t, { PASSKEY_ANDROID_CERTIFICATES: '' });
   const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 404);
-  assert.match(await r.text(), /PASSKEY_ANDROID_ZERTIFIKATE/);
+  assert.match(await r.text(), /PASSKEY_ANDROID_CERTIFICATES/);
   assert.deepEqual(androidOrigins(), []);
 });
 
 test('the document names package and fingerprint, only for the credentials', async t => {
   withEnvironment(t, {
-    PASSKEY_ANDROID_ZERTIFIKATE: HASH.toString('hex'),
-    PASSKEY_ANDROID_PAKET: 'ch.brickinventoryapp.debug',
+    PASSKEY_ANDROID_CERTIFICATES: HASH.toString('hex'),
+    PASSKEY_ANDROID_PACKAGE: 'ch.brickinventoryapp.debug',
   });
   const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
@@ -70,7 +70,7 @@ test('the document names package and fingerprint, only for the credentials', asy
 });
 
 test('the origin is base64url of the hash, regardless of the notation it is entered in', t => {
-  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
+  withEnvironment(t, { PASSKEY_ANDROID_CERTIFICATES: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   assert.match(HASH.toString('base64'), /[+/]/, 'Die Probe deckt die Ersetzung nicht ab');
@@ -87,11 +87,11 @@ test('a wrong fingerprint or package name is a startup error with a name', () =>
       return e.error;
     }
   };
-  assert.match(fehler({ PASSKEY_ANDROID_ZERTIFIKATE: 'AB:CD' }).join(), /PASSKEY_ANDROID_ZERTIFIKATE: AB:CD/);
+  assert.match(fehler({ PASSKEY_ANDROID_CERTIFICATES: 'AB:CD' }).join(), /PASSKEY_ANDROID_CERTIFICATES: AB:CD/);
   assert.match(
-    fehler({ PASSKEY_ANDROID_ZERTIFIKATE: crypto.randomBytes(32).toString('hex') + 'x' }).join(),
+    fehler({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') + 'x' }).join(),
     /kein SHA-256/,
   );
-  assert.match(fehler({ PASSKEY_ANDROID_PAKET: 'kein paket' }).join(), /PASSKEY_ANDROID_PAKET/);
-  assert.deepEqual(fehler({ PASSKEY_ANDROID_ZERTIFIKATE: crypto.randomBytes(32).toString('hex') }), []);
+  assert.match(fehler({ PASSKEY_ANDROID_PACKAGE: 'kein paket' }).join(), /PASSKEY_ANDROID_PACKAGE/);
+  assert.deepEqual(fehler({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') }), []);
 });

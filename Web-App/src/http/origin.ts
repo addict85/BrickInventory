@@ -3,7 +3,7 @@
  * no browser sends a bearer token on its own. */
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/config';
-import { carriesSessionCookie } from './sitzungsKeks';
+import { carriesSessionCookie } from './sessionCookie';
 import { sendError } from './httpResponse';
 
 const READING = new Set(['GET', 'HEAD', 'OPTIONS']);

@@ -56,7 +56,7 @@ wird nicht mehr veröffentlicht.
 3. `docker compose up -d --build`. Caddy legt beim ersten Start seine CA unter
    `./caddy/data/` an (Wurzel 10 Jahre gültig). Port 443 und 80 müssen frei sein.
    **Überholt durch Abschnitt 32 und 33:** Caddy startet nur noch mit der
-   eigenen, auf `BRICK_HOST` beschränkten CA (`scripts/ca-einrichten.sh`),
+   eigenen, auf `BRICK_HOST` beschränkten CA (`scripts/setup-ca.sh`),
    mit `BRICK_TLS=acme` oder ausdrücklich `CA_OHNE_NAMENSBESCHRAENKUNG=ja`.
 4. Das Wurzelzertifikat auf die Geräte bringen (unten).
 5. Die Android-App einmal neu verknüpfen (QR-Code): Erst dann kennt sie den
@@ -327,7 +327,7 @@ QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
 - **Passwörter**: mindestens 8 Zeichen, höchstens 72 Byte (bcrypt las bisher
   nur die ersten 72 und schnitt den Rest still ab; Umlaute zählen doppelt),
   und nicht auf der mitgelieferten Liste häufiger und aus Datenlecks bekannter
-  Passwörter (`src/infra/haeufige-passwoerter.txt`, keine Netzabfrage) und
+  Passwörter (`src/infra/common-passwords.txt`, keine Netzabfrage) und
   nicht gleich dem Benutzernamen. Gilt für Registrierung, Ändern,
   Zurücksetzen, Konto anlegen und Passwort setzen durch den Verwalter.
   Bestehende Passwörter bleiben gültig; die Regel greift beim nächsten Setzen.
@@ -484,7 +484,7 @@ Was sich für Nutzer und Clients ändert:
   `lego.com` erlaubt (Anleitungs-PDFs). Gespeicherte Bildadressen anderer
   Unterdomänen (etwa ein altes `m.rebrickable.com`) lädt der Proxy nicht mehr.
 - **Wiederherstellen**: `scripts/restore.sh` prüft das data-Archiv vorher
-  (`scripts/archiv-pruefen.sh`): nur Dateien und Ordner unter `data/`, keine
+  (`scripts/check-archive.sh`): nur Dateien und Ordner unter `data/`, keine
   Verknüpfungen, kein `..`. Archive von `scripts/backup.sh` erfüllen das.
 - **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
   zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
@@ -508,7 +508,7 @@ Was sich für Nutzer und Clients ändert:
   1. In `.env` ein zweites, anderes Passwort eintragen:
      `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
      **Überholt durch Abschnitt 33:** heute `./geheimnisse/db_app_password`
-     (`sh scripts/geheimnisse-einrichten.sh`).
+     (`sh scripts/setup-secrets.sh`).
      (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
   2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
      einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
@@ -520,7 +520,7 @@ Was sich für Nutzer und Clients ändert:
      zeigt keine Warnung „Die App verbindet sich als Superuser“.
 
   Neue Installationen bekommen die Rolle schon beim Anlegen der Datenbank
-  (`postgres/app-rolle.sh` in `docker-entrypoint-initdb.d`). Sicherungen
+  (`postgres/app-role.sh` in `docker-entrypoint-initdb.d`). Sicherungen
   (`scripts/backup.sh`) laufen weiter als Superuser; `scripts/restore.sh`
   richtet nach dem Einspielen `db-rolle` erneut ein, damit auch ein älterer
   Dump wieder der App gehört. Rückweg: die alte `compose.yaml` verbindet sich
@@ -528,7 +528,7 @@ Was sich für Nutzer und Clients ändert:
   `DB_APP_PASSWORD` ändert, startet einfach `docker compose up -d` neu.
   Ohne Docker (eigenes PostgreSQL): das Skript einmal mit dem Superuser
   ausführen, z. B. `PGHOST=… PGUSER=postgres PGDATABASE=brickinventory
-  DB_APP_PASSWORD=… sh postgres/app-rolle.sh` (psql ab 15), danach die App mit
+  DB_APP_PASSWORD=… sh postgres/app-role.sh` (psql ab 15), danach die App mit
   `PGUSER=brickinventory_app` starten.
 - **Idempotenz ohne Passwörter**: Der Fingerabdruck einer Anfrage mit
   `Idempotency-Key` (24 h in der Tabelle `idempotenz`) war ein SHA-256 über
@@ -564,7 +564,7 @@ Was sich für Nutzer und Clients ändert:
 
 ## 30. Runde 6 – Sicherheit
 
-- **db-rolle gehärtet** (`postgres/app-rolle.sh`): Die App-Rolle besitzt die
+- **db-rolle gehärtet** (`postgres/app-role.sh`): Die App-Rolle besitzt die
   Datenbank und konnte über `ALTER DATABASE … SET search_path` eigene
   Funktionen in die Superuser-Sitzung von `db-rolle` schieben. Das Skript
   setzt jetzt beim Verbinden `search_path=pg_catalog,pg_temp` und
@@ -581,7 +581,7 @@ Was sich für Nutzer und Clients ändert:
 - **pgweb mit eigener Leserolle**: Neu in `.env`:
   `PGWEB_DB_PASSWORD=$(openssl rand -hex 24)` (anders als `DB_PASSWORD` und
   `DB_APP_PASSWORD`). **Überholt durch Abschnitt 33:** heute
-  `./geheimnisse/pgweb_db_password` (`PGWEB=ja sh scripts/geheimnisse-einrichten.sh`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
+  `./geheimnisse/pgweb_db_password` (`PGWEB=ja sh scripts/setup-secrets.sh`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
   ohne die Tabellen `api_tokens`, `qr_login_tokens`, `user_sessions`,
   `webauthn_challenges`, `zweiter_faktor_codes`, `account_link_invites` und
   ohne die Spalten `users.password_hash/verification_token/reset_token`,
@@ -758,21 +758,21 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
 Caddys eigene Wurzel gilt auf jedem Gerät, das sie installiert hat, für jede
 Adresse: Wer ihren Schlüssel aus `./caddy/data/caddy/pki/authorities/local/`
 oder aus einer Sicherung von `./caddy/` bekommt, stellt Zertifikate für Bank
-und Mail aus, denen diese Geräte trauen. `scripts/ca-einrichten.sh` legt
+und Mail aus, denen diese Geräte trauen. `scripts/setup-ca.sh` legt
 stattdessen eine Wurzel an, die nur für `BRICK_HOST` gilt (Name Constraints),
 und eine Zwischenstelle für Caddy; der Schlüssel der Wurzel bleibt nicht auf
 dem Server. Ohne diese Schritte läuft alles wie bisher.
 
 1. Im Ordner mit `compose.yaml`:
    ```
-   sudo sh scripts/ca-einrichten.sh
+   sudo sh scripts/setup-ca.sh
    ```
    Mit sudo, weil Caddy im Container als root ohne Capabilities nur Dateien
    liest, die root gehören. Es liest `BRICK_HOST` aus `.env` (oder
-   `sudo sh scripts/ca-einrichten.sh nas.example.lan`)
+   `sudo sh scripts/setup-ca.sh nas.example.lan`)
    und schreibt `./caddy/ca/root.crt`, `zwischen.crt`, `zwischen-kette.crt`
    und `zwischen.key`. Den Schlüssel der Wurzel verwirft es; wer ihn behalten
-   will: `sudo WURZEL_SCHLUESSEL=/media/usb/brickinventory-wurzel.key sh scripts/ca-einrichten.sh`
+   will: `sudo WURZEL_SCHLUESSEL=/media/usb/brickinventory-wurzel.key sh scripts/setup-ca.sh`
    — die Datei danach vom Server wegbringen. Die Ausgabe nennt den neuen
    Fingerabdruck. Braucht `openssl` auf dem Server.
 2. Caddy mit der neuen CA starten und die alte CA samt ihren Zertifikaten
@@ -797,7 +797,7 @@ dem Server. Ohne diese Schritte läuft alles wie bisher.
    Ist die alte Wurzel von allen Geräten entfernt, ist er wertlos.
 
 Die Zwischenstelle gilt 3649 Tage. Danach (oder bei Verdacht auf einen
-abgeflossenen `zwischen.key`) mit `sudo NEU=1 sh scripts/ca-einrichten.sh` eine
+abgeflossenen `zwischen.key`) mit `sudo NEU=1 sh scripts/setup-ca.sh` eine
 neue CA anlegen und die Schritte 2–4 wiederholen. Zurück zu Caddys CA:
 `./caddy/ca` umbenennen und Caddy neu starten; er legt dann eine neue,
 unbeschränkte Wurzel an (Schritte 3–4).
@@ -881,7 +881,7 @@ jedem mit Zugang zu Docker), sondern als Docker-Secrets unter
 `/run/secrets/`. Die Dateien liegen in `./geheimnisse/`:
 
 ```
-sh scripts/geheimnisse-einrichten.sh
+sh scripts/setup-secrets.sh
 ```
 
 Das Skript übernimmt die Werte aus der bisherigen `.env` und erzeugt fehlende
@@ -907,7 +907,7 @@ Namensbeschränkung: Ein Gerät mit ihrer Wurzel traut ihr für jede Adresse.
 Ohne eine der drei Angaben startet Caddy nicht. `docker compose logs caddy`
 zeigt dann „keine eigene, auf BRICK_HOST beschränkte CA“.
 
-- **Empfohlen, im Heimnetz:** `sudo sh scripts/ca-einrichten.sh`, danach
+- **Empfohlen, im Heimnetz:** `sudo sh scripts/setup-ca.sh`, danach
   weiter wie in Abschnitt 32 (alte CA entfernen, neue Wurzel auf die Geräte,
   App neu verknüpfen). Wer das schon gemacht hat, muss nichts tun.
 - **Öffentlicher Name** (aus dem Internet auf Port 80 und 443 erreichbar): in
@@ -927,7 +927,7 @@ das Gerät anzeigt, mit dem auf dem Server vergleichen:
 docker compose logs caddy | grep Fingerabdruck
 ```
 
-`scripts/ca-einrichten.sh` nennt denselben Wert bei der Einrichtung. Weicht er
+`scripts/setup-ca.sh` nennt denselben Wert bei der Einrichtung. Weicht er
 ab, nicht installieren.
 
 **3. Sicherungen nur verschlüsselt (Pflicht)**
@@ -955,7 +955,7 @@ Datenschlüssel (`BACKUP_SCHLUESSEL_ZIEL`) weiter getrennt aufbewahren.
 **4. pgweb (nur wer es benutzt)**
 
 - Die Passwörter kommen jetzt aus `./geheimnisse/`:
-  `PGWEB=ja sh scripts/geheimnisse-einrichten.sh`, danach
+  `PGWEB=ja sh scripts/setup-secrets.sh`, danach
   `docker compose up -d db-rolle`. Das Passwort für die Anmeldung im Browser
   steht in `geheimnisse/pgweb_password` (bisheriges `PGWEB_PASSWORD` wird
   übernommen). Ohne diesen Schritt hat die Leserolle kein Passwort und pgweb
@@ -964,7 +964,7 @@ Datenschlüssel (`BACKUP_SCHLUESSEL_ZIEL`) weiter getrennt aufbewahren.
   eigenen Netz `pgweb-net` nur mit `postgres`. App, Jobs und Caddy erreichen
   es nicht mehr.
 - Die Leserolle liest nur noch eine **Allowlist** je Tabelle
-  (`LESEN_SPALTEN` in `postgres/app-rolle.sh`). Eine neue Tabelle oder
+  (`LESEN_SPALTEN` in `postgres/app-role.sh`). Eine neue Tabelle oder
   Spalte ist für pgweb unsichtbar, bis sie dort eingetragen ist. Nicht mehr
   lesbar sind zusätzlich `auftraege.nutzlast`, `vouchers.number` und
   `nummer_suche`, `passkeys.credential_id` und `public_key`,
@@ -1462,7 +1462,7 @@ veränderlichen Tag `latest`, sondern über `BRICK_IMAGE` aus `.env`, etwa
 Hub umhängen, ein Digest nicht. Eintragen tut ihn das neue Skript:
 
 ```bash
-sh scripts/image-pruefen.sh     # im Ordner mit compose.yaml
+sh scripts/check-image.sh     # im Ordner mit compose.yaml
 docker compose up -d
 ```
 
@@ -1476,7 +1476,7 @@ Das Skript:
 - zieht danach `schluessel`, `app` und `jobs`. Scheitert die Prüfung, ändert
   es nichts.
 
-**Update ab jetzt:** `sh scripts/image-pruefen.sh && docker compose up -d`
+**Update ab jetzt:** `sh scripts/check-image.sh && docker compose up -d`
 statt `docker compose pull && docker compose up -d`.
 
 **cosign** muss auf dem Docker-Rechner installiert sein: über die
@@ -1588,9 +1588,9 @@ nicht betroffen.
 Bei Verdacht, dass `./schluessel/datenschluessel` abgeflossen ist:
 
 ```bash
-sudo sh scripts/datenschluessel-wechseln.sh            # alter Schlüssel → datenschluessel.alt, neuer entsteht
+sudo sh scripts/rotate-data-key.sh            # alter Schlüssel → datenschluessel.alt, neuer entsteht
 docker compose logs app | grep Schlüsselwechsel        # wie viele Werte neu geschrieben sind
-sudo sh scripts/datenschluessel-wechseln.sh abschliessen
+sudo sh scripts/rotate-data-key.sh abschliessen
 ```
 
 Der Start schreibt alles, was nur der alte Schlüssel öffnet, mit dem neuen neu
@@ -1627,7 +1627,7 @@ npm-Pakete (`npm audit signatures`).
   wie im übrigen Bestand `-1`. Nichts zu tun, der nächste Abgleich lädt alles.
 - **`db-rolle` übernimmt auch die Kopien `vor_migration_*`.** Wer die App-Rolle
   schon von Hand eingerichtet hat und beim Start „must be owner of schema
-  vor_migration_…“ sah: `postgres/app-rolle.sh` einmal erneut ausführen
+  vor_migration_…“ sah: `postgres/app-role.sh` einmal erneut ausführen
   (Abschnitt 29) oder einfach `docker compose up -d`.
 - **TLS-Warnung zur Datenbank:** Ein Hostname ohne Punkt (Docker-Dienst oder
   -Container wie `db-brickinventory`) gilt als derselbe Rechner und löst die
@@ -1643,7 +1643,7 @@ npm-Pakete (`npm audit signatures`).
 
 ## 45. Stichtag Migration 0050: frühere Startstufen entfernt
 
-Eine neue Installation entsteht aus `db/basis.sql` und den jüngeren
+Eine neue Installation entsteht aus `db/base.sql` und den jüngeren
 Migrationen; eine bestehende bekommt nur ihre offenen Migrationen. Den
 Sonderweg für Datenbanken **älter als Migration
 `0050-teilezaehler-nur-bestehende-konten.sql`** (die früheren Startstufen aus
@@ -1722,7 +1722,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   neue Dienst `caddy-rechte` übergibt bei jedem `up` `./caddy/data`,
   `./caddy/config`, das Volume `ca-wurzel` und `./caddy/ca/zwischen.key` an
   diese Kennung und endet. Nichts von Hand zu tun: `docker compose up -d`
-  genügt. Nach `scripts/ca-einrichten.sh` wie bisher `docker compose up -d
+  genügt. Nach `scripts/setup-ca.sh` wie bisher `docker compose up -d
   caddy` (nicht `restart`), damit `caddy-rechte` den neuen Schlüssel übergibt.
 
 ## 48. Set-Stammdaten nur noch aus `rb_sets` (Migration 0105)
@@ -1746,7 +1746,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   aus dem Reiter Katalog), trägt er `image_local` und `image_url` ein; die
   Katalogsuche nennt danach die lokale Datei. Anleitungen bleiben auf den eigenen
   Bestand beschränkt.
-- `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
+- `postgres/app-role.sh` (Leserolle) kennt die geänderten Spalten; `docker
   compose up -d` spielt es wie gewohnt ein.
 
 ## 49. Geräteschlüssel nur mit Android Key Attestation (Migration 0106)
@@ -1788,7 +1788,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   wie bisher direkt ab.
 ## 50. `./data` richtet ein eigener Dienst ein, `app` und `jobs` ohne root
 
-**Nichts von Hand zu tun:** `sh scripts/image-pruefen.sh && docker compose up -d`.
+**Nichts von Hand zu tun:** `sh scripts/check-image.sh && docker compose up -d`.
 
 - Der neue Dienst `daten-rechte` (dasselbe Image wie `app`) übergibt `./data`
   bei jedem `up` an `brickinv` – Eigentümer reparieren, Marke, Unterordner –
@@ -1837,14 +1837,14 @@ Einbruch in die App hätte Tabellen ändern oder löschen können. Jetzt:
 Dateien):
 
 ```bash
-sh scripts/image-pruefen.sh        # neues Image (Abschnitt 42)
-sh scripts/rollen-trennen.sh       # Schritte 1–4 unten, wiederholbar
+sh scripts/check-image.sh        # neues Image (Abschnitt 42)
+sh scripts/separate-roles.sh       # Schritte 1–4 unten, wiederholbar
 ```
 
-`scripts/rollen-trennen.sh` tut der Reihe nach, und jeder Schritt lässt
+`scripts/separate-roles.sh` tut der Reihe nach, und jeder Schritt lässt
 stehen, was schon passt:
 
-1. `scripts/geheimnisse-einrichten.sh`: legt `geheimnisse/db_migration_password`
+1. `scripts/setup-secrets.sh`: legt `geheimnisse/db_migration_password`
    an, falls es fehlt (zufällig; `db-rolle` setzt es bei jedem Lauf, ein
    neues passt also auch zu einer bestehenden Datenbank).
 2. `docker compose up -d postgres` und `docker compose run --rm db-rolle`:
@@ -1873,7 +1873,7 @@ bisher mit `\restrict` und ohne Besitzerzeilen), richtet danach mit
 
 **Ohne Docker** (`npm start` mit eigener Datenbank) ändert sich nichts: Eine
 Rolle, die das Schema ändern darf, migriert beim Start wie bisher selbst.
-Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
+Wer die Trennung auch dort will, ruft `postgres/app-role.sh` als Superuser
 mit `DB_MIGRATION_PASSWORD` auf und startet einmal
 `node dist/startup/migrate.js` als Migrationsrolle, den Server danach als
 `brickinventory_app`.
@@ -1882,7 +1882,7 @@ mit `DB_MIGRATION_PASSWORD` auf und startet einmal
 
 ## 52. Caddy als signiertes Image per Digest
 
-**Für jeden Docker-Betreiber einmal zu tun:** `sh scripts/image-pruefen.sh`,
+**Für jeden Docker-Betreiber einmal zu tun:** `sh scripts/check-image.sh`,
 dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
 „CADDY_IMAGE fehlt in .env“ ab.
 
@@ -1893,7 +1893,7 @@ dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
   `addict85/brickinventory-caddy`, dieselben Tags wie das App-Image.
 - `compose.yaml` nimmt für `caddy` und `caddy-rechte` `CADDY_IMAGE` aus
   `.env` statt eines lokal gebauten `brickinventory-caddy:2.11.8`
-  (`pull_policy: build` entfällt). `scripts/image-pruefen.sh` prüft beide
+  (`pull_policy: build` entfällt). `scripts/check-image.sh` prüft beide
   Images gegen dieselbe Identität (`docker-publish.yml` auf `main`) und
   denselben Aussteller, trägt erst danach beide Digests ein
   (`BRICK_IMAGE=…`, `CADDY_IMAGE=addict85/brickinventory-caddy@sha256:…`) und
@@ -1988,7 +1988,7 @@ wird). Hinweise:
   und `auftrag_pausen` verweisen per Fremdschlüssel darauf. Aufträge und Pausen
   einer unbekannten Art (keine Anwendung hätte sie bearbeitet) entfallen. Eine
   neue Art braucht künftig eine Migration.
-- Die Leserolle (`postgres/app-rolle.sh`) darf `auftrags_arten` lesen; `docker
+- Die Leserolle (`postgres/app-role.sh`) darf `auftrags_arten` lesen; `docker
   compose up -d` spielt das wie gewohnt ein. Sonst nichts von Hand zu tun.
 
 <a id="ein-web-prozess"></a>
@@ -2036,14 +2036,14 @@ wird). Hinweise:
   `geraete_schluessel`, `geraete_nonces`, `schritt_challenges`,
   `schritt_freigaben`.
 - **Docker:** Das Passwort liegt in `./geheimnisse/db_system_password`.
-  `sh scripts/image-pruefen.sh` (der übliche Update-Schritt) legt die Datei
+  `sh scripts/check-image.sh` (der übliche Update-Schritt) legt die Datei
   an, wenn sie fehlt; `db-rolle` legt die Rolle bei `docker compose up -d` an
   und setzt das Passwort bei jedem Lauf. Wer selbst baut (`up -d --build`),
-  ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`. Ohne die Datei
+  ruft vorher einmal `sh scripts/setup-secrets.sh`. Ohne die Datei
   bricht `docker compose up` mit „bind source path does not exist …
   db_system_password“ ab.
 - **Ohne Docker** mit einer Rolle, der die Tabellen gehören: nichts zu tun.
-  Mit getrennten Rollen `postgres/app-rolle.sh` mit `DB_SYSTEM_PASSWORD`
+  Mit getrennten Rollen `postgres/app-role.sh` mit `DB_SYSTEM_PASSWORD`
   aufrufen und `PGSYSTEM_USER`/`PGSYSTEM_PASSWORD` setzen; unterliegt die
   Systemverbindung dem Zeilenschutz, verweigert der Start mit Hinweis hierher.
 
@@ -2115,10 +2115,10 @@ wird). Hinweise:
   Laufzeitrolle `brickinventory_app` liest `users.password_hash` nicht mehr und
   `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über
   `brickinventory_system`. Die Migration setzt die Rechte selbst, `db-rolle`
-  (`postgres/app-rolle.sh`) bei jedem `docker compose up -d` erneut. Wer eigene
+  (`postgres/app-role.sh`) bei jedem `docker compose up -d` erneut. Wer eigene
   Werkzeuge mit der Laufzeitrolle auf diese Spalte oder die Sitzungstabelle
   zugreifen lässt, nimmt dafür die Systemrolle. Ohne Docker mit getrennten Rollen:
-  nach dem Update einmal `postgres/app-rolle.sh` ausführen.
+  nach dem Update einmal `postgres/app-role.sh` ausführen.
 - **Haushalt (0115):** `account_links`, `account_link_invites` und
   `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
   (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.
@@ -2204,7 +2204,7 @@ wird). Hinweise:
   Systemrolle aufrufen darf (stündlicher Aufräumlauf wie bisher). Die Migration
   setzt die Rechte selbst, `db-rolle` bei jedem `docker compose up -d` erneut.
   **Ohne Docker mit getrennten Rollen:** nach dem Update einmal
-  `postgres/app-rolle.sh` ausführen. Wer eigene Werkzeuge mit der Laufzeitrolle in
+  `postgres/app-role.sh` ausführen. Wer eigene Werkzeuge mit der Laufzeitrolle in
   `users`, `global_settings` oder `verwaltungsprotokoll` schreiben lässt, nimmt
   dafür die Systemrolle; das Protokoll von Hand bereinigen geht nur noch als
   Migrationsrolle.
@@ -2294,14 +2294,14 @@ wird). Hinweise:
   selbst). Bis er gelaufen ist (Sekunden), zeigt die Teileliste noch die alte Nummer.
 - **Preisprobe der Verwaltung** liest nur noch den eigenen Bestand des Verwalters, wie
   die Oberfläche ihn schon bisher abfragte.
-- **Docker – zu tun:** nur der übliche Update-Weg. `sh scripts/image-pruefen.sh` legt
+- **Docker – zu tun:** nur der übliche Update-Weg. `sh scripts/check-image.sh` legt
   `./geheimnisse/db_system_web_password` an, wenn sie fehlt; `docker compose up -d`
   lässt `db-rolle` die Rolle anlegen und `migration` ihr die Rechte geben. Wer selbst
-  baut (`up -d --build`), ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`.
+  baut (`up -d --build`), ruft vorher einmal `sh scripts/setup-secrets.sh`.
   Ohne die Datei bricht `docker compose up` mit „… db_system_web_password“ ab. Wer in
   einer eigenen `compose.override.yaml` für `app` `PGSYSTEM_USER` setzt, stellt dort
   auf `brickinventory_system_web` und `/run/secrets/db_system_web_password` um.
-- **Ohne Docker, Web und Jobs getrennt:** vor dem Update `postgres/app-rolle.sh` mit
+- **Ohne Docker, Web und Jobs getrennt:** vor dem Update `postgres/app-role.sh` mit
   `DB_SYSTEM_WEB_PASSWORD` ausführen (die Migration findet die Rolle nur, wenn es sie
   schon gibt), danach im Web-Prozess `PGSYSTEM_USER=brickinventory_system_web` und ihr
   Passwort. Wurde die Rolle erst nach 0119 angelegt: die Migration als Migrationsrolle
@@ -2347,8 +2347,8 @@ wird). Hinweise:
   noch das eigene Konto, die direkt verknüpften Haushaltskonten und getrennte
   Unterkonten, und nur Verknüpfungen mit dem eigenen Konto. E-Mail-Adresse,
   Bestätigungs- und Rücksetz-Token liest nur noch die Systemrolle. Docker: nichts zu tun;
-  `db-rolle` (`postgres/app-rolle.sh`) setzt die Spaltenrechte bei jedem Start.
-  **Ohne Docker:** nach dem Update `postgres/app-rolle.sh` einmal laufen lassen. Eigene
+  `db-rolle` (`postgres/app-role.sh`) setzt die Spaltenrechte bei jedem Start.
+  **Ohne Docker:** nach dem Update `postgres/app-role.sh` einmal laufen lassen. Eigene
   Auswertungen, die als Laufzeitrolle Konten oder Adressen lesen, nehmen die Leserolle
   (pgweb) oder die Systemrolle.
 - **Alte Wiederherstellungscodes laufen ab (0122):** Codes von vor dem 01.11.2026 (zehn
@@ -2414,7 +2414,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
   **Docker:** Die Migration läuft wie jede andere beim nächsten Start der Migrationsrolle;
   nichts von Hand zu tun. **Eigene Auswertungen oder Skripte**, die diese Tabellen- oder
   Spaltennamen direkt ansprechen (SQL, pgweb-Abfragen, Backups mit `COPY`), müssen auf die
-  neuen Namen umgestellt werden; `postgres/app-rolle.sh` (Leserolle-Allowlist) ist bereits
+  neuen Namen umgestellt werden; `postgres/app-role.sh` (Leserolle-Allowlist) ist bereits
   angepasst.
 - **API-Felder geändert** (Vertrag, `src/contract/*.ts`, nach Regenerierung von
   `docs/openapi.json`, `frontend-types/contract.d.ts` und `Vertrag.kt`): Preisalarme

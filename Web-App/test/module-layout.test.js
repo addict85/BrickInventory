@@ -246,8 +246,8 @@ test('the base schema is looked for where it lies at runtime', () => {
   );
   assert.match(
     laden,
-    /path\.join\(__dirname, 'basis\.sql'\)/,
-    'initSchema() sucht db/basis.sql nicht über __dirname — im Container liegt die Datei in ' +
+    /path\.join\(__dirname, 'base\.sql'\)/,
+    'initSchema() sucht db/base.sql nicht über __dirname — im Container liegt die Datei in ' +
       'dist/db/, und einen Quellbaum gibt es dort nicht',
   );
   assert.doesNotMatch(laden, /APP_ROOT/, 'APP_ROOT zeigt auf den Quellbaum, den das Laufzeit-Image nicht enthält');
@@ -258,7 +258,7 @@ test('the base schema is looked for where it lies at runtime', () => {
     /ASSET_EXT\s*=\s*\[[^\]]*'\.sql'/,
     'Das Bauskript kopiert keine .sql-Dateien mehr nach dist/ — dann fehlt das ' + 'Grundschema im Container',
   );
-  assert.ok(fs.existsSync(path.join(ROOT, 'db/basis.sql')), 'db/basis.sql fehlt');
+  assert.ok(fs.existsSync(path.join(ROOT, 'db/base.sql')), 'db/base.sql fehlt');
 });
 
 test('every late require() points to a file that exists', () => {

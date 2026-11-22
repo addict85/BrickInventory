@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { konfig } from './config';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 export interface TlsStand {
   /** The format of the QR code. */

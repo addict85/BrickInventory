@@ -29,7 +29,7 @@ import * as accountView from '../db/accountView';
 import * as accessView from '../db/accessView';
 
 /** What lower areas read from tables of higher ones: each names in its read contract the shape
- * it needs and gets the SQL from here above the owner, not via import (docs/architektur.md). */
+ * it needs and gets the SQL from here above the owner, not via import (docs/architecture.md). */
 export const LESEVERTRAG = { ...holdingView, ...holdingQuantity, ...householdView, ...accountView, ...accessView };
 
 export interface Services {

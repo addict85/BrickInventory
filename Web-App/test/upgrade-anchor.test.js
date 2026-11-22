@@ -65,7 +65,7 @@ test('every reference hits an anchor, no more section numbers; the startup messa
   const lauf = spawnSync(
     process.execPath,
     ['-e', "require('./dist/startup/database.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],
-    { cwd: WEB, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DB_SUPERUSER_ERLAUBT: '' } },
+    { cwd: WEB, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DB_SUPERUSER_ALLOWED: '' } },
   );
   assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
   const inMessage = references(lauf.stderr);

@@ -10,7 +10,7 @@
  *      instead of statusOf(e) → red: “every kind yields its status” (all 500)
  *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/service.ts →
  *      red: “only src/http maps kinds to status …”
- *   D  in src/infra/geld.ts a status number 400 appended to fachfehler() → red:
+ *   D  in src/infra/money.ts a status number 400 appended to fachfehler() → red:
  *      the same check, list `status`
  *   E  (15.11.2026) in sendError `res.status(500)` instead of STATUS_THE_KIND[art] → red:
  *      “every kind yields its status” (sendError ungueltig: 500 instead of 400)

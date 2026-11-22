@@ -425,7 +425,7 @@ test('backup.sh: schluessel/datenschluessel only goes to the separate location',
 
 /**
  * restore.sh with a real database: `docker` is a stand-in that calls psql,
- * postgres/app-rolle.sh and the migration service against the test DB. The
+ * postgres/app-role.sh and the migration service against the test DB. The
  * dump, as with backup.sh, comes from the superuser and contains a check rule whose
  * function belongs to the migration role; restored as superuser, it created a
  * superuser role.
@@ -513,7 +513,7 @@ test('restore.sh loads as the migration role', { timeout: 240_000 }, async t => 
       { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: CALL_DEADLINE },
     );
   const rolle = () =>
-    spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
+    spawnSync('sh', [path.join(ROOT, 'postgres', 'app-role.sh')], {
       encoding: 'utf8',
       env: environment,
       timeout: CALL_DEADLINE,
@@ -549,7 +549,7 @@ test('restore.sh loads as the migration role', { timeout: 240_000 }, async t => 
     `#!/bin/sh
 case "$2 $4" in
   exec*) shift 5; unset PGPASSWORD; PGPASSFILE='${path.join(tmp, 'pgpass')}' exec psql "$@" ;;
-  'run db-rolle') exec sh '${path.join(ROOT, 'postgres', 'app-rolle.sh')}' ;;
+  'run db-rolle') exec sh '${path.join(ROOT, 'postgres', 'app-role.sh')}' ;;
   'run migration') cd '${ROOT}' && DATABASE_URL='${dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD)}' exec '${process.execPath}' dist/startup/migrate.js ;;
   'run '*) echo "unbekannter Dienst $4" >&2; exit 9 ;;
 esac

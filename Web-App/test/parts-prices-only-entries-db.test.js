@@ -1,5 +1,5 @@
 /**
- * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
  */
@@ -57,7 +57,7 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   await db.initSchema();
 
   // The state before the migrations no longer exists: an empty
-  // database gets db/basis.sql. What is checked is the final state.
+  // database gets db/base.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);

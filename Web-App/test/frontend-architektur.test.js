@@ -15,7 +15,7 @@
  *      “core imports no view” (and the cycle test)
  *   G  (08.11.2026) in minifigs.js again `import('./parts.js').ManuellesTeil` as a JSDoc type
  *      (teile.js imports minifigs.js) → red: “no import cycle”, the cycle names both files
- *   F  in the chapter “Oberfläche” of docs/architektur.md `zustand.js` renamed to
+ *   F  in the chapter “Oberfläche” of docs/architecture.md `zustand.js` renamed to
  *      `00-staat.js` → red; the chapter deleted → red
  *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` added → red: “core and
  *      building blocks … import no view” names js/registry.js → js/sammlung.js
@@ -177,9 +177,9 @@ test('no fetch and no EventSource bypassing the API wrapper', () => {
   assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRaw() oder strom() (js/api.js)');
 });
 
-test('docs/architektur.md describes the UI with files that exist', () => {
+test('docs/architecture.md describes the UI with files that exist', () => {
   require('./helpers/bundle').placeBundleSafe(); // the chapter names the bundle, a product
-  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architecture.md'), 'utf8');
   const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
   const pfade = [...chapter.matchAll(/`((?:public|test|frontend-types|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
   assert.ok(pfade.length >= 10, `nur ${pfade.length} Pfade im Kapitel „Oberfläche“`);

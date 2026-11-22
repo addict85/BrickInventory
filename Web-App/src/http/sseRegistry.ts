@@ -1,4 +1,4 @@
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 // So that shutting down ends streams.
 
 /** What is needed here from an open response. */

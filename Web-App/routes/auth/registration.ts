@@ -3,7 +3,7 @@
 import { ipThrottle } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwordRule';
 import { errorText, responseLanguage, failDomain } from '../../src/infra/errorTexts';
-import { basisUrl, hintWithoutBaseUrl } from '../../src/infra/basisUrl';
+import { basisUrl, hintWithoutBaseUrl } from '../../src/infra/baseUrl';
 import { contractRouter, type OpenRequest } from '../../src/http/contractRouter';
 import { USERNAME_RE, emailValid, nameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';

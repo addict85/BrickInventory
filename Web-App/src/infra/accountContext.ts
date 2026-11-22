@@ -1,5 +1,5 @@
 /** The call frame, the only channel via AsyncLocalStorage: who asks (row security per transaction),
- * flags for the database's guards, commit companions, request identifier (docs/architektur.md). */
+ * flags for the database's guards, commit companions, request identifier (docs/architecture.md). */
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 /** What reveals the account of a request: session, token or a job on behalf

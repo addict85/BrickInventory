@@ -73,7 +73,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       secret: 'deaktivieren-test-geheimnis-lang-genug',
       resave: false,
       saveUninitialized: false,
-      name: _req('src/http/sitzungsKeks.js').sessionCookieName(),
+      name: _req('src/http/sessionCookie.js').sessionCookieName(),
     }),
   );
   app.use(

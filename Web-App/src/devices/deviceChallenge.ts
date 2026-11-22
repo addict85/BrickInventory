@@ -9,7 +9,7 @@ import { GOOGLE_ROOTS } from './attestation/googleRoots';
 import { checkChain } from './attestation/keyAttestation';
 import { applicableList, REVOCATION_STATE } from './attestation/revocationList';
 import type { DevicesContext } from './context';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 import { failDomain } from '../infra/errorTexts';
 
 export type { Family };

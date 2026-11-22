@@ -78,7 +78,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
         'die Liste bleibt',
       );
       assert.equal(j.parts[0].avg_price, null);
-      assert.deepEqual(j.degradiert, ['marketPrices']);
+      assert.deepEqual(j.degradiert, ['marktpreise']);
     } finally {
       await zurueck();
     }

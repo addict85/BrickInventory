@@ -1,7 +1,7 @@
 // Sending mail is a tool, not a route.
 
 import type { MailContext } from './context';
-import { basisUrl, hintWithoutBaseUrl } from '../infra/basisUrl';
+import { basisUrl, hintWithoutBaseUrl } from '../infra/baseUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
 import { failDomain } from '../infra/errorTexts';

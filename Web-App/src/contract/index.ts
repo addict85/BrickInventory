@@ -1,5 +1,5 @@
 /** The API contract: one file per area, merged here. From it
- * arise docs/openapi.json (npm run vertrag:openapi), the types of the
+ * arise docs/openapi.json (npm run contract:openapi), the types of the
  * routes (src/http/contractRouter.ts) and the response checks in the tests. */
 import type { z } from 'zod';
 import type { Wire, Route } from './base';

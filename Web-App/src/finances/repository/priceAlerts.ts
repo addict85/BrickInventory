@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marketPriceSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 import type { Columns, Tables } from '../../../db/rows';
 
 /** An alert as overview and detail read it; `besitzt` from BESITZT. */

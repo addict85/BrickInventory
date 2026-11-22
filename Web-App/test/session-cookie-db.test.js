@@ -57,10 +57,10 @@ async function startServer(t, env) {
       DATABASE_URL: URL_DB,
       SESSION_SECRET: 'keks-test-geheimnis-lang-genug-1234',
       PORT: String(port),
-      ROLLE: 'web',
+      ROLE: 'web',
       NODE_ENV: 'production',
-      DB_SUPERUSER_ERLAUBT: '1',
-      APP_BASE_URL_FEHLT_OK: '1',
+      DB_SUPERUSER_ALLOWED: '1',
+      APP_BASE_URL_MISSING_OK: '1',
       ...env,
     },
   });

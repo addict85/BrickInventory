@@ -229,7 +229,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       SESSION_SECRET: 'systemrolle-web-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
       PGSYSTEM_USER: WEB,
       PGSYSTEM_PASSWORD: process.env.PGSYSTEM_WEB_PASSWORD,
     };

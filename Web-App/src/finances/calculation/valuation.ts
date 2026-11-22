@@ -24,7 +24,7 @@ import {
 import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { NO_COLOR, zustand } from '../../infra/validate';
-import { aufRappen, inTenThousandths } from '../../infra/geld';
+import { aufRappen, inTenThousandths } from '../../infra/money';
 import type { Payload } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
 import { errorText } from '../../infra/errorTexts';

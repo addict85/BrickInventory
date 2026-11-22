@@ -8,7 +8,7 @@ import { quantityRequest } from '../inventory';
 import { KEINE_FARBE } from '../catalog';
 import type { Sources } from '../externalSources';
 import * as V0 from '../infra/validate';
-import { moneyInput } from '../infra/geld';
+import { moneyInput } from '../infra/money';
 import { failDomain } from '../infra/errorTexts';
 import type { PartsContext } from './context';
 

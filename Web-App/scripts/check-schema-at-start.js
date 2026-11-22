@@ -125,9 +125,10 @@ function collectAll(dir, out) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) collectAll(p, out);
-    // schema-stand.sql and basis.sql are generated copies, not sources —
+    // schema-snapshot.sql and base.sql are generated copies, not sources —
     // they name every table a second time, and deliberately so.
-    else if (/\.(ts|js|sql)$/.test(entry.name) && !['schema-stand.sql', 'basis.sql'].includes(entry.name)) out.push(p);
+    else if (/\.(ts|js|sql)$/.test(entry.name) && !['schema-snapshot.sql', 'base.sql'].includes(entry.name))
+      out.push(p);
   }
   return out;
 }

@@ -3,7 +3,7 @@
 # Laufzeitrolle um (UPGRADE.md#migrationsrolle). Wiederholbar: Jeder Schritt
 # lässt stehen, was schon passt, und der letzte prüft das Ergebnis.
 #
-#   sh scripts/rollen-trennen.sh     (im Ordner mit compose.yaml, nach dem Update)
+#   sh scripts/separate-roles.sh     (im Ordner mit compose.yaml, nach dem Update)
 set -eu
 
 DB_NAME="${PGDATABASE:-brickinventory}"
@@ -17,7 +17,7 @@ if ! grep -q '^  migration:' compose.yaml 2>/dev/null; then
 fi
 
 echo "[rollen] 1/4 Passwort der Migrationsrolle (./geheimnisse/db_migration_password) …"
-sh "$(dirname "$0")/geheimnisse-einrichten.sh"
+sh "$(dirname "$0")/setup-secrets.sh"
 
 echo "[rollen] 2/4 Rollen und Eigentum (Dienst db-rolle) …"
 docker compose up -d postgres

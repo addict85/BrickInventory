@@ -18,7 +18,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // One fetch at the CDN per minute: the probe above the throttle thus needs no network.
-process.env.BILD_ABRUFE_JE_MINUTE = '1';
+process.env.IMAGE_FETCHES_PER_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 // Without a database: the sets of this file are in the account's view, otherwise the proxy stores nothing.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });

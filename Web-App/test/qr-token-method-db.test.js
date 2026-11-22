@@ -19,7 +19,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Since the QR code carries the address of the server (src/infra/basisUrl.ts),
+// Since the QR code carries the address of the server (src/infra/baseUrl.ts),
 // APP_BASE_URL is a PRECONDITION of the route: without it it refuses with 503,
 // so that no code goes out with the browser address. This file checks something
 // else — here the precondition is only fulfilled, not checked. That is done by

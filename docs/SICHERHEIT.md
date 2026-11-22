@@ -101,10 +101,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   bestätigter Warnung, Abgleich des Fingerabdrucks): `compose.yaml`,
   `Caddyfile`, `routes/certificate.ts` — `compose-haertung`, `tls-root-db`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
-  eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
+  eigener, auf `BRICK_HOST` beschränkter CA (`scripts/setup-ca.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
   `CA_OHNE_NAMENSBESCHRAENKUNG=ja`; ohne Aussteller aus dem Startskript ist
-  das Caddyfile ungültig. Das Protokoll von Caddy und `ca-einrichten.sh`
+  das Caddyfile ungültig. Das Protokoll von Caddy und `setup-ca.sh`
   nennen den SHA-256-Fingerabdruck der Wurzel zum Abgleich auf dem Gerät —
   `ca-own-root`.
 - Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
@@ -117,7 +117,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `src/account/passwordHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
   Anmeldung ihn ersetzt — `password-argon2-db`. bcrypt rechnet dafür in
   höchstens 4 Worker-Threads (weniger bei kleinerem cgroup-Kontingent, mehr
-  mit `BCRYPT_ARBEITER`); untätige enden nach 60 s — `bcrypt-pool`.
+  mit `BCRYPT_WORKERS`); untätige enden nach 60 s — `bcrypt-pool`.
 - Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
   Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
   ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
@@ -127,7 +127,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `security-server-limits-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
-  (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-root-db`.
+  (`fp`): `src/infra/tlsRoot.ts`, `routes/auth.ts` — `tls-root-db`.
 - `TRUST_PROXY` nennt genau Caddy; dahinter Cookie mit `Secure` und HSTS:
   `src/infra/config.ts` (`cookieSicher`), `server.ts` — `tls-root-db`, `hsts`.
 - Die Schlüssel der CA bleiben bei Caddy: Die App sieht den Ordner nur lesend
@@ -196,9 +196,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
   kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
   Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
   Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
-  ein Mindest-Patchstand (`ATTESTATION_PATCH_MINDESTENS`). Die Liste lädt der
+  ein Mindest-Patchstand (`ATTESTATION_PATCH_MINIMUM`). Die Liste lädt der
   Job-Prozess alle sechs Stunden (Auftrag `widerrufsliste`); fehlt sie oder ist
-  sie älter als `ATTESTATION_WIDERRUF_TAGE` (7), nimmt der Server keinen neuen
+  sie älter als `ATTESTATION_REVOCATION_DAYS` (7), nimmt der Server keinen neuen
   Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
   `devices-attestation`, `step-protection-db`, `attestation-revocation-list-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
@@ -269,7 +269,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   ohne Cookie ausgenommen: `src/http/origin.ts` — `origin`.
 - Die App antwortet nur unter dem Namen aus `APP_BASE_URL` (sonst 421
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
-  `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
+  `APP_BASE_URL` (nur mit `APP_BASE_URL_MISSING_OK=1`) unter keinem Namen. Frei
   bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
   `nurEigenerHost` in `src/http/origin.ts` — `security-server-limits-db`, `origin`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
@@ -296,7 +296,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
   `waehrung_geteiltes_unterkonto`: `src/settings/userSetting.ts` — `household-currency-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `vouchers-db`.
-- Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
+- Datenbankrechte nach Rolle (Migration 0117, `postgres/app-role.sh`): Die
   Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest
   `global_settings` nur; Passwort, Verwalterrecht, Adresse, Links,
   Sitzungsversion und globale Einstellungen schreibt nur die Systemrolle.
@@ -338,8 +338,8 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Ausgenommen sind nur `scripts/loadtest.js` und `scripts/check-api-contract.js`,
   die von der Kommandozeile den eigenen Server rufen.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
-  Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
-  (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
+  Konto gedrosselt (`IMAGE_FETCHES_PER_MINUTE`), Cache gedeckelt
+  (`IMAGE_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
   `routes/imgProxy.ts`, `src/images/imgCacheServe.ts` — `image-proxy-deckel`.
   Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
   nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
@@ -448,7 +448,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `workflow-location`. Das Caddy-Image (`addict85/brickinventory-caddy`) läuft durch
   dieselben Schritte (Bau ohne Cache, Trivy vor der Signatur, cosign keyless,
   Provenance, Stückliste aus Trivy); compose.yaml nimmt es nur als geprüften
-  Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signature`,
+  Digest (`CADDY_IMAGE`, `scripts/check-image.sh`) — `workflow-signature`,
   `image-check`.
 - Der Test-Schlüssel `Web-App/test/fixtures/fetch-test.key` (mit
   `fetch-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
@@ -470,7 +470,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
 - `app` und `jobs` laufen als `brickinv` ohne Capability; `./data` richtet
-  vorher der Dienst `daten-rechte` (`daten-rechte.sh`) als root ein, ohne Netz
+  vorher der Dienst `daten-rechte` (`data-permissions.sh`) als root ein, ohne Netz
   und mit nur `./data` eingehängt. Er ändert als root nur `/app/data` selbst
   (`chown -h`), legt Unterordner und Marke als `brickinv` an, und der
   Reparaturschritt (`find -xdev … -exec chown -h`) folgt keinem Symlink des
@@ -508,7 +508,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `migration` kennt (Erststart, Migrationen, Restore); Default Privileges geben
   der Laufzeitrolle die Zeilenrechte an jeder neuen Tabelle. Den Superuser
   kennen nur Postgres und der einmalige Dienst `db-rolle`
-  (`postgres/app-rolle.sh`). Läuft die App doch als Superuser, warnt der
+  (`postgres/app-role.sh`). Läuft die App doch als Superuser, warnt der
   Start — `db-role-db`, `compose-haertung`.
 - `db-rolle` läuft als Superuser in einer Datenbank, die der Migrationsrolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
@@ -521,7 +521,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
   Superuser — `backup-restore-db`.
 - Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets
-  (`./geheimnisse/`, Ordner 700, `scripts/geheimnisse-einrichten.sh`), kein
+  (`./geheimnisse/`, Ordner 700, `scripts/setup-secrets.sh`), kein
   Dienst bekommt sie als Umgebungsvariable (`docker inspect`) —
   `compose-secrets`, `secrets-set-up`, `db-role-db`. Klartext
   nur als bewusste Ausnahme (Port 3000 in `compose.yaml` einkommentieren,
@@ -543,7 +543,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `operation-without-node-env-db`.
-- Der Datenschlüssel lässt sich wechseln (`scripts/datenschluessel-wechseln.sh`,
+- Der Datenschlüssel lässt sich wechseln (`scripts/rotate-data-key.sh`,
   `DATA_KEY_ALT_FILE`); der Start schreibt alles mit dem neuen neu —
   `data-key-switch-db`.
 - Gelöschte Konten verschwinden auch aus den Kopien `vor_migration_*`; diese
@@ -553,17 +553,17 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Kein Datenbank-Werkzeug im Browser: pgweb (Debian 11 ohne Pflege) ist
   entfernt — `compose-operation`. Zum Nachsehen dient `psql` als Leserolle
   `brickinventory_lesen` im Postgres-Container. Die Leserolle liest nur eine
-  Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
+  Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-role.sh`): eine neue
   Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
   Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht
   darin — `db-role-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
-  Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archive`.
+  Ordnern unter `data/` besteht (`scripts/check-archive.sh`) — `restore-archive`.
 - Container ohne Capabilities ausser den nötigen, `read_only`,
   `no-new-privileges`, und mit Grenzen für Speicher, Prozesse und CPU
   (`mem_limit`, `pids_limit`, `cpus`) — `compose-limits-key`.
 - Den Datenschlüssel legt der Einmal-Dienst `schluessel` an
-  (`schluessel-anlegen.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
+  (`create-keys.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
   `compose-limits-key`. Getrennt von `data/` sichern, sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
 - Der Server liest Geheimnisse aus Dateien (`SESSION_SECRET_FILE`,
@@ -718,7 +718,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Reichweite der internen CA**: Ein Gerät, das die Wurzel installiert,
   vertraut ihr für jede Adresse. Wer `caddy/data/` (Schlüssel) erbeutet, kann
   diesen Geräten jede Seite vortäuschen. Die App vertraut nur dem gepinnten
-  Schlüssel. Die eigene CA aus `scripts/ca-einrichten.sh` ist auf `BRICK_HOST`
+  Schlüssel. Die eigene CA aus `scripts/setup-ca.sh` ist auf `BRICK_HOST`
   namensbeschränkt; nur mit `CA_OHNE_NAMENSBESCHRAENKUNG=ja` gilt Caddys eigene
   CA für jede Adresse.
 - **Klartext**: Wer Port 3000 wieder veröffentlicht, schickt im Browser

@@ -3,7 +3,7 @@
   "info": {
     "title": "BrickInventory API",
     "version": "2",
-    "description": "Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand."
+    "description": "Generated from src/contract/ (npm run contract:openapi). Do not edit by hand."
   },
   "paths": {
     "/api/v1/": {

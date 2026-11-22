@@ -180,17 +180,17 @@ jobs:
       - name: Typprüfung Oberfläche
         run: npm run typecheck:frontend
 
-      # Tests mit checkJs, ohne strict; Ratsche in scripts/lint-schranken.json.
+      # Tests mit checkJs, ohne strict; Ratsche in scripts/lint-limits.json.
       - name: Typprüfung Tests
         run: npm run typecheck:tests
 
       # Biome als Ratsche: rot erst, wenn Funde oder unformatierte Dateien
-      # über die Schranke in scripts/lint-schranken.json steigen.
+      # über die Schranke in scripts/lint-limits.json steigen.
       - name: Lint
         run: npm run lint
 
       - name: Formatierung
-        run: npm run format:pruefen
+        run: npm run format:check
 
       # Eigener Schritt, damit ein Baufehler nicht als roter Test erscheint.
       - name: Bauen
@@ -209,11 +209,11 @@ jobs:
       - name: Tests
         run: |
           set -o pipefail
-          npm test -- --abdeckung 2>&1 | tee "$RUNNER_TEMP/test.log"
+          npm test -- --coverage 2>&1 | tee "$RUNNER_TEMP/test.log"
 
-      # Zeilenabdeckung je Bereich gegen scripts/abdeckung-schranken.json.
+      # Zeilenabdeckung je Bereich gegen scripts/coverage-limits.json.
       - name: Abdeckung
-        run: node scripts/coverage.js pruefen
+        run: node scripts/coverage.js check
 
       - name: Abdeckungsbericht
         if: always()
@@ -223,7 +223,7 @@ jobs:
           path: |
             Web-App/coverage/lcov.info
             Web-App/coverage/coverage-summary.json
-            Web-App/coverage/bereiche.json
+            Web-App/coverage/areas.json
           if-no-files-found: ignore
 
       - name: Rote Tests auflisten

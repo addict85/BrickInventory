@@ -3,7 +3,7 @@
  * leaves no heartbeat: the health check must not consider a process without a
  * worker healthy.
  *
- * Checked on the real server (ROLLE=jobs). A preloaded module makes
+ * Checked on the real server (ROLE=jobs). A preloaded module makes
  * planeAll() throw, as a missing table or connection would.
  *
  * Counter-checks (measured 05.11.2026):
@@ -54,7 +54,7 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   const srv = spawn(process.execPath, ['--require', vorladen, path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, ROLLE: 'jobs' },
+    env: { ...process.env, DATABASE_URL: URL_DB, ROLE: 'jobs' },
   });
   let log = '';
   srv.stdout.on('data', d => {

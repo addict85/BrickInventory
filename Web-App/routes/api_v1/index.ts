@@ -2,7 +2,7 @@
  * middleware of one router hits a path of another (test/api-router-reihenfolge).
  * Within a router it matters (fixed paths before `:setNumber` in sets.ts). */
 import { buildSetsRouter } from './sets';
-import { buildSetsStorageRouter } from './setsLager';
+import { buildSetsStorageRouter } from './setsStorage';
 import { buildSetsImportRouter } from './setsImport';
 import { buildSetsInstructionsRouter } from './setsInstructions';
 import { buildPdfRouter } from './pdf';

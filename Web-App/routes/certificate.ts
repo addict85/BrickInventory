@@ -2,7 +2,7 @@
  * certificate error), so no chicken-and-egg problem and no plaintext path to the app. The file is only
  * genuine after comparing the fingerprint; name and header therefore always say so. */
 import express from 'express';
-import { tlsStand } from '../src/infra/tlsWurzel';
+import { tlsStand } from '../src/infra/tlsRoot';
 
 export function buildCertificateRouter() {
   const router = express.Router();
@@ -14,7 +14,7 @@ export function buildCertificateRouter() {
         .type('text/plain')
         .send('Das Wurzelzertifikat gibt es nur über HTTPS (https://<Server>/ca.crt).\n');
     const stand = await tlsStand();
-    if (!stand) return res.status(404).type('text/plain').send('Keine interne CA eingerichtet (CA_ZERTIFIKAT).\n');
+    if (!stand) return res.status(404).type('text/plain').send('Keine interne CA eingerichtet (CA_CERTIFICATE).\n');
     res.set('Cache-Control', 'no-cache');
     res.set('Content-Disposition', 'attachment; filename="brickinventory-ca-fingerabdruck-pruefen.crt"');
     res.set(

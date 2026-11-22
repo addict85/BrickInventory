@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * `npm test`: build once, set up a template database once (basis.sql
+ * `npm test`: build once, set up a template database once (base.sql
  * and migrations), then the test files in parallel — each with its own copy of the
  * template (test/helpers/own-db.js). Browser tests run individually afterwards:
  * several Chromium side by side miss the deadlines on weak machines.
@@ -15,9 +15,9 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'roles.js'));
 const args = process.argv.slice(2);
-const serial = args.includes('--seriell');
-const coverage = args.includes('--abdeckung');
-const selection = args.filter(a => a !== '--seriell' && a !== '--abdeckung');
+const serial = args.includes('--serial');
+const coverage = args.includes('--coverage');
+const selection = args.filter(a => a !== '--serial' && a !== '--coverage');
 const COVERAGE = path.join(ROOT, 'coverage');
 
 /** @param {string} url @param {string} name */
@@ -145,7 +145,7 @@ function reportFollowUp() {
 
 /** Report from the V8 files (scripts/coverage.js); the raw data is superfluous afterwards. */
 async function reportsCoverage() {
-  const areas = await require('./coverage').bericht(path.join(COVERAGE, 'v8'));
+  const areas = await require('./coverage').report(path.join(COVERAGE, 'v8'));
   console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(areas)}`);
   fs.rmSync(path.join(COVERAGE, 'v8'), { recursive: true, force: true });
 }
@@ -289,11 +289,11 @@ async function main() {
   process.exit(code);
 }
 
-/** postgres/app-rolle.sh against the template, as the base's superuser.
+/** postgres/app-role.sh against the template, as the base's superuser.
  * @param {string} basis @param {string} vorlage @param {ReturnType<typeof rollen>} r */
 function createRoles(basis, vorlage, r) {
   const u = new URL(basis);
-  execFileSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
+  execFileSync('sh', [path.join(ROOT, 'postgres', 'app-role.sh')], {
     cwd: ROOT,
     stdio: ['ignore', 'ignore', 'inherit'],
     env: {

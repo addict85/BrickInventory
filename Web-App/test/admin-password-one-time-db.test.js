@@ -76,7 +76,7 @@ test('passwords assigned by an admin only apply until the first change', {
       SESSION_SECRET: 'verwalter-pw-test-geheimnis-lang-genug-123',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
     },
   });
   let log = '';

@@ -4,11 +4,11 @@ import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DESIGNS } from '../settings';
-import { stampAssetsCached } from '../infra/assetStempel';
+import { stampAssetsCached } from '../infra/assetStamp';
 import { appVersion } from '../infra/appVersion';
 import { attempts } from '../infra/result';
 import type { ProfileContext } from './context';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 

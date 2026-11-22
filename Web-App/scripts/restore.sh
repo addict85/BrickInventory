@@ -82,7 +82,7 @@ fi
 
 # Das Archiv vor jeder Änderung prüfen; entpackt wird später nur data/.
 if [ -n "$DATA_TAR" ]; then
-  sh "$(dirname "$0")/archiv-pruefen.sh" "$DATA_TAR"
+  sh "$(dirname "$0")/check-archive.sh" "$DATA_TAR"
   echo "[restore] Archiv geprüft: $DATA_TAR"
 fi
 

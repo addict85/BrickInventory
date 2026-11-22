@@ -1,5 +1,5 @@
 /**
- * scripts/geheimnisse-einrichten.sh creates the files that compose.yaml mounts as
+ * scripts/setup-secrets.sh creates the files that compose.yaml mounts as
  * Docker secrets: newly generated, taken over from an old .env, never
  * overwritten, and not at all without the password of an existing database.
  * The script really runs (sh in a sandbox).
@@ -22,7 +22,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const SCRIPT = path.join(ROOT, 'scripts', 'geheimnisse-einrichten.sh');
+const SCRIPT = path.join(ROOT, 'scripts', 'setup-secrets.sh');
 const NAMEN = [
   'db_app_password',
   'db_migration_password',

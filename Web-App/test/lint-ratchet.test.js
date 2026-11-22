@@ -1,6 +1,6 @@
 /**
- * npm run lint and npm run format:pruefen: Biome over the existing code, red only
- * when the number of findings rises above the limit in scripts/lint-schranken.json.
+ * npm run lint and npm run format:check: Biome over the existing code, red only
+ * when the number of findings rises above the limit in scripts/lint-limits.json.
  * Checked on the real script, once with the real limit and once
  * with one that the existing code does not keep.
  *
@@ -20,7 +20,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const LIMITS = require('../scripts/lint-schranken.json');
+const LIMITS = require('../scripts/lint-limits.json');
 
 /** A tree with one lint finding (`==`) and one unformatted file: on the existing code without findings
  *  one could not see whether the script counts at all. */

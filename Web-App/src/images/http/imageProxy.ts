@@ -5,7 +5,7 @@ import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { processWide } from '../../infra/prozessweit';
+import { processWide } from '../../infra/processWide';
 import type { AccountServices } from '../../account';
 import { userIdTheRequest } from '../../account/http/login';
 import { beforeThe, withoutMissingFile, errorMessage, reportError } from '../../infra/error';

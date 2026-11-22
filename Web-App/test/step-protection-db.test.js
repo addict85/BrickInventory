@@ -101,7 +101,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       SESSION_SECRET: 'schrittschutz-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
       APP_BASE_URL: `http://127.0.0.1:${port}`,
       ...attestation.UMGEBUNG,
     },

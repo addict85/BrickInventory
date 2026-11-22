@@ -47,11 +47,11 @@ async function startServer(t, env) {
       DATABASE_URL: URL_DB,
       SESSION_SECRET: 'hsts-test-geheimnis-lang-genug-12345678',
       PORT: String(port),
-      ROLLE: 'web',
+      ROLE: 'web',
       APP_BASE_URL: `http://127.0.0.1:${port}`,
       // As in production: only there does Express trust the proxy; the test DB runs as superuser.
       NODE_ENV: 'production',
-      DB_SUPERUSER_ERLAUBT: '1',
+      DB_SUPERUSER_ALLOWED: '1',
       ...env,
     },
   });

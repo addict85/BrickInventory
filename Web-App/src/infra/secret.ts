@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from './appPaths';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 /** A dump of the database or of data/ alone does not reveal the secrets:
  * the key is in DATA_KEY or in a file of its own
@@ -101,7 +101,7 @@ export function dataKey(): Buffer {
 }
 
 /** The previous key of a rotation: what only it opens stays readable until startup
- * rewrites it (scripts/datenschluessel-wechseln.sh). Missing file: no rotation. */
+ * rewrites it (scripts/rotate-data-key.sh). Missing file: no rotation. */
 export function altKey(): Buffer | null {
   if (S.alt !== undefined) return S.alt;
   const k = konfig();

@@ -816,7 +816,7 @@ const isHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 test("only src/http, the areas' HTTP sides and the routes know Express", () => {
   // Counter-checks (31.10.2026): `import type { Request } from 'express'` in
   // src/sets/service.ts → red; the same in src/account/loginLimiter.ts → red.
-  // (10.11.2026): the same in src/infra/geld.ts, src/contract/base.ts and
+  // (10.11.2026): the same in src/infra/money.ts, src/contract/base.ts and
   // db/txLock.ts → rot.
   const usesExpress = d =>
     /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(sourceText(d));
@@ -1024,9 +1024,9 @@ test('clients are only reached via src/externalSources/sources.ts', () => {
   );
 });
 
-test('docs/architektur.md names the order of the areas like LEVELS', () => {
+test('docs/architecture.md names the order of the areas like LEVELS', () => {
   // Counter-check: `src/mail` and `src/settings` swapped in the table → red.
-  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
   const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
     [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]),

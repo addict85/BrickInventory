@@ -1,6 +1,6 @@
 /** Login, token and profile under /api/v1/auth; the sub-routers from routes/auth/ hang behind it. */
 import { guardFor } from './api_v1/middleware';
-import { cookieStaysFrom, sessionCookieName, sessionCookieOptions } from '../src/http/sitzungsKeks';
+import { cookieStaysFrom, sessionCookieName, sessionCookieOptions } from '../src/http/sessionCookie';
 import { reportError } from '../src/infra/error';
 import {
   login,

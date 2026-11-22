@@ -150,7 +150,7 @@ function allowedStyles() {
 /**
  * @param {string} outAbs
  * @param {{ quellkarte?: boolean }} [opt]  quellkarte: source map embedded, only for the
- *   coverage measurement (test-run.js --abdeckung); the delivered bundle stays without.
+ *   coverage measurement (test-run.js --coverage); the delivered bundle stays without.
  */
 function buildBundle(outAbs, opt = {}) {
   // Local esbuild instead of npx — see the reasoning in scripts/build-ts.js.

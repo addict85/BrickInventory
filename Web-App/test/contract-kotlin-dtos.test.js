@@ -1,7 +1,7 @@
 /**
  * The app's Kotlin types (core-contract, package vertrag) are generated from docs/openapi.json
  * and checked in — responses and bodies, one set, no hand-written types beside them.
- * If the file deviates from the contract, this test is red until `npm run vertrag:kotlin`
+ * If the file deviates from the contract, this test is red until `npm run contract:kotlin`
  * rewrites it.
  *
  * Counter-checks (measured 14.11.2026):

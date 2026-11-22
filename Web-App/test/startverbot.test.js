@@ -23,9 +23,9 @@
  * Counter-checks H4 (measured 04.11.2026, each on its own):
  *   H  the branch on APP_BASE_URL removed in startBans() → red: “without
  *      APP_BASE_URL in production …” (code instead of 1: database error)
- *   I  APP_BASE_URL_FEHLT_OK not evaluated → red: the same check (refused
+ *   I  APP_BASE_URL_MISSING_OK not evaluated → red: the same check (refused
  *      with the exception)
- *   J  the exception for ROLLE=jobs removed → red: the same check ({"ROLLE":"jobs"})
+ *   J  the exception for ROLE=jobs removed → red: the same check ({"ROLE":"jobs"})
  * Counter-checks (measured 08.11.2026, each on its own):
  *   K  'change-me-to-a-long-random-string' deleted from PLACEHOLDER_SECRETS
  *      → red: “example value and too short session secret …”
@@ -126,10 +126,13 @@ test('without APP_BASE_URL in production: startup refused, only explicitly allow
   assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
   assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
   // With the exception it starts up to the database, reported loudly.
-  const erlaubt = await starte({ ...db, APP_BASE_URL_FEHLT_OK: '1' });
-  assert.match(erlaubt.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_FEHLT_OK=1\): Der Host-Filter/);
+  const erlaubt = await starte({ ...db, APP_BASE_URL_MISSING_OK: '1' });
+  assert.match(
+    erlaubt.log,
+    /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_MISSING_OK=1\): Der Host-Filter/,
+  );
   assert.match(erlaubt.log, /Database initialisation failed/);
-  for (const env of [{ APP_BASE_URL: 'https://lego.example.org' }, { ROLLE: 'jobs' }, { NODE_ENV: 'development' }]) {
+  for (const env of [{ APP_BASE_URL: 'https://lego.example.org' }, { ROLE: 'jobs' }, { NODE_ENV: 'development' }]) {
     const r = await starte({ ...db, ...env });
     assert.doesNotMatch(r.log, /APP_BASE_URL fehlt/, JSON.stringify(env));
     assert.match(r.log, /Database initialisation failed/, JSON.stringify(env));

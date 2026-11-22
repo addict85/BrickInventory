@@ -5,7 +5,7 @@ export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
 import { failDomain, type ErrorCode } from './errorTexts';
-import { moneyInput } from './geld';
+import { moneyInput } from './money';
 
 /** The columns are integer (int4): a larger value ended as a 500 in PostgreSQL. */
 export const LARGEST_ID = 2 ** 31 - 1;
@@ -253,7 +253,7 @@ export const input = {
   color: () =>
     alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${NO_COLOR} (no color) applies` }),
   colorCode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
-  /** Money (src/infra/geld.ts). Described as a number; text with a dot or comma is still accepted by the
+  /** Money (src/infra/money.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
   geld: (feld: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
     alsSchema(v => moneyInput(v, feld, o.max, o.oneCode), {

@@ -3,7 +3,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { userId } from './userId';
 import { sendError } from './httpResponse';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 import { keyForRequest, type Key } from '../contract';
 
 export const WINDOW_MS = 5 * 60 * 1000;
@@ -65,7 +65,7 @@ export function classification(method: string, path: string): { kosten: number; 
 }
 
 type Stand = { start: number; units: number; auftraege: number };
-/** Per process, not per access: the throttle protects this process (src/infra/prozessweit.ts). */
+/** Per process, not per access: the throttle protects this process (src/infra/processWide.ts). */
 const states = () => processWide('apiDrossel', () => new Map<number, Stand>());
 
 /** Only for tests: a state that does not depend on the previous run. */

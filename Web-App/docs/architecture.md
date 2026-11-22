@@ -6,7 +6,7 @@ sich hier (der Test vergleicht beide).
 
 ## Prozesse
 
-| Rolle (`ROLLE`) | Aufgabe |
+| Rolle (`ROLE`) | Aufgabe |
 |---|---|
 | `web` | HTTP: Oberfläche (`public/`), API unter `/api/v1`, Bild-Proxy |
 | `jobs` | Hintergrundarbeit aus der Auftragstabelle (`jobs`), Zeitpläne |
@@ -92,7 +92,7 @@ Absicht, solange es nur von unten gebraucht wird:
   also neben ihr; `db/database.ts` wirft dann `NebenDerTransaktion`.
 - Zustand im Speicher gehört einem Zugang: Ein Bereich hält ihn in seinen Fächern
   (`k.faecher`, `src/infra/cache.ts`). Bewusst prozessweiter Zustand
-  (Drosseln, Schranken) steht mit Grund in `src/infra/prozessweit.ts`; modulweite
+  (Drosseln, Schranken) steht mit Grund in `src/infra/processWide.ts`; modulweite
   `let` und leer angelegte `Map`/`Set` zählt `test/ratschen.test.js`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
@@ -203,7 +203,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
 - Die Systemrolle sieht alles. Was im Systemrahmen läuft (Anmeldung vor dem Konto,
   Aufträge, Verwaltung über Konten, Haushaltswährung), prüft die Berechtigung selbst.
 - Die Laufzeitrolle hat `SELECT, INSERT, UPDATE, DELETE` auf alle Tabellen
-  (`postgres/app-rolle.sh`) mit diesen Ausnahmen: `users.password_hash` liest sie
+  (`postgres/app-role.sh`) mit diesen Ausnahmen: `users.password_hash` liest sie
   nicht, `user_sessions` gar nicht; in `users` schreibt sie nur `first_name` und
   `last_name`, `global_settings` liest sie nur (Migration 0117). Anmeldung,
   Sitzungsspeicher, Passwort, Rechte, Adresse, Sitzungsversion und globale
@@ -248,13 +248,13 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 ## Schema
 
 Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
-`npm run schema:stand` und `npm run schema:zeilen` drei Dateien, alle geprüft:
+`npm run schema:snapshot` und `npm run schema:rows` drei Dateien, alle geprüft:
 
 | Datei | Wozu | Prüfung |
 |---|---|---|
-| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-base-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
-| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-fresh-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
-| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/rows-types-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
+| `db/base.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-base-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
+| `db/schema-snapshot.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-fresh-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:rows`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/rows-types-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
 
 Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
@@ -318,7 +318,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 
 `src/contract/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
-`docs/openapi.json` (`npm run vertrag:openapi`), die Typen der Oberfläche und die
+`docs/openapi.json` (`npm run contract:openapi`), die Typen der Oberfläche und die
 Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
 Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt

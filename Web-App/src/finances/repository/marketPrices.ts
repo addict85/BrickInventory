@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marketPriceSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 
 export type State = 'N' | 'U';
 type PriceRow = { avg_price: string | null; qty_avg_price: string | null; condition: State };

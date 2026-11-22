@@ -9,7 +9,7 @@ import type { Pool } from 'pg';
 import type { AppConfig } from '../src/infra/config';
 import { requestContext, requestId } from '../src/infra/log';
 import { errorResponse, unknownApiPath } from '../src/http/httpResponse';
-import { sessionCookieName, sessionCookieOptions } from '../src/http/sitzungsKeks';
+import { sessionCookieName, sessionCookieOptions } from '../src/http/sessionCookie';
 import {
   touchMs,
   touchThrottle,

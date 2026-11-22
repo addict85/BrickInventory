@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { purchasePriceIn, marketPriceSql, averageOver } from '../../../db/geldSql';
+import { purchasePriceIn, marketPriceSql, averageOver } from '../../../db/moneySql';
 
 export function dailyPricesOfSets(db: DbInterface, setNumber: string, currency: string, condition: string) {
   return db.all<{

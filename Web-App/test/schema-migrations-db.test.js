@@ -4,7 +4,7 @@
  * Counter-check (measured 10.11.2026): in 0015-api-tokens-sliding.sql the column
  * named `slidingx` → red: “api_tokens.sliding exists …” (the migration does not
  * create it). The part „fresh“ is checked by the template database of the test run
- * (from db/basis.sql); this counter-check is not measured.
+ * (from db/base.sql); this counter-check is not measured.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('no new column change in db/database.ts', () => {
       `api_tokens.sliding im Betrieb ausgeblieben und hat die Anmeldung zerlegt.`,
   );
 
-  // Since db/basis.sql there is no schema at all in db/database.ts any more; the
+  // Since db/base.sql there is no schema at all in db/database.ts any more; the
   // counter-check tests the pattern on an example so that it does not run empty.
   assert.equal(('x ALTER TABLE foo ADD COLUMN bar'.match(/ALTER TABLE \w+ ADD COLUMN/g) || []).length, 1);
 });

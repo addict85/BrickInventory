@@ -4,7 +4,7 @@
 import type { Sicht } from '../household';
 import * as V from '../infra/validate';
 import { failDomain } from '../infra/errorTexts';
-import { moneyInput } from '../infra/geld';
+import { moneyInput } from '../infra/money';
 import { publicError } from '../infra/error';
 import { Degradations } from '../infra/result';
 import { forSet } from '../catalog';

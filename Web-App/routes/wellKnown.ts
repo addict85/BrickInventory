@@ -9,7 +9,7 @@ export function buildWellKnownRouter(config: Pick<AppConfig, 'androidZertifikate
   router.get('/.well-known/assetlinks.json', (_req, res) => {
     const document = assetlinks(config);
     if (!document)
-      return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_ZERTIFIKATE).\n');
+      return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_CERTIFICATES).\n');
     res.set('Cache-Control', 'public, max-age=3600');
     res.json(document);
   });

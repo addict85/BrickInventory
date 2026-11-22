@@ -76,7 +76,7 @@ const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 const { inSystemContext, asRequest } = _req('src/infra/accountContext.js');
 
-const ROLLE = testName('rows');
+const ROLE = testName('rows');
 const SYSTEM = testName('zeilsys');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = rows => [...new Set(rows.map(z => Number(z.user_id)))].sort((x, y) => x - y);
@@ -99,7 +99,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   // Otherwise the system context would also see accounts of an aborted run (zs_…).
   await su.run("DELETE FROM users WHERE username LIKE 'zs\\_%'");
   for (const [r, rls] of [
-    [ROLLE, 'NOBYPASSRLS'],
+    [ROLE, 'NOBYPASSRLS'],
     [SYSTEM, 'BYPASSRLS'],
   ]) {
     await su.exec(`DROP OWNED BY ${id(r)}`).catch(() => {});
@@ -113,13 +113,13 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   const k = dbConfigFromEnvironment();
   const app = createDb({
     verbindung: k.verbindung,
-    pool: { ...k.pool, max: 1, options: `${k.pool.options} -c role=${ROLLE}` },
+    pool: { ...k.pool, max: 1, options: `${k.pool.options} -c role=${ROLE}` },
     system: { ...k.verbindung, options: `${k.pool.options} -c role=${SYSTEM}` },
   });
   t.after(async () => {
     await app.notification.close();
     await app.pool.end().catch(() => {});
-    for (const r of [ROLLE, SYSTEM])
+    for (const r of [ROLE, SYSTEM])
       await su.exec(`DROP OWNED BY ${id(r)}; DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await su.pool.end().catch(() => {});
   });

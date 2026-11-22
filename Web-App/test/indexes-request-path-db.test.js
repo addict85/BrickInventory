@@ -74,8 +74,8 @@ test('request path: the three indexes exist and the planner can take them', asyn
     //
     // The BrickLink lookup first, and for that the
     // MIGRATIONS are needed: bl_mapping is created in 0037, not in
-    // db/basis.sql (a table belongs in exactly one place,
-    // scripts/check-schema-am-start.js checks that).
+    // db/base.sql (a table belongs in exactly one place,
+    // scripts/check-schema-at-start.js checks that).
     const c0 = await db.pool.connect();
     try {
       await _req('db/migrate.js').runMigrations(c0);

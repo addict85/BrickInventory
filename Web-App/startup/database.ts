@@ -4,18 +4,18 @@ import { konfig } from '../src/infra/config';
 import type { Services } from './wiring';
 
 /** A superuser reaches COPY … PROGRAM and every database of the server: in
- * production (even without NODE_ENV) a startup prohibition, unless DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
+ * production (even without NODE_ENV) a startup prohibition, unless DB_SUPERUSER_ALLOWED=1 (UPGRADE.md). */
 export async function warnAtSuperuser(db: Db): Promise<boolean> {
   if (!konfig().operation || !(await db.asSuperuserConnected())) return false;
   if (!konfig().dbSuperuserAllowed) {
     console.error(
       '❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md#eigene-datenbankrolle; ' +
-        'wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md#superuser-ausnahme).',
+        'wer es bewusst so betreibt, setzt DB_SUPERUSER_ALLOWED=1 (UPGRADE.md#superuser-ausnahme).',
     );
     process.exit(1);
   }
   console.warn(
-    '⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md#eigene-datenbankrolle.',
+    '⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ALLOWED=1). Eigene Rolle: UPGRADE.md#eigene-datenbankrolle.',
   );
   return true;
 }
@@ -86,7 +86,7 @@ export async function prepareDatabaseBefore(db: Db, d: Services, o: { jobs?: boo
   if (!(await db.systemFrameActs()))
     throw new Error(
       'Die Rolle für Arbeit über Kontogrenzen unterliegt dem Zeilenschutz: PGSYSTEM_USER und ' +
-        'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-rolle.sh, UPGRADE.md#systemrolle).',
+        'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-role.sh, UPGRADE.md#systemrolle).',
     );
   if (o.jobs === false) await waitOnLegacyStock(d);
   else {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { type Route, ErrorBody, Fehlercode, PATH } from './base';
 import { AREAS } from './index';
 import { API_VERSION } from './version';
+import { v1SchemaName } from './v1Names';
 
 const MIME: Record<NonNullable<Route['art']>, string> = {
   pdf: 'application/pdf',
@@ -38,7 +39,7 @@ function components() {
     register.add(schema, { id });
     benannt.set(schema, id);
   };
-  for (const [name, schema] of namedSchemas()) take(schema, name);
+  for (const [name, schema] of namedSchemas()) take(schema, v1SchemaName(name));
   for (const modul of Object.values(AREAS))
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const id = schluessel.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
@@ -125,7 +126,7 @@ export function openapi(): Record<string, unknown> {
     info: {
       title: 'BrickInventory API',
       version: String(API_VERSION),
-      description: 'Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand.',
+      description: 'Generated from src/contract/ (npm run contract:openapi). Do not edit by hand.',
     },
     paths: sorted(paths),
     components: { schemas: sorted(schemas) },

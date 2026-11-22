@@ -3,7 +3,7 @@
  * The list with explanations is in .env.example. */
 import { proxyTrust } from './proxyTrust';
 import { readFileSync } from 'node:fs';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 type Environment = Record<string, string | undefined>;
 
@@ -66,6 +66,8 @@ export interface AppConfig {
   rolle: Role;
   /** For a hint at startup. */
   veraltet: string[];
+  /** Old variable names still in use (`ALT → NEU`), for a warning at startup. */
+  renamed: string[];
   pgPoolMax: number | null;
   pgPoolMin: number;
   pgIdleMs: number;
@@ -114,8 +116,8 @@ export interface AppConfig {
   attestationPatchAtLeast: number | null;
 }
 
-export type Role = 'web' | 'jobs' | 'beides';
-const ROLES: readonly Role[] = ['web', 'jobs', 'beides'];
+export type Role = 'web' | 'jobs' | 'both';
+const ROLES: readonly Role[] = ['web', 'jobs', 'both'];
 
 /** Other modules name it too; maximum duration one week like the browser token. */
 export const DEFAULT = {
@@ -141,7 +143,7 @@ export const VARIABLES = [
   'PORT',
   'HSTS_MAX_AGE',
   'TRUST_PROXY',
-  'PROXY_NETZ_BESTAETIGT',
+  'PROXY_NETWORK_CONFIRMED',
   'SESSION_SECRET',
   'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES',
@@ -150,7 +152,7 @@ export const VARIABLES = [
   'SESSION_ADMIN_MAX_HOURS',
   'TOKEN_IDLE_DAYS',
   'TOKEN_MAX_DAYS',
-  'ROLLE',
+  'ROLE',
   'DATABASE_URL',
   'PGHOST',
   'PGPORT',
@@ -169,47 +171,91 @@ export const VARIABLES = [
   'PG_STMT_MS',
   'ADMIN_PASSWORD',
   'APP_BASE_URL',
-  'APP_BASE_URL_FEHLT_OK',
+  'APP_BASE_URL_MISSING_OK',
   'APP_ROOT',
   'APP_VERSION',
   'DATA_KEY',
   'DATA_KEY_FILE',
   'DATA_KEY_ALT',
   'DATA_KEY_ALT_FILE',
-  'ERFASSUNG_ZEITZONE',
+  'ACQUISITION_TIME_ZONE',
   'TZ',
   'PRICE_HISTORY_KEEP_DAYS',
-  'UPLOAD_KONTINGENT_MB',
-  'UPLOAD_GESAMT_MB',
-  'MAIL_KONSOLE_MIT_TOKEN',
+  'UPLOAD_QUOTA_MB',
+  'UPLOAD_TOTAL_MB',
+  'MAIL_CONSOLE_WITH_TOKEN',
   'IMG_USER_AGENT',
-  'BILD_CACHE_MAX_MB',
-  'BILD_ABRUFE_JE_MINUTE',
-  'CSV_ZEILE_FRIST_MS',
-  'AUFTRAG_PARALLEL',
-  'BCRYPT_ARBEITER',
-  'AUFTRAG_FRIST_SEK',
-  'CA_ZERTIFIKAT',
-  'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE',
-  'PASSKEY_ANDROID_PAKET',
-  'DB_SUPERUSER_ERLAUBT',
-  'ATTESTATION_WURZELN',
-  'GERAETESCHLUESSEL_ALT_BIS',
-  'ATTESTATION_WIDERRUF_TAGE',
-  'ATTESTATION_PATCH_MINDESTENS',
+  'IMAGE_CACHE_MAX_MB',
+  'IMAGE_FETCHES_PER_MINUTE',
+  'CSV_ROW_DEADLINE_MS',
+  'JOB_PARALLEL',
+  'BCRYPT_WORKERS',
+  'JOB_DEADLINE_SEC',
+  'CA_CERTIFICATE',
+  'CHECK_CONTRACT',
+  'PASSKEY_ANDROID_CERTIFICATES',
+  'PASSKEY_ANDROID_PACKAGE',
+  'DB_SUPERUSER_ALLOWED',
+  'ATTESTATION_ROOTS',
+  'DEVICE_KEY_OLD_UNTIL',
+  'ATTESTATION_REVOCATION_DAYS',
+  'ATTESTATION_PATCH_MINIMUM',
   ...FILE_VARIABLES.map(n => `${n}_FILE` as const),
 ] as const;
+
+/** Renamed from German to English; the old name still counts, and startup names it
+ * (server.ts), so that an existing .env keeps working until it is switched over. */
+export const RENAMED_VARIABLES: Readonly<Record<string, string>> = {
+  ROLE: 'ROLLE',
+  PROXY_NETWORK_CONFIRMED: 'PROXY_NETZ_BESTAETIGT',
+  APP_BASE_URL_MISSING_OK: 'APP_BASE_URL_FEHLT_OK',
+  ACQUISITION_TIME_ZONE: 'ERFASSUNG_ZEITZONE',
+  UPLOAD_QUOTA_MB: 'UPLOAD_KONTINGENT_MB',
+  UPLOAD_TOTAL_MB: 'UPLOAD_GESAMT_MB',
+  MAIL_CONSOLE_WITH_TOKEN: 'MAIL_KONSOLE_MIT_TOKEN',
+  IMAGE_CACHE_MAX_MB: 'BILD_CACHE_MAX_MB',
+  IMAGE_FETCHES_PER_MINUTE: 'BILD_ABRUFE_JE_MINUTE',
+  CSV_ROW_DEADLINE_MS: 'CSV_ZEILE_FRIST_MS',
+  JOB_PARALLEL: 'AUFTRAG_PARALLEL',
+  BCRYPT_WORKERS: 'BCRYPT_ARBEITER',
+  JOB_DEADLINE_SEC: 'AUFTRAG_FRIST_SEK',
+  CA_CERTIFICATE: 'CA_ZERTIFIKAT',
+  CHECK_CONTRACT: 'VERTRAG_PRUEFEN',
+  PASSKEY_ANDROID_CERTIFICATES: 'PASSKEY_ANDROID_ZERTIFIKATE',
+  PASSKEY_ANDROID_PACKAGE: 'PASSKEY_ANDROID_PAKET',
+  DB_SUPERUSER_ALLOWED: 'DB_SUPERUSER_ERLAUBT',
+  ATTESTATION_ROOTS: 'ATTESTATION_WURZELN',
+  DEVICE_KEY_OLD_UNTIL: 'GERAETESCHLUESSEL_ALT_BIS',
+  ATTESTATION_REVOCATION_DAYS: 'ATTESTATION_WIDERRUF_TAGE',
+  ATTESTATION_PATCH_MINIMUM: 'ATTESTATION_PATCH_MINDESTENS',
+};
+
+/** The environment with every old name copied to its new one, unless the new one is set. */
+export function withRenamedVariables(env: Environment): Environment {
+  const out: Environment = { ...env };
+  for (const [neu, alt] of Object.entries(RENAMED_VARIABLES))
+    if (out[neu] === undefined && env[alt] !== undefined) out[neu] = env[alt];
+  return out;
+}
+
+/** Old names that are set: `ALT → NEU`, for the warning at startup. */
+export function renamedInUse(env: Environment): string[] {
+  return Object.entries(RENAMED_VARIABLES)
+    .filter(([, alt]) => env[alt] !== undefined)
+    .map(([neu, alt]) => `${alt} → ${neu}`);
+}
 
 /** If it is still in an old compose.yaml, startup says so. */
 const STALE = ['WEB_WORKERS'] as const;
 
 /** Without a value both in one process: the simple start without Compose. */
 function roleFrom(env: Environment, error: string[]): Role {
-  const raw = env.ROLLE?.trim().toLowerCase() || 'beides';
+  const raw = env.ROLE?.trim().toLowerCase() || 'both';
+  // 'beides' is the value from before the English names; it still means both.
+  if (raw === 'beides') return 'both';
   if ((ROLES as readonly string[]).includes(raw)) return raw as Role;
-  error.push(`ROLLE="${env.ROLLE}" ist weder web noch jobs noch beides`);
-  return 'beides';
+  error.push(`ROLE="${env.ROLE}" ist weder web noch jobs noch both`);
+  return 'both';
 }
 
 function integer(
@@ -254,52 +300,51 @@ function flag(env: Environment, name: string, error: string[]): boolean | null {
  * hash; which version a server's users have is only known by its operator.
  * Empty: the server accepts no passkey response from an app. */
 function androidCertificates(env: Environment, error: string[]): string[] {
-  const raw = env.PASSKEY_ANDROID_ZERTIFIKATE?.trim() || '';
+  const raw = env.PASSKEY_ANDROID_CERTIFICATES?.trim() || '';
   const list = raw ? raw.split(/[\s,;]+/).filter(Boolean) : [];
   const hex = list.map(f => f.replace(/:/g, '').toUpperCase());
   const wrong = list.filter((_, i) => !/^[0-9A-F]{64}$/.test(hex[i] ?? ''));
   if (wrong.length)
-    error.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${wrong.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
+    error.push(`PASSKEY_ANDROID_CERTIFICATES: ${wrong.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
   return wrong.length ? [] : [...new Set(hex)];
 }
 
 function androidPackage(env: Environment, error: string[]): string {
-  const pkg = env.PASSKEY_ANDROID_PAKET?.trim() || 'ch.brickinventoryapp';
+  const pkg = env.PASSKEY_ANDROID_PACKAGE?.trim() || 'ch.brickinventoryapp';
   if (/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/.test(pkg)) return pkg;
-  error.push(`PASSKEY_ANDROID_PAKET="${pkg}" ist kein Paketname`);
+  error.push(`PASSKEY_ANDROID_PACKAGE="${pkg}" ist kein Paketname`);
   return 'ch.brickinventoryapp';
 }
 
 /** An own root would open the step guard to every key it signs:
  * hence only where NODE_ENV explicitly says development or test. */
 function attestationRoots(env: Environment, error: string[]): string | null {
-  const pem = env.ATTESTATION_WURZELN?.trim() || null;
-  if (pem && !developmentEnvironment(env))
-    error.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
+  const pem = env.ATTESTATION_ROOTS?.trim() || null;
+  if (pem && !developmentEnvironment(env)) error.push('ATTESTATION_ROOTS gilt nur mit NODE_ENV=development oder test');
   return pem;
 }
 
 export const LEGACY_KEY_CUTOFF_DATE = '2027-02-01';
 
 function legacyKeyUntil(env: Environment, error: string[]): Date {
-  const raw = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || LEGACY_KEY_CUTOFF_DATE;
+  const raw = env.DEVICE_KEY_OLD_UNTIL?.trim() || LEGACY_KEY_CUTOFF_DATE;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00Z`) : new Date(Number.NaN);
   const cutoffDate = new Date(`${LEGACY_KEY_CUTOFF_DATE}T00:00:00Z`);
   // Only earlier, never later: a date in the distant future would let unattested keys apply permanently.
   if (d.getTime() <= cutoffDate.getTime()) return d;
   error.push(
     Number.isNaN(d.getTime())
-      ? `GERAETESCHLUESSEL_ALT_BIS="${raw}" ist kein Datum JJJJ-MM-TT`
-      : `GERAETESCHLUESSEL_ALT_BIS="${raw}" liegt nach ${LEGACY_KEY_CUTOFF_DATE}; nur ein früheres Datum ist erlaubt`,
+      ? `DEVICE_KEY_OLD_UNTIL="${raw}" ist kein Datum JJJJ-MM-TT`
+      : `DEVICE_KEY_OLD_UNTIL="${raw}" liegt nach ${LEGACY_KEY_CUTOFF_DATE}; nur ein früheres Datum ist erlaubt`,
   );
   return cutoffDate;
 }
 
 function patchAtLeast(env: Environment, error: string[]): number | null {
-  const raw = env.ATTESTATION_PATCH_MINDESTENS?.trim();
+  const raw = env.ATTESTATION_PATCH_MINIMUM?.trim();
   if (!raw) return null;
   if (/^20\d\d(0[1-9]|1[0-2])$/.test(raw)) return Number(raw);
-  error.push(`ATTESTATION_PATCH_MINDESTENS="${raw}" ist kein Monat JJJJMM`);
+  error.push(`ATTESTATION_PATCH_MINIMUM="${raw}" ist kein Monat JJJJMM`);
   return null;
 }
 
@@ -317,9 +362,9 @@ export function timeZoneValid(name: string): boolean {
 /** If set explicitly, the zone must be correct; TZ and the process zone are only
  * a fallback and fall back to UTC for a foreign value. */
 function zoneFrom(env: Environment, error: string[]): string {
-  let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
+  let zone = env.ACQUISITION_TIME_ZONE?.trim() || '';
   if (zone && !timeZoneValid(zone)) {
-    error.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`);
+    error.push(`ACQUISITION_TIME_ZONE="${zone}" ist keine bekannte Zeitzone`);
     zone = '';
   }
   if (!zone) zone = env.TZ?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -355,7 +400,15 @@ function sessionConfig(env: Environment, f: string[]) {
   };
 }
 
-export function loadConfig(env: Environment = process.env): AppConfig {
+/** A data key is 32 bytes as base64; anything else is reported, not shortened. */
+function dataKey(env: Environment, name: string, hint: string, f: string[]): string {
+  const v = env[name]?.trim() || '';
+  if (v && Buffer.from(v, 'base64').length !== 32) f.push(`${name} muss 32 Byte als base64 sein (${hint})`);
+  return v;
+}
+
+export function loadConfig(raw: Environment = process.env): AppConfig {
+  const env = withRenamedVariables(raw);
   const f: string[] = secretsFromFiles(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
@@ -363,12 +416,8 @@ export function loadConfig(env: Environment = process.env): AppConfig {
   if (basis && !/^https?:\/\/[^/\s]+/i.test(basis))
     f.push(`APP_BASE_URL="${env.APP_BASE_URL}" ist keine http(s)-Adresse`);
 
-  const datenSchluessel = env.DATA_KEY?.trim() || '';
-  if (datenSchluessel && Buffer.from(datenSchluessel, 'base64').length !== 32)
-    f.push('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-  const dataKeyAlt = env.DATA_KEY_ALT?.trim() || '';
-  if (dataKeyAlt && Buffer.from(dataKeyAlt, 'base64').length !== 32)
-    f.push('DATA_KEY_ALT muss 32 Byte als base64 sein (der vorige DATA_KEY)');
+  const datenSchluessel = dataKey(env, 'DATA_KEY', 'openssl rand -base64 32', f);
+  const dataKeyAlt = dataKey(env, 'DATA_KEY_ALT', 'der vorige DATA_KEY', f);
 
   const zone = zoneFrom(env, f);
 
@@ -378,11 +427,11 @@ export function loadConfig(env: Environment = process.env): AppConfig {
     nodeEnv,
     entwicklung: developmentEnvironment(env),
     operation: !developmentEnvironment(env),
-    dbSuperuserAllowed: flag(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
+    dbSuperuserAllowed: flag(env, 'DB_SUPERUSER_ALLOWED', f) === true,
     port: integer(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: integer(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
-    proxyNetworkConfirmed: flag(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
+    proxyNetworkConfirmed: flag(env, 'PROXY_NETWORK_CONFIRMED', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,
     cookieSecure: flag(env, 'COOKIE_SECURE', f),
     ...sessionConfig(env, f),
@@ -390,6 +439,7 @@ export function loadConfig(env: Environment = process.env): AppConfig {
     tokenMaxDays: integer(env, 'TOKEN_MAX_DAYS', 90, 1, 365, f),
     rolle: roleFrom(env, f),
     veraltet: STALE.filter(n => env[n]?.trim()),
+    renamed: renamedInUse(raw),
     pgPoolMax,
     pgPoolMin: integer(env, 'PG_POOL_MIN', 2, 0, 1000, f),
     pgIdleMs: integer(env, 'PG_IDLE_MS', 30_000, 0, 86_400_000, f),
@@ -408,24 +458,24 @@ export function loadConfig(env: Environment = process.env): AppConfig {
     entryTimeZone: zone,
     // 0 or less switches off trimming the price history.
     priceHistoryDays: integer(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
-    uploadQuotaMb: number(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
-    uploadTotalMb: number(env, 'UPLOAD_GESAMT_MB', 20_480, f),
-    mailConsoleWithToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
+    uploadQuotaMb: number(env, 'UPLOAD_QUOTA_MB', 2048, f),
+    uploadTotalMb: number(env, 'UPLOAD_TOTAL_MB', 20_480, f),
+    mailConsoleWithToken: env.MAIL_CONSOLE_WITH_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
-    imageCacheMaxMb: number(env, 'BILD_CACHE_MAX_MB', 2048, f),
-    imageFetchesJeMinute: integer(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
-    csvRowDeadlineMs: integer(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
-    jobParallel: integer(env, 'AUFTRAG_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
-    bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? integer(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
-    jobDeadlineSec: integer(env, 'AUFTRAG_FRIST_SEK', DEFAULT.jobDeadlineSec, 1, 86_400, f),
-    caCertificate: env.CA_ZERTIFIKAT?.trim() || null,
+    imageCacheMaxMb: number(env, 'IMAGE_CACHE_MAX_MB', 2048, f),
+    imageFetchesJeMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
+    csvRowDeadlineMs: integer(env, 'CSV_ROW_DEADLINE_MS', 120_000, 1, 86_400_000, f),
+    jobParallel: integer(env, 'JOB_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
+    bcryptArbeiter: env.BCRYPT_WORKERS?.trim() ? integer(env, 'BCRYPT_WORKERS', 4, 1, 64, f) : null,
+    jobDeadlineSec: integer(env, 'JOB_DEADLINE_SEC', DEFAULT.jobDeadlineSec, 1, 86_400, f),
+    caCertificate: env.CA_CERTIFICATE?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
-    checkContract: env.VERTRAG_PRUEFEN?.trim() === '1',
+    checkContract: env.CHECK_CONTRACT?.trim() === '1',
     androidZertifikate: androidCertificates(env, f),
     androidPaket: androidPackage(env, f),
     attestationWurzeln: attestationRoots(env, f),
     geraeteschluesselAltBis: legacyKeyUntil(env, f),
-    attestationRevocationDays: integer(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
+    attestationRevocationDays: integer(env, 'ATTESTATION_REVOCATION_DAYS', 7, 1, 90, f),
     attestationPatchAtLeast: patchAtLeast(env, f),
   };
   if (f.length) throw new ConfigError(f);
@@ -516,7 +566,8 @@ export function standardPasswordInUse(env: NodeJS.ProcessEnv = process.env): boo
 
 /** A publicly known database password or a TRUST_PROXY that lets clients
  * state their address themselves should stand out on deploy. */
-export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
+export function startBans(raw: NodeJS.ProcessEnv = process.env): string[] {
+  const env = withRenamedVariables(raw);
   if (developmentEnvironment(env)) return [];
   const reasons: string[] = [];
   if (standardPasswordInUse(env))
@@ -526,30 +577,31 @@ export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
         'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
     );
   try {
-    proxyTrust(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
+    proxyTrust(env.TRUST_PROXY, env.PROXY_NETWORK_CONFIRMED?.trim() === '1');
   } catch (e) {
     reasons.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }
   // Without the address the host filter knows no name and accepts only IP addresses; whoever wants that says so.
   if (
     !env.APP_BASE_URL?.trim() &&
-    env.ROLLE?.trim().toLowerCase() !== 'jobs' &&
-    env.APP_BASE_URL_FEHLT_OK?.trim() !== '1'
+    env.ROLE?.trim().toLowerCase() !== 'jobs' &&
+    env.APP_BASE_URL_MISSING_OK?.trim() !== '1'
   )
     reasons.push(
       '[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter nähme nur IP-Adressen an — Start verweigert. ' +
-        'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).',
+        'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_MISSING_OK=1 (UPGRADE.md).',
     );
-  if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')
+  if (env.MAIL_CONSOLE_WITH_TOKEN?.trim() === '1')
     reasons.push(
-      '[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — ' +
+      '[mail] MAIL_CONSOLE_WITH_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — ' +
         'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).',
     );
   return reasons;
 }
 
 /** Allowed, but loud: switches that turn off a protection layer in production. */
-export function startWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
+export function startWarnings(raw: NodeJS.ProcessEnv = process.env): string[] {
+  const env = withRenamedVariables(raw);
   if (developmentEnvironment(env)) return [];
   const w: string[] = [];
   if (flag(env, 'COOKIE_SECURE', []) === false)

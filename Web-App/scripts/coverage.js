@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Coverage from the V8 files of a test run (test-run.js --abdeckung):
+ * Coverage from the V8 files of a test run (test-run.js --coverage):
  * server from dist/, UI via the source map of the measurement bundle down into
  * public/js/. An own evaluation instead of `c8 report`: c8 discarded the UI's functions
  * when rewriting the source map paths (everything 100 %, 0 functions).
@@ -13,11 +13,11 @@ const TARGET = path.join(ROOT, 'coverage');
 const BUNDLES = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
 /** Areas of the limits: prefix relative to ROOT. */
 const AREAS = {
-  gesamt: '',
+  total: '',
   server: 'dist/',
   clients: 'dist/clients/',
   jobs: 'dist/jobs/',
-  oberflaeche: 'public/js/',
+  ui: 'public/js/',
 };
 
 const nm = (/** @type {string} */ p) => require(path.join(ROOT, 'node_modules', p));
@@ -51,7 +51,7 @@ function compact(v8, done = new Set()) {
   return done;
 }
 
-async function bericht(v8 = path.join(TARGET, 'v8'), target = TARGET) {
+async function report(v8 = path.join(TARGET, 'v8'), target = TARGET) {
   const { mergeProcessCovs } = nm('@bcoe/v8-coverage');
   const v2i = nm('v8-to-istanbul');
   const libCoverage = nm('istanbul-lib-coverage');
@@ -80,15 +80,15 @@ async function bericht(v8 = path.join(TARGET, 'v8'), target = TARGET) {
   }
   const context = libReport.createContext({ dir: target, coverageMap: map, sourceFinder: () => '' });
   for (const art of ['lcovonly', 'json-summary', 'text-summary']) reports.create(art).execute(context);
-  const areas = zusammenfassung(map);
-  fs.writeFileSync(path.join(target, 'bereiche.json'), `${JSON.stringify(areas, null, 2)}\n`);
+  const areas = summarize(map);
+  fs.writeFileSync(path.join(target, 'areas.json'), `${JSON.stringify(areas, null, 2)}\n`);
   return areas;
 }
 
 /** Line coverage per area in percent, one decimal place. */
-function zusammenfassung(/** @type {any} */ map) {
-  /** @type {Record<string, { gedeckt: number, gesamt: number }>} */
-  const sum = Object.fromEntries(Object.keys(AREAS).map(k => [k, { gedeckt: 0, gesamt: 0 }]));
+function summarize(/** @type {any} */ map) {
+  /** @type {Record<string, { gedeckt: number, total: number }>} */
+  const sum = Object.fromEntries(Object.keys(AREAS).map(k => [k, { gedeckt: 0, total: 0 }]));
   for (const file of map.files()) {
     const rel = path.relative(ROOT, file).split(path.sep).join('/');
     const z = map.fileCoverageFor(file).toSummary().lines;
@@ -96,52 +96,52 @@ function zusammenfassung(/** @type {any} */ map) {
       const b = sum[k];
       if (!b || !rel.startsWith(prefix)) continue;
       b.gedeckt += z.covered;
-      b.gesamt += z.total;
+      b.total += z.total;
     }
   }
   return Object.fromEntries(
-    Object.entries(sum).map(([k, s]) => [k, s.gesamt ? Math.floor((1000 * s.gedeckt) / s.gesamt) / 10 : 0]),
+    Object.entries(sum).map(([k, s]) => [k, s.total ? Math.floor((1000 * s.gedeckt) / s.total) / 10 : 0]),
   );
 }
 
 /** Red if an area falls below its limit; names areas whose limit can be raised. */
-function pruefen(
+function check(
   /** @type {Record<string, number>} */ actual,
-  limitsFile = path.join(__dirname, 'abdeckung-schranken.json'),
+  limitsFile = path.join(__dirname, 'coverage-limits.json'),
 ) {
   /** @type {Record<string, number>} */
   const limits = JSON.parse(fs.readFileSync(limitsFile, 'utf8'));
   const toLittle = Object.entries(limits).filter(([k, s]) => !((actual[k] ?? -1) >= s));
   for (const [k, s] of Object.entries(limits))
     console.log(
-      `[abdeckung] ${k.padEnd(12)} ${String(actual[k]).padStart(5)} % (Schranke ${s} %)${(actual[k] ?? -1) >= s + 1 ? ' — nachziehen' : ''}`,
+      `[coverage] ${k.padEnd(12)} ${String(actual[k]).padStart(5)} % (Schranke ${s} %)${(actual[k] ?? -1) >= s + 1 ? ' — nachziehen' : ''}`,
     );
   return toLittle.map(([k, s]) => `${k}: ${actual[k]} % < ${s} %`);
 }
 
-module.exports = { bericht, pruefen, compact, zusammenfassung, AREAS };
+module.exports = { report, check, compact, summarize, AREAS };
 
 if (require.main === module) {
   const art = process.argv[2];
   (async () => {
-    if (art === 'bericht') {
-      console.log(JSON.stringify(await bericht()));
+    if (art === 'report') {
+      console.log(JSON.stringify(await report()));
       return;
     }
-    if (art === 'pruefen') {
-      const file = path.join(TARGET, 'bereiche.json');
+    if (art === 'check') {
+      const file = path.join(TARGET, 'areas.json');
       if (!fs.existsSync(file)) {
-        console.error('[abdeckung] coverage/bereiche.json fehlt — erst npm test -- --abdeckung');
+        console.error('[coverage] coverage/areas.json fehlt — erst npm test -- --coverage');
         process.exit(2);
       }
-      const error = pruefen(JSON.parse(fs.readFileSync(file, 'utf8')));
+      const error = check(JSON.parse(fs.readFileSync(file, 'utf8')));
       if (error.length) {
-        console.error(`[abdeckung] unter der Schranke: ${error.join(', ')}`);
+        console.error(`[coverage] unter der Schranke: ${error.join(', ')}`);
         process.exit(1);
       }
       return;
     }
-    console.error('Aufruf: node scripts/coverage.js bericht|pruefen');
+    console.error('Aufruf: node scripts/coverage.js report|check');
     process.exit(2);
   })().catch(e => {
     console.error(e);

@@ -1,7 +1,7 @@
 /** Counter with fallback: when the database locks up, the process keeps counting in memory so
  * a brake doesn't end up wide open. It only counts per process; reported at most once per minute. */
 import { errorMessage } from '../infra/error';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 import type { ThrottleContext } from './context';
 
 export interface CounterState {

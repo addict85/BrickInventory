@@ -57,10 +57,10 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
   // Start empty: the same account number also exists in the copies of the other test files.
   fs.rmSync(ordner, { recursive: true, force: true });
-  const altQuota = process.env.UPLOAD_KONTINGENT_MB;
+  const altQuota = process.env.UPLOAD_QUOTA_MB;
   t.after(async () => {
-    if (altQuota === undefined) environment({ UPLOAD_KONTINGENT_MB: undefined });
-    else environment({ UPLOAD_KONTINGENT_MB: altQuota });
+    if (altQuota === undefined) environment({ UPLOAD_QUOTA_MB: undefined });
+    else environment({ UPLOAD_QUOTA_MB: altQuota });
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
@@ -106,7 +106,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   await t.test('above the quota', async () => {
-    environment({ UPLOAD_KONTINGENT_MB: String(1 / 1024) }); // 1 KB
+    environment({ UPLOAD_QUOTA_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
     const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
@@ -116,8 +116,8 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   await t.test('above the limit of all accounts together: 507, nothing stored', async st => {
-    environment({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // together 1 KB
-    st.after(() => environment({ UPLOAD_GESAMT_MB: undefined }));
+    environment({ UPLOAD_QUOTA_MB: '1000', UPLOAD_TOTAL_MB: String(1 / 1024) }); // together 1 KB
+    st.after(() => environment({ UPLOAD_TOTAL_MB: undefined }));
     const vorher = dateien().length;
     const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
     assert.deepEqual([r.status, r.body.code], [507, 'upload_gesamt_voll'], JSON.stringify(r.body));
@@ -147,14 +147,14 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     });
     assert.equal(upfront, 507);
     // Without a limit (default 20 GB) the same passes.
-    environment({ UPLOAD_GESAMT_MB: undefined });
+    environment({ UPLOAD_TOTAL_MB: undefined });
     assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
   await t.test('rejected before the content arrives', async () => {
     // Only the header with 10 MB Content-Length, the content stays away: if the
     // server answers anyway, it decided before reading.
-    environment({ UPLOAD_KONTINGENT_MB: '1' });
+    environment({ UPLOAD_QUOTA_MB: '1' });
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {
       const anfrage = http.request(
@@ -180,7 +180,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   await t.test('for a set the account does not have', async () => {
-    environment({ UPLOAD_KONTINGENT_MB: undefined });
+    environment({ UPLOAD_QUOTA_MB: undefined });
     const vorher = dateien().length;
     const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));

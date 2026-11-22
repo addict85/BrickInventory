@@ -2,7 +2,7 @@
  * a forgotten number made the browser show old files. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 /** Without a deadline a dozen `stat` calls per page view; too long, and a deploy without
  * restart shows old addresses for minutes. */

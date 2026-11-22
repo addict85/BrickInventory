@@ -4,7 +4,7 @@
  * page only ever answers "done" and names the certificate, which is public
  * under /ca.crt anyway. */
 import { Degradations } from '../infra/result';
-import { tlsStand } from '../infra/tlsWurzel';
+import { tlsStand } from '../infra/tlsRoot';
 import type { ProfileContext } from './context';
 
 export type StepId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';

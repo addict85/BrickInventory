@@ -7,9 +7,9 @@
  * Counter-checks (measured 04.11.2026, each on its own):
  *   A  compose.yaml: secret file ./geheimnisse/db_app_passwort instead of …_password
  *      → red: „Secret db_app_password: geheimnisse/db_app_passwort fehlt“
- *   B  README.md: `sh scripts/geheimnisse-einrichten.sh` deleted → red:
+ *   B  README.md: `sh scripts/setup-secrets.sh` deleted → red:
  *      „Secret session_secret: … fehlt“
- *   C  Web-App/README.md: `scripts/ca-einrichten.sh` changed to a name
+ *   C  Web-App/README.md: `scripts/setup-ca.sh` changed to a name
  *      that does not exist → red: „Schritt scheitert: sudo sh scripts/…“
  *   D  compose.yaml: for app `ports: ["3000:3000"]` → red: „app veröffentlicht
  *      keinen Port“
@@ -18,7 +18,7 @@
  *   F  README.md: `docker compose logs app worker` → red: „unbekannter Dienst worker“;
  *      (09.11.2026) `docker compose exec worker cat …` → red: „unbekannter Dienst worker“
  * Counter-check L1 (measured 05.11.2026): in both READMEs again `docker
- *   compose pull` instead of `sh scripts/image-pruefen.sh` → red: „docker compose
+ *   compose pull` instead of `sh scripts/check-image.sh` → red: „docker compose
  *   config“ (BRICK_IMAGE missing).
  */
 const test = require('node:test');

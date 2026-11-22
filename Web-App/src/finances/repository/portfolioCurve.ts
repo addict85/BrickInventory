@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marketPriceSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 
 export function dailyValuesFromHistory(
   db: DbInterface,

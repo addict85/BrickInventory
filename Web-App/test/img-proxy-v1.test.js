@@ -116,7 +116,7 @@ test('the migration covers EVERY table with image_url', () => {
   // The table list is READ from the schema, not copied: an
   // eighth table with image_url should stand out, not slip through.
   // The tables with image_url that existed BEFORE 0014 — read from the
-  // schema before db/basis.sql. 0014 is …
+  // schema before db/base.sql. 0014 is …
   const tabellen = [
     'sets',
     'set_catalog',

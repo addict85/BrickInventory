@@ -11,7 +11,7 @@ import {
   type WebAuthnCredential,
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
-import { basisUrl } from '../infra/basisUrl';
+import { basisUrl } from '../infra/baseUrl';
 import { errorMessage } from '../infra/error';
 import { failDomain } from '../infra/errorTexts';
 import { searchValue } from '../infra/secret';

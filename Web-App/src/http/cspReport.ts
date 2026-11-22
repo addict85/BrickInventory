@@ -4,7 +4,7 @@
  * throttled and without a response body. */
 import express from 'express';
 import type { Request, Response } from 'express';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 import { throttleAddress } from '../infra/throttleAddress';
 
 const WINDOW_MS = 60_000;

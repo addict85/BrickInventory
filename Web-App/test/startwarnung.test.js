@@ -1,13 +1,13 @@
 /**
  * Switches that turn off a protection layer in production (security review
- * 16, L5): MAIL_KONSOLE_MIT_TOKEN=1 prevents the start with NODE_ENV=production,
+ * 16, L5): MAIL_CONSOLE_WITH_TOKEN=1 prevents the start with NODE_ENV=production,
  * COOKIE_SECURE=0 results in a warning line. On the real server; a file of its own
  * because startverbot.test.js moved closer to the file's deadline with every
  * start.
  *
  * Counter-checks (measured 05.11.2026, each on its own):
- *   K  the branch on MAIL_KONSOLE_MIT_TOKEN removed in startBans() → red:
- *      “MAIL_KONSOLE_MIT_TOKEN=1 in production …” (code instead of 1: database error)
+ *   K  the branch on MAIL_CONSOLE_WITH_TOKEN removed in startBans() → red:
+ *      “MAIL_CONSOLE_WITH_TOKEN=1 in production …” (code instead of 1: database error)
  *   L  the loop over startWarnings() removed in server.ts → red:
  *      “COOKIE_SECURE=0 in production …” (no warning line)
  * Counter-checks N10/N11 (measured 05.11.2026, each on its own):
@@ -57,14 +57,14 @@ function starte(env, ms = 20000) {
   });
 }
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 in production: startup refused', { timeout: 50_000 }, async () => {
+test('MAIL_CONSOLE_WITH_TOKEN=1 in production: startup refused', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
-  const r = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1' });
+  const r = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.equal(r.code, 1, r.log.slice(-400));
-  assert.match(r.log, /❌ \[mail\] MAIL_KONSOLE_MIT_TOKEN=1 .*Start verweigert/);
+  assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
-  const entw = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1', NODE_ENV: 'development' });
-  assert.doesNotMatch(entw.log, /MAIL_KONSOLE_MIT_TOKEN/);
+  const entw = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1', NODE_ENV: 'development' });
+  assert.doesNotMatch(entw.log, /MAIL_CONSOLE_WITH_TOKEN/);
   assert.match(entw.log, /Database initialisation failed/);
 });
 

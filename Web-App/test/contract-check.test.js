@@ -3,7 +3,7 @@
  * in tests a deviating 2xx response becomes a 500 with the deviations;
  * an input violating the contract is already 400 before the route (checkInput,
  * also in production, see test/input-contract-db.test.js); in production
- * (VERTRAG_PRUEFEN not 1) the response goes out unchecked.
+ * (CHECK_CONTRACT not 1) the response goes out unchecked.
  *
  * Counter-checks (measured 31.10.2026):
  *   A  in checkContract() `pruefe('Antwort', …)` commented out → red: “a

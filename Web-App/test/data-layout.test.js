@@ -138,7 +138,7 @@ test('daten-rechte creates the new directories', () => {
   // Comments out: the explanatory text in the entrypoint names the old directories
   // ("instructions/shared und part_images sind entfallen") and would have triggered the
   // negative check below itself.
-  const ep = read('daten-rechte.sh').replace(/^\s*#[^\n]*$/gm, '');
+  const ep = read('data-permissions.sh').replace(/^\s*#[^\n]*$/gm, '');
   for (const d of ['images/sets', 'images/parts', 'images/minifigs', 'instructions']) {
     assert.match(ep, new RegExp(`/app/data/${d.replace('/', '\\/')}`), `${d} fehlt`);
   }

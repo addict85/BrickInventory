@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ErrorCode } from './errorTexts';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 /** One constant for all paths that set a password. Existing passwords
  * stay valid; the rule applies on the next set. */
@@ -15,14 +15,14 @@ export function passwordToShort(password: unknown): boolean {
  * (the same as in the API contract, src/contract/account.ts). */
 export const PASSWORD_MAX_CHARS = 1024;
 
-/** Shipped along (haeufige-passwoerter.txt next to this file), without a network query. */
+/** Shipped along (common-passwords.txt next to this file), without a network query. */
 function common(): Set<string> {
   return processWide(
     'haeufigePasswoerter',
     () =>
       new Set(
         fs
-          .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
+          .readFileSync(path.join(__dirname, 'common-passwords.txt'), 'utf8')
           .split('\n')
           .map(z => z.trim())
           .filter(z => z && !z.startsWith('#')),

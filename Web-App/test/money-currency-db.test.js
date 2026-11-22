@@ -31,7 +31,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 test('cents only at the end, currencies honest', { concurrency: 1 }, async t => {
-  const geld = _req('src/infra/geld.js');
+  const geld = _req('src/infra/money.js');
   await t.test('120.3333 × 2 is 240.67, and 1.005 rounds to 1.01', () => {
     assert.equal(geld.rowValue(120.3333, 2), 240.67);
     assert.equal(geld.rowValue('120.3333', 2), 240.67);

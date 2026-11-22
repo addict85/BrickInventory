@@ -4,7 +4,7 @@
  * of another. Checked on the built routers, not on the source text.
  *
  * Counter-checks (measured 14.11.2026):
- *   A  in routes/api_v1/setsLager.ts before the first route additionally
+ *   A  in routes/api_v1/setsStorage.ts before the first route additionally
  *      `router.get('/sets/:setNumber', …)` → red “no pattern hits …”
  *   B  in settings.ts `router.use('/settings', requireLogin)` → `router.use('/', requireLogin)`
  *      → red “no middleware with a path …” (hits the routes of all later routers)

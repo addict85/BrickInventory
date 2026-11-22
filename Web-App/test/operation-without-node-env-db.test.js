@@ -4,7 +4,7 @@
  * Checked on the real server (dist/server.js), started without NODE_ENV.
  *
  * Counter-check (measured 05.11.2026, three places back to
- * `production` at once): starte() in server.ts → red “MAIL_KONSOLE_MIT_TOKEN=1 …”;
+ * `production` at once): starte() in server.ts → red “MAIL_CONSOLE_WITH_TOKEN=1 …”;
  * warnAtSuperuser() → red “as superuser …”; handleRouteError → red
  * “a 5xx …”. One red part for each place.
  *
@@ -57,17 +57,17 @@ function starte(env, ms = 25_000) {
 }
 
 test('startBans without NODE_ENV', () => {
-  assert.ok(startBans({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
-  assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
+  assert.ok(startBans({ MAIL_CONSOLE_WITH_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
+  assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_CONSOLE_WITH_TOKEN: '1' }), []);
   const k = loadConfig({});
   assert.equal(k.operation, true);
   assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
 });
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
-  const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_KONSOLE_MIT_TOKEN: '1' });
+test('MAIL_CONSOLE_WITH_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
+  const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.notEqual(r.code, 0, r.log.slice(-400));
-  assert.match(r.log, /❌ \[mail\] MAIL_KONSOLE_MIT_TOKEN=1 .*Start verweigert/);
+  assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
 });
 

@@ -1,5 +1,5 @@
 /**
- * A web and a job process from the same file (ROLLE=web, ROLLE=jobs),
+ * A web and a job process from the same file (ROLE=web, ROLE=jobs),
  * the way compose.yaml starts them — on the real server.
  *
  * Counter-checks (measured 30.10.2026):
@@ -94,11 +94,11 @@ function starte(rolle, port) {
       DATABASE_URL: URL_DB,
       SESSION_SECRET: 'rollen-test-geheimnis-lang-genug-1234',
       PORT: String(port),
-      ROLLE: rolle,
+      ROLE: rolle,
       NODE_ENV: 'production',
-      AUFTRAG_FRIST_SEK: '600',
-      DB_SUPERUSER_ERLAUBT: '1',
-      APP_BASE_URL_FEHLT_OK: '1',
+      JOB_DEADLINE_SEC: '600',
+      DB_SUPERUSER_ALLOWED: '1',
+      APP_BASE_URL_MISSING_OK: '1',
     },
   });
   const withLog = /** @type {typeof p & { log: string }} */ (p);

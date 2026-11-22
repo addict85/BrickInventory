@@ -2,8 +2,8 @@
 # Wechselt den Datenschlüssel, etwa bei Verdacht, dass ./schluessel/datenschluessel
 # abgeflossen ist (UPGRADE.md#datenschluessel-wechseln). Im Ordner mit compose.yaml:
 #
-#   sudo sh scripts/datenschluessel-wechseln.sh                beginnen
-#   sudo sh scripts/datenschluessel-wechseln.sh abschliessen   den vorigen löschen
+#   sudo sh scripts/rotate-data-key.sh                beginnen
+#   sudo sh scripts/rotate-data-key.sh abschliessen   den vorigen löschen
 #
 # Beginnen: Der bisherige Schlüssel wird zu datenschluessel.alt, der Dienst
 # `schluessel` legt einen neuen an, und app und jobs schreiben beim Start alles,
@@ -28,7 +28,7 @@ case "${1:-beginnen}" in
     echo "  1. docker compose logs app | grep Schlüsselwechsel   (wie viele Werte neu geschrieben sind)"
     echo "  2. den neuen $AKTUELL getrennt sichern (BACKUP_SCHLUESSEL_ZIEL) und die alte Kopie dort ersetzen"
     echo "  3. Konten mit zweitem Faktor erzeugen neue Wiederherstellungscodes"
-    echo "  4. sudo sh scripts/datenschluessel-wechseln.sh abschliessen"
+    echo "  4. sudo sh scripts/rotate-data-key.sh abschliessen"
     ;;
   abschliessen)
     [ -e "$VORIG" ] || { echo "[schlüssel] Kein Wechsel offen."; exit 0; }
@@ -41,7 +41,7 @@ case "${1:-beginnen}" in
     echo "[schlüssel] Wechsel abgeschlossen; der vorige Schlüssel ist gelöscht."
     ;;
   *)
-    echo "Aufruf: sh scripts/datenschluessel-wechseln.sh [beginnen|abschliessen]" >&2
+    echo "Aufruf: sh scripts/rotate-data-key.sh [beginnen|abschliessen]" >&2
     exit 2
     ;;
 esac

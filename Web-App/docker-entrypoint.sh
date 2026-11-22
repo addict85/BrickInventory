@@ -11,7 +11,7 @@ if [ "$(id -u)" = 0 ]; then
   for f in /app/schluessel /app/schluessel/datenschluessel; do
     [ -e "$f" ] && chown -h brickinv:brickinv "$f" 2>/dev/null || true
   done
-  sh /app/daten-rechte.sh
+  sh /app/data-permissions.sh
   exec su-exec brickinv "$0" "$@"
 fi
 
@@ -22,5 +22,5 @@ fi
 
 # Was der Server anlegt (Uploads können Rechnungen sein), liest auf dem Host nur sein Konto.
 umask 077
-echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
+echo "[entrypoint] Server wird gestartet (Rolle ${ROLE:-beides})."
 exec node dist/server.js

@@ -8,12 +8,12 @@
 -- Zuordnungen, die vielleicht jemand bewusst gesetzt hat:
 --
 --   docker exec -i brickinventory-db \
---     psql -U brickinventory -d brickinventory < scripts/befund-lagerort-estrich.sql
+--     psql -U brickinventory -d brickinventory < scripts/finding-storage-attic.sql
 --
 -- Aufruf:
 --   docker exec -i brickinventory-db \
 --     psql -U brickinventory -d brickinventory -v konto=marco \
---     < scripts/korrektur-lagerort-estrich.sql
+--     < scripts/fix-storage-attic.sql
 --
 --   -v konto=<benutzername>   nur dieses Konto
 --   -v konto=alle             JEDES Konto der Installation

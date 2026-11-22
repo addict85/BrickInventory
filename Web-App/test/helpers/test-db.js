@@ -17,7 +17,7 @@ const id = s => `"${String(s).replace(/"/g, '""')}"`;
   await c.connect();
   try {
     if (was === 'anlegen') {
-      // TEMPLATE does not copy privileges on the database itself; they stand as in postgres/app-rolle.sh.
+      // TEMPLATE does not copy privileges on the database itself; they stand as in postgres/app-role.sh.
       const r = rollen(vorlage);
       await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(vorlage)} OWNER ${id(r.eigen.name)}`);
       await c.query(`REVOKE TEMPORARY ON DATABASE ${id(name)} FROM PUBLIC`);

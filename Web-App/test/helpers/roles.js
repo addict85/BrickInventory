@@ -1,6 +1,6 @@
 'use strict';
 /**
- * The roles of a test run as in production (postgres/app-rolle.sh): owner
+ * The roles of a test run as in production (postgres/app-role.sh): owner
  * (migrations, test data), runtime role (app), system role (BYPASSRLS), web system role
  * (BYPASSRLS, only access tables; the system context of the HTTP requests). A
  * superuser would bypass row security; a missing system context would stay invisible.

@@ -3,7 +3,7 @@
  * that must be changed at first login. */
 import crypto from 'node:crypto';
 import { passwordLack } from '../infra/passwordRule';
-import { removeStartPassword, writeStartPassword } from '../infra/startpasswort';
+import { removeStartPassword, writeStartPassword } from '../infra/startPassword';
 import { hashPasswordImmediately } from './passwordHash';
 import type { AccountContext } from './context';
 

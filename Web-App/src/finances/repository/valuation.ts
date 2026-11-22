@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import { purchasePriceColumns } from '../../../db/geldSql';
+import { purchasePriceColumns } from '../../../db/moneySql';
 import { quantityFrom, subsetFrom } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';

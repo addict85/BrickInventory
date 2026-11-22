@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import { purchasePriceColumns } from '../../../db/geldSql';
+import { purchasePriceColumns } from '../../../db/moneySql';
 import type { FinancesReadContract } from '../readContract';
 
 /** `id` as second sort criterion: two acquisitions can carry the same

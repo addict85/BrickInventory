@@ -14,7 +14,7 @@ export function bound<Z>(access: Z, f?: (z: Z, ...a: unknown[]) => unknown): unk
 }
 
 /** Like mit(), plus the read contract as second parameter: what an area reads from tables of higher
- * ones is handed to it (docs/architektur.md), its repository takes it after the access. */
+ * ones is handed to it (docs/architecture.md), its repository takes it after the access. */
 export function withContract<Z, L>(access: Z, l: L) {
   return <A extends unknown[], R>(f: (z: Z, l: L, ...a: A) => R) =>
     (...a: A) =>

@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 // Otherwise the console shows the recipient address only masked (src/mail/mailer.ts).
-process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
+process.env.MAIL_CONSOLE_WITH_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');

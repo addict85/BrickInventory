@@ -31,7 +31,7 @@ test('the checked-in types are generated from openapi.json', () => {
   const soll = formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
   assert.ok(
     fs.readFileSync(ZIEL, 'utf8') === soll,
-    'frontend-types/contract.d.ts ist veraltet — npm run vertrag:frontend',
+    'frontend-types/contract.d.ts ist veraltet — npm run contract:frontend',
   );
 });
 

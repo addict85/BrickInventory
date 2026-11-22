@@ -34,10 +34,10 @@ services:
     environment:
       POSTGRES_DB:       brickinventory
       POSTGRES_USER:     brickinventory
-      # Passwörter nur als Dateien (secrets unten, scripts/geheimnisse-einrichten.sh):
+      # Passwörter nur als Dateien (secrets unten, scripts/setup-secrets.sh):
       # Umgebungsvariablen zeigt `docker inspect` jedem mit Zugang zu Docker.
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-      # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
+      # Für postgres/app-role.sh beim Anlegen einer neuen Datenbank.
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
       DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
       DB_SYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
@@ -62,7 +62,7 @@ services:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     volumes:
       - ./pgdata18:/var/lib/postgresql
-      - ./postgres/app-rolle.sh:/docker-entrypoint-initdb.d/10-app-rolle.sh:ro
+      - ./postgres/app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brickinventory -d brickinventory"]
       interval: 10s
@@ -94,7 +94,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    entrypoint: ["sh", "/rolle/app-rolle.sh"]
+    entrypoint: ["sh", "/rolle/app-role.sh"]
     mem_limit: 128m
     pids_limit: 32
     cpus: 0.5
@@ -111,7 +111,7 @@ services:
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
     secrets: [db_password, db_app_password, db_migration_password, db_system_password, db_system_web_password, pgweb_db_password]
     volumes:
-      - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
+      - ./postgres/app-role.sh:/rolle/app-role.sh:ro
     networks:
       - db-net
 
@@ -122,7 +122,7 @@ services:
   # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
   schluessel:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-schluessel
     logging: *protokoll
@@ -137,7 +137,7 @@ services:
     mem_limit: 64m
     pids_limit: 16
     cpus: 0.5
-    entrypoint: ["sh", "/app/schluessel-anlegen.sh"]
+    entrypoint: ["sh", "/app/create-keys.sh"]
     volumes:
       - ./schluessel:/app/schluessel
       - ./data:/app/data:ro
@@ -149,7 +149,7 @@ services:
   # führt chown höchstens ins schreibgeschützte Image. BRICKINV_CHOWN gilt hier.
   daten-rechte:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-daten-rechte
     logging: *protokoll
@@ -166,7 +166,7 @@ services:
     mem_limit: 64m
     pids_limit: 16
     cpus: 0.5
-    entrypoint: ["sh", "/app/daten-rechte.sh"]
+    entrypoint: ["sh", "/app/data-permissions.sh"]
     environment:
       BRICKINV_CHOWN: ${BRICKINV_CHOWN:-auto}
     volumes:
@@ -180,7 +180,7 @@ services:
   # `docker compose logs migration`). Kein Weg nach draussen: nur db-net.
   migration:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-migration
     logging: *protokoll
@@ -207,7 +207,7 @@ services:
     environment:
       PGUSER: brickinventory_migration
       PGPASSWORD_FILE: /run/secrets/db_migration_password
-      # Wer bei `app` ERFASSUNG_ZEITZONE setzt, setzt sie hier gleich (Erfassungstag, Migration 0078).
+      # Wer bei `app` ACQUISITION_TIME_ZONE setzt, setzt sie hier gleich (Erfassungstag, Migration 0078).
     secrets: [db_migration_password]
     networks:
       - db-net
@@ -215,10 +215,10 @@ services:
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
     # Ein Image für schluessel, daten-rechte, migration, app und jobs, als Digest: Ein Tag
-    # lässt sich umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
+    # lässt sich umhängen. scripts/check-image.sh prüft die Signatur und trägt
     # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
     # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     build:
       context: .
@@ -272,7 +272,7 @@ services:
     environment:
 
       # ── Geheimnisse als Dateien (secrets unten) ──────────────────────────────
-      # scripts/geheimnisse-einrichten.sh legt sie an. Der Server liest X_FILE
+      # scripts/setup-secrets.sh legt sie an. Der Server liest X_FILE
       # und verweigert ein Sitzungsgeheimnis unter 32 Zeichen.
       SESSION_SECRET_FILE: /run/secrets/session_secret
 
@@ -285,25 +285,25 @@ services:
       # über TLS kam (Cookie mit Secure, HSTS).
       TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
       # Ein Netz über acht Adressen in TRUST_PROXY nur mit 1 (UPGRADE.md#runde-24).
-      PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
+      PROXY_NETWORK_CONFIRMED: ${PROXY_NETWORK_CONFIRMED:-0}
       # Platz für Uploads aller Konten zusammen in MB.
-      UPLOAD_GESAMT_MB: ${UPLOAD_GESAMT_MB:-20480}
+      UPLOAD_TOTAL_MB: ${UPLOAD_TOTAL_MB:-20480}
       # Kürzere Fristen für Verwaltersitzungen: Leerlauf in Minuten, Höchstdauer in Stunden.
       SESSION_ADMIN_IDLE_MINUTES: ${SESSION_ADMIN_IDLE_MINUTES:-30}
       SESSION_ADMIN_MAX_HOURS: ${SESSION_ADMIN_MAX_HOURS:-12}
       # Das Wurzelzertifikat der CA für /ca.crt und den Fingerabdruck im QR-Code.
-      CA_ZERTIFIKAT: /caddy-ca/root.crt
+      CA_CERTIFICATE: /caddy-ca/root.crt
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
       # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
       DATA_KEY_FILE: /app/schluessel/datenschluessel
-      # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
+      # Nur während eines Wechsels vorhanden (scripts/rotate-data-key.sh).
       DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       # Passkeys und Geräteschlüssel der Android-App, /.well-known/assetlinks.json (.env.example).
-      PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
-      PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
-      GERAETESCHLUESSEL_ALT_BIS: ${GERAETESCHLUESSEL_ALT_BIS:-}
-      ATTESTATION_WIDERRUF_TAGE: ${ATTESTATION_WIDERRUF_TAGE:-}
-      ATTESTATION_PATCH_MINDESTENS: ${ATTESTATION_PATCH_MINDESTENS:-}
+      PASSKEY_ANDROID_CERTIFICATES: ${PASSKEY_ANDROID_CERTIFICATES:-}
+      PASSKEY_ANDROID_PACKAGE: ${PASSKEY_ANDROID_PACKAGE:-}
+      DEVICE_KEY_OLD_UNTIL: ${DEVICE_KEY_OLD_UNTIL:-}
+      ATTESTATION_REVOCATION_DAYS: ${ATTESTATION_REVOCATION_DAYS:-}
+      ATTESTATION_PATCH_MINIMUM: ${ATTESTATION_PATCH_MINIMUM:-}
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
@@ -311,7 +311,7 @@ services:
       # ── Rolle ────────────────────────────────────────────────────────────────
       # Dieser Dienst beantwortet nur Anfragen; die Hintergrundarbeit macht der
       # Dienst `jobs` unten aus demselben Image.
-      ROLLE: web
+      ROLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
       # Die Laufzeitrolle (Dienst db-rolle oben): nur Zeilen lesen und
@@ -351,13 +351,13 @@ services:
       - db-net
 
   # ── Hintergrundarbeit ────────────────────────────────────────────────────────
-  # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
+  # Derselbe Bau wie `app`, aber ROLE=jobs: arbeitet die Auftragstabelle ab
   # (Preise, Bilder, Anleitungen, Importe, Zeitpläne) und nimmt keine Anfragen
   # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
   # sie fort. Die Migrationen hat vorher der Dienst migration eingespielt.
   jobs:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-jobs
     logging: *protokoll
@@ -389,7 +389,7 @@ services:
       - ./data:/app/data
       - ./schluessel:/app/schluessel:ro
     environment:
-      ROLLE: jobs
+      ROLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
       DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       PGUSER: brickinventory_app
@@ -398,8 +398,8 @@ services:
       PGSYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
       APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
-      # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
-      # sie hier gleich. TRUST_PROXY und CA_ZERTIFIKAT braucht er nicht: Er
+      # Wer bei `app` DATA_KEY, TZ, ACQUISITION_TIME_ZONE oder PG_* setzt, setzt
+      # sie hier gleich. TRUST_PROXY und CA_CERTIFICATE braucht er nicht: Er
       # nimmt keine Anfragen an und liefert kein Zertifikat aus.
     secrets: [db_app_password, db_system_password]
     # Lebenszeichen statt HTTP: Der Prozess schreibt alle 30 s eine Datei in /tmp.
@@ -417,7 +417,7 @@ services:
   # ── Caddy — HTTPS vor der App ────────────────────────────────────────────────
   #
   # Drei Wege zum Zertifikat für BRICK_HOST, gewählt beim Start:
-  #   • eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca (scripts/ca-einrichten.sh)
+  #   • eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca (scripts/setup-ca.sh)
   #   • BRICK_TLS=acme: öffentlicher Name mit Let's Encrypt, ohne eigene CA
   #   • CA_OHNE_NAMENSBESCHRAENKUNG=ja: Caddys eigene CA, gilt auf jedem Gerät
   #     für jede Adresse — nur ausdrücklich, nie als stiller Rückfall.
@@ -426,11 +426,11 @@ services:
   # ── Rechte für Caddy ─────────────────────────────────────────────────────────
   # Caddy läuft ohne root als 10443:10443. Dieser Dienst übergibt ihm bei jedem
   # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA
-  # (ca-einrichten.sh legt ihn für root an) und endet.
+  # (setup-ca.sh legt ihn für root an) und endet.
   caddy-rechte:
     # Dasselbe Caddy-Image wie caddy (siehe dort): Das offizielle trüge ein
     # zweites, ungeprüftes Caddy-Binary in den Betrieb, obwohl hier nur chown läuft.
-    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#caddy-image)}
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#caddy-image)}
     pull_policy: missing
     container_name: brickinventory-caddy-rechte
     logging: *protokoll
@@ -461,10 +461,10 @@ services:
 
   caddy:
     # Dockerfile.caddy (offizielle Basis per Digest, go-jose nachgezogen),
-    # gebaut und keyless signiert von docker-publish.yml; scripts/image-pruefen.sh
+    # gebaut und keyless signiert von docker-publish.yml; scripts/check-image.sh
     # prüft die Signatur und trägt CADDY_IMAGE als Digest ein. Wer selbst baut,
     # setzt CADDY_IMAGE auf einen eigenen Namen und ruft `up -d --build`.
-    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#caddy-image)}
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/check-image.sh ausfuehren (UPGRADE.md#caddy-image)}
     pull_policy: missing
     build:
       context: .
@@ -511,13 +511,13 @@ services:
             exit 1 ;;
         esac
         # Ein weites Netz glaubte jedem Gerät darin seine Adresse, die Drosseln je Adresse liefen leer. Dieselbe
-        # Grenze wie TRUST_PROXY (src/infra/proxyTrust.ts): über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1.
+        # Grenze wie TRUST_PROXY (src/infra/proxyTrust.ts): über 8 Adressen nur mit PROXY_NETWORK_CONFIRMED=1.
         for a in $${VORGELAGERTER_PROXY}; do
           p=$${a##*/}; eng=29; weit=16
           case "$$a" in *:*) eng=120; weit=64 ;; esac
-          min=$$eng; [ "$${PROXY_NETZ_BESTAETIGT:-0}" = 1 ] && min=$$weit
+          min=$$eng; [ "$${PROXY_NETWORK_CONFIRMED:-0}" = 1 ] && min=$$weit
           if [ "$$p" != "$$a" ] && { case "$$p" in "" | *[!0-9]*) true ;; *) [ "$$p" -lt "$$min" ] ;; esac; }; then
-            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a ist zu weit (über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1, höchstens /$$weit); am besten nur die Adresse des Proxys davor (z. B. 172.18.0.5)." >&2
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a ist zu weit (über 8 Adressen nur mit PROXY_NETWORK_CONFIRMED=1, höchstens /$$weit); am besten nur die Adresse des Proxys davor (z. B. 172.18.0.5)." >&2
             exit 1
           fi
         done
@@ -537,10 +537,10 @@ services:
           q=/data/caddy/pki/authorities/local/root.crt
           export BRICK_TLS_AUSSTELLER=internal BRICK_TLS_OPTIONEN=sign_with_root
           echo "[caddy] WARNUNG: Caddys eigene CA ohne Namensbeschränkung (CA_OHNE_NAMENSBESCHRAENKUNG=ja)." >&2
-          echo "[caddy]   Jedes Gerät mit dieser Wurzel traut ihr für JEDE Adresse. Besser: sudo sh scripts/ca-einrichten.sh" >&2
+          echo "[caddy]   Jedes Gerät mit dieser Wurzel traut ihr für JEDE Adresse. Besser: sudo sh scripts/setup-ca.sh" >&2
         else
           echo "[caddy] FEHLER: keine eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca." >&2
-          echo "[caddy]   Einrichten: sudo sh scripts/ca-einrichten.sh (UPGRADE.md#ca-einrichten)." >&2
+          echo "[caddy]   Einrichten: sudo sh scripts/setup-ca.sh (UPGRADE.md#ca-einrichten)." >&2
           echo "[caddy]   Öffentlicher Name mit Let's Encrypt: BRICK_TLS=acme in .env." >&2
           echo "[caddy]   Caddys unbeschränkte CA nur ausdrücklich: CA_OHNE_NAMENSBESCHRAENKUNG=ja in .env." >&2
           exit 1
@@ -566,7 +566,7 @@ services:
       BRICK_TLS: ${BRICK_TLS:-intern}
       ACME_EMAIL: ${ACME_EMAIL:-}
       CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
-      PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
+      PROXY_NETWORK_CONFIRMED: ${PROXY_NETWORK_CONFIRMED:-0}
       VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:?VORGELAGERTER_PROXY in .env setzen - keiner (Caddy direkt erreichbar) oder die Adresse des Proxys davor - siehe UPGRADE.md#vorgelagerter-proxy}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"
@@ -590,7 +590,7 @@ volumes:
   ca-wurzel:
 
 # Geheimnisse als Dateien unter /run/secrets/ statt als Umgebungsvariablen.
-# Anlegen (und aus einer alten .env übernehmen): sh scripts/geheimnisse-einrichten.sh.
+# Anlegen (und aus einer alten .env übernehmen): sh scripts/setup-secrets.sh.
 # Der Ordner ist nur für seinen Besitzer offen (700); die Dateien selbst sind
 # lesbar (444) wie Docker-Secrets im Swarm, damit die Dienste sie ohne root lesen.
 secrets:

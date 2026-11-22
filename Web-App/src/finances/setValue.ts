@@ -1,6 +1,6 @@
 /** Per acquisition with the price of its condition, because mixed inventories would otherwise
  * get a wrong average. */
-import { inTenThousandths, aufRappen, alsText } from '../infra/geld';
+import { inTenThousandths, aufRappen, alsText } from '../infra/money';
 import { zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 

@@ -296,9 +296,9 @@ test('Passkeys', { concurrency: 1 }, async t => {
   const appOrigin = h => `android:apk-key-hash:${b64u(h)}`;
 
   await t.test('the registered app logs in and gets a token', async tt => {
-    environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
+    environment({ PASSKEY_ANDROID_CERTIFICATES: APP_HASH.toString('hex').match(/../g).join(':') });
     tt.after(() => {
-      environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+      environment({ PASSKEY_ANDROID_CERTIFICATES: undefined });
     });
     const a = await ruf('/passkey/anmelden', {
       antwort: anna.anmelden(await optionen(), { origin: appOrigin(APP_HASH) }),
@@ -327,16 +327,16 @@ test('Passkeys', { concurrency: 1 }, async t => {
 
   await t.test('an app with a different or no registered certificate is rejected', async tt => {
     const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
-    environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
+    environment({ PASSKEY_ANDROID_CERTIFICATES: APP_HASH.toString('hex') });
     tt.after(() => {
-      environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+      environment({ PASSKEY_ANDROID_CERTIFICATES: undefined });
     });
     const r = await ruf('/passkey/anmelden', {
       antwort: anna.anmelden(await optionen(), { origin: appOrigin(fremd) }),
       mit_token: true,
     });
     assert.equal(r.status, 401);
-    environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+    environment({ PASSKEY_ANDROID_CERTIFICATES: undefined });
     const ohne = await ruf('/passkey/anmelden', {
       antwort: anna.anmelden(await optionen(), { origin: appOrigin(APP_HASH) }),
       mit_token: true,

@@ -11,12 +11,12 @@ import { logAndContinue } from '../src/infra/error';
  * account). The database layer knows no accounts; whoever creates the access passes it along. */
 export type FirstStart = () => Promise<void>;
 
-// The oldest migration an existing database may build on: db/basis.sql
+// The oldest migration an existing database may build on: db/base.sql
 // and all migrations after it only know schemas from here on. Anything older first
 // installs a version that still includes the earlier startup stages (UPGRADE.md).
 const MINIMUM_VERSION = '0050-teilezaehler-nur-bestehende-konten.sql';
 
-/** An EMPTY database gets db/basis.sql (an image of the migrations), then
+/** An EMPTY database gets db/base.sql (an image of the migrations), then
  * only the newer migrations; an existing one stays untouched.
  * true if the base was loaded. */
 export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: FirstStart): Promise<boolean> {
@@ -27,7 +27,7 @@ export async function initSchema(ownConnection: () => Promise<Client>, firstStar
     // A connection of its own, because the base sets session values (SET …) that
     // would otherwise stick to a pool connection.
     await c.query('BEGIN');
-    await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
+    await c.query(fs.readFileSync(path.join(__dirname, 'base.sql'), 'utf8'));
     await c.query('COMMIT');
   } catch (e) {
     await c.query('ROLLBACK').catch((r: Error) => console.warn('[schema] ROLLBACK gescheitert:', r.message));

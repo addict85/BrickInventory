@@ -1,7 +1,7 @@
 /**
  * In the parallel run (scripts/test-run.js) every test file has its own
  * database: a copy of the template with a finished schema, named after the
- * process. Outside of this run (npm run test:seriell, single call)
+ * process. Outside of this run (npm run test:serial, single call)
  * there is nothing to check.
  *
  * Counter-checks (measured on 30.10.2026):

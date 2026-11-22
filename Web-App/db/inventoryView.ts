@@ -1,6 +1,6 @@
 /** Inventory, acquisitions, wanted list and price alerts as subqueries with fixed columns: whoever
  * restructures a table adjusts the view, not every reader. The SQL counts towards the area that
- * embeds it; if that area sits below the owner, it gets it through its read contract (docs/architektur.md).
+ * embeds it; if that area sits below the owner, it gets it through its read contract (docs/architecture.md).
  * Without `konten` all accounts apply. */
 import { onAccounts, type Konten } from './accounts';
 

@@ -73,7 +73,7 @@ test('no key twice', () => {
 test('the checked-in openapi.json is generated', () => {
   assert.ok(
     fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
-    'docs/openapi.json weicht vom Vertrag ab — `npm run vertrag:openapi` ausführen und einchecken',
+    'docs/openapi.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
   );
 });
 
@@ -99,7 +99,7 @@ test('every long list takes pages', () => {
 /** The contract file of each area key (the keys are tags in openapi.json and stay). */
 const CONTRACT_FILE = {
   grund: 'base',
-  shared: 'shared',
+  gemeinsam: 'shared',
   bestand: 'inventory',
   einstellungen: 'settings',
   figuren: 'minifigs',
@@ -117,10 +117,12 @@ const CONTRACT_FILE = {
 
 /** The contract file of a schema: where its object is exported, otherwise the scope of the route that names it. */
 function fileJeSchema() {
+  // The documents carry the v1 names of the schemas (src/contract/v1Names.ts).
+  const { v1SchemaName } = _req('src/contract/v1Names.js');
   const datei = new Map();
   for (const f of ['grund', 'gemeinsam', ...Object.keys(AREAS)])
     for (const [n, w] of Object.entries(_req(`src/contract/${CONTRACT_FILE[f]}.js`)))
-      if (!datei.has(n) && w?._zod) datei.set(n, f);
+      if (!datei.has(v1SchemaName(n)) && w?._zod) datei.set(v1SchemaName(n), f);
   for (const [b, m] of Object.entries(AREAS))
     for (const k of Object.keys(m.routen)) datei.set(k.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, ''), b);
   return datei;
@@ -175,7 +177,7 @@ test('response fields are required where the server always delivers them: option
     einstellungen: { frei: 14, nullbar: 11 },
     figuren: { frei: 21, nullbar: 27 },
     finanzen: { frei: 62, nullbar: 125 },
-    shared: { frei: 35, nullbar: 50 },
+    gemeinsam: { frei: 35, nullbar: 50 },
     geraet: { frei: 0, nullbar: 0 },
     gutscheine: { frei: 10, nullbar: 17 },
     haushalt: { frei: 1, nullbar: 4 },

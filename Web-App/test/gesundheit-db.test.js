@@ -83,7 +83,7 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
       SESSION_SECRET: 'gesundheit-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
     },
   });
   let log = '';

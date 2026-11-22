@@ -6,7 +6,7 @@ import { emptyTokenCache } from './tokenCache';
 import { withAccessEnd, endAllSessions, accessTransaction } from './accessEnd';
 import { tokenDigest, revokeAllTokens } from './deviceToken';
 import { emailValid } from '../infra/validate';
-import { removeStartPassword } from '../infra/startpasswort';
+import { removeStartPassword } from '../infra/startPassword';
 import { rememberAdminAction } from './adminLog';
 import { asDuplicate, failDomain, notFound } from '../infra/errorTexts';
 import type { ResetSideEffects } from '../mail';

@@ -25,7 +25,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, fileStamp } = _req('src/infra/assetStempel.js');
+const { stempleAssets, fileStamp } = _req('src/infra/assetStamp.js');
 
 /** A throwaway directory with a file in it. */
 function build(inhalt) {

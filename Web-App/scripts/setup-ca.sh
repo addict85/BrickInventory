@@ -6,7 +6,7 @@
 # Schlüssel der Wurzel behält dieses Skript nicht (oder legt ihn auf Wunsch
 # an einen Ort ausserhalb des Servers). UPGRADE.md#ca-einrichten.
 #
-#   sh scripts/ca-einrichten.sh [BRICK_HOST]
+#   sh scripts/setup-ca.sh [BRICK_HOST]
 #
 #   BRICK_HOST         Name oder IP-Adresse; ohne Angabe aus der Umgebung oder .env
 #   CA_ORDNER          Ziel, Vorgabe ./caddy/ca (compose.yaml hängt ihn bei Caddy ein)

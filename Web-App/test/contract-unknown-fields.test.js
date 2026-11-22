@@ -54,7 +54,7 @@ test('in a union the option that fits counts', () => {
 test('the route answers 500 if a field is missing in the contract', async () => {
   const { checkContract } = _req('src/http/contractRouter.js');
   const checker = checkContract();
-  assert.ok(checker, 'VERTRAG_PRUEFEN ist in Tests gesetzt');
+  assert.ok(checker, 'CHECK_CONTRACT ist in Tests gesetzt');
   // GET /api/v1/sets/info/:setNumber: SetInfoResponse names no field `geheim`.
   const req = { method: 'GET', baseUrl: '/api/v1', route: { path: '/sets/info/:setNumber' }, body: {} };
   let status = 200;

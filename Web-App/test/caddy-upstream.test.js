@@ -65,7 +65,7 @@ function startScript(wert, bestaetigt = false) {
       PATH: process.env.PATH,
       BRICK_TLS: 'acme',
       ...(wert === undefined ? {} : { VORGELAGERTER_PROXY: wert }),
-      ...(bestaetigt ? { PROXY_NETZ_BESTAETIGT: '1' } : {}),
+      ...(bestaetigt ? { PROXY_NETWORK_CONFIRMED: '1' } : {}),
     };
     return spawnSync('sh', ['-c', script], { env, encoding: 'utf8', timeout: 10_000 });
   } finally {
@@ -93,11 +93,11 @@ test('VORGELAGERTER_PROXY is required: keiner or addresses', async t => {
       assert.match(r.stderr, /ist zu weit/, wert);
     }
   });
-  await t.test('a network spanning more than eight addresses only with PROXY_NETZ_BESTAETIGT=1', () => {
+  await t.test('a network spanning more than eight addresses only with PROXY_NETWORK_CONFIRMED=1', () => {
     for (const wert of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
       const r = startScript(wert);
       assert.notEqual(r.status, 0, `${wert}: Caddy startet ohne Bestätigung`);
-      assert.match(r.stderr, /PROXY_NETZ_BESTAETIGT=1/, wert);
+      assert.match(r.stderr, /PROXY_NETWORK_CONFIRMED=1/, wert);
       assert.deepEqual([startScript(wert, true).status, startScript(wert, true).stdout], [0, wert]);
     }
   });

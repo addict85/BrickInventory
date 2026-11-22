@@ -3,7 +3,7 @@
 import { bearerToken, guardFor } from './middleware';
 import { buildSettingsGlobalRouter } from './settingsGlobal';
 import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
-import { tlsInfo } from '../../src/infra/tlsWurzel';
+import { tlsInfo } from '../../src/infra/tlsRoot';
 import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 import { failDomain } from '../../src/infra/errorTexts';

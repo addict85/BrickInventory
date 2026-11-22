@@ -4,7 +4,7 @@
 # compose.yaml startet ohne BRICK_IMAGE und CADDY_IMAGE nicht. UPGRADE.md,
 # Abschnitte 42 und 51.
 #
-#   sh scripts/image-pruefen.sh     (im Ordner mit compose.yaml; Tag aus BRICK_TAG, Vorgabe latest)
+#   sh scripts/check-image.sh     (im Ordner mit compose.yaml; Tag aus BRICK_TAG, Vorgabe latest)
 #
 # Erstinstallation und jedes Update: dieses Skript, danach `docker compose up -d`.
 set -eu
@@ -60,7 +60,7 @@ echo "[image] geprüft und in $ENV_DATEI eingetragen: CADDY_IMAGE=$caddy"
 # UPGRADE.md#systemrolle-web); compose.yaml startet ohne die Datei nicht. Vorhandene bleiben.
 GEHEIM="${GEHEIMNIS_ORDNER:-./geheimnisse}"
 if [ -d "$GEHEIM" ] && { [ ! -s "$GEHEIM/db_system_password" ] || [ ! -s "$GEHEIM/db_system_web_password" ]; }; then
-  sh "$(dirname "$0")/geheimnisse-einrichten.sh"
+  sh "$(dirname "$0")/setup-secrets.sh"
 fi
 docker compose pull schluessel daten-rechte migration app jobs caddy-rechte caddy
 echo "[image] fertig. Starten oder aktualisieren: docker compose up -d"

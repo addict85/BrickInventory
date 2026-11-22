@@ -7,7 +7,7 @@ import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { quantityRequest } from '../inventory';
 import type { Sources } from '../externalSources';
 import * as V from '../infra/validate';
-import { moneyInput } from '../infra/geld';
+import { moneyInput } from '../infra/money';
 import { failDomain } from '../infra/errorTexts';
 import type { MinifigsContext } from './context';
 

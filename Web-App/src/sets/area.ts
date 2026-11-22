@@ -13,7 +13,7 @@ import * as anleitungen from './instructions';
 import * as csvImport from './csvImport';
 import { setsJobTypes } from './jobTypes';
 import * as setsRepo from './repository/sets';
-import * as csvImportLauf from './csvImportLauf';
+import * as csvImportLauf from './csvImportRun';
 
 export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) {
   return buildArea(

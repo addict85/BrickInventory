@@ -9,7 +9,7 @@ const { complete } = require('./contract-fill');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-// TEST_BUENDEL: the bundle with source map from test-run.js --abdeckung.
+// TEST_BUENDEL: the bundle with source map from test-run.js --coverage.
 const { BUENDEL, placeBundleSafe } = require('./bundle');
 placeBundleSafe();
 const BUNDLE_PATH = process.env.TEST_BUENDEL || BUENDEL;

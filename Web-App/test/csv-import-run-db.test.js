@@ -3,7 +3,7 @@
  * no retry, and a run superseded by a new import stops
  * instead of continuing to write into the same status line.
  *
- * The import runs as a job (src/sets/csvImportLauf.ts); the test starts the
+ * The import runs as a job (src/sets/csvImportRun.ts); the test starts the
  * worker for it itself, restricted to the kind csv_import.
  *
  * Counter-checks (measured on 28.10.2026, repeated on 29.10. after the move into the
@@ -25,7 +25,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.CSV_ZEILE_FRIST_MS = '150';
+process.env.CSV_ROW_DEADLINE_MS = '150';
 
 const { buildAndRequire, testData, testAccess, testSources, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();

@@ -1,5 +1,5 @@
 /**
- * An empty database gets its schema from db/basis.sql, an existing one
+ * An empty database gets its schema from db/base.sql, an existing one
  * is not touched at startup — only the migrations run.
  *
  * Counter-checks (measured on 28.10.2026):
@@ -12,8 +12,8 @@
  *      “a database with 0045 but without 0050 starts …” (the state of
  *      main up to 1ad80a5).
  *   F  (09.11.) a line `ALTER TABLE ONLY public.users ALTER COLUMN …` added by hand
- *      to db/basis.sql → red: “db/basis.sql is an unchanged image …”; likewise a migration that
- *      stands as applied in basis.sql whose file does not exist → red: “… a gapless sequence …”
+ *      to db/base.sql → red: “db/base.sql is an unchanged image …”; likewise a migration that
+ *      stands as applied in base.sql whose file does not exist → red: “… a gapless sequence …”
  *   E  (08.11.) the call checkMinimumVersion() removed in initSchemaOnce()
  *      → red: “a database older than 0050 stops the start …” (the start
  *      ran through and applied the open migrations)
@@ -42,7 +42,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 
-test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async t => {
+test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
   try {
     await admin.connect();
@@ -138,7 +138,7 @@ test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   });
 });
 
-test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_000 }, async t => {
+test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
   try {
     await admin.connect();
@@ -158,7 +158,7 @@ test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_00
     await admin.end().catch(() => {});
   });
   await c.connect();
-  const datei = fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8');
+  const datei = fs.readFileSync(path.join(ROOT, 'db/base.sql'), 'utf8');
   await c.query(datei);
 
   await t.test('the base names a gapless sequence of existing migrations', async () => {
@@ -175,7 +175,7 @@ test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_00
     );
   });
 
-  await t.test('db/basis.sql is an unchanged image of the database it creates', async tt => {
+  await t.test('db/base.sql is an unchanged image of the database it creates', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const createdWith = Number((datei.match(/^-- Generated with pg_dump (\d+)\./m) || [])[1]);
     let jetzt = null;
@@ -192,7 +192,7 @@ test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_00
     assert.equal(
       sk.basisText(ziel2.toString()),
       datei,
-      'db/basis.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:stand',
+      'db/base.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:snapshot',
     );
   });
 });

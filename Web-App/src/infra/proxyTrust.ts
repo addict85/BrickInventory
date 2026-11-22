@@ -2,7 +2,7 @@ import net from 'node:net';
 
 /** Only explicitly named addresses: every trusted sender can state its client address freely
  * and thus bypass the login lock. A network spanning more than eight addresses only with `networkConfirmed`
- * (PROXY_NETZ_BESTAETIGT=1): it usually contains clients too. */
+ * (PROXY_NETWORK_CONFIRMED=1): it usually contains clients too. */
 export function proxyTrust(wert?: string, networkConfirmed = false): false | string[] | ((address: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
@@ -24,13 +24,13 @@ function proxyErrorText(wrong: string[], onlyToWide: boolean): string {
   if (onlyToWide)
     return (
       `TRUST_PROXY enthält ${list}: ein Netz mit mehr als 8 Adressen (IPv4 weiter als /29, IPv6 weiter als /120). ` +
-      'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETZ_BESTAETIGT=1 ' +
+      'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETWORK_CONFIRMED=1 ' +
       '(UPGRADE.md#runde-24).'
     );
   return (
     `TRUST_PROXY enthält ${list}. Erlaubt sind nur die feste Adresse ` +
     'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /29, IPv6 ab /120; ' +
-    'bis /16 bzw. /64 nur mit PROXY_NETZ_BESTAETIGT=1), mehrere durch Komma getrennt, oder „false" ohne Proxy. ' +
+    'bis /16 bzw. /64 nur mit PROXY_NETWORK_CONFIRMED=1), mehrere durch Komma getrennt, oder „false" ohne Proxy. ' +
     '„docker", „true" und Hop-Zahlen gibt es nicht mehr — siehe README.md und docs/SICHERHEIT.md.'
   );
 }

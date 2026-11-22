@@ -99,7 +99,7 @@ async function getFrom(k: MailContext) {
   return (await setting(k, 'smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
 }
 
-/** No token unless MAIL_KONSOLE_MIT_TOKEN=1: the console ends up in
+/** No token unless MAIL_CONSOLE_WITH_TOKEN=1: the console ends up in
  * app_logs, and a reset link grants access to the account. NODE_ENV is not good
  * enough — "development" is quickly set on a real server. The link comes from
  * the sender, not from the text: there, an input could slip in a foreign URL. */

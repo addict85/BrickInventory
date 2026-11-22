@@ -12,7 +12,7 @@
 --
 -- Aufruf:
 --   docker exec -i brickinventory-db \
---     psql -U brickinventory -d brickinventory < scripts/befund-menge-null.sql
+--     psql -U brickinventory -d brickinventory < scripts/finding-quantity-zero.sql
 -- ════════════════════════════════════════════════════════════════════════════
 
 \pset border 2

@@ -1,7 +1,7 @@
 /**
  * Android attestation chains for tests: an own root, an intermediate
  * and a leaf with the KeyDescription (OID 1.3.6.1.4.1.11129.2.1.17), as
- * KeyMint issues them. The server accepts the root via ATTESTATION_WURZELN.
+ * KeyMint issues them. The server accepts the root via ATTESTATION_ROOTS.
  * Every deviation a test needs goes via the options of kette().
  */
 const { createHash, generateKeyPairSync, sign } = require('node:crypto');
@@ -102,9 +102,9 @@ function storeRevocationList(db, nummern = [], stand = new Date()) {
 
 /** The environment with which a server accepts the test chains. */
 const UMGEBUNG = {
-  ATTESTATION_WURZELN: WURZEL.pem,
-  PASSKEY_ANDROID_ZERTIFIKATE: DIGEST_HEX,
-  PASSKEY_ANDROID_PAKET: PAKET,
+  ATTESTATION_ROOTS: WURZEL.pem,
+  PASSKEY_ANDROID_CERTIFICATES: DIGEST_HEX,
+  PASSKEY_ANDROID_PACKAGE: PAKET,
 };
 
 /**

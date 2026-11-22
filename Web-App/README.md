@@ -18,9 +18,9 @@ Im Ordner mit `compose.yaml`, Schritt für Schritt:
 cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
 echo VORGELAGERTER_PROXY=keiner >> .env   # oder die Adresse eines Proxys davor (README, „Proxy vor Caddy“)
-sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
-sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
-sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
+sh scripts/setup-secrets.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
+sudo sh scripts/setup-ca.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
+sh scripts/check-image.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
 docker compose exec app cat /app/data/admin-startpasswort.txt   # Erstpasswort von admin
 ```
@@ -41,7 +41,7 @@ entsteht und warum:
    ausdrücklichen Schalter `CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md,
    Abschnitt 33). Die App selbst veröffentlicht keinen Port.
 4. **Das Image** `addict85/brickinventory` gilt für `app`, `jobs` und
-   `schluessel`. `scripts/image-pruefen.sh` prüft mit `cosign verify` die
+   `schluessel`. `scripts/check-image.sh` prüft mit `cosign verify` die
    Signatur des Tags (`BRICK_TAG`, Vorgabe `latest`), trägt den geprüften
    Digest als `BRICK_IMAGE` in `.env` ein und zieht ihn; ohne `BRICK_IMAGE`
    startet compose nicht. cosign muss dafür installiert sein (UPGRADE.md,
@@ -54,7 +54,7 @@ entsteht und warum:
    werden muss. Den ersten Start macht der Dienst `migration`
    (`docker compose logs migration`).
 
-**Update:** `sh scripts/image-pruefen.sh && docker compose up -d` (selbst gebaut:
+**Update:** `sh scripts/check-image.sh && docker compose up -d` (selbst gebaut:
 `docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
 stehen in zeitlicher Reihenfolge.
 
@@ -76,7 +76,7 @@ Browsers einmal bestätigen. Weil das Gerät dieser Verbindung noch nicht traut,
 kann die Datei unterwegs ausgetauscht sein; **vor dem Installieren den
 SHA-256-Fingerabdruck auf dem Gerät mit dem auf dem Server vergleichen**
 (`docker compose logs caddy | grep Fingerabdruck` oder die Ausgabe von
-`scripts/ca-einrichten.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
+`scripts/setup-ca.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
 Android-App braucht das nicht: Sie pinnt den Fingerabdruck aus dem QR-Code und
 vertraut der Wurzel ohne systemweite Installation. Schritt für
 Schritt: `UPGRADE.md`, Abschnitt 14.
@@ -86,12 +86,12 @@ Wurzelzertifikat gilt auf dem Gerät für jede Adresse, die es nicht
 ausdrücklich ausschliesst. Caddys eigene CA schliesst nichts aus: Wer ihren
 Schlüssel aus `./caddy/data/` oder einer Sicherung davon bekommt, stellt
 Zertifikate für Bank und Mail aus, denen jedes Gerät mit dieser Wurzel
-traut. Deshalb vor dem ersten Start `sudo sh scripts/ca-einrichten.sh`: Es legt
+traut. Deshalb vor dem ersten Start `sudo sh scripts/setup-ca.sh`: Es legt
 unter `./caddy/ca/` eine Wurzel an, die nur für `BRICK_HOST` gilt (Name
 Constraints; bei einem Namen sind IP-Adressen ganz ausgeschlossen), und eine
 Zwischenstelle (rund zehn Jahre), mit der Caddy signiert. Den Schlüssel der
 Wurzel verwirft das Skript; wer ihn behalten will, gibt mit
-`sudo WURZEL_SCHLUESSEL=/media/usb/wurzel.key sh scripts/ca-einrichten.sh` einen Ort ausserhalb des Servers
+`sudo WURZEL_SCHLUESSEL=/media/usb/wurzel.key sh scripts/setup-ca.sh` einen Ort ausserhalb des Servers
 an. Auf dem Server liegt dann nur der Schlüssel der Zwischenstelle
 (`./caddy/ca/zwischen.key`, wie ein Passwort behandeln); auch er taugt nur
 für `BRICK_HOST`. Ohne `./caddy/ca/` startet Caddy nicht — ausser mit
@@ -126,7 +126,7 @@ auf einem anderen Rechner, dessen feste LAN-Adresse. **Nie** das
 Docker-Gateway (`172.x.0.1`) oder ein ganzes Netz eintragen: Über das Gateway
 kommen auch Clients selbst herein und könnten sich jede Adresse geben. Netze
 über 8 Adressen (weiter als `/29`, IPv6 `/120`) nimmt Caddy nur mit
-`PROXY_NETZ_BESTAETIGT=1` in `.env`. Der
+`PROXY_NETWORK_CONFIRMED=1` in `.env`. Der
 Proxy muss `X-Forwarded-For` setzen (bei Nginx Proxy Manager die Vorgabe).
 
 Kommen über eine Stunde und mindestens 300 Anfragen alle mit derselben
@@ -160,7 +160,7 @@ jeweils als `<name>_thumb.jpg` daneben. Ein Backup von `data/` erfasst damit
 alles.
 
 ### Datenbankpasswörter
-`scripts/geheimnisse-einrichten.sh` legt in `./geheimnisse/` je eine Datei an:
+`scripts/setup-secrets.sh` legt in `./geheimnisse/` je eine Datei an:
 `db_password` (Superuser `brickinventory`, nur `postgres` und `db-rolle`),
 `db_app_password` (Laufzeitrolle `brickinventory_app`, mit der sich App und
 Jobs verbinden: nur Zeilen lesen und schreiben), `db_migration_password`
@@ -185,13 +185,13 @@ postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
 -d` ausführen.
 
 ### Web- und Job-Prozess
-`compose.yaml` startet zwei Dienste aus demselben Bau: `app` (`ROLLE: web`)
-beantwortet Anfragen, `jobs` (`ROLLE: jobs`) arbeitet die Hintergrundarbeit
+`compose.yaml` startet zwei Dienste aus demselben Bau: `app` (`ROLE: web`)
+beantwortet Anfragen, `jobs` (`ROLE: jobs`) arbeitet die Hintergrundarbeit
 ab — Preise, Anleitungen, Bilder, PDF, Importe, Katalogabgleich, Aufräumen.
 Alles davon steht als Auftrag in der Tabelle `jobs`, auch die Zeitpläne;
 „Monitoring → Hintergrundarbeiten“ zeigt sie samt Fehlern und lässt sie
 abbrechen, wiederholen oder vorziehen. Ohne Compose (`npm start`) gilt
-`ROLLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit
+`ROLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit
 Cluster beschreibt UPGRADE.md, Abschnitt 15.
 
 ### DB-Pool-Größe anpassen
@@ -237,15 +237,15 @@ Ohne `npm run dev` geht es auch gebaut: `npm run build`, dann
 npm run dev             # tsx watch, baut das Frontend-Bündel selbst
 npm run typecheck       # Server; :frontend Oberfläche, :tests Tests (Ratsche)
 npm run lint            # Biome, Ratsche: Funde dürfen nur weniger werden
-npm run format:pruefen  # Biome, Ratsche: nicht formatierte Dateien
+npm run format:check  # Biome, Ratsche: nicht formatierte Dateien
 npm test                # siehe „Tests“
 npm run check-contract  # Vertrag gegen einen laufenden Server (BASE_URL), nur von Hand
 ```
 
-Lint und Format sind Ratschen (`scripts/lint-schranken.json`): Neuer Code ist
+Lint und Format sind Ratschen (`scripts/lint-limits.json`): Neuer Code ist
 sauber und formatiert (`npx biome format --write <datei>`), der Bestand wird
 nach und nach nachgezogen. Den Bestand auf einmal formatiert `npm run
-format:alles`; danach `format` in `scripts/lint-schranken.json` auf 0 setzen,
+format:all`; danach `format` in `scripts/lint-limits.json` auf 0 setzen,
 den Commit-Hash in `.git-blame-ignore-revs` (Wurzel) eintragen und
 `git config blame.ignoreRevsFile .git-blame-ignore-revs` empfehlen.
 
@@ -383,14 +383,14 @@ Leserolle `brickinventory_lesen`: nur `SELECT`, ohne Passwort-Hashes, Tokens,
 Sitzungen, Schlüssel des zweiten Faktors und Einstellungswerte.
 
 ```bash
-PGWEB=ja sh scripts/geheimnisse-einrichten.sh   # einmal: Passwort der Leserolle
+PGWEB=ja sh scripts/setup-secrets.sh   # einmal: Passwort der Leserolle
 docker compose up -d db-rolle                    # setzt es
 docker compose exec postgres psql -h 127.0.0.1 -U brickinventory_lesen -d brickinventory
 ```
 
 Das Passwort steht in `./geheimnisse/pgweb_db_password` (der Name stammt aus
 der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
-`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Reparaturen an Zeilen gehen mit
+`postgres/app-role.sh` (`LESEN_SPALTEN`). Reparaturen an Zeilen gehen mit
 `psql` als `brickinventory_app`, am Schema nur als `brickinventory_migration`.
 
 ## Empfohlene Umgebungsvariablen
@@ -398,20 +398,20 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
-| `APP_BASE_URL_FEHLT_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur bis 8 Adressen (IPv4 ab `/29`, IPv6 ab `/120`), weitere bis `/16` bzw. `/64` nur mit `PROXY_NETZ_BESTAETIGT=1` (gilt auch für `VORGELAGERTER_PROXY`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `APP_BASE_URL_MISSING_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur bis 8 Adressen (IPv4 ab `/29`, IPv6 ab `/120`), weitere bis `/16` bzw. `/64` nur mit `PROXY_NETWORK_CONFIRMED=1` (gilt auch für `VORGELAGERTER_PROXY`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `VORGELAGERTER_PROXY` | Pflicht mit `compose.yaml`, nur für Caddy: `keiner` (Caddy direkt erreichbar, glaubt keinem `X-Forwarded-For`) oder die Adresse(n) eines Proxys **vor** Caddy (z. B. Nginx Proxy Manager), durch Leerzeichen getrennt. Siehe „Proxy vor Caddy“. |
-| `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
+| `UPLOAD_QUOTA_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und in `data/admin-startpasswort.txt` (Rechte 0600) abgelegt; das Log nennt nur den Pfad, die Datei verschwindet mit dem ersten Passwortwechsel. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
 | `NODE_ENV` | Nur `development` und `test` lockern die Regeln (Startverbote, Superuser-Verbot, Fehlertexte, sicheres Cookie). **Ohne Angabe gelten die Regeln des Betriebs** wie mit `production`. |
 | `PGSSLMODE` | TLS zur Datenbank. Liegt sie auf einem anderen Rechner (nicht `postgres`, nicht Loopback), `verify-full` setzen (oder `sslmode=verify-full` in `DATABASE_URL`); sonst warnt der Start mit `[datenbank]`. |
-| `DATA_KEY_ALT_FILE` | Nur während eines Schlüsselwechsels: der vorige Datenschlüssel (`scripts/datenschluessel-wechseln.sh`, UPGRADE.md Abschnitt 43). |
-| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
+| `DATA_KEY_ALT_FILE` | Nur während eines Schlüsselwechsels: der vorige Datenschlüssel (`scripts/rotate-data-key.sh`, UPGRADE.md Abschnitt 43). |
+| `MAIL_CONSOLE_WITH_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
-| `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
+| `CA_CERTIFICATE` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Daneben endet jeder Zugang spätestens nach `TOKEN_MAX_DAYS`. |
 | `TOKEN_MAX_DAYS` | Höchstdauer eines Gerätezugangs ab der Anmeldung in Tagen (Vorgabe `90`, `1` bis `365`). Der Tausch (Rotation) verlängert sie nicht; danach meldet sich die App neu an. Einen Zugang ohne Ablauf gibt es nicht. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. `0` schaltet die Frist **nicht** ab. |
@@ -440,7 +440,7 @@ set_number,quantity
 export TEST_DATABASE_URL=postgres://tester:tester@127.0.0.1:5432/cattest
 REQUIRE_DB=1 npm test                         # ganze Suite, parallel
 REQUIRE_DB=1 npm test -- test/ratschen.test.js   # einzelne Dateien, gleicher Aufbau
-npm run test:seriell                          # alles nacheinander auf der Basis-DB
+npm run test:serial                          # alles nacheinander auf der Basis-DB
 ```
 
 `npm test` (`scripts/test-run.js`) baut einmal nach `dist/`, legt aus
@@ -475,11 +475,11 @@ Die betroffenen Dateien überspringen sich dann selbst.
 | Oberfläche in jsdom | `helpers/oberflaeche` (Antworten gegen den API-Vertrag geprüft) |
 | liest nur Quelltext (Struktur, Verbote) | Ratschen in `test/ratschen.test.js`, dürfen nur sinken |
 
-**Abdeckung:** `npm run abdeckung` (= `npm test -- --abdeckung`) misst Server
+**Abdeckung:** `npm run coverage` (= `npm test -- --coverage`) misst Server
 (`dist/`) und Oberfläche (über ein Mess-Bündel mit Sourcemap bis `public/js/`)
 und schreibt `coverage/lcov.info`, `coverage-summary.json` und
 `coverage/bereiche.json`. `node scripts/coverage.js pruefen` vergleicht die
-Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
+Bereiche mit `scripts/coverage-limits.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
 `src/contract/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich

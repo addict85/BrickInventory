@@ -33,12 +33,12 @@ environment({ APP_BASE_URL: 'https://lego.test' });
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bim-ca-'));
 const CA = path.join(ordner, 'root.crt');
-environment({ CA_ZERTIFIKAT: CA });
+environment({ CA_CERTIFICATE: CA });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { tlsStatusFrom } = _req('src/infra/tlsWurzel.js');
+const { tlsStatusFrom } = _req('src/infra/tlsRoot.js');
 const { loadConfig, cookieSafe } = _req('src/infra/config.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -68,7 +68,7 @@ test("for comparison on the device: SHA-256 of the whole certificate, as in Cadd
     .toUpperCase()
     .match(/../g)
     .join(':');
-  const stand = _req('src/infra/tlsWurzel.js').tlsStatusFrom(PEM1);
+  const stand = _req('src/infra/tlsRoot.js').tlsStatusFrom(PEM1);
   assert.equal(stand.zert_sha256, hex);
   assert.notEqual(stand.zert_sha256, stand.fp_hex);
 });

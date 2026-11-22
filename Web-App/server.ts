@@ -9,7 +9,7 @@ import http, { type Server } from 'node:http';
 import type { Db } from './db/database';
 import { errorMessage, logAndContinue } from './src/infra/error';
 import { startBans, startWarnings } from './src/infra/config';
-import { hintWithoutBaseUrl } from './src/infra/basisUrl';
+import { hintWithoutBaseUrl } from './src/infra/baseUrl';
 import { prepareDatabaseBefore } from './startup/database';
 import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProcess';
 import { wireProcess, type Services } from './startup/wiring';
@@ -111,7 +111,7 @@ async function shutdown(
   }
 }
 
-/** One process per role (ROLLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
+/** One process per role (ROLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
 async function start(): Promise<void> {
   const k = konfig();
   if (k.operation) {
@@ -122,6 +122,7 @@ async function start(): Promise<void> {
     }
     for (const w of startWarnings()) console.warn(`⚠️ ${w}`);
   }
+  for (const v of k.renamed) console.warn(`⚠️ [start] Variable umbenannt: ${v}, bitte .env umstellen (UPGRADE.md 70).`);
   for (const v of k.veraltet)
     console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl)
@@ -133,7 +134,7 @@ async function start(): Promise<void> {
     jobs = k.rolle !== 'web';
   if (!k.appBaseUrl && k.operation && web)
     console.error(
-      '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
+      '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_MISSING_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
   const secret = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it

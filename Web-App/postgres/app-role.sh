@@ -18,7 +18,7 @@ aus_datei() {
   eval "datei=\${$1_FILE:-}"
   [ -n "$datei" ] || return 0
   if eval "[ -n \"\${$1:-}\" ]"; then echo "[db-rolle] $1 und $1_FILE sind beide gesetzt - nur eines davon." >&2; exit 1; fi
-  [ -r "$datei" ] || { echo "[db-rolle] $1_FILE=$datei ist nicht lesbar - siehe scripts/geheimnisse-einrichten.sh." >&2; exit 1; }
+  [ -r "$datei" ] || { echo "[db-rolle] $1_FILE=$datei ist nicht lesbar - siehe scripts/setup-secrets.sh." >&2; exit 1; }
   eval "$1=\$(cat \"\$datei\")"
   export "$1"
 }
@@ -28,9 +28,9 @@ aus_datei DB_MIGRATION_PASSWORD
 aus_datei DB_SYSTEM_PASSWORD
 aus_datei DB_SYSTEM_WEB_PASSWORD
 aus_datei PGWEB_DB_PASSWORD
-: "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
-: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#migrationsrolle}"
-: "${DB_SYSTEM_PASSWORD:?DB_SYSTEM_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#systemrolle}"
+: "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/setup-secrets.sh, siehe UPGRADE.md}"
+: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/setup-secrets.sh, siehe UPGRADE.md#migrationsrolle}"
+: "${DB_SYSTEM_PASSWORD:?DB_SYSTEM_PASSWORD fehlt - sh scripts/setup-secrets.sh, siehe UPGRADE.md#systemrolle}"
 SU_PASSWORT="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 if [ "$DB_APP_PASSWORD" = "$SU_PASSWORT" ]; then
   echo "[db-rolle] DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden." >&2

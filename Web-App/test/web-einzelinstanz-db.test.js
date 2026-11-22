@@ -78,7 +78,7 @@ test('one web process per database', { concurrency: 1 }, async t => {
     const frei = await holdWebLock(a, SHORT);
     try {
       await stumm(() => assert.rejects(holdWebLock(b, SHORT), SecondWebProcess));
-      await stumm(() => assert.rejects(holdWebLock(b, SHORT), /zweiter Web-Prozess.*ROLLE=jobs/s));
+      await stumm(() => assert.rejects(holdWebLock(b, SHORT), /zweiter Web-Prozess.*ROLE=jobs/s));
       assert.equal((await halter()).length, 1);
     } finally {
       await frei();
@@ -164,10 +164,10 @@ test('one web process per database', { concurrency: 1 }, async t => {
         ...process.env,
         SESSION_SECRET: 'einzelinstanz-test-geheimnis-lang-genug-1',
         PORT: String(port),
-        ROLLE: 'web',
+        ROLE: 'web',
         NODE_ENV: 'production',
-        DB_SUPERUSER_ERLAUBT: '1',
-        APP_BASE_URL_FEHLT_OK: '1',
+        DB_SUPERUSER_ALLOWED: '1',
+        APP_BASE_URL_MISSING_OK: '1',
         COOKIE_SECURE: '0',
       },
     });

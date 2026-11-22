@@ -1,4 +1,4 @@
-import { moneyInput } from '../infra/geld';
+import { moneyInput } from '../infra/money';
 import type { FinancesContext } from './context';
 
 /** For parts and figures in one place; empty means "take the market price", not "price zero".

@@ -6,7 +6,7 @@
  * Counter-checks (measured 13.11.2026, each reverted):
  *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) only avg_price → red:
  *      “valuation” (unit price 0 instead of 37.5), “G&V”, “price history”; Wertkurve green
- *   B  marketPriceSql() (db/geldSql.ts) only avg_price → red: „Wertkurve“
+ *   B  marketPriceSql() (db/moneySql.ts) only avg_price → red: „Wertkurve“
  *      (60, the purchase price as starting point, instead of 75) and “price history”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

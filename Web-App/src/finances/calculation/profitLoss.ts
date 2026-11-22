@@ -5,7 +5,7 @@ import { valueMinifigs, valueParts } from './valuation';
 import type { Blickfeld } from './prices';
 import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
-import { aufRappen, inTenThousandths, sumFrom } from '../../infra/geld';
+import { aufRappen, inTenThousandths, sumFrom } from '../../infra/money';
 import type * as repo from '../repository/profitLoss';
 import { marketPriceFrom } from '../../catalog';
 import type { FinancesContext } from '../context';

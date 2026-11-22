@@ -142,8 +142,8 @@ test('quantities and prices are checked', () => {
   assert.equal(V.acquisitionQuantity('3'), 3);
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
-  // Price: empty means “no price", negative is rejected (src/infra/geld.ts).
-  const { moneyInput } = _req('src/infra/geld.js');
+  // Price: empty means “no price", negative is rejected (src/infra/money.ts).
+  const { moneyInput } = _req('src/infra/money.js');
   assert.equal(moneyInput('', 'Preis'), null);
   assert.equal(moneyInput(null, 'Preis'), null);
   assert.equal(moneyInput('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');

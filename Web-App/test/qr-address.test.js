@@ -125,12 +125,12 @@ test('2. the web app no longer has its own opinion about the address', () => {
 
 test('3. one source for QR code, mail button and reset links', () => {
   // The core of Marco's first sentence: ONE address, not three. Only
-  // src/infra/basisUrl.ts may read it; whoever touches process.env.APP_BASE_URL himself has
+  // src/infra/baseUrl.ts may read it; whoever touches process.env.APP_BASE_URL himself has
   // started a fourth notation.
   // src/infra/config.ts reads the variable (appBaseUrl, without a slash at the
   // end); basisUrl() is the one way there.
-  const helper = lies('src/infra/basisUrl.ts');
-  assert.match(helper, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
+  const helper = lies('src/infra/baseUrl.ts');
+  assert.match(helper, /konfig\(\)\.appBaseUrl/, 'src/infra/baseUrl.ts liest die Konfiguration nicht.');
   assert.match(
     lies('src/infra/config.ts'),
     /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,

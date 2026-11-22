@@ -1,6 +1,6 @@
 import { setBestand } from '../../../db/inventoryView';
 import type { DbInterface, Hit } from '../../../db/database';
-import { marketPriceSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
 

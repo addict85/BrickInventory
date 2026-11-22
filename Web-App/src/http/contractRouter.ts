@@ -93,7 +93,7 @@ function reportDeviation(req: Request, res: Response, error: z.ZodError): void {
   sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: (first?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
-/** Only in tests (VERTRAG_PRUEFEN=1): a 2xx response outside its schema becomes a 500. In
+/** Only in tests (CHECK_CONTRACT=1): a 2xx response outside its schema becomes a 500. In
  * production this would cost a pass over whole lists per response; there tsc upholds the contract. */
 function responseAgainstContract(req: Request, res: Response, next: NextFunction): void {
   if (res.locals.contractChecked) {

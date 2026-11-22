@@ -7,7 +7,7 @@ import { throttleAddress } from '../infra/throttleAddress';
 import { countRequest } from './loginLimiter';
 import { reportError } from '../infra/error';
 import type { AccountContext } from './context';
-import { processWide } from '../infra/prozessweit';
+import { processWide } from '../infra/processWide';
 
 export const FAILED_ATTEMPT_WINDOW_MS = 60_000;
 export const FAILED_ATTEMPT_MAX = 60;

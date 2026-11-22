@@ -2,7 +2,7 @@
  * app_logs for the admin. Report write errors there at most once per
  * minute. */
 import * as logs from './repository/appLogs';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 export { requestContext } from './accountContext';
 import { requestContext } from './accountContext';

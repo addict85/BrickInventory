@@ -2,7 +2,7 @@
  * The day of an entry applies in the installation's time zone. With the
  * UTC day a purchase at 00:30 in Zurich (23:30 UTC on the previous day) fell on the
  * previous day and was merged with a purchase from the previous evening, but not with
- * one from the same morning (migration 0070, ERFASSUNG_ZEITZONE).
+ * one from the same morning (migration 0070, ACQUISITION_TIME_ZONE).
  *
  * Counter-checks (measured on 29.10.2026, each on a fresh database):
  *   A  the trigger erfassung_tag() computes in 'UTC' again → red: “a purchase
@@ -23,7 +23,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.ERFASSUNG_ZEITZONE = 'Europe/Zurich';
+process.env.ACQUISITION_TIME_ZONE = 'Europe/Zurich';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();

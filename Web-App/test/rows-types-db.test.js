@@ -63,7 +63,7 @@ test('row types against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testAccess();
   t.after(() => db.pool.end());
-  const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-stand.sql'), 'utf8'));
+  const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-snapshot.sql'), 'utf8'));
 
   await t.test('every table and column including NULL is like this in the database', async () => {
     const zeilen = await db.all(

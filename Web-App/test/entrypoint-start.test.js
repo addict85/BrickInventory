@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// What root does to ./data is in daten-rechte.sh (its own service before app and jobs).
-const ep = fs.readFileSync(path.join(__dirname, '..', 'daten-rechte.sh'), 'utf8');
+// What root does to ./data is in data-permissions.sh (its own service before app and jobs).
+const ep = fs.readFileSync(path.join(__dirname, '..', 'data-permissions.sh'), 'utf8');
 const entry = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
 
 /**
@@ -241,7 +241,7 @@ test('what the service created and uploaded only it reads', t => {
 // Counter-checks (measured 11.11.2026, each alone): in the entrypoint `umask 077`
 // deleted → red “the server creates files readable for others”; the query
 // `[ "$(id -u)" = 0 ]` replaced by `true` → red “without root no path via
-// daten-rechte and su-exec” (the root branch looks for /app/daten-rechte.sh).
+// daten-rechte and su-exec” (the root branch looks for /app/data-permissions.sh).
 test('started as brickinv the entrypoint goes directly to the server without a root step', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
@@ -255,7 +255,7 @@ test('started as brickinv the entrypoint goes directly to the server without a r
   const r = spawnSync('sh', [path.join(__dirname, '..', 'docker-entrypoint.sh')], {
     cwd: ordner,
     encoding: 'utf8',
-    env: { PATH: `${bin}:/usr/bin:/bin`, ROLLE: 'web' },
+    env: { PATH: `${bin}:/usr/bin:/bin`, ROLE: 'web' },
   });
   assert.equal(r.status, 0, `ohne root kein Weg über daten-rechte und su-exec: ${r.stderr}`);
   assert.match(

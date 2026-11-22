@@ -1,19 +1,19 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- BEFUND: Welchen Lagerort haben die Sets? — NUR LESEN, ändert nichts
 --
--- Gegenstück zu scripts/korrektur-lagerort-estrich.sql. Dieses Skript zeigt,
+-- Gegenstück zu scripts/fix-storage-attic.sql. Dieses Skript zeigt,
 -- was das Korrekturskript ÄNDERN würde: je Konto, wie viele Sets schon im
 -- Zielort liegen, wie viele noch gar keinen Ort haben und wie viele in einem
 -- ANDEREN Ort stehen — Letztere sind die, die das Korrekturskript überschreibt.
 --
 -- Aufruf (Zielort ist Estrich, wie von Marco verlangt):
 --   docker exec -i brickinventory-db \
---     psql -U brickinventory -d brickinventory < scripts/befund-lagerort-estrich.sql
+--     psql -U brickinventory -d brickinventory < scripts/finding-storage-attic.sql
 --
 -- Anderer Zielort:
 --   docker exec -i brickinventory-db \
 --     psql -U brickinventory -d brickinventory -v ort=Keller \
---     < scripts/befund-lagerort-estrich.sql
+--     < scripts/finding-storage-attic.sql
 --
 -- ── Warum der Befund die ANDEREN Orte einzeln nennt ─────────────────────────
 --

@@ -41,7 +41,7 @@ export type { FirstStart } from './schemaStart';
 // All dependencies are up here: a require() in the body hides them
 // and yields `any`.
 
-/** NUMERIC as a number: we compute in ten-thousandths (src/infra/geld.ts). Up to 2^53/10^4
+/** NUMERIC as a number: we compute in ten-thousandths (src/infra/money.ts). Up to 2^53/10^4
  * Math.round(n × 10^4) hits the value exactly (NUMERIC(12,4) reaches 10^8); above that it throws instead of rounding silently. */
 export function numericAsNumber(v: string | null): number | null {
   if (v === null) return null;

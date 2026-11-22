@@ -3,7 +3,7 @@
  * holds which set: image diagnosis and job list respond without
  * `user_id`. The test data carries both (set of a foreign account, job
  * with account and set number) so that the field would occur. Responses run against
- * the contract (VERTRAG_PRUEFEN=1 from buildAndRequire).
+ * the contract (CHECK_CONTRACT=1 from buildAndRequire).
  *
  * Counter-checks (measured 05.11.2026, each alone):
  *   A  in jobList() `user_id` read along again → red: “the

@@ -552,11 +552,11 @@ die Ausgangsmenge über das Blickfeld SUMMIERT wird.
 ## Nachtrag 86 — Aufräum-Skripte für die Altbestände mit Menge 0
 
 Der Fix aus hardened-180 verhindert NEUE Geistereinträge. Für die, die schon in
-der Datenbank liegen, gibt es jetzt zwei Skripte unter `scripts/` (seit 05.11.2026 unter `docs/einmalig/`):
+der Datenbank liegen, gibt es jetzt zwei Skripte unter `scripts/` (seit 05.11.2026 unter `docs/one-off/`):
 
-* `befund-menge-null.sql` — reines Lesen. Zeigt je Konto, welche Zeilen
+* `finding-quantity-zero.sql` — reines Lesen. Zeigt je Konto, welche Zeilen
   betroffen sind, was daran hängt und wie viele es insgesamt sind.
-* `korrektur-menge-null.sql` — die Bereinigung, in EINER Transaktion.
+* `fix-quantity-zero.sql` — die Bereinigung, in EINER Transaktion.
 
 Die Trennung ist Absicht: Ein Skript, das löscht, sollte man vorher gelesen
 haben, und die Ausgabe des Befunds sagt genau, was passieren wird.

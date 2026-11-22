@@ -6,7 +6,7 @@
  * docs/openapi.json, without network and without Gradle: responses from the schemas,
  * bodies from the requests of the routes the app sends. Names and domain types
  * are in contract-kotlin-mapping.js. Checked in; with --pruefen only
- * compare (return 1 on a deviation). Call: npm run vertrag:kotlin
+ * compare (return 1 on a deviation). Call: npm run contract:kotlin
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -434,7 +434,7 @@ if (require.main === module) {
   if (process.argv.includes('--pruefen')) {
     const actual = fs.existsSync(ZIEL) ? fs.readFileSync(ZIEL, 'utf8') : '';
     if (actual !== expected) {
-      console.error(`${path.relative(ROOT, ZIEL)} ist veraltet — npm run vertrag:kotlin`);
+      console.error(`${path.relative(ROOT, ZIEL)} ist veraltet — npm run contract:kotlin`);
       process.exit(1);
     }
   } else {

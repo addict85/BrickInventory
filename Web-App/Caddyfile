@@ -23,7 +23,7 @@
 	}
 	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
 	default_sni {$BRICK_HOST}
-	# Mit eigener CA (./caddy/ca, scripts/ca-einrichten.sh) setzt das Startskript
+	# Mit eigener CA (./caddy/ca, scripts/setup-ca.sh) setzt das Startskript
 	# in compose.yaml Wurzel und Zwischenstelle hier ein.
 	pki {
 		ca local {

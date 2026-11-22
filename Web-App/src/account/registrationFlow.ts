@@ -3,7 +3,7 @@
  * mail to the address, not to the requester. */
 import crypto from 'node:crypto';
 import { logAndContinue, reportAndDeliver } from '../infra/error';
-import { mailBasisUrl } from '../infra/basisUrl';
+import { mailBasisUrl } from '../infra/baseUrl';
 import { inSystemContext } from '../infra/accountContext';
 import { tokenDigest } from './deviceToken';
 import { computeHowRegistration, register } from './accounts';

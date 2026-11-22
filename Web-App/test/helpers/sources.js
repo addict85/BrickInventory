@@ -212,7 +212,7 @@ function testClock() {
 
 function buildAndRequire() {
   // In tests every response of a route with a contract runs through its schema (src/http/contractRouter.ts).
-  process.env.VERTRAG_PRUEFEN ??= '1';
+  process.env.CHECK_CONTRACT ??= '1';
   // Without NODE_ENV the production rules apply (superuser ban, APP_BASE_URL);
   // outside npm test (and with `@superuser`) the test DB is superuser, and started servers inherit that.
   process.env.NODE_ENV ??= 'test';
@@ -507,7 +507,7 @@ function setCoreSource() {
     ['routes/api_v1/sets.ts'],
     ['routes/api_v1/setsImport.ts'],
     ['routes/api_v1/setsInstructions.ts'],
-    ['routes/api_v1/setsLager.ts'],
+    ['routes/api_v1/setsStorage.ts'],
     ['src/sets/service.ts'],
     ['src/sets/content.ts'],
     ['src/sets/barcode.ts'],

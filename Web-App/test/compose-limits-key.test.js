@@ -71,11 +71,11 @@ test('app and jobs only see the data key read-only', () => {
     );
   }
   const s = dienst('schluessel');
-  assert.match(s, /entrypoint: \["sh", "\/app\/schluessel-anlegen\.sh"\]/);
+  assert.match(s, /entrypoint: \["sh", "\/app\/create-keys\.sh"\]/);
   assert.match(s, /network_mode: none/);
   const copy = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  assert.match(copy, /^COPY .*\bschluessel-anlegen\.sh\b.* \.\/$/m, 'das Skript liegt nicht im Image');
-  assert.match(copy, /^COPY .*\bdaten-rechte\.sh\b.* \.\/$/m, 'daten-rechte.sh liegt nicht im Image');
+  assert.match(copy, /^COPY .*\bcreate-keys\.sh\b.* \.\/$/m, 'das Skript liegt nicht im Image');
+  assert.match(copy, /^COPY .*\bdata-permissions\.sh\b.* \.\/$/m, 'data-permissions.sh liegt nicht im Image');
 });
 
 function sandbox() {
@@ -83,7 +83,7 @@ function sandbox() {
   fs.mkdirSync(path.join(ort, 'schluessel'));
   fs.mkdirSync(path.join(ort, 'data'));
   const lauf = () =>
-    spawnSync('sh', [path.join(ROOT, 'schluessel-anlegen.sh')], {
+    spawnSync('sh', [path.join(ROOT, 'create-keys.sh')], {
       encoding: 'utf8',
       env: {
         ...process.env,

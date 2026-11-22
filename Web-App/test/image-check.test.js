@@ -1,5 +1,5 @@
 /**
- * scripts/image-pruefen.sh takes over app and Caddy image only after a passed
+ * scripts/check-image.sh takes over app and Caddy image only after a passed
  * signature check and only as a digest; compose.yaml does not start without them.
  * The real script runs in a sandbox, `cosign` and `docker` are substitutes.
  *
@@ -16,7 +16,7 @@
  *      check of the Caddy image fails …”
  *   F  (11.11.2026) for caddy again `brickinventory-caddy:2.11.8` with
  *      `pull_policy: build` → red: “without BRICK_IMAGE and CADDY_IMAGE …”
- *   G  (13.11.2026) the call of geheimnisse-einrichten.sh deleted → red:
+ *   G  (13.11.2026) the call of setup-secrets.sh deleted → red:
  *      “an update creates the new secret of the system role …”
  *   H  (15.11.2026) in the script only db_system_password checked → red:
  *      “… also that of the web system role …”
@@ -63,7 +63,7 @@ cat <<'X'\n${cosignResponse}\nX\nexit ${cosignCode}\n`,
     { mode: 0o755 },
   );
   fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${ort}/docker.log"\n`, { mode: 0o755 });
-  const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'image-pruefen.sh')], {
+  const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'check-image.sh')], {
     cwd: ort,
     encoding: 'utf8',
     env: { PATH: `${bin}:/usr/bin:/bin` },
@@ -139,7 +139,7 @@ test('without cosign: abort with a hint', t => {
   fs.mkdirSync(bin);
   for (const w of ['sed', 'tail'])
     fs.symlinkSync(spawnSync('sh', ['-c', `command -v ${w}`], { encoding: 'utf8' }).stdout.trim(), path.join(bin, w));
-  const r = spawnSync('/bin/sh', [path.join(ROOT, 'scripts', 'image-pruefen.sh')], {
+  const r = spawnSync('/bin/sh', [path.join(ROOT, 'scripts', 'check-image.sh')], {
     cwd: ort,
     encoding: 'utf8',
     env: { PATH: bin },
@@ -168,10 +168,10 @@ test('without BRICK_IMAGE and CADDY_IMAGE compose does not start, with digest ev
   }
   const ohne = call({ CADDY_IMAGE: 'y' });
   assert.notEqual(ohne.status, 0);
-  assert.match(ohne.stderr, /BRICK_IMAGE fehlt in \.env - einmal sh scripts\/image-pruefen\.sh ausfuehren/);
+  assert.match(ohne.stderr, /BRICK_IMAGE fehlt in \.env - einmal sh scripts\/check-image\.sh ausfuehren/);
   const withoutCaddy = call({ BRICK_IMAGE: 'x' });
   assert.notEqual(withoutCaddy.status, 0);
-  assert.match(withoutCaddy.stderr, /CADDY_IMAGE fehlt in \.env - einmal sh scripts\/image-pruefen\.sh ausfuehren/);
+  assert.match(withoutCaddy.stderr, /CADDY_IMAGE fehlt in \.env - einmal sh scripts\/check-image\.sh ausfuehren/);
   const mit = JSON.parse(
     call({ BRICK_IMAGE: `addict85/brickinventory@${D1}`, CADDY_IMAGE: `addict85/brickinventory-caddy@${D2}` }).stdout,
   );

@@ -1,6 +1,6 @@
 /** Read once instead of in three places with their own spelling. */
 import { konfig } from './config';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 export function basisUrl(): string | null {
   return konfig().appBaseUrl;

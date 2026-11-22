@@ -12,4 +12,4 @@ export type { Shift } from './setMove';
 export type { BarcodeHits } from './barcode';
 export type { ImportZeile } from './csvImport';
 export type { CatalogPart, ListenTeil, SetMaster } from './rows';
-export { SetCsvPayload } from './csvImportLauf';
+export { SetCsvPayload } from './csvImportRun';

@@ -3,8 +3,8 @@
 # Docker-Secret einhängt. Umgebungsvariablen zeigt `docker inspect` jedem mit
 # Zugang zu Docker; Dateien unter /run/secrets/ nicht. UPGRADE.md#geheimnisse.
 #
-#   sh scripts/geheimnisse-einrichten.sh            (im Ordner mit compose.yaml)
-#   PGWEB=ja sh scripts/geheimnisse-einrichten.sh   auch ein Passwort für die Leserolle
+#   sh scripts/setup-secrets.sh            (im Ordner mit compose.yaml)
+#   PGWEB=ja sh scripts/setup-secrets.sh   auch ein Passwort für die Leserolle
 #
 # Vorhandene Dateien bleiben. Fehlende kommen aus einer alten .env
 # (SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD) oder werden

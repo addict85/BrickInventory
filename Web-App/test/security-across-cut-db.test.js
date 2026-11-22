@@ -97,7 +97,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
       SESSION_SECRET: 'querschnitt-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
     },
   });
   // Let it drain: a full buffer would stall the server.

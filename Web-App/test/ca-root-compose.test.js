@@ -66,7 +66,7 @@ test("no service except Caddy mounts Caddy's data, the app only the certificate"
   }
   const ca = einhaengungen('app').find(e => e.quelle === 'ca-wurzel');
   assert.deepEqual(ca, { quelle: 'ca-wurzel', ziel: '/caddy-ca', readOnly: true });
-  assert.ok(dienst('app').some(l => /^\s+CA_ZERTIFIKAT:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
+  assert.ok(dienst('app').some(l => /^\s+CA_CERTIFICATE:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
   assert.ok(einhaengungen('caddy').some(e => e.quelle === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.readOnly));
   assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
 });

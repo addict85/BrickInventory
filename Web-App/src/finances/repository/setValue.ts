@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marketPriceSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 
 export function cachePricesForSets(db: DbInterface, values: (string[] | string | number)[], ttlClause: string) {
   return db.all<{ set_number: string; condition: string; marktpreis: number | null }>(

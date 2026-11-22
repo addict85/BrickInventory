@@ -1,5 +1,5 @@
 /** One rule for three kinds, so the webapp and the app don't drift apart. */
-import { moneyInput } from '../infra/geld';
+import { moneyInput } from '../infra/money';
 import type { Sicht } from '../household';
 import { Degradations } from '../infra/result';
 import { inventoryKey } from '../../db/txLock';

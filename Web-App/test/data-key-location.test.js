@@ -25,7 +25,7 @@ require('./helpers/sources').buildAndRequire();
 /** Loads the key in a fresh process; returns it base64 together with stderr. */
 function lade(wurzel, env = {}) {
   const script = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/secret.js'))});
-    process.stdout.write(g.datenSchluessel().toString('base64'));`;
+    process.stdout.write(g.dataKey().toString('base64'));`;
   const r = spawnSync(process.execPath, ['-e', script], {
     encoding: 'utf8',
     env: { ...process.env, DATA_KEY: '', DATA_KEY_FILE: '', APP_ROOT: wurzel, ...env },

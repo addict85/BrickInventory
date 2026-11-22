@@ -12,9 +12,9 @@ import { LOCKS } from '../src/infra/lockNamespaces';
 export class SecondWebProcess extends Error {
   constructor(seconds: number) {
     super(
-      `Ein zweiter Web-Prozess (ROLLE web oder beides) läuft schon auf dieser Datenbank; nach ${seconds} s ` +
+      `Ein zweiter Web-Prozess (ROLE web oder beides) läuft schon auf dieser Datenbank; nach ${seconds} s ` +
         'Warten aufgegeben. Es darf nur einer laufen: Drossel, PDF-Tickets und Zwischenspeicher liegen im ' +
-        'Prozessspeicher (UPGRADE.md#ein-web-prozess). Den anderen beenden oder hier ROLLE=jobs setzen.',
+        'Prozessspeicher (UPGRADE.md#ein-web-prozess). Den anderen beenden oder hier ROLE=jobs setzen.',
     );
   }
 }

@@ -1,11 +1,11 @@
 /**
- * The own root CA (scripts/ca-einrichten.sh) applies only to BRICK_HOST,
+ * The own root CA (scripts/setup-ca.sh) applies only to BRICK_HOST,
  * its key does not stay lying around, and Caddy signs with the intermediate
  * only if ./caddy/ca is set up; without it Caddy only starts with
  * BRICK_TLS=acme or explicitly with CA_OHNE_NAMENSBESCHRAENKUNG=ja. …
  *
  * Counter-checks (measured 03.11.2026, each alone):
- *   A  nameConstraints deleted from [wurzel] in ca-einrichten.sh → red:
+ *   A  nameConstraints deleted from [wurzel] in setup-ca.sh → red:
  *      “even a stolen root key issues nothing foreign”
  *   B  `excluded;IP:…` deleted at the name → red: “a leaf for a
  *      foreign address fails at the root” (the leaf for 1.2.3.4 is valid)
@@ -22,7 +22,7 @@
  *   G  in the Caddyfile `issuer {$BRICK_TLS_AUSSTELLER}` replaced by
  *      `issuer {$BRICK_TLS_AUSSTELLER:internal}` → red: “without
  *      issuer the Caddyfile is invalid” (only with Caddy)
- *   I  in ca-einrichten.sh the line “SHA-256 des Zertifikats …” deleted →
+ *   I  in setup-ca.sh the line “SHA-256 des Zertifikats …” deleted →
  *      red: “a root for a name …”
  *   J  with acme `rm -f /ca-wurzel/root.crt` deleted → red: “public
  *      name with acme …” (the old root stays for /ca.crt)
@@ -51,7 +51,7 @@ const freePort = () =>
   });
 
 const ROOT = path.join(__dirname, '..');
-const SCRIPT = path.join(ROOT, 'scripts', 'ca-einrichten.sh');
+const SCRIPT = path.join(ROOT, 'scripts', 'setup-ca.sh');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 const ossl = (...args) => spawnSync('openssl', args, { encoding: 'utf8' });
 
@@ -287,7 +287,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
     assert.notEqual(r.beendet, 0);
     assert.equal(r.environment, null, 'Caddy wurde gestartet');
     assert.equal(r.wurzel, null, 'die App bekommt Caddys unbeschränkte Wurzel');
-    assert.match(r.stderr, /scripts\/ca-einrichten\.sh/);
+    assert.match(r.stderr, /scripts\/setup-ca\.sh/);
     assert.match(r.stderr, /BRICK_TLS=acme/);
     assert.match(r.stderr, /CA_OHNE_NAMENSBESCHRAENKUNG=ja/);
   });

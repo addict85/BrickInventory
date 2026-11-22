@@ -1,11 +1,11 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- KORREKTUR: Einträge mit Menge 0 bereinigen
 --
--- Gegenstück zu scripts/befund-menge-null.sql. BITTE ZUERST DEN BEFUND LAUFEN
+-- Gegenstück zu scripts/finding-quantity-zero.sql. BITTE ZUERST DEN BEFUND LAUFEN
 -- LASSEN und die Ausgabe ansehen — dieses Skript LÖSCHT Zeilen.
 --
 --   docker exec -i brickinventory-db \
---     psql -U brickinventory -d brickinventory < scripts/korrektur-menge-null.sql
+--     psql -U brickinventory -d brickinventory < scripts/fix-quantity-zero.sql
 --
 -- ── Was es tut ──────────────────────────────────────────────────────────────
 --  1. REPARIEREN: Zeilen mit Menge 0, zu denen es noch Erfassungen gibt,

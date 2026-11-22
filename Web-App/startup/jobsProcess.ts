@@ -30,7 +30,7 @@ export function renewHeartbeat(d: Services, worker: JobsLauf['worker']): Promise
   return d.jobQueue.setState(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 
-/** The background work (ROLLE=jobs or beides) only runs via jobs; a
+/** The background work (ROLE=jobs or beides) only runs via jobs; a
  * second job process would be harmless, because each claims jobs with SKIP LOCKED. */
 export async function startJobs(d: Services): Promise<JobsLauf> {
   const takenOver = await d.jobQueue.registerProcess();

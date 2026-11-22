@@ -12,7 +12,7 @@ const { buildAndRequire, ROOT } = require('./helpers/sources');
 
 buildAndRequire();
 const { numericAsNumber } = require(path.join(ROOT, 'dist/db/database.js'));
-const { inTenThousandths } = require(path.join(ROOT, 'dist/src/infra/geld.js'));
+const { inTenThousandths } = require(path.join(ROOT, 'dist/src/infra/money.js'));
 
 test('NUMERIC(12,4) stays exact in ten-thousandths', () => {
   /** @type {[string, number][]} */

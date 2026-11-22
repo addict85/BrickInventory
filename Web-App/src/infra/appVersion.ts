@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { konfig } from './config';
-import { processWide } from './prozessweit';
+import { processWide } from './processWide';
 
 const G = processWide('appVersion', () => ({ v: null as string | null }));
 

@@ -49,7 +49,7 @@ fs.copyFileSync(
   path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'),
   path.join(wurzel, 'public', 'assets', 'set-placeholder.svg'),
 );
-process.env.BILD_ABRUFE_JE_MINUTE = '3';
+process.env.IMAGE_FETCHES_PER_MINUTE = '3';
 const express = require('express');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
