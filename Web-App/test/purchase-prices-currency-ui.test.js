@@ -88,13 +88,13 @@ test('purchase price dialog: currency per row, the sum follows', async () => {
   try {
     await openSet(o);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
-    await warte(() => o.d.getElementById('acq-preis-2'));
+    await warte(() => o.d.getElementById('acq-price-2'));
     const zeile = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
     assert.match(zeile(1), /USD/);
     assert.match(zeile(1), /≈ 208,53 €/);
     assert.match(zeile(2), /EUR/);
     assert.equal(text(o.d.getElementById('acq-total-price').textContent), '1.334,58 €');
-    const feld = o.d.getElementById('acq-preis-2');
+    const feld = o.d.getElementById('acq-price-2');
     feld.value = '342,04';
     feld.dispatchEvent(new o.w.FocusEvent('blur'));
     assert.ok(
@@ -113,7 +113,7 @@ test('Escape returns focus to the trigger', async () => {
     const trigger = o.d.querySelector('#set-modal [data-click="openAcqModal"]');
     trigger.focus();
     trigger.click();
-    await warte(() => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-preis-1'));
+    await warte(() => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-price-1'));
     o.d.dispatchEvent(new o.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     assert.ok(
       await warte(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
@@ -216,7 +216,7 @@ test('finances: ≈ and number of estimates', async () => {
     assert.match(purchaseCell.querySelector('[title]').getAttribute('title'), /geschätzt/);
     const titanic = zeilen.find(z => z.dataset.arg === '10294-1');
     assert.doesNotMatch(titanic.textContent, /≈/);
-    assert.match(burg.querySelector('.fin-unter').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
+    assert.match(burg.querySelector('.fin-sub').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
     assert.ok(await warte(() => !o.d.getElementById('fin-basis').hidden));
     assert.match(o.d.getElementById('fin-basis').textContent, /1 geschätzter Kaufpreis/);
   } finally {
@@ -227,7 +227,7 @@ test('finances: ≈ and number of estimates', async () => {
 test('adding a set sends currency and date', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+    o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
     await takt(10);
     assert.equal(o.d.getElementById('add-currency').value, 'EUR', 'Vorgabe ist die Kontowährung');
     assert.match(o.d.getElementById('add-date').value, /^\d{4}-\d{2}-\d{2}$/, 'Vorgabe heute');

@@ -6,7 +6,7 @@
  *
  * Counter-checks (measured on 03.11.2026):
  *   A  in priceChartSVG back to `first = axis[0]` → red: “axis from the first market price”
- *   B  in referenceLine `darunter` always false → red: “cost label moves out of the way”
+ *   B  in referenceLine `below` always false → red: “cost label moves out of the way”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,12 +48,12 @@ test('axis from the first market price, purchase at the edge', async () => {
   try {
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => d.querySelector('#set-modal svg.diagramm-preis'), 4000);
-    const svg = d.querySelector('#set-modal svg.diagramm-preis');
+    await warte(() => d.querySelector('#set-modal svg.chart-price'), 4000);
+    const svg = d.querySelector('#set-modal svg.chart-price');
     const links = Number(svg.querySelector('line').getAttribute('x1'));
     const erster = Number(svg.querySelector('polyline').getAttribute('points').trim().split(/\s+/)[0].split(',')[0]);
     assert.equal(erster, links, 'Achse ab erstem Marktpreis');
-    assert.equal(Number(svg.querySelector('.kaufpunkt').getAttribute('cx')), links, 'Kauf am linken Rand');
+    assert.equal(Number(svg.querySelector('.purchase-dot').getAttribute('cx')), links, 'Kauf am linken Rand');
   } finally {
     w.close();
   }
@@ -109,8 +109,8 @@ test('cost basis label moves aside', async () => {
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .einstand-linie'));
-    const g = d.querySelector('#portfolio-chart .einstand-linie');
+    await warte(() => d.querySelector('#portfolio-chart .cost-basis-line'));
+    const g = d.querySelector('#portfolio-chart .cost-basis-line');
     const lineY = Number(g.querySelector('line').getAttribute('y1'));
     const textY = Number(g.querySelector('text').getAttribute('y'));
     assert.ok(textY > lineY, `Einstand-Beschriftung weicht aus: Text ${textY}, Linie ${lineY}`);

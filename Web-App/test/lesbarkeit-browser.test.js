@@ -2,16 +2,16 @@
  * Readable and reachable — measured in the browser with the real stylesheets.
  *
  * Counter-checks (measured on 27.10.):
- *   A  --auf-primaer removed in themes/werkbank.css → red: „werkbank: Primärknopf"
+ *   A  --on-primary removed in themes/werkbank.css → red: „werkbank: Primärknopf"
  *   B  .lerr again with --r500 → red: „Anmeldefehler"
- *   C  .datei-versteckt with display:none → red: „Datei-Feld fokussierbar"
+ *   C  .file-hidden with display:none → red: „Datei-Feld fokussierbar"
  *   D  (28.10.) :focus-visible again 2px in var(--b600) → red: „Fokusring hell: 2px“
  *   F  (28.10.) .cond-new again with var(--g600) → red: „hell: Etikett Neu 3:1“;
- *      .besitzer-badge with --b600 → red: „hell: Etikett Besitzer 4.24:1“
+ *      .owner-badge with --b600 → red: „hell: Etikett Besitzer 4.24:1“
  *   G  (28.10.) .pnl-pos again #16a34a → red: „hell: Gewinn 3.15:1“
  *   I  (29.10.) the dark blocks skipped in the generator (tokens
  *      regenerated) → red: „Die Karte der dunklen Variante ist hell“ (all five)
- *   H  (28.10.) --preis removed in themes/noppe.css → red: „Preis in Rot“
+ *   H  (28.10.) --price removed in themes/noppe.css → red: „Preis in Rot“
  *      with „noppe: Preis“ and „hochglanz: Preis“
  *   E  (28.10.) word-spacing on the body removed, likewise word-spacing:inherit on
  *      button → red: „Wortabstand 0.17 em“
@@ -52,83 +52,83 @@ function testPage() {
   <span class="pnl-pos" data-kontrast="hell: Gewinn">+8.5%</span>
   <span class="cond-badge cond-new" data-kontrast="hell: Etikett Neu">Neu</span>
   <span class="cond-badge cond-used" data-kontrast="hell: Etikett Gebraucht">Gebraucht</span>
-  <span class="cond-badge besitzer-badge" data-kontrast="hell: Etikett Besitzer">emily</span>
+  <span class="cond-badge owner-badge" data-kontrast="hell: Etikett Besitzer">emily</span>
   <span class="qbadge" data-kontrast="hell: Menge">×2</span>
   <div class="hs"><span class="l" data-kontrast="hell: Kopfzahl">Anleitungen</span></div>
-  <span class="admin-hinweis" data-kontrast="hell: Admin-Hinweis">(Admin)</span>
-  <div class="sammlung-wahl"><button type="button" data-kontrast="hell: Sammlungswahl">Teile</button></div>
+  <span class="admin-hint" data-kontrast="hell: Admin-Hinweis">(Admin)</span>
+  <div class="collection-choice"><button type="button" data-kontrast="hell: Sammlungswahl">Teile</button></div>
   <span class="spare-tag" data-kontrast="hell: Ersatzteil">Ersatzteil</span>
   <div class="fstat hi"><div class="fsub" data-kontrast="hell: Unterzeile der hellblauen Kachel">Spanne 4'005 – 6'295</div></div>
-  <label class="btn bs" id="csv">CSV<input type="file" class="datei-versteckt" id="datei"></label>
+  <label class="btn bs" id="csv">CSV<input type="file" class="file-hidden" id="datei"></label>
   <div class="sc"><div class="scb"><div class="snum" id="snum">10294-1</div><div class="smeta" id="smeta">2021</div></div></div>
   <div class="lcard" data-fokus="hell"><button class="btn bp" type="button">Anmelden</button></div>
   <button class="btn bp" type="button"><span id="wort">Set hinzufügen</span></button>
 </section>
 <section data-theme="werkbank" style="background:var(--bg)">
-  <div class="lcard" data-fokus="dunkel"><button class="btn bp" type="button">Anmelden</button></div>
+  <div class="lcard" data-fokus="dark"><button class="btn bp" type="button">Anmelden</button></div>
 </section>
 <section data-theme="werkbank" style="background:var(--bg)">
   <button class="btn bp" data-kontrast="werkbank: Primärknopf">Speichern</button>
   <button class="period-btn active" data-kontrast="werkbank: Zeitraum">Woche</button>
   <span class="cond-badge cond-new" data-kontrast="werkbank: Etikett Neu">Neu</span>
   <span class="pnl-pos" data-kontrast="werkbank: Gewinn">+8.5%</span>
-  <span class="cond-badge besitzer-badge" data-kontrast="werkbank: Etikett Besitzer">emily</span>
-  <span class="admin-hinweis" data-kontrast="werkbank: Admin-Hinweis">(Admin)</span>
+  <span class="cond-badge owner-badge" data-kontrast="werkbank: Etikett Besitzer">emily</span>
+  <span class="admin-hint" data-kontrast="werkbank: Admin-Hinweis">(Admin)</span>
 </section>
 <section data-theme="noppe" style="background:var(--sur)">
-  <span class="preis" data-kontrast="noppe: Preis" data-farbton="noppe: Preis">411,90 €</span>
+  <span class="price" data-kontrast="noppe: Preis" data-farbton="noppe: Preis">411,90 €</span>
   <div class="fstat"><div class="fval" data-farbton="noppe: Kennzahl">EUR 4'894.77</div></div>
   <nav><button type="button" class="ntab" data-kontrast="noppe: Reiter">Teile</button></nav>
 </section>
 <section data-theme="hochglanz" style="background:var(--sur)">
-  <span class="preis" data-kontrast="hochglanz: Preis" data-farbton="hochglanz: Preis">411,90 €</span>
+  <span class="price" data-kontrast="hochglanz: Preis" data-farbton="hochglanz: Preis">411,90 €</span>
   <div class="fstat hi"><div class="fval" data-farbton="hochglanz: Kennzahl">EUR 5'002.20</div></div>
   <nav><button type="button" class="ntab" data-kontrast="hochglanz: Reiter">Teile</button></nav>
 </section>
-<section data-theme="classic" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
-  <button class="btn bp" data-kontrast="dunkel classic: Primärknopf">Speichern</button>
-  <span style="color:var(--txt)" data-kontrast="dunkel classic: Text">Zeitmaschine</span>
-  <span style="color:var(--mut)" data-kontrast="dunkel classic: Nebentext">2022 · Icons</span>
-  <span class="preis" data-kontrast="dunkel classic: Preis">411,90 €</span>
-  <span class="pnl-pos" data-kontrast="dunkel classic: Gewinn">+8,5 %</span>
-  <span class="pnl-neg" data-kontrast="dunkel classic: Verlust">−4,0 %</span>
-  <span style="color:var(--b600)" data-marke="classic" data-kontrast="dunkel classic: Markenfarbe">10300-1</span>
+<section data-theme="classic" data-dark style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dark classic: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dark classic: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dark classic: Nebentext">2022 · Icons</span>
+  <span class="price" data-kontrast="dark classic: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dark classic: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dark classic: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="classic" data-kontrast="dark classic: Markenfarbe">10300-1</span>
 </div></section>
-<section data-theme="brick" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
-  <button class="btn bp" data-kontrast="dunkel brick: Primärknopf">Speichern</button>
-  <span style="color:var(--txt)" data-kontrast="dunkel brick: Text">Zeitmaschine</span>
-  <span style="color:var(--mut)" data-kontrast="dunkel brick: Nebentext">2022 · Icons</span>
-  <span class="preis" data-kontrast="dunkel brick: Preis">411,90 €</span>
-  <span class="pnl-pos" data-kontrast="dunkel brick: Gewinn">+8,5 %</span>
-  <span class="pnl-neg" data-kontrast="dunkel brick: Verlust">−4,0 %</span>
-  <span style="color:var(--b600)" data-marke="brick" data-kontrast="dunkel brick: Markenfarbe">10300-1</span>
+<section data-theme="brick" data-dark style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dark brick: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dark brick: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dark brick: Nebentext">2022 · Icons</span>
+  <span class="price" data-kontrast="dark brick: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dark brick: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dark brick: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="brick" data-kontrast="dark brick: Markenfarbe">10300-1</span>
 </div></section>
-<section data-theme="farbfaecher" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
-  <button class="btn bp" data-kontrast="dunkel farbfaecher: Primärknopf">Speichern</button>
-  <span style="color:var(--txt)" data-kontrast="dunkel farbfaecher: Text">Zeitmaschine</span>
-  <span style="color:var(--mut)" data-kontrast="dunkel farbfaecher: Nebentext">2022 · Icons</span>
-  <span class="preis" data-kontrast="dunkel farbfaecher: Preis">411,90 €</span>
-  <span class="pnl-pos" data-kontrast="dunkel farbfaecher: Gewinn">+8,5 %</span>
-  <span class="pnl-neg" data-kontrast="dunkel farbfaecher: Verlust">−4,0 %</span>
-  <span style="color:var(--b600)" data-marke="farbfaecher" data-kontrast="dunkel farbfaecher: Markenfarbe">10300-1</span>
+<section data-theme="farbfaecher" data-dark style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dark farbfaecher: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dark farbfaecher: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dark farbfaecher: Nebentext">2022 · Icons</span>
+  <span class="price" data-kontrast="dark farbfaecher: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dark farbfaecher: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dark farbfaecher: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="farbfaecher" data-kontrast="dark farbfaecher: Markenfarbe">10300-1</span>
 </div></section>
-<section data-theme="noppe" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
-  <button class="btn bp" data-kontrast="dunkel noppe: Primärknopf">Speichern</button>
-  <span style="color:var(--txt)" data-kontrast="dunkel noppe: Text">Zeitmaschine</span>
-  <span style="color:var(--mut)" data-kontrast="dunkel noppe: Nebentext">2022 · Icons</span>
-  <span class="preis" data-kontrast="dunkel noppe: Preis">411,90 €</span>
-  <span class="pnl-pos" data-kontrast="dunkel noppe: Gewinn">+8,5 %</span>
-  <span class="pnl-neg" data-kontrast="dunkel noppe: Verlust">−4,0 %</span>
-  <span style="color:var(--b600)" data-marke="noppe" data-kontrast="dunkel noppe: Markenfarbe">10300-1</span>
+<section data-theme="noppe" data-dark style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dark noppe: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dark noppe: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dark noppe: Nebentext">2022 · Icons</span>
+  <span class="price" data-kontrast="dark noppe: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dark noppe: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dark noppe: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="noppe" data-kontrast="dark noppe: Markenfarbe">10300-1</span>
 </div></section>
-<section data-theme="hochglanz" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
-  <button class="btn bp" data-kontrast="dunkel hochglanz: Primärknopf">Speichern</button>
-  <span style="color:var(--txt)" data-kontrast="dunkel hochglanz: Text">Zeitmaschine</span>
-  <span style="color:var(--mut)" data-kontrast="dunkel hochglanz: Nebentext">2022 · Icons</span>
-  <span class="preis" data-kontrast="dunkel hochglanz: Preis">411,90 €</span>
-  <span class="pnl-pos" data-kontrast="dunkel hochglanz: Gewinn">+8,5 %</span>
-  <span class="pnl-neg" data-kontrast="dunkel hochglanz: Verlust">−4,0 %</span>
-  <span style="color:var(--b600)" data-marke="hochglanz" data-kontrast="dunkel hochglanz: Markenfarbe">10300-1</span>
+<section data-theme="hochglanz" data-dark style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dark hochglanz: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dark hochglanz: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dark hochglanz: Nebentext">2022 · Icons</span>
+  <span class="price" data-kontrast="dark hochglanz: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dark hochglanz: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dark hochglanz: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="hochglanz" data-kontrast="dark hochglanz: Markenfarbe">10300-1</span>
 </div></section>
 <pre id="ergebnis"></pre>
 <script>
@@ -156,7 +156,7 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     return { name: el.dataset.farbton, rot: s > 0.35 && (h < 25 || h > 335) };
   });
   const brands = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
-  const darkReason = [...document.querySelectorAll('section[data-dunkel] > div')]
+  const darkReason = [...document.querySelectorAll('section[data-dark] > div')]
     .map(el => ({ name: el.parentElement.dataset.theme, hell: Math.round(lum(rgb(getComputedStyle(el).backgroundColor)) * 1000) / 1000 }));
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
@@ -200,7 +200,7 @@ test('contrast, file fields and tile font', t => {
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.ok(e.kontrast.length >= 16);
-  assert.ok(e.kontrast.filter(k => k.name.startsWith('dunkel ')).length === 35, 'Die dunklen Varianten fehlen');
+  assert.ok(e.kontrast.filter(k => k.name.startsWith('dark ')).length === 35, 'Die dunklen Varianten fehlen');
   assert.deepEqual(
     e.darkReason.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
     [],

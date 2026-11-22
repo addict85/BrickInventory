@@ -6,18 +6,18 @@
  *
  * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt), in
  * public/js/detail-fields.js:
- *   A  ALARM_REST 800 → 300 → red: “web app: saved while typing …” (PUT before the idle time)
- *   B  in alarmGetippt the idle time not reset (no clearTimeout) →
+ *   A  ALERT_REST 800 → 300 → red: “web app: saved while typing …” (PUT before the idle time)
+ *   B  in alertTyped the idle time not reset (no clearTimeout) →
  *      red: same place (three PUTs instead of one)
- *   C  in sendAlarm `const loeschen = zahl == null` → `false` → red: “web app:
+ *   C  in sendAlert `const loeschen = number == null` → `false` → red: “web app:
  *      an empty field …”
- *   D  wechsleAlarmZustand calls speichereAlarm → red: same place (condition change writes)
- *   E  `if (!marke) return;` removed in showOpenAlerts → red: “web app: open
+ *   D  toggleAlertState calls saveAlert → red: same place (condition change writes)
+ *   E  `if (!brand) return;` removed in showOpenAlerts → red: “web app: open
  *      alerts …” (message on the first visit)
  *   F  there the marker from Date.now() instead of d.now → red: same place
  *   I  (12.11.2026) there the amounts again with toFixed(2) and the code in front →
  *      red: same place („CHF 199.50“ instead of „199,50 CHF“)
- *   G  in showAlarmMarker alert_fired/alert_armed swapped → red: “web app: saved while typing …”
+ *   G  in showAlertMarker alert_fired/alert_armed swapped → red: “web app: saved while typing …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -150,7 +150,7 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
       'beim ersten Besuch gemeldet',
     );
     assert.equal(
-      erst.w.localStorage.getItem(`bim_alarm_marke_${ANMELDUNG['/v1/auth/me'].user.id}`),
+      erst.w.localStorage.getItem(`bim_alert_seen_${ANMELDUNG['/v1/auth/me'].user.id}`),
       JETZT,
       'nicht die Marke des Servers',
     );
@@ -160,8 +160,7 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
   const dann = await openUi(
     { '/v1/alerts/pending': offen },
     {
-      vorher: w =>
-        w.localStorage.setItem(`bim_alarm_marke_${ANMELDUNG['/v1/auth/me'].user.id}`, '2026-11-09T08:00:00Z'),
+      vorher: w => w.localStorage.setItem(`bim_alert_seen_${ANMELDUNG['/v1/auth/me'].user.id}`, '2026-11-09T08:00:00Z'),
     },
   );
   try {

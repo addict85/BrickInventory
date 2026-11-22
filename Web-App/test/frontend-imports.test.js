@@ -50,7 +50,7 @@ function imported(src) {
 }
 
 /**
- * `datei:Name` -> reason why the hit there is not a real call
+ * `file:Name` -> reason why the hit there is not a real call
  * (ohneKommentare() only cuts off comments from the start of the line, not
  * `code(); // … bar (…)`).
  */

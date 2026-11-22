@@ -30,10 +30,10 @@ const CASES = [
   ['Kleiner Knopf', '<button class="btn bs btn-sm" data-ziel>✓</button>'],
   ['Ansicht Karten/Tabelle', '<div class="vt"><button class="vb active" data-ziel>▦</button></div>'],
   ['Zeitraum', '<button class="period-btn" data-ziel>Monat</button>'],
-  ['Kontomenü', '<button class="ubadge ubadge-knopf" data-ziel>☰</button>'],
+  ['Kontomenü', '<button class="ubadge ubadge-button" data-ziel>☰</button>'],
   [
     'Sammlungswahl',
-    '<div class="sammlung-wahl" role="tablist"><button type="button" role="tab" data-ziel>Teile</button></div>',
+    '<div class="collection-choice" role="tablist"><button type="button" role="tab" data-ziel>Teile</button></div>',
   ],
   [
     'Löschknopf auf der Kachel',

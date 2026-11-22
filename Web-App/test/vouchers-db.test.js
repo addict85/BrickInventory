@@ -121,7 +121,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     const probe = await fetch(`${basis}/api/v1/vouchers`, { headers: { cookie: keks } });
     if (!r.ok || !keks || probe.status !== 200)
       assert.fail(
-        `Anmeldung als ${id} trägt nicht: ${r.status} ${rumpf}, Keks ${keks ? 'da' : 'fehlt'}, ` +
+        `Anmeldung als ${id} trägt nicht: ${r.status} ${rumpf}, Keks ${keks ? 'da' : 'missing'}, ` +
           `Probe ${probe.status} ${await probe.text()}`,
       );
     return keks;
@@ -630,17 +630,13 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   await t.test('number and PIN each have a copy button', () => {
     // „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
     // einen Kopieren Button einfügen (mit einem Icon)."
-    const treffer = js.match(/data-click="gutscheinKopieren"/g) || [];
+    const treffer = js.match(/data-click="copyVoucher"/g) || [];
     assert.equal(treffer.length, 2, `erwartet 2 Kopieren-Knoepfe, gefunden ${treffer.length}`);
     assert.match(js, /COPY_ICON_SVG/, 'der Knopf traegt kein Symbol');
     // The RAW number is copied: the groups of four are a reading aid,
     // a payment field does not accept them.
-    const kopierBody = js.slice(js.indexOf('function gutscheinKopieren'));
-    assert.match(
-      kopierBody.slice(0, 400),
-      /String\(k\.number\)/,
-      'in gutscheinKopieren wird nicht die rohe Nummer genommen',
-    );
+    const kopierBody = js.slice(js.indexOf('function copyVoucher'));
+    assert.match(kopierBody.slice(0, 400), /String\(k\.number\)/, 'in copyVoucher wird nicht die rohe Nummer genommen');
     assert.ok(
       !/\.replace\(\/\(\.\{4\}\)\//.test(kopierBody.slice(0, 400)),
       'die Kopierfunktion gruppiert die Nummer — ein Bezahlfeld nimmt das nicht an',
@@ -659,10 +655,10 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
 
   await t.test('the file field is a styled button as with the instructions', () => {
     // The native field cut off its text and looked different from every
-    // other file choice; now the same form (label.btn with .datei-versteckt).
+    // other file choice; now the same form (label.btn with .file-hidden).
     assert.match(
       html,
-      /<label class="btn bs zeiger">[\s\S]*?<input type="file" id="v-pdf"[^>]*class="datei-versteckt"/,
+      /<label class="btn bs cursor-pointer">[\s\S]*?<input type="file" id="v-pdf"[^>]*class="file-hidden"/,
       'die Dateiwahl der Gutscheine ist kein Knopf mit verstecktem Feld',
     );
     assert.ok(!/\.voucher-upload input\[type=file\]/.test(css), 'die Regel fuer das native Feld steht noch da');

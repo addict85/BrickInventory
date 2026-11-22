@@ -33,37 +33,37 @@ const MAPPING = [
   {
     web: 'settings.group.profile',
     sinnbild: 'Person',
-    symbol: 'i-profil',
+    symbol: 'i-profile',
   },
   {
     web: 'vouchers.group',
     sinnbild: 'Gutschein',
-    symbol: 'i-gutschein',
+    symbol: 'i-voucher',
   },
   {
     web: 'alerts.group',
     sinnbild: 'Glocke',
-    symbol: 'i-alarm',
+    symbol: 'i-alert',
   },
   {
     web: 'storage.group',
     sinnbild: 'Kiste',
-    symbol: 'i-lagerort',
+    symbol: 'i-location',
   },
   {
     web: 'household.group',
     sinnbild: 'Gruppe',
-    symbol: 'i-haushalt',
+    symbol: 'i-household',
   },
   {
     web: 'settings.data_export',
     sinnbild: 'Datei+Pfeil',
-    symbol: 'i-daten',
+    symbol: 'i-data',
   },
   {
     web: 'nav.settings',
     sinnbild: 'Zahnrad',
-    symbol: 'i-einstellungen',
+    symbol: 'i-settings',
   },
   {
     web: 'nav.monitoring',
@@ -73,7 +73,7 @@ const MAPPING = [
   {
     web: 'settings.logout',
     sinnbild: 'Hinausgehen',
-    symbol: 'i-abmelden',
+    symbol: 'i-logout',
   },
 ];
 

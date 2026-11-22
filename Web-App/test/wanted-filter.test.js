@@ -42,7 +42,7 @@ test('1. the web app sends all four filters to the server', async () => {
       assert.equal(f.value, wert, `${id} kennt ${wert} nicht`);
       f.dispatchEvent(new o.w.Event(f.tagName === 'INPUT' ? 'input' : 'change', { bubbles: true }));
     };
-    setze('scope-merkliste', '7');
+    setze('scope-wanted', '7');
     setze('mkcond', 'U');
     setze('mksort', 'price_asc');
     setze('mks', 'Burg');

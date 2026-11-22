@@ -7,7 +7,7 @@
  * Counter-checks (measured 02.11.2026, each alone):
  *   A  .umenu-pop again min-width:14rem without max-width → red: “user menu”
  *      (flap sticks out on the left, both widths)
- *   B  .knopf-reihe-mitte without flex-wrap and without flex basis of the buttons → red:
+ *   B  .button-row-center without flex-wrap and without flex basis of the buttons → red:
  *      “320 px: confirm” (390 px stays green: both buttons fit there)
  *   C  .fg input/select height:38px instead of max(38px,2.6em) → red: “add set” at 320
  *      and 390 px (field too low for its font)
@@ -45,12 +45,12 @@ const MEASURE = wurzelSel => `(() => {
     }
   }
   // Was ein rollender Bereich gerade unter seinen Rand geschoben hat, liegt nicht über anderem.
-  const imBild = (e) => { const b = e.getBoundingClientRect();
+  const inImage = (e) => { const b = e.getBoundingClientRect();
     for (let x = e.parentElement; x && x !== document.body; x = x.parentElement) {
       if (!/auto|scroll/.test(getComputedStyle(x).overflowY)) continue;
       const k = x.getBoundingClientRect(); if (b.top < k.top - 1 || b.bottom > k.bottom + 1) return false; }
     return true; };
-  const ganz = bedien.filter(imBild);
+  const ganz = bedien.filter(inImage);
   // Kopf- und Fussleiste kleben; Inhalt, der unter ihnen durchrollt, überlappt nicht.
   const klebt = (e) => { for (let x = e; x; x = x.parentElement) if (getComputedStyle(x).position === 'sticky') return x; return null; };
   for (let i = 0; i < ganz.length; i++) for (let j = i + 1; j < ganz.length; j++) {
@@ -116,7 +116,7 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     });
 
     await t.test(`${breite} px: capture set`, async () => {
-      await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
+      await b.auswerten(`document.querySelector('[data-click="openCapture"][data-arg="set"]').click(); true`);
       await ruhig();
       assert.deepEqual(await b.auswerten(MEASURE('#add-set-modal .modal')), []);
       await zu();
@@ -129,7 +129,7 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
         'Set-Detail',
       );
       await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
-      await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
+      await bis(`document.querySelector('#acq-modal .acq-price')`, 'Kaufpreis-Dialog');
       assert.deepEqual(await b.auswerten(MEASURE('#acq-modal .modal')), []);
       await zu();
     });
@@ -140,18 +140,18 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
     await bis(`document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
     await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
-    await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
+    await bis(`document.querySelector('#acq-modal .acq-price')`, 'Kaufpreis-Dialog');
     const id = await b.auswerten(
-      `(() => { const f = document.querySelector('#acq-modal .acq-preis'); f.focus(); f.select(); return f.id.replace('acq-preis-', ''); })()`,
+      `(() => { const f = document.querySelector('#acq-modal .acq-price'); f.focus(); f.select(); return f.id.replace('acq-price-', ''); })()`,
     );
     await b.tab('Input.insertText', { text: '149,95' });
-    await b.auswerten(`document.querySelector('#acq-modal .acq-preis').blur(); true`);
+    await b.auswerten(`document.querySelector('#acq-modal .acq-price').blur(); true`);
     await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marke „Gespeichert“');
     const zeile = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
     assert.equal(zeile.set_number, sn);
     assert.equal(Number(zeile.purchase_price), 149.95);
     // Displayed in the form of the language: de-DE “149,95”, de-CH “149.95”.
-    assert.match(await b.auswerten(`document.getElementById('acq-preis-${id}').value`), /^149[.,]95$/);
+    assert.match(await b.auswerten(`document.getElementById('acq-price-${id}').value`), /^149[.,]95$/);
   });
 
   // The test server has neither APP_BASE_URL nor SMTP: both paths are missing on the mask.

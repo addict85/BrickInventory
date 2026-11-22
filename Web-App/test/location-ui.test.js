@@ -6,13 +6,13 @@
  * the management in the settings by forms-feedback-ui.
  *
  * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
- *   A  the dispatchEvent(change) removed in lagerortGewaehlt → red: “web app:
+ *   A  the dispatchEvent(change) removed in locationSelected → red: “web app:
  *      in the set detail …” and “web app: the part …” (no PUT)
  *   B  in set-detail.js loadLocationSelection without the owners → red: same place (owner=)
  *   C  in set-teile.js `if (type === 'part')` → `if (true)` → red: “web app: the
  *      part …” (field on the figure)
  *   D  maxlength="60" → "80" in locationBlock → red: “the length limit …”
- *   E  in kontofilter.js addLagerParam without p.set → red: “web app: the filter …”
+ *   E  in kontofilter.js addLocationParam without p.set → red: “web app: the filter …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,7 +76,7 @@ test("web app: in the set detail choose from the owner's stock or type a new one
     assert.ok(await warte(() => schreibt(o, `/v1/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
     assert.deepEqual(JSON.parse(schreibt(o, `/v1/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
     const auswahl = o.d.getElementById('m-storage-sel');
-    auswahl.selectedIndex = [...auswahl.options].findIndex(x => x.dataset.neu === '1');
+    auswahl.selectedIndex = [...auswahl.options].findIndex(x => x.dataset.new === '1');
     assert.ok(auswahl.selectedIndex > 0, 'kein Eintrag „neuer Ort“');
     auswahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.equal(o.d.getElementById('m-storage').style.display, '', '„neuer Ort“ öffnet kein Textfeld');

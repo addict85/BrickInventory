@@ -5,10 +5,10 @@
  * a 401 visibly ends the session, a network error shows the banner.
  *
  * Counter-checks (measured on 05.11.2026):
- *   A  importAlarmeCsv back with `fetch('/api/v1/alerts/import/csv', …)` →
+ *   A  importAlertsCsv back with `fetch('/api/v1/alerts/import/csv', …)` →
  *      red: “upload carries the language” (no Accept-Language) and
  *      “401 on upload” (the login mask stayed hidden)
- *   B  in apiRaw the line `if (res.status === 401) melde('sitzungBeendet', path)`
+ *   B  in apiRaw the line `if (res.status === 401) melde('sessionEnded', path)`
  *      removed → red: “401 on upload”
  *   C  in uploadCsv (bausteine.js) `d.skipped_hint` taken out of the message
  *      → red: “skipped lines”

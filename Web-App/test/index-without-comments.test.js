@@ -15,7 +15,7 @@ test('no comments in the delivered page', async () => {
   const html = await startPageHtml();
   assert.equal((html.match(/<!--/g) || []).length, 0);
   // What the page needs is still there.
-  assert.match(html, /<main id="inhalt"/);
+  assert.match(html, /<main id="content"/);
   assert.match(html, /<script src="\/js\/app\.bundle\.js/);
   assert.match(html, /<html[^>]*data-theme="/);
 });

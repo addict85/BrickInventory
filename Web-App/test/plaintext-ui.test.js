@@ -66,7 +66,7 @@ test('no fixed text in textContent, placeholder, title, toast, confirm or alert'
     'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' +
       fest.join('\n  ') +
       '\nIn einer englischen Oberfläche steht dann ein deutsches Wort da. Bei einer ' +
-      'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft knopfBesetzt() ' +
+      'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft buttonBusy() ' +
       '(dom.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.',
   );
 });

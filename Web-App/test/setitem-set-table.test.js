@@ -6,7 +6,7 @@
  * set-teile.js → red “the web app shows the sets as a table …”:
  *   A  the image cell `${setBild(s)}` emptied
  *   B  rowsStyle 'flex-direction:column…' removed (table next to the label)
- *   C  `orig:` removed from bildTag (no fallback to the CDN image)
+ *   C  `orig:` removed from imageTag (no fallback to the CDN image)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,7 +53,7 @@ test('the web app shows the sets as a table with image, number and name, below t
     assert.ok(bild, 'das erste Set hat kein Bild');
     assert.match(bild.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'das lokale Bild fehlt');
     assert.match(bild.dataset.orig ?? '', /10305-1\.jpg/, 'ohne data-orig kein Rückfall auf das CDN-Bild');
-    assert.ok(zeilen[1].cells[0].querySelector('.bild-ph'), 'ein Set ohne Bild zeigt keinen Platzhalter');
+    assert.ok(zeilen[1].cells[0].querySelector('.image-ph'), 'ein Set ohne Bild zeigt keinen Platzhalter');
     const zeile = tabelle.closest('.dr');
     assert.equal(zeile.style.flexDirection, 'column', 'die Tabelle steht neben der Beschriftung');
   } finally {

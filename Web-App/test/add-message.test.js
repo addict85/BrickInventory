@@ -18,7 +18,7 @@ const { openUi, takt, warte } = require('./helpers/ui');
 async function record(antwort, sprache = 'de') {
   const o = await openUi({ '/v1/sets/add-stream': antwort }, { sprache });
   const { d, w } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(20);
   const feld = d.getElementById('add-num');
   feld.value = antwort.set_number;

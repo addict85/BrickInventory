@@ -1,10 +1,10 @@
 // Both sides of the monitoring together: the list of services and the log window.
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { asHtml, escHtmlAttr, esc, html, rawHtml } from './escaping.js';
 import { api, apiData } from './api.js';
-import { ico, G, setzeHtml, ifVisible } from './dom.js';
-import { fmtDatum } from './format.js';
-import { meldeAmFeld, toast } from './messages.js';
+import { ico, G, setHtml, ifVisible } from './dom.js';
+import { fmtDate } from './format.js';
+import { reportAtField, toast } from './messages.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 /** @typedef {import('../../frontend-types/contract').AuftragPause} AuftragPause */
 /** @typedef {import('../../frontend-types/contract').Auftrag} Auftrag */
@@ -13,20 +13,20 @@ import { LANG, locale, t, tRaw } from '../i18n.js';
 /** Timer of the job list while the tab is open. @type {ReturnType<typeof setTimeout> | null} */
 let _monitorTimer = null;
 /** Counts the runs: a response after stopping schedules no new round. */
-let _monitorLauf = 0;
+let _monitorRun = 0;
 
 // What logviewer.js writes at runtime, e.g. the changing label of the auto button.
 const WINDOW_TEXTS = ['common.loading', 'common.network_error', 'log.none_found', 'log.entries', 'toast.error'].concat(
-  ['log.auto', 'log.stop', 'log.stufe.info', 'log.stufe.warn', 'log.stufe.error', 'log.mehr_zeilen'],
-  ['log.mehr_zeilen_one'],
+  ['log.auto', 'log.stop', 'log.level.info', 'log.level.warn', 'log.level.error', 'log.more_rows'],
+  ['log.more_rows_one'],
 );
 
-/** @param {'info' | 'warn' | 'error'} stufe @param {string} zeichen @param {boolean} an */
-function levelsButton(stufe, zeichen, an) {
+/** @param {'info' | 'warn' | 'error'} level @param {string} char @param {boolean} on */
+function levelsButton(level, char, on) {
   return (
-    `<button type="button" class="lvbtn ${stufe}-btn${an ? ' active' : ''}" id="btn-${stufe}" data-click="toggleLevel"` +
-    ` data-arg="${stufe}" aria-pressed="${an}"><span aria-hidden="true">${zeichen}</span> ` +
-    `${esc(tRaw(`log.stufe.${stufe}`))}</button>`
+    `<button type="button" class="lvbtn ${level}-btn${on ? ' active' : ''}" id="btn-${level}" data-click="toggleLevel"` +
+    ` data-arg="${level}" aria-pressed="${on}"><span aria-hidden="true">${char}</span> ` +
+    `${esc(tRaw(`log.level.${level}`))}</button>`
   );
 }
 
@@ -48,15 +48,15 @@ function openLogViewer() {
     .join('');
 
   // The window follows the app's theme and light/dark; werkbank is dark without a variant.
-  const wurzel = document.documentElement;
-  const design = wurzel.getAttribute('data-theme') || '';
-  const dunkel = wurzel.hasAttribute('data-dunkel') || design === 'werkbank';
+  const root = document.documentElement;
+  const design = root.getAttribute('data-theme') || '';
+  const dark = root.hasAttribute('data-dark') || design === 'werkbank';
   const markup =
     '<!DOCTYPE html><html lang="' +
     escHtmlAttr(LANG) +
     '"' +
     (design ? ' data-theme="' + escHtmlAttr(design) + '"' : '') +
-    (dunkel ? ' data-dunkel=""' : '') +
+    (dark ? ' data-dark=""' : '') +
     '><head>' +
     '<meta charset="UTF-8"><title>' +
     esc(tRaw('log.title')) +
@@ -80,7 +80,7 @@ function openLogViewer() {
     '</h1>' +
     '<div class="toolbar">' +
     '<label class="vh" for="period">' +
-    esc(tRaw('log.zeitraum')) +
+    esc(tRaw('log.period')) +
     '</label>' +
     '<select id="period" data-change="loadLogs">' +
     spans +
@@ -120,43 +120,43 @@ function openLogViewer() {
 /** One spelled-out key per server code: that way test/i18n-calls.test.js checks that it exists. */
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
 const SUB_TEXTS = {
-  teil_gemappt: w => tRaw('monitor.sub.teil_gemappt', w),
+  teil_gemappt: w => tRaw('monitor.sub.part_mapped', w),
   // At 0 the plural form said "all 0 …".
-  all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_zuzuordnen' : 'monitor.sub.all_mapped', w),
-  ausstehend: w => tRaw('monitor.sub.ausstehend', w),
+  all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_to_assign' : 'monitor.sub.all_mapped', w),
+  ausstehend: w => tRaw('monitor.sub.pending', w),
   all_done: w => tRaw('monitor.sub.all_done', w),
-  keine_ausstehenden: w => tRaw('monitor.sub.keine_ausstehenden', w),
+  keine_ausstehenden: w => tRaw('monitor.sub.none_pending', w),
   retry_ready: w => tRaw('monitor.sub.retry_ready', w),
-  warten_morgen: w => tRaw('monitor.sub.warten_morgen', w),
-  bilder_laden: w => tRaw('monitor.sub.bilder_laden', w),
-  bilder_offen: w => tRaw('monitor.sub.bilder_offen', w),
-  imgs_cached: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.keine_bilder' : 'monitor.sub.imgs_cached', w),
-  katalog_warteschlange: w => tRaw('monitor.sub.katalog_warteschlange', w),
+  warten_morgen: w => tRaw('monitor.sub.wait_morgen', w),
+  bilder_laden: w => tRaw('monitor.sub.images_load', w),
+  bilder_offen: w => tRaw('monitor.sub.images_open', w),
+  imgs_cached: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.none_images' : 'monitor.sub.imgs_cached', w),
+  katalog_warteschlange: w => tRaw('monitor.sub.catalog_warteschlange', w),
   job_nie: w => tRaw('monitor.sub.job_nie', w),
-  kein_durchgang: w => tRaw('monitor.sub.kein_durchgang', w),
-  neu_suche: w => tRaw('monitor.sub.neu_suche', w),
-  neu_geladen: w => tRaw('monitor.sub.neu_geladen', w),
-  pdf_laufend: w => tRaw('monitor.sub.pdf_laufend', w),
-  pdf_bereit: w => tRaw('monitor.sub.pdf_bereit', w),
+  kein_durchgang: w => tRaw('monitor.sub.no_run', w),
+  neu_suche: w => tRaw('monitor.sub.new_search', w),
+  neu_geladen: w => tRaw('monitor.sub.new_loaded', w),
+  pdf_laufend: w => tRaw('monitor.sub.pdf_running', w),
+  pdf_bereit: w => tRaw('monitor.sub.pdf_ready', w),
   no_active: w => tRaw('monitor.sub.no_active', w),
-  bestand: w => tRaw('monitor.sub.bestand', w),
+  bestand: w => tRaw('monitor.sub.stock', w),
 };
 
 /**
  * Subtitle from the server's codes (src/management/service.ts); the sentences are only in the language files.
  * An unknown code (newer server) falls back to the server's text.
- * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile @param {string} sub
+ * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} parts @param {string} sub
  */
-function subFromCodes(teile, sub) {
-  const text = (/** @type {string} */ code, /** @type {Record<string, string | number> | undefined} */ werte) => {
+function subFromCodes(parts, sub) {
+  const text = (/** @type {string} */ code, /** @type {Record<string, string | number> | undefined} */ values) => {
     const f = Object.hasOwn(SUB_TEXTS, code) ? SUB_TEXTS[code] : null;
-    return f ? f(werte) : null;
+    return f ? f(values) : null;
   };
-  const stuecke = teile.map(t => {
+  const pieces = parts.map(t => {
     const s = text(t.code, t.werte);
     return s === null ? null : (t.vor ? (text(t.vor, undefined) ?? '') + ' ' : '') + s;
   });
-  return stuecke.includes(null) ? translateJobSub(sub) : stuecke.join(' · ');
+  return pieces.includes(null) ? translateJobSub(sub) : pieces.join(' · ');
 }
 
 /** The server's job subtitle in the user's language: the jobs do not know it. @param {string} sub */
@@ -182,11 +182,11 @@ function translateJobSub(sub) {
 /**
  * @param {string} name
  * @param {{ time?: string, minutes?: number }} payload
- * @param {Element} [feld]
+ * @param {Element} [field]
  */
-export async function saveJobSchedule(name, payload, feld) {
+export async function saveJobSchedule(name, payload, field) {
   const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload });
-  if (d?.success) meldeAmFeld(feld);
+  if (d?.success) reportAtField(field);
   else toast(d?.error || t('settings.error'), 'error');
 }
 
@@ -196,40 +196,40 @@ export async function saveJobSchedule(name, payload, feld) {
 /** @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
-  if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;
+  if (!sc) return html`<span class="mon-quiet">${tRaw('monitor.sched.none')}</span>`;
   if (sc.type === 'daily') {
-    return html`<label class="mon-plan">${tRaw('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${sc.time}" aria-label="${tRaw('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${k}"></label>`;
+    return html`<label class="mon-plan">${tRaw('monitor.sched.daily')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-time" value="${sc.time}" aria-label="${tRaw('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${k}"></label>`;
   }
   if (sc.type === 'interval') {
-    return html`<label class="mon-plan">${tRaw('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${tRaw('monitor.sched.interval_hint')}" value="${sc.minutes}" data-change="saveJobMinutes" data-arg="${k}"> ${tRaw('monitor.sched.min')}</label>`;
+    return html`<label class="mon-plan">${tRaw('monitor.sched.all')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minutes" aria-label="${tRaw('monitor.sched.interval_hint')}" value="${sc.minutes}" data-change="saveJobMinutes" data-arg="${k}"> ${tRaw('monitor.sched.min')}</label>`;
   }
   return '';
 };
 /** @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedText = (schedules, k) => {
   const sc = schedules?.[k];
-  if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;
-  const wann =
+  if (!sc) return html`<span class="mon-quiet">${tRaw('monitor.sched.none')}</span>`;
+  const when =
     sc.type === 'daily'
-      ? `${tRaw('monitor.sched.taeglich')} ${sc.time}`
+      ? `${tRaw('monitor.sched.daily')} ${sc.time}`
       : sc.type === 'interval'
-        ? `${tRaw('monitor.sched.alle')} ${sc.minutes} ${tRaw('monitor.sched.min')}`
+        ? `${tRaw('monitor.sched.all')} ${sc.minutes} ${tRaw('monitor.sched.min')}`
         : '';
-  return html`<span class="mon-plan">${wann}</span> <a class="zu-sicht" href="#/einstellungen/hintergrund">${tRaw('monitor.sched.aendern')}</a>`;
+  return html`<span class="mon-plan">${when}</span> <a class="close-view" href="#/einstellungen/hintergrund">${tRaw('monitor.sched.change')}</a>`;
 };
 
 /** The schedules as fields in settings › background jobs. */
 export async function loadSchedules() {
-  const el = G('einst-zeitplaene');
+  const el = G('settings-schedules');
   if (!el) return;
   const d = await apiData('GET', '/v1/admin/jobs');
   if (!d?.success || !d.jobs) return;
-  const zeilen = Object.entries(d.jobs).filter(([k]) => d.schedules?.[k]);
-  setzeHtml(
+  const rows = Object.entries(d.jobs).filter(([k]) => d.schedules?.[k]);
+  setHtml(
     el,
-    html`<div class="tw"><table class="dt mon-tabelle" aria-label="${tRaw('settings.zeitplaene')}">
-      <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zeitplan')}</th></tr></thead>
-      <tbody>${zeilen.map(([k, j]) => html`<tr><td>${serviceName(k, j)}</td><td>${schedInput(d.schedules, k)}</td></tr>`)}</tbody>
+    html`<div class="tw"><table class="dt mon-table" aria-label="${tRaw('settings.schedules')}">
+      <thead><tr><th>${tRaw('monitor.col.service')}</th><th>${tRaw('monitor.col.schedule')}</th></tr></thead>
+      <tbody>${rows.map(([k, j]) => html`<tr><td>${serviceName(k, j)}</td><td>${schedInput(d.schedules, k)}</td></tr>`)}</tbody>
     </table></div>`,
   );
 }
@@ -237,33 +237,33 @@ export async function loadSchedules() {
 const JOB_SYMBOL = /** @type {Record<string, string>} */ ({
   csvImport: 'import',
   blIds: 'link',
-  instrQueue: 'datei',
-  brickset: 'aktualisieren',
-  priceJob: 'finanzen',
-  imgDl: 'bild',
-  pdfJobs: 'drucker',
+  instrQueue: 'file',
+  brickset: 'refresh',
+  priceJob: 'finances',
+  imgDl: 'image',
+  pdfJobs: 'printer',
 });
 const jobIconSvg = (/** @type {string} */ k) =>
-  html`<svg class="ico mon-sinnbild" aria-hidden="true"><use href="#i-${JOB_SYMBOL[k] || 'uhr'}"/></svg>`;
+  html`<svg class="ico mon-icon" aria-hidden="true"><use href="#i-${JOB_SYMBOL[k] || 'clock'}"/></svg>`;
 const jobState = (/** @type {string} */ s) =>
   ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'), error: tRaw('monitor.state.error') })[
     s
   ] || tRaw('monitor.state.idle');
 const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
-  if (s === 'running') return ico('uhr');
+  if (s === 'running') return ico('clock');
   if (s === 'done') return ico('ok');
-  if (s === 'error') return ico('fehler');
+  if (s === 'error') return ico('error');
   // idle: show warning if there's pending work (total > progress or sub mentions pending)
-  if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
+  if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warning');
   return ico('pause');
 };
 /** Only with running work: a standing bar read like a hanging run. */
-const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
-  if (!gesamt) return '';
-  const pct = Math.min(100, Math.round((v / gesamt) * 100));
-  return html`<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
+const bar = (/** @type {number} */ v, /** @type {number} */ total) => {
+  if (!total) return '';
+  const pct = Math.min(100, Math.round((v / total) * 100));
+  return html`<div class="mon-bar"><div data-width="${pct}"></div></div>`;
 };
-const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
+const actions = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   [
     k === 'priceJob'
       ? html`<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${tRaw('monitor.run_now')}</button>`
@@ -290,20 +290,20 @@ const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 /** Fixed keys instead of composed ones (test/i18n-calls.test.js); text as in the log (src/http/proxyHint.ts). */
 const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
-  docker_netz: 'monitor.proxy.docker_netz',
-  eine_adresse: 'monitor.proxy.eine_adresse',
+  docker_netz: 'monitor.proxy.docker_network',
+  eine_adresse: 'monitor.proxy.one_address',
 };
 
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
   stopMonitor();
-  const lauf = ++_monitorLauf;
+  const run = ++_monitorRun;
   // Calm every 15 s, every 5 s while something is running; a failed fetch still schedules the next round.
-  const runde = async () => {
-    const aktiv = await render();
-    if (lauf !== _monitorLauf) return;
-    _monitorTimer = setTimeout(() => ifVisible(() => lauf === _monitorLauf && runde()), aktiv ? 5000 : 15000);
+  const round = async () => {
+    const active = await render();
+    if (run !== _monitorRun) return;
+    _monitorTimer = setTimeout(() => ifVisible(() => run === _monitorRun && round()), active ? 5000 : 15000);
   };
   const render = async () => {
     const d = await apiData('GET', '/v1/admin/jobs');
@@ -316,52 +316,52 @@ export async function loadMonitor() {
       );
     const panel = G('brickset-queue-panel');
     const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
-    const zahl = (/** @type {number | null | undefined} */ n) => (n || 0).toLocaleString(locale());
-    const setze = (/** @type {string} */ id, /** @type {string} */ v) => {
+    const number = (/** @type {number | null | undefined} */ n) => (n || 0).toLocaleString(locale());
+    const set = (/** @type {string} */ id, /** @type {string} */ v) => {
       const e = G(id);
       if (e) e.textContent = v;
     };
-    setze('mon-db-sync', dbStats.csvCache.lastSync ? fmtDatum(dbStats.csvCache.lastSync) : '–');
-    setze('mon-db-teile', zahl(dbStats.csvCache.parts));
-    setze('mon-db-inventar', zahl(dbStats.csvCache.inventoryParts));
-    setze('mon-db-bl', `${zahl(dbStats.blMapping.mapped)} / ${zahl(dbStats.blMapping.total)}`);
+    set('mon-db-sync', dbStats.csvCache.lastSync ? fmtDate(dbStats.csvCache.lastSync) : '–');
+    set('mon-db-parts', number(dbStats.csvCache.parts));
+    set('mon-db-inventory', number(dbStats.csvCache.inventoryParts));
+    set('mon-db-bl', `${number(dbStats.blMapping.mapped)} / ${number(dbStats.blMapping.total)}`);
 
-    setzeHtml(
+    setHtml(
       el,
       html`
-      <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
-      ${d.degradiert?.length ? html`<p class="mon-hinweis" role="status">${tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') })}</p>` : ''}
-      ${d.proxy_hinweis ? html`<p class="mon-warnung" role="status" id="mon-proxy-hinweis">${ico('warnung')} ${tRaw(PROXY_HINT[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
-      <div class="tw"><table class="dt mon-tabelle mon-dienste" aria-label="${tRaw('tabelle.dienste')}">
-        <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
+      <p class="mon-hint">${tRaw('monitor.services_hint')}</p>
+      ${d.degradiert?.length ? html`<p class="mon-hint" role="status">${tRaw('monitor.degraded', { teile: d.degradiert.join(', ') })}</p>` : ''}
+      ${d.proxy_hinweis ? html`<p class="mon-warning" role="status" id="mon-proxy-hint">${ico('warning')} ${tRaw(PROXY_HINT[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
+      <div class="tw"><table class="dt mon-table mon-services" aria-label="${tRaw('table.services')}">
+        <thead><tr><th>${tRaw('monitor.col.service')}</th><th>${tRaw('monitor.col.state')}</th><th>${tRaw('monitor.col.schedule')}</th><th>${tRaw('monitor.col.last')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(
           ([k, j]) => html`<tr>
           <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${serviceName(k, j)}</span></td>
-          <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subFromCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+          <td><span class="mon-state mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-quiet">${j.sub_teile?.length ? subFromCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
-          <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'wann') : ''}</td>
-          <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
+          <td>${j.lastRun ? fmtDate(/** @type {string} */ (j.lastRun), 'when') : ''}</td>
+          <td><div class="mon-buttons">${actions(k, j).length ? actions(k, j) : html`<span class="mon-quiet">–</span>`}</div></td>
         </tr>`,
         )}</tbody>
       </table></div>
-      ${jobs.bricksetRetry ? html`<div id="brickset-queue-panel" class="mon-panel" data-stil="display:none"></div>` : ''}`,
+      ${jobs.bricksetRetry ? html`<div id="brickset-queue-panel" class="mon-panel" data-style="display:none"></div>` : ''}`,
     );
 
     if (panelHTML !== null) {
-      const neu = G('brickset-queue-panel');
-      if (neu) {
-        setzeHtml(neu, rawHtml(panelHTML));
-        neu.style.display = 'block';
-        const knopf = el.querySelector('[data-click="toggleBricksetQueue"] span');
-        if (knopf) knopf.textContent = tRaw('monitor.collapse');
+      const newValue = G('brickset-queue-panel');
+      if (newValue) {
+        setHtml(newValue, rawHtml(panelHTML));
+        newValue.style.display = 'block';
+        const button = el.querySelector('[data-click="toggleBricksetQueue"] span');
+        if (button) button.textContent = tRaw('monitor.collapse');
       }
     }
 
     await showJobs();
     return Object.values(jobs).some(j => j.status === 'running');
   };
-  await runde();
+  await round();
 }
 
 /**
@@ -369,35 +369,35 @@ export async function loadMonitor() {
  * @type {Record<string, () => string>}
  */
 const KIND_NAMES = {
-  nacharbeit: () => tRaw('monitor.art.nacharbeit'),
-  bilder: () => tRaw('monitor.art.bilder'),
-  pdf: () => tRaw('monitor.art.pdf'),
-  csv_import: () => tRaw('monitor.art.csv_import'),
-  wechselkurse: () => tRaw('monitor.art.wechselkurse'),
-  anleitung: () => tRaw('monitor.art.anleitung'),
-  brickset: () => tRaw('monitor.art.brickset'),
-  bildbedarf: () => tRaw('monitor.art.bildbedarf'),
-  bilder_neu_laden: () => tRaw('monitor.art.bilder_neu_laden'),
-  nachlauf: () => tRaw('monitor.art.nachlauf'),
-  csv_sync: () => tRaw('monitor.art.csv_sync'),
-  preise: () => tRaw('monitor.art.preise'),
-  preise_nachladen: () => tRaw('monitor.art.preise_nachladen'),
-  bild_nachlauf: () => tRaw('monitor.art.bild_nachlauf'),
-  aufraeumen: () => tRaw('monitor.art.aufraeumen'),
-  aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
-  konto_dateien: () => tRaw('monitor.art.konto_dateien'),
-  widerrufsliste: () => tRaw('monitor.art.widerrufsliste'),
-  katalog_nachzug: () => tRaw('monitor.art.katalog_nachzug'),
+  nacharbeit: () => tRaw('monitor.kind.rework'),
+  bilder: () => tRaw('monitor.kind.images'),
+  pdf: () => tRaw('monitor.kind.pdf'),
+  csv_import: () => tRaw('monitor.kind.csv_import'),
+  wechselkurse: () => tRaw('monitor.kind.wechselkurse'),
+  anleitung: () => tRaw('monitor.kind.instructions'),
+  brickset: () => tRaw('monitor.kind.brickset'),
+  bildbedarf: () => tRaw('monitor.kind.bildbedarf'),
+  bilder_neu_laden: () => tRaw('monitor.kind.images_new_load'),
+  nachlauf: () => tRaw('monitor.kind.follow_up'),
+  csv_sync: () => tRaw('monitor.kind.csv_sync'),
+  preise: () => tRaw('monitor.kind.prices'),
+  preise_nachladen: () => tRaw('monitor.kind.prices_reload'),
+  bild_nachlauf: () => tRaw('monitor.kind.image_follow_up'),
+  aufraeumen: () => tRaw('monitor.kind.cleanup'),
+  aufraeumen_taeglich: () => tRaw('monitor.kind.cleanup_daily'),
+  konto_dateien: () => tRaw('monitor.kind.account_files'),
+  widerrufsliste: () => tRaw('monitor.kind.revocation_list'),
+  katalog_nachzug: () => tRaw('monitor.kind.catalog_catch_up'),
 };
 /** @type {Record<string, () => string>} */
-const STATUSNAMEN = {
-  offen: () => tRaw('monitor.auftraege.offen'),
-  laeuft: () => tRaw('monitor.auftraege.laeuft'),
-  fehler: () => tRaw('monitor.auftraege.fehler'),
-  abgebrochen: () => tRaw('monitor.auftraege.abgebrochen'),
+const STATUS_NAMES = {
+  offen: () => tRaw('monitor.jobs.open'),
+  laeuft: () => tRaw('monitor.jobs.running'),
+  fehler: () => tRaw('monitor.jobs.error'),
+  abgebrochen: () => tRaw('monitor.jobs.cancelled'),
 };
 /** The name of a job kind in the UI language, already escaped; unknown ones stay as they are. */
-const artName = (/** @type {string} */ art) => (Object.hasOwn(KIND_NAMES, art) ? KIND_NAMES[art]() : art);
+const kindName = (/** @type {string} */ kind) => (Object.hasOwn(KIND_NAMES, kind) ? KIND_NAMES[kind]() : kind);
 
 /** A server error message in one sentence without networking knowledge; the original stays expandable for debugging.
  * @param {unknown} text */
@@ -413,66 +413,64 @@ export function errorShort(text) {
 }
 
 /** @param {unknown} text */
-function fehlerKasten(text) {
-  return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${errorShort(text)}</summary><code>${text}</code></details>`;
+function errorBox(text) {
+  return html`<details class="error-box"><summary>${ico('warning')} ${errorShort(text)}</summary><code>${text}</code></details>`;
 }
 
 // Seven identical "start now" are indistinguishable for screen readers: the name names the kind too.
-const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
-  html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
-const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
+const button = (/** @type {string} */ action, /** @type {string} */ arg, /** @type {string} */ text, purpose = '') =>
+  html`<button class="btn bs btn-sm" type="button" data-click="${action}"${genuine()} data-arg="${arg}"${purpose ? html` aria-label="${text}: ${purpose}"` : ''}>${text}</button>`;
+const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUS_NAMES, s) ? STATUS_NAMES[s]() : s);
 /** A row of the individual jobs. If a kind is open several times, the role at the name says which entry
- * is a retry and which is the regular run. @param {Auftrag} a @param {Set<string>} mehrfach */
-const jobRow = (a, mehrfach) => {
-  const offen = a.status === 'offen' || a.status === 'laeuft';
-  const rolle =
-    !offen || !mehrfach.has(a.type)
+ * is a retry and which is the regular run. @param {Auftrag} a @param {Set<string>} multiple */
+const jobRow = (a, multiple) => {
+  const open = a.status === 'offen' || a.status === 'laeuft';
+  const role =
+    !open || !multiple.has(a.type)
       ? ''
       : a.geplant
-        ? tRaw('monitor.auftraege.regulaer')
+        ? tRaw('monitor.jobs.regular')
         : a.attempts > 1 || a.error_message
-          ? tRaw('monitor.auftraege.wiederholung')
+          ? tRaw('monitor.jobs.retry')
           : '';
-  const zeit = fmtDatum(a.status === 'laeuft' ? a.started_at : a.due_at, 'wann');
+  const time = fmtDate(a.status === 'laeuft' ? a.started_at : a.due_at, 'when');
   // Postponed is not failed: the server says so (wartet), not the text of the reason.
-  const wartet = a.status === 'offen' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
-  const wann = wartet
-    ? t('monitor.auftraege.wartet_bis', { zeit })
+  const waiting = a.status === 'offen' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
+  const when = waiting
+    ? t('monitor.jobs.waiting_bis', { time })
     : a.status === 'offen'
-      ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit })
+      ? t(a.geplant ? 'monitor.jobs.scheduled' : 'monitor.jobs.due', { time })
       : a.status === 'laeuft'
-        ? zeit
+        ? time
         : '';
-  const stand = a.progress?.gesamt
+  const status = a.progress?.gesamt
     ? `${Math.round(a.progress.erledigt ?? 0)} / ${a.progress.gesamt}`
     : a.progress?.text || '';
-  const hinweis = [
-    wartet && a.error_message ? html`<span class="mon-leise">${a.error_message}</span>` : '',
-    !wartet && a.error_message && (a.status === 'offen' || a.status === 'fehler') ? fehlerKasten(a.error_message) : '',
-    a.attempts > 1 && !wartet
-      ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.attempts, max: a.max_attempts })}</span>`
+  const hint = [
+    waiting && a.error_message ? html`<span class="mon-quiet">${a.error_message}</span>` : '',
+    !waiting && a.error_message && (a.status === 'offen' || a.status === 'fehler') ? errorBox(a.error_message) : '',
+    a.attempts > 1 && !waiting
+      ? html`<span class="mon-quiet">${tRaw('monitor.jobs.attempt', { n: a.attempts, max: a.max_attempts })}</span>`
       : '',
-    stand ? html`<span class="mon-leise">${stand}</span>` : '',
+    status ? html`<span class="mon-quiet">${status}</span>` : '',
   ]
     .filter(Boolean)
     .join(' ');
-  const aktion =
-    a.status === 'offen' || a.status === 'laeuft'
-      ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
-      : '';
+  const action =
+    a.status === 'offen' || a.status === 'laeuft' ? button('cancelJob', a.id, tRaw('monitor.jobs.cancel')) : '';
   return html`<tr>
-    <td><strong>${artName(a.type)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}${rolle ? html` <span class="mon-rolle">${rolle}</span>` : ''}</td>
-    <td><span class="mon-zustand mon-${wartet ? 'wartet' : a.status}">${wartet ? tRaw('monitor.auftraege.wartet') : statusName(a.status)}</span></td>
-    <td>${rawHtml(wann)}</td>
-    <td>${rawHtml(hinweis)}</td>
-    <td><div class="mon-knoepfe">${aktion}</div></td>
+    <td><strong>${kindName(a.type)}</strong>${a.set_number ? html` <span class="mon-quiet">${a.set_number}</span>` : ''}${role ? html` <span class="mon-role">${role}</span>` : ''}</td>
+    <td><span class="mon-state mon-${waiting ? 'waiting' : a.status}">${waiting ? tRaw('monitor.jobs.waiting') : statusName(a.status)}</span></td>
+    <td>${rawHtml(when)}</td>
+    <td>${rawHtml(hint)}</td>
+    <td><div class="mon-buttons">${action}</div></td>
   </tr>`;
 };
 
 /** The card "background jobs": per kind the numbers with "now" and "clear", below the individual
  * running, waiting and failed jobs (GET /api/v1/admin/auftraege). */
 async function showJobs() {
-  const el = G('auftraege-karte');
+  const el = G('jobs-card');
   if (!el) return;
   const d = await api('GET', '/v1/admin/auftraege');
   if (!d?.success) {
@@ -480,62 +478,61 @@ async function showJobs() {
     return;
   }
   /** @type {Record<string, Record<string, number>>} */
-  const zahl = {};
+  const number = {};
   for (const z of d.zusammenfassung) {
-    zahl[z.type] ||= {};
-    zahl[z.type][z.status] = z.anzahl;
+    number[z.type] ||= {};
+    number[z.type][z.status] = z.anzahl;
   }
   // The next run per kind: the earliest waiting job of that kind.
   /** @type {Record<string, string>} */
-  const naechster = {};
+  const next = {};
   for (const a of d.auftraege)
-    if (a.status === 'offen' && a.due_at && (!naechster[a.type] || a.due_at < naechster[a.type]))
-      naechster[a.type] = a.due_at;
-  const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
-  const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
-    html`<span class="mon-ziffer${n ? html`${' '}${rawHtml(klasse)}` : ' null'}">${n || 0}</span>`;
-  const mehr = d.auftraege.length - 40;
+    if (a.status === 'offen' && a.due_at && (!next[a.type] || a.due_at < next[a.type])) next[a.type] = a.due_at;
+  const kinds = Object.keys(number).sort((a, b) => kindName(a).localeCompare(kindName(b), locale()));
+  const digit = (/** @type {number | undefined} */ n, cls = '') =>
+    html`<span class="mon-digit${n ? html`${' '}${rawHtml(cls)}` : ' null'}">${n || 0}</span>`;
+  const more = d.auftraege.length - 40;
   /** @type {Record<string, number>} */
   const afterError = {};
   for (const a of d.auftraege)
     if (a.status === 'offen' && (a.attempts > 1 || a.error_message)) afterError[a.type] = (afterError[a.type] || 0) + 1;
-  const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.type);
-  const mehrfach = new Set(jeArt.filter((art, i) => jeArt.indexOf(art) !== i));
+  const perKind = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.type);
+  const multiple = new Set(perKind.filter((kind, i) => perKind.indexOf(kind) !== i));
   const pause = (/** @type {AuftragPause} */ p) =>
-    t('monitor.auftraege.pause', { art: artName(p.type), bis: fmtDatum(p.until_at, 'wann'), grund: p.reason || '' });
-  setzeHtml(
+    t('monitor.jobs.pause', { art: kindName(p.type), bis: fmtDate(p.until_at, 'when'), grund: p.reason || '' });
+  setHtml(
     el,
     html`
-    <h2 class="mon-titel" id="mon-t-auftraege" tabindex="-1">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
-    <p class="mon-hinweis">${tRaw('monitor.auftraege.hinweis')}</p>
-    ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
-    ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`)}
-    ${d.bildbedarf ? html`<p class="mon-leise">${tRaw('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
+    <h2 class="mon-title" id="mon-t-jobs" tabindex="-1">${ico('list')}<span>${tRaw('monitor.jobs.title')}</span></h2>
+    <p class="mon-hint">${tRaw('monitor.jobs.hint')}</p>
+    ${d.job_prozess.laeuft ? '' : html`<p class="mon-warning">${ico('warning')} ${tRaw('monitor.jobs.no_process')}</p>`}
+    ${d.pausen.map(p => html`<p class="mon-quiet">${ico('pause')} ${pause(p)}</p>`)}
+    ${d.bildbedarf ? html`<p class="mon-quiet">${tRaw('monitor.jobs.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
     ${
-      arten.length
-        ? html`<div class="tw"><table class="dt mon-tabelle mon-arten" aria-label="${tRaw('tabelle.auftragsarten')}">
-      <thead><tr><th>${tRaw('monitor.col.art')}</th><th class="zahl">${tRaw('monitor.col.offen')}</th><th class="zahl">${tRaw('monitor.col.laeuft')}</th><th class="zahl">${tRaw('monitor.col.fehler')}</th><th>${tRaw('monitor.col.naechster')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${arten.map(
-        art => html`<tr>
-        <td>${artName(art)}</td>
-        <td class="zahl">${ziffer(zahl[art].offen)}${afterError[art] ? html`<span class="mon-leise mon-zusatz">${tRaw('monitor.auftraege.davon_nach_fehler', { n: afterError[art] })}</span>` : ''}</td>
-        <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
-        <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
-        <td>${naechster[art] ? fmtDatum(naechster[art], 'wann') : ''}</td>
-        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, tRaw('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, tRaw('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
+      kinds.length
+        ? html`<div class="tw"><table class="dt mon-table mon-kinds" aria-label="${tRaw('table.job_kinds')}">
+      <thead><tr><th>${tRaw('monitor.col.kind')}</th><th class="number">${tRaw('monitor.col.open')}</th><th class="number">${tRaw('monitor.col.running')}</th><th class="number">${tRaw('monitor.col.error')}</th><th>${tRaw('monitor.col.next')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
+      <tbody>${kinds.map(
+        kind => html`<tr>
+        <td>${kindName(kind)}</td>
+        <td class="number">${digit(number[kind].offen)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
+        <td class="number">${digit(number[kind].laeuft, 'mon-running')}</td>
+        <td class="number">${digit(number[kind].fehler, 'mon-error')}</td>
+        <td>${next[kind] ? fmtDate(next[kind], 'when') : ''}</td>
+        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].offen ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
       </tr>`,
       )}</tbody></table></div>`
         : ''
     }
     ${
       d.auftraege.length
-        ? html`<details class="mon-einzeln"${openSingle() ? ' open' : ''}>
-      <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
-      <div class="tw"><table class="dt mon-tabelle" aria-labelledby="mon-t-auftraege">
-      <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(a => jobRow(a, mehrfach))}</tbody></table></div>
-      ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
-        : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`
+        ? html`<details class="mon-single"${openSingle() ? ' open' : ''}>
+      <summary class="mon-subtitle">${tRaw('monitor.jobs.single')} <span class="mon-quiet">(${d.auftraege.length})</span></summary>
+      <div class="tw"><table class="dt mon-table" aria-labelledby="mon-t-jobs">
+      <thead><tr><th>${tRaw('monitor.col.job')}</th><th>${tRaw('monitor.col.state')}</th><th>${tRaw('monitor.col.time')}</th><th>${tRaw('monitor.col.hint')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
+      <tbody>${d.auftraege.slice(0, 40).map(a => jobRow(a, multiple))}</tbody></table></div>
+      ${more > 0 ? html`<p class="mon-quiet">${tRaw('monitor.jobs.more', { n: more })}</p>` : ''}</details>`
+        : html`<h3 class="mon-subtitle">${tRaw('monitor.jobs.single')}</h3><p class="mon-quiet">${tRaw('monitor.jobs.empty')}</p>`
     }`,
   );
 }
@@ -547,36 +544,36 @@ if (typeof document !== 'undefined')
     'toggle',
     ev => {
       const d = ev.target;
-      if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _openSingle = d.open;
+      if (d instanceof HTMLDetailsElement && d.classList.contains('mon-single')) _openSingle = d.open;
     },
     true,
   );
 
 /** @param {string} id */
-async function auftragAbbrechen(id) {
+async function cancelJob(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }
 
-/** @param {string} art */
-async function auftragsArtJetzt(art) {
-  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`);
+/** @param {string} kind */
+async function runJobKindNow(kind) {
+  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(kind)}/jetzt`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }
 
-/** @param {string} art */
-async function auftragsArtLeeren(art) {
-  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`);
-  if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');
+/** @param {string} kind */
+async function emptyJobKind(kind) {
+  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(kind)}`);
+  if (d?.success) toast(tRaw('monitor.jobs.emptied', { n: d.entfernt }), 'success');
   else toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }
 
 /** When leaving the tab: stop polling. @returns {boolean} whether it was running */
 export function stopMonitor() {
-  _monitorLauf++;
+  _monitorRun++;
   if (!_monitorTimer) return false;
   clearTimeout(_monitorTimer);
   _monitorTimer = null;
@@ -586,7 +583,7 @@ export function stopMonitor() {
 // ── Register handlers with the dispatcher (js/registry.js); it belongs to the module that implements it. ──
 registerActions({
   openLogViewer,
-  auftragAbbrechen,
-  auftragsArtJetzt,
-  auftragsArtLeeren,
+  cancelJob,
+  runJobKindNow,
+  emptyJobKind,
 });

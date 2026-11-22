@@ -60,7 +60,7 @@ export function safeUrl(u) {
 }
 
 /**
- * Color value for data-farbe="…" (js/styles.js) — anything except 6 hex digits is dropped.
+ * Color value for data-color-hex="…" (js/styles.js) — anything except 6 hex digits is dropped.
  * @param {unknown} hex
  * @param {string} fallback
  */
@@ -144,7 +144,7 @@ export function asHtml(content) {
   }
 }
 
-/** Finished markup: from html`` or rawHtml(). Only this is accepted as markup by setzeHtml() (dom.js). */
+/** Finished markup: from html`` or rawHtml(). Only this is accepted as markup by setHtml() (dom.js). */
 export class SafeHtml {
   /** The marker cannot be forged: Object.create(SafeHtml.prototype) passes instanceof, not this. */
   #mark = true;
@@ -162,7 +162,7 @@ export class SafeHtml {
   }
 }
 
-/** What setzeHtml() accepts: finished markup, lists of it, or nothing — never a string with data.
+/** What setHtml() accepts: finished markup, lists of it, or nothing — never a string with data.
  * @typedef {SafeHtml | Markup[] | '' | false | null | undefined} Markup */
 
 /** The text of a markup value: SafeHtml unchanged, everything else escaped. @param {unknown} value @returns {string} */

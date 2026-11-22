@@ -5,7 +5,7 @@
  * Counter-checks (measured 10.11.2026, each alone, reverted, bundle rebuilt):
  *   A  finFilter() replaces the selection (`finKategorien.clear()` before adding) → red:
  *      “web app: the filter accumulates …”
- *   B  in the drawing function the call `finFilterAnwenden();` after setzeHtml deleted → red:
+ *   B  in the drawing function the call `finFilterAnwenden();` after setHtml deleted → red:
  *      “web app: … survives redrawing”
  *   C  in the markup the chip data-arg="figs" to "minifigs" → red: “the three kinds …”
  */
@@ -68,13 +68,13 @@ async function finanzen() {
   });
   await reiter(o.w, 'finance');
   assert.ok(
-    await warte(() => o.d.querySelectorAll('#fin-tbl [data-fin-art]').length === 3),
+    await warte(() => o.d.querySelectorAll('#fin-tbl [data-fin-kind]').length === 3),
     'nicht alle drei Abschnitte da',
   );
   o.sichtbar = () =>
-    [...o.d.querySelectorAll('#fin-tbl [data-fin-art]')]
+    [...o.d.querySelectorAll('#fin-tbl [data-fin-kind]')]
       .filter(el => el.style.display !== 'none')
-      .map(el => el.dataset.finArt);
+      .map(el => el.dataset.finKind);
   o.chip = art => o.d.querySelector(`#fin-filter [data-click="finFilter"][data-arg="${art}"]`).click();
   return o;
 }
@@ -84,7 +84,7 @@ test('the three kinds, and each has a section', async () => {
   const o = await finanzen();
   try {
     const webKinds = [...o.d.querySelectorAll('#fin-filter [data-click="finFilter"]')].map(b => b.dataset.arg);
-    assert.deepEqual(webKinds, ['alle', ...arten]);
+    assert.deepEqual(webKinds, ['all', ...arten]);
     // A chip without a matching section would be a button that does nothing.
     assert.deepEqual(o.sichtbar(), arten);
   } finally {
@@ -103,18 +103,18 @@ test('web app: empty means all, the filter accumulates and survives redrawing', 
     o.chip('parts');
     assert.deepEqual(o.sichtbar(), ['figs'], 'ein zweiter Klick nimmt die Art nicht wieder heraus');
     // The search redraws the table: the old section is replaced.
-    const vorher = o.d.querySelector('#fin-tbl [data-fin-art="figs"]');
-    const feld = o.d.getElementById('fin-suche');
+    const vorher = o.d.querySelector('#fin-tbl [data-fin-kind="figs"]');
+    const feld = o.d.getElementById('fin-search');
     feld.value = '0';
     feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.ok(
-      await warte(() => !vorher.isConnected && o.d.querySelectorAll('#fin-tbl [data-fin-art]').length === 3, 1500),
+      await warte(() => !vorher.isConnected && o.d.querySelectorAll('#fin-tbl [data-fin-kind]').length === 3, 1500),
       'nicht neu gezeichnet',
     );
     assert.deepEqual(o.sichtbar(), ['figs']);
     o.chip('figs');
     assert.deepEqual(o.sichtbar(), ['sets', 'parts', 'figs'], 'keine Auswahl heisst alle');
-    assert.equal(o.d.querySelector('#fin-filter [data-arg="alle"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(o.d.querySelector('#fin-filter [data-arg="all"]').getAttribute('aria-pressed'), 'true');
   } finally {
     o.w.close();
   }

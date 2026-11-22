@@ -51,7 +51,7 @@ const MEASUREMENT = `(() => {
     if (!versteckt && l.scrollWidth > l.clientWidth + 1) funde.push('Leiste: „' + l.textContent.trim() + '“ abgeschnitten');
     if (versteckt) funde.push('Leiste: nur Symbol für „' + l.textContent.trim() + '“');
   }
-  const knopf = document.querySelector('#tab-gallery .erfassen-leiste .btn.bp');
+  const knopf = document.querySelector('#tab-gallery .capture-bar .btn.bp');
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
   if (knopf && parseFloat(getComputedStyle(knopf).fontSize) < rem * 0.8) funde.push('Knopfschrift ' + getComputedStyle(knopf).fontSize + ' bei ' + rem + ' px Grundschrift');
   const spalten = getComputedStyle(document.querySelector('#gallery .sgrid')).gridTemplateColumns.split(' ').length;

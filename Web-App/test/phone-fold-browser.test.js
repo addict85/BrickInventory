@@ -20,8 +20,8 @@ const messen = `(() => {
   const ueberlapp = [...document.querySelectorAll('#gallery .price-badge:not([hidden])')].flatMap(b => {
     // Die Textfläche, nicht die Box: Überlaufender Text ragt über seine Box hinaus.
     const flaeche = (e) => { if (!e) return null; const r = document.createRange(); r.selectNodeContents(e); return r.getBoundingClientRect(); };
-    const preis = flaeche(b.querySelector('.preis'));
-    const neighbor = flaeche(b.querySelector('.preis-pnl, .pnl-geschenk, .pnl-pos, .pnl-neg'));
+    const preis = flaeche(b.querySelector('.price'));
+    const neighbor = flaeche(b.querySelector('.price-pnl, .pnl-gift, .pnl-pos, .pnl-neg'));
     if (!preis || !neighbor) return [];
     const quer = preis.right > neighbor.left + 0.5 && preis.left < neighbor.right && preis.bottom > neighbor.top + 0.5 && preis.top < neighbor.bottom;
     return quer ? [b.textContent.trim()] : [];

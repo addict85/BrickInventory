@@ -63,7 +63,9 @@ test('every class name styles something or is a handle', () => {
   for (const [rel, s] of dateien) {
     if (!rel.endsWith('.js')) continue;
     for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
-    for (const m of s.matchAll(/(?:querySelector|querySelectorAll|closest|matches|alle|eins)\(\s*['"`]([^'"`]*)['"`]/g))
+    for (const m of s.matchAll(
+      /(?:querySelector|querySelectorAll|closest|matches|queryAll|queryOne)\(\s*['"`]([^'"`]*)['"`]/g,
+    ))
       for (const t of m[1].matchAll(CLASS)) griffe.add(t[1]);
     for (const m of s.matchAll(/getElementsByClassName\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
   }

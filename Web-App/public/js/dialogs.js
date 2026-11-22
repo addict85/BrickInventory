@@ -1,5 +1,5 @@
 // Keyboard handling for all dialogs in one place: Escape, focus moving in, Tab stays inside, focus moving back.
-// Closing happens via the data-dialog-zu button, so the same cleanup runs as a click on ✕.
+// Closing happens via the data-dialog-close button, so the same cleanup runs as a click on ✕.
 
 // `summary` belongs in the list: without it, the trap would jump back to the start right before "More
 // actions", and everything after it would be unreachable by keyboard.
@@ -46,13 +46,13 @@ function focusTargets(dialog) {
 }
 
 /**
- * Initial focus: `[data-erstfokus]`, else the dialog itself — a text field would open the keyboard on the
+ * Initial focus: `[data-first-focus]`, else the dialog itself — a text field would open the keyboard on the
  * phone.
  * @param {HTMLElement} dialog
  */
 function focusInto(dialog) {
   if (dialog.contains(document.activeElement)) return;
-  const target = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-erstfokus]'));
+  const target = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-first-focus]'));
   if (target && visible(target)) {
     target.focus();
     return;
@@ -81,7 +81,7 @@ export function onDialogChange(fn) {
 }
 
 // Messages and their buttons ("undo") stay reachable above an open dialog.
-const NEVER_INERT = '#toasts, #ansage-status, #ansage-fehler';
+const NEVER_INERT = '#toasts, #announcement-status, #announcement-error';
 
 /**
  * Everything beside the topmost open dialog is inert: aria-modal alone does not stop a screen reader's
@@ -145,7 +145,7 @@ function focusHeading() {
 
 // If the focused element disappears (card deleted, list redrawn, toast closed), focus would fall back to
 // <body> (WCAG 2.4.3). Then the same element redrawn, else its neighbor, else the heading.
-const ENTRY = '.sc, tr[data-arg], .part-card, .man-tile, .mk-zeile';
+const ENTRY = '.sc, tr[data-arg], .part-card, .man-tile, .mk-row';
 /** @type {{ el: Element, locations: string[] } | null} */
 let _focus = null;
 /** @param {Element | null} e */
@@ -232,7 +232,7 @@ function keyPressed(ev) {
       /** @type {HTMLElement | null} */ (menu.querySelector(':scope > summary'))?.focus();
       return;
     }
-    const closeBtn = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-zu]'));
+    const closeBtn = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-close]'));
     if (!closeBtn) return;
     ev.preventDefault();
     ev.stopPropagation();

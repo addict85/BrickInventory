@@ -6,17 +6,17 @@
  * exactly one h1 that is not the logo.
  *
  * Counter-checks (measured 12.11.2026, each on its own, bundle rebuilt):
- *   A  .umenu-gruppe-titel with color:#ddd → red: “menu” (axe color-contrast)
- *   B  <template id="pdfjs-quelle"> again as <script type="module"> → red:
+ *   A  .umenu-group-title with color:#ddd → red: “menu” (axe color-contrast)
+ *   B  <template id="pdfjs-source"> again as <script type="module"> → red:
  *      “PDF.js only with the first PDF” (pdf.min.mjs already at the start)
  *   C  in index.html the theme links again outside of the template → red:
  *      “themes” (all files at the start); releaseThemeStyles() not called in
  *      startPageHtml → red: same place (not released after reloading);
  *      in theme-boot.js applier without waiting → red: same place (switched
  *      before the stylesheets were there)
- *   D  .fin-suche-zeile removed from the rule for #tab-finance.finanzen-leer →
+ *   D  .fin-search-row removed from the rule for #tab-finance.finanzen-leer →
  *      red: “finances without positions”
- *   E  `.merk-kasten:not([open]){padding-block:.5rem}` removed → red:
+ *   E  `.wanted-box:not([open]){padding-block:.5rem}` removed → red:
  *      “wishlist on the phone” (86 px with a 44 px title)
  *   F  the logo of the login again as <h1> → red: “login” (two h1)
  */
@@ -55,9 +55,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     fs.rmSync(path.join(__dirname, '..', 'data', 'uploads', String(a.uid)), { recursive: true, force: true }),
   );
   await ruhig();
-  await b.auswerten(
-    `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
-  );
+  await b.auswerten(`document.querySelector('#setup-modal.open [data-click="setupLater"]')?.click(); true`);
 
   await t.test('menu: groups without an axe finding', async () => {
     await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
@@ -68,7 +66,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
       return r.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', ')); })()`);
     assert.deepEqual(funde, []);
     const titel = await b.auswerten(
-      `[...document.querySelectorAll('#umenu-pop .umenu-gruppe-titel')].filter(e => e.getClientRects().length).map(e => e.textContent.trim())`,
+      `[...document.querySelectorAll('#umenu-pop .umenu-group-title')].filter(e => e.getClientRects().length).map(e => e.textContent.trim())`,
     );
     assert.equal(titel.length, 3, JSON.stringify(titel));
     await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
@@ -93,18 +91,17 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
 
   await t.test('finances without positions: no search field', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`document.getElementById('tab-finance').classList.contains('finanzen-leer')`, 'Finanzen leer');
-    assert.equal(await b.auswerten(`document.getElementById('fin-suche').getClientRects().length`), 0);
+    await bis(`document.getElementById('tab-finance').classList.contains('finances-empty')`, 'Finanzen leer');
+    assert.equal(await b.auswerten(`document.getElementById('fin-search').getClientRects().length`), 0);
   });
 
   await t.test('wishlist on the phone: collapsed not taller than the title', async () => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await b.auswerten(
-      `document.querySelector('.ntab[data-tab="wanted"]').click(); document.getElementById('mk-kasten').open = false; true`,
+      `document.querySelector('.ntab[data-tab="wanted"]').click(); document.getElementById('mk-box').open = false; true`,
     );
     await bis(`document.getElementById('tab-wanted').classList.contains('active')`, 'Merkliste');
-    const m =
-      await b.auswerten(`(() => { const k = document.getElementById('mk-kasten'), s = k.querySelector('summary');
+    const m = await b.auswerten(`(() => { const k = document.getElementById('mk-box'), s = k.querySelector('summary');
       return { kasten: k.getBoundingClientRect().height, titel: s.getBoundingClientRect().height }; })()`);
     assert.ok(m.kasten <= m.titel + 20, `zugeklappt ${m.kasten} px bei ${m.titel} px Titel`);
     await b.tab('Emulation.clearDeviceMetricsOverride');
@@ -117,15 +114,15 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     assert.deepEqual((await b.auswerten(geladen('/themes/'))).sort(), erwartet.sort(), `Design ${start}`);
 
     await b.auswerten(
-      `window.__keinNeuladen = 1; document.querySelector('[data-click="oeffneSicht"][data-arg="profil"]').click(); true`,
+      `window.__keinNeuladen = 1; document.querySelector('[data-click="openView"][data-arg="profile"]').click(); true`,
     );
-    await bis(`!!document.getElementById('design-wahl')?.options.length`, 'Designwahl');
+    await bis(`!!document.getElementById('design-choice')?.options.length`, 'Designwahl');
     // When switching, the stylesheet must already carry rules.
     await b.auswerten(`window.__beimUmschalten = null;
       new MutationObserver((_, mo) => { if (document.documentElement.dataset.theme !== 'hochglanz') return;
         window.__beimUmschalten = [...document.styleSheets].filter(s => /themes\\/(noppe|hochglanz)\\.css/.test(s.href || '') && s.cssRules.length).length;
         mo.disconnect(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-      const s = document.getElementById('design-wahl'); s.value = 'hochglanz'; s.dispatchEvent(new Event('change', { bubbles: true })); true`);
+      const s = document.getElementById('design-choice'); s.value = 'hochglanz'; s.dispatchEvent(new Event('change', { bubbles: true })); true`);
     await bis(`document.documentElement.dataset.theme === 'hochglanz'`, 'umgeschaltet');
     assert.equal(await b.auswerten(`window.__keinNeuladen`), 1, 'neu geladen');
     assert.equal(await b.auswerten(`window.__beimUmschalten`), 2, 'umgeschaltet, bevor die Stylesheets da waren');

@@ -1,9 +1,9 @@
 // The CSP forbids style attributes, so injected markup cannot reshape the page. Styles therefore
-// sit as data-stil and only apply if they occur in the source (list from
+// sit as data-style and only apply if they occur in the source (list from
 // scripts/build-frontend.js).
 
-/* global __ERLAUBTE_STILE__ */
-const ALLOWED = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAUBTE_STILE__);
+/* global __ALLOWED_STYLES__ */
+const ALLOWED = new Set(typeof __ALLOWED_STYLES__ === 'undefined' ? [] : __ALLOWED_STYLES__);
 
 // Values that are only known at runtime come through their own attributes with a fixed shape: a
 // color, a number. They cannot set more than this one property each.
@@ -12,40 +12,40 @@ const NUMBER = /^\d{1,5}(\.\d{1,3})?$/;
 /** @type {Array<[string, (el: HTMLElement, v: string) => void]>} */
 const RUNTIME_ATTRS = [
   [
-    'data-farbe',
+    'data-color-hex',
     (el, v) => {
       if (COLOR.test(v)) el.style.background = v;
     },
   ],
   [
-    'data-breite',
+    'data-width',
     (el, v) => {
       if (NUMBER.test(v)) el.style.width = Math.min(100, Number(v)) + '%';
     },
   ],
   [
-    'data-breite-px',
+    'data-width-px',
     (el, v) => {
       if (NUMBER.test(v)) el.style.width = v + 'px';
     },
   ],
   [
-    'data-hoehe-px',
+    'data-height-px',
     (el, v) => {
       if (NUMBER.test(v)) el.style.height = v + 'px';
     },
   ],
   [
-    'data-faecher',
+    'data-fan',
     (el, v) => {
-      if (/^\d{1,2}$/.test(v)) el.style.setProperty('--faecher-ton', `var(--faecher-${v})`);
+      if (/^\d{1,2}$/.test(v)) el.style.setProperty('--fan-hue', `var(--fan-${v})`);
     },
   ],
 ];
-const SELECTOR = '[data-stil],' + RUNTIME_ATTRS.map(([a]) => `[${a}]`).join(',');
+const SELECTOR = '[data-style],' + RUNTIME_ATTRS.map(([a]) => `[${a}]`).join(',');
 
 /**
- * Apply every data-stil and runtime value under `root` (inclusive).
+ * Apply every data-style and runtime value under `root` (inclusive).
  * @param {HTMLElement} root
  */
 export function applyStyles(root) {
@@ -53,11 +53,11 @@ export function applyStyles(root) {
   const els = /** @type {HTMLElement[]} */ ([...root.querySelectorAll(SELECTOR)]);
   if (root.matches?.(SELECTOR)) els.unshift(root);
   for (const el of els) {
-    const style = el.getAttribute('data-stil');
+    const style = el.getAttribute('data-style');
     if (style !== null) {
       if (ALLOWED.has(style)) el.style.cssText = style;
       else console.warn('[styles] not allow-listed:', style);
-      el.removeAttribute('data-stil');
+      el.removeAttribute('data-style');
     }
     for (const [attr, apply] of RUNTIME_ATTRS) {
       const v = el.getAttribute(attr);

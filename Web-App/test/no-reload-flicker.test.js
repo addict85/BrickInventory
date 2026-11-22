@@ -82,7 +82,7 @@ test('refreshing leaves the tiles standing until the new response is there', asy
     d.getElementById('gsort').dispatchEvent(new w.Event('change'));
     assert.ok(await warte(() => n === 2), 'kein zweiter Abruf');
     assert.ok(kachel(d), 'die Kacheln wurden durch eine Ladeanzeige ersetzt');
-    assert.equal(d.querySelector('#gallery .skelett-raster'), null);
+    assert.equal(d.querySelector('#gallery .skeleton-grid'), null);
     los();
     assert.ok(await warte(() => kachel(d)));
   } finally {

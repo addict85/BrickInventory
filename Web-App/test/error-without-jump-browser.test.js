@@ -5,11 +5,11 @@
  * and 390 px.
  *
  * Counter-checks (measured on 13.11.2026):
- *   A  feldFehler without errorPlace (message directly behind the field again)
+ *   A  fieldError without errorPlace (message directly behind the field again)
  *      → red: build list 1280 (message next to instead of below the field), wishlist
  *      1280 and 390 (label “Zustand” 27 or 47 px lower), storage locations
  *      1280 and 390 (“Hinzufügen” lower), add set 1280 and 390
- *   B  `.feld-fehler` without contain:inline-size → red: build list 1280 (the
+ *   B  `.field-error` without contain:inline-size → red: build list 1280 (the
  *      message widens the column, “Hinzufügen” x 213 → 284)
  *   C  branch for grid and wrapping rows removed → red: price alert 1280
  *      (76 px), add set 1280 (126 px), wishlist 390 (108 px gap
@@ -28,15 +28,15 @@ const { startApp } = require('./helpers/app-browser');
 /** Position of all controls in the field's form box, in DOM order. */
 const SITUATION = id => `(() => {
   const f = document.getElementById(${JSON.stringify(id)});
-  let kasten = f.closest('.modal, form, details, .ssec, .pl-leiste, .card') ?? f.parentElement;
+  let kasten = f.closest('.modal, form, details, .ssec, .pl-bar, .card') ?? f.parentElement;
   while (getComputedStyle(kasten).display === 'contents') kasten = kasten.parentElement;
   // Bezogen auf den Kasten: Der Fokus auf dem Feld rollt Seite oder Dialog, das ist kein Sprung.
   const k = kasten.getBoundingClientRect(), dy = kasten.scrollTop - k.y, dx = -k.x;
   const r = e => { const b = e.getBoundingClientRect(); return { x: b.x + dx, y: b.y + dy, u: b.bottom + dy, h: b.height }; };
-  const teile = [...kasten.querySelectorAll('button, input:not(.datei-versteckt), select, label, .btn')]
+  const teile = [...kasten.querySelectorAll('button, input:not(.file-hidden), select, label, .btn')]
     .filter(e => e.getClientRects().length)
     .map(e => ({ was: (e.id || e.textContent.trim() || e.tagName).slice(0, 30), ...r(e) }));
-  const m = document.getElementById(${JSON.stringify(id + '-fehler')});
+  const m = document.getElementById(${JSON.stringify(id + '-error')});
   return { feld: r(f), teile, meldung: m && !m.hidden ? r(m) : null };
 })()`;
 
@@ -52,16 +52,16 @@ const CASES = [
   {
     name: 'Merkliste',
     hash: '#/merkliste',
-    bereit: `!!document.getElementById('mk-kasten')`,
-    vorher: `document.getElementById('mk-kasten').open = true;`,
+    bereit: `!!document.getElementById('mk-box')`,
+    vorher: `document.getElementById('mk-box').open = true;`,
     trigger: `document.getElementById('mk-add').click();`,
     feld: 'mk-num',
   },
   {
     name: 'Lagerorte',
     hash: '#/lagerorte',
-    bereit: `!!document.querySelector('[data-click="legeLagerortAn"]')?.getClientRects().length`,
-    trigger: `document.querySelector('[data-click="legeLagerortAn"]').click();`,
+    bereit: `!!document.querySelector('[data-click="createLocation"]')?.getClientRects().length`,
+    trigger: `document.querySelector('[data-click="createLocation"]').click();`,
     feld: 'storage-new',
   },
   {
@@ -74,22 +74,22 @@ const CASES = [
   {
     name: 'Preisalarm',
     hash: '#/alarme',
-    bereit: `!!document.getElementById('alarm-neu-knopf')?.getClientRects().length`,
-    trigger: `document.getElementById('alarm-neu-knopf').click();`,
-    feld: 'alarm-neu-set',
+    bereit: `!!document.getElementById('alert-new-button')?.getClientRects().length`,
+    trigger: `document.getElementById('alert-new-button').click();`,
+    feld: 'alert-new-set',
   },
   {
-    name: 'Gutschein',
+    name: 'Voucher',
     hash: '#/gutscheine',
-    bereit: `!!document.querySelector('[data-click="gutscheinSpeichern"]')?.getClientRects().length`,
-    trigger: `document.querySelector('[data-click="gutscheinSpeichern"]').click();`,
+    bereit: `!!document.querySelector('[data-click="saveVoucher"]')?.getClientRects().length`,
+    trigger: `document.querySelector('[data-click="saveVoucher"]').click();`,
     feld: 'v-number',
   },
   {
     name: 'Set erfassen',
     hash: '#/sammlung',
-    bereit: `!!document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]')`,
-    vorher: `document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();`,
+    bereit: `!!document.querySelector('[data-click="openCapture"][data-arg="set"]')`,
+    vorher: `document.querySelector('[data-click="openCapture"][data-arg="set"]').click();`,
     trigger: `document.getElementById('add-num').value = '10294-1'; document.getElementById('add-price').value = 'abc'; document.getElementById('btn-add').click();`,
     feld: 'add-price',
   },
@@ -125,7 +125,7 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
         await ruhig();
         const vor = await b.auswerten(SITUATION(f.feld));
         await b.auswerten(`(() => { ${f.trigger} return true; })()`);
-        await bis(`!document.getElementById(${JSON.stringify(f.feld + '-fehler')})?.hidden`, `${f.name}: Meldung`);
+        await bis(`!document.getElementById(${JSON.stringify(f.feld + '-error')})?.hidden`, `${f.name}: Meldung`);
         await ruhig();
         const nach = await b.auswerten(SITUATION(f.feld));
         assert.ok(nach.meldung, 'Meldung sichtbar');
@@ -144,7 +144,7 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
           .map(({ a, z }) => `${a.was}: (${a.x}|${a.y}) → (${z.x}|${z.y})`);
         assert.deepEqual(verschoben, []);
         await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove());
-          document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`);
+          document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`);
       });
     }
   }

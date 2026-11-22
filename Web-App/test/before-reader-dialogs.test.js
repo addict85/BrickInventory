@@ -40,8 +40,8 @@ test('every dialog has a name', async () => {
 test('messages are announced: status politely, errors assertively', async () => {
   const { w, d } = await openUi();
   try {
-    const status = d.getElementById('ansage-status');
-    const fehler = d.getElementById('ansage-fehler');
+    const status = d.getElementById('announcement-status');
+    const fehler = d.getElementById('announcement-error');
     assert.equal(status.getAttribute('aria-live'), 'polite');
     assert.equal(fehler.getAttribute('role'), 'alert');
     // The toast list itself is no live region any more: nested in it, an alert was announced twice.

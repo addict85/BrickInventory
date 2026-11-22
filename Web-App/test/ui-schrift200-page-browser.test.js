@@ -9,4 +9,4 @@
  *   B  main without container haupt → red: „Finanzen“, „Merkliste“, „Einstellungen“,
  *      all views from the menu (overflow)
  */
-require('./helpers/ui-check').checkLargeFont('seite');
+require('./helpers/ui-check').checkLargeFont('page');

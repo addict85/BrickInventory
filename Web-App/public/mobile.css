@@ -1,30 +1,8 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   MOBILE / RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════════════
-
-   Wird NACH styles.css und nach dem Theme geladen. Alles hier steht in einer
-   Media Query — auf dem Desktop ändert sich also nichts.
-
-   Warum eine eigene Datei und nicht verteilt in styles.css:
-   Das Layout ist in beiden Designs identisch; brick.css besteht fast nur aus
-   Farbvariablen und Dekoration (Noppenreihen), nur 14 seiner 66 Regeln fassen
-   überhaupt Layout an. Responsive-Regeln gehören deshalb genau einmal hierher
-   und gelten für classic UND brick — und für jedes künftige Design gratis.
-   Wo Brick eine eigene Behandlung braucht (Noppen, Innenabstände), steht sie
-   unten in einem klar markierten Block.
-
-   Breakpoints:
-     ≤ 900px  Tablet — mehrspaltige Layouts einspaltig
-     ≤ 640px  Telefon — Tabellen zu Karten, Modals als Sheets, Touch-Ziele
-     ≤ 380px  kleines Telefon — Feinschliff
-
-   Zu !important: Die generierten Templates tragen rund 90 Inline-Styles mit
-   festen px-Breiten (u. a. `style="table-layout:fixed;width:1065px"` in den
-   Finanztabellen). An Inline-Styles kommt eine Media Query sonst nicht heran.
-   Statt 90 Stellen im JS umzubauen — mit entsprechendem Regressionsrisiko —
-   werden sie hier gezielt überstimmt. !important steht deshalb nur dort, wo
-   nachweislich ein Inline-Style dagegenhält, nicht als Gewohnheit.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ MOBILE / RESPONSIVE ═══
+   Loaded AFTER styles.css and the theme; everything here sits in a media query, so the desktop is unchanged.
+   One file instead of rules spread over styles.css: the layout is the same in every theme, so responsive
+   rules belong here exactly once. Breakpoints: ≤ 900px tablet, ≤ 640px phone, ≤ 380px small phone.
+   !important only where an inline style of the templates demonstrably holds against it. */
 
 
 /* ── Tablet ──────────────────────────────────────────────────────────────── */
@@ -39,76 +17,70 @@
 }
 
 
-/* ── Telefon ─────────────────────────────────────────────────────────────── */
+/* ── Phone ─────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
-  /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
-  main:not(#login-screen) { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
+  /* ─ Skeleton ─ */
+  main:not(#login-screen) { padding: .75rem 16px 5rem; }         /* 16 px margin; room at the bottom for the thumb */
 
-  /* Bei grosser Schrift wächst der Kopf und bricht um, statt Namen zu kürzen. */
+  /* With large text the header grows and wraps instead of shortening names. */
   header {
     padding: 4px .75rem;
     height: auto;
     min-height: 52px;
     gap: .5rem;
   }
-  header .logo span   { display: none; }      /* Wortmarke kürzen */
-  header .logo .kopf-sicht:not([hidden]) { display: block; }
-  /* Mit Seitenname nur Logo und Name: Beide Wörter zusammen wären abgeschnitten.
-     Solange die Überschrift selbst zu sehen ist, steht dort die Marke. */
-  header .logo .kopf-sicht.titel-sichtbar { display: none; }
-  header .logo:has(.kopf-sicht:not([hidden]):not(.titel-sichtbar)) .marke { display: none; }
-  header .logo .kopf-sicht::before { content: none; }
-  /* Gekürzt wird der NAME, nicht der Knopf: Seit der Namenszug der
-     Menüknopf ist (17.10.), hängen die drei Striche im selben Element.
-     Stand die Breitengrenze weiter am Knopf, schnitt sie auf dem Telefon als
-     Erstes die Striche ab — also genau das, was der Knopf anzeigen soll. */
+  header .logo span   { display: none; }      /* Shorten the word mark */
+  header .logo .header-view:not([hidden]) { display: block; }
+  /* With a page name only logo and name: both words together would be cut off.
+     While the heading itself is visible, the brand stands there. */
+  header .logo .header-view.title-visible { display: none; }
+  header .logo:has(.header-view:not([hidden]):not(.title-visible)) .brand { display: none; }
+  header .logo .header-view::before { content: none; }
+  /* The NAME is shortened, not the button: the three stripes live in the same element, and a width limit on
+     the button cut them off first on the phone. */
   .ubadge-name        { max-width: 9ch; }
-  /* Am Handy nur das Symbol: Der Name steht im Menü, abgeschnitten half er nicht. */
+  /* On the phone only the icon: the name is in the menu, cut off it did not help. */
   .ubadge .ubadge-name { display: none; }
   .ubadge .ubadge-ico  { display: inline-block; width: 20px; height: 20px; }
 
-  /* Erfassen-Leiste: Hauptknopf und Import-Menü nebeneinander; das Menü
-     klappt über die volle Breite der Leiste auf, egal wo der Knopf steht. */
-  .erfassen-leiste { flex-wrap: wrap; position: relative; }
-  .erfassen-leiste .btn.bp { flex: 1 1 auto; justify-content: center; }
-  .erfassen-leiste .import-menue { flex: 0 0 auto; position: static; }
-  .import-klappe { left: 0; right: 0; min-width: 0; }
+  /* Capture bar: main button and import menu side by side; the menu opens across the full width of the bar. */
+  .capture-bar { flex-wrap: wrap; position: relative; }
+  .capture-bar .btn.bp { flex: 1 1 auto; justify-content: center; }
+  .capture-bar .import-menu { flex: 0 0 auto; position: static; }
+  .import-toggle { left: 0; right: 0; min-width: 0; }
 
-  /* Kachel: Jahr und Thema umbrechend, die Plaketten darunter. */
+  /* Tile: year and theme wrap, the badges below. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
   .smeta > span { max-width: 100%; }
 
-  /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
-     klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
-  .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
-  /* Aufgeklappt sieht der Knopf gedrückt aus, wie die gewählte Ansicht daneben: aria-expanded allein sah
-     man nicht. */
-  .filter-knopf[aria-expanded="true"] { background: var(--b50); color: var(--b700); border-color: var(--b600); box-shadow: inset 0 0 0 1px var(--b600); }
-  .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
-  .filterleiste > select { display: none; }
-  /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
-  .filterleiste.offen > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
-  /* Am Telefon nur Karten (js/dom.js telefonBreite): Eine Tabellenzeile wäre eine Bildschirmhöhe hoch. */
-  .filterleiste > .filter-knopf { order: -2; }
-  :is(.filterleiste, .filterzeile) > .vtgl { display: none; }
+  /* Filters behind a button: search and view stay, the select fields expand. Before, five fields took half the screen. */
+  .filter-button { display: inline-flex; align-items: center; gap: 6px; }
+  /* Expanded, the button looks pressed like the selected view next to it: aria-expanded alone was not visible. */
+  .filter-button[aria-expanded="true"] { background: var(--b50); color: var(--b700); border-color: var(--b600); box-shadow: inset 0 0 0 1px var(--b600); }
+  .filter-bar > input.si, .filter-bar > input.search-field { flex: 1 1 140px; width: auto !important; min-width: 0; }
+  .filter-bar > select { display: none; }
+  /* max-width and min-width 0: otherwise the field takes the width of its longest option. */
+  .filter-bar.open > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
+  /* On the phone cards only (js/dom.js phoneWidth): a table row would be a screen high. */
+  .filter-bar > .filter-button { order: -2; }
+  :is(.filter-bar, .filter-row) > .vtgl { display: none; }
 
-  /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
-  /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
+  /* The statistics in the header do not need the room */
+  /* Header: name and import bar give way, the user menu never. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
-  header .logo .marke, header .logo .kopf-sicht { min-width: 0; white-space: normal; overflow: visible;
+  header .logo .brand, header .logo .header-view { min-width: 0; white-space: normal; overflow: visible;
     text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; }
-  /* Die Marke bricht am <wbr> („Brick / Inventory“), der Seitenname silbenweise. */
-  header .logo .kopf-sicht { hyphens: auto; }
+  /* The brand breaks at the <wbr> ("Brick / Inventory"), the page name by syllables. */
+  header .logo .header-view { hyphens: auto; }
   .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
   .umenu              { flex: 0 0 auto; }
-  /* Die Klappe endet über der unteren Leiste (bei grosser Schrift zwei Reihen). */
+  /* The panel ends above the bottom bar (two rows with large text). */
   .umenu-pop          { max-height: calc(100dvh - 9rem); }
   #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
 
   /* ─ Navigation ──────────────────────────────────────────────────────── */
-  /* Fünf Ziele passen nebeneinander: Leiste unten, in Daumenreichweite,
-     Symbol über Beschriftung. */
+  /* Five targets fit side by side: bar at the bottom, within thumb reach, icon above label. */
   nav {
     position: fixed;
     top: auto; bottom: 0; left: 0; right: 0;
@@ -125,36 +97,35 @@
     min-width: 0;
     flex-direction: column;
     gap: 3px;
-    padding: 8px 2px 7px;                       /* ≥ 44px Trefferfläche */
+    padding: 8px 2px 7px;                       /* ≥ 44px hit area */
     font-size: var(--fs-0);
     border-bottom: none;
     border-top: 2px solid transparent;
     margin: -1px 0 0;
   }
-  /* Umbrechen statt kürzen: Mit erhöhtem Buchstabenabstand (WCAG 1.4.12) passte „Sammlung“ nicht mehr in 64 px. */
+  /* Wrap instead of cutting: with increased letter spacing (WCAG 1.4.12) the "Collection" label no longer fit into 64 px. */
   .ntab .tab-label { max-width: 100%; white-space: normal; overflow-wrap: break-word; hyphens: auto; text-align: center; line-height: 1.15; }
   .ntab .ico { width: 1.375rem; height: 1.375rem; }
-  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
+  .ntab.active, .ntab.group-active { border-top-color: var(--b600); color: var(--b600); }
 
-  .sammlung-wahl { display: flex; width: 100%; }
-  .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
+  .collection-choice { display: flex; width: 100%; }
+  .collection-choice button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
-  /* ─ Flächen und Karten ──────────────────────────────────────────────── */
+  /* ─ Surfaces and cards ─ */
   .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
   .ptitle            { font-size: var(--fs-5); }
 
-  /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
+  /* Two columns from about 360 px, one below and with large text. */
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
-  /* Teile und Figuren in zwei Spalten wie die Sets: Drei schmale Spalten (113 px) liessen bei ein, zwei
-     Figuren die halbe Zeile leer und sahen anders aus als die Sammlung daneben. Bei 320 px bleiben es zwei. */
+  /* Parts and minifigs in two columns like the sets: three narrow columns left half a row empty with one or
+     two minifigs and looked different from the collection. */
   .parts-grid, .parts-list, .man-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); gap: .7rem; }
-  /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
-     Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
+  /* minmax(0, …) instead of 1fr: a column may get narrower than its longest number, which then wraps —
+     otherwise the total value pushed the tile over the edge. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .fgrid .fstat.hi { grid-column: 1 / -1; }
   .fstat       { min-width: 0; padding: .85rem .9rem; }
-  /* Ein Betrag bricht nie mitten in der Zahl um: eine Zeile, die Schrift
-     wird mit der Breite kleiner; unter 420 px eine Kachel je Zeile (unten). */
+  /* An amount never breaks inside the number: one line, the font shrinks with the width; below 420 px one tile per row. */
   .fval        { white-space: nowrap; font-size: clamp(1.05rem, 5.4vw, var(--fs-6)); }
 
   /* ─ Formularzeilen ──────────────────────────────────────────────────── */
@@ -163,69 +134,66 @@
     gap: .5rem;
   }
   .frow > * { min-width: 0; }
-  /* Formularfelder zu zweit je Zeile, das erste und der Knopf über die volle
-     Breite. Die max-width aus den Inline-Styles passt nur auf den Desktop. */
+  /* Form fields two per row, the first and the button across the full width. The max-width of the inline
+     styles only fits the desktop. */
   .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
   .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
-  /* Neuer Benutzer: Passwort und Häkchen je eine volle Zeile; zu zweit bräche die Passwortregel dreizeilig. */
-  .nutzer-neu > .fg { flex-basis: 100%; max-width: none; }
-  .nutzer-neu > .nutzer-rolle { margin-top: 0; }
-  /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
-  [style*="display:grid"] > .fg, .raster-160 > .fg { min-width: 0; }
+  /* New user: password and checkbox one full row each; two per row broke the password rule into three lines. */
+  .user-new > .fg { flex-basis: 100%; max-width: none; }
+  .user-new > .user-role { margin-top: 0; }
+  /* In grids the column sets the width, not the min width of .fg */
+  [style*="display:grid"] > .fg, .grid-160 > .fg { min-width: 0; }
 
-  /* Zeilen ohne Umbruch (Inline-Styles der Vorlagen) dürfen umbrechen, statt
-     die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt,
-     und Beschriftungen: Dort rutschte der Text unter sein Häkchen. */
+  /* Rows without wrapping (inline styles of the templates) may wrap instead of widening the page. Except what
+     stays single-line on purpose, and labels: there the text slid below its checkbox. */
   main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
   .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
-  main .zeile:not(label), .modal .zeile:not(label) { flex-wrap: wrap; }
+  main .row:not(label), .modal .row:not(label) { flex-wrap: wrap; }
 
-  /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
+  /* Detail rows: label on top, controls below when it gets tight */
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
   .dr > *             { min-width: 0; }
   .dr select, .dr input { max-width: 100%; }
-  /* Preisalarm am Telefon: Beschriftung oben, die drei Felder als eigene
-     Zeile über die volle Breite statt eng neben der Beschriftung. */
-  .dr.alarm-zeile { flex-direction: column; align-items: stretch !important; }
-  .dr.alarm-zeile > .dv { width: 100%; }
-  .alarm-zeile .alarm-feld { flex: 1 1 0; min-width: 0; width: auto; }
-  /* Zustand, Richtung und Preis passen am kleinen Telefon nicht in eine Zeile:
-     Die Auswahl teilt sich die erste, der Preis mit Beschriftung die zweite. */
-  .alarm-zeile .dv > select.alarm-feld { flex: 1 1 8rem; }
-  /* Die Währung bleibt in der Zeile des Preisfelds, statt zentriert darunter zu stehen. */
-  .alarm-zeile .alarm-preis { flex: 1 1 calc(100% - 4.5rem); display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
-  .alarm-zeile .alarm-waehrung { flex: none; margin-left: 0; }
-  .alarm-zeile .alarm-preis > input { flex: 1 1 auto; }
+  /* Price alert on the phone: label on top, the three fields as their own full-width row. */
+  .dr.alert-row { flex-direction: column; align-items: stretch !important; }
+  .dr.alert-row > .dv { width: 100%; }
+  .alert-row .alert-field { flex: 1 1 0; min-width: 0; width: auto; }
+  /* Condition, direction and price do not fit one line on a small phone: the selects share the first, the
+     price with its label the second. */
+  .alert-row .dv > select.alert-field { flex: 1 1 8rem; }
+  /* The currency stays on the line of the price field instead of centred below it. */
+  .alert-row .alert-price { flex: 1 1 calc(100% - 4.5rem); display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  .alert-row .alert-currency { flex: none; margin-left: 0; }
+  .alert-row .alert-price > input { flex: 1 1 auto; }
 
-  /* Kennzahl-Kacheln: Zahl in einer Zeile */
-  /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
+  /* Key figure tiles: number on one line */
+  /* With large text a long label wraps instead of sticking out. */
   .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
-    font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
-    font-size: max(16px, 1rem);   /* … und mit grosser Schrift wächst es mit */
+    font-size: 16px;              /* < 16px makes iOS zoom in on focus */
+    font-size: max(16px, 1rem);   /* … and with large text it grows along */
     min-height: 44px;
   }
-  /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
-     kleinen Varianten bleiben am Desktop klein; am Telefon gilt es für alle. */
-  .btn, .btn-sm, .vb, .v-btn, .period-btn, .ubadge-knopf, .sammlung-wahl button, .umenu-item,
-  details > summary, .import-menue > summary, #tab-profil .btn, .acq-loeschen { min-height: 44px; }
-  .vb, .v-btn, .btn-sm, .ubadge-knopf, .acq-loeschen { min-width: 44px; }
-  .lager-sinnbild { min-width: 44px; }
-  .chip-weg { min-width: 44px; min-height: 44px; margin: 0; }
-  .user-tbl .rollen-zelle { justify-content: flex-end; }
+  /* 44 px is the size of a fingertip (Apple HIG, WCAG 2.5.5). The small variants stay small on the desktop;
+     on the phone it applies to all. */
+  .btn, .btn-sm, .vb, .v-btn, .period-btn, .ubadge-button, .collection-choice button, .umenu-item,
+  details > summary, .import-menu > summary, #tab-profile .btn, .acq-delete { min-height: 44px; }
+  .vb, .v-btn, .btn-sm, .ubadge-button, .acq-delete { min-width: 44px; }
+  .location-icon { min-width: 44px; }
+  .chip-remove { min-width: 44px; min-height: 44px; margin: 0; }
+  .user-tbl .roles-cell { justify-content: flex-end; }
   .mon-plan, .mon-plan input { min-height: 44px; }
-  #monitor-content a.zu-sicht { min-height: 44px; min-width: 44px; justify-content: center; }
-  /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
-     ohne Beschriftung. Das Kästchen malen zwei Hintergrundschichten in die Mitte;
-     der negative Rand hält den Platz im Layout bei 22 px.
-     !important: Einige Häkchen tragen inline `width:auto`. */
+  #monitor-content a.close-view { min-height: 44px; min-width: 44px; justify-content: center; }
+  /* Checkbox: drawn at 22 px but with a 44 px target on the box itself — even without a label. Two background
+     layers paint the box in the centre; the negative margin keeps 22 px in the layout. !important: some
+     checkboxes carry an inline width:auto. */
   input[type="radio"] { width: 22px !important; height: 22px; min-height: 0; }
   input[type="checkbox"] {
     -webkit-appearance: none; appearance: none; flex: 0 0 auto;
     width: 44px !important; height: 44px !important; min-height: 0; margin: -11px !important;
     padding: 0; border: 0; border-radius: 0; cursor: pointer;
     background: linear-gradient(var(--sur), var(--sur)) center / 18px 18px no-repeat,
-                linear-gradient(var(--feldrand), var(--feldrand)) center / 22px 22px no-repeat;
+                linear-gradient(var(--field-border), var(--field-border)) center / 22px 22px no-repeat;
   }
   input[type="checkbox"]:checked {
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px 16px no-repeat,
@@ -233,39 +201,36 @@
   }
   input[type="checkbox"]:disabled { opacity: .5; cursor: default; }
   input[type="checkbox"]:focus-visible { outline-offset: -9px; }
-  /* Tippziele mindestens 44 px — auch der Löschknopf und die Links zu den
-     Schlüsseln in Einstellungen und Einrichtung. */
+  /* Targets at least 44 px — also the delete button and the links to the keys in settings and setup. */
   .ca { top: 4px; right: 4px; z-index: 2; }
   .delbtn { width: 44px; height: 44px; }
-  .ii a, .ii-weg { min-height: 44px; }
-  .ii-weg { min-width: 44px; }
-  /* Tabellenzeilen, die einen Dialog öffnen (Sets eines Teils), sind Tippziele. */
+  .ii a, .ii-remove { min-height: 44px; }
+  .ii-remove { min-width: 44px; }
+  /* Table rows that open a dialog (sets of a part) are targets. */
   tr[tabindex="0"] > td { height: 44px; }
-  /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
+  /* Room for the 44 px button so it covers neither image nor price. */
   .man-tile:has(> .ca) { padding-top: 52px; }
-  .mk-zeile { padding-right: 56px; }
-  /* Etikett und Preis bekommen eine eigene Zeile unter dem Text: Neben dem
-     Bild ist für drei Spalten kein Platz, und der Titel wird sonst 0 px breit. */
-  .mk-zeile { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 6px; }
-  .mk-zeile > .mk-rechts { grid-column: 2; }
-  .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
-  /* Lange Beschriftungen brechen um, statt über den Rand zu ragen. */
+  .mk-row { padding-right: 56px; }
+  /* Tag and price get their own line below the text: next to the image there is no room for three columns,
+     and the title would be 0 px wide. */
+  .mk-row { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 6px; }
+  .mk-row > .mk-right { grid-column: 2; }
+  .ibox a[href], a.text-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
+  /* Long labels wrap instead of sticking out. */
   .ssec .btn { white-space: normal; }
-  /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
+  /* A checkbox inside its label: the whole row is the target. */
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
-  /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
+  /* Neutralise fixed px widths from the inline styles of the templates */
   [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch),
-  :is(.suchfeld, .min-100, .max-82, .max-110, .max-120, .max-150, .max-160, .max-220, .max-240, .max-360,
+  :is(.search-field, .min-100, .max-82, .max-110, .max-120, .max-150, .max-160, .max-220, .max-240, .max-360,
       .max-420, .max-440, .max-480, .max-520, .max-560, .max-620, .max-720, .max-780)[class] {
     max-width: 100% !important;
   }
 
-  /* ─ Tabellen → Karten ───────────────────────────────────────────────── */
-  /* Die data-label-Attribute stammen aus mobile.js: Ein MutationObserver
-     stempelt jede <td> mit der Beschriftung ihrer Spalte. Dadurch musste
-     keines der zehn Tabellen-Templates angefasst werden, und künftige
-     Tabellen bekommen das Verhalten automatisch. */
+  /* ─ Tables → cards ───────────────────────────────────────────────── */
+  /* The data-label attributes come from mobile.js: a MutationObserver stamps every <td> with its column label,
+     so no table template had to change and future tables get the behaviour automatically. */
   .tw { overflow-x: visible; }
 
   .dt {
@@ -297,21 +262,21 @@
     text-align: right;
   }
   .dt tr td:last-child { border-bottom: none; }
-  /* Feldfehler unter einer Karte (feldFehler): hängt an ihr statt als eigene Karte. */
-  .dt tr:has(+ .feld-fehler-zeile:not([hidden])) { margin-bottom: 0; border-bottom: none; border-radius: 10px 10px 0 0; }
-  .dt tr.feld-fehler-zeile { border-top: none; border-radius: 0 0 10px 10px; padding-top: 0; }
-  .dt tr.feld-fehler-zeile > td { display: block; text-align: left; }
-  /* Wird es eng (grosse Schrift), steht der Wert unter seiner Beschriftung. */
+  /* Field error below a card (fieldError): attached to it instead of being a card of its own. */
+  .dt tr:has(+ .field-error-row:not([hidden])) { margin-bottom: 0; border-bottom: none; border-radius: 10px 10px 0 0; }
+  .dt tr.field-error-row { border-top: none; border-radius: 0 0 10px 10px; padding-top: 0; }
+  .dt tr.field-error-row > td { display: block; text-align: left; }
+  /* When it gets tight (large text), the value stands below its label. */
   .dt td { flex-wrap: wrap; row-gap: .25rem; }
   .dt td > * { max-width: 100%; }
-  .mon-tabelle td { justify-content: flex-start; text-align: left; column-gap: .75rem; }
-  .mon-tabelle td::before { flex-basis: 100%; }
-  /* break-word statt anywhere: anywhere macht jedes Zeichen zur Bruchstelle, der Titel schrumpfte neben dem
-     Symbol und brach „Backg|round“ ohne Strich. So bricht er an Leerzeichen und weichen Trennungen. */
+  .mon-table td { justify-content: flex-start; text-align: left; column-gap: .75rem; }
+  .mon-table td::before { flex-basis: 100%; }
+  /* break-word instead of anywhere: anywhere makes every character a break point; the title shrank next to the
+     icon and broke without a hyphen. Now it breaks at spaces and soft hyphens. */
   .ptitle { min-width: 0; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
   .ptitle > span { min-width: 0; }
-  /* break-word senkt die Mindestbreite nicht: Ohne min-width 0 hielte der Kopf ein langes Titelwort
-     („Einstellungen“ bei 200 %) in voller Breite und weitete das Fenster. */
+  /* break-word does not lower the min width: without min-width 0 the header kept a long title word at full
+     width and widened the window. */
   .ph > div { min-width: 0; }
 
   .dt td::before {
@@ -324,72 +289,69 @@
     letter-spacing: .4px;
     color: var(--mut);
   }
-  /* Spalten ohne Überschrift (Aktions-Buttons) brauchen keine Beschriftung */
+  /* Columns without a heading (action buttons) need no label */
   .dt td[data-label=""]::before,
   .dt td:not([data-label])::before { content: none; }
   .dt td[data-label=""] { justify-content: flex-end; }
-  .user-tbl td.nutzer-name { justify-content: flex-start; font-size: var(--fs-4); text-align: left; }
-  .user-tbl .nutzer-id { display: none; }
-  /* Kaufpreis-Karten: Wird es eng (grosse Schrift), steht das Feld unter seiner Beschriftung. */
-  .acq-tabelle td { flex-wrap: wrap; gap: .25rem 1rem; }
-  .acq-tabelle td > * { margin-left: auto; }
+  .user-tbl td.user-name { justify-content: flex-start; font-size: var(--fs-4); text-align: left; }
+  .user-tbl .user-id { display: none; }
+  /* Purchase price cards: when it gets tight (large text), the field stands below its label. */
+  .acq-table td { flex-wrap: wrap; gap: .25rem 1rem; }
+  .acq-table td > * { margin-left: auto; }
 
-  /* Finanzen: eine kompakte Zeile je Eintrag — Bild, Name, Wert, G&V. Alles
-     Weitere steht in der Detailansicht, die das Antippen öffnet. Zehn Felder
-     je Karte machten die Seite rund 8000 px lang. */
+  /* Finances: one compact row per entry — image, name, value, P&L. Everything else is in the detail view
+     opened by tapping; ten fields per card made the page about 8000 px long. */
   .dt-fin tbody tr {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) auto;
-    grid-template-areas: "bild name wert" "bild name guv";
+    grid-template-areas: "image name value" "image name pnl";
     column-gap: .7rem; row-gap: .1rem; align-items: center;
     padding: .55rem .7rem;
   }
   .dt-fin tbody td { display: block; border: none; padding: 0; text-align: left; }
   .dt-fin tbody td::before { content: none; }
   .dt-fin td.fin-detail, .dt-fin td.fin-status { display: none; }
-  .dt-fin td.fin-bild { grid-area: bild; }
-  .dt-fin td.fin-bild img { width: 44px; height: 44px; object-fit: contain; }
+  .dt-fin td.fin-image { grid-area: image; }
+  .dt-fin td.fin-image img { width: 44px; height: 44px; object-fit: contain; }
   .dt-fin td.fin-name { grid-area: name; font-weight: 600; line-height: 1.3; }
   .dt-fin td.fin-name > span:first-child { max-width: none !important; white-space: normal !important; }
-  .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
-  .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
-  .dt-fin .fin-jahr { display: none; }
-  .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
-  .fin-unter-kauf { display: inline; }
-  .dt-fin .fin-kein-markt { display: inline; font-size: var(--fs-1); font-weight: 400; color: var(--mut); }
-  .dt-fin .fin-strich, .dt-fin td.fin-guv:has(.fin-guv-leer) { display: none; }
-  /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */
-  .dt-summe tfoot { display: block; }
-  .dt-summe tr { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .75rem; padding: .55rem .7rem; }
-  .dt-summe td { display: block; border: none; padding: 0 !important; text-align: left !important; width: auto !important; }
-  .dt-summe td.fin-fuss-name { grid-column: 1 / -1; }
-  .dt-summe td::before { content: none; }
-  .dt-summe td:empty { display: none; }
-  .dt-fin td[data-kurz]::before, .dt-summe td[data-kurz]::before {
-    content: attr(data-kurz); display: block; font-size: var(--fs-0); font-weight: 700;
+  .dt-fin td.fin-value { grid-area: value; text-align: right; font-weight: 700; }
+  .dt-fin td.fin-guv  { grid-area: pnl;  text-align: right; }
+  .dt-fin .fin-year { display: none; }
+  .fin-sub { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
+  .fin-sub-purchase { display: inline; }
+  .dt-fin .fin-no-market { display: inline; font-size: var(--fs-1); font-weight: 400; color: var(--mut); }
+  .dt-fin .fin-strich, .dt-fin td.fin-guv:has(.fin-guv-empty) { display: none; }
+  /* Sums: name on top, cost basis and market value below with their own labels. */
+  .dt-sum tfoot { display: block; }
+  .dt-sum tr { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .75rem; padding: .55rem .7rem; }
+  .dt-sum td { display: block; border: none; padding: 0 !important; text-align: left !important; width: auto !important; }
+  .dt-sum td.fin-footer-name { grid-column: 1 / -1; }
+  .dt-sum td::before { content: none; }
+  .dt-sum td:empty { display: none; }
+  .dt-fin td[data-short]::before, .dt-sum td[data-short]::before {
+    content: attr(data-short); display: block; font-size: var(--fs-0); font-weight: 700;
     text-transform: uppercase; letter-spacing: .4px; color: var(--mut);
   }
-  .fin-fuss-wert { font-size: var(--fs-3); }
+  .fin-footer-value { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
-  /* Der Grund der Summenzeile liegt auf der ganzen Zeile, nicht nur hinter den Zahlen. */
+  /* The background of the sum row covers the whole row, not only the numbers. */
   .dt-fin tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: var(--b50); border: none; border-radius: 8px; padding: .5rem .7rem; }
-  .dt-fin tfoot td, .dt-summe tfoot td { background: transparent !important; }
-  .dt-summe tfoot tr { background: var(--b50); }
+  .dt-fin tfoot td, .dt-sum tfoot td { background: transparent !important; }
+  .dt-sum tfoot tr { background: var(--b50); }
   .dt-fin tfoot td { display: block; border: none; padding: 0 !important; text-align: left !important; }
   .dt-fin tfoot td:empty { display: none; }
   .dt-fin tfoot td::before { content: none; }
 
-  /* Sparklines und Diagramme in Tabellenzellen dürfen die Karte nicht sprengen */
+  /* Sparklines and charts in table cells must not burst the card */
   .dt td svg:not(.ico), .dt td canvas { max-width: 60%; height: auto; }
 
-  /* ─ Modals als Sheet ────────────────────────────────────────────────── */
+  /* ─ Modals as sheets ─ */
   .ovl { align-items: flex-end; }
   .modal {
-    /* Die Polsterung ueber die Variablen, nicht ueber `padding`: Titel- und
-       Fussleiste in styles.css heben sie mit negativen Raendern wieder auf,
-       um ueber die volle Breite zu gehen. Stuende hier nur `padding`, waeren
-       die Leisten auf dem Handy um die Differenz zu breit. */
+    /* Padding through the variables, not padding: title and footer bars in styles.css cancel it with negative
+       margins; with only padding here they would be too wide on the phone. */
     --modal-padx: .9rem;
     --modal-pady: 1.1rem;
     --modal-padb: calc(1.1rem + env(safe-area-inset-bottom));
@@ -401,26 +363,22 @@
     border-right: none;
     border-bottom: none;
   }
-  /* Hier stand `.mhd { position: sticky; top: 0; … }` — nur fuer kleine
-     Schirme. Das Muster war richtig und ist jetzt in styles.css fuer ALLE
-     Breiten da, zusammen mit der Fussleiste. Diese Zeile wuerde die dortige
-     Polsterung ueberschreiben und die Leiste wieder zusammenschnurren
-     lassen. */
+  /* No sticky .mhd here any more: styles.css has it for ALL widths; a rule here would override its padding. */
   .mimg { max-height: 34vh; object-fit: contain; }
 
   /* ─ Fortschritts-Overlay ────────────────────────────────────────────── */
   .prog-box   { width: 94%; padding: 1.1rem .9rem; }
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
-  /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  /* Unten über der Leiste (und dem schwebenden Knopf), oben verdeckten sie den
-     Seitentitel; nur bei offenem Dialog oben, denn unten liegen dessen Felder. */
+  /* ─ Toasts across the full width ─ */
+  /* At the bottom above the bar (and the floating button); at the top they covered the page title. Only with
+     an open dialog at the top, because its fields are at the bottom. */
   #toasts { left: .6rem; right: .6rem; top: auto; bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
   body:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) #toasts { bottom: calc(4.75rem + 60px + env(safe-area-inset-bottom)); }
   body:has(.ovl.open, .ovl[style*="display: flex"]) #toasts { top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
   .toast  { width: auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 
-  /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
+  /* ─ Login, registration and startup screens ─ */
   #login-screen, #startup-screen { padding: 1rem .8rem; }
   .lcard {
     max-width: none;
@@ -433,18 +391,16 @@
 }
 
 
-/* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
-   grösse des Browsers. Darunter zwei Reihen zu drei Zielen mit etwas kleinerer
-   Schrift: Die Namen bleiben lesbar, statt nur Symbole zu zeigen. */
+/* Five labels need about 3.9 em each (em of the browser font size). Below that two rows of three targets
+   with slightly smaller text: the names stay readable instead of showing icons only. */
 @media (max-width: 640px) {
-  /* Die Leiste misst sich selbst (Container-Abfrage in em ihrer Schrift):
-     So greift die Zweireihigkeit bei grosser Browserschrift UND bei
-     vergrösserter Grundschrift der Seite, die eine Media-Abfrage nicht sieht. */
-  nav:not(.einst-nav) { container: leiste / inline-size; flex-wrap: wrap; }
+  /* The bar measures itself (container query in em of its font): so two rows apply with a large browser
+     font AND with an enlarged page font that a media query does not see. */
+  nav:not(.settings-nav) { container: bar / inline-size; flex-wrap: wrap; }
 }
-@container leiste (max-width: 20.5em) {
-  /* Nur die Namen, ohne Symbol: Symbol über Name machte jede Reihe rund 57 px hoch, die Leiste 115 px.
-     Die Namen bleiben lesbar (Symbole allein erklären „Bauliste“ und „Katalog“ nicht). */
+@container bar (max-width: 20.5em) {
+  /* Only the names, no icon: icon above name made each row about 57 px and the bar 115 px high.
+     The names stay readable (icons alone explain neither the build list nor the catalog). */
   .ntab { flex: 0 0 33.333%; padding: 2px; min-height: 44px; gap: 0; justify-content: center; }
   .ntab .ico { display: none; }
   /* A little smaller than the rest, but never below 12 px: what then does not fit into a third
@@ -454,42 +410,42 @@
 }
 
 
-/* Sehr schmal (320 px bei 200 %): Felder, Auswahllisten und lange Zeilen geben nach,
-   statt über den Rand zu ragen. Gemessen am Inhalt selbst, wie bei der Leiste. */
-@media (max-width: 640px) { main:not(#login-screen) { container: haupt / inline-size; } }
-@container haupt (max-width: 20.5em) {
-  .merk-erfassen > .fg { flex: 1 1 100%; max-width: none !important; }
-  .merk-erfassen > .btn { flex: 1 1 100%; }
+/* Very narrow (320 px at 200 %): fields, selects and long rows give way instead of sticking out.
+   Measured on the content itself, like the bar. */
+@media (max-width: 640px) { main:not(#login-screen) { container: main / inline-size; } }
+@container main (max-width: 20.5em) {
+  .wanted-capture > .fg { flex: 1 1 100%; max-width: none !important; }
+  .wanted-capture > .btn { flex: 1 1 100%; }
   .voucher-row { padding: .6rem .7rem; gap: .5rem; }
-  /* Je Knopf so breit wie sein Wort, umgebrochen wird zwischen den Knöpfen („Woch|e“ las niemand). */
-  .zeitraum-wahl .period-btn { flex: 1 1 auto; overflow-wrap: normal; hyphens: manual; padding-inline: .6em; }
-  .diagramm-karte { padding: .75rem; }
-  main :is(.filterleiste, .filterzeile) > :is(input.si, input.suchfeld) { flex: 1 1 100%; width: 100% !important; }
-  /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
-  #storage-list .lager-raster { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
-  #storage-list .lager-feld { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
-  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; padding-left: 0 !important; }
-  .erfassen-leiste .import-menue { flex: 1 1 100%; min-width: 0; }
-  .erfassen-leiste .import-menue > summary { width: 100%; white-space: normal; }
-  main :is(p, li, h1, h2, h3, label, .ibox, .stit, .hinweis-absatz) { hyphens: auto; }
+  /* Each button as wide as its word; wrapping happens between buttons. */
+  .period-choice .period-btn { flex: 1 1 auto; overflow-wrap: normal; hyphens: manual; padding-inline: .6em; }
+  .chart-card { padding: .75rem; }
+  main :is(.filter-bar, .filter-row) > :is(input.si, input.search-field) { flex: 1 1 100%; width: 100% !important; }
+  /* Locations: the field across the whole row, usage and buttons below. */
+  #storage-list .location-grid { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
+  #storage-list .location-field { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
+  #storage-list .location-used { justify-content: flex-start !important; white-space: normal !important; padding-left: 0 !important; }
+  .capture-bar .import-menu { flex: 1 1 100%; min-width: 0; }
+  .capture-bar .import-menu > summary { width: 100%; white-space: normal; }
+  main :is(p, li, h1, h2, h3, label, .ibox, .stit, .hint-paragraph) { hyphens: auto; }
   main select, main input:not([type=checkbox]):not([type=radio]) { max-width: 100%; min-width: 0; }
-  main .fg, main :is(.zeile, .sform, .ssec) > *, .diagramm-werte > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
-  #tab-lagerorte .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
+  main .fg, main :is(.row, .sform, .ssec) > *, .chart-values > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
+  #tab-locations .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
   main .btn { white-space: normal; max-width: 100%; }
   .voucher-row, .voucher-actions { flex-wrap: wrap; }
-  .empty.leer :is(h2, p, .btn), .dt-summe td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
-  /* Knöpfe brechen zwischen Wörtern: Mit „anywhere“ schrumpften sie bis auf ein Zeichen („Erneut versu|chen“). */
+  .empty.empty-state :is(h2, p, .btn), .dt-sum td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
+  /* Buttons break between words: with "anywhere" they shrank to a single character. */
   main .btn, .umenu-item > span { overflow-wrap: break-word; }
-  .diagramm-werte > *, .apk-btn-txt, #household-state, #tab-haushalt .text-mittel { overflow-wrap: anywhere; white-space: normal; }
+  .chart-values > *, .apk-btn-txt, #household-state, #tab-household .text-medium { overflow-wrap: anywhere; white-space: normal; }
 }
 
-/* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
+/* As a card the table row does not highlight on hover. */
 @media (max-width: 640px) and (hover: hover) {
   .dt tr:hover td { background: none; }
 }
 
 
-/* ── Kleines Telefon ─────────────────────────────────────────────────────── */
+/* ── Small phone ─────────────────────────────────────────────────────── */
 @media (max-width: 420px) {
   .fgrid { grid-template-columns: 1fr; }
 }
@@ -498,55 +454,49 @@
   .sgrid      { gap: .5rem; }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
-  /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
+  /* At 320 px each target has 64 px: the "Collection" label only fits without padding and slightly tighter. */
   .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
   [data-theme="brick"] nav { padding-left: 2px; padding-right: 2px; column-gap: 0; }
-  /* Die Grundplatte ohne seitlichen Rand: Mit 2 × 16 px fehlte der Sammlungswahl der Platz, „Minifiguren“ brach in eine zweite Reihe. */
+  /* The base plate without side margin: with 2 × 16 px the collection choice lacked room and the minifigs label broke into a second row. */
   [data-theme="brick"] #app { padding-left: 0; padding-right: 0; }
-  /* „Minifiguren“ berührt den Rand der Sammlungswahl nicht. */
-  .sammlung-wahl button { gap: 4px; padding-left: 2px; padding-right: 2px; }
-  .sammlung-wahl button .ico { width: 1rem; height: 1rem; }
+  /* The minifigs label does not touch the edge of the collection choice. */
+  .collection-choice button { gap: 4px; padding-left: 2px; padding-right: 2px; }
+  .collection-choice button .ico { width: 1rem; height: 1rem; }
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Nur Stein-Design
-   Alles oben gilt für beide Designs. Hier stehen ausschliesslich die Stellen,
-   an denen brick.css eigenes Layout mitbringt — im Wesentlichen die
-   Noppenreihen und die grossen Statistikkacheln.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ Brick theme only ═══
+   Everything above applies to all themes. Here only the places where brick.css brings its own layout —
+   mainly the stud rows and the large statistics tiles. */
 @media (max-width: 640px) {
 
-  /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
-     Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
-     darunter steht im jeweiligen Reiter. */
+  /* Key figures (all themes) as one compact line "4 sets · 394 parts …": as tiles they filled the first screen
+     on the phone. The breakdown is in the respective tab. */
   .brick-stats { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1rem 0; margin-bottom: var(--sp-4); }
-  /* Reiner Text mit Punkt dazwischen, ohne Fläche: Als Pille sah die Zahl wie ein zweiter Umschalter
-     Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
+  /* Plain text with a dot between, no surface: as a pill the number looked like a second switch. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
     flex: 0 0 auto; padding: 0; border: 0 !important; border-radius: 0; box-shadow: none; background: none; color: var(--mut); }
-  /* Der Punkt steht hinter einer Kennzahl, nicht vor der nächsten: Bricht die Zeile um, beginnt sie
-     sonst mit einem verwaisten „·“. order:-2 setzt ihn in der umgekehrten Reihe ans Ende (die vierte
-     Kennzahl ist am Telefon verborgen, also hat die dritte keinen). */
+  /* The dot stands after a key figure, not before the next: otherwise a wrapped line starts with an orphaned
+     "·". order:-2 puts it at the end in the reversed row (the fourth figure is hidden on the phone). */
   .bstat:not(:last-child):not(:nth-child(3))::after { content: "·"; margin: 0 0 0 .5em; color: var(--mut); order: -2; }
-  /* Der Punkt erhöht die Zeile nicht: Mit seiner vollen Zeilenhöhe stand die Kennzahl ohne Punkt 2 px höher. */
+  /* The dot does not raise the line: with its full line height the figure without a dot stood 2 px higher. */
   .bstat::after { line-height: 1; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }
   [data-theme="brick"] .bstat::before { display: none; }
 
-  /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
+  /* The pills of the brick theme become the bar at the bottom like in the others. */
   [data-theme="brick"] nav {
     position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0;
     gap: 2px 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
     background: var(--sur); border-top: 1px solid var(--bdr);
     box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
-  /* Die eigene Polsterung überstimmt die Leistenregeln; ohne Mindesthöhe blieben bei 200 % Zoom 34 px. */
+  /* The own padding overrides the bar rules; without a min height 34 px remained at 200 % zoom. */
   [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 0; font-size: var(--fs-0); min-height: 44px; justify-content: center; }
 
-  /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
+  /* Scale stud rows narrower, otherwise they look coarse on the phone */
   [data-theme="brick"] .sc::after,
   [data-theme="brick"] .lcard::after {
     background-size: 13px 100%;
@@ -559,14 +509,13 @@
 
   [data-theme="brick"] .lcard { padding: 26px 18px 22px; border-radius: 18px; }
 
-  /* Die Tabellen-Karten bekommen im Stein-Design denselben Rahmen wie .sc */
+  /* The table cards get the same frame as .sc in the brick theme */
   [data-theme="brick"] .dt tr { border: none; box-shadow: var(--sh0); }
 }
 
-/* Schmales Telefon bei normaler Schrift (M6): die Sammlung als Liste mit Bild
-   links. Eine Kachel über die volle Breite war 460 px hoch. Bei grosser Schrift
-   (unter 15 em) bleibt die Kachel, sonst bliebe neben dem Bild kein Platz. */
-@container haupt (min-width: 15em) and (max-width: 22em) {
+/* Narrow phone with normal text: the collection as a list with the image left; a full-width tile was 460 px
+   high. With large text (below 15 em) the tile stays, otherwise no room is left next to the image. */
+@container main (min-width: 15em) and (max-width: 22em) {
   #gallery .sgrid { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
   #gallery .sc { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: stretch; }
   #gallery .sc > .sci { aspect-ratio: auto; height: 100%; min-height: 5.5rem; border-bottom: 0; border-right: 1px solid var(--bdr); }
@@ -576,24 +525,21 @@
 }
 
 
-/* ── Geringe Höhe: 200 % Zoom, Telefon quer ──────────────────────────────
-   Kopf (52 px), Hinweisband und untere Leiste nahmen bei 640 × 450 fast die
-   Hälfte der Höhe. Der Kopf weicht beim Rollen nach unten (Klasse aus
-   mobile.js), die untere Leiste wird schmaler: Name neben dem Symbol, erst
-   unter 600 px nur Symbole (der Name bleibt für Vorleser erhalten) — Symbole
-   allein erklären „Bauliste“ und „Katalog“ nicht. Breiter als 640 px steht
-   die Leiste oben unter dem Kopf und rückt mit ihm nach oben. */
+/* ── Little height: 200 % zoom, phone in landscape ──
+   Header, hint band and bottom bar took almost half the height at 640 × 450. The header gives way when
+   scrolling down (class from mobile.js) and the bottom bar gets narrower: name next to the icon, below
+   600 px icons only (the name stays for screen readers). Wider than 640 px the bar sits below the header. */
 @media (max-height: 500px) {
   header { transition: transform .2s ease; }
-  .kopf-weg header { transform: translateY(-100%); }
+  .header-remove header { transform: translateY(-100%); }
 }
 @media (max-height: 500px) and (min-width: 641px) {
   nav { transition: top .2s ease; }
-  .kopf-weg nav { top: 0; }
+  .header-remove nav { top: 0; }
 }
 @media (max-height: 500px) and (max-width: 640px) {
-  /* Ohne Kopf rückt die Sprungleiste ganz nach oben, statt eine Lücke über sich zu lassen. */
-  .kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
+  /* Without the header the jump bar moves to the very top instead of leaving a gap above it. */
+  .header-remove :is(.account-nav, #global-settings-grid > .settings-nav) { top: 0; }
   .ntab { padding: 10px 2px; gap: 0; }
   main:not(#login-screen) { padding-bottom: 3.5rem; }
 }
@@ -607,228 +553,218 @@
 @media (max-height: 500px) and (prefers-reduced-motion: reduce) {
   header, nav { transition: none; }
 }
-/* Grosse Schrift am Telefon: Kopf und zweireihige Leiste belegten zusammen
-   rund 40 % der Höhe; beim Rollen nach unten weichen beide. */
+/* Large text on the phone: header and two-row bar took about 40 % of the height; both give way when scrolling down. */
 @media (max-width: 640px) {
-  .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: transform .2s ease; }
-  .schrift-gross.kopf-weg header { transform: translateY(-100%); }
-  .schrift-gross.kopf-weg nav:not(.einst-nav) { transform: translateY(100%); }
-  .schrift-gross.kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
+  .text-large header, .text-large nav:not(.settings-nav) { transition: transform .2s ease; }
+  .text-large.header-remove header { transform: translateY(-100%); }
+  .text-large.header-remove nav:not(.settings-nav) { transform: translateY(100%); }
+  .text-large.header-remove :is(.account-nav, #global-settings-grid > .settings-nav) { top: 0; }
 }
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
-  .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: none; }
+  .text-large header, .text-large nav:not(.settings-nav) { transition: none; }
 }
 
 
-/* ── Sammlung am Telefon: die erste Karte über der Falz ──────────────────
-   Hinweis, Umschalter, vier Kennzahlen, zwei breite Knöpfe und zwei
-   Filterzeilen füllten bei 320 × 640 den ganzen ersten Bildschirm. Erfassen
-   wird ein schwebender Knopf, Importieren ein Überlaufmenü neben dem Titel,
-   Kennzahlen und Filter je eine Zeile, das Kartenbild flacher. */
+/* ── Collection on the phone: the first card above the fold ──
+   At 320 × 640 hint, switch, figures, two buttons and two filter rows filled the first screen. Capture becomes
+   a floating button, import an overflow menu next to the title, figures and filters one line each. */
 @media (max-width: 640px) {
   :is(#tab-gallery, #tab-parts, #tab-minifigs) { position: relative; }
-  /* Der Titel ist so hoch wie der Knopf daneben: Der Untertitel beginnt erst darunter. */
+  /* The title is as high as the button next to it: the subtitle only starts below. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; min-height: 44px; }
-  /* Der Umschalter Sets/Teile/Minifiguren ist hier die sichtbare Überschrift (aria-current); der Titel bleibt
-     unsichtbar für Vorleser erhalten, Pfad und Untertitel sagen daneben nichts Neues. Zwei Zeilen Kopf
-     schoben die erste Karte unter 40 % der Höhe. */
+  /* The Sets/Parts/Minifigs switch is the visible heading here (aria-current); the title stays for screen
+     readers. Two header lines pushed the first card below 40 % of the height. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { position: absolute; opacity: 0; pointer-events: none; }
-  /* Absolut nähme er die Breite seines längsten Worts; „Sammlung (Haushalt)“ bei 200 % weitete so das Fenster. */
+  /* Absolutely positioned it would take the width of its longest word, which widened the window at 200 %. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { left: 0; right: 0; overflow: hidden; }
-  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(.ptitle-unter, .brotkrume) { display: none; }
-  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .sammlung-wahl { width: auto; flex: 1 1 auto; margin-right: 52px; }
-  .erfassen-leiste { margin: 0; position: static; }
-  .erfassen-leiste .import-menue { position: absolute; top: 0; right: 0; flex: none; }
-  .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
-  .erfassen-leiste .import-menue :is(.import-datei, .import-pfeil) { display: none; }
-  .erfassen-leiste .import-menue .import-mehr { display: inline-block; width: 22px; height: 22px; }
-  .erfassen-leiste .import-text, .filterleiste .filter-text { display: none; }
-  :is(.erfassen-leiste, .filterleiste) .nur-telefon { display: inline; }
-  .erfassen-leiste .import-klappe { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
-  :root { --schwebend-unten: calc(4.75rem + env(safe-area-inset-bottom)); --schwebend-hoehe: 52px; }
-  .knopf-schwebend {
-    position: fixed; z-index: 90; right: 16px; bottom: var(--schwebend-unten);
-    min-height: var(--schwebend-hoehe); padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(.ptitle-sub, .breadcrumb) { display: none; }
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .collection-choice { width: auto; flex: 1 1 auto; margin-right: 52px; }
+  .capture-bar { margin: 0; position: static; }
+  .capture-bar .import-menu { position: absolute; top: 0; right: 0; flex: none; }
+  .capture-bar .import-menu > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .capture-bar .import-menu :is(.import-file, .import-arrow) { display: none; }
+  .capture-bar .import-menu .import-more { display: inline-block; width: 22px; height: 22px; }
+  .capture-bar .import-text, .filter-bar .filter-text { display: none; }
+  :is(.capture-bar, .filter-bar) .only-phone { display: inline; }
+  .capture-bar .import-toggle { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
+  :root { --floating-bottom: calc(4.75rem + env(safe-area-inset-bottom)); --floating-height: 52px; }
+  .button-floating {
+    position: fixed; z-index: 90; right: 16px; bottom: var(--floating-bottom);
+    min-height: var(--floating-height); padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
-  .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
-  /* Katalog aufgeklappt: die beiden Jahre nebeneinander, sie gehören zusammen. */
-  #tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to) { flex: 1 1 40%; width: auto; }
-  /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
-  .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
-  /* Bauliste: das Feld für mehrere Setnummern über die ganze Breite, „Hinzufügen“ darunter. */
+  .capture-bar .btn.bp.button-floating { flex: none; }
+  /* Catalog expanded: both years side by side, they belong together. */
+  #tab-catalog .filter-bar.open > :is(#cat-year-from, #cat-year-to) { flex: 1 1 40%; width: auto; }
+  /* Add set: price and currency need the width of the whole row; in half a column nothing was left for the example. */
+  .capture-grid > .fg:has(> .price-with-currency) { grid-column: 1 / -1; }
+  /* Build list: the field for several set numbers across the full width, "Add" below. */
   .pl-setnr { flex-basis: 100%; }
-  /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
-     Kartentext übereinander und waren beide nicht zu lesen. */
-  :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
-  /* Die letzte Zeile rollt über dem schwebenden Knopf aus: Abstand bis zu seiner Oberkante und etwas Luft. */
-  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: calc(var(--schwebend-unten) + var(--schwebend-hoehe) + 1rem); }
+  /* Disabled (offline) opaque and grey: semi-transparent, button and card text overlapped and neither was readable. */
+  :root .btn.button-floating:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
+  /* The last row scrolls out above the floating button: distance to its top edge plus some air. */
+  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: calc(var(--floating-bottom) + var(--floating-height) + 1rem); }
 
-  /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
+  /* Key figures wrap: with five-digit numbers the line no longer fit and widened the page. */
   .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }
   .brick-stats .bstat { padding: 0; max-width: 100%; min-width: 0; }
   .brick-stats .bstat:nth-child(4) { display: none; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-3); }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
 
-  /* Filter als Symbol, daneben Suche und Ansicht in einer Zeile. */
-  .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
-  .filterleiste > input.suchfeld { flex: 1 1 8rem; }
+  /* Filter as an icon, search and view next to it on one line. */
+  .filter-bar > .filter-button { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .filter-bar > input.search-field { flex: 1 1 8rem; }
 
-  /* Das Kartenbild 4:3 statt quadratisch: eine Karte ist so ein Viertel kürzer. */
+  /* The card image 4:3 instead of square: a card is a quarter shorter. */
   #gallery .sc > .sci { aspect-ratio: 4 / 3; }
 }
-/* Grosse Schrift: Suche und Kennzahlen umbrechen; der schwebende Knopf zeigt nur das Symbol
-   (zweizeilig lag er über dem Suchfeld). Ebenso beim Rollen nach unten, wo er sonst Karten verdeckt;
-   den Namen trägt aria-label. */
-@container haupt (max-width: 20.5em) {
-  .filterleiste > input.suchfeld { flex: 1 1 100%; }
+/* Large text: search and figures wrap; the floating button shows only the icon (on two lines it covered the
+   search field). Likewise when scrolling down, where it otherwise covers cards; aria-label carries the name. */
+@container main (max-width: 20.5em) {
+  .filter-bar > input.search-field { flex: 1 1 100%; }
   .brick-stats { flex-wrap: wrap; }
-  .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
-  .knopf-schwebend > span { display: none; }
+  .button-floating { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
+  .button-floating > span { display: none; }
 }
 @media (max-width: 640px) {
-  /* Importstand im Kopf: Mit 180 px Mindestbreite schob er bei grosser Schrift die Seite 50 px über den Rand.
-     Am Telefon nur der Text, gekürzt; der Balken steht im Fortschrittsdialog. */
-  .import-leiste { min-width: 0; max-width: 45vw; flex: 0 1 auto; }
-  .import-leiste-balken { display: none; }
+  /* Import status in the header: with a 180 px min width it pushed the page 50 px over the edge with large
+     text. On the phone only the shortened text; the bar is in the progress dialog. */
+  .import-bar { min-width: 0; max-width: 45vw; flex: 0 1 auto; }
+  .import-bar-bar { display: none; }
   #gib-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .hright { min-width: 0; }
-  /* Wanted-Liste: Felder fingerbreit; die Tabelle scrollt mit dem Dialog statt in einem eigenen engen Kasten. */
+  /* Wanted list: fields finger-wide; the table scrolls with the dialog instead of inside its own narrow box. */
   #wanted-xml-modal :is(input, select) { min-height: 44px; }
-  #wanted-xml-tabelle { max-height: none !important; }
-  /* PDF: Drucken und Herunterladen nur als Symbol; der Name bleibt für Screenreader. */
-  .pdf-werkzeuge .btn > span { display: none; }
-  .prog-minimieren { min-width: 44px; min-height: 44px; }
-  .pdf-werkzeuge { gap: 4px; }
-  .kopf-weg .knopf-schwebend { width: 56px; min-width: 56px; padding: 0; justify-content: center; }
-  .kopf-weg .knopf-schwebend > span { display: none; }
-  /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
-  .zeile-oeffnen { min-height: 44px; min-width: 44px; }
-  .toast-zu { min-width: 44px; min-height: 44px; top: 0; right: 0; }
-  .toast:has(> .toast-zu) { padding-right: 48px; }
+  #wanted-xml-table { max-height: none !important; }
+  /* PDF: print and download only as icons; the name stays for screen readers. */
+  .pdf-tools .btn > span { display: none; }
+  .prog-minimize { min-width: 44px; min-height: 44px; }
+  .pdf-tools { gap: 4px; }
+  .header-remove .button-floating { width: 56px; min-width: 56px; padding: 0; justify-content: center; }
+  .header-remove .button-floating > span { display: none; }
+  /* Target on the phone: a table's row button is as high as a finger. */
+  .row-open { min-height: 44px; min-width: 44px; }
+  .toast-close { min-width: 44px; min-height: 44px; top: 0; right: 0; }
+  .toast:has(> .toast-close) { padding-right: 48px; }
 }
-@container haupt (min-width: 15em) and (max-width: 22em) {
-  .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
+@container main (min-width: 15em) and (max-width: 22em) {
+  .filter-bar > input.search-field { flex: 1 1 8rem; width: auto !important; }
 }
-/* Sehr grosse Schrift: Schwebend lag der Knopf über Suchfeld und Kennzahlen;
-   er steht dann rechts beim Titel unter „•••“, der Titel behält seine Breite. */
-@container haupt (max-width: 15em) {
+/* Very large text: floating, the button covered search field and figures; it then stands right at the title
+   below "•••", the title keeps its width. */
+@container main (max-width: 15em) {
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { min-height: 96px; }
-  .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
+  .capture-bar .btn.bp.button-floating { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
     min-height: 44px; padding: 0; box-shadow: none; }
 }
-/* Geringe Höhe (200 % Zoom auf 1280 × 900): Schwebend deckte der Knopf bei 450 px Höhe einen Teil jeder
-   dritten Karte. Er steht dann ebenso beim Titel. */
+/* Little height (200 % zoom on 1280 × 900): floating, the button covered part of every third card at 450 px
+   height. It then also stands at the title. */
 @media (max-width: 640px) and (max-height: 500px) {
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { min-height: 96px; }
-  .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
+  .capture-bar .btn.bp.button-floating { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
     min-height: 44px; padding: 0; box-shadow: none; }
-  .erfassen-leiste .knopf-schwebend > span { display: none; }
+  .capture-bar .button-floating > span { display: none; }
 }
 
-/* Set-Dialog am Telefon und bei geringer Höhe (200 % Zoom auf 1440 × 900): kleines Bild links, Wert und
-   Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
+/* Set dialog on the phone and with little height: small image left, value and profit next to it, the other
+   details below. Otherwise the image filled the first screen. */
 @media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
-  #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
-  #set-modal .m-kopfteil :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
-  #set-modal .m-kopfteil .zoom-knopf { grid-column: 1; grid-row: 1; }
-  #set-modal .m-kopfteil .mimg { max-height: none; margin: 0; }
-  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
-  #set-modal .wk-wert { font-size: var(--fs-4); }
+  #set-modal .m-header { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
+  #set-modal .m-header :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
+  #set-modal .m-header .zoom-button { grid-column: 1; grid-row: 1; }
+  #set-modal .m-header .mimg { max-height: none; margin: 0; }
+  #set-modal .m-header #m-det-links > .m-value-header { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
+  #set-modal .wk-value { font-size: var(--fs-4); }
 }
-/* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. Gemessen
-   am Dialog in rem, weil eine Medienabfrage in em die Schriftgrösse der Seite
-   (html 200 %) nicht sieht, nur die des Browsers. */
+/* Large text: no room for the amount next to the image. Measured on the dialog in rem, because a media query
+   in em does not see the page font size (html 200 %), only the browser's. */
 @media (max-width: 640px) { #set-modal > .modal { container: setdialog / inline-size; } }
 @container setdialog (max-width: 19rem) {
-  #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
-  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 1; grid-row: auto; }
-  #set-modal .m-kopfteil .zoom-knopf { width: 7.5rem; }
+  #set-modal .m-header { grid-template-columns: minmax(0, 1fr); }
+  #set-modal .m-header #m-det-links > .m-value-header { grid-column: 1; grid-row: auto; }
+  #set-modal .m-header .zoom-button { width: 7.5rem; }
 }
 
-/* Die Erklärung zu „0 Teile“ steht am Telefon als eigene Zeile unter den Kennzahlen: In der Zeile riss
-   sie „0 Teile“ von den Minifiguren und liess einen doppelten Punkt stehen. */
+/* The explanation of "0 parts" stands on its own line below the figures on the phone: inside the line it tore
+   "0 parts" from the minifigs and left a double dot. */
 @media (max-width: 640px) {
-  .bstat-hinweis:not(:empty) { display: block; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); font-size: var(--fs-1); color: var(--mut); }
+  .bstat-hint:not(:empty) { display: block; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); font-size: var(--fs-1); color: var(--mut); }
 }
 
-/* Hintergrundarbeiten am Telefon: Beschriftung links, die Werte untereinander in der zweiten Spalte, die
-   umbrechen darf. In einer Flexzeile ohne Umbruch drückten Name, Etikett und Hinweis die Karte breiter als das Fenster. */
+/* Background jobs on the phone: label left, the values below each other in the second column, which may
+   wrap. In a non-wrapping flex row name, tag and hint pushed the card wider than the window. */
 @media (max-width: 640px) {
-  .mon-einzeln > summary { min-height: 44px; }
-  .mon-tabelle td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; justify-items: start; }
-  .mon-tabelle td > * { grid-column: 2; max-width: 100%; min-width: 0; }
-  .mon-rolle { white-space: normal; }
-  .mon-tabelle td:empty, .mon-tabelle td:has(> .mon-knoepfe:empty) { display: none; }
+  .mon-single > summary { min-height: 44px; }
+  .mon-table td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; justify-items: start; }
+  .mon-table td > * { grid-column: 2; max-width: 100%; min-width: 0; }
+  .mon-role { white-space: normal; }
+  .mon-table td:empty, .mon-table td:has(> .mon-buttons:empty) { display: none; }
 }
-@container haupt (max-width: 20.5em) {
-  .mon-tabelle td { grid-template-columns: minmax(0, 1fr); }
-  .mon-tabelle td > * { grid-column: 1; }
+@container main (max-width: 20.5em) {
+  .mon-table td { grid-template-columns: minmax(0, 1fr); }
+  .mon-table td > * { grid-column: 1; }
 }
 
-/* Auftragsarten am Telefon als kompakte Zeile: Name, nur Zahlen ungleich null,
-   nächster Lauf und Knöpfe fliessen nebeneinander. */
+/* Job kinds on the phone as a compact row: name, only non-zero numbers, next run and buttons flow side by side. */
 @media (max-width: 640px) {
-  :is(.mon-arten, .mon-dienste) tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .9rem; }
-  :is(.mon-arten, .mon-dienste) td { max-width: 100%; flex-wrap: wrap; display: inline-flex; border: 0; padding: .1rem 0; gap: .35rem; }
-  :is(.mon-arten, .mon-dienste) td::before { flex: none; }
-  :is(.mon-arten, .mon-dienste) td:first-child { flex: 1 1 100%; font-weight: 700; }
-  :is(.mon-arten, .mon-dienste) td:first-child::before, .mon-dienste td:nth-child(2)::before { content: none; }
-  .mon-arten td:has(> .mon-ziffer.null) { display: none; }
-  :is(.mon-arten, .mon-dienste) td:last-child { flex: 1 1 100%; }
-  :is(.mon-arten, .mon-dienste) td:last-child::before { content: none; }
-  :is(.mon-arten, .mon-dienste) .mon-knoepfe { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .mon-dienste td:has(> .mon-knoepfe > .mon-leise:only-child) { display: none; }
+  :is(.mon-kinds, .mon-services) tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .9rem; }
+  :is(.mon-kinds, .mon-services) td { max-width: 100%; flex-wrap: wrap; display: inline-flex; border: 0; padding: .1rem 0; gap: .35rem; }
+  :is(.mon-kinds, .mon-services) td::before { flex: none; }
+  :is(.mon-kinds, .mon-services) td:first-child { flex: 1 1 100%; font-weight: 700; }
+  :is(.mon-kinds, .mon-services) td:first-child::before, .mon-services td:nth-child(2)::before { content: none; }
+  .mon-kinds td:has(> .mon-digit.null) { display: none; }
+  :is(.mon-kinds, .mon-services) td:last-child { flex: 1 1 100%; }
+  :is(.mon-kinds, .mon-services) td:last-child::before { content: none; }
+  :is(.mon-kinds, .mon-services) .mon-buttons { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .mon-services td:has(> .mon-buttons > .mon-quiet:only-child) { display: none; }
 }
 
-/* Gutscheine am Telefon, eine ruhige Karte: Nummer und PIN mit gleich grossen
-   Sinnbild-Knöpfen (der Name steht in aria-label), „Bearbeiten“ und „Mehr“
-   nebeneinander; erst bei sehr grosser Schrift untereinander. */
+/* Vouchers on the phone, a calm card: number and PIN with equally sized icon buttons (the name is in
+   aria-label), "Edit" and "More" side by side; stacked only with very large text. */
 @media (max-width: 640px) {
   .voucher-row :is(.v-btn, .btn) { font-size: var(--fs-2); }
   .voucher-row .v-btn { width: 44px; padding: 0; }
   .voucher-row .v-btn .v-btn-text { display: none; }
   .voucher-row .voucher-actions { flex: 1 1 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .voucher-actions > .mehr-menue { display: block; }
-  .voucher-actions > .btn, .voucher-actions > .mehr-menue > summary { width: 100%; justify-content: center; }
-  :is([data-click="guthabenAlleAbfragen"], [data-click="gutscheineExportieren"]) { flex: 1 1 100%; }
-  /* Daumengrosse Ziele auch in Toast und Bauliste-Chip. */
-  .toast-aktion { min-height: 44px; }
-  .pl-chip-weg { flex: none; min-width: 44px; min-height: 44px; }
+  .voucher-actions > .more-menu { display: block; }
+  .voucher-actions > .btn, .voucher-actions > .more-menu > summary { width: 100%; justify-content: center; }
+  :is([data-click="queryAllBalances"], [data-click="exportVouchers"]) { flex: 1 1 100%; }
+  /* Thumb-sized targets also in the toast and the build list chip. */
+  .toast-action { min-height: 44px; }
+  .pl-chip-remove { flex: none; min-width: 44px; min-height: 44px; }
 }
-@container haupt (max-width: 15em) {
+@container main (max-width: 15em) {
   .voucher-row .voucher-actions { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Schmaler Inhalt (grosse Schrift): Werte unter den Namen statt daneben —
-   sonst nimmt der Betrag die ganze Breite und der Name steht 0 px breit. */
-@container haupt (max-width: 17rem) {
-  .dt-fin tbody tr { grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "bild name" "bild wert" "bild guv"; }
-  .dt-fin td.fin-wert, .dt-fin td.fin-guv { text-align: left; }
-  .mon-aktionen.gefahrenzone { padding: .5rem; }
-  .mon-aktionen.gefahrenzone .btn { flex: 1 1 100%; hyphens: auto; padding-left: .5rem; padding-right: .5rem; }
-  .mon-aktionen.gefahrenzone .btn .ico { display: none; }
+/* Narrow content (large text): values below the names instead of next to them — otherwise the amount takes
+   the whole width and the name is 0 px wide. */
+@container main (max-width: 17rem) {
+  .dt-fin tbody tr { grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "image name" "image value" "image pnl"; }
+  .dt-fin td.fin-value, .dt-fin td.fin-guv { text-align: left; }
+  .mon-actions.danger-zone { padding: .5rem; }
+  .mon-actions.danger-zone .btn { flex: 1 1 100%; hyphens: auto; padding-left: .5rem; padding-right: .5rem; }
+  .mon-actions.danger-zone .btn .ico { display: none; }
 }
-/* Preisalarme am Telefon: Stand, Schwelle und Löschen unter dem Namen. */
-@container haupt (max-width: 26rem) {
-  .alarm-ue { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "bild text" ". stand" ". schwelle" ". loeschen"; }
-  .alarm-ue-stand { align-items: flex-start; }
-  .alarm-ue-loeschen { justify-self: start; }
+/* Price alerts on the phone: state, threshold and delete below the name. */
+@container main (max-width: 26rem) {
+  .alert-item { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "image text" ". status" ". threshold" ". delete"; }
+  .alert-item-status { align-items: flex-start; }
+  .alert-item-delete { justify-self: start; }
 }
 
-/* Teile am Telefon auch als kompakte Liste: Eine Karte war 150 px hoch, bei 300 Teilen rollte man ewig.
-   Die Wahl Karten/Liste ist dieselbe wie am Desktop (#parts-view); die Liste setzt die Karten als Zeilen,
-   denn eine Tabellenzeile wäre am Telefon eine Bildschirmhöhe hoch. */
+/* Parts on the phone as a compact list too: a card was 150 px high. The cards/list choice is the same as on
+   the desktop (#parts-view); the list renders the cards as rows, since a table row would be a screen high. */
 @media (max-width: 640px) {
-  #tab-parts .filterleiste > .vtgl { display: flex; flex: none; }
+  #tab-parts .filter-bar > .vtgl { display: flex; flex: none; }
   #tab-parts:has(#parts-view option[value="table"]:checked) :is(.parts-list, .parts-grid) { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
   #tab-parts:has(#parts-view option[value="table"]:checked) .part-card {
-    display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; grid-template-areas: "bild name mehr" "bild num mehr" "bild farbe mehr";
+    display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; grid-template-areas: "image name more" "image num more" "image color more";
     column-gap: .75rem; align-items: center; padding: .4rem .75rem; text-align: left; }
-  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-img { grid-area: bild; width: 2.75rem; height: 2.75rem; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-img { grid-area: image; width: 2.75rem; height: 2.75rem; margin: 0; }
   #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-name { grid-area: name; margin: 0; }
   #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-num { grid-area: num; margin: 0; }
-  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-color { grid-area: farbe; justify-content: flex-start; }
-  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .kachel-mehr { grid-area: mehr; text-align: right; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-color { grid-area: color; justify-content: flex-start; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .tile-more { grid-area: more; text-align: right; }
   #tab-parts:has(#parts-view option[value="table"]:checked) .part-card .part-qty { margin: 0; }
 }

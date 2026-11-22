@@ -89,8 +89,8 @@ test('finances: a position without a price', async () => {
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.getElementById('fin-wert').textContent.includes('Marktpreis'));
-    assert.equal(d.getElementById('fin-wert').textContent.trim(), 'Marktpreis fehlt für 1 Position');
+    await warte(() => d.getElementById('fin-value').textContent.includes('Marktpreis'));
+    assert.equal(d.getElementById('fin-value').textContent.trim(), 'Marktpreis fehlt für 1 Position');
   } finally {
     w.close();
   }

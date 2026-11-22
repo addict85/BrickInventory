@@ -1,10 +1,10 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html } from './escaping.js';
-import { errorMessage, api, apiRaw, strom } from './api.js';
-import { bildTag, placeholderContent, imgUrl, thumbUrl } from './images.js';
-import { emptyState, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { feldFehler, isSetnummer } from './form.js';
+import { errorMessage, api, apiRaw, stream } from './api.js';
+import { imageTag, placeholderContent, imgUrl, thumbUrl } from './images.js';
+import { emptyState, ico, G, buttonBusy, queryAll, setHtml } from './dom.js';
+import { fieldError, isSetNumber } from './form.js';
 import { toast } from './messages.js';
 import { buildWantedXmlPieces } from './bricklink-xml.js';
 
@@ -13,27 +13,27 @@ import { buildWantedXmlPieces } from './bricklink-xml.js';
 
 // ── PARTS LIST (temporary parts list, resets on page leave) ─────────────────
 /**
- * @typedef {{ set_number: string, name: string, unbekannt?: boolean }} PlSet
+ * @typedef {{ set_number: string, name: string, unknown?: boolean }} PlSet
  * @typedef {{ part_number: string, bl_part_number: string, part_name: string, color_name: string, color_hex: string | null,
- *   color_id: number, bl_color_id?: number | null, quantity: number, image_local?: string | null, image_url: string | null, is_fig?: boolean }} PlTeil
+ *   color_id: number, bl_color_id?: number | null, quantity: number, image_local?: string | null, image_url: string | null, is_fig?: boolean }} PlPart
  * @typedef {{ type: string, part: string, color: number | null, colorName?: string, qty: number }} MissingPart
  */
 /** The sets of the parts list; it only applies until leaving the page. @type {PlSet[]} */
 let _plSets = [];
-/** The generated parts list. @type {PlTeil[] | null} */
+/** The generated parts list. @type {PlPart[] | null} */
 let _plParts = null;
 /** Rebrickable → BrickLink color number. @type {Record<string, number>} */
 let _rbToBlColor = {};
 
 /** Counts the runs of plGenerate: a fast second addition overtakes the first, and only the last one
  * draws. */
-let _plLauf = 0;
+let _plRun = 0;
 
 /** Adding recomputes the list right away: a second step "create" was regularly forgotten. */
 async function plAddSet() {
   const raw = G('pl-setnr').value.trim();
   if (!raw) {
-    feldFehler('pl-setnr', tRaw('common.enter_set_number'));
+    fieldError('pl-setnr', tRaw('common.enter_set_number'));
     return;
   }
   // Support comma-separated input
@@ -41,23 +41,23 @@ async function plAddSet() {
     .split(',')
     .map(s => s.trim().replace(/\s/g, ''))
     .filter(Boolean);
-  const falsch = nrs.filter(nr => !isSetnummer(nr));
-  if (falsch.length) {
-    feldFehler('pl-setnr', tRaw('gallery.add.number_invalid', { num: falsch.join(', ') }));
+  const wrong = nrs.filter(nr => !isSetNumber(nr));
+  if (wrong.length) {
+    fieldError('pl-setnr', tRaw('gallery.add.number_invalid', { num: wrong.join(', ') }));
     return;
   }
-  feldFehler('pl-setnr', '');
-  const namen = nrs.map(nr => {
+  fieldError('pl-setnr', '');
+  const names = nrs.map(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
-    const eintrag = { set_number: normalized, name: normalized, unbekannt: false };
-    _plSets.push(eintrag);
+    const entry = { set_number: normalized, name: normalized, unknown: false };
+    _plSets.push(entry);
     // Name from the catalog; if it does not know the number, the chip says so instead of silently counting it as a set without parts
     // along.
     return api('GET', `/v1/sets/info/${normalized}`)
       .then(d => {
         if (!d.success) return;
-        if (d.name && d.name !== normalized) eintrag.name = d.name;
-        eintrag.unbekannt = d.im_katalog === false;
+        if (d.name && d.name !== normalized) entry.name = d.name;
+        entry.unknown = d.im_katalog === false;
         plRenderSets();
       })
       .catch(() => {});
@@ -65,7 +65,7 @@ async function plAddSet() {
   G('pl-setnr').value = '';
   G('pl-setnr').focus();
   plRenderSets();
-  await Promise.all(namen);
+  await Promise.all(names);
   await plGenerate();
 }
 
@@ -79,17 +79,17 @@ export function plRenderSets() {
   // Without a set there is nothing to recompute; what to do is said once by the empty state.
   G('btn-pl-gen').hidden = !_plSets.length;
   if (!_plSets.length) {
-    setzeHtml(c, emptyState({ ico: 'liste', titleKey: 'pl.no_sets', textKey: 'pl.leer_wie' }));
+    setHtml(c, emptyState({ ico: 'list', titleKey: 'pl.no_sets', textKey: 'pl.empty_like' }));
     return;
   }
-  setzeHtml(
+  setHtml(
     c,
     _plSets.map(
       (s, i) => html`
-    <div class="pl-chip${s.unbekannt ? ' unbekannt' : ''}">
+    <div class="pl-chip${s.unknown ? ' unknown' : ''}">
       <span class="pl-chip-nr">${s.set_number}</span>
-      <span class="pl-chip-name">${s.unbekannt ? html`${'— '}${tRaw('pl.nicht_im_katalog')}` : s.name !== s.set_number ? html`${'— '}${s.name}` : ''}</span>
-      <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${tRaw('pl.entfernen', { set: s.set_number })}">${ico('schliessen')}</button>
+      <span class="pl-chip-name">${s.unknown ? html`${'— '}${tRaw('pl.not_in_catalog')}` : s.name !== s.set_number ? html`${'— '}${s.name}` : ''}</span>
+      <button type="button" class="pl-chip-remove" data-click="plRemoveSet" data-arg="${i}" aria-label="${tRaw('pl.remove', { set: s.set_number })}">${ico('close')}</button>
     </div>`,
     ),
   );
@@ -106,7 +106,7 @@ function plRemoveSet(i) {
   _plParts = null;
   G('pl-result').replaceChildren();
   G('pl-status').textContent = '';
-  plExportStand();
+  plExportStatus();
   plRenderSets();
   if (_plSets.length) plGenerate();
 }
@@ -119,17 +119,17 @@ async function plGenerate() {
     return;
   }
   if (!_plSets.length) {
-    feldFehler('pl-setnr', tRaw('pl.erst_set'));
+    fieldError('pl-setnr', tRaw('pl.first_set'));
     return;
   }
-  const lauf = ++_plLauf;
+  const run = ++_plRun;
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
   G('pl-result').replaceChildren();
   _plParts = null;
-  plExportStand();
+  plExportStatus();
 
-  /** @type {Record<string, PlTeil>} key "part number|color" or "fig:number" */
+  /** @type {Record<string, PlPart>} key "part number|color" or "fig:number" */
   const combined = {};
   let errors = 0;
 
@@ -143,9 +143,9 @@ async function plGenerate() {
   } catch (_) {}
   _rbToBlColor = rbToBlColor;
 
-  const bekannt = _plSets.filter(s => !s.unbekannt),
-    unbekannt = _plSets.filter(s => s.unbekannt);
-  for (const s of bekannt) {
+  const known = _plSets.filter(s => !s.unknown),
+    unknown = _plSets.filter(s => s.unknown);
+  for (const s of known) {
     G('pl-status').textContent = tRaw('pl.loading_set', { set: s.set_number });
     // Use user-independent CSV endpoints (work for all users regardless of import history)
     try {
@@ -211,114 +211,114 @@ async function plGenerate() {
     }
   }
 
-  if (lauf !== _plLauf) return;
+  if (run !== _plRun) return;
   _plParts = Object.values(combined);
   G('pl-status').textContent =
-    `${tRaw('pl.summary_teile', { n: _plParts.length, teile: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: bekannt.length })}` +
+    `${tRaw('pl.summary_parts', { n: _plParts.length, teile: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: known.length })}` +
     (errors ? ` (${tRaw('monitor.errors_n', { n: errors })})` : '') +
-    (unbekannt.length
-      ? ` · ${tRaw('pl.unbekannt_n', { n: unbekannt.length, nummern: unbekannt.map(s => s.set_number).join(', ') })}`
+    (unknown.length
+      ? ` · ${tRaw('pl.unknown_n', { n: unknown.length, numbers: unknown.map(s => s.set_number).join(', ') })}`
       : '');
   G('btn-pl-gen').disabled = false;
   plRenderTable(errors);
-  plExportStand();
+  plExportStatus();
 }
 
 /**
  * "Can I build this?" fills the existing column "available" from the inventory instead of a second view:
  * two tables would be two places where the calculation drifts apart. The number overwrites manual inputs.
  */
-async function plFuelleBestand() {
-  const felder = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
-  if (!felder.length) return;
-  const nurLose = !!G('pl-bestand-lose')?.checked;
+async function plFillStock() {
+  const fields = /** @type {HTMLInputElement[]} */ (queryAll('.pl-have-input'));
+  if (!fields.length) return;
+  const onlyLose = !!G('pl-stock-lose')?.checked;
 
   // `data-key` is `<rbPartNum>__<rbColorId>` — the Rebrickable notation.
   // Exactly that is also in the own parts table; the BrickLink number next to it is only there for the export
   // and is no good for the reconciliation.
-  const teile = felder
+  const parts = fields
     .map(el => {
-      const [num, farbe] = String(el.dataset.key || '').split('__');
-      return { part_number: num, color_id: parseInt(farbe, 10) || 0 };
+      const [num, color] = String(el.dataset.key || '').split('__');
+      return { part_number: num, color_id: parseInt(color, 10) || 0 };
     })
     .filter(t => t.part_number);
 
-  const b = G('btn-pl-bestand');
-  const frei = knopfBesetzt(b);
+  const b = G('btn-pl-stock');
+  const free = buttonBusy(b);
   // The scope comes from THIS view, no longer from the parts tab.
   // `own` and `all` are the names the server knows anyway
   // (src/household/household.ts, parseScopeMode) — so the choice is only a different operation of the same thing,
   // not a second concept next to it.
-  const withSubs = !!G('pl-bestand-subs')?.checked;
-  const d = await api('POST', `/v1/parts/owned${withSubs ? '' : '?accounts=own'}`, { teile });
-  frei();
+  const withSubs = !!G('pl-stock-subs')?.checked;
+  const d = await api('POST', `/v1/parts/owned${withSubs ? '' : '?accounts=own'}`, { teile: parts });
+  free();
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
     return;
   }
 
-  let getroffen = 0,
-    fehlend = 0,
+  let hit = 0,
+    missing = 0,
     missingKinds = 0;
-  for (const el of felder) {
-    const [num, farbe] = String(el.dataset.key || '').split('__');
-    const eintrag = d.bestand?.[`${num}|${parseInt(farbe, 10) || 0}`];
-    const habe = (eintrag ? (nurLose ? eintrag.lose : eintrag.gesamt) : 0) ?? 0;
-    el.value = String(habe);
-    if (habe > 0) getroffen++;
-    const braucht = parseInt(el.dataset.need ?? '', 10) || 0;
-    if (habe < braucht) {
-      fehlend += braucht - habe;
+  for (const el of fields) {
+    const [num, color] = String(el.dataset.key || '').split('__');
+    const entry = d.bestand?.[`${num}|${parseInt(color, 10) || 0}`];
+    const have = (entry ? (onlyLose ? entry.lose : entry.gesamt) : 0) ?? 0;
+    el.value = String(have);
+    if (have > 0) hit++;
+    const needs = parseInt(el.dataset.need ?? '', 10) || 0;
+    if (have < needs) {
+      missing += needs - have;
       missingKinds++;
     }
   }
 
   const status = G('pl-status');
   if (!status) return;
-  if (!getroffen) status.textContent = tRaw('pl.owned_none');
+  if (!hit) status.textContent = tRaw('pl.owned_none');
   else if (!missingKinds) status.textContent = tRaw('pl.owned_complete');
   else
     status.textContent =
-      tRaw('pl.owned_filled', { n: getroffen, m: felder.length }) +
+      tRaw('pl.owned_filled', { n: hit, m: fields.length }) +
       ' ' +
-      tRaw('pl.owned_missing', { n: fehlend, m: missingKinds });
+      tRaw('pl.owned_missing', { n: missing, m: missingKinds });
 }
 
 /** Export and inventory only once the list has parts: an empty file helps nobody.
  * On the phone collapsed the first time, so that the result comes first. */
-function plExportStand() {
+function plExportStatus() {
   const box = G('pl-export'),
-    optionen = /** @type {HTMLDetailsElement | null} */ (document.getElementById('pl-optionen'));
+    options = /** @type {HTMLDetailsElement | null} */ (document.getElementById('pl-options'));
   if (!box) return;
-  const leer = !_plParts?.length;
-  box.hidden = leer;
-  if (optionen) {
-    optionen.hidden = leer;
-    if (!leer && !optionen.dataset.entschieden) {
-      optionen.dataset.entschieden = '1';
-      optionen.open = !window.matchMedia?.('(max-width: 640px)').matches;
+  const empty = !_plParts?.length;
+  box.hidden = empty;
+  if (options) {
+    options.hidden = empty;
+    if (!empty && !options.dataset.decided) {
+      options.dataset.decided = '1';
+      options.open = !window.matchMedia?.('(max-width: 640px)').matches;
     }
   }
-  for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = leer;
+  for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = empty;
 }
 
-function plRenderTable(fehler = 0) {
+function plRenderTable(error = 0) {
   if (!_plParts?.length) {
     // Name the cause: missing parts lists come from the Rebrickable catalog, not from the input.
-    setzeHtml(
+    setHtml(
       G('pl-result'),
       emptyState({
-        ico: 'warnung',
-        titleKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
-        textKey: fehler ? 'pl.leer_fehler_text' : 'pl.leer_text',
-        knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' },
+        ico: 'warning',
+        titleKey: error ? 'pl.empty_error_title' : 'pl.empty_title',
+        textKey: error ? 'pl.empty_error_text' : 'pl.empty_text',
+        button: { textKey: 'list.again', click: 'plGenerate', ico: 'refresh', art: 'bs' },
       }),
     );
     return;
   }
 
   // Group by color
-  /** @type {Record<string, { color_name: string, color_hex: string | null, parts: PlTeil[] }>} */
+  /** @type {Record<string, { color_name: string, color_hex: string | null, parts: PlPart[] }>} */
   const byColor = {};
   for (const p of _plParts) {
     const k = p.color_name;
@@ -330,10 +330,10 @@ function plRenderTable(fehler = 0) {
   let markup = html``;
   for (const grp of sorted) {
     const colorDot = grp.color_hex
-      ? html`<span data-stil="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-farbe="${escHex(grp.color_hex, 'var(--s300)')}"></span>`
+      ? html`<span data-style="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-color-hex="${escHex(grp.color_hex, 'var(--s300)')}"></span>`
       : '';
-    markup = html`${markup}${html`<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${colorName(grp.color_name)} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${tRaw('pl.types', { n: grp.parts.length })}</span></div><div>`}`;
-    markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${tRaw('col.nr')}</span><span data-stil="flex:1">${tRaw('pl.col_name')}</span><span data-stil="width:6.5em;text-align:right;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_needed')}</span><span data-stil="width:6.5em;padding-left:6px;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_have')}</span></div>`}`;
+    markup = html`${markup}${html`<div data-style="margin-bottom:1.5rem"><div data-style="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${colorName(grp.color_name)} <span data-style="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${tRaw('pl.types', { n: grp.parts.length })}</span></div><div>`}`;
+    markup = html`${markup}${html`<div data-style="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-style="width:44px;flex-shrink:0"></span><span data-style="min-width:65px;flex-shrink:0">${tRaw('col.nr')}</span><span data-style="flex:1">${tRaw('pl.col_name')}</span><span data-style="width:6.5em;text-align:right;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_needed')}</span><span data-style="width:6.5em;padding-left:6px;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_have')}</span></div>`}`;
     for (const p of grp.parts.sort((a, b) =>
       (a.bl_part_number || a.part_number).localeCompare(b.bl_part_number || b.part_number, undefined, {
         numeric: true,
@@ -342,18 +342,18 @@ function plRenderTable(fehler = 0) {
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
       const imgSrc = p.image_url || '';
       const img = imgSrc
-        ? bildTag({ src: imgUrl(thumbUrl(imgSrc) || imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
-        : html`<span class="bild-ph bild-44" aria-hidden="true">${placeholderContent('teil')}</span>`;
+        ? imageTag({ src: imgUrl(thumbUrl(imgSrc) || imgSrc, true), alt: '', class: 'image-44', ph: 'teil' })
+        : html`<span class="image-ph image-44" aria-hidden="true">${placeholderContent('teil')}</span>`;
       const pkey = `${p.part_number}__${p.color_id || 0}`;
       // No fallback to the Rebrickable color number: that would yield a valid file with the wrong color.
       // Empty means unknown; plExportBricklink leaves such items out and names them.
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
+      markup = html`${markup}${html`<div data-style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-style="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-style="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-style="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-style="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-style="width:58px;height:28px;border:1px solid var(--field-border);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
     }
     markup = html`${markup}</div></div>`;
   }
   // Summary shown in status bar above table
-  setzeHtml(G('pl-result'), markup);
+  setHtml(G('pl-result'), markup);
 }
 
 async function plExportPdf() {
@@ -361,7 +361,7 @@ async function plExportPdf() {
   const btn = G('btn-pl-pdf');
   // The release remembers the label instead of setting it anew at the end: here '📄 PDF' stood as a
   // literal, although the button carries a data-i18n in the markup.
-  const frei = btn ? knopfBesetzt(btn, tRaw('pdf.creating')) : () => {};
+  const free = btn ? buttonBusy(btn, tRaw('pdf.creating')) : () => {};
   try {
     const pdfParts = _plParts.map(p => ({
       part_number: p.part_number,
@@ -419,14 +419,14 @@ async function plExportPdf() {
         };
 
         const trySSE = () => {
-          const s = strom(`/v1/sets/partslist-pdf/stream/${jobId}`, {
-            ereignis: ({ status, error, etaSeconds }) => {
+          const s = stream(`/v1/sets/partslist-pdf/stream/${jobId}`, {
+            event: ({ status, error, etaSeconds }) => {
               if (status === 'running' && etaSeconds != null) startEta(etaSeconds);
               if (status === 'done') {
-                s?.schliesse();
+                s?.close();
                 finish(null);
               } else if (status === 'error') {
-                s?.schliesse();
+                s?.close();
                 finish(error || tRaw('pdf.server_error'));
               }
             },
@@ -447,7 +447,7 @@ async function plExportPdf() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'teileliste.pdf';
+    a.download = 'parts-list.pdf';
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     toast(tRaw('pdf.created'), 'success');
@@ -455,7 +455,7 @@ async function plExportPdf() {
     console.error('PDF error:', e);
     toast(tRaw('pdf.error_prefix') + ' ' + errorMessage(e), 'error');
   } finally {
-    frei();
+    free();
   }
 }
 
@@ -500,7 +500,7 @@ export function plInit() {
 /** What is missing according to the table (demand minus available), with BrickLink color. */
 function missingParts() {
   // Collect all fields "available" from the table
-  const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
+  const inputs = /** @type {HTMLInputElement[]} */ (queryAll('.pl-have-input'));
   /** @type {MissingPart[]} */
   const missing = [];
   inputs.forEach(inp => {
@@ -512,9 +512,9 @@ function missingParts() {
       // `data-color` is empty if the catalog knows no BrickLink color
       // (see plRenderTable). The map is asked once more, because it may not yet have been loaded when the table
       // was drawn.
-      const roh = inp.dataset.color;
+      const raw = inp.dataset.color;
       const fromCard = _rbToBlColor[rbColor];
-      const blColor = fromCard ?? (roh === '' || roh === undefined ? null : parseInt(roh, 10));
+      const blColor = fromCard ?? (raw === '' || raw === undefined ? null : parseInt(raw, 10));
       missing.push({
         type: inp.dataset.type || 'P',
         part: inp.dataset.part ?? '',
@@ -539,11 +539,11 @@ async function resolveMinifigs(missing) {
         const dp = await api('GET', `/v1/minifigs/${encodeURIComponent(m.part)}/parts`);
         if (dp?.success && dp.parts?.length) {
           // FigurTeile does not name the fields of a row; this is how src/minifigs delivers them.
-          const teile =
+          const parts =
             /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (
               dp.parts
             );
-          for (const p of teile) {
+          for (const p of parts) {
             const blNum = p.bl_part_number || p.part_number;
             // The same rule as in the table: no mapping means UNKNOWN, not "take the
             // Rebrickable number".
@@ -569,10 +569,10 @@ async function resolveMinifigs(missing) {
   return Object.values(blMap);
 }
 
-/** One chunk in a new tab (for copying), several as downloads. @param {string[]} stuecke */
-function deliverWantedXml(stuecke) {
-  if (stuecke.length === 1) {
-    const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
+/** One chunk in a new tab (for copying), several as downloads. @param {string[]} pieces */
+function deliverWantedXml(pieces) {
+  if (pieces.length === 1) {
+    const blob = new Blob([pieces[0]], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const tab = window.open(url, '_blank');
     if (!tab) {
@@ -585,8 +585,8 @@ function deliverWantedXml(stuecke) {
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
   } else {
-    for (const [i, teil] of stuecke.entries()) {
-      const url = URL.createObjectURL(new Blob([teil], { type: 'text/plain; charset=utf-8' }));
+    for (const [i, part] of pieces.entries()) {
+      const url = URL.createObjectURL(new Blob([part], { type: 'text/plain; charset=utf-8' }));
       const a = document.createElement('a');
       a.href = url;
       a.download = `bricklink-wanted-${i + 1}.xml`;
@@ -619,21 +619,21 @@ async function plExportBricklink() {
   const withoutColor = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
   const exportable = expanded.filter(m => !withoutColor.includes(m));
 
-  const stuecke = buildWantedXmlPieces(exportable.map(m => ({ ...m, condition })));
+  const pieces = buildWantedXmlPieces(exportable.map(m => ({ ...m, condition })));
 
   // BrickLink rejects a file above BL_UPLOAD_MAX_BYTES entirely. One chunk opens in the tab for copying as
   // before; several are downloaded — one tab per chunk would be a popup storm.
-  deliverWantedXml(stuecke);
+  deliverWantedXml(pieces);
 
   toast(tRaw('pl.bl_exported', { n: exportable.length }), 'success');
-  if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
+  if (pieces.length > 1) toast(tRaw('pl.bl_split', { n: pieces.length }), 'info');
   // Last and as a message of its own, so that it does not get lost next to the success message: what is missing has to be
   // read.
   if (withoutColor.length) {
     toast(
       tRaw('pl.bl_no_color', {
         n: withoutColor.length,
-        liste:
+        list:
           withoutColor
             .slice(0, 5)
             .map(m => (m.colorName ? `${m.part} (${m.colorName})` : m.part))
@@ -649,7 +649,7 @@ function plReset() {
   _plParts = null;
   G('pl-result').replaceChildren();
   G('pl-status').textContent = '';
-  plExportStand();
+  plExportStatus();
   plRenderSets();
 }
 
@@ -658,26 +658,26 @@ function plReset() {
  * View choice cards/table for parts and minifigures: the same buttons as for the sets. The value still lives
  * in the (hidden) select field on which the load and draw logic depends.
  * @param {string} id
- * @param {string} wert
+ * @param {string} value
  */
-function ansichtWaehlen(id, wert) {
-  const feld = G(id);
-  if (!feld || feld.value === wert) return;
-  feld.value = wert;
-  alle(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
-    const an = b.dataset.arg2 === wert;
-    b.classList.toggle('active', an);
-    b.setAttribute('aria-pressed', String(an));
+function chooseView(id, value) {
+  const field = G(id);
+  if (!field || field.value === value) return;
+  field.value = value;
+  queryAll(`[data-click="chooseView"][data-arg="${id}"]`).forEach(b => {
+    const on = b.dataset.arg2 === value;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
   });
-  feld.dispatchEvent(new Event('change', { bubbles: true }));
+  field.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 registerActions({
-  ansichtWaehlen,
+  chooseView,
   plAddSet,
   plExportBricklink,
   plExportPdf,
-  plFuelleBestand,
+  plFillStock,
   plGenerate,
   plRemoveSet,
   plReset,

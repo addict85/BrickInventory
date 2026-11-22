@@ -1,86 +1,54 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "hochglanz" — "noppe" als lackierte Hochglanzbroschuere.
-   ---------------------------------------------------------------------------
-   Hier steht NUR, was zu "noppe" dazukommt. Anatomie, Abstaende und Palette
-   liegen in themes/noppe.css bzw. /tokens.css, und jede Regel dort nennt
-   beide Designs. Wer hier eine Regel sucht, die "noppe" auch hat, sucht am
-   falschen Ort — sie steht dort einmal, nicht hier ein zweites Mal.
+/* ═══ APP THEME "hochglanz" — "noppe" as a glossy lacquered brochure ═══
+   Only what is added to "noppe" stands here; anatomy, spacing and palette are in themes/noppe.css and
+   /tokens.css, whose rules name both themes. Gloss means extra LAYERS: curvature over each brick lid, light
+   spots on the studs, a diagonal light streak on image field and header only (a white veil over white text
+   is grey, not gloss), a lacquer seam, and a coloured reflection below each tile. The hard offset shadow of
+   "noppe" stays — same anatomy, different material. */
 
-   ── Was "Glanz" technisch heisst ───────────────────────────────────────────
-
-   Nicht andere Werte, sondern SCHICHTEN, die es vorher nicht gab:
-
-     WOELBUNG      ein senkrechter Verlauf ueber jedem Steindeckel — Licht
-                   oben, Schatten unten. Flach wird gewoelbt.
-     LICHTKUPPEN   die Noppen bekommen einen Lichtpunkt statt einer hellen
-                   Flaeche.
-     LICHTSTREIFEN ein schraeger heller Streifen. Er liegt auf dem BILDFELD
-                   und der Kopfleiste, NICHT auf der ganzen Kachel: Ein
-                   weisser Schleier ueber weissem Text ist kein Glanz,
-                   sondern Grau. Der erste Entwurf hatte genau das, und man
-                   sah es erst im Browser.
-     LACKSAUM      innen oben ein Lichtrand, innen unten ein weicher Abfall.
-     SPIEGEL       unter jeder Kachel ein farbiger Schein in der Deckelfarbe.
-                   Das ist der eigentliche Spiegel: Nicht die Kachel glaenzt,
-                   der GRUND wirft zurueck.
-
-   Der harte Versatzschatten aus "noppe" BLEIBT. Die Kante traegt, auch wenn
-   sie glaenzt — sonst waere es eine andere Anatomie und nicht dasselbe Design
-   in einem anderen Material.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Die Grundplatte: der Lichtabfall einer beschichteten Seite ───────────── */
+/* ── The base plate: the light fall-off of a coated page ── */
 [data-theme="hochglanz"]{
   --screen-bg:#e7ecf3;
-  /* Die eine Schicht, die es zweimal braucht: einmal fuer den Seitengrund und
-     einmal fuer die Anmeldung davor. Als Variable, damit sie nicht an zwei
-     Stellen steht und auseinanderlaeuft. */
+  /* The one layer needed twice, for the page ground and the login before it: a variable, so the two cannot drift apart. */
   --lack:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.05) 100%);
-  --noppenraster:radial-gradient(circle at 10px 10px,rgba(22,26,33,.05) 4px,transparent 4.6px);
-  /* Der Verlauf der Karten dunkelt ihren Fuss ab: #5a6270 aus noppe stand dort unter Schrift bei 4,46:1. */
+  --studs-grid:radial-gradient(circle at 10px 10px,rgba(22,26,33,.05) 4px,transparent 4.6px);
+  /* The card gradient darkens its foot: #5a6270 from noppe sat at 4.46:1 under text there. */
   --mut:#4e5663;
-  /* Plaketten sind nur eine Zeile hoch: Jedes Licht oben hellt die Schrift selbst auf (Weiss auf dem Blau
-     von „Neuware“ hat ohne Verlauf nur 4,9:1, mit dem Licht der Knöpfe gemessen 2,96:1). Nur der Schatten. */
-  --plakette-glanz:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
+  /* Badges are one line high: any light on top lightens the text itself (white on the blue of "New" drops
+     from 4.9:1 to 2.96:1 with the buttons' light). Only the shadow. */
+  --badge-gloss:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
 }
-/* Dunkel: der Lack als schwacher Lichtschein statt einer weissen Schicht. */
-[data-theme="hochglanz"][data-dunkel]{
+/* Dark: the lacquer as a faint glow instead of a white layer. */
+[data-theme="hochglanz"][data-dark]{
   --lack:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.25) 100%);
-  --noppenraster:radial-gradient(circle at 10px 10px,rgba(255,255,255,.035) 4px,transparent 4.6px);
+  --studs-grid:radial-gradient(circle at 10px 10px,rgba(255,255,255,.035) 4px,transparent 4.6px);
 }
 [data-theme="hochglanz"] body,
 [data-theme="hochglanz"] #login-screen,
 [data-theme="hochglanz"] #startup-screen{
   background-color:var(--screen-bg);
-  background-image:var(--lack),var(--noppenraster);
+  background-image:var(--lack),var(--studs-grid);
   background-size:100% 100%,20px 20px;
 }
 
-/* ── Klavierlack statt Rot ────────────────────────────────────────────────
-   Kopf- und Reiterleiste stehen auf tiefem Schwarzlack; die rote Marke
-   bleibt in den Noppen, Knöpfen und Deckeln. Mit derselben roten Leiste
-   unterschied sich „hochglanz“ von „noppe“ nur durch Verläufe. */
+/* ── Piano lacquer instead of red ──
+   Header and tab bar on deep black lacquer; the red brand stays in studs, buttons and lids. With the same
+   red bar "hochglanz" differed from "noppe" only by gradients. */
 [data-theme="hochglanz"] header,[data-theme="hochglanz"] nav,
-[data-theme="hochglanz"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] nav{background-color:#15181e}
+[data-theme="hochglanz"][data-dark] header,[data-theme="hochglanz"][data-dark] nav{background-color:#15181e}
 [data-theme="hochglanz"] header::before{background-color:var(--b500)}
 [data-theme="hochglanz"] nav .ntab{color:#fff}
 [data-theme="hochglanz"] .card,[data-theme="hochglanz"] .sc,[data-theme="hochglanz"] .modal{border-radius:20px}
 [data-theme="hochglanz"] .btn{border-radius:999px}
 
-/* ── Kopf- und Reiterleiste: Woelbung plus Querstreifen ──────────────────── */
+/* ── Header and tab bar: curvature plus a cross streak ── */
 [data-theme="hochglanz"] header,
 [data-theme="hochglanz"] nav{
   background-image:
     linear-gradient(104deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 62%),
     linear-gradient(180deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.10) 30%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
-/* Die Noppen auf der Kopfleiste werden Kuppen: ein Lichtpunkt oben statt einer
-   gleichmaessig hellen Flaeche.
-
-   Die FORM kommt weiter aus der Maske in noppe.css und steht hier nicht noch
-   einmal — dieser Aufsatz taucht sie nur in ein anderes Material. Der Verlauf
-   wiederholt sich im Takt der Maske (24px), damit jede Noppe ihr eigenes Licht
-   bekommt und nicht die ganze Reihe einen einzigen Bogen. */
+/* The studs on the header become domes: a light spot on top instead of an evenly light surface. The SHAPE
+   still comes from the mask in noppe.css; the gradient repeats in its rhythm (24px) so each stud gets its own light. */
 [data-theme="hochglanz"] header::before{
   background-image:radial-gradient(ellipse at 50% 20%,
     var(--b100) 0%,var(--b300) 60%,var(--b700) 100%);
@@ -88,7 +56,7 @@
   background-repeat:repeat-x;
 }
 
-/* ── Die Kachel: Lacksaum, gewoelbter Deckel, Spiegel darunter ───────────── */
+/* ── The tile: lacquer seam, curved lid, reflection below ───────────── */
 [data-theme="hochglanz"] .card,
 [data-theme="hochglanz"] .sc,
 [data-theme="hochglanz"] .modal{
@@ -98,25 +66,22 @@
     inset 0 1px 0 rgba(255,255,255,.9),
     inset 0 -10px 18px -12px rgba(0,0,0,.18);
 }
-/* Der Deckel woelbt sich: derselbe Verlauf ueber der Steinfarbe, die aus
-   noppe.css kommt. `background-image` statt `background`, damit die Farbe
-   darunter stehen bleibt. */
+/* The lid curves: the same gradient over the brick colour from noppe.css; background-image instead of
+   background so the colour underneath stays. */
 [data-theme="hochglanz"] .sc::before{
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.34) 0%,rgba(255,255,255,.10) 30%,
     rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
-/* Dieselben Kuppen auf dem Kacheldeckel — hier aus Weissanteilen, weil die
-   Deckelfarbe darunter jede der sechs Steinfarben sein kann. Takt 22px wie die
-   Maske dort. */
+/* The same domes on the tile lid — made of white, because the lid below can be any of the six brick
+   colours. Rhythm 22px like the mask there. */
 [data-theme="hochglanz"] .sc::after{
   background-image:radial-gradient(ellipse at 50% 20%,
     rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 45%,rgba(255,255,255,.18) 100%);
   background-size:22px 7px;
   background-repeat:repeat-x;
 }
-/* Das Bildfeld ist die Glasscheibe — hier liegt der Lichtstreifen, und nur
-   hier. Siehe die Erklaerung oben. */
+/* The image field is the glass pane — the light streak lies here and only here (see above). */
 [data-theme="hochglanz"] .sci{
   background-image:
     linear-gradient(118deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.85) 36%,
@@ -124,11 +89,11 @@
     linear-gradient(160deg,#ffffff 0%,#eef2f8 48%,#dde5ef 100%);
 }
 
-/* ── Knoepfe und Plaketten: derselbe Lichtabfall wie die Deckel ──────────── */
+/* ── Buttons and badges: the same light fall-off as the lids ── */
 [data-theme="hochglanz"] .btn.bp{
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.45) 0%,rgba(255,255,255,.10) 42%,
     rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
 }
 [data-theme="hochglanz"] .cond-new,
-[data-theme="hochglanz"] .cond-used{background-image:var(--plakette-glanz)}
+[data-theme="hochglanz"] .cond-used{background-image:var(--badge-gloss)}

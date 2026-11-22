@@ -7,16 +7,16 @@
  *      vorige Konto“ (r23_…_kind, „199,99“, „Alle Themen“, „Sets im Katalog“)
  *   B  bim_lang kept on logout → red: same place („Anmeldemaske nicht in
  *      der Browsersprache“)
- *   C  .mon-tabelle td again a flex row without wrapping → red: „Alle Ansichten
+ *   C  .mon-table td again a flex row without wrapping → red: „Alle Ansichten
  *      bei 390 px“ and „Hintergrundarbeiten“ (407 > 390)
  *   D  loeschWahl() without the household case → red: „Löschen im Haushalt“ (accounts missing)
  *   E  fokusVerloren() returns immediately → red: same place (focus not on the set)
  *   F  .offline-band again top:0;z-index:120 → red: „Offline-Band“ (menu covered)
  *   G  without the 429 branch in clearerReason() → red: „Drossel“ (text);
- *      .toast-zu without position:absolute → red: same place (✕ 65 px below the top edge)
+ *      .toast-close without position:absolute → red: same place (✕ 65 px below the top edge)
  *   H  again loadGallery() and loadStats() on tab change → red: „Drossel“
  *      (twice /v1/stats)
- *   I  alsKarten() without telefonBreite() → red: „Telefon nur Karten …“ (as a consequence
+ *   I  alsKarten() without phoneWidth() → red: „Telefon nur Karten …“ (as a consequence
  *      also „Drossel“ and „Kontrastmodus“: the table stays)
  *   K  „Ø Kaufpreis“ never chosen → red: „Set-Detail“
  *   L  .btn.bp in contrast mode without a border → red: „Kontrastmodus“ (0px)
@@ -25,7 +25,7 @@
  *      „je …“ → red: „Finanzen“
  *   O  zoom button without data-i18n-aria → red: „Abmelden …“ (aria-label German)
  *   P  „davon N nach Fehler“ never shown → red: „Hintergrundarbeiten“
- *   Q  pl.erst_set again without a reason → red: „Bauliste“ (lock without a reason); since round 24 without
+ *   Q  pl.first_set again without a reason → red: „Bauliste“ (lock without a reason); since round 24 without
  *      button: btn-pl-gen not hidden → red: „Bauliste“ (visible without a set)
  *   R  atPhoneSwitch() does not redraw the collection → red: „Telefon nur
  *      Karten …“ (timeout), as a consequence „Drossel“, „Kontrastmodus“, „Abmelden …“
@@ -42,7 +42,7 @@ const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 const EN_PASS = 'en-Passwort-1';
 
 async function groesse(b, breite, telefon) {
@@ -71,8 +71,8 @@ async function setDetail(_t, a) {
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await bis(`/aktiv/.test(${text('#m-alert-state')})`, 'Alarm gespeichert');
   const situation =
-    await b.auswerten(`(() => { const s = document.getElementById('m-alert-state'), l = s.parentElement.querySelector('.zu-sicht');
-    return { marke: s.classList.contains('alarm-marke'), unten: s.getBoundingClientRect().bottom, link: l.getBoundingClientRect().top }; })()`);
+    await b.auswerten(`(() => { const s = document.getElementById('m-alert-state'), l = s.parentElement.querySelector('.close-view');
+    return { marke: s.classList.contains('alert-badge'), unten: s.getBoundingClientRect().bottom, link: l.getBoundingClientRect().top }; })()`);
   assert.ok(situation.marke, 'Zustand als Marke');
   assert.ok(
     situation.link >= situation.unten - 1,
@@ -120,7 +120,7 @@ async function allViews(_t, a) {
       await a.ruhig(5000);
       await b.auswerten(`(() => { const t = document.querySelector('.tab.active');
         t?.querySelectorAll('details').forEach(d => { d.open = true; });
-        t?.querySelectorAll('#global-settings-grid > .ssec').forEach(x => x.classList.add('einst-aktiv')); return true; })()`);
+        t?.querySelectorAll('#global-settings-grid > .ssec').forEach(x => x.classList.add('settings-active')); return true; })()`);
       await a.ruhig(3000);
       const m = await b.auswerten(
         `({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth })`,
@@ -137,28 +137,28 @@ async function hintergrund(_t, a) {
   const { b, bis } = a;
   await groesse(b, 390, true);
   try {
-    await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
+    await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-card .mon-single')`, 'Hintergrund');
     await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
     await a.ruhig(1000);
     const m = await b.auswerten(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
-      rolle: !!document.querySelector('#auftraege-karte .mon-rolle')?.checkVisibility() })`);
+      rolle: !!document.querySelector('#jobs-card .mon-role')?.checkVisibility() })`);
     assert.ok(m.rolle, 'Testdaten: Etikett „Wiederholung nach Fehler“');
     assert.ok(m.sw <= m.cw, `Seite breiter als das Fenster: ${m.sw} > ${m.cw}`);
   } finally {
     await groesse(b, 1280, false);
   }
-  await geh(a, '#/hintergrund', `!!document.querySelector('.mon-dienste .mon-name')`, 'Dienste');
+  await geh(a, '#/hintergrund', `!!document.querySelector('.mon-services .mon-name')`, 'Dienste');
   const bunt = await b.auswerten(
-    `[...document.querySelectorAll('.mon-dienste .mon-name')].filter(n => !n.querySelector('svg.mon-sinnbild > use') || n.querySelector('[fill^="#"]')).length`,
+    `[...document.querySelectorAll('.mon-services .mon-name')].filter(n => !n.querySelector('svg.mon-icon > use') || n.querySelector('[fill^="#"]')).length`,
   );
   assert.equal(bunt, 0, 'farbige Sinnbilder statt Strichsymbolen');
-  await bis(`!!document.querySelector('.mon-arten')`, 'Auftragsarten');
+  await bis(`!!document.querySelector('.mon-kinds')`, 'Auftragsarten');
   const zeile = await b.auswerten(
-    `[...document.querySelectorAll('.mon-arten tbody tr')].find(z => /Wechselkurse/.test(z.textContent))?.textContent.replace(/\\s+/g, ' ')`,
+    `[...document.querySelectorAll('.mon-kinds tbody tr')].find(z => /Wechselkurse/.test(z.textContent))?.textContent.replace(/\\s+/g, ' ')`,
   );
   assert.match(zeile, /davon \d+ nach Fehler/, 'gescheiterter Versuch fehlt in der Übersicht');
   assert.notEqual(
-    await b.auswerten(text('#einst-hintergrund h2')),
+    await b.auswerten(text('#settings-background h2')),
     await b.auswerten(text('#tab-monitor h1')),
     'Abschnitt heisst wie die Seite',
   );
@@ -166,12 +166,12 @@ async function hintergrund(_t, a) {
 
 async function finanzen(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr')`, 'Finanzen');
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tbody tr')`, 'Finanzen');
   // Since UX check 25 the unit price stands below the market value („je …“), only for more than one piece.
   const f = await b.auswerten(`(() => {
-    const zeilen = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].map(z => ({
-      menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-wert .fin-je')?.textContent || '' }));
-    return { zeilen, karte: document.getElementById('fin-einstand-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
+    const zeilen = [...document.querySelectorAll('[data-fin-kind="sets"] tbody tr')].map(z => ({
+      menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-value .fin-per')?.textContent || '' }));
+    return { zeilen, karte: document.getElementById('fin-cost-basis-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
   const einzeln = f.zeilen.filter(z => z.menge === '×1');
   assert.ok(einzeln.length >= 2, 'Testdaten: Zeilen mit Menge 1');
   assert.deepEqual(
@@ -211,8 +211,8 @@ async function bars(_t, a) {
     ]) {
       await geh(a, hash, `!!document.querySelector('${bereit}')`, tab);
       reihe[tab] =
-        await b.auswerten(`[...document.querySelector('#tab-${tab} .filterleiste').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
-        .sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left).map(e => e.matches('.filter-knopf') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.suchfeld') ? 'Suche' : e.className)`);
+        await b.auswerten(`[...document.querySelector('#tab-${tab} .filter-bar').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
+        .sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left).map(e => e.matches('.filter-button') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.search-field') ? 'Suche' : e.className)`);
     }
     assert.deepEqual(reihe.gallery, ['Filter44', 'Suche']);
     // Parts additionally have cards/list (UX check 28, N8); filters and search stand the same.
@@ -223,7 +223,7 @@ async function bars(_t, a) {
   await bis(`!!document.querySelector('#tab-parts .part-card')`, 'Teile am Rechner');
   const oben =
     await b.auswerten(`(() => { const r = s => Math.round(document.querySelector(s).getBoundingClientRect().top);
-    return [r('#parts-search'), r('#tab-parts .filterleiste > .vtgl')]; })()`);
+    return [r('#parts-search'), r('#tab-parts .filter-bar > .vtgl')]; })()`);
   assert.ok(Math.abs(oben[0] - oben[1]) < 4, `Ansichtsumschalter allein in der zweiten Zeile: ${oben}`);
   await b.auswerten(`document.getElementById('vg').click(); true`);
 }
@@ -249,7 +249,7 @@ async function drossel(_t, a) {
     }
     const t =
       await b.auswerten(`(() => { const t = [...document.querySelectorAll('#toasts .toast')].find(x => /Zu viele/.test(x.textContent));
-      const r = t.getBoundingClientRect(), z = t.querySelector('.toast-zu').getBoundingClientRect();
+      const r = t.getBoundingClientRect(), z = t.querySelector('.toast-close').getBoundingClientRect();
       return { text: t.querySelector('.toast-text').textContent, oben: z.top - r.top, rechts: r.right - z.right }; })()`);
     assert.match(t.text, /^Zu viele Anfragen – in 4 Min\. wieder möglich\./);
     assert.ok(t.oben < 12 && t.rechts < 12, `✕ nicht oben rechts (${breite} px): ${JSON.stringify(t)}`);
@@ -318,27 +318,27 @@ async function kontrast(_t, a) {
   }
 }
 
-async function startgeruest(_t, a) {
+async function startupScaffold(_t, a) {
   const { b, bis } = a;
   // The scaffold measures itself before the app removes it; it is compared with the finished page.
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `document.addEventListener('DOMContentLoaded', () => { const r = s => document.querySelector(s)?.getBoundingClientRect().top;
-      window.__sg = { kachel: r('#startgeruest .sg-kacheln i'), band: document.documentElement.hasAttribute('data-rb-band'),
-        zusatz: getComputedStyle(document.querySelector('#startgeruest .sg-zusatz')).display }; });`,
+      window.__sg = { kachel: r('#start-skeleton .sg-tiles i'), band: document.documentElement.hasAttribute('data-rb-band'),
+        zusatz: getComputedStyle(document.querySelector('#start-skeleton .sg-extra')).display }; });`,
   });
   try {
     await b.auswerten(
-      `localStorage.removeItem('bim_rb_hinweis_weg:' + ${a.uid}); window.__alt = true; location.reload(); true`,
+      `localStorage.removeItem('bim_rb_hint_dismissed:' + ${a.uid}); window.__alt = true; location.reload(); true`,
     );
     await bis(
-      `!window.__alt && !!document.querySelector('#gallery .sc') && !document.getElementById('startgeruest')`,
+      `!window.__alt && !!document.querySelector('#gallery .sc') && !document.getElementById('start-skeleton')`,
       'App nach Neuladen',
       300,
     );
     await a.ruhig();
     const m =
       await b.auswerten(`({ sg: window.__sg, karte: document.querySelector('#gallery .sc').getBoundingClientRect().top,
-      band: !document.getElementById('rb-hinweis').hidden })`);
+      band: !document.getElementById('rb-hint').hidden })`);
     assert.ok(m.band, 'Testdaten: Band ohne Rebrickable-Schlüssel');
     assert.ok(m.sg.band, 'Gerüst ohne Platz für das Band');
     assert.notEqual(m.sg.zusatz, 'none', '„Manager“ fehlt im Gerüst');
@@ -359,18 +359,18 @@ async function loeschen(_t, a, name) {
   };
   await loesche('21318-1');
   const frage = await b.auswerten(
-    `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-wahl label')].map(l => l.textContent.trim()),
-      gewaehlt: document.querySelector('#cd-wahl input:checked')?.closest('label')?.textContent.trim() })`,
+    `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-choice label')].map(l => l.textContent.trim()),
+      gewaehlt: document.querySelector('#cd-choice input:checked')?.closest('label')?.textContent.trim() })`,
   );
   assert.match(frage.text, new RegExp(`${name} \\(ich\\) ×1, ${name}_kind ×1`), 'Konten und Stückzahlen fehlen');
   assert.equal(frage.wahl.length, 3, `keine Auswahl: ${JSON.stringify(frage)}`);
   assert.match(frage.gewaehlt || '', /\(ich\)/, `vorgewählt ist nicht das eigene Exemplar: ${JSON.stringify(frage)}`);
   const vorher = b.ereignisse.length;
   await b.auswerten(
-    `[...document.querySelectorAll('#cd-wahl label')].find(l => l.textContent.includes('_kind')).querySelector('input').click();
+    `[...document.querySelectorAll('#cd-choice label')].find(l => l.textContent.includes('_kind')).querySelector('input').click();
     document.getElementById('cd-confirm').click(); true`,
   );
-  await bis(`!document.querySelector('#gallery .sc[data-arg="21318-1"] .besitzer-badge')`, 'nur noch eigenes Exemplar');
+  await bis(`!document.querySelector('#gallery .sc[data-arg="21318-1"] .owner-badge')`, 'nur noch eigenes Exemplar');
   await a.ruhig();
   const ziel = b.ereignisse
     .slice(vorher)
@@ -392,7 +392,7 @@ async function loeschen(_t, a, name) {
   await a.ruhig();
   assert.equal(await b.auswerten(aktiv), `DIV ${reihe[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
   await b.auswerten(
-    `(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].at(-1); k.focus(); k.click(); return true; })()`,
+    `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
   await bis(`!!document.querySelector('#gallery .sc[data-arg="${nr}"]')`, 'zurückgeholt');
   await a.ruhig();
@@ -402,8 +402,8 @@ async function loeschen(_t, a, name) {
 async function abmelden(_t, a, name) {
   const { b, bis } = a;
   // State of the admin: users, background, set dialog with purchase prices, catalog, finances.
-  await geh(a, '#/einstellungen', `!!document.querySelector('#users-tbl .nutzer-name')`, 'Benutzerverwaltung');
-  await geh(a, '#/hintergrund', `!!document.querySelector('#monitor-content .mon-dienste')`, 'Hintergrund');
+  await geh(a, '#/einstellungen', `!!document.querySelector('#users-tbl .user-name')`, 'Benutzerverwaltung');
+  await geh(a, '#/hintergrund', `!!document.querySelector('#monitor-content .mon-services')`, 'Hintergrund');
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
@@ -426,7 +426,7 @@ async function abmelden(_t, a, name) {
   await bis(`document.documentElement.lang === 'en' && !!document.querySelector('#gallery .empty')`, 'leere Sammlung');
   await a.ruhig();
   const dom = await b.auswerten(`({ html: document.body.innerHTML, title: document.title,
-    live: document.getElementById('treffer-live').textContent, thema: document.querySelector('#gtheme option[value=""]').textContent,
+    live: document.getElementById('match-live').textContent, thema: document.querySelector('#gtheme option[value=""]').textContent,
     zoom: document.getElementById('pdf-viewer-zoom').getAttribute('aria-label') })`);
   const fremd = [`${name}_kind`, '199,99', 'Alle Themen', 'Sets im Katalog', 'Finanzen'].filter(s =>
     dom.html.includes(s),
@@ -493,7 +493,7 @@ test('logout, deleting in the household, offline banner, contrast mode', {
     ['Drossel', drossel],
     ['Offline-Band', offlineBand],
     ['Kontrastmodus', kontrast],
-    ['Startgerüst', startgeruest],
+    ['Startgerüst', startupScaffold],
     ['Löschen im Haushalt', loeschen],
     ['Abmelden verwirft das vorige Konto', abmelden],
   ];

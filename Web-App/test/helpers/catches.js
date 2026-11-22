@@ -143,7 +143,7 @@ function onlyReported(f) {
 
 /** Without a report to the UI or into the log, without `throw`: the error is gone. */
 const REPORTS_UI =
-  /\bthrow\b|\b(?:toast|show\w*|report\w*|setze(?:Fehler|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
+  /\bthrow\b|\b(?:toast|show\w*|report\w*|set(?:Error|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
 function stillImBrowser(f) {
   return !REPORTS_UI.test(f.rumpf);
 }

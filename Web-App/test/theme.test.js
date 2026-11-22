@@ -153,7 +153,7 @@ test('five lists name the same designs', () => {
     assert.ok(m, `${wo}: die Liste der Designs ist nicht mehr zu finden`);
     return [...m[1].matchAll(/['"]([a-z]+)['"]/g)].map(x => x[1]).sort();
   };
-  // The <link> lines in index.html. Not via `liste()`: there the
+  // The <link> lines in index.html. Not via `list()`: there the
   // file name stands, not the theme name in quotation marks.
   const linked = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)].map(m => m[1]).sort();
   assert.deepEqual(

@@ -10,10 +10,10 @@
  *      removed → red: “Enter in the password field confirms”
  *   B  in showRequiredSwitch the takeover from #lp removed → red:
  *      “the initial password travels along”
- *   C  in zfEinrichten again confirmWithPassword immediately → red: “set up
+ *   C  in setupSecondFactor again confirmWithPassword immediately → red: “set up
  *      without a third password prompt”
  *   D  setting alt on the QR image removed → red: “QR image with name”
- *   E  zfBestaetigen reports the error as a toast again → red: “wrong
+ *   E  confirmSecondFactor reports the error as a toast again → red: “wrong
  *      code at the field”
  *   F  the setup again in <div class="sform"> instead of <form> → red:
  *      “Enter in the code field confirms”
@@ -92,45 +92,45 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
       document.getElementById('lp').value = ${JSON.stringify(START)};
       document.getElementById('btn-login').click(); true`);
-    await bis(offen('panel-pflichtwechsel'), 'Pflichtwechsel', 300);
+    await bis(offen('panel-required-change'), 'Pflichtwechsel', 300);
     const z =
-      await b.auswerten(`({ altHidden: getComputedStyle(document.getElementById('pflicht-alt-zeile')).display === 'none',
-      fokus: document.activeElement?.id, regel: document.getElementById('pflicht-regel').textContent,
-      described: document.getElementById('pflicht-neu').getAttribute('aria-describedby') })`);
+      await b.auswerten(`({ altHidden: getComputedStyle(document.getElementById('required-alt-row')).display === 'none',
+      fokus: document.activeElement?.id, regel: document.getElementById('required-rule').textContent,
+      described: document.getElementById('required-new').getAttribute('aria-describedby') })`);
     assert.equal(z.altHidden, true, 'das Startpasswort reist mit (Feld „Aktuelles Passwort“ verborgen)');
-    assert.equal(z.fokus, 'pflicht-neu', 'Fokus im ersten Feld');
+    assert.equal(z.fokus, 'required-new', 'Fokus im ersten Feld');
     assert.match(z.regel, /12 Zeichen/, 'Regel als Hilfetext');
-    assert.equal(z.described, 'pflicht-regel');
+    assert.equal(z.described, 'required-rule');
     await tap(NEU);
-    await b.auswerten(`document.getElementById('pflicht-wdh').focus(); true`);
+    await b.auswerten(`document.getElementById('required-repeat').focus(); true`);
     await tap(NEU);
     await enter();
     // After reloading the page waits in case the server is still enqueuing its startup jobs.
-    await bis(`!!document.getElementById('zf-start')`, 'Einrichten nach dem Wechsel', 1200);
-    await bis(`document.activeElement?.id === 'zf-start'`, 'Fokus auf „Einrichten“');
+    await bis(`!!document.getElementById('sf-start')`, 'Einrichten nach dem Wechsel', 1200);
+    await bis(`document.activeElement?.id === 'sf-start'`, 'Fokus auf „Einrichten“');
   });
 
   let geheimnis = '';
   await t.test('setup without a third password prompt', async () => {
-    await b.auswerten(`document.getElementById('zf-start').click(); true`);
-    await bis(`!!document.querySelector('#zf-qr img') || ${offen('confirm-modal')}`, 'QR-Code oder Dialog');
+    await b.auswerten(`document.getElementById('sf-start').click(); true`);
+    await bis(`!!document.querySelector('#sf-qr img') || ${offen('confirm-modal')}`, 'QR-Code oder Dialog');
     assert.equal(await b.auswerten(offen('confirm-modal')), false, 'Einrichten ohne dritte Passwortabfrage');
     geheimnis = await b.auswerten(
-      `document.querySelector('#zf-pflicht-flaeche code').textContent.replace(/\\s+/g, '')`,
+      `document.querySelector('#sf-required-surface code').textContent.replace(/\\s+/g, '')`,
     );
   });
 
   await t.test('QR image with name', async () => {
-    assert.match(await b.auswerten(`document.querySelector('#zf-qr img').getAttribute('alt') || ''`), /QR-Code/);
+    assert.match(await b.auswerten(`document.querySelector('#sf-qr img').getAttribute('alt') || ''`), /QR-Code/);
   });
 
   await t.test('wrong code at the field', async () => {
-    await b.auswerten(`document.getElementById('zf-code').focus(); true`);
+    await b.auswerten(`document.getElementById('sf-code').focus(); true`);
     await tap('000000');
     await enter();
-    await bis(`(document.getElementById('zf-fehler')?.textContent || '') !== ''`, 'Enter im Codefeld bestätigt', 50);
+    await bis(`(document.getElementById('sf-error')?.textContent || '') !== ''`, 'Enter im Codefeld bestätigt', 50);
     const z = await b.auswerten(
-      `({ ungueltig: document.getElementById('zf-code').getAttribute('aria-invalid'), toasts: ${errorToasts} })`,
+      `({ ungueltig: document.getElementById('sf-code').getAttribute('aria-invalid'), toasts: ${errorToasts} })`,
     );
     assert.equal(z.ungueltig, 'true');
     assert.deepEqual(z.toasts, [], 'falscher Code am Feld, nicht als Toast');
@@ -140,15 +140,15 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     const _req = require('./helpers/sources').buildAndRequire();
     const zf = _req('src/factors/secondFactor.js');
     await b.auswerten(
-      `document.getElementById('zf-code').value = ''; document.getElementById('zf-code').focus(); true`,
+      `document.getElementById('sf-code').value = ''; document.getElementById('sf-code').focus(); true`,
     );
     await tap(zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
     await enter();
-    await bis(`!!document.getElementById('zf-codes')`, 'Wiederherstellungscodes');
+    await bis(`!!document.getElementById('sf-codes')`, 'Wiederherstellungscodes');
     assert.deepEqual(await b.auswerten(errorToasts), [], 'kein liegen gebliebener Fehler-Toast');
     // Above the codes the request to set up no longer stands.
     assert.match(
-      await b.auswerten(`document.getElementById('zfpflicht-hinweis').textContent`),
+      await b.auswerten(`document.getElementById('sf-required-hint').textContent`),
       /ist eingerichtet.*Wiederherstellungscodes sichern/,
     );
   });

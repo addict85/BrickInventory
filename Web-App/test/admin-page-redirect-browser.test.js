@@ -1,10 +1,10 @@
 /**
  * A normal account that calls an administrator page or an unknown path
  * sees the collection — and the address says the same (#/sammlung),
- * plus a hint why. A skip link (#inhalt) stays silent.
+ * plus a hint why. A skip link (#content) stays silent.
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  in the popstate branch the return value of applyAn() ignored (no
+ *   A  in the popstate branch the return value of applyOn() ignored (no
  *      replaceState to adresse()) → red: “administrator page: address and hint”
  *      (address stayed #/einstellungen, no hint)
  *   B  isAppPath() always returns false → red: “unknown path: hint”
@@ -60,7 +60,7 @@ test('admin pages and unknown paths for normal accounts', { concurrency: 1, time
 
   await t.test('skip link stays silent', async () => {
     await leeren();
-    await b.auswerten(`location.hash = '#inhalt'; true`);
+    await b.auswerten(`location.hash = '#content'; true`);
     await ruhig();
     assert.deepEqual(await toasts(), []);
   });

@@ -5,7 +5,7 @@
  *   A  the call of listLoadError removed in loadGallery → red:
  *      “collection: a server error on the first load” (it said „Noch keine Sets“)
  *      and “… the old list stays” (0 instead of 2 tiles)
- *   B  in ladeMerkliste again `d?.merkposten || []` without a check → red:
+ *   B  in loadWanted again `d?.merkposten || []` without a check → red:
  *      “every list shows its load error” (wishlist)
  *   C  in doAddSet again toast(e.message) → red: “network error when capturing”
  *      („Failed to fetch“)
@@ -31,8 +31,8 @@ test('collection: a server error on the first load shows the reason and "try aga
   let antwort = SERVERFEHLER;
   const { w, d } = await openUi({ '/v1/sets': () => antwort });
   try {
-    await warte(() => d.querySelector('#gallery .fehler-zustand'));
-    const box = d.querySelector('#gallery .fehler-zustand');
+    await warte(() => d.querySelector('#gallery .error-state'));
+    const box = d.querySelector('#gallery .error-state');
     assert.ok(box, `Kein Fehlerzustand: „${d.getElementById('gallery').textContent.trim().slice(0, 80)}“`);
     assert.match(box.textContent, /Interner Fehler/);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /Noch keine Sets/);
@@ -87,8 +87,8 @@ test('every list shows its load error with the same building block', async () =>
       ['finance', '#portfolio-chart'],
     ]) {
       await reiter(w, tab);
-      await warte(() => d.querySelector(`${ziel} .fehler-zustand`));
-      const box = d.querySelector(`${ziel} .fehler-zustand`);
+      await warte(() => d.querySelector(`${ziel} .error-state`));
+      const box = d.querySelector(`${ziel} .error-state`);
       assert.ok(box, `${tab}: kein Fehlerzustand — „${d.querySelector(ziel)?.textContent.trim().slice(0, 60)}“`);
       assert.match(box.textContent, /Keine Verbindung zum Server/, `${tab}: Grund fehlt`);
       assert.doesNotMatch(box.textContent, /Failed to fetch/, `${tab}: roher Browsertext`);
@@ -106,7 +106,7 @@ test('network error when capturing: "no connection to the server" instead of "Fa
     },
   });
   try {
-    d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
+    d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
     d.getElementById('add-num').value = '10497-1';
     d.getElementById('btn-add').click();
     await warte(() => d.querySelector('#toasts .toast.error'));

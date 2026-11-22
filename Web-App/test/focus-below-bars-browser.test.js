@@ -26,7 +26,7 @@ const MEASUREMENT = `(() => {
   const r = e.getBoundingClientRect();
   if (r.width < 1 || r.height < 1) return null;
   const schnitt = (q) => Math.max(0, Math.min(r.right, q.right) - Math.max(r.left, q.left)) * Math.max(0, Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top));
-  const bars = [document.querySelector('header'), document.querySelector('nav:not(.einst-nav)'), ...document.querySelectorAll('.tab.active .knopf-schwebend')]
+  const bars = [document.querySelector('header'), document.querySelector('nav:not(.settings-nav)'), ...document.querySelectorAll('.tab.active .button-floating')]
     .filter(l => l && l !== e && !l.contains(e) && /fixed|sticky/.test(getComputedStyle(l).position) && l.checkVisibility());
   const flaeche = r.width * r.height;
   const imFenster = schnitt({ left: 0, top: 0, right: innerWidth, bottom: innerHeight });
@@ -41,10 +41,8 @@ async function tabGang(app, ansicht) {
   await ruhig();
   await b.auswerten(`location.hash = '#/${ansicht}'; true`);
   await ruhig();
-  await app
-    .bis(`!document.querySelector('.tab.active .skelett-zeile, .skelett-raster')`, 'geladen', 60)
-    .catch(() => {});
-  await b.auswerten(`scrollTo(0, 0); document.getElementById('inhalt').focus({ preventScroll: true }); true`);
+  await app.bis(`!document.querySelector('.tab.active .skeleton-row, .skeleton-grid')`, 'loaded', 60).catch(() => {});
+  await b.auswerten(`scrollTo(0, 0); document.getElementById('content').focus({ preventScroll: true }); true`);
   const funde = [];
   let gesehen = 0;
   for (let i = 0; i < 70; i++) {

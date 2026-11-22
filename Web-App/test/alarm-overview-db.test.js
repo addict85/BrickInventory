@@ -10,7 +10,7 @@
  *   f) `data-click="stopEvent"` removed from the field → step 6 red
  *   g) `besitzt` removed from data class Preisalarm, interface regenerated → step 7 red
  *   h) 'alerts.fired' reset to “hat gemeldet" → step 8 red
- *   i) font-weight:600 removed from .alarm-marke-an → step 8 red
+ *   i) font-weight:600 removed from .alert-badge-on → step 8 red
  *   j) join back to `s.user_id = a.user_id` → step 9 red
  *   k) DISTINCT ON removed → step 9 red (alert appears twice)
  */
@@ -156,10 +156,10 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
     assert.match(
       galerie,
-      /ladeAlarmUebersicht\(\)/,
+      /loadAlertOverview\(\)/,
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.',
     );
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
     // Changing and deleting go via the EXISTING route to the set: two
     // write paths to the same state would be two places where the rules
     // auseinanderlaufen.
@@ -208,7 +208,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('6. the row opens the detail dialog, the number field does not', () => {
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
     assert.match(
       js,
       /data-click="openModal"/,
@@ -240,14 +240,14 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
 
   await t.test('8. armed/disarmed is recognizable without color', () => {
     // Marco's finding from 26.09.
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. The marker comes from a class, not from a color in the markup.
     //    As long as the color stands directly at the spot, it is the only thing
     //    that separates the two states.
-    assert.match(js, /alarm-marke-an/, 'Der scharfe Zustand hat keine eigene Klasse.');
-    assert.match(js, /alarm-marke-aus/, 'Der unscharfe Zustand hat keine eigene Klasse.');
+    assert.match(js, /alert-badge-on/, 'Der scharfe Zustand hat keine eigene Klasse.');
+    assert.match(js, /alert-badge-off/, 'Der unscharfe Zustand hat keine eigene Klasse.');
     assert.ok(
       !/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
       'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.',
@@ -256,8 +256,8 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     // 2. The AREA distinguishes: filled versus outlined. That is the
     //    difference one sees even when both colors look
     //    the same.
-    const an = (css.match(/\.alarm-marke-an\{([^}]*)\}/) || [])[1] || '';
-    const aus = (css.match(/\.alarm-marke-aus\{([^}]*)\}/) || [])[1] || '';
+    const an = (css.match(/\.alert-badge-on\{([^}]*)\}/) || [])[1] || '';
+    const aus = (css.match(/\.alert-badge-off\{([^}]*)\}/) || [])[1] || '';
     assert.ok(an && aus, 'Die beiden Klassen sind nicht gestaltet.');
     assert.match(an, /background:var\(--s200\)/, 'Der scharfe Zustand ist nicht gefüllt.');
     assert.match(aus, /border-color:var\(--bdr\)/, 'Der unscharfe Zustand ist nicht umrandet.');

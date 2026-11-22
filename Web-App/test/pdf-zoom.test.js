@@ -253,8 +253,8 @@ test('zoom in the PDF viewer', async t => {
     // Take the restoration out — the scroll positions stay where they were.
     const b = await werkbank(code =>
       code
-        .replace('container.scrollLeft = dokX * ziel - ax;', '')
-        .replace('container.scrollTop = dokY * ziel - ay;', ''),
+        .replace('container.scrollLeft = docX * target - ax;', '')
+        .replace('container.scrollTop = docY * target - ay;', ''),
     );
     b.container.scrollTop = 7000;
     const vorher = b.place();

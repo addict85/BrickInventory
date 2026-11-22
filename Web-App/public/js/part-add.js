@@ -1,9 +1,9 @@
-import { schliesseErfassen, uploadCsv } from './components.js';
+import { closeCapture, uploadCsv } from './components.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { rawHex, html } from './escaping.js';
 import { api } from './api.js';
-import { G, setzeHtml } from './dom.js';
+import { G, setHtml } from './dom.js';
 import { amountFromField, quantityFromField, purchaseDateValid } from './form.js';
 import { toast } from './messages.js';
 import { csvImportStatus, priceOriginHint } from './minifigs.js';
@@ -11,9 +11,9 @@ import { emptyLocationField, selectedOwner, selectedStorage } from './account-lo
 import { loadManualParts } from './parts.js';
 
 // Capture a part by hand: form at the top of the parts tab, color selection and CSV import.
-/** @typedef {import('../../frontend-types/contract').BrickColor} Steinfarbe */
+/** @typedef {import('../../frontend-types/contract').BrickColor} BrickColor */
 // Inline add-part form (at the very top of the parts tab)
-/** @type {Steinfarbe[]} */
+/** @type {BrickColor[]} */
 let _brickColors = [];
 
 export async function loadBrickColors() {
@@ -40,7 +40,7 @@ function renderColorDropdown() {
   // data-name stays the English Rebrickable name — it is adopted as parts.color_name when saving
   // and needed for BrickLink reconciliations. Only the visible text is translated, with the same function as
   // the color display and the filter in the parts tab.
-  setzeHtml(
+  setHtml(
     sel,
     html`${html`<option value="">${tRaw('parts.no_color_dash')}</option>`}${_brickColors.map(c => html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" data-hex="${rawHex(c.hex)}">${colorName(c.name)}</option>`)}`,
   );
@@ -62,10 +62,10 @@ G('btn-add-part')?.addEventListener('click', async () => {
   const colorOpt = colorSel?.options[colorSel.selectedIndex];
   const colorName = colorOpt?.dataset.name || null;
   const colorHex = colorOpt?.dataset.hex || null;
-  const preis = amountFromField('ap-price-inline');
-  const datumOk = purchaseDateValid('ap-date');
-  const menge = quantityFromField('ap-qty-inline');
-  if (!preis.ok || !menge.ok || !datumOk) return;
+  const price = amountFromField('ap-price-inline');
+  const dateOk = purchaseDateValid('ap-date');
+  const quantity = quantityFromField('ap-qty-inline');
+  if (!price.ok || !quantity.ok || !dateOk) return;
   const btn = G('btn-add-part');
   btn.disabled = true;
   btn.textContent = '…';
@@ -76,8 +76,8 @@ G('btn-add-part')?.addEventListener('click', async () => {
     color_id: colorId,
     color_name: colorName,
     color_hex: colorHex,
-    quantity: menge.wert,
-    unit_price: preis.wert,
+    quantity: quantity.value,
+    unit_price: price.value,
     condition: G('ap-condition')?.value || 'N',
     acquired_at: G('ap-date')?.value || null,
     owner_user_id: selectedOwner('ap-owner'),
@@ -91,7 +91,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     res.textContent =
       `${d.part_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
       (hintT ? ` — ${hintT}` : '');
-    schliesseErfassen('part');
+    closeCapture('part');
     toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
     G('ap-num-inline').value = '';
     G('ap-qty-inline').value = '1';
@@ -118,7 +118,7 @@ async function importPartsCsv() {
   const d = await uploadCsv({
     feld: 'part-csv-file',
     pfad: '/v1/parts/import/csv',
-    zeige: l => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
+    show: l => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
   });
   if (d) loadManualParts();
 }

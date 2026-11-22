@@ -58,7 +58,7 @@ test('address and history', { timeout: 180_000 }, async t => {
     await b.auswerten(`history.forward(); true`);
     await warte(800);
     assert.deepEqual((await zustand()).dialoge, ['set-modal']);
-    await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
+    await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
     await warte(400);
     await zurueck();
     assert.equal((await zustand()).ansicht, 'tab-finance');

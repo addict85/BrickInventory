@@ -22,7 +22,7 @@ const CORPUS = JSON.parse(
 
 async function versuche(o, nummer) {
   const { d, w, aufrufe } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(20);
   const feld = d.getElementById('add-num');
   feld.value = nummer;
@@ -31,7 +31,7 @@ async function versuche(o, nummer) {
   d.getElementById('btn-add').click();
   await takt(30);
   const gesendet = aufrufe.slice(vorher).some(a => a.url.includes('/sets/add-stream'));
-  const fehler = d.getElementById('add-num-fehler');
+  const fehler = d.getElementById('add-num-error');
   return { gesendet, feld, fehler: fehler && !fehler.hidden ? fehler.textContent : '' };
 }
 
@@ -42,12 +42,12 @@ test('abc is rejected, with a message at the field', async () => {
     assert.equal(r.gesendet, false, '„abc“ ging an den Server');
     assert.match(r.fehler, /„abc“ ist keine Setnummer/);
     assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
-    assert.equal(r.feld.getAttribute('aria-describedby'), 'add-num-fehler');
+    assert.equal(r.feld.getAttribute('aria-describedby'), 'add-num-error');
     assert.equal(o.d.activeElement, r.feld, 'Der Fokus steht nicht im Feld');
     // Typing clears the message away.
     r.feld.value = '1';
     r.feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
-    assert.equal(o.d.getElementById('add-num-fehler').hidden, true);
+    assert.equal(o.d.getElementById('add-num-error').hidden, true);
     // Empty: the same place, own text.
     const leer = await versuche(o, '   ');
     assert.equal(leer.gesendet, false);

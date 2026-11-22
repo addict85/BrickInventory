@@ -38,7 +38,7 @@ export async function apiRaw(method, path, o = {}) {
     throw e;
   }
   receiveResponse();
-  if (res.status === 401) emit('sitzungBeendet', path);
+  if (res.status === 401) emit('sessionEnded', path);
   return res;
 }
 
@@ -49,7 +49,7 @@ export async function apiRaw(method, path, o = {}) {
  * @template {string} M
  * @template {string} P
  * @param {M} method @param {P} path
- * @returns {Promise<import('../../frontend-types/api').ApiDaten<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiData<M, P>>}
  */
 export async function apiData(method, path) {
   try {
@@ -71,58 +71,58 @@ export async function apiData(method, path) {
  * @param {P} path
  * @param {FormData | object | null} [body]
  * @param {{ signal?: AbortSignal, cache?: RequestCache }} [o]
- * @returns {Promise<import('../../frontend-types/api').ApiAntwort<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiResponse<M, P>>}
  */
 export async function api(method, path, body, o = {}) {
   let res;
   try {
     res = await apiRaw(method, path, { ...o, body: body ?? null });
   } catch (_) {
-    const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
-    if (alt) return { ...alt, ausZwischenspeicher: true };
+    const alt = method === 'GET' ? offCache(path) : null;
+    if (alt) return { ...alt, offCache: true };
     return { success: false, error: tRaw('api.unreachable'), networkError: true, status: 0 };
   }
   /** @type {Record<string, unknown> | null} */
-  let daten = null;
+  let data = null;
   try {
-    daten = await res.json();
+    data = await res.json();
   } catch (_) {
-    console.warn('[api]', method, path, 'Antwort ist kein JSON (Status ' + res.status + ')');
+    console.warn('[api]', method, path, 'response is not JSON (status ' + res.status + ')');
     return {
       success: false,
       status: res.status,
       error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status: res.status }),
     };
   }
-  if (res.status === 429 && daten && typeof daten === 'object')
-    daten.waitSec = Number(res.headers.get('Retry-After')) || 0;
-  if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
+  if (res.status === 429 && data && typeof data === 'object')
+    data.waitSec = Number(res.headers.get('Retry-After')) || 0;
+  if (!res.ok && data && typeof data === 'object' && data.success === undefined) {
     return {
-      ...daten,
+      ...data,
       success: false,
       status: res.status,
-      error: String(daten.error || tRaw('api.server_error', { status: res.status })),
+      error: String(data.error || tRaw('api.server_error', { status: res.status })),
     };
   }
-  if (daten && typeof daten === 'object') daten.status = res.status;
-  if (method === 'GET' && res.ok && daten?.success !== false) inCache(path, daten);
-  if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path))
-    rememberSessionEnd(String(daten.error));
-  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') emit('passwortWechselNoetig');
-  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
-  return /** @type {import('../../frontend-types/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
+  if (data && typeof data === 'object') data.status = res.status;
+  if (method === 'GET' && res.ok && data?.success !== false) inCache(path, data);
+  if (res.status === 401 && data?.error && !/^\/v1\/auth\/(me|login)/.test(path))
+    rememberSessionEnd(String(data.error));
+  if (res.status === 403 && data?.code === 'passwort_wechsel_noetig') emit('passwordChangeRequired');
+  if (res.status === 403 && data?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
+  return /** @type {import('../../frontend-types/api').ApiResponse<M, P>} */ (/** @type {unknown} */ (data));
 }
 
 /**
  * An event stream of the own API: EventSource with the session cookie, every event as an object according to the
- * contract (`Strom` in frontend-types/contract.d.ts). Without EventSource null; then the caller polls.
+ * contract (`Stream` in frontend-types/contract.d.ts). Without EventSource null; then the caller polls.
  * If the stream breaks off, it is closed, and `fehler` decides about the fallback.
  * @template {string} P
  * @param {P} path  without `/api`, e.g. `/v1/sets/import/csv/stream`
- * @param {{ ereignis: (e: import('../../frontend-types/api').StromEreignis<P>) => void, fehler: () => void }} o
- * @returns {{ schliesse: () => void } | null}
+ * @param {{ event: (e: import('../../frontend-types/api').StreamEvent<P>) => void, fehler: () => void }} o
+ * @returns {{ close: () => void } | null}
  */
-export function strom(path, o) {
+export function stream(path, o) {
   if (typeof EventSource === 'undefined') return null;
   let es;
   try {
@@ -131,22 +131,22 @@ export function strom(path, o) {
     console.warn('[strom]', path, e);
     return null;
   }
-  const quelle = es;
-  quelle.onmessage = m => {
+  const source = es;
+  source.onmessage = m => {
     let e;
     try {
       e = JSON.parse(m.data);
     } catch (_) {
-      console.warn('[strom]', path, 'Ereignis ist kein JSON');
+      console.warn('[strom]', path, 'event is not JSON');
       return;
     }
-    o.ereignis(e);
+    o.event(e);
   };
-  quelle.onerror = () => {
-    quelle.close();
+  source.onerror = () => {
+    source.close();
     o.fehler();
   };
-  return { schliesse: () => quelle.close() };
+  return { close: () => source.close() };
 }
 
 /**
@@ -171,21 +171,21 @@ const ZS = 'bim_api:';
 
 const ZS_PATHS = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
 
-/** @param {string} pfad @param {unknown} daten */
-function inCache(pfad, daten) {
-  if (!ZS_PATHS.test(pfad)) return;
+/** @param {string} path @param {unknown} data */
+function inCache(path, data) {
+  if (!ZS_PATHS.test(path)) return;
   try {
-    const s = JSON.stringify(daten);
-    if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s);
+    const s = JSON.stringify(data);
+    if (s.length < 400_000) sessionStorage.setItem(ZS + path, s);
   } catch (_) {
     /* full or blocked: then without */
   }
 }
 
-/** @param {string} pfad */
-function ausZwischenspeicher(pfad) {
+/** @param {string} path */
+function offCache(path) {
   try {
-    const s = sessionStorage.getItem(ZS + pfad);
+    const s = sessionStorage.getItem(ZS + path);
     return s ? JSON.parse(s) : null;
   } catch (_) {
     return null;

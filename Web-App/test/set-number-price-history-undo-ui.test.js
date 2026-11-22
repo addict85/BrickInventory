@@ -7,16 +7,16 @@
  *      “unknown set number” (creates immediately)
  *   B  filter on purchase days removed in priceChartSVG → red: “price history”
  *      (curve with 3 instead of 2 points)
- *   C  data-change="speichereWaehrung" removed on the currency field → red:
+ *   C  data-change="saveCurrency" removed on the currency field → red:
  *      “account: currency applies immediately”
- *   D  undo removed in the toast of merkpostenLoeschen → red: “delete pending item”
+ *   D  undo removed in the toast of deleteWantedItem → red: “delete pending item”
  *   (all eight measured: each exactly the named test red, the others green)
- *   E  LAND_CURRENCY['de-CH'] set to EUR → red: “vouchers: currency of the issuing country”
- *   F  legeAlarmAn without the -1 addition → red: “create price alert in its view”
+ *   E  COUNTRY_CURRENCY['de-CH'] set to EUR → red: “vouchers: currency of the issuing country”
+ *   F  createAlert without the -1 addition → red: “create price alert in its view”
  *   G  hint column of the job row without the error box → red: “background jobs”
- *   H  fmtDatum in English again 2-digit numeric → red: “date in English”
+ *   H  fmtDate in English again 2-digit numeric → red: “date in English”
  *   I  (05.11.2026, UI check 17 M5) prompt before the currency change removed from
- *      speichereWaehrung → red: “account: currency applies immediately” (no
+ *      saveCurrency → red: “account: currency applies immediately” (no
  *      dialog with „Marktpreise“)
  *   J  (12.11.2026, UX check 19 M3: schedule fields now in the
  *      settings) the check for HH:MM removed in saveJobTime → red:
@@ -50,11 +50,11 @@ test('unknown set number: ask first, then create', async () => {
     },
   });
   try {
-    d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
+    d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
     d.getElementById('add-num').value = '99999';
     d.getElementById('btn-add').click();
-    await warte(() => !d.getElementById('add-unbekannt').hidden);
-    assert.match(text(d.getElementById('add-unbekannt')), /99999-1 ist im Katalog \(noch\) unbekannt/);
+    await warte(() => !d.getElementById('add-unknown').hidden);
+    assert.match(text(d.getElementById('add-unknown')), /99999-1 ist im Katalog \(noch\) unbekannt/);
     assert.equal(text(d.getElementById('btn-add')), 'Trotzdem anlegen');
     assert.equal(
       aufrufe.some(a => a.url.includes('add-stream')),
@@ -96,10 +96,10 @@ test('price history: purchase price as a point, not as the start of the curve', 
   try {
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => d.querySelector('#set-modal svg.diagramm-preis'), 4000);
-    const linie = d.querySelector('#set-modal svg.diagramm-preis polyline');
+    await warte(() => d.querySelector('#set-modal svg.chart-price'), 4000);
+    const linie = d.querySelector('#set-modal svg.chart-price polyline');
     assert.equal(linie.getAttribute('points').trim().split(/\s+/).length, 2, 'Kaufpreis in der Marktkurve');
-    assert.equal(d.querySelectorAll('#set-modal .kaufpunkt').length, 1);
+    assert.equal(d.querySelectorAll('#set-modal .purchase-dot').length, 1);
   } finally {
     w.close();
   }
@@ -110,7 +110,7 @@ test('account: currency applies immediately, password has its own button', async
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     const feld = d.getElementById('s-cur');
     feld.value = 'CHF';
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
@@ -151,8 +151,8 @@ test('delete pending item: undo creates it again', async () => {
   });
   try {
     await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-zeile .delbtn'));
-    d.querySelector('.mk-zeile .delbtn').click();
+    await warte(() => d.querySelector('.mk-row .delbtn'));
+    d.querySelector('.mk-row .delbtn').click();
     await warte(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
     [...d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
     await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/wanted')));
@@ -175,11 +175,11 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
     },
   });
   try {
-    await sicht(w, 'gutscheine');
+    await sicht(w, 'vouchers');
     await warte(() => d.querySelector('.voucher-row'));
     assert.equal(d.getElementById('v-currency').value, 'CHF');
-    assert.match(text(d.querySelector('.voucher-abweichung')), /nicht CHF wie das Ausgabeland/);
-    assert.match(text(d.getElementById('gutschein-land-waehrung')), /CHF/);
+    assert.match(text(d.querySelector('.voucher-deviation')), /nicht CHF wie das Ausgabeland/);
+    assert.match(text(d.getElementById('voucher-country-currency')), /CHF/);
   } finally {
     w.close();
   }
@@ -188,10 +188,10 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
 test('create price alert in its view', async () => {
   const { w, d, aufrufe } = await openUi({ '/v1/alerts': { success: true, alerts: [] } });
   try {
-    await sicht(w, 'alarme');
-    d.getElementById('alarm-neu-set').value = '10294';
-    d.getElementById('alarm-neu-preis').value = '599,90';
-    d.getElementById('alarm-neu-knopf').click();
+    await sicht(w, 'alerts');
+    d.getElementById('alert-new-set').value = '10294';
+    d.getElementById('alert-new-price').value = '599,90';
+    d.getElementById('alert-new-button').click();
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
     const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
     assert.match(ruf.url, /\/v1\/sets\/10294-1\/alert$/);
@@ -230,15 +230,15 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
   });
   try {
     await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));
-    const headers = [...d.querySelectorAll('#auftraege-karte .mon-arten th')].map(text);
+    await warte(() => d.querySelector('#jobs-card table') && d.querySelector('#monitor-content table'));
+    const headers = [...d.querySelectorAll('#jobs-card .mon-kinds th')].map(text);
     assert.deepEqual(headers, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
-    assert.ok(d.querySelector('#auftraege-karte tbody tr .fehler-kasten'), 'Fehler nicht in der Zeile seines Auftrags');
+    assert.ok(d.querySelector('#jobs-card tbody tr .error-box'), 'Fehler nicht in der Zeile seines Auftrags');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
     await reiter(w, 'settings');
-    await warte(() => d.querySelector('#einst-zeitplaene input.mon-zeit'));
-    const zeit = d.querySelector('#einst-zeitplaene input.mon-zeit');
+    await warte(() => d.querySelector('#settings-schedules input.mon-time'));
+    const zeit = d.querySelector('#settings-schedules input.mon-time');
     assert.equal(zeit.type, 'text');
     zeit.value = '3:5';
     zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
@@ -259,8 +259,8 @@ test('date in English with month names', async () => {
     { sprache: 'en' },
   );
   try {
-    await warte(() => d.querySelector('#gallery .kachel-datum'));
-    assert.match(text(d.querySelector('#gallery .kachel-datum')), /\b(1 Jun 2026|Jun 1, 2026)\b/);
+    await warte(() => d.querySelector('#gallery .tile-date'));
+    assert.match(text(d.querySelector('#gallery .tile-date')), /\b(1 Jun 2026|Jun 1, 2026)\b/);
   } finally {
     w.close();
   }

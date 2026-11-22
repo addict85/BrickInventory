@@ -12,12 +12,12 @@ const ROOT = path.join(__dirname, '..', '..');
 const BUENDEL = path.join(ROOT, 'public', OUT_REL);
 
 /**
- * A bundle from main.js plus `zusatz` (source text with imports relative to
+ * A bundle from main.js plus `extra` (source text with imports relative to
  * public/js), for example to put the registry on window. The shipped
  * bundle stays unchanged; the file is deleted at process end.
  * Usage: `process.env.TEST_BUENDEL = buildTestbuendel(…)` before helpers/oberflaeche.
  * @param {string} name
- * @param {string} zusatz
+ * @param {string} extra
  */
 function buildTestbuendel(name, zusatz) {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));

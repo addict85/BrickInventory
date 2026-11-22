@@ -35,8 +35,8 @@ test('the hint is under background jobs', async () => {
   const { w, d } = await openUi(jobs({ art: 'eine_adresse', vars: { ip: '172.28.73.20', minuten: 61, anzahl: 301 } }));
   try {
     await reiter(w, 'monitor');
-    await warte(() => d.getElementById('mon-proxy-hinweis'));
-    const t = text(d.getElementById('mon-proxy-hinweis'));
+    await warte(() => d.getElementById('mon-proxy-hint'));
+    const t = text(d.getElementById('mon-proxy-hint'));
     assert.match(t, /Seit 61 Minuten kommen alle 301 Anfragen mit derselben Client-Adresse 172\.28\.73\.20/);
     assert.match(t, /VORGELAGERTER_PROXY/);
   } finally {
@@ -49,7 +49,7 @@ test('without a hint nothing is shown', async () => {
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#monitor-content table'));
-    assert.equal(d.getElementById('mon-proxy-hinweis'), null);
+    assert.equal(d.getElementById('mon-proxy-hint'), null);
   } finally {
     w.close();
   }

@@ -50,7 +50,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     for (const design of DESIGNS)
       for (const dunkel of design === 'werkbank' ? [true] : [false, true]) {
         await b.auswerten(
-          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.${dunkel ? `setAttribute('data-dunkel', '')` : `removeAttribute('data-dunkel')`}; true`,
+          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.${dunkel ? `setAttribute('data-dark', '')` : `removeAttribute('data-dark')`}; true`,
         );
         const k = await b.auswerten(`(() => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
         const l = ([r, g, b]) => { const c = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
@@ -58,10 +58,10 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
         const [x, y] = [l(f(getComputedStyle(document.getElementById('app-scrollbar-thumb')).backgroundColor)),
                         l(f(getComputedStyle(document.body).backgroundColor))].sort((p, q) => q - p);
         return Math.round((x + 0.05) / (y + 0.05) * 100) / 100; })()`);
-        werte.push({ design: `${design} ${dunkel ? 'dunkel' : 'hell'}`, kontrast: k });
+        werte.push({ design: `${design} ${dunkel ? 'dark' : 'hell'}`, kontrast: k });
       }
     await b.auswerten(
-      `document.documentElement.setAttribute('data-theme', 'classic'); document.documentElement.removeAttribute('data-dunkel'); true`,
+      `document.documentElement.setAttribute('data-theme', 'classic'); document.documentElement.removeAttribute('data-dark'); true`,
     );
     assert.equal(werte.length, 11);
     assert.deepEqual(

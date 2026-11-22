@@ -25,7 +25,7 @@
  *      soft hyphens”
  *   C  in showUsernames the name check removed → red: “admin without
  *      (Administrator)”; only `name === 'admin' ||` removed (16.11.2026) → red: same place (en)
- *   D  in the log again toLocaleString → red: “log with fmtDatum”
+ *   D  in the log again toLocaleString → red: “log with fmtDate”
  *   E  speichereZugang always reports okText → red: “empty credentials”
  *   F  in setUnbekannt the second button back → red: “one button open
  *      set”
@@ -116,7 +116,7 @@ test('admin without (Administrator)', async () => {
   }
 });
 
-test('log with fmtDatum', async () => {
+test('log with fmtDate', async () => {
   const o = await openUi(
     {
       '/v1/admin/protokoll': {
@@ -135,8 +135,8 @@ test('log with fmtDatum', async () => {
   );
   try {
     await reiter(o.w, 'settings');
-    assert.ok(await warte(() => o.d.querySelector('#vw-protokoll tbody td')));
-    assert.match(o.d.querySelector('#vw-protokoll tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
+    assert.ok(await warte(() => o.d.querySelector('#vw-log tbody td')));
+    assert.match(o.d.querySelector('#vw-log tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
   } finally {
     o.w.close();
   }
@@ -147,8 +147,8 @@ test('empty credentials report "access removed"', async () => {
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
-    // Confirmation happens at the button (meldeAmFeld), not in the toast.
-    const stand = () => o.d.querySelector('#einst-rb .feld-status')?.textContent || '';
+    // Confirmation happens at the button (reportAtField), not in the toast.
+    const stand = () => o.d.querySelector('#settings-rb .field-status')?.textContent || '';
     assert.ok(await warte(() => /Zugang entfernt/.test(stand()), 2000), stand());
     assert.doesNotMatch(stand() + o.d.getElementById('toasts').textContent, /gespeichert/i);
   } finally {
@@ -165,15 +165,15 @@ test('recovery codes: saved and as a file', async () => {
     o.w.URL.createObjectURL = () => 'blob:probe';
     o.w.URL.revokeObjectURL = () => {};
     const feld = o.d.createElement('input');
-    feld.id = 'zf-code';
+    feld.id = 'sf-code';
     feld.value = '123456';
     const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'zfBestaetigen';
+    knopf.dataset.click = 'confirmSecondFactor';
     o.d.getElementById('zf-bereich')?.append(feld, knopf) ?? o.d.body.append(feld, knopf);
     knopf.click();
-    assert.ok(await warte(() => o.d.getElementById('zf-gespeichert')));
-    assert.match(o.d.getElementById('zf-gespeichert').textContent, /gesichert/);
-    const datei = o.d.querySelector('[data-click="zfCodesSpeichern"]');
+    assert.ok(await warte(() => o.d.getElementById('sf-saved')));
+    assert.match(o.d.getElementById('sf-saved').textContent, /gesichert/);
+    const datei = o.d.querySelector('[data-click="saveRecoveryCodes"]');
     assert.ok(datei, 'kein Knopf „Als Datei speichern“');
     let geladen = '';
     o.w.HTMLAnchorElement.prototype.click = function () {
@@ -221,11 +221,11 @@ test('a button "open set" for an existing set', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+    o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
     await takt(10);
     o.d.getElementById('add-num').value = '10305-1';
     o.d.getElementById('btn-add').click();
-    assert.ok(await warte(() => !o.d.getElementById('add-unbekannt').hidden));
+    assert.ok(await warte(() => !o.d.getElementById('add-unknown').hidden));
     const knoepfe = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
     assert.equal(knoepfe.length, 1);
   } finally {
@@ -245,7 +245,7 @@ test('remember names the collection', async () => {
   try {
     o.d.getElementById('mk-num').value = '10305-1';
     const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'merkpostenHinzufuegen';
+    knopf.dataset.click = 'addWantedItem';
     o.d.body.append(knopf);
     knopf.click();
     assert.ok(
@@ -274,14 +274,14 @@ test('household in the subtitle', async () => {
     assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
     o.w.eval('document.querySelector(\'.ntab[data-tab="gallery"]\').click()');
     assert.ok(
-      await warte(() => /im Haushalt/.test(o.d.getElementById('gallery-unter').textContent), 2000),
-      o.d.getElementById('gallery-unter').textContent,
+      await warte(() => /im Haushalt/.test(o.d.getElementById('gallery-sub').textContent), 2000),
+      o.d.getElementById('gallery-sub').textContent,
     );
     const wahl = o.d.getElementById('scope-gallery');
     wahl.value = 'own';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(
-      await warte(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-unter').textContent), 2000),
+      await warte(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-sub').textContent), 2000),
     );
   } finally {
     o.w.close();

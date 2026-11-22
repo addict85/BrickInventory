@@ -24,7 +24,7 @@ const { openUi, sicht, takt, warte } = require('./helpers/ui');
 
 async function setErfassen(o, preis) {
   const { d, w, aufrufe } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(10);
   d.getElementById('add-num').value = '10294-1';
   const feld = d.getElementById('add-price');
@@ -34,7 +34,7 @@ async function setErfassen(o, preis) {
   d.getElementById('btn-add').click();
   await takt(30);
   const a = aufrufe.slice(vorher).find(x => x.url.includes('/sets/add-stream'));
-  const fehler = d.getElementById('add-price-fehler');
+  const fehler = d.getElementById('add-price-error');
   return {
     gesendet: !!a,
     wert: a ? JSON.parse(a.body).purchase_price : undefined,
@@ -107,11 +107,11 @@ test('nonsense is reported at the field and not sent', async () => {
 test('voucher: amount with comma', async () => {
   const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { browserLanguage: 'de-DE' });
   try {
-    await sicht(o.w, 'gutscheine');
+    await sicht(o.w, 'vouchers');
     o.d.getElementById('v-number').value = '6123-4567-8901';
     o.d.getElementById('v-amount').value = '50,50';
     const vorher = o.aufrufe.length;
-    o.d.querySelector('[data-click="gutscheinSpeichern"]').click();
+    o.d.querySelector('[data-click="saveVoucher"]').click();
     await warte(() => o.aufrufe.slice(vorher).some(a => a.method === 'POST'));
     const a = o.aufrufe.slice(vorher).find(x => x.method === 'POST' && x.url.includes('/v1/vouchers'));
     assert.equal(JSON.parse(a.body).amount, 50.5);
@@ -147,8 +147,8 @@ test("purchase price dialog: display in the language's form, comma saved, marker
     knopf.dataset.arg = '10294-1';
     o.d.body.append(knopf);
     knopf.click();
-    await warte(() => o.d.getElementById('acq-preis-7'));
-    const feld = o.d.getElementById('acq-preis-7');
+    await warte(() => o.d.getElementById('acq-price-7'));
+    const feld = o.d.getElementById('acq-price-7');
     assert.equal(feld.value, '129,99');
     assert.equal(o.d.getElementById('acq-ok-7').hidden, true, 'Marke vor dem Speichern sichtbar');
     feld.value = '149,95';

@@ -5,24 +5,24 @@
  * Counter-checks (measured 14.11.2026, each on its own, bundle or dist rebuilt):
  *   A  mQtyDec() without `if (n <= 1) return` → red: „„−“ bei einem Exemplar“ (field shows 0); setQuantitiesField()
  *      without aria-disabled → red: same place (not locked)
- *   B  .ladepunkt again height:1px → red: „Schwebender Knopf verdeckt nichts“ (parts 390 px: closing line
+ *   B  .load-dot again height:1px → red: „Schwebender Knopf verdeckt nichts“ (parts 390 px: closing line
  *      751 > button 716)
  *   C  updateGalleryPrices() without [data-tabwert-for] → red: „Tabellenansicht …“ (market value „—“)
  *   D  column „Stückpreis“ including cells back → red: „Finanzen ohne leere Spalte“; parts/figures again with
  *      an empty state cell → red: same place
  *   E  finance.stat.purchase_basis again „Kaufpreis der Positionen mit Marktpreis“ → red: „Finanzbegriffe“;
- *      finance.basis.gerechnet again with the second sentence → red: same place (390 px: 5 instead of 3 lines)
+ *      finance.basis.computed again with the second sentence → red: same place (390 px: 5 instead of 3 lines)
  *   F  clearerReason() without the branch for admins → red: „Serverfehler für Verwalter“
  *   G  bar again for every service with total > 0 → red: „Aufträge und Fortschritt“ (also „idle“, „done“);
- *      .mon-zusatz without display:block → red: same place (number 123 px left of the edge, addition next to it)
- *   H  zfNeueCodes() reads #zf-code again → red: „Zweiter Faktor: Code im Dialog“ (no dialog)
+ *      .mon-extra without display:block → red: same place (number 123 px left of the edge, addition next to it)
+ *   H  newRecoveryCodes() reads #zf-code again → red: „Zweiter Faktor: Code im Dialog“ (no dialog)
  *   I  refreshPageName() without observeSetDetail() → red: „Seitentitel im Set-Detail“
- *   K  .pl-leiste without align-self:stretch → red: „Bauliste: breites Feld“ (1280 px: 205 px);
+ *   K  .pl-bar without align-self:stretch → red: „Bauliste: breites Feld“ (1280 px: 205 px);
  *      mobile.css without .pl-setnr { flex-basis: 100% } → red: same place (390 px: 209 of 358 px)
- *   L  .merk-kasten-kopf without display:flex/align-items:center → red: „Merkliste zugeklappt“ (top 9, bottom 32 px)
+ *   L  .wanted-box-header without display:flex/align-items:center → red: „Merkliste zugeklappt“ (top 9, bottom 32 px)
  *   M  thumbs.ts again fit: 'cover' (dist rebuilt) → red: „Bilder verschiedener Form“ (r25breit-1: preview 1:1
  *      instead of 8:1)
- *   N  (16.11.2026) `withCode: true` deleted in zfAbschalten() → red: „Zweiter Faktor: Code im Dialog“
+ *   N  (16.11.2026) `withCode: true` deleted in disableSecondFactor() → red: „Zweiter Faktor: Code im Dialog“
  *      (set up anew without a code field)
  *
  * B3: the native date field formats by the language of the browser, not by `lang` (round 24, N16);
@@ -40,7 +40,7 @@ const { startApp } = require('./helpers/app-browser');
 const { patternHousehold, catalogSet, holdsSet } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 const ROOT = path.join(__dirname, '..');
 
 async function groesse(b, breite, telefon) {
@@ -66,7 +66,7 @@ async function sprache(a, lang) {
   await a.ruhig();
 }
 
-/** A PNG with an alpha channel; `farbe(x, y, rand)` returns [r, g, b, a]. The red border shows whether something is cut off. */
+/** A PNG with an alpha channel; `farbe(x, y, border)` returns [r, g, b, a]. The red border shows whether something is cut off. */
 function png(w, h, farbe) {
   const block = (typ, daten) => {
     const laenge = Buffer.alloc(4);
@@ -134,7 +134,7 @@ const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify
     const datei = i.naturalWidth / i.naturalHeight;
     let gw = bw, gh = bh;
     if (s.objectFit === 'contain' || s.objectFit === 'scale-down') { if (bw / bh > datei) gw = bh * datei; else gh = bw / datei; }
-    const rahmen = i.closest('.sci, td, .m-kopfteil, .modal').getBoundingClientRect();
+    const rahmen = i.closest('.sci, td, .m-header, .modal').getBoundingClientRect();
     return { nr: (i.currentSrc || i.src).replace(/.*sets\\/|(_thumb)?\\.jpg.*/g, ''), geladen: i.complete && i.naturalWidth > 0,
       datei: +datei.toFixed(3), painted: +(gw / gh).toFixed(3), fit: s.objectFit,
       raus: r.left < rahmen.left - 0.5 || r.right > rahmen.right + 0.5 || r.top < rahmen.top - 0.5 || r.bottom > rahmen.bottom + 0.5 };
@@ -160,13 +160,13 @@ async function bilder(_t, a) {
   const { b, bis } = a;
   try {
     for (const dunkel of [false, true]) {
-      await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
+      await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
       for (const [breite, telefon] of [
         [1280, false],
         [390, true],
         [320, true],
       ]) {
-        const wo = `${breite} px ${dunkel ? 'dunkel' : 'hell'}`;
+        const wo = `${breite} px ${dunkel ? 'dark' : 'hell'}`;
         await groesse(b, breite, telefon);
         await geh(a, '#/sammlung', `document.querySelectorAll('#gallery .sc').length >= 9`, 'Sammlung');
         await b.auswerten(`document.getElementById('vg').click(); true`);
@@ -211,7 +211,7 @@ async function bilder(_t, a) {
       }
     }
   } finally {
-    await b.auswerten(`document.documentElement.removeAttribute('data-dunkel'); true`);
+    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
     await groesse(b, 1280, false);
   }
 }
@@ -243,7 +243,7 @@ async function minusAtOne(_t, a) {
   await b.auswerten(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
   assert.equal((await stand()).titel, '', 'Hinweis bleibt bei 2 stehen');
-  await bis(`document.querySelector('#m-menge .feld-status')?.textContent.trim() !== ''`, 'gespeichert');
+  await bis(`document.querySelector('#m-quantity .field-status')?.textContent.trim() !== ''`, 'saved');
   await a.ruhig();
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'true'`, 'zurück auf 1');
@@ -276,8 +276,8 @@ async function floatingButton(_t, a) {
         await b.auswerten(`scrollTo(0, document.documentElement.scrollHeight); true`);
         await a.ruhig();
         const m =
-          await b.auswerten(`(() => { const f = document.querySelector('#tab-${tab} .knopf-schwebend').getBoundingClientRect();
-          const blaetter = [...document.querySelectorAll('#tab-${tab} *')].filter(e => !e.closest('.knopf-schwebend') && !e.children.length
+          await b.auswerten(`(() => { const f = document.querySelector('#tab-${tab} .button-floating').getBoundingClientRect();
+          const blaetter = [...document.querySelectorAll('#tab-${tab} *')].filter(e => !e.closest('.button-floating') && !e.children.length
             && (e.textContent.trim() || e.matches('img, svg')) && e.checkVisibility());
           const unten = blaetter.map(e => ({ e, r: e.getBoundingClientRect() })).filter(x => x.r.height > 0 && x.r.bottom > 0)
             .sort((x, y) => y.r.bottom - x.r.bottom)[0];
@@ -305,9 +305,7 @@ async function tabellenansicht(_t, a) {
   await b.auswerten(`document.getElementById('vl').click(); true`);
   await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
   // Re-sorted, the list reloads: the table stands there before the prices, the market value comes afterwards.
-  await b.auswerten(
-    `document.querySelector('#gallery thead [data-click="setsSortieren"][data-arg="num"]').click(); true`,
-  );
+  await b.auswerten(`document.querySelector('#gallery thead [data-click="sortSets"][data-arg="num"]').click(); true`);
   // Wait for the market value column itself: a later redraw briefly resets it to „—“.
   await a.ruhig();
   await bis(
@@ -320,7 +318,7 @@ async function tabellenansicht(_t, a) {
     await b.auswerten(`(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
     const zelle = (nr, k) => { const z = document.querySelector('#gallery tr[data-arg="' + nr + '"]').children[kopf.indexOf(k)].cloneNode(true);
       z.querySelectorAll('.vh').forEach(v => v.remove()); return z.textContent.replace(/\\s+/g, ' ').trim(); };
-    return { kopf, untertitel: ${text('#tab-gallery .ptitle-unter')},
+    return { kopf, untertitel: ${text('#tab-gallery .ptitle-sub')},
       falcon: [zelle('75192-1', 'Kaufpreis'), zelle('75192-1', 'Marktwert')], geschenk: zelle('10300-1', 'Kaufpreis') }; })()`);
   await b.auswerten(`document.getElementById('vg').click(); true`);
   assert.match(m.untertitel, /Kaufpreis und Marktwert|Kaufpreis, Marktwert/, 'Testdaten: Untertitel verspricht beides');
@@ -332,17 +330,17 @@ async function tabellenansicht(_t, a) {
 
 async function financeColumns(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="parts"] tbody tr')`, 'Finanzen');
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-kind="parts"] tbody tr')`, 'Finanzen');
   const m =
     await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };
-    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-art] table')].flatMap(t => {
+    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-kind] table')].flatMap(t => {
       const kopf = [...t.querySelectorAll('thead th')].map(k => k.textContent.trim());
       const zeilen = [...t.querySelectorAll('tbody tr')];
       return kopf.filter((k, i) => zeilen.length && zeilen.every(z => !sichtbar(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
     });
-    const teil = [...document.querySelectorAll('[data-fin-art="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
-    return { leer, headers: [...document.querySelectorAll('[data-fin-art="sets"] thead th')].map(k => k.textContent.trim()),
+    const teil = [...document.querySelectorAll('[data-fin-kind="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
+    return { leer, headers: [...document.querySelectorAll('[data-fin-kind="sets"] thead th')].map(k => k.textContent.trim()),
       teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
   assert.ok(!m.headers.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.headers.join(' | ')}`);
   assert.deepEqual(m.leer, [], 'Spalte ohne einen Wert');
@@ -364,8 +362,8 @@ async function financeTerms(_t, a) {
   }
   await geh(a, '#/finanzen', `!document.getElementById('fin-basis').hidden`, 'Finanzen');
   const m =
-    await b.auswerten(`({ titel: ${text('#fin-einstand-titel')}, help: document.getElementById('fin-einstand-titel').title,
-    unter: ${text('#fin-einstand-sub')}, zeilen: ${zeilen}, basis: ${text('#fin-basis')} })`);
+    await b.auswerten(`({ titel: ${text('#fin-cost-basis-title')}, help: document.getElementById('fin-cost-basis-title').title,
+    unter: ${text('#fin-cost-basis-sub')}, zeilen: ${zeilen}, basis: ${text('#fin-basis')} })`);
   assert.equal(m.titel, 'Kaufpreis (bewertete Positionen)');
   assert.match(m.help, /Kauf- und Marktpreis/, 'Erklärung im Tooltip fehlt');
   assert.match(m.unter, /^Insgesamt bezahlt: [\d.]+,\d\d €$/);
@@ -385,8 +383,8 @@ async function serverfehlerAdmin(_t, a) {
   });
   try {
     await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
-    await bis(`!window.__alt && !!document.querySelector('.tab.active .fehler-zustand')`, 'Fehler', 300);
-    const m = await b.auswerten(text('.tab.active .fehler-zustand'));
+    await bis(`!window.__alt && !!document.querySelector('.tab.active .error-state')`, 'Error', 300);
+    const m = await b.auswerten(text('.tab.active .error-state'));
     assert.match(m, /Hintergrundarbeiten → „Protokoll anzeigen“/, m);
     assert.doesNotMatch(m, /hilft der Administrator/, 'Verwalter wird an sich selbst verwiesen');
   } finally {
@@ -409,15 +407,15 @@ async function jobs(_t, a) {
     await geh(
       a,
       '#/hintergrund',
-      `!!window.__dienste && !!document.querySelector('.mon-dienste tbody tr') && !!document.querySelector('.mon-arten .mon-zusatz')`,
+      `!!window.__dienste && !!document.querySelector('.mon-services tbody tr') && !!document.querySelector('.mon-kinds .mon-extra')`,
       'Hintergrund',
     );
-    const m = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('.mon-dienste tbody tr')];
-      const balken = zeilen.filter(z => z.querySelector('.mon-balken')).map(z => z.querySelector('.mon-zustand').className);
-      const idle = zeilen.some(z => z.querySelector('.mon-balken') && z.querySelector('.mon-idle'));
-      const z = [...document.querySelectorAll('.mon-arten tbody tr')].find(r => r.querySelector('.mon-zusatz'));
-      const td = z.querySelector('.mon-zusatz').closest('td'), zahl = td.querySelector('.mon-ziffer').getBoundingClientRect();
-      const zusatz = td.querySelector('.mon-zusatz').getBoundingClientRect(), zelle = td.getBoundingClientRect();
+    const m = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('.mon-services tbody tr')];
+      const balken = zeilen.filter(z => z.querySelector('.mon-bar')).map(z => z.querySelector('.mon-state').className);
+      const idle = zeilen.some(z => z.querySelector('.mon-bar') && z.querySelector('.mon-idle'));
+      const z = [...document.querySelectorAll('.mon-kinds tbody tr')].find(r => r.querySelector('.mon-extra'));
+      const td = z.querySelector('.mon-extra').closest('td'), zahl = td.querySelector('.mon-digit').getBoundingClientRect();
+      const zusatz = td.querySelector('.mon-extra').getBoundingClientRect(), zelle = td.getBoundingClientRect();
       return { balken, idle, rechts: Math.round(zelle.right - parseFloat(getComputedStyle(td).paddingRight) - zahl.right),
         darunter: zusatz.top >= zahl.bottom - 1, text: td.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
     assert.ok(m.balken.length > 0, 'Testdaten: ein laufender Dienst mit Balken');
@@ -435,23 +433,23 @@ async function jobs(_t, a) {
 
 async function zweiterFaktor(_t, a) {
   const { b, bis } = a;
-  await geh(a, '#/konto', `!!document.querySelector('#zf-flaeche [data-click="zfNeueCodes"]')`, 'Konto');
-  assert.equal(await b.auswerten(`!!document.querySelector('#zf-flaeche input')`), false, 'Codefeld für zwei Aktionen');
+  await geh(a, '#/konto', `!!document.querySelector('#sf-surface [data-click="newRecoveryCodes"]')`, 'Konto');
+  assert.equal(await b.auswerten(`!!document.querySelector('#sf-surface input')`), false, 'Codefeld für zwei Aktionen');
   const dialog = `({ offen: document.getElementById('confirm-modal').style.display === 'flex', titel: ${text('#cd-title')},
     code: !document.getElementById('cd-code-wrap').hidden, pw: !document.getElementById('cd-pw-wrap').hidden })`;
   // New codes: the code in its own dialog.
-  await b.auswerten(`document.querySelector('#zf-flaeche [data-click="zfNeueCodes"]').click(); true`);
+  await b.auswerten(`document.querySelector('#sf-surface [data-click="newRecoveryCodes"]').click(); true`);
   await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Dialog „Neue Codes“');
   const neu = await b.auswerten(dialog);
   assert.deepEqual([neu.code, neu.pw], [true, false], JSON.stringify(neu));
   assert.match(neu.titel.replace(/­/g, ''), /Neue Wiederherstellungscodes/);
   await b.auswerten(`document.getElementById('cd-code').value = ${JSON.stringify(a.furtherCodes[0])};
     document.getElementById('cd-confirm').click(); true`);
-  await bis(`!!document.getElementById('zf-codes')`, 'neue Codes');
-  await b.auswerten(`document.getElementById('zf-gespeichert').click(); true`);
-  await bis(`!!document.querySelector('#zf-flaeche [data-click="zfAbschalten"]')`, 'zurück');
+  await bis(`!!document.getElementById('sf-codes')`, 'neue Codes');
+  await b.auswerten(`document.getElementById('sf-saved').click(); true`);
+  await bis(`!!document.querySelector('#sf-surface [data-click="disableSecondFactor"]')`, 'zurück');
   // For admins switching off means „Neu einrichten“: a dialog with password and code, cancelled.
-  await b.auswerten(`document.querySelector('#zf-flaeche [data-click="zfAbschalten"]').click(); true`);
+  await b.auswerten(`document.querySelector('#sf-surface [data-click="disableSecondFactor"]').click(); true`);
   await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
   const ab = await b.auswerten(dialog);
   assert.deepEqual([ab.code, ab.pw], [true, true], JSON.stringify(ab));
@@ -466,7 +464,7 @@ async function pageTitle(_t, a) {
   const vorher = await b.auswerten('document.title');
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
   await bis(`document.title === 'Back to the Future Time Machine – BrickInventory'`, 'Titel mit Setnamen', 50);
-  await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
+  await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
   await bis(`document.title === ${JSON.stringify(vorher)}`, `Titel nach dem Schliessen: ${vorher}`, 50);
 }
 
@@ -494,9 +492,9 @@ async function wantedTo(_t, a) {
   const { b } = a;
   await groesse(b, 390, true);
   try {
-    await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
+    await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
     const m =
-      await b.auswerten(`(() => { const d = document.getElementById('mk-kasten'), h = d.querySelector('summary h2');
+      await b.auswerten(`(() => { const d = document.getElementById('mk-box'), h = d.querySelector('summary h2');
       const kd = d.getBoundingClientRect(), kh = h.getBoundingClientRect();
       return { offen: d.open, oben: Math.round(kh.top - kd.top), unten: Math.round(kd.bottom - kh.bottom) }; })()`);
     assert.equal(m.offen, false, 'Testdaten: am Telefon zugeklappt');

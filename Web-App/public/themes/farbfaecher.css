@@ -1,22 +1,9 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "farbfaecher" — graue Bedienung, Farbe gehoert den Themen.
-   ---------------------------------------------------------------------------
-   Aktiv, sobald <html data-theme="farbfaecher"> gesetzt ist. Palette in
-   /tokens.css (erzeugt aus shared/design-tokens.json).
-
-   ── Der Gedanke ───────────────────────────────────────────────────────────
-   In den anderen Designs traegt Farbe Schmuck. Hier traegt sie AUSKUNFT:
-   Jedes LEGO-Thema bekommt einen eigenen Ton aus dem Faecher
-   (--faecher-0 .. --faecher-11 in tokens.css, Zuordnung Thema-Nummer modulo
-   zwoelf). Die Bedienung selbst bleibt grau, damit die Themenfarben die
-   einzigen bunten Flaechen sind und deshalb etwas bedeuten.
-
-   ── Was NICHT eingefaerbt wird, und warum ─────────────────────────────────
-   Die Zustandsfarben (neu/gebraucht) und die Verlaufslinien bleiben Blau und
-   Bernstein. Zustand bedeutet etwas anderes als Thema; zwei Farbsysteme
-   nebeneinander duerfen sich nicht verwechseln lassen. Genau daran misst sich
-   dieses Design.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ APP THEME "farbfaecher" — grey controls, colour belongs to the themes ═══
+   Active with <html data-theme="farbfaecher">; palette in /tokens.css (from shared/design-tokens.json).
+   Here colour carries INFORMATION: every LEGO theme gets its own hue from the fan (--fan-0 .. --fan-11,
+   theme number modulo twelve), and the controls stay grey so the theme colours are the only colourful
+   surfaces. Condition colours and history lines stay blue and amber: condition means something else than
+   theme, and the two colour systems must not be confused. */
 
 [data-theme="farbfaecher"]{
   --bg:#fafafa;
@@ -26,8 +13,7 @@
   --mut:#6b6b6b;
   --screen-bg:#fafafa;
   --rad:10px;
-  /* Flacher als das Grunddesign: Wo Farbe Auskunft traegt, soll kein Schatten
-     zusaetzlich um Aufmerksamkeit werben. */
+  /* Flatter than the base theme: where colour carries information, no shadow should compete for attention. */
   --sh0:0 1px 2px rgba(0,0,0,.05);
   --sh1:0 2px 6px rgba(0,0,0,.06);
   --sh2:0 8px 20px rgba(0,0,0,.08);
@@ -41,34 +27,31 @@
 [data-theme="farbfaecher"] body{background:var(--bg)}
 [data-theme="farbfaecher"] .sc{border-radius:10px;overflow:hidden}
 
-/* Der Themenstreifen: eine Kachel traegt ihn oben, der Detaildialog ebenso.
-   Die Farbe setzt die Oberflaeche je Eintrag (--faecher-ton), weil nur sie
-   die Thema-Nummer kennt. Fehlt sie, bleibt der Streifen unsichtbar statt
-   falsch — dieselbe Regel wie bei applyTheme(): keine Information aendert
-   nichts. */
+/* The theme stripe on top of a tile and the detail dialog. The UI sets the colour per entry (--fan-hue)
+   because only it knows the theme number; without it the stripe stays invisible rather than wrong. */
 [data-theme="farbfaecher"] .sc::before{
   content:"";display:block;height:5px;
-  background:var(--faecher-ton, transparent);
+  background:var(--fan-hue, transparent);
 }
 [data-theme="farbfaecher"] .sc .snum{color:var(--mut)}
 
-/* Die Bedienung bleibt grau — auch der Hauptknopf. */
+/* The controls stay grey — the main button too. */
 [data-theme="farbfaecher"] .btn.bp{background:var(--b600);box-shadow:none}
 [data-theme="farbfaecher"] nav .ntab.active{color:var(--b600)}
 
-/* Und die Zustandsfarben bleiben, was sie ueberall sind. */
+/* And the condition colours stay what they are everywhere. */
 [data-theme="farbfaecher"] .cond-new{background:#dbeafe;color:#1d4ed8}
-[data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:var(--a-schrift)}
-[data-theme="farbfaecher"][data-dunkel] .cond-new{background:var(--b100);color:var(--b700)}
-[data-theme="farbfaecher"][data-dunkel] .cond-used{background:var(--a100);color:var(--a-schrift)}
+[data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:var(--a-text)}
+[data-theme="farbfaecher"][data-dark] .cond-new{background:var(--b100);color:var(--b700)}
+[data-theme="farbfaecher"][data-dark] .cond-used{background:var(--a100);color:var(--a-text)}
 
-/* Hell etwas mehr Fächer: die Kennzahlen tragen je einen Ton als Kante, der
-   offene Reiter eine Unterlinie im Fächerverlauf. Die Bedienung bleibt grau. */
-[data-theme="farbfaecher"]:not([data-dunkel]) .bstat{border-top:4px solid var(--faecher-7)}
-[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(2){border-top-color:var(--faecher-4)}
-[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(3){border-top-color:var(--faecher-1)}
-[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(4){border-top-color:var(--faecher-9)}
+/* Light mode gets a bit more fan: each key figure carries a hue as its edge, the open tab an underline in
+   the fan gradient. The controls stay grey. */
+[data-theme="farbfaecher"]:not([data-dark]) .bstat{border-top:4px solid var(--fan-7)}
+[data-theme="farbfaecher"]:not([data-dark]) .bstat:nth-child(2){border-top-color:var(--fan-4)}
+[data-theme="farbfaecher"]:not([data-dark]) .bstat:nth-child(3){border-top-color:var(--fan-1)}
+[data-theme="farbfaecher"]:not([data-dark]) .bstat:nth-child(4){border-top-color:var(--fan-9)}
 [data-theme="farbfaecher"] .sc::before{height:6px}
-[data-theme="farbfaecher"]:not([data-dunkel]) header{border-bottom:0;box-shadow:none;
-  background-image:linear-gradient(90deg,var(--faecher-0),var(--faecher-2),var(--faecher-4),var(--faecher-6),var(--faecher-8),var(--faecher-10));
+[data-theme="farbfaecher"]:not([data-dark]) header{border-bottom:0;box-shadow:none;
+  background-image:linear-gradient(90deg,var(--fan-0),var(--fan-2),var(--fan-4),var(--fan-6),var(--fan-8),var(--fan-10));
   background-size:100% 3px;background-repeat:no-repeat;background-position:bottom;background-color:var(--sur)}

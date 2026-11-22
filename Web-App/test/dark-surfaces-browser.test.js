@@ -1,6 +1,6 @@
 /**
  * In the dark mode of every design no surface stays light and no text
- * unreadable. Measured in Chrome on the real app: per design set data-dunkel,
+ * unreadable. Measured in Chrome on the real app: per design set data-dark,
  * open every tab and the set detail and check every visible element
  * — own background color not light (relative luminance ≤ 0.4), …
  *
@@ -15,7 +15,7 @@
  *      → red: “brick: text readable” (3.63:1 on petrol)
  *   E  in styles.css .ibadge again `color:#15803d` → red: “classic”, “brick”
  *      and “hochglanz: text readable” (span.ibadge, 2.98:1)
- *   F  (29.10.) [data-dunkel] .sci back to #c9ced4 → red: “classic: no light
+ *   F  (29.10.) [data-dark] .sci back to #c9ced4 → red: “classic: no light
  *      surface” (div.sci)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -35,7 +35,7 @@ const MEASUREMENT = `(() => {
   const hell = (f) => 0.2126 * lin(f.r) + 0.7152 * lin(f.g) + 0.0722 * lin(f.b);
   const ueber = (oben, unten) => ({ r: oben.r * oben.a + unten.r * (1 - oben.a), g: oben.g * oben.a + unten.g * (1 - oben.a),
     b: oben.b * oben.a + unten.b * (1 - oben.a), a: 1 });
-  const ausgenommen = (e) => e.closest('svg, img, canvas, video, .color-dot, [data-farbe], .bild-ph, .ph, .skelett');
+  const ausgenommen = (e) => e.closest('svg, img, canvas, video, .color-dot, [data-color-hex], .image-ph, .ph, .skeleton');
   const sichtbar = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e);
     return r.width > 4 && r.height > 4 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0.1; };
   /** Grund hinter e: eigene und Vorfahren-Farben übereinander; ein Verlauf macht den Grund unbestimmt. */
@@ -99,12 +99,12 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
 
   for (const design of DESIGNS) {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}');
-      document.documentElement.setAttribute('data-dunkel', ''); true`);
+      document.documentElement.setAttribute('data-dark', ''); true`);
     const funde = { surfaces: new Set(), texte: new Set() };
     const collect = async wo => {
       // If the login mask is shown, the rest would measure only it; then name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
+        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'none'}`);
       const r = await b.auswerten(MEASUREMENT);
       for (const x of r.surfaces) funde.surfaces.add(`${wo}: ${x}`);
       for (const x of r.texte) funde.texte.add(`${wo}: ${x}`);
@@ -115,11 +115,11 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
       // The settings show one section at a time; all are measured.
       const seiten =
         r === 'settings'
-          ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)
+          ? await b.auswerten(`[...document.querySelectorAll('.settings-nav a')].map(a => a.dataset.arg)`)
           : [null];
       for (const seite of seiten) {
         if (seite) {
-          await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
+          await b.auswerten(`document.querySelector('.settings-nav a[data-arg="${seite}"]').click(); true`);
           await warte(100);
         }
         await collect(seite ? `${r}/${seite}` : r);

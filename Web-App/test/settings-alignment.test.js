@@ -5,7 +5,7 @@
  *
  *   a) the grid moved from the list back to the row → cases 2 and 3 red.
  *   b) margin-top removed on the link button → case 1 red.
- *   c) (14.11.2026) .konto-fuss without margin-top → case 1 red.
+ *   c) (14.11.2026) .account-footer without margin-top → case 1 red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +15,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = require('./helpers/sources').ansichtQuelle('einstellungen');
+const QUELLE = require('./helpers/sources').ansichtQuelle('settings');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** As in test/catalog-frontend.test.js: the module wrapping gone. */
@@ -49,7 +49,7 @@ function rack(dom, targetId) {
     document: d,
     G: id => d.getElementById(id),
     ...require('./helpers/markup').markupHelper(),
-    echt: () => '',
+    genuine: () => '',
     t: (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
     tRaw: k => k,
     ZIEL: targetId,
@@ -60,12 +60,12 @@ test('spacing between invitation code and link button', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
-  // Since UI check 22 it stands in the footer of the menu pages (.konto-fuss, margin-top:.75rem).
+  // Since UI check 22 it stands in the footer of the menu pages (.account-footer, margin-top:.75rem).
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  assert.ok(knopf.parentElement?.classList.contains('konto-fuss'), 'Der Knopf steht nicht in .konto-fuss');
+  assert.ok(knopf.parentElement?.classList.contains('account-footer'), 'Der Knopf steht nicht in .account-footer');
   assert.match(
     css,
-    /\.konto-fuss\{[^}]*margin-top:\.?\d/,
+    /\.account-footer\{[^}]*margin-top:\.?\d/,
     'Die Fusszeile trägt keinen oberen Abstand; der Knopf klebte dann am Eingabefeld darüber — Marcos Bild.',
   );
 });
@@ -90,11 +90,11 @@ test('the linked accounts are in two columns, not new per row', () => {
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
-  // The grid stands in styles.css (.haushalt-liste); minmax(0, …) lets the
+  // The grid stands in styles.css (.household-list); minmax(0, …) lets the
   // columns shrink at large font sizes instead of widening the page.
-  assert.ok(liste.classList.contains('haushalt-liste'), 'Die Liste trägt die Klasse haushalt-liste nicht');
+  assert.ok(liste.classList.contains('household-list'), 'Die Liste trägt die Klasse household-list nicht');
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  const stil = (css.match(/\n\.haushalt-liste\{([^}]*)\}/) || [])[1] || '';
+  const stil = (css.match(/\n\.household-list\{([^}]*)\}/) || [])[1] || '';
   assert.match(
     stil,
     /display\s*:\s*grid/,
@@ -111,7 +111,7 @@ test('the linked accounts are in two columns, not new per row', () => {
   assert.equal(zeilen.length, 3, `${zeilen.length} Zeilen statt 3`);
   for (const li of zeilen) {
     assert.match(
-      li.getAttribute('data-stil') || '',
+      li.getAttribute('data-style') || '',
       /display\s*:\s*contents/,
       'Eine Zeile erzeugt einen eigenen Kasten — damit liegen ihre Zellen NICHT ' +
         'in den Spalten der Liste, und die Ausrichtung ist wieder dahin',
@@ -138,10 +138,10 @@ test('the storage locations are laid out like a table', () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="storage-list"></div></body></html>');
   const d = dom.window.document;
 
-  // ladeLagerortVerwaltung() fetches the data from the server itself. What is checked
+  // loadLocationManagement() fetches the data from the server itself. What is checked
   // here is the PRODUCED structure, not the fetching — hence only the
   // markup part is executed, with fixed data.
-  const quelle = QUELLE.slice(QUELLE.indexOf('export async function ladeLagerortVerwaltung'));
+  const quelle = QUELLE.slice(QUELLE.indexOf('export async function loadLocationManagement'));
   const ende = quelle.indexOf('\n}\n') + 3;
   const rumpf = quelle.slice(0, ende);
   assert.match(rumpf, /storage-list/, 'Der Abschnitt wurde nicht gefunden');
@@ -150,7 +150,7 @@ test('the storage locations are laid out like a table', () => {
     document: d,
     G: id => d.getElementById(id),
     ...require('./helpers/markup').markupHelper(),
-    echt: () => '',
+    genuine: () => '',
     ico: n => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: k => k,
@@ -181,19 +181,19 @@ test('the storage locations are laid out like a table', () => {
           },
   };
   vm.createContext(sandbox);
-  vm.runInContext(rumpf.replace(/^export\s+/, '') + '\nERG = ladeLagerortVerwaltung();', sandbox);
+  vm.runInContext(rumpf.replace(/^export\s+/, '') + '\nERG = loadLocationManagement();', sandbox);
   return sandbox.ERG.then(() => {
-    const raster = d.querySelector('#storage-list > div[data-stil*="grid"]');
+    const raster = d.querySelector('#storage-list > div[data-style*="grid"]');
     assert.ok(
       raster,
       'Es gibt keinen Rasterbehälter — dann richtet sich jede Zeile ' +
         'für sich aus, und die Eingabefelder sind verschieden lang',
     );
-    const stil = raster.getAttribute('data-stil');
+    const stil = raster.getAttribute('data-style');
     assert.match(
       stil,
       /grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+max-content\s+max-content\s+max-content/,
-      `Das Raster hat nicht die vier erwarteten Spalten (data-stil="${stil}"). minmax(0,1fr) ` +
+      `Das Raster hat nicht die vier erwarteten Spalten (data-style="${stil}"). minmax(0,1fr) ` +
         'und nicht 1fr: Ein langer Ortsname sprengte sonst die Spalte.',
     );
 
@@ -201,7 +201,7 @@ test('the storage locations are laid out like a table', () => {
     assert.equal(zeilen.length, 4, `${zeilen.length} Zeilen statt 4`);
     for (const z of zeilen) {
       assert.match(
-        z.getAttribute('data-stil') || '',
+        z.getAttribute('data-style') || '',
         /display\s*:\s*contents/,
         'Eine Lagerortzeile erzeugt einen eigenen Kasten — damit hat sie wieder ' + 'ihre eigenen Spaltenbreiten',
       );
@@ -215,7 +215,7 @@ test('the storage locations are laid out like a table', () => {
     // carry a border. It must lie on the CELLS, otherwise it is gone.
     for (const zelle of zeilen[0].children) {
       assert.match(
-        zelle.getAttribute('data-stil') || '',
+        zelle.getAttribute('data-style') || '',
         /border-bottom/,
         'Eine Zelle trägt keinen Trennstrich — bei display:contents ist die Linie ' +
           'sonst verschwunden, weil die Zeile keinen Kasten mehr hat',

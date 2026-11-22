@@ -35,8 +35,8 @@ test('no src attribute inserts an image field without imgUrl()/fullUrl()', () =>
       treffer.push(`${name}:${src.slice(0, index).split('\n').length}`);
     };
     for (const m of src.matchAll(/\bsrc="\$\{([^}]*(?:\}[^"]*\{[^}]*)*)\}"/g)) pruefe(m[1], m.index);
-    // And the templates via bildTag({ src: … }) — up to the comma at bracket depth 0.
-    for (const m of src.matchAll(/bildTag\(\{\s*src:\s*/g)) {
+    // And the templates via imageTag({ src: … }) — up to the comma at bracket depth 0.
+    for (const m of src.matchAll(/imageTag\(\{\s*src:\s*/g)) {
       let i = m.index + m[0].length,
         tiefe = 0,
         ausdruck = '';

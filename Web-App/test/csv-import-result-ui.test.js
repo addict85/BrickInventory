@@ -23,7 +23,7 @@
  *      reloading” (entry stays hidden)
  *   F  csvPollLoop again with api() instead of apiData() → red: “result list
  *      with lines” (api() overwrites `status` with 200, the completion never comes)
- *   G  csv.import_meldung removed from de.js → red: “result list with lines”
+ *   G  csv.import_message removed from de.js → red: “result list with lines”
  *      (the message shows the raw key; 08.11.2026)
  *   H  (16.11.2026) showImportCompletion() without hiding “minimize” → red: “result list with
  *      lines” (after completion still “minimize”)
@@ -128,7 +128,7 @@ test('result list with rows, colors and read rows', async () => {
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
     assert.equal(d.querySelector('#toasts .toast .toast-text')?.textContent, 'Import: 1 ok, 1 Warnung, 3 Fehler');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
-    assert.equal(ovl.querySelector('.prog-minimieren').hidden, true, 'nach Abschluss noch „Minimieren“');
+    assert.equal(ovl.querySelector('.prog-minimize').hidden, true, 'nach Abschluss noch „Minimieren“');
     assert.notEqual(d.getElementById('btn-close-import').style.display, 'none', 'kein „Schliessen“');
   } finally {
     w.close();
@@ -138,7 +138,7 @@ test('result list with rows, colors and read rows', async () => {
 test('after reloading: the last import in the menu', async () => {
   const { w, d } = await openUi({ '/v1/sets/import/csv/status': DONE });
   try {
-    const knopf = d.getElementById('letzter-import');
+    const knopf = d.getElementById('last-import');
     assert.ok(await warte(() => !knopf.hidden), 'Eintrag sichtbar');
     assert.match(knopf.textContent, /Letzter Import: 1 ok, 1 Warnung, 3 Fehler – ansehen/);
     knopf.click();
@@ -154,7 +154,7 @@ test('an old import stays out of the menu', async () => {
   const { w, d, ruhig } = await openUi({ '/v1/sets/import/csv/status': alt });
   try {
     await ruhig();
-    assert.equal(d.getElementById('letzter-import').hidden, true);
+    assert.equal(d.getElementById('last-import').hidden, true);
   } finally {
     w.close();
   }

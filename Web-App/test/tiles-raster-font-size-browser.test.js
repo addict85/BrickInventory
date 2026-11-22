@@ -4,21 +4,21 @@
  * M2 by error-without-jump-browser.
  *
  * Counter-checks (measured 14.11.2026, each on its own, bundle rebuilt):
- *   A  kachelName(): parts without aria-hidden → red: „Kachelnamen“, „Merkliste“
+ *   A  tileName(): parts without aria-hidden → red: „Kachelnamen“, „Merkliste“
  *   B  catalog query of the wishlist without `if (w.name)` → red: „Merkliste: Set
  *      nicht im Katalog“ (request to /catalog/sets/10276-1)
  *   C  ownerBadges() again with o.username → red: „Kachelnamen“, „Kontoangaben“
  *   D  `#gallery .scb > .price-badge{order:1}` removed → red: „Preiskasten auf
  *      einer Höhe“ (925 against 943)
  *   E  storage location grid with column-gap:8px → red: „Lagerorte“ (8 px gaps)
- *   F  --kopf-h fixed 58px → red: „200 % Schrift“ (button 60.5 > header 58)
- *   G  voucher buttons again in .zeile → red: „Menüseiten“ (save on the left)
- *   H  .alarm-ue-betrag as display:contents → red: „Menüseiten“ (EUR at
+ *   F  --header-h fixed 58px → red: „200 % Schrift“ (button 60.5 > header 58)
+ *   G  voucher buttons again in .row → red: „Menüseiten“ (save on the left)
+ *   H  .alert-item-amount as display:contents → red: „Menüseiten“ (EUR at
  *      320 px below the field)
  *   I  build list not in the :has() list of the banner → red: „Bauliste mit
  *      Schlüsselband“
  *   K  .m-links as display:contents → red: „Set-Detail nutzt die linke Spalte“
- *   L  `.filter-knopf[aria-expanded="true"]` never applying → red: „Telefon“
+ *   L  `.filter-button[aria-expanded="true"]` never applying → red: „Telefon“
  *   M  summary::before with content:none → red: „Telefon“ (no disclosure marker)
  *   N  `.bstat::after { line-height: 1 }` removed → red: „Telefon“ (214/214/212)
  *   O  parts grid again 6.75rem → red: „Telefon“ (not two columns)
@@ -34,7 +34,7 @@ const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 
 /** Name and description in the accessibility tree, as a screen reader gets them. */
 async function vorgelesen(b, sel) {
@@ -88,11 +88,11 @@ async function kachelnamen(_t, a, name) {
 
 async function wantedUnknown(_t, a) {
   const { b, bis } = a;
-  await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
-  assert.equal((await vorgelesen(b, '#mk-list .mk-zeile')).name, '10276-1');
-  assert.match(await b.auswerten(text('#mk-list .mk-zeile .mk-unter')), /^Set noch nicht im Katalog · Neuware$/);
+  await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
+  assert.equal((await vorgelesen(b, '#mk-list .mk-row')).name, '10276-1');
+  assert.match(await b.auswerten(text('#mk-list .mk-row .mk-sub')), /^Set noch nicht im Katalog · Neuware$/);
   const vorher = b.ereignisse.length;
-  await b.auswerten(`document.querySelector('#mk-list .mk-zeile').click(); true`);
+  await b.auswerten(`document.querySelector('#mk-list .mk-row').click(); true`);
   await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Detail');
   await a.ruhig(5000);
   assert.match(await b.auswerten(text('#mk-m-det')), /Katalog ?Set noch nicht im Katalog — Name, Jahr und Thema/);
@@ -109,15 +109,15 @@ async function kontoangaben(_t, a, name) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery [data-arg="21318-1"]')`, 'Sammlung');
   assert.deepEqual(
     await b.auswerten(
-      `[...document.querySelectorAll('#gallery .sc[data-arg="21318-1"] .besitzer-badge')].map(e => e.textContent)`,
+      `[...document.querySelectorAll('#gallery .sc[data-arg="21318-1"] .owner-badge')].map(e => e.textContent)`,
     ),
     [`${name} (ich)`, `${name}_kind`],
   );
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
-  await bis(`document.querySelectorAll('#m-menge .menge-konto').length === 2`, 'Set-Detail');
-  assert.equal(await b.auswerten(text('#m-untertit')), `21318-1 · Konten: ${name} (ich), ${name}_kind`);
-  const schrift = await b.auswerten(`({ kopf: getComputedStyle(document.getElementById('m-untertit')).fontFamily,
-    nr: getComputedStyle(document.querySelector('#m-untertit .setnr')).fontFamily,
+  await bis(`document.querySelectorAll('#m-quantity .quantity-account').length === 2`, 'Set-Detail');
+  assert.equal(await b.auswerten(text('#m-subtitle')), `21318-1 · Konten: ${name} (ich), ${name}_kind`);
+  const schrift = await b.auswerten(`({ kopf: getComputedStyle(document.getElementById('m-subtitle')).fontFamily,
+    nr: getComputedStyle(document.querySelector('#m-subtitle .setnr')).fontFamily,
     mono: getComputedStyle(document.documentElement).getPropertyValue('--mono') })`);
   assert.notEqual(schrift.kopf, schrift.nr, 'Konten in Festbreite');
   await b.auswerten(CLOSE);
@@ -137,13 +137,13 @@ async function preiskasten(_t, a) {
 
 async function lagerorte(_t, a) {
   const { b } = a;
-  await geh(a, '#/lagerorte', `document.querySelectorAll('#storage-list .lager-eingabe').length > 0`, 'Lagerorte');
-  const cells = await b.auswerten(`[...document.querySelector('#storage-list .lager-raster > div').children]
+  await geh(a, '#/lagerorte', `document.querySelectorAll('#storage-list .location-input').length > 0`, 'Lagerorte');
+  const cells = await b.auswerten(`[...document.querySelector('#storage-list .location-grid > div').children]
     .map(z => { const r = z.getBoundingClientRect(); return [r.left, r.right, getComputedStyle(z).borderBottomWidth]; })`);
   for (let i = 1; i < cells.length; i++)
     assert.ok(Math.abs(cells[i][0] - cells[i - 1][1]) < 1, `Lücke in der Trennlinie: ${JSON.stringify(cells)}`);
   assert.equal(
-    await b.auswerten(`document.querySelector('#storage-list .lager-eingabe').getAttribute('aria-label')`),
+    await b.auswerten(`document.querySelector('#storage-list .location-input').getAttribute('aria-label')`),
     'Lagerort umbenennen: Regal',
   );
 }
@@ -151,10 +151,10 @@ async function lagerorte(_t, a) {
 async function menueseiten(_t, a) {
   const { b } = a;
   for (const [hash, sel] of [
-    ['#/alarme', '#tab-alarme'],
-    ['#/lagerorte', '#tab-lagerorte'],
-    ['#/gutscheine', '#tab-gutscheine'],
-    ['#/konto', '#tab-profil'],
+    ['#/alarme', '#tab-alerts'],
+    ['#/lagerorte', '#tab-locations'],
+    ['#/gutscheine', '#tab-vouchers'],
+    ['#/konto', '#tab-profile'],
   ]) {
     await geh(a, hash, `document.querySelector('${sel}').classList.contains('active')`, hash);
     const ohne = await b.auswerten(`[...document.querySelectorAll('${sel} h2.stit')].filter(h => h.checkVisibility())
@@ -162,23 +162,18 @@ async function menueseiten(_t, a) {
     assert.deepEqual(ohne, [], `${hash}: Kartenüberschrift ohne Symbol`);
   }
   // The main button stands at the bottom right of the form.
-  await geh(
-    a,
-    '#/gutscheine',
-    `!!document.querySelector('[data-click="gutscheinSpeichern"]')?.checkVisibility()`,
-    'Gutschein',
-  );
-  const rechts = await b.auswerten(`(() => { const k = document.querySelector('[data-click="gutscheinSpeichern"]');
+  await geh(a, '#/gutscheine', `!!document.querySelector('[data-click="saveVoucher"]')?.checkVisibility()`, 'Voucher');
+  const rechts = await b.auswerten(`(() => { const k = document.querySelector('[data-click="saveVoucher"]');
     const f = document.getElementById('v-number').getBoundingClientRect();
     return [k.getBoundingClientRect().right, document.getElementById('v-number').closest('.sform, .ssec').getBoundingClientRect().right, f.right]; })()`);
   assert.ok(rechts[0] > rechts[2] - 2 || rechts[1] - rechts[0] < 40, `Speichern nicht rechts: ${rechts}`);
   // Amount and currency of the price alert on one line, even when narrow.
   await groesse(b, 320, 700, true);
   try {
-    await geh(a, '#/alarme', `!!document.querySelector('#alerts-list .alarm-ue-feld')`, 'Alarme');
+    await geh(a, '#/alarme', `!!document.querySelector('#alerts-list .alert-item-field')`, 'Alarme');
     const situation =
-      await b.auswerten(`(() => { const f = document.querySelector('#alerts-list .alarm-ue-feld').getBoundingClientRect(),
-      w = document.querySelector('#alerts-list .alarm-ue-waehrung').getBoundingClientRect();
+      await b.auswerten(`(() => { const f = document.querySelector('#alerts-list .alert-item-field').getBoundingClientRect(),
+      w = document.querySelector('#alerts-list .alert-item-currency').getBoundingClientRect();
       return { fieldTop: f.top, fieldBottom: f.bottom, wMiddle: (w.top + w.bottom) / 2, wLinks: w.left, fieldRight: f.right }; })()`);
     assert.ok(
       situation.wMiddle > situation.fieldTop && situation.wMiddle < situation.fieldBottom,
@@ -193,12 +188,12 @@ async function menueseiten(_t, a) {
 async function bauliste(_t, a) {
   const { b } = a;
   await b.auswerten(
-    `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hinweis_weg')) localStorage.removeItem(k); return true; })()`,
+    `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hint_dismissed')) localStorage.removeItem(k); return true; })()`,
   );
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').checkVisibility()`), true, 'Band fehlt');
+  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), true, 'Band fehlt');
   await geh(a, '#/finanzen', `document.getElementById('tab-finance').classList.contains('active')`, 'Finanzen');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').checkVisibility()`), false, 'Band in Finanzen');
+  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), false, 'Band in Finanzen');
 }
 
 async function largeFont(_t, a) {
@@ -208,7 +203,7 @@ async function largeFont(_t, a) {
     await b.auswerten(`document.documentElement.style.fontSize = '32px'; true`);
     await a.ruhig(2000);
     const m = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect();
-      return { kopf: r('header').bottom, knopf: r('.ubadge-knopf').bottom, buttonTop: r('.ubadge-knopf').top, nav: r('nav').top }; })()`);
+      return { kopf: r('header').bottom, knopf: r('.ubadge-button').bottom, buttonTop: r('.ubadge-button').top, nav: r('nav').top }; })()`);
     assert.ok(m.knopf <= m.kopf && m.buttonTop >= 0, `Kontoknopf ragt aus dem Kopf: ${JSON.stringify(m)}`);
     assert.ok(Math.abs(m.nav - m.kopf) < 1, `Reiterleiste nicht unter dem Kopf: ${JSON.stringify(m)}`);
   } finally {
@@ -243,7 +238,7 @@ async function telefon(_t, a) {
   await groesse(b, 390, 844, true);
   try {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-    const knopf = '#tab-gallery .filter-knopf';
+    const knopf = '#tab-gallery .filter-button';
     const zu = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
     await bis(`document.querySelector('${knopf}').getAttribute('aria-expanded') === 'true'`, 'Filter offen');
@@ -270,13 +265,13 @@ async function telefon(_t, a) {
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
       window.scrollBy(0, h.bottom - kopf - 6); return true; })()`);
     await a.ruhig(1000);
-    const doppelt = await b.auswerten(`(() => { const k = document.getElementById('kopf-sicht');
+    const doppelt = await b.auswerten(`(() => { const k = document.getElementById('header-view');
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
       return { kopf: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
     assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `Titel doppelt: ${JSON.stringify(doppelt)}`);
-    await bis(`!!document.querySelector('#auftraege-karte .mon-einzeln > summary')`, 'Einzelne Aufträge');
+    await bis(`!!document.querySelector('#jobs-card .mon-single > summary')`, 'Einzelne Aufträge');
     const zeichen =
-      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#auftraege-karte .mon-einzeln > summary'), '::before');
+      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#jobs-card .mon-single > summary'), '::before');
       return { inhalt: v.content, breite: parseFloat(v.width) }; })()`);
     assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `kein Aufklappzeichen (${JSON.stringify(zeichen)})`);
   } finally {

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 72 72" width="120" height="120">
-  <!-- Dasselbe Würfelsymbol wie in der Kachel (i-set), damit ein Set ohne Bild überall gleich aussieht. -->
+  <!-- The same cube icon as in the tile (i-set), so a set without an image looks the same everywhere. -->
   <g fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
   </g>

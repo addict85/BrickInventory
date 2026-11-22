@@ -50,7 +50,7 @@ test('deleting asks at most once', () => {
   // And the prompt must be able to cancel without anything being deleted.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
   // loadGallery() loads the metrics along; the parts and minifigures of the set are gone too.
-  assert.match(fn, /loadGallery\(\);\s*emit\('teileLaden'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
+  assert.match(fn, /loadGallery\(\);\s*emit\('loadParts'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
 });
 
 test('the quantity multiplication is in all places', () => {

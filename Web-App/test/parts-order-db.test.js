@@ -121,7 +121,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     await warte(() => d.querySelectorAll('#parts-main .part-card').length === 2);
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'nach Farbe: je Farbe eine Kachel');
 
-    const feld = d.getElementById('parts-ordnung');
+    const feld = d.getElementById('parts-order');
     feld.value = 'name';
     feld.dispatchEvent(new w.Event('change'));
     await warte(
@@ -133,7 +133,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
       [...d.querySelectorAll('#parts-main .part-card .part-num')].map(e => e.textContent),
       ['3003', '3001'],
     );
-    assert.equal(w.localStorage.getItem('bim_teile_ordnung'), 'name', 'die Wahl bleibt im Browser');
+    assert.equal(w.localStorage.getItem('bim_parts_order'), 'name', 'die Wahl bleibt im Browser');
     w.close();
   });
 });

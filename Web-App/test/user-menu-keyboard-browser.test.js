@@ -11,7 +11,7 @@
  *   B  arrow handling removed in the keydown listener → red: “arrow down moves”
  *   C  closeMenu(true) on Escape again without an argument → red: “Escape
  *      closes, focus back on the button”
- *   D  focusOnTitle() removed in oeffneSicht → red: “choosing focuses the
+ *   D  focusOnTitle() removed in openView → red: “choosing focuses the
  *      heading of the view”
  */
 const test = require('node:test');

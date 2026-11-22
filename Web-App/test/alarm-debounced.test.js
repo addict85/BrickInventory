@@ -20,15 +20,15 @@ const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detail-fields.js'
  * The three controls of the alert — cut FROM THE REAL SOURCE TEXT.
  *
  * Exactly this stood here first, and the counter-check for it stayed GREEN: I
- * turned the wiring in the source text back from `data-input="alarmGetippt"` to the old
- * `data-change="speichereAlarm"` — exactly the bug this file
+ * turned the wiring in the source text back from `data-input="alertTyped"` to the old
+ * `data-change="saveAlert"` — exactly the bug this file
  * is meant to report — and the check noticed nothing. It had built its
  * own markup and thus checked a wiring that no longer existed in the
  * tree at all.
  */
 function alarmMarkup(sn) {
   // From the CONDITION FIELD, not from the direction: since the alert also applies to
-  // “used", the condition field comes first, and alarmState() reads
+  // “used", the condition field comes first, and alertState() reads
   // it. Without the field the test bench would silently fall back to “new" and check
   // a UI that does not exist like that.
   const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
@@ -37,7 +37,7 @@ function alarmMarkup(sn) {
   const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
   return (
     roh
-      // The prefix of the set dialog. It is ${p} in alarmBlock(); here
+      // The prefix of the set dialog. It is ${p} in alertBlock(); here
       // it becomes what stands there at runtime.
       .replace(/\$\{p\}/g, 'm')
       .replace(/\$\{(?:escJs\()?sn\)?\}/g, sn)
@@ -131,7 +131,7 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
 });
 
 test('the response does NOT write back into the field', async () => {
-  // The reason is at showAlarmMarker(): whoever types “249.90" may already have set
+  // The reason is at showAlertMarker(): whoever types “249.90" may already have set
   // the last zero after the idle time behind “249.9". A
   // reload would turn it back into “249.9" and eat the character.
   const f = fenster();

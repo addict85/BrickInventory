@@ -17,11 +17,11 @@
  * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
  *   A  #pdf-viewer-pages without tabindex → red: “PDF viewer” (focus not
  *      in the pages, scrollTop 0)
- *   B  in noppe.css --fokus-kopf removed → red: “focus ring” (noppe light,
+ *   B  in noppe.css --focus-header removed → red: “focus ring” (noppe light,
  *      header 1.0:1)
  *   C  in the log window aria-pressed removed from the info button → red:
  *      “log window”
- *   D  in mobile.css the rule `.kopf-weg .knopf-schwebend` removed → red:
+ *   D  in mobile.css the rule `.header-remove .button-floating` removed → red:
  *      “dimensions” (button wider than 56 px)
  *   E  (06.11.2026) in logviewer.js an <img> without alt appended → red:
  *      “log window” (axe in the frame); C repeated on 06.11. in the frame.
@@ -178,7 +178,7 @@ async function masse(_t, a) {
       `document.getElementById('vg').click(); document.querySelector('#gallery [data-click="openModal"]').click(); true`,
     );
     await bis(
-      `!!document.querySelector('#m-market-rows') && !document.querySelector('#m-market-rows .skelett-zeile')`,
+      `!!document.querySelector('#m-market-rows') && !document.querySelector('#m-market-rows .skeleton-row')`,
       'Set-Detail',
     );
     const oben = await b.auswerten(`document.getElementById('m-market-rows').getBoundingClientRect().top`);
@@ -193,7 +193,7 @@ async function masse(_t, a) {
       await ruhig();
     }
     const breite = await b.auswerten(
-      `document.querySelector('#tab-gallery .knopf-schwebend').getBoundingClientRect().width`,
+      `document.querySelector('#tab-gallery .button-floating').getBoundingClientRect().width`,
     );
     assert.ok(breite <= 56.5, `schwebender Knopf ${breite}px breit`);
   } finally {
@@ -210,7 +210,7 @@ const RING = `(() => {
   const kontrast = (v, h) => { const [a, b] = [hell(v), hell(h)].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); };
   const grund = (e) => { for (let x = e; x; x = x.parentElement) { const f = rgba(getComputedStyle(x).backgroundColor); if (f && f.a >= 1) return f; } return { r: 255, g: 255, b: 255 }; };
   const funde = [];
-  for (const e of document.querySelectorAll('header :is(a,button,summary,select,input), nav:not(.einst-nav) :is(a,button)')) {
+  for (const e of document.querySelectorAll('header :is(a,button,summary,select,input), nav:not(.settings-nav) :is(a,button)')) {
     const r = e.getBoundingClientRect(); if (r.width < 1 || !e.checkVisibility()) continue;
     e.focus(); if (!e.matches(':focus-visible')) continue;
     const s = getComputedStyle(e), farbe = rgba(s.outlineColor);
@@ -228,10 +228,10 @@ async function fokusring(_t, a) {
     for (const dunkel of [false, true]) {
       if (design === 'werkbank' && !dunkel) continue;
       await b.auswerten(
-        `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`,
+        `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`,
       );
       await warte(50);
-      for (const f of await b.auswerten(RING)) funde.push(`${design} ${dunkel ? 'dunkel' : 'hell'}: ${f}`);
+      for (const f of await b.auswerten(RING)) funde.push(`${design} ${dunkel ? 'dark' : 'hell'}: ${f}`);
     }
   assert.deepEqual(funde, []);
 }
@@ -250,9 +250,7 @@ test('focus, PDF viewer, log window', { concurrency: 1, timeout: 300_000 }, asyn
     }),
   );
   await a.ruhig();
-  await a.b.auswerten(
-    `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
-  );
+  await a.b.auswerten(`document.querySelector('#setup-modal.open [data-click="setupLater"]')?.click(); true`);
   // The log window replaces the page; that is why it comes last.
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [

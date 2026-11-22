@@ -27,7 +27,7 @@ test('login: errors at the field', async t => {
   );
   try {
     d.getElementById('lu').value = 'anna';
-    d.getElementById('lp').value = 'falsch';
+    d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
     await warte(() => d.getElementById('lerr').textContent.length > 0);
     await t.test('wrong password', () => {
@@ -40,7 +40,7 @@ test('login: errors at the field', async t => {
     });
     await t.test('typing removes the marking', () => {
       const lp = d.getElementById('lp');
-      lp.value = 'neu';
+      lp.value = 'new';
       lp.dispatchEvent(new w.Event('input', { bubbles: true }));
       assert.equal(lp.hasAttribute('aria-invalid'), false);
       assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'das andere Feld bleibt markiert');

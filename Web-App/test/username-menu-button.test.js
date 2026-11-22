@@ -4,7 +4,7 @@
  * ── Counter-checks (carried out, results copied) ────────────────────
  *
  * A  name and lines merged into ONE element called `ubadge`:
- *      <button class="ubadge" id="ubadge" data-click="benutzerMenue">— ☰</button>
+ *      <button class="ubadge" id="ubadge" data-click="userMenu">— ☰</button>
  *    → “the lines sit in the button”           GREEN (the glyph is in there after all)
  *      “the lines survive the username”        red: „Die drei Striche sind nach
  *                                              dem Setzen des Namens verschwunden"
@@ -29,7 +29,7 @@
  * attempt the check searched for the button via `getElementById('btn-umenu')` and
  * the variant accidentally gave the button two `id` attributes. The parser
  * takes the first, `btn-umenu` was thus not there at all, and all three cases
- * fell on `assert.ok(knopf)` — for a formal reason, not on the damage. Three
+ * fell on `assert.ok(button)` — for a formal reason, not on the damage. Three
  * red cases looked like a sharp check and were a broken
  * template. Hence the search via `data-click`.
  */
@@ -42,7 +42,7 @@ const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
 /** Since 27.10. the lines are a symbol of the symbol family instead of „☰“. */
-const striche = knopf => knopf.querySelector('.ubadge-striche use[href="#i-menue"]');
+const striche = knopf => knopf.querySelector('.ubadge-stripes use[href="#i-menu"]');
 
 function kopfleiste() {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -56,8 +56,8 @@ function kopfleiste() {
  * Find the menu button via its HANDLER, not via the ID.
  */
 function menuButton(document) {
-  const knopf = document.querySelector('[data-click="benutzerMenue"]');
-  assert.ok(knopf, 'Kein Element mit data-click="benutzerMenue" in der Kopfleiste');
+  const knopf = document.querySelector('[data-click="userMenu"]');
+  assert.ok(knopf, 'Kein Element mit data-click="userMenu" in der Kopfleiste');
   assert.equal(knopf.tagName, 'BUTTON');
   return knopf;
 }
@@ -99,7 +99,7 @@ test('the button tells a screen reader that it is a menu', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
-  // The ID stays required: closeMenu() and benutzerMenue() in
+  // The ID stays required: closeMenu() and userMenu() in
   // js/sammlung.js keep `aria-expanded` updated via G('btn-umenu').
   assert.equal(
     knopf.id,
@@ -131,8 +131,8 @@ test('the button tells a screen reader that it is a menu', () => {
   );
 
   // The lines themselves are worth nothing to a screen reader.
-  const glyph = knopf.querySelector('.ubadge-striche');
-  assert.ok(glyph, 'Kein .ubadge-striche im Knopf');
+  const glyph = knopf.querySelector('.ubadge-stripes');
+  assert.ok(glyph, 'Kein .ubadge-stripes im Knopf');
   assert.equal(
     glyph.getAttribute('aria-hidden'),
     'true',
@@ -192,7 +192,7 @@ test('with administrator rights (Administrator) follows, without only the name',
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     d.getElementById('prof-user').value = 'anna2';
     d.getElementById('btn-sav-prof').click();

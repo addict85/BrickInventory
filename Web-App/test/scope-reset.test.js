@@ -28,7 +28,7 @@ const GEMERKT = {
   bim_scope_gallery: '7',
   bim_scope_parts: 'own',
   bim_scope_finance: '7',
-  bim_lager_gallery: 'Regal A',
+  bim_location_gallery: 'Regal A',
 };
 const remember = w => {
   for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
