@@ -520,6 +520,26 @@ jobs:
           name: geraetetests-berichte
           path: Android-App/app/build/outputs/androidTest-results
 
+  # ── Gegenproben passen ─────────────────────────────────────────────────────
+  # Without Gradle, in seconds: every patch under counter-checks/ still applies and names
+  # an existing module and test class. A rename that strands a patch shows on the push
+  # itself, not only in the nightly measurement below.
+  counter-checks-fit:
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Gegenproben passen auf den Stand
+        run: python3 tools/counter-checks.py --check counter-checks
+
   # ── Gegenproben ────────────────────────────────────────────────────────────
   # Jeder Patch unter counter-checks/ macht etwas kaputt; die Testklasse aus seinem Kopf
   # muss danach ROT sein (tools/counter-checks.py). Auf einem Push nur die Patches, deren

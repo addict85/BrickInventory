@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
-"""Gegenproben in der CI messen: Jeder Patch unter counter-checks/ macht etwas
-kaputt, die im Kopf genannte Testklasse muss danach ROT sein.
+"""Measure counter-checks: every patch under counter-checks/ breaks something, and the
+test class named in its header must then be RED. A test that was never red is unproven
+(CLAUDE.md).
 
-Ein Test, der nie rot war, ist unbewiesen (CLAUDE.md). Für Robolectric-Tests
-gibt es lokal kein Android; gemessen werden kann nur hier.
+Header of a patch (before the first `diff --git`; git apply skips it):
 
-Kopf eines Patches (vor dem ersten `diff --git`, git apply überliest ihn):
-
-    Gegenprobe: was kaputt gemacht wird
+    Gegenprobe: what gets broken
     Modul: core-data
     Test: ch.brickinventoryapp.data.StockMigrationTest
-    Rot: Teil des Testnamens, der scheitern muss      (optional)
+    Rot: part of the test name that must fail      (optional)
 
-Rot heisst: Der Testbericht der Klasse existiert und nennt einen Fehlschlag
-(mit `Rot:` genau in diesem Test). Kein Bericht — etwa weil der Patch nicht
-übersetzt — zählt NICHT als rot: Dann hat der Test nichts bewiesen.
+Red means: the class's test report exists and names a failure (with `Rot:` in exactly
+that test). No report — e.g. because the patch does not compile — does NOT count as red.
 
-Aufruf:  python3 tools/counter-checks.py counter-checks
-Gradle-Befehl ersetzbar über COUNTER_CHECK_GRADLE (für den Test dieses Werkzeugs).
-Mit COUNTER_CHECK_BASIS=<Commit> nur die Patches, deren Ziel, Test oder Patch seit
-dem Commit geändert ist; ist keiner betroffen, ist das ein Erfolg.
-Rückgabe 0 nur, wenn jede Gegenprobe rot war und es mindestens eine gab.
+    python3 tools/counter-checks.py counter-checks [name.patch …]
+    python3 tools/counter-checks.py --check counter-checks
+
+`--check` only verifies, without Gradle, that every patch still applies (`git apply
+--check`) and that its header names an existing module and test class.
+COUNTER_CHECK_GRADLE replaces the Gradle command (for the tool's own test).
+COUNTER_CHECK_BASIS=<commit> measures only the patches whose target, test or patch
+changed since that commit; none affected is a success. COUNTER_CHECK_TEIL=„2/4“ takes
+every fourth patch from the second on. COUNTER_CHECK_RESULTS=<file> appends one JSON
+line per measured patch, so a long local run can be resumed.
+Exit 0 only if every check passed and there was at least one patch.
 """
 import glob
+import json
 import os
 import re
 import shlex
@@ -31,152 +35,202 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-PFLICHT = ('Gegenprobe', 'Modul', 'Test')
+REQUIRED = ('Gegenprobe', 'Modul', 'Test')
 
 
-def kopf(pfad):
-    werte = {}
-    with open(pfad, encoding='utf-8') as f:
-        for zeile in f:
-            if zeile.startswith('diff --git') or zeile.startswith('--- '):
+def header(path):
+    values = {}
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            if line.startswith('diff --git') or line.startswith('--- '):
                 break
-            if ':' in zeile:
-                name, wert = zeile.split(':', 1)
-                if name.strip() in PFLICHT + ('Rot',):
-                    werte[name.strip()] = wert.strip()
-    return werte
+            if ':' in line:
+                name, value = line.split(':', 1)
+                if name.strip() in REQUIRED + ('Rot',):
+                    values[name.strip()] = value.strip()
+    return values
 
 
-def git(wurzel, *args):
-    return subprocess.run(['git', *args], cwd=wurzel, capture_output=True, text=True)
+def git(root, *args):
+    return subprocess.run(['git', *args], cwd=root, capture_output=True, text=True)
 
 
-def fehlschlaege(bericht):
-    """Namen der gescheiterten Tests im JUnit-Bericht."""
-    baum = ET.parse(bericht).getroot()
-    return [fall.get('name', '') for fall in baum.iter('testcase')
-            if fall.find('failure') is not None or fall.find('error') is not None]
+def failures(report):
+    """Names of the failed tests in the JUnit report."""
+    tree = ET.parse(report).getroot()
+    return [case.get('name', '') for case in tree.iter('testcase')
+            if case.find('failure') is not None or case.find('error') is not None]
 
 
-def miss(projekt, wurzel, patch, gradle):
-    k = kopf(patch)
+def test_task(project, module):
+    # Pure JVM modules (core-model) have `test` instead of `testDebugUnitTest`.
+    script = os.path.join(project, module, 'build.gradle.kts')
+    text = open(script, encoding='utf-8').read() if os.path.exists(script) else ''
+    return 'test' if 'kotlin.jvm' in text or 'jvm.library' in text else 'testDebugUnitTest'
+
+
+def applies(root, patch):
+    k = header(patch)
     name = os.path.basename(patch)
-    fehlt = [p for p in PFLICHT if not k.get(p)]
-    if fehlt:
-        return False, f'{name}: im Kopf fehlt {", ".join(fehlt)}'
-    pruef = git(wurzel, 'apply', '--check', os.path.abspath(patch))
-    if pruef.returncode != 0:
-        return False, f'{name}: Patch passt nicht mehr auf den Stand — {pruef.stderr.strip()}'
-    klasse = k['Test']
-    # Reine JVM-Module (core-model) haben `test` statt `testDebugUnitTest`.
-    skript = os.path.join(projekt, k['Modul'], 'build.gradle.kts')
-    text = open(skript, encoding='utf-8').read() if os.path.exists(skript) else ''
-    jvm = 'kotlin.jvm' in text or 'jvm.library' in text
-    aufgabe = 'test' if jvm else 'testDebugUnitTest'
-    bericht = os.path.join(projekt, k['Modul'], 'build', 'test-results', aufgabe, f'TEST-{klasse}.xml')
-    if os.path.exists(bericht):
-        os.remove(bericht)
-    git(wurzel, 'apply', os.path.abspath(patch))
-    befehl = gradle + [f':{k["Modul"]}:{aufgabe}', '--rerun', '--tests', klasse]
+    missing = [p for p in REQUIRED if not k.get(p)]
+    if missing:
+        return False, f'{name}: im Kopf fehlt {", ".join(missing)}'
+    result = git(root, 'apply', '--check', os.path.abspath(patch))
+    if result.returncode != 0:
+        return False, f'{name}: Patch passt nicht mehr auf den Stand — {result.stderr.strip()}'
+    return True, ''
+
+
+def check(project, root, patch):
+    """Without Gradle: header complete, patch applies, module and test class exist."""
+    ok, text = applies(root, patch)
+    if not ok:
+        return ok, text
+    k = header(patch)
+    name = os.path.basename(patch)
+    if not os.path.isdir(os.path.join(project, k['Modul'])):
+        return False, f'{name}: Modul {k["Modul"]} gibt es nicht'
+    cls = k['Test'].rsplit('.', 1)[-1]
+    if not glob.glob(os.path.join(project, k['Modul'], 'src', 'test*', '**', cls + '.kt'), recursive=True):
+        return False, f'{name}: Testklasse {k["Test"]} gibt es in {k["Modul"]} nicht'
+    return True, f'{name}: passt'
+
+
+def measure(project, root, patch, gradle):
+    ok, text = applies(root, patch)
+    if not ok:
+        return ok, text
+    k = header(patch)
+    name = os.path.basename(patch)
+    cls = k['Test']
+    task = test_task(project, k['Modul'])
+    report = os.path.join(project, k['Modul'], 'build', 'test-results', task, f'TEST-{cls}.xml')
+    if os.path.exists(report):
+        os.remove(report)
+    git(root, 'apply', os.path.abspath(patch))
+    command = gradle + [f':{k["Modul"]}:{task}', '--rerun', '--tests', cls]
     try:
-        lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
-        # KSP verliert nach einem Patch in einem Vormodul sporadisch dessen Klassen
-        # („… could not be resolved“) oder Hilt findet alte Ausgaben („Attempt to
-        # recreate a file“) — in einem frischen Bau nie. Dann einmal mit
-        # leerem KSP-Stand wiederholen; ein echter Übersetzungsfehler bleibt rot.
-        ausgabe = lauf.stdout + lauf.stderr
-        if not os.path.exists(bericht) and ('could not be resolved' in ausgabe
-                                            or 'Attempt to recreate a file' in ausgabe):
-            for alt in glob.glob(os.path.join(projekt, '*', 'build', 'kspCaches')) + \
-                       glob.glob(os.path.join(projekt, '*', 'build', 'generated', 'ksp')):
-                shutil.rmtree(alt, ignore_errors=True)
-            lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
+        run = subprocess.run(command, cwd=project, capture_output=True, text=True)
+        # After a patch in an upstream module KSP sporadically loses its classes („… could
+        # not be resolved“) or Hilt finds stale outputs („Attempt to recreate a file“) —
+        # never in a fresh build. Retry once with empty KSP state; a real compile error stays.
+        output = run.stdout + run.stderr
+        if not os.path.exists(report) and ('could not be resolved' in output
+                                           or 'Attempt to recreate a file' in output):
+            for stale in glob.glob(os.path.join(project, '*', 'build', 'kspCaches')) + \
+                    glob.glob(os.path.join(project, '*', 'build', 'generated', 'ksp')):
+                shutil.rmtree(stale, ignore_errors=True)
+            run = subprocess.run(command, cwd=project, capture_output=True, text=True)
     finally:
-        zurueck = git(wurzel, 'apply', '-R', os.path.abspath(patch))
-    if zurueck.returncode != 0:
-        return False, f'{name}: Patch liess sich nicht zurücknehmen — {zurueck.stderr.strip()}'
-    if not os.path.exists(bericht):
-        zeilen = (lauf.stdout + lauf.stderr).splitlines()
-        # Die eigentliche Ursache (Übersetzer, KSP) steht weit vor Gradles Schlusszeilen.
-        ursache = [z for z in zeilen if z.startswith(('e: ', 'w: [ksp]')) or '[ksp]' in z or 'error:' in z][:20]
-        ende = '\n'.join(ursache + zeilen[-15:])
-        return False, f'{name}: kein Testbericht für {klasse} — der Test lief nicht (übersetzt der Patch?)\n{ende}'.rstrip()
-    rot = fehlschlaege(bericht)
-    erwartet = k.get('Rot')
-    if erwartet and not any(erwartet in t for t in rot):
-        return False, f'{name}: „{erwartet}“ blieb grün (rot: {rot or "nichts"}) — {k["Gegenprobe"]}'
-    if not rot:
-        return False, f'{name}: {klasse} blieb grün — die Gegenprobe „{k["Gegenprobe"]}“ greift nicht'
-    return True, f'{name}: rot wie verlangt ({", ".join(rot)}) — {k["Gegenprobe"]}'
+        back = git(root, 'apply', '-R', os.path.abspath(patch))
+    if back.returncode != 0:
+        return False, f'{name}: Patch liess sich nicht zurücknehmen — {back.stderr.strip()}'
+    if not os.path.exists(report):
+        lines = (run.stdout + run.stderr).splitlines()
+        # The actual cause (compiler, KSP) stands far before Gradle's closing lines.
+        cause = [z for z in lines if z.startswith(('e: ', 'w: [ksp]')) or '[ksp]' in z or 'error:' in z][:20]
+        tail = '\n'.join(cause + lines[-15:])
+        return False, f'{name}: kein Testbericht für {cls} — der Test lief nicht (übersetzt der Patch?)\n{tail}'.rstrip()
+    red = failures(report)
+    expected = k.get('Rot')
+    if expected and not any(expected in t for t in red):
+        return False, f'{name}: „{expected}“ blieb grün (rot: {red or "nichts"}) — {k["Gegenprobe"]}'
+    if not red:
+        return False, f'{name}: {cls} blieb grün — die Gegenprobe „{k["Gegenprobe"]}“ greift nicht'
+    return True, f'{name}: rot wie verlangt ({", ".join(red)}) — {k["Gegenprobe"]}'
 
 
-def betroffen(projekt, wurzel, patches, basis):
-    """Die Patches, die eine seit `basis` geänderte Datei berühren; None, wenn die Basis fehlt."""
-    lauf = git(wurzel, 'diff', '--name-only', basis, 'HEAD')
-    if lauf.returncode != 0:
+def affected(project, root, patches, basis):
+    """The patches touching a file changed since `basis`; None if the base is unknown."""
+    run = git(root, 'diff', '--name-only', basis, 'HEAD')
+    if run.returncode != 0:
         return None
-    geaendert = set(lauf.stdout.split())
-    vorsilbe = os.path.relpath(projekt, wurzel).replace(os.sep, '/')
-    # Die Testhilfen und das Werkzeug selbst tragen jede Gegenprobe.
-    if any(p.startswith(vorsilbe + '/core-testing/') or p == vorsilbe + '/tools/counter-checks.py' for p in geaendert):
+    changed = set(run.stdout.split())
+    prefix = os.path.relpath(project, root).replace(os.sep, '/')
+    # The test fixtures and this tool carry every counter-check.
+    if any(p.startswith(prefix + '/core-testing/') or p == prefix + '/tools/counter-checks.py' for p in changed):
         return patches
-    auswahl = []
+    selection = []
     for patch in patches:
         with open(patch, encoding='utf-8') as f:
-            ziele = set(re.findall(r'^\+\+\+ b/(\S+)', f.read(), re.M))
-        ziele.add(os.path.relpath(os.path.abspath(patch), wurzel).replace(os.sep, '/'))
-        k = kopf(patch)
-        klasse = k.get('Test', '').rsplit('.', 1)[-1]
-        if klasse and k.get('Modul'):
-            muster = os.path.join(projekt, k['Modul'], 'src', 'test', '**', klasse + '.kt')
-            ziele |= {os.path.relpath(t, wurzel).replace(os.sep, '/') for t in glob.glob(muster, recursive=True)}
-        if ziele & geaendert:
-            auswahl.append(patch)
-    return auswahl
+            targets = set(re.findall(r'^\+\+\+ b/(\S+)', f.read(), re.M))
+        targets.add(os.path.relpath(os.path.abspath(patch), root).replace(os.sep, '/'))
+        k = header(patch)
+        cls = k.get('Test', '').rsplit('.', 1)[-1]
+        if cls and k.get('Modul'):
+            pattern = os.path.join(project, k['Modul'], 'src', 'test', '**', cls + '.kt')
+            targets |= {os.path.relpath(t, root).replace(os.sep, '/') for t in glob.glob(pattern, recursive=True)}
+        if targets & changed:
+            selection.append(patch)
+    return selection
+
+
+def report_lines(results, title, ok_word):
+    lines = [(ok_word if ok else 'FEHLT') + ' ' + text for ok, text in results]
+    print('\n'.join(lines))
+    summary = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summary:
+        with open(summary, 'a', encoding='utf-8') as f:
+            f.write(f'## {title}\n\n' + '\n'.join(f'- {z.splitlines()[0]}' for z in lines) + '\n')
+    for ok, text in results:
+        if not ok:
+            print(f'::error title=Gegenprobe greift nicht::{text.splitlines()[0]}')
 
 
 def main():
-    ordner = sys.argv[1] if len(sys.argv) > 1 else 'counter-checks'
-    projekt = os.path.dirname(os.path.abspath(ordner))
-    wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
-    # Mit Daemon: Alle Patches eines Teils laufen im selben Gradle, statt je Patch neu zu starten.
+    args = sys.argv[1:]
+    only_check = '--check' in args
+    args = [a for a in args if a != '--check']
+    folder = args[0] if args else 'counter-checks'
+    names = set(args[1:])
+    project = os.path.dirname(os.path.abspath(folder))
+    root = git(project, 'rev-parse', '--show-toplevel').stdout.strip()
+    patches = sorted(glob.glob(os.path.join(folder, '*.patch')))
+    if names:
+        patches = [p for p in patches if os.path.basename(p) in names]
+    if not patches:
+        print(f'Keine Gegenproben unter {folder}/ — ohne sie prüft dieser Schritt nichts.')
+        return 1
+    if only_check:
+        results = [check(project, root, p) for p in patches]
+        report_lines(results, 'Gegenproben passen', 'ok')
+        bad = sum(1 for ok, _ in results if not ok)
+        print(f'{len(results) - bad} von {len(results)} Gegenproben passen auf den Stand.')
+        return 0 if not bad else 1
+    # With a daemon: all patches of a part run in the same Gradle instead of restarting per patch.
     gradle = shlex.split(os.environ.get('COUNTER_CHECK_GRADLE', './gradlew --no-build-cache -Pksp.incremental=false'))
-    patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
     basis = os.environ.get('COUNTER_CHECK_BASIS', '').strip()
-    if basis and patches:
-        auswahl = betroffen(projekt, wurzel, patches, basis)
-        if auswahl is None:
+    if basis:
+        selection = affected(project, root, patches, basis)
+        if selection is None:
             print(f'Basis {basis} unbekannt — alle {len(patches)} Gegenproben.')
-        elif not auswahl:
+        elif not selection:
             print(f'Keine der {len(patches)} Gegenproben berührt eine seit {basis[:12]} geänderte Datei.')
             return 0
         else:
-            print(f'{len(auswahl)} von {len(patches)} Gegenproben betroffen.')
-            patches = auswahl
-    # Die CI teilt die Patches auf parallele Jobs (COUNTER_CHECK_TEIL=„2/4“); jeder
-    # nimmt jeden n-ten, so bleibt jeder Teil unter seiner Zeitgrenze.
-    if not patches:
-        print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')
-        return 1
-    teil = os.environ.get('COUNTER_CHECK_TEIL')
-    if teil:
-        nr, anzahl = (int(x) for x in teil.split('/'))
-        patches = patches[nr - 1::anzahl]
-        # Weniger betroffene Patches als Teile: Dieser Teil hat nichts zu messen.
+            print(f'{len(selection)} von {len(patches)} Gegenproben betroffen.')
+            patches = selection
+    part = os.environ.get('COUNTER_CHECK_TEIL')
+    if part:
+        # CI splits the patches over parallel jobs; each takes every n-th, so every part
+        # stays below its time limit.
+        nr, count = (int(x) for x in part.split('/'))
+        patches = patches[nr - 1::count]
         if not patches:
-            print(f'Teil {teil}: keine der betroffenen Gegenproben fällt auf diesen Teil.')
+            print(f'Teil {part}: keine der betroffenen Gegenproben fällt auf diesen Teil.')
             return 0
-    ergebnisse = [miss(projekt, wurzel, p, gradle) for p in patches]
-    zeilen = [('rot ' if ok else 'FEHLT ') + text for ok, text in ergebnisse]
-    print('\n'.join(zeilen))
-    zusammenfassung = os.environ.get('GITHUB_STEP_SUMMARY')
-    if zusammenfassung:
-        with open(zusammenfassung, 'a', encoding='utf-8') as f:
-            f.write('## Gegenproben\n\n' + '\n'.join(f'- {z.splitlines()[0]}' for z in zeilen) + '\n')
-    for ok, text in ergebnisse:
-        if not ok:
-            print(f'::error title=Gegenprobe greift nicht::{text.splitlines()[0]}')
-    return 0 if all(ok for ok, _ in ergebnisse) else 1
+    # One module after the other: the daemon keeps its compiled state between patches.
+    patches.sort(key=lambda p: (header(p).get('Modul', ''), os.path.basename(p)))
+    results_file = os.environ.get('COUNTER_CHECK_RESULTS')
+    results = []
+    for p in patches:
+        ok, text = measure(project, root, p, gradle)
+        results.append((ok, text))
+        if results_file:
+            with open(results_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'patch': os.path.basename(p), 'red': ok, 'text': text}, ensure_ascii=False) + '\n')
+    report_lines(results, 'Gegenproben', 'rot')
+    return 0 if all(ok for ok, _ in results) else 1
 
 
 if __name__ == '__main__':

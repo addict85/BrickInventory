@@ -13,11 +13,12 @@ import java.io.File
  * names the certificate and hands out no installable APK outside of a tag.
  *
  * Counter-checks (patches under counter-checks/):
- *   counter-checks-job-weich     continue-on-error in the job `counter-checks` → red “the counter-checks job …”
- *   release-image-wechselnd   job `signature` (android-signieren.yml) on ubuntu-latest → red “the release path …”
- *   workflow-image-wechselnd  job `counter-checks` on ubuntu-latest → red “the release path …”
- *   (local) in the header of teile-ablage-trotz-konto again `Rot:` followed by a sentence instead of a test name
+ *   counter-checks-job-soft     continue-on-error in the job `counter-checks` → red “the counter-checks job …”
+ *   release-image-floating   job `signature` (android-signieren.yml) on ubuntu-latest → red “the release path …”
+ *   workflow-image-floating  job `counter-checks` on ubuntu-latest → red “the release path …”
+ *   (local) in the header of parts-store-despite-account again `Rot:` followed by a sentence instead of a test name
  *   Antwort des Servers` (a message, not a test name) → red “the counter-checks job …”
+ *   (local) job `counter-checks-fit` calls the tool without `--check` → red “the counter-checks job …”
  */
 class AndroidWorkflowTest {
 
@@ -51,6 +52,9 @@ class AndroidWorkflowTest {
         val j = job("counter-checks")
         assertTrue("the job does not call the tool", "python3 tools/counter-checks.py counter-checks" in j)
         assertFalse("a green counter-check must turn the run red", "continue-on-error" in j)
+        val fit = job("counter-checks-fit")
+        assertTrue("every push checks that all patches still apply", "python3 tools/counter-checks.py --check counter-checks" in fit)
+        assertFalse("the fit check runs without Gradle", "gradlew" in fit || "setup-java" in fit)
         val patches = File(Sources.project, "counter-checks").listFiles { f -> f.name.endsWith(".patch") }.orEmpty()
         assertTrue("Only ${patches.size} patches — does the search still apply?", patches.size >= 100)
         val classes = patches.map { p ->
