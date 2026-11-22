@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data
 import android.app.Application
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.di.NetworkModule
 import ch.brickinventoryapp.data.di.NetworkStores
@@ -22,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -50,6 +52,8 @@ import java.util.concurrent.TimeUnit
  *   bild-client-ohne-token         the ServerGuard taken out of the image client → red “both clients …”
  *   bild-client-ohne-rueckfall     the FORCE_CACHE fallback keeps throwing → red “if the server is …”
  *   coil-ohne-bild-client          Coil without the image client's fetcher → red “Coil loads …”
+ * Counter-check (run here): `if (isApiClient && BuildConfig.DEBUG)` around the recording → red
+ * “both clients are logged …” (image client).
  * Counter-checks (run here): previewTap no longer hooked in → red “… a preview comes from the preview
  * store”. previewTap behind the offline fallback stays green: the tap then catches the connection error itself.
  */
@@ -107,6 +111,15 @@ class ServerClientsTest {
     fun `both clients hook in the server guard`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
             assertTrue("$name: without ServerGuard no token would go along", c.interceptors.any { it is ServerGuard })
+        }
+    }
+
+    /** In the debug build both are logged; without the image client its requests would be missing in logcat. */
+    @Test
+    fun `both clients are logged in the debug build`() {
+        assertTrue("this test runs the debug variant", BuildConfig.DEBUG)
+        for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
+            assertTrue("$name: no network recording", c.interceptors.any { it is HttpLoggingInterceptor })
         }
     }
 

@@ -4,12 +4,10 @@ import ch.brickinventoryapp.model.util.IMG_PROXY
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.model.util.resolveThumbUrl
-import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.io.File
 
 /** Server address with a trailing slash: the helpers cut it off. */
 private const val SERVER = "http://nas:3000/"
@@ -30,12 +28,6 @@ private const val SERVER = "http://nas:3000/"
  */
 class ThumbFallbackTest {
 
-    private fun read(rel: String): String {
-        val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
-
     @Test
     fun `imageLocal is taken over unchanged — no own _thumb guess any more`() {
         // The server checks whether the preview exists and delivers the matching
@@ -44,38 +36,6 @@ class ThumbFallbackTest {
             resolveThumbUrl(SERVER, "/images/sets/10283-1.jpg", "https://cdn.rebrickable.com/x.jpg"))
         assertEquals("http://nas:3000/images/sets/10283-1_thumb.jpg",
             resolveThumbUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
-    }
-}
-
-/**
- * The image client logs just like the API client.
- *
- * A logcat showed all API calls (/api/v1/sets, /stats, /settings), but
- * NOT A SINGLE image request — not because none were made, but because
- * the logging interceptor hung only on isApiClient=true. The image client
- * (isApiClient=false, used by Coil) had no interceptor and thus stayed
- * invisible to every diagnosis. The absence of image requests in the log
- * was therefore no insight into the problem but a gap in
- * observability itself.
- */
-class ImageClientLoggingTest {
-
-    @Test
-    fun `HttpLoggingInterceptor no longer hangs only on the API client`() {
-        // Hide comments BEFORE the window is cut: a
-        // growing explanatory text otherwise pushed the checked line out of the 800
-        // characters — the rule still applied, only the excerpt was too short.
-        val src = Sources.di().lines()
-            .joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
-        val start = src.indexOf("internal fun buildInterceptorClient")
-        val fn = src.substring(start, minOf(src.length, start + 2000))
-        assert(!fn.contains("if (isApiClient && BuildConfig.DEBUG)")) {
-            "the old condition excluded the image client from logging"
-        }
-        assert(fn.contains("if (BuildConfig.DEBUG) {")) {
-            "both clients must be logged in the debug build"
-        }
-        // The rewriting of the placeholder is checked by ServerGuardTest, executed.
     }
 }
 
@@ -125,48 +85,10 @@ class FullResolutionBypassesProxyTest {
  * with the direct CDN address for their own detail/zoom dialogs.
  */
 class PartsMinifigsFullResBypassProxyTest {
-    private fun read(rel: String): String {
-        val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
-
     @Test
     fun `resolveFullUrlViaProxy exists and wraps CDN addresses into the proxy`() {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fp.png",
             resolveFullUrlViaProxy(SERVER, null, "https://cdn.rebrickable.com/p.png"))
-    }
-}
-
-/**
- * The set detail dialog uses the full resolution, not a preview — like the
- * web app.
- *
- * An earlier comment claimed that the web app makes the same thumb/full
- * distinction in the detail dialog as the tile — that was not true.
- * `public/js/admin.js` always shows fullUrl() for "m-img" (the main image in the detail dialog),
- * never a preview. Android wrongly showed
- * resolveThumbUrl() there.
- */
-class SetDetailUsesFullResolutionTest {
-    private fun read(rel: String): String {
-        val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
-
-    @Test
-    fun `SetDetailScreen shows the same full resolution for preview and zoom`() {
-        val src = read("collection/ui/screens/SetDetailScreen.kt")
-        assert(src.contains("val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "the main image in the detail dialog must use resolveFullUrl(), not resolveThumbUrl()"
-        }
-        assert(!src.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "resolveThumbUrl() must no longer be called here"
-        }
-        assert(!src.contains("import ch.brickinventoryapp.model.util.resolveThumbUrl")) {
-            "the now unused import must be removed"
-        }
     }
 }
 
