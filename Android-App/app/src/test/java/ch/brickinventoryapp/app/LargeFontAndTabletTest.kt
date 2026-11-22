@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute

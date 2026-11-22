@@ -22,6 +22,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.contract.Gutschein

@@ -66,6 +66,7 @@ import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.LocationsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions

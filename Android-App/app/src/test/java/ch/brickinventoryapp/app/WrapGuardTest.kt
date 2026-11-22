@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute

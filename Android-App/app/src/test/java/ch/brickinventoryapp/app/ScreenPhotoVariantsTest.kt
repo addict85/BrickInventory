@@ -70,6 +70,7 @@ import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.nav.AppTarget
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress

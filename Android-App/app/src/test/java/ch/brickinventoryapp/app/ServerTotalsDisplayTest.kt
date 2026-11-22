@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.testing.TestApp
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.model.domain.CurrencyCode

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.app.testing
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel

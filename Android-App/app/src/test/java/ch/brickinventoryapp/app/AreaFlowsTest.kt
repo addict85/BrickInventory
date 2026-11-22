@@ -35,6 +35,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen

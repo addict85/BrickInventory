@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.BrickInventoryRoute
-import ch.brickinventoryapp.app.Examples
 import ch.brickinventoryapp.app.csv.CsvImportCoordinator
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.app.nav.ActivityState

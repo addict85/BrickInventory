@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.finances.ui.setRows
 import ch.brickinventoryapp.model.domain.CurrencyCode
