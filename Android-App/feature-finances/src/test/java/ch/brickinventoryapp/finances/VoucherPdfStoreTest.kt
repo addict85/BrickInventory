@@ -7,7 +7,6 @@ import ch.brickinventoryapp.finances.ui.viewmodel.pdfMaySavedBecome
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherExportAddress
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
-import ch.brickinventoryapp.testing.Sources
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,38 +16,18 @@ import org.junit.Test
 import java.io.File
 
 /**
- * A voucher PDF (number and PIN) never lands on disk: the
- * viewer gets no file for it, loads into memory and renders from a
- * memfd. What older versions placed in their own folder disappears on signing out and
- * on startup. Instruction manuals stay in the cache.
+ * A voucher PDF (number and PIN) never lands on disk: no file for it, and what older
+ * versions placed in their own folder disappears. Instruction manuals stay in the cache.
+ * Run against a real directory. The loader is InstructionLoaderTest, the buttons PdfDownloadTest,
+ * releasing the memory PdfViewerViewModelTest, sign-out LogoutCleansEverythingTest (core-data),
+ * the start StartCleanupTest (app).
  *
- * Run: storage and deletion against a real directory; the loading into
- * memory is checked by PdfInStorageTest (core-data). That the viewer takes this path
- * needs a device; the structure check below records that.
- *
- * Counter-checks (30.10.2026, measured with kt-b2/bau.sh):
- *   A  in pdfStore() `confidential` ignored (always cacheDir) → red “a
- *      voucher PDF gets no file …”
- *   D  pdfMaySavedBecome() always true → red “a
- *      voucher PDF cannot be downloaded …”
- *   E  in PdfViewerScreen the `if (savable)` around the button removed
- *      → red “viewer, sign-out and start clean up” (button unprotected)
- *   F  in pdfStore() back to `pdfUrl.hashCode()` as the name → red
- *      “the file name depends on the whole address …”
- *   G  showsVouchers() back to `"/api/v1/vouchers/" in pdfUrl` →
- *      red “vouchers are recognized by the path …”
  * Counter-checks:
- *   H  pdfStore() also returns a cache file for confidential PDFs
- *      → red “a voucher PDF gets no file …”;
+ *   A  in pdfStore() `confidential` ignored (always cacheDir) → red “a voucher PDF gets no file …”;
  *      counter-checks/gutschein-pdf-auf-platte.patch
- *   I  in the loader (then PdfViewerScreen) `if (store == null)` replaced with `if (false)` → red
- *      “viewer, sign-out and start clean up” (memory path not taken)
- * Counter-checks:
- *   J  in PdfViewerScreen the print button pulled ahead of `if (savable)` → red
- *      “viewer, sign-out and start clean up” (printing unprotected);
- *      counter-checks/gutschein-drucken.patch
- *   K  in logout() the line `cleanUpInstructions(` removed → red “viewer,
- *      sign-out and start clean up” (instruction manuals survive signing out)
+ *   D  pdfMaySavedBecome() always true → red “a voucher PDF cannot be downloaded …”
+ *   F  in pdfStore() back to `pdfUrl.hashCode()` as the name → red “the file name depends …”
+ *   G  showsVouchers() back to `"/api/v1/vouchers/" in pdfUrl` → red “the path recognizes vouchers …”
  */
 class VoucherPdfStoreTest {
 
@@ -104,34 +83,5 @@ class VoucherPdfStoreTest {
         assertFalse(pdfMaySavedBecome(voucher))
         assertFalse(pdfMaySavedBecome(voucherExportAddress("https://brick.example/")))
         assertTrue(pdfMaySavedBecome(instruction))
-    }
-
-    @Test
-    fun `viewer, sign-out and start clean up`() {
-        val viewer = Sources.withoutComments(Sources.read("finances/ui/screens/PdfViewerScreen.kt"))
-        // Loading and holding have lived in the loader and the ViewModel since M1.
-        val loader = Sources.withoutComments(Sources.read("finances/ui/pdf/InstructionLoader.kt") + Sources.read("finances/ui/pdf/PdfSource.kt") +
-            Sources.read("data/InstructionRepository.kt"))
-        val vm = Sources.withoutComments(Sources.read("finances/ui/viewmodel/PdfViewerViewModel.kt"))
-        assertTrue("the viewer does not store via pdfStore()", loader.contains("pdfStore(ctx.cacheDir, pdfUrl, confidential)"))
-        assertTrue("without a file the viewer does not take the way via memory",
-            Regex("""if \(store == null\) \{\s*loadIntoMemoryAndCount\(""").containsMatchIn(loader))
-        assertTrue("the memory way does not load via loadPdfIntoMemory()", loader.contains("loadPdfIntoMemory(loadClient(httpClient), url"))
-        assertTrue("the voucher PDF does not lie in a memfd", loader.contains("Os.memfd_create("))
-        assertTrue("the memory area stays open after leaving",
-            Regex("""override fun onCleared\(\)\s*\{\s*open\.close\(\)""").containsMatchIn(vm))
-        assertTrue("download stands without a check",
-            Regex("""if \(savable\) \{\s*((?:ch\.brickinventoryapp\.ui\.components\.)?WithTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (report\()?savePdfToDownloads\(""").containsMatchIn(viewer))
-        // The print dialog offers „Als PDF speichern“: printing only where saving is also allowed.
-        val guarded = viewer.substringAfter("if (savable) {").substringBefore("\n                    }\n")
-        assertTrue("print stands without a check", viewer.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in guarded)
-        val logout = Sources.function(Sources.withoutComments(Sources.read("data/SessionCleanup.kt")), "suspend fun cleanUp(")
-        assertTrue("sign-out leaves voucher PDFs behind", logout.contains("cleanUpConfidentialPdfs("))
-        assertTrue("sign-out leaves manuals behind", logout.contains("cleanUpInstructions(ctx.cacheDir)"))
-        assertTrue("sign-out leaves parts list and update in filesDir",
-            logout.contains("cleanUpAccountFiles(ctx.filesDir, ctx.getExternalFilesDir(null))"))
-        val start = Sources.read("app/BrickInventoryApp.kt")
-        assertTrue("the start does not clear leftovers away", start.contains("cleanUpConfidentialPdfs(cacheDir)"))
-        assertTrue("the start leaves plain-text manuals behind", start.contains("cleanUpPlaintextInstructions(cacheDir)"))
     }
 }

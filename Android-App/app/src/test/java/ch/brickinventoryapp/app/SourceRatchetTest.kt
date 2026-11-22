@@ -112,9 +112,8 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 151
+        val FUNCTIONS = 147
         val ONLY_SOURCE_TEXT = 32
-        val BEHAVIOR = 4
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }
@@ -128,11 +127,11 @@ class SourceRatchetTest {
         ratchet("test functions that read source", FUNCTIONS, tally.values.sumOf { it.second.size },
             "If the new test checks behavior, it should run the code instead of looking whether a line is there.")
         ratchet("test files that only read source", ONLY_SOURCE_TEXT, only.size, only.joinToString())
-        // Structure (StructureChecks.kt) may read source; a behavior check runs the code. Target: 0.
+        // Structure (StructureChecks.kt) may read source; a behavior check runs the code. No exception.
         val readers = tally.flatMap { (path, t) -> t.second.map { path.substringAfterLast('/') + ": " + it } }
         val behavior = readers.filter { it.substringBefore(": ") !in structureFiles && it !in structureChecks }
-        ratchet("behavior checks that read source", BEHAVIOR, behavior.size,
-            "Run the code instead; structure goes into StructureChecks.kt with a reason:\n  " + behavior.joinToString("\n  "))
+        assertEquals("Behavior checks that read source — run the code instead; structure goes into " +
+            "StructureChecks.kt with a reason", emptyList<String>(), behavior)
         val stale = (structureChecks.keys - readers.toSet()) + (structureFiles.keys - readers.map { it.substringBefore(": ") }.toSet())
         assertEquals("Entries in StructureChecks.kt without a reading check", emptySet<String>(), stale)
     }

@@ -55,6 +55,19 @@ data class MonitoringState(
 )
 
 /**
+ * Runs [poll] only while the page is at least STARTED: a LaunchedEffect alone ends on leaving
+ * the page, not on going to the background, and the app would keep polling there.
+ */
+@Composable
+internal fun PollWhileVisible(poll: suspend () -> Unit) {
+    val lifecycle = LocalLifecycleOwner.current
+    val current by rememberUpdatedState(poll)
+    LaunchedEffect(lifecycle) {
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { current() }
+    }
+}
+
+/**
  * The management page at the navigation destination. The query every five seconds only runs
  * while the page is visible (repeatOnLifecycle); the ViewModel loads everything else.
  */
@@ -72,12 +85,7 @@ internal fun MonitoringRoute(
     val networks by device.prewarm.collectAsStateWithLifecycle()
     val storeBytes by device.storeBytes.collectAsStateWithLifecycle()
     val settingsNew by mon.settingsNew.collectAsStateWithLifecycle()
-    val lifecycle = LocalLifecycleOwner.current
-    LaunchedEffect(Unit) {
-        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            mon.holdCurrent()
-        }
-    }
+    PollWhileVisible { mon.holdCurrent() }
     LaunchedEffect(settingsNew) {
         if (settingsNew) { onSettingsNew(); mon.settingsLoaded() }
     }

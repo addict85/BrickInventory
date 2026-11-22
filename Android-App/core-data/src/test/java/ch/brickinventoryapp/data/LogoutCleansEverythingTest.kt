@@ -13,6 +13,7 @@ import ch.brickinventoryapp.data.account.AccountDataDeletion
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.testing.TestStore
 import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.data.util.PDF_CONFIDENTIAL_FOLDER
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.offline.Editing
@@ -60,6 +61,7 @@ import java.io.File
  *   abmelden-laesst-teileliste   cleanUpAccountFiles removed → red „… Teileliste“
  *   abmelden-laesst-meldungen    cancelAll() removed → red „… Preisalarm-Meldung“
  *   abmelden-ohne-neuen-schluessel  store.renew() removed → red "… old key"
+ * Counter-check (run here): cleanUpConfidentialPdfs removed from cleanUp() → red "… Voucher PDF".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -129,6 +131,7 @@ class LogoutCleansEverythingTest {
         val coil = checkNotNull(loader.diskCache)
         coil.openEditor("bild")!!.apply { coil.fileSystem.write(data) { writeUtf8("bild") }; coil.fileSystem.write(metadata) { writeUtf8("m") } }.commit()
         val (partList, update, instruction) = createFilesAndMessage()
+        val voucher = file(ctx.cacheDir, "$PDF_CONFIDENTIAL_FOLDER/pdfview_alt.pdf")
         val messages = shadowOf(ctx.getSystemService(NotificationManager::class.java))
         assertEquals("Precondition: a notification is there", 1, messages.allNotifications.size)
         assertTrue("Precondition: image cache filled", imageClient.cache!!.urls().hasNext())
@@ -154,6 +157,7 @@ class LogoutCleansEverythingTest {
         assertFalse("PartList", partList.exists())
         assertFalse("Update-APK", update.exists())
         assertFalse("Instruction", instruction.exists())
+        assertFalse("Voucher PDF", voucher.exists())
         assertEquals("Price alert notification", 0, messages.allNotifications.size)
         assertNotEquals("The store key is still the old one", oldKey.toList(), storeKey.fetch().toList())
         assertNull("Remains encrypted with the old key are readable",

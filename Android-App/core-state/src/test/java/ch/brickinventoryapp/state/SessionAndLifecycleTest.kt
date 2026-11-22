@@ -12,10 +12,9 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Expired session, ImageLoader lifetime, and background polling.
- *
- * The 401 is tested, run; the rest reads source code (device and
- * Compose are missing here).
+ * Expired session and ImageLoader lifetime. The 401 is run against a test server; the
+ * ImageLoader check reads the DI module and MainActivity. The background poll is
+ * PollWhileVisibleTest (feature-management).
  */
 class SessionAndLifecycleTest {
 
@@ -73,25 +72,6 @@ class SessionAndLifecycleTest {
         }
         assert(act.contains("@Inject lateinit var imageLoader")) {
             "MainActivity does not inject the ImageLoader"
-        }
-    }
-
-    // ── Hintergrund-Polling ──────────────────────────────────────────────────
-
-    @Test
-    fun `the monitoring poll hangs on the lifecycle`() {
-        val src = code(read("management/ui/screens/MonitoringScreen.kt"))
-        assert(src.contains("repeatOnLifecycle")) {
-            "The 5 s loop in monitoring runs without repeatOnLifecycle. A " +
-                "LaunchedEffect only ends when leaving the screen, not when " +
-                "going to the background — the app then keeps polling."
-        }
-        // The loop itself lives in the ViewModel (holdCurrent, MonitoringViewModelBehaviorTest).
-        val loop = src.indexOf("mon.holdCurrent()")
-        val guard = src.indexOf("repeatOnLifecycle")
-        assert(loop >= 0) { "poll loop not found — test outdated?" }
-        assert(guard in 1 until loop) {
-            "repeatOnLifecycle does not enclose the poll loop"
         }
     }
 }

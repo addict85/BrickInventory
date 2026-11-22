@@ -3,23 +3,16 @@ package ch.brickinventoryapp.parts
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 /**
  * What a manually entered tile and its detail need: the quantity-weighted
  * purchase price from the server and the price history for parts and figures. What the tile
- * renders is checked by ManualTileDisplayTest (app) under Robolectric; that the history
+ * renders is checked by ManualTileDisplayTest and the detail by ManualItemDetailDisplayTest (app); that the history
  * is loaded for both kinds, by PurchasesViewModelTest (core-state) on the ViewModel.
  */
 class ManualTileTest {
-
-    private fun read(rel: String) =
-        File(Sources.root, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
     fun `the quantity-weighted purchase price comes from the server`() {
@@ -33,16 +26,5 @@ class ManualTileTest {
             """{"fig_number":"sw0001","unit_price":8.0,"avg_purchase_price":5.0}""")
         assertEquals(5.0, part.avgPurchasePrice ?: 0.0, 0.0)
         assertEquals(5.0, figure.avgPurchasePrice ?: 0.0, 0.0)
-    }
-
-    // The value tiles like in the set detail; a large price row in the market-price card
-    // repeated them (used to live here, in PurchasePriceDisplayTest, core-data).
-    @Test
-    fun `the detail view shows value tiles, market price and price history, without a large price row`() {
-        val s = code(read("parts/ui/screens/ManualItemDetailScreen.kt"))
-        for (part in listOf("ValueTiles(", "MarketPriceByCondition(", "PriceChart(")) {
-            assert(s.contains(part)) { "$part missing in the detail view" }
-        }
-        assert(!s.contains("headlineSmall")) { "again a large price row next to the tiles" }
     }
 }
