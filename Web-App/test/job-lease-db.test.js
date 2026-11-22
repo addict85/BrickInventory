@@ -68,7 +68,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     // Two workers like two processes: the second must not take over the row while the first works.
     // The work takes longer than the deadline (1 s): only the own heartbeat holds the row.
     const editor = {
-      wechselkurse: {
+      exchange_rates: {
         ausfuehren: async () => {
           starts++;
           await warte(4500);

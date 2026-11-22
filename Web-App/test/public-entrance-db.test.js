@@ -37,7 +37,13 @@ const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');
 
 /** What the sign-in screen calls before there is a token (the generator follows
  * AnmeldungViewModel → KontoRepositoryImpl → AccountApi). */
-const signInScreenRoutes = () => new Set((APP.without_token ?? []).map(ohnePraefix));
+const { v2PathOf } = _req('src/http/apiV1Alias.js');
+/** The app calls /api/v1: its routes under their v2 address. */
+const v2Of = (/** @type {string} */ r) => {
+  const [m, p] = r.split(' ');
+  return `${m} ${v2PathOf(m, p).path}`;
+};
+const signInScreenRoutes = () => new Set((APP.ohne_token ?? []).map(r => ohnePraefix(v2Of(r))));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {
@@ -71,7 +77,7 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   );
   // The exceptions marked `app` are routes the app really calls.
   const app = new Set(
-    APP.routen.map((/** @type {{ methode: string, path: string }} */ r) => ohnePraefix(`${r.methode} ${r.path}`)),
+    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) => ohnePraefix(v2Of(`${r.methode} ${r.pfad}`))),
   );
   for (const [r, wer] of Object.entries(EXCEPTIONS))
     if (wer === 'app') assert.ok(app.has(r), `${r} ruft die App nicht`);
@@ -82,7 +88,12 @@ test('Caddy buffers every open POST as a sign-in path', () => {
   const block = caddy.match(/@anmeldung \{([\s\S]*?)\n\t\}/)?.[1] ?? '';
   const pfade = (block.match(/^\s*path (.+)$/m)?.[1] ?? '').trim().split(/\s+/);
   assert.ok(/method POST/.test(block) && pfade.length > 5, 'Block @anmeldung nicht gefunden');
-  const open = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).map(r => `/api/v2${r.slice(5)}`);
+  // The app still posts to the v1 alias, so Caddy buffers both addresses.
+  const { v1Key } = _req('src/contract/v1Routes.js');
+  const open = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).flatMap(r => [
+    `/api/v2${r.slice(5)}`,
+    v1Key(`POST /api/v2${r.slice(5)}`).slice(5),
+  ]);
   assert.deepEqual([...pfade].sort(), [...open].sort());
 });
 

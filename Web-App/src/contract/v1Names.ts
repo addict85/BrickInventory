@@ -640,7 +640,7 @@ export const V1_ADMIN_ACTIONS: Readonly<Record<string, string>> = {
   takeover_cancelled: 'uebernahme_abgebrochen',
 };
 
-/** Setting keys (global_settings.key, migration 0137) that v1 names differently. */
+/** Setting keys (key of the global settings, migration 0137) that v1 names differently. */
 export const V1_SETTING_KEYS: Readonly<Record<string, string>> = { voucher_country: 'gutschein_land' };
 
 /** Purposes of a passkey challenge (webauthn_challenges.purpose, migration 0137). */

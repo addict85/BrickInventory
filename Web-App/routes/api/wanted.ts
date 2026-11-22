@@ -3,7 +3,7 @@
 import type express from 'express';
 import { publicError } from '../../src/infra/error';
 import { lineToV1 } from '../../src/http/apiV1Alias';
-import { translate, v1Keys } from '../../src/contract/v1';
+import { translate, v1Keys, v1Values } from '../../src/contract/v1';
 import { accountGate, viewOf, guardFor } from './middleware';
 import { watchViaAccess } from '../../src/account/http/accessWatch';
 import { errorText, responseLanguage, failDomain } from '../../src/infra/errorTexts';
@@ -20,7 +20,7 @@ import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 type WantedXmlReport = Pick<
   z.infer<typeof WantedXmlResult>,
-  'preview' | 'parsed' | 'created' | 'topped_up' | 'error' | 'items' | 'open'
+  'preview' | 'parsed' | 'created' | 'topped_up' | 'failed' | 'items' | 'open'
 >;
 
 /** Corrections as a field of the multipart request: with 224 items the address would be
@@ -33,8 +33,12 @@ function correctionsFrom(raw: string | undefined, v1: boolean): Correction[] | u
   return parsed.success ? parsed.data : null;
 }
 
-/** An intermediate state line; v1 calls the field `fortschritt`. */
-const PROGRESS_LINE = v1Keys(z.looseObject({ progress: z.unknown() }), { progress: 'fortschritt' });
+/** An intermediate state line; v1 names the field, the count and the writing phase in German. */
+const PROGRESS = v1Keys(
+  z.looseObject({ phase: v1Values(z.string(), { write: 'schreiben' }), done: z.number(), total: z.number() }),
+  { done: 'fertig' },
+);
+const PROGRESS_LINE = v1Keys(z.looseObject({ progress: PROGRESS }), { progress: 'fortschritt' });
 
 /** The intermediate states as NDJSON lines. If the access ends, the stream ends; the
  * job keeps running on its own. The headers are out: an error comes

@@ -126,7 +126,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
         catalog_pending: j.catalog_pending,
         supplement: j.supplement,
       },
-      { action: 'added', set_number: SN2, name: `Set ${SN2}`, catalog_pending: true, supplement: 'ausstehend' },
+      { action: 'added', set_number: SN2, name: `Set ${SN2}`, catalog_pending: true, supplement: 'pending' },
     );
     assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
     // rb_sets does not know the set: the capture creates it as 'api', including the set_catalog row.

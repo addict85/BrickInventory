@@ -271,7 +271,7 @@ test('job table', { concurrency: 1 }, async t => {
       assert.equal(await Z.pullPlanBefore('cleanup'), true);
       let lief = 0;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
-        aufraeumen: {
+        cleanup: {
           ausfuehren: async () => {
             lief++;
           },

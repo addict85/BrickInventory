@@ -165,7 +165,7 @@ test('4. the alert mail carries the same envelope as the others', async t => {
     setNumber: '10294-1',
     setName: 'Titanic',
     condition: 'N',
-    direction: 'unter',
+    direction: 'below',
     price: 600,
     threshold: 650,
     currency: 'EUR',

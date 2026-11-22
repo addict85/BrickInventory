@@ -237,7 +237,7 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
         set_number: /** @type {any} */ (a[0]).setNumber,
         name: 'Testset',
         catalog_pending: true,
-        supplement: 'ausstehend',
+        supplement: 'pending',
         besitzer: uid,
       };
     };

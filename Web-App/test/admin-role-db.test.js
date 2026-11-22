@@ -58,7 +58,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
   };
   /** 0 as soon as the revocation is announced (or carried out). */
   const istAdmin = async () => {
-    const announced = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='rolle_entziehen'`, [
+    const announced = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='revoke_role'`, [
       targetId,
     ]);
     const admin = (await db.get(`SELECT is_admin FROM users WHERE id=$1`, [targetId])).is_admin;

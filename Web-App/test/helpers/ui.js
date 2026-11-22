@@ -133,7 +133,7 @@ const ANMELDUNG = {
         second_factor: false,
         awaiting_confirmation: false,
         created_at: '2026-10-01T00:00:00Z',
-        announced: [{ type: 'deaktivieren', effective_at: '2026-10-02T00:00:00Z' }],
+        announced: [{ type: 'deactivate', effective_at: '2026-10-02T00:00:00Z' }],
       },
     ],
   },

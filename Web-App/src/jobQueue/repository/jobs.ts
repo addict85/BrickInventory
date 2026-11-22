@@ -48,7 +48,7 @@ export async function addJobOne(
       o.maxAttempts ?? 5,
       o.afterSeconds ?? 0,
       o.dueAb ?? null,
-      o.fortschritt ? JSON.stringify(o.fortschritt) : null,
+      o.progress ? JSON.stringify(o.progress) : null,
     ],
   );
   return z ? String(z.id) : null;

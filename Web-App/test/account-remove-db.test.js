@@ -57,7 +57,7 @@ test('remove account', { concurrency: 1 }, async t => {
       await db.get("SELECT COUNT(*)::int AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])
     ).n,
     protokoll: (
-      await db.get("SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'konto_geloescht'", [
+      await db.get("SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'account_deleted'", [
         uid,
       ])
     ).n,

@@ -385,7 +385,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   );
   assert.match(
     fn,
-    /await bookEntry\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
+    /await bookEntry\(sk, \{\s*konto: userId,\s*setNumber,\s*quantity: delta,\s*kaufpreis: plan\.price,\s*condition: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // The price comes from priceForNewEntry() — extracted, because the

@@ -337,7 +337,7 @@ async function patternCollection(db, uid) {
   );
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
-                VALUES ($1, '10276-1', 'N', 'unter', 299, 'EUR') ON CONFLICT DO NOTHING`,
+                VALUES ($1, '10276-1', 'N', 'below', 299, 'EUR') ON CONFLICT DO NOTHING`,
     [uid],
   );
   await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal Keller')`, [uid]);

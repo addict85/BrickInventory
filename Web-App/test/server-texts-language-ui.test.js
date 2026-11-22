@@ -20,10 +20,10 @@ test('tile subtitles in the UI language', async () => {
         schedules: {},
         db: { csvCache: {}, blMapping: {} },
         jobs: {
-          bricksetRetry: kachel('Keine ausstehenden Einträge', [{ code: 'keine_ausstehenden' }]),
+          bricksetRetry: kachel('Keine ausstehenden Einträge', [{ code: 'none_pending' }]),
           imgDl: kachel('Bestand: 3 Bilder noch nicht gecacht · 2 Katalog-Bilder in Warteschlange', [
-            { code: 'bilder_offen', values: { n: 3 }, ago: 'bestand' },
-            { code: 'katalog_warteschlange', values: { n: 2 } },
+            { code: 'images_open', values: { n: 3 }, ago: 'holding' },
+            { code: 'catalog_queue', values: { n: 2 } },
           ]),
         },
       },

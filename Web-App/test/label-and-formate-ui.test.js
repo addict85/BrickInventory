@@ -125,7 +125,7 @@ test('log with fmtDate', async () => {
           {
             occurred_at: '2026-11-05T17:29:38Z',
             verwalter_name: 'anna',
-            action: 'konto_angelegt',
+            action: 'account_created',
             target_name: 'bert',
           },
         ],

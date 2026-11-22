@@ -43,7 +43,7 @@ async function detail(antworten = {}) {
             alert: {
               set_number: SN,
               condition: 'N',
-              direction: 'unter',
+              direction: 'below',
               threshold: 249,
               currency_code: 'EUR',
               triggered: true,
@@ -82,7 +82,7 @@ test("web app: saved while typing, debounced with the app's idle time", async ()
     const [put, ...mehr] = schreibend(o);
     assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
     assert.equal(put.method, 'PUT');
-    assert.deepEqual(JSON.parse(put.body), { direction: 'unter', threshold: 249, condition: 'N' });
+    assert.deepEqual(JSON.parse(put.body), { direction: 'below', threshold: 249, condition: 'N' });
     assert.ok(
       await warte(() => o.d.getElementById('m-alert-state').textContent === de['detail.alert_fired']),
       `der Merker zeigt „${o.d.getElementById('m-alert-state').textContent}“`,
@@ -103,7 +103,7 @@ test('web app: an empty field deletes, a condition change only loads', async () 
               {
                 set_number: SN,
                 condition: 'N',
-                direction: 'ueber',
+                direction: 'above',
                 threshold: 300,
                 currency_code: 'EUR',
                 triggered: false,
@@ -112,7 +112,7 @@ test('web app: an empty field deletes, a condition change only loads', async () 
           },
   });
   try {
-    assert.equal(o.d.getElementById('m-alert-dir').value, 'ueber');
+    assert.equal(o.d.getElementById('m-alert-dir').value, 'above');
     const condition = o.d.getElementById('m-alert-cond');
     condition.value = 'U';
     condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
@@ -135,7 +135,7 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
   const open = {
     success: true,
     now: JETZT,
-    alerts: [{ set_number: SN, direction: 'unter', threshold: 200, last_price: 199.5, currency_code: 'CHF' }],
+    alerts: [{ set_number: SN, direction: 'below', threshold: 200, last_price: 199.5, currency_code: 'CHF' }],
   };
   const meldungen = o => [...o.d.querySelectorAll('#toasts > *')].map(t => t.textContent.trim());
   const erst = await openUi({ '/v2/alerts/pending': open });

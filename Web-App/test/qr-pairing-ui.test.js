@@ -15,7 +15,7 @@ const { openUi, warte } = require('./helpers/ui');
 
 /** @param {string} endStatus  what the server reports after the button */
 async function pairing(knopf, endStatus) {
-  let state = 'offen';
+  let state = 'open';
   const gesendet = [];
   const o = await openUi({
     '/v2/auth/qr-token': {
@@ -43,7 +43,7 @@ async function pairing(knopf, endStatus) {
   try {
     d.getElementById('btn-gen-qr').click();
     await warte(() => d.getElementById('qr-code').textContent.includes('bim:abc'));
-    state = 'wartet';
+    state = 'waiting';
     await warte(() => !d.getElementById('qr-pairing').hidden, 6000);
     const frage = d.getElementById('qr-pairing-text').textContent;
     d.getElementById('qr-pairing-code').value = '123 456';
@@ -61,14 +61,14 @@ async function pairing(knopf, endStatus) {
 }
 
 test("the question names the device, confirming sends the app's code", async () => {
-  const k = await pairing('confirmQrPairing', 'abgeholt');
+  const k = await pairing('confirmQrPairing', 'collected');
   assert.match(k.frage, /„Pixel 9“ \(Netz 10\.0\.0\.0\/24\) möchte sich koppeln/);
   assert.deepEqual(k.gesendet, [['ja', { code: '123 456' }]]);
   assert.match(k.ende, /ist gekoppelt/);
 });
 
 test('rejecting sends the rejection and clears the QR code', async () => {
-  const k = await pairing('rejectQrPairing', 'abgelehnt');
+  const k = await pairing('rejectQrPairing', 'rejected');
   assert.deepEqual(k.gesendet, [['nein']]);
   assert.match(k.ende, /abgelehnt/);
   assert.equal(k.qr, '');

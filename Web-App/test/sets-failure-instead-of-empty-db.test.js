@@ -104,7 +104,7 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     }
     assert.deepEqual(
       states.map(f => f.ohne),
-      [['teile-anreichern', 'images']],
+      [['teile-anreichern', 'bilder']],
     );
   });
 });

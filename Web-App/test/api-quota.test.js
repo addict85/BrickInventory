@@ -1,5 +1,5 @@
 /**
- * Request budget per account under /api/v1 (src/http/apiThrottle.ts).
+ * Request budget per account under /api/v2 (src/http/apiThrottle.ts).
  *
  * Here the classification and the middleware's answer; the counting itself is in the database
  * and checked across two instances in test/web-two-instances-db.test.js.
@@ -78,7 +78,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const address = srv.address();
-  const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}/api/v1`;
+  const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}/api/v2`;
 
   const ab = await fetch(base + '/sets');
   assert.equal(ab.status, 429);
@@ -93,7 +93,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
   const srv2 = ohne.listen(0);
   t.after(() => new Promise(r => srv2.close(r)));
   const adresse2 = srv2.address();
-  const basis2 = `http://localhost:${typeof adresse2 === 'object' && adresse2 ? adresse2.port : 0}/api/v1`;
+  const basis2 = `http://localhost:${typeof adresse2 === 'object' && adresse2 ? adresse2.port : 0}/api/v2`;
   const vorher = used.asked;
   assert.equal((await fetch(basis2 + '/sets')).status, 200);
   assert.equal(used.asked, vorher, 'without login the store is not asked');

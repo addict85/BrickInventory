@@ -216,7 +216,7 @@ test('finances: purchase price instead of a second market price column', () => {
   // The header may be a sort button (sortButton), the order stays.
   assert.match(
     fin,
-    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('value', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
+    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('purchase', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('value', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren',
   );
   // fmtMoney instead of fmtN: a purchase price of 0 (gift) stands there as „0,00 €“.

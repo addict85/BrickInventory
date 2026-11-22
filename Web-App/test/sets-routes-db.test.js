@@ -125,7 +125,7 @@ test('routes/sets against a real database', async t => {
     // After moving two accounts share ONE file; if one deletes its row,
     // it stays. Counter-check: the count replaced by `const rest = null` → red.
     const rel = '/data/uploads/geteilt/x.pdf';
-    const abs = path.join(ROOT, rel.slice(1));
+    const abs = path.join(ROOT, 'data/uploads/geteilt/x.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
     const idA = await anleitung(U.anna, '10003-1', rel);
@@ -141,7 +141,7 @@ test('routes/sets against a real database', async t => {
     // The opposite direction of the same rule: without it files accumulate that
     // no longer belong to anybody.
     const rel = '/data/uploads/allein/y.pdf';
-    const abs = path.join(ROOT, rel.slice(1));
+    const abs = path.join(ROOT, 'data/uploads/allein/y.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
     const id = await anleitung(U.anna, '10004-1', rel);

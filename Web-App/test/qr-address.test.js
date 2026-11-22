@@ -128,9 +128,9 @@ test('3. one source for QR code, mail button and reset links', () => {
   // src/infra/baseUrl.ts may read it; whoever touches process.env.APP_BASE_URL himself has
   // started a fourth notation.
   // src/infra/config.ts reads the variable (appBaseUrl, without a slash at the
-  // end); basisUrl() is the one way there.
+  // end); baseUrl() is the one way there.
   const helper = lies('src/infra/baseUrl.ts');
-  assert.match(helper, /konfig\(\)\.appBaseUrl/, 'src/infra/baseUrl.ts liest die Konfiguration nicht.');
+  assert.match(helper, /config\(\)\.appBaseUrl/, 'src/infra/baseUrl.ts liest die Konfiguration nicht.');
   assert.match(
     lies('src/infra/config.ts'),
     /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
@@ -143,7 +143,7 @@ test('3. one source for QR code, mail button and reset links', () => {
       !/process\.env\.APP_BASE_URL/.test(source),
       `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`,
     );
-    assert.match(source, /basisUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
+    assert.match(source, /baseUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
   }
 
   // The QR branch must not guess a host: for this code the same applies as

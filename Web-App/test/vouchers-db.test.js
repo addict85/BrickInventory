@@ -317,7 +317,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         [400, 'current_password_wrong'],
         'Freigabe nur mit Passwort',
       );
-      await db.run("DELETE FROM admin_log WHERE action IN ('gutschein_pdf', 'gutschein_export')");
+      await db.run("DELETE FROM admin_log WHERE action IN ('voucher_pdf', 'voucher_export')");
       const f = await (
         await jsonAn(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
@@ -368,10 +368,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual(
         (
           await db.all(
-            "SELECT action, target_id FROM admin_log WHERE action IN ('gutschein_pdf', 'gutschein_export') ORDER BY id",
+            "SELECT action, target_id FROM admin_log WHERE action IN ('voucher_pdf', 'voucher_export') ORDER BY id",
           )
         ).map(z => z.action),
-        ['gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_export'],
+        ['voucher_pdf', 'voucher_pdf', 'voucher_pdf', 'voucher_pdf', 'voucher_export'],
         'die Freigabe steht im Protokoll',
       );
     });
@@ -493,7 +493,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         password: PASS,
       });
       assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
-      await db.run("DELETE FROM admin_log WHERE action = 'gutschein_klartext'");
+      await db.run("DELETE FROM admin_log WHERE action = 'voucher_plaintext'");
       const k = await jsonAn(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {
         password: PASS,
       });
@@ -504,7 +504,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         pin: '5225',
       });
       assert.deepEqual(
-        await db.all("SELECT admin_id, target_id, details FROM admin_log WHERE action = 'gutschein_klartext'"),
+        await db.all("SELECT admin_id, target_id, details FROM admin_log WHERE action = 'voucher_plaintext'"),
         [{ admin_id: U.grandparent, target_id: U.grandparent, details: '…1166' }],
         'der Abruf steht im Protokoll',
       );

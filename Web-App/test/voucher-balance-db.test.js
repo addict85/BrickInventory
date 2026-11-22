@@ -261,7 +261,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   await t.test('7. an unknown issuing country stops the query', async () => {
     await limitFree();
     await db.run(
-      `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-XX')
+      `INSERT INTO global_settings (key,value) VALUES ('voucher_country','de-XX')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
     const vorher = abfragen();
@@ -275,13 +275,13 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       'Es wurde mit einem Land gefragt, das es nicht gibt — die Adresse dafür ' +
         'existiert bei LEGO nicht, und die Absage gehört VOR den Aufruf.',
     );
-    await db.run(`DELETE FROM global_settings WHERE key='gutschein_land'`);
+    await db.run(`DELETE FROM global_settings WHERE key='voucher_country'`);
   });
 
   await t.test('8. the configured country really goes along', async () => {
     await limitFree();
     await db.run(
-      `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-DE')
+      `INSERT INTO global_settings (key,value) VALUES ('voucher_country','de-DE')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
     protokoll.length = 0;
@@ -301,7 +301,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       true,
       'Eine geänderte Währung ist eine geänderte Summe — sie muss gemeldet werden.',
     );
-    await db.run(`DELETE FROM global_settings WHERE key='gutschein_land'`);
+    await db.run(`DELETE FROM global_settings WHERE key='voucher_country'`);
     await db.run(`UPDATE vouchers SET currency='CHF' WHERE id=$1`, [WITH_PIN]);
   });
 

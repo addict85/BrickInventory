@@ -103,7 +103,7 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     // Without interference account and entry arise together.
     const id = await K.addAccount(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
     const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
-    assert.equal(eintrag?.action, 'konto_angelegt');
+    assert.equal(eintrag?.action, 'account_created');
   });
 
   await t.test('if the log entry fails while locking, the account stays active', async () => {

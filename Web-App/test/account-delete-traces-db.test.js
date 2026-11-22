@@ -54,7 +54,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, `8${P % 100000}-1`]);
   await db.run(
     `INSERT INTO admin_log (admin_id, target_id, target_name, action)
-    VALUES ($1, $2, $3, 'passwort_gesetzt')`,
+    VALUES ($1, $2, $3, 'password_set')`,
     [chef, uid, NAME],
   );
   const client = await db.pool.connect();
@@ -113,14 +113,14 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     const alt = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
-      VALUES (NOW() - INTERVAL '400 days', $1, $1, 'alt', 'konto_angelegt') RETURNING id`,
+      VALUES (NOW() - INTERVAL '400 days', $1, $1, 'alt', 'account_created') RETURNING id`,
         [chef],
       )
     ).id;
     const jung = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
-      VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'konto_angelegt') RETURNING id`,
+      VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'account_created') RETURNING id`,
         [chef],
       )
     ).id;

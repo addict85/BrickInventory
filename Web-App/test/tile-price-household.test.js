@@ -94,12 +94,12 @@ test('the web takes over the server values', () => {
   new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(von, bis))(
     {
       sets: [
-        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'kauf' },
-        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'kauf' },
+        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'purchase' },
+        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'purchase' },
       ],
     },
     pnlBySet,
     () => {},
   );
-  assert.deepEqual(pnlBySet, { 'A-1': { price: 10.5, pnl_pct: 12.3, source: 'kauf' } });
+  assert.deepEqual(pnlBySet, { 'A-1': { price: 10.5, pnl_pct: 12.3, source: 'purchase' } });
 });

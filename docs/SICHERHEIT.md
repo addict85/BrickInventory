@@ -123,7 +123,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
   selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
   10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
-  `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-login-brake`,
+  `rumpfFrist` in `routes/api/middleware.ts` — `caddy-login-brake`,
   `security-server-limits-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
@@ -247,7 +247,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `change-password`, `logout` und `POST /geraet/schluessel` (der
   Geräteschlüssel der App, den der Server nur gleich nach der Anmeldung
   annimmt), sonst 403 `passwort_wechsel_noetig`: `VOR_DEM_WECHSEL` in
-  `routes/api_v1/middleware.ts` — `password-required-switch-db`, `step-protection-db`.
+  `routes/api/middleware.ts` — `password-required-switch-db`, `step-protection-db`.
 - Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
   (Index, Migration 0090) — `account-create-db`.
 - „Alle meine Daten löschen" nur mit Passwort — `everything-delete-household-db`.
@@ -290,7 +290,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `image_local` nur im Blickfeld: `src/images/imageScope.ts` —
   `image-scope-db`, `catalog-images-db`.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
-  deren Besitzer: `routes/api_v1/sets.ts` — `parts-import-ownership-db`.
+  deren Besitzer: `routes/api/sets.ts` — `parts-import-ownership-db`.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
@@ -312,11 +312,11 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `routes/imgProxy.ts` — `image-cache-source-db`.
 - Geteilte Anleitungen ersetzen (löschen und neu holen) nur der Verwalter;
   wer das Set hat, holt nur fehlende, einmal je Set und Tag:
-  `routes/api_v1/sets.ts` — `instruction-new-load-db`.
+  `routes/api/sets.ts` — `instruction-new-load-db`.
 
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
-  Konto: `routes/api_v1/sets.ts`, `src/http/fileUpload.ts` — `upload-limits-db`.
+  Konto: `routes/api/sets.ts`, `src/http/fileUpload.ts` — `upload-limits-db`.
 - Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/vouchers/pdfParsing.ts` — `voucher-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
   Gutscheine: `src/vouchers/voucherFiles.ts` — `account-files-db`.

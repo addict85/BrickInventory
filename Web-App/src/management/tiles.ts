@@ -1,4 +1,4 @@
-/** The admin's tiles as a view on auftraege.fortschritt (k.fortschritt()):
+/** The admin's tiles as a view on jobs.progress:
  * a second store could contradict the first. */
 
 import { logAndContinue } from '../infra/error';

@@ -125,6 +125,6 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     await E.enqueueInstruction('10005');
     await E.enqueueInstruction('10005-1');
     const z = await require('./helpers/sources').testServices().jobQueue.countKind('instructions');
-    assert.equal(z.open + z.running, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
+    assert.equal(z.pending + z.running, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

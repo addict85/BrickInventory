@@ -157,16 +157,16 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   });
 
   await t.test('clearing discards waiting ones, not the schedule', async () => {
-    const r = await rufe('DELETE', '/admin/job-queue/kind/anleitung');
+    const r = await rufe('DELETE', '/admin/job-queue/kind/instructions');
     assert.deepEqual([r.status, r.body.removed], [200, 2]);
     await A.placeJobOne('prices', {}, {});
-    const r2 = await rufe('DELETE', '/admin/job-queue/kind/preise');
+    const r2 = await rufe('DELETE', '/admin/job-queue/kind/prices');
     assert.equal(r2.body.removed, 1, 'der einzelne Preis-Auftrag ist weg');
     assert.ok(await plan('prices'), 'der geplante Preis-Lauf wurde mit geleert');
   });
 
   await t.test('now brings the scheduled run forward', async () => {
-    const r = await rufe('POST', '/admin/job-queue/kind/aufraeumen/now');
+    const r = await rufe('POST', '/admin/job-queue/kind/cleanup/now');
     assert.deepEqual([r.status, r.body.started], [200, true]);
     assert.ok(new Date((await plan('cleanup')).due_at) <= new Date());
   });

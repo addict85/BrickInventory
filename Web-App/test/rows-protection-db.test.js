@@ -231,15 +231,15 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       gesehen[name] = ids(await allSets());
     };
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
-      wechselkurse: { ausfuehren: see('ohne Marke') },
-      nacharbeit: {
+      exchange_rates: { ausfuehren: see('ohne Marke') },
+      rework: {
         ausfuehren: async () => {
           await see('Konto')();
           throw new Error('gescheitert');
         },
         givenUp: see('Konto aufgegeben'),
       },
-      preise: { ausfuehren: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
+      prices: { ausfuehren: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
     });
     await A_.placeJobOne('exchange_rates', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);

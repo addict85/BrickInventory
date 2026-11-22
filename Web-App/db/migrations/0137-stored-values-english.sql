@@ -1,8 +1,9 @@
 -- The remaining stored values of API v2 in English: announced admin actions, alert directions,
--- passkey challenge purposes, the actions of the admin log and the setting key of the voucher country. API v1 shows the
--- former values through its mapping (src/contract/v1Names.ts). The tables are locked so that no
--- old process writes a German value in between; afterwards the checks reject them.
-LOCK TABLE admin_takeovers, price_alerts, webauthn_challenges, admin_log, global_settings IN ACCESS EXCLUSIVE MODE;
+-- passkey challenge purposes, price corrections of waiting wanted-list imports, admin log actions
+-- and the setting key of the voucher country. API v1 shows the former values through its mapping
+-- (src/contract/v1Names.ts). The tables are locked so that no old process writes a German value
+-- in between; afterwards the checks reject them.
+LOCK TABLE admin_takeovers, price_alerts, webauthn_challenges, jobs, admin_log, global_settings IN ACCESS EXCLUSIVE MODE;
 
 ALTER TABLE admin_takeovers DROP CONSTRAINT admin_takeovers_type_check;
 ALTER TABLE admin_takeovers DROP CONSTRAINT admin_takeovers_check;
@@ -22,6 +23,12 @@ UPDATE webauthn_challenges SET purpose = CASE purpose
   WHEN 'registrieren' THEN 'register' WHEN 'anmelden' THEN 'login' WHEN 'zweiter_faktor' THEN 'second_factor' ELSE purpose END;
 ALTER TABLE webauthn_challenges ADD CONSTRAINT webauthn_challenges_purpose_check
   CHECK (purpose IN ('register', 'login', 'second_factor'));
+
+UPDATE jobs SET payload = jsonb_set(payload, '{eingabe,corrections}', (
+  SELECT jsonb_agg(CASE WHEN c ? 'kaufpreis' THEN (c - 'kaufpreis') || jsonb_build_object('purchase_price', c->'kaufpreis') ELSE c END)
+    FROM jsonb_array_elements(payload->'eingabe'->'corrections') c))
+ WHERE type = 'csv_import' AND status IN ('pending', 'running') AND payload->>'source' = 'wanted_xml'
+   AND jsonb_typeof(payload->'eingabe'->'corrections') = 'array' AND jsonb_array_length(payload->'eingabe'->'corrections') > 0;
 
 UPDATE admin_log SET action = CASE action
   WHEN 'konto_angelegt' THEN 'account_created' WHEN 'passwort_gesetzt' THEN 'password_set'

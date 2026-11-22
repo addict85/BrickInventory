@@ -52,7 +52,7 @@ export interface Enqueue {
   afterSeconds?: number;
   /** Takes precedence over afterSeconds. */
   dueAb?: Date;
-  fortschritt?: Progress;
+  progress?: Progress;
 }
 
 export type Claim = Pick<JobRow, 'id' | 'locked_by'>;

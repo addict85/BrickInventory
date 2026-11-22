@@ -399,16 +399,17 @@ steht in `test/types/contractRouter.typprobe.ts`.
 
 ### Namen
 
-Pfade und Feldnamen der API sind Vertrag: App und Webapp hängen daran, sie
-bleiben, wie sie sind, auch wo sie uneinheitlich sind. Neue Routen und Felder
-folgen der Mehrheit: Pfade englisch im Plural mit Bindestrich, Pfadparameter
-`:setNumber`, `:partNumber`, `:figNumber`, `:id`; Felder `snake_case`. Bestand
-der Abweichungen (Stand 11.11.2026):
+Pfade und Feldnamen der API sind Vertrag: App und Webapp hängen daran. Unter
+`/api/v2` sind Pfade, Felder, Werte und Fehlercodes englisch; `/api/v1` ist bis
+zum 30.06.2027 ein Alias mit den früheren, teils deutschen Namen
+(`src/contract/v1Names.ts`, `src/contract/v1Routes.ts`, `src/http/apiV1Alias.ts`).
+Neue Routen und Felder folgen der Mehrheit: Pfade englisch im Plural mit
+Bindestrich, Pfadparameter `:setNumber`, `:partNumber`, `:figNumber`, `:id`;
+Felder `snake_case`. Verbliebene Abweichungen unter v2 (Stand 22.11.2026):
 
 | Art | Beispiele |
 |---|---|
-| Sprache gemischt | `/admin/auftraege` neben `/admin/jobs`, `/auth/zweiter-faktor` neben `/auth/change-password`, `/papierkorb`, `/wanted/…/uebernehmen`, `/settings/einrichtung` |
-| gleiche Sache, zwei Namen | Felder `set_number`/`nummer`, `condition`/`zustand`, `currency`/`currency_code`/`waehrung`, `quantity`/`menge`, `storage`/`ort`; „Job“ und „Auftrag“ für die Hintergrundarbeit (`/admin/jobs`, `/admin/job-status` neben `/admin/auftraege`) |
+| gleiche Sache, zwei Namen | `currency`/`currency_code`; „Job“ für die Hintergrundarbeit (`/admin/jobs`, `/admin/job-status` neben `/admin/job-queue`) |
 | Parameter | `:sn` (`/sets/:sn/move`) statt `:setNumber`; Abkürzungen `:acqId`, `:instrId`, `:tokenId`, `:jobId` |
 | Schreibweise | `camelCase` in einigen Antworten (`isAdmin`, `mustChangePassword`, `jobId`, `etaSeconds`) |
 | Form | `/sets/:setNumber/alert` neben `/alerts`; `parts-list`, `minifigs-list`, aber `partslist-pdf`; `/wanted-list/import/xml` neben `/wanted/import/csv`; `/finance/pnl` |

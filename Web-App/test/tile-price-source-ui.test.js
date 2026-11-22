@@ -1,13 +1,13 @@
 /**
  * The collection tile names where its amount comes from. Without a market price
- * the server delivers the purchase price as kachel_preis — with kachel_quelle 'kauf', and
+ * the server delivers the purchase price as kachel_preis — with kachel_quelle 'purchase', and
  * the tile writes „Kaufpreis“ instead of „Marktpreis“. The values come from the
  * real server calculation (tileValues), shown by the real bundle in jsdom.
  *
  * Counter-checks (measured on 03.11.2026):
  *   A  in priceRow() again `markt = !!s._price` → red: „ohne Marktpreis“
  *      (tile showed „Marktpreis 99,99 €“)
- *   B  in tileValues() kachel_quelle always 'markt' → red: „ohne Marktpreis“
+ *   B  in tileValues() kachel_quelle always 'market' → red: „ohne Marktpreis“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,8 +28,8 @@ const row = (nr, markt, kauf) => ({
 
 test('tile price: market and purchase price labeled as the server delivers them', async () => {
   const k = tileValues([row('42115-1', 0, 99.99), row('21318-1', 186.2, 199.99)]);
-  assert.equal(k.get('42115-1').tile_source, 'kauf');
-  assert.equal(k.get('21318-1').tile_source, 'markt');
+  assert.equal(k.get('42115-1').tile_source, 'purchase');
+  assert.equal(k.get('21318-1').tile_source, 'market');
   const { w, d } = await openUi({
     '/v2/sets': {
       success: true,

@@ -142,7 +142,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   };
   const abortLink = async uid => {
     const an = `${namen[ids.indexOf(uid)]}@beispiel.de`;
-    const m = () => [...mails].reverse().find(x => x.type === 'uebernahme_angekuendigt' && x.an === an);
+    const m = () => [...mails].reverse().find(x => x.type === 'takeover_announced' && x.an === an);
     await bis(() => m(), 1000);
     return m()?.abbruch;
   };
@@ -218,7 +218,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('first revoke the role, then take over: both announced', async () => {
     inFrist(await ruf('PUT', `/users/${vw2}/admin`, { is_admin: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw2}/password`, { password: NEU, admin_password: PASS }));
-    assert.deepEqual(await open(vw2), ['passwort', 'rolle_entziehen']);
+    assert.deepEqual(await open(vw2), ['password', 'revoke_role']);
     assert.equal((await state(vw2)).neuesPasswort, false);
   });
 
@@ -250,7 +250,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
         body: JSON.stringify({ token }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
     assert.equal((await abbrechen('falsch')).body.code, 'cancel_link_invalid');
-    assert.deepEqual(await open(vw7), ['deaktivieren', 'passwort']);
+    assert.deepEqual(await open(vw7), ['deactivate', 'password']);
     const r = await abbrechen(link);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(await open(vw7), []);
@@ -295,7 +295,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     assert.equal(m.status, 200, JSON.stringify(m.body));
     const b = await roh(`/qr-pairing/${qr.body.pairing}/confirm`, { code: m.body.code });
     assert.equal(b.status, 200, JSON.stringify(b.body));
-    assert.deepEqual(await open(vw), ['passwort']);
+    assert.deepEqual(await open(vw), ['password']);
     const a = await roh('/qr-login/collect', { pickup: m.body.pickup });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await open(vw), []);
@@ -304,7 +304,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('the account list shows announced changes with their time', async () => {
     const r = await fetch(`${base}/api/v2/auth/users`).then(x => x.json());
     const z = r.users.find(u => u.id === vw2);
-    assert.deepEqual(z.announced.map(a => a.type).sort(), ['passwort', 'rolle_entziehen']);
+    assert.deepEqual(z.announced.map(a => a.type).sort(), ['password', 'revoke_role']);
     assert.ok(z.announced.every(a => Date.parse(a.effective_at) > Date.now()));
   });
 

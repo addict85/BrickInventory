@@ -175,7 +175,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     assert.equal((await inList()).awaiting_confirmation, false);
     assert.equal(
       (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu])).action,
-      'konto_freigeschaltet',
+      'account_unlocked',
     );
     const nochmal = await rufe('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
     assert.deepEqual([nochmal.status, nochmal.body.code], [409, 'account_not_pending']);

@@ -69,13 +69,13 @@ test('setup state without login', { concurrency: 1 }, async t => {
     assert.equal(typeof s.required, 'boolean');
   }
   // An initial password is still set; without an admin „konto“ only means „there is one“.
-  const konto = d.steps.find(s => s.id === 'konto');
+  const konto = d.steps.find(s => s.id === 'account');
   assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
   assert.equal(d.base_url, null, 'ohne Verwalter keine Basis-URL');
   const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const dv = await (await fetch(verwalter.base + '/api/v2/setup/state')).json();
   assert.equal(
-    dv.steps.find(s => s.id === 'konto').ok,
+    dv.steps.find(s => s.id === 'account').ok,
     false,
     'für den Verwalter steht das Konto erst auf bereit, wenn das Startpasswort ersetzt ist',
   );

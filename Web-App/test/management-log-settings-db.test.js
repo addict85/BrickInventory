@@ -78,7 +78,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
     assert.equal(status, 200, JSON.stringify(b));
     const e = await eigene();
     assert.equal(e.length, 1, JSON.stringify(e));
-    assert.equal(e[0].action, 'einstellungen_geaendert');
+    assert.equal(e[0].action, 'settings_changed');
     assert.deepEqual(e[0].details.split(', ').sort(), ['rebrickable_api_key', 'registration_enabled', 'smtp_host']);
     assert.ok(!JSON.stringify(e).includes(GEHEIM) && !JSON.stringify(e).includes('mail.neu.example'));
   });

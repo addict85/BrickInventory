@@ -130,8 +130,10 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
       });
       const text = await r.text();
       assert.equal(r.status, 400, path);
+      // request_id leads from a screenshot to the log lines; it differs per request.
+      const { request_id: _rid, ...body } = JSON.parse(text);
       assert.deepEqual(
-        JSON.parse(text),
+        body,
         { success: false, code: 'request_json_invalid', error: 'Die Anfrage ist kein gültiges JSON' },
         path,
       );

@@ -39,10 +39,8 @@ export interface AlarmInput {
 }
 
 /** Exports before API v2 wrote the direction in German. */
-const csvDirection = (raw: unknown) => {
-  const r = String(raw ?? '')
-    .trim()
-    .toLowerCase();
+const csvDirection = (raw: string | undefined) => {
+  const r = (raw ?? '').trim().toLowerCase();
   return r === 'unter' ? 'below' : r === 'ueber' ? 'above' : r;
 };
 

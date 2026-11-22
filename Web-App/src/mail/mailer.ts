@@ -324,11 +324,11 @@ type NoticeDetails = {
 function takeover(o: NoticeDetails, en: boolean): { was: string; bis: string } {
   const kinds = (o.was ?? '').split(', ');
   const sentence: Record<string, [string, string]> = {
-    passwort: ['ein neues Passwort setzen', 'set a new password'],
+    password: ['ein neues Passwort setzen', 'set a new password'],
     second_factor: ['den zweiten Faktor entfernen', 'remove the second factor'],
-    deaktivieren: ['das Konto deaktivieren', 'deactivate the account'],
-    rolle_entziehen: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
-    loeschen: ['das Konto löschen', 'delete the account'],
+    deactivate: ['das Konto deaktivieren', 'deactivate the account'],
+    revoke_role: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
+    delete: ['das Konto löschen', 'delete the account'],
   };
   const was = kinds.map(a => (sentence[a] ?? ['', ''])[en ? 1 : 0]).join(en ? ' and ' : ' und ');
   return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };

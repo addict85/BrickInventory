@@ -235,7 +235,9 @@ test('server limits: slow requests, error texts, foreign hosts', {
         method: 'PUT',
         body: JSON.stringify({ owner_user_id: bob }),
       });
-      return [r.status, await r.json()];
+      // request_id differs per request by design; the rest must not tell the two apart.
+      const { request_id: _rid, ...body } = await r.json();
+      return [r.status, body];
     };
     const fremd = await umhaengen(acq),
       fehlt = await umhaengen(2_000_000_000);

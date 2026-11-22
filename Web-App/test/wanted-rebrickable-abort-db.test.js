@@ -65,7 +65,7 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
 
   await t.test('without a key: aborted with reason kein_schluessel', async () => {
     const r = await resolveViaRebrickableOn(items(3));
-    assert.equal(r.aborted, 'kein_schluessel');
+    assert.equal(r.aborted, 'no_key');
     assert.equal(r.found, 0);
   });
 
@@ -82,7 +82,7 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
 
   await t.test('server error 500 is not “unknown”', async () => {
     const { ergebnis, anfragen } = await withResponse(500, () => resolveViaRebrickableOn(items(3)));
-    assert.equal(ergebnis.aborted, 'stoerung');
+    assert.equal(ergebnis.aborted, 'failure');
     assert.equal(anfragen, 1, 'nach dem ersten Fehler weiter gefragt');
   });
 
@@ -91,7 +91,7 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
                   ON CONFLICT (key) DO UPDATE SET value = '1'`);
     await k.setQuotaBack('rebrickable');
     const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
-    assert.equal(ergebnis.aborted, 'kontingent');
+    assert.equal(ergebnis.aborted, 'quota');
     assert.equal(anfragen, 1, 'nur der eine Aufruf des Kontingents ging hinaus');
   });
 });

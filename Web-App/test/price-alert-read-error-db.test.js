@@ -54,7 +54,7 @@ test('price alerts: a read error is not an empty list', { concurrency: 1 }, asyn
   );
   await t.test('setzeAlarm reads after writing', () =>
     assert.rejects(
-      asAccount(uid, () => p.setAlert(uid, SN, 'EUR', { direction: 'unter', threshold: 10, condition: 'N' })),
+      asAccount(uid, () => p.setAlert(uid, SN, 'EUR', { direction: 'below', threshold: 10, condition: 'N' })),
       /Tabelle gestört/,
     ),
   );

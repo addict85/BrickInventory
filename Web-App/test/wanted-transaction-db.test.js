@@ -73,7 +73,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
   const alarm = uid =>
     db.run(
       `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
-                                  VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`,
+                                  VALUES ($1, '75192-1', 'N', 'below', 500, 'EUR')`,
       [uid],
     );
   const merk = async uid =>

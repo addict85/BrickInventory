@@ -167,7 +167,7 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
   const { w, d } = await openUi({
     '/v2/settings/raw': {
       success: true,
-      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', gutschein_land: 'de-CH' },
+      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', voucher_country: 'de-CH' },
     },
     '/v2/vouchers': {
       success: true,
@@ -195,7 +195,7 @@ test('create price alert in its view', async () => {
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
     const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
     assert.match(ruf.url, /\/v2\/sets\/10294-1\/alert$/);
-    assert.deepEqual(JSON.parse(ruf.body), { direction: 'unter', threshold: 599.9, condition: 'N' });
+    assert.deepEqual(JSON.parse(ruf.body), { direction: 'below', threshold: 599.9, condition: 'N' });
   } finally {
     w.close();
   }

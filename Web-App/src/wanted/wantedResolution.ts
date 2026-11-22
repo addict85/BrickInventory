@@ -97,8 +97,8 @@ export async function resolveLocalOn(
 export type RebrickableAbort = 'quota' | 'no_key' | 'failure';
 /** Two phases, because the Rebrickable fetches take much longer. */
 export type WantedProgress = {
-  phase: 'rebrickable' | 'schreiben';
-  fertig: number;
+  phase: 'rebrickable' | 'write';
+  done: number;
   total: number;
 };
 
@@ -149,7 +149,7 @@ export async function resolveViaRebrickableOn(
       result[i] = { ...a, rbId, confidence: 'rebrickable' };
     }
     // After the fetch: "37 of 50" means 37 done.
-    progress?.({ phase: 'rebrickable', fertig: asked, total });
+    progress?.({ phase: 'rebrickable', done: asked, total });
   }
   return { auf: result, asked, found, filterIneffective: k.externalSources.sources.blFilterIneffective() };
 }
@@ -168,7 +168,7 @@ export interface Correction {
   /** null means "the account's default". */
   condition?: string | null | undefined;
   /** null means "none, fetch the market price". */
-  kaufpreis?: number | null | undefined;
+  purchase_price?: number | null | undefined;
 }
 
 /** Three queries for the whole list, not one per item. */
@@ -283,10 +283,10 @@ export function applyCorrections(
       }
     }
     let maxPrice = a.items.maxPrice;
-    if (k.kaufpreis !== undefined) {
-      if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPrice = null;
+    if (k.purchase_price !== undefined) {
+      if (k.purchase_price === null || (k.purchase_price as unknown) === '') maxPrice = null;
       else {
-        const p = Number(k.kaufpreis);
+        const p = Number(k.purchase_price);
         // 0 means "none", like MAXPRICE in the reader.
         if (!Number.isFinite(p) || p < 0) {
           rejected.push(k);

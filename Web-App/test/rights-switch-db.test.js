@@ -204,13 +204,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idTarget]);
     assert.deepEqual(
       prot.map(p => p.action),
-      [
-        'uebernahme_angekuendigt',
-        'verwalter_entzogen',
-        'verwalter_ernannt',
-        'uebernahme_angekuendigt',
-        'konto_geloescht',
-      ],
+      ['takeover_announced', 'admin_revoked', 'admin_appointed', 'takeover_announced', 'account_deleted'],
     );
     assert.ok(
       prot.every(p => p.target_name === ZIEL),

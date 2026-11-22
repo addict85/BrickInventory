@@ -65,7 +65,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     }
     assert.equal(meldungen.length, 1, 'Hinweis im Protokoll');
     const h = (await jobs()).proxy_hint;
-    assert.deepEqual([h?.kind, h?.vars?.ip], ['eine_adresse', '172.28.73.20'], JSON.stringify(h));
+    assert.deepEqual([h?.kind, h?.vars?.ip], ['single_address', '172.28.73.20'], JSON.stringify(h));
     assert.ok(h.vars.minutes >= 60 && h.vars.count >= EINE_ADDRESS.anfragen, JSON.stringify(h));
   });
 
@@ -86,6 +86,6 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     } finally {
       console.warn = leise;
     }
-    assert.deepEqual(proxyHintStatus(echt), { kind: 'docker_netz', vars: { ip: '172.28.73.30' } });
+    assert.deepEqual(proxyHintStatus(echt), { kind: 'docker_network', vars: { ip: '172.28.73.30' } });
   });
 });

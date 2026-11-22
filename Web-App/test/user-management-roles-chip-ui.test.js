@@ -42,7 +42,7 @@ test('X on the administrator chip revokes after confirmation', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v2/auth/users': () => ({
       success: true,
-      users: [ANNA, BEN, { ...CARLA, announced: announced ? [{ type: 'rolle_entziehen', effective_at: AB }] : [] }],
+      users: [ANNA, BEN, { ...CARLA, announced: announced ? [{ type: 'revoke_role', effective_at: AB }] : [] }],
     }),
     '/v2/auth/users/3/admin': () => {
       announced = true;

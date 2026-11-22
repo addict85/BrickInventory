@@ -176,7 +176,7 @@ test('a foreign account sees and changes no data of another via any route', {
   const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
   await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
   await ok('PUT', `/api/v2/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
-  await ok('PUT', `/api/v2/sets/${SET}/alert`, { direction: 'unter', threshold: 30, condition: 'N' });
+  await ok('PUT', `/api/v2/sets/${SET}/alert`, { direction: 'below', threshold: 30, condition: 'N' });
   const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [opfer, SET]))
     .id;
   const pdf = await pdfWith(['Bauanleitung']);

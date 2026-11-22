@@ -280,7 +280,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   // in truth it was 1995 — Marco's finding.
   check(
     'Etikett rechnet über die Verteilung',
-    /_catYearDistribution/.test(source) && /year-verteilung/.test(source),
+    /_catYearDistribution/.test(source) && /year-distribution/.test(source),
     null,
   );
   check('keine lineare Schätzung mehr', !/_catYearMax - anteil \* spanne/.test(source), null);

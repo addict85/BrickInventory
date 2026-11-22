@@ -30,7 +30,7 @@ export interface WantedReport {
   corrections?: { applied: number; rejected: Correction[] };
   created: number;
   topped_up: number;
-  error: number;
+  failed: number;
   /** true = NOTHING was written. */
   preview: boolean;
   /** The numbers above apply to what happened until the abort. */
@@ -106,14 +106,14 @@ export async function importWantedList(
     ...(corrections ? { corrections } : {}),
     created: 0,
     topped_up: 0,
-    error: 0,
+    failed: 0,
     preview: !!opt.preview,
     defaultCondition: await k.settings.userDefaultCondition(uid),
     items: [],
   };
 
   let seq = -1;
-  const melde = () => opt.progress?.({ phase: 'schreiben', fertig: seq + 1, total: auf.length });
+  const melde = () => opt.progress?.({ phase: 'write', done: seq + 1, total: auf.length });
 
   for (const a of auf) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
@@ -143,7 +143,7 @@ export async function importWantedList(
       else bericht.topped_up++;
       row.outcome = how;
     } catch (e: unknown) {
-      bericht.error++;
+      bericht.failed++;
       row.outcome = 'error';
       row.reason = e instanceof Error ? e.message : String(e);
     }

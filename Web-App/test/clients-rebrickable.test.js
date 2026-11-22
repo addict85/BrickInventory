@@ -62,12 +62,12 @@ test('without key or quota a set lookup is locked; the access check uses the sam
   const stub = await httpsStub(t, byPath({ [`${API}/themes/`]: [200, { count: 1, next: null, results: [] }] }));
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } })).holeSet('10294-1'),
-    (/** @type {any} */ err) => err instanceof rb.RebrickableLocked && err.reason === 'kein_schluessel',
+    (/** @type {any} */ err) => err instanceof rb.RebrickableLocked && err.reason === 'no_key',
   );
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ allowed: false })).holeSet('10294-1'),
     (/** @type {any} */ err) =>
-      err instanceof rb.RebrickableLocked && err.reason === 'kontingent' && /100\/Tag/.test(err.message),
+      err instanceof rb.RebrickableLocked && err.reason === 'quota' && /100\/Tag/.test(err.message),
   );
   assert.equal(stub.calls.length, 0);
   await rb.createRebrickable(clientsAccess()).checkRebrickableAccess();

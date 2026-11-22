@@ -18,7 +18,7 @@ const { spawn } = require('node:child_process');
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
 process.env.APP_ROOT = wurzel;
 const _req = require('./helpers/sources').buildAndRequire();
-const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startpasswort.js'));
+const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startPassword.js'));
 
 test.after(() => fs.rmSync(wurzel, { recursive: true, force: true }));
 

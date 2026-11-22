@@ -21,9 +21,9 @@ export const WantedCorrection = z.object({
   rbColor: z.number().int().nullish(),
   quantity: z.number().optional(),
   condition: z.string().max(16).nullish(),
-  kaufpreis: z.number().nullish(),
+  purchase_price: z.number().nullish(),
 });
-v1Keys(WantedCorrection, { quantity: 'menge', condition: 'zustand' });
+v1Keys(WantedCorrection, { quantity: 'menge', condition: 'zustand', purchase_price: 'kaufpreis' });
 export const WantedCorrections = z.array(WantedCorrection).max(100_000);
 
 const ImportPayloadSchema = z.discriminatedUnion('source', [

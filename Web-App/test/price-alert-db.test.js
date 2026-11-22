@@ -82,12 +82,12 @@ test('price alert against a real database', async t => {
 
   await t.test('the direction means what it says', () => {
     // The only place in the module where a sign error arises.
-    assert.equal(A.crosses('unter', 199, 200), true);
-    assert.equal(A.crosses('unter', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
-    assert.equal(A.crosses('unter', 201, 200), false);
-    assert.equal(A.crosses('ueber', 201, 200), true);
-    assert.equal(A.crosses('ueber', 200, 200), false, 'genau auf der Schwelle ist nicht darüber');
-    assert.equal(A.crosses('ueber', 199, 200), false);
+    assert.equal(A.crosses('below', 199, 200), true);
+    assert.equal(A.crosses('below', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
+    assert.equal(A.crosses('below', 201, 200), false);
+    assert.equal(A.crosses('above', 201, 200), true);
+    assert.equal(A.crosses('above', 200, 200), false, 'genau auf der Schwelle ist nicht darüber');
+    assert.equal(A.crosses('above', 199, 200), false);
   });
 
   await t.test('nonsensical input is rejected, not bent into shape', async () => {
@@ -100,20 +100,20 @@ test('price alert against a real database', async t => {
       ['threshold', 'abc'],
       ['condition', 'X'],
     ]) {
-      const eingabe = { direction: 'unter', threshold: 200, condition: 'N', [field]: wert };
+      const eingabe = { direction: 'below', threshold: 200, condition: 'N', [field]: wert };
       // Checked on `code`, not on the message: fachfehler() sets as
       // `message` the GERMAN sentence — a test on it would break on every
       // rephrasing without the behavior changing.
       await assert.rejects(
         () => A.setAlert(U.ich, SN, 'EUR', eingabe),
-        (/** @type {any} */ e) => String(e.code || '').startsWith('alarm_'),
+        (/** @type {any} */ e) => String(e.code || '').startsWith('alert_'),
         `${field}=${wert} wurde angenommen`,
       );
     }
   });
 
   await t.test('the TRANSITION is reported, not the state', async () => {
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
 
     // 1. Above the threshold — nothing to report.
     await setPrice(250);
@@ -146,7 +146,7 @@ test('price alert against a real database', async t => {
     // After check 5 the marker stands. Whoever changes the threshold wants an
     // answer — even if the old one has already reported once.
     await setPrice(150);
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 160, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 160, condition: 'N' });
     assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false);
     assert.equal(await pruefe(SN), 1, 'nach dem Ändern wurde nicht neu gemeldet');
   });
@@ -155,7 +155,7 @@ test('price alert against a real database', async t => {
     // 200 CHF are not 200 EUR. If there is no price in THE currency of the
     // alert, it is not wrong — only not answerable (yet).
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
-    await A.setAlert(U.ich, SN, 'CHF', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'CHF', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(10, 'N', 'EUR'); // cheap, but in the wrong currency
     assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
     await setPrice(10, 'N', 'CHF');
@@ -167,7 +167,7 @@ test('price alert against a real database', async t => {
     // on „new" must not be triggered by a used price.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(50, 'U');
     assert.equal(await pruefe(SN), 0, 'der gebrauchte Preis hat den Neu-Alarm ausgelöst');
     await setPrice(150, 'N');
@@ -178,7 +178,7 @@ test('price alert against a real database', async t => {
     // The marker is set nevertheless — otherwise the check would run through
     // all alerts of this account again on every run.
     await db.run('DELETE FROM price_alerts', []);
-    await A.setAlert(U.ohnemail, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ohnemail, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 0, 'ohne Adresse darf nichts verschickt werden');
     assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
@@ -189,7 +189,7 @@ test('price alert against a real database', async t => {
     // although no mail ever arrived.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     sendingError = 'SMTP weg';
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 0);
@@ -209,7 +209,7 @@ test('price alert against a real database', async t => {
     // ago.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -228,7 +228,7 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.triggeredSince(U.ich, null)).now;
 
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -244,7 +244,7 @@ test('price alert against a real database', async t => {
         `last_triggered_at=${(await db.get('SELECT last_triggered_at FROM price_alerts'))?.last_triggered_at}`,
     );
     assert.equal(erste.alerts[0].set_number, SN);
-    assert.equal(erste.alerts[0].direction, 'unter');
+    assert.equal(erste.alerts[0].direction, 'below');
     // numeric comes out of the driver as a string — if it came through like that,
     // the message would say "200.00" instead of a number, and the app would compute
     // on a string.
@@ -272,7 +272,7 @@ test('price alert against a real database', async t => {
     // The finding, and why it turned the CI red twice
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
 
     const WITH_MICRO = '2026-09-19 20:29:58.527431+00';
     const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
@@ -305,7 +305,7 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.triggeredSince(U.ich, null)).now;
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -320,7 +320,7 @@ test('price alert against a real database', async t => {
     sent = [];
 
     let marke = (await A.triggeredSince(U.ich, null)).now;
-    await A.setAlert(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
+    await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
 
     /** A price run: set the price, check, fetch. Returns [mails, messages]. */
     const lauf = async preis => {

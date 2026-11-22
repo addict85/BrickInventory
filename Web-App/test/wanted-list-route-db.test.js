@@ -170,7 +170,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     const { body } = await hochladen(srv.base, XML, '?write=1');
     assert.equal(body.preview, false);
     assert.equal(body.created, 2, `${body.created} angelegt statt 2: ${JSON.stringify(body.items)}`);
-    assert.equal(body.error, 0, `${body.error} Fehler: ${JSON.stringify(body.items)}`);
+    assert.equal(body.failed, 0, `${body.failed} Fehler: ${JSON.stringify(body.items)}`);
 
     // Stage 2: the number stays, the color is mapped (BL 5 → RB 4).
     const a = await db.get(
@@ -246,7 +246,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     // so intermediate states can coincide. The last one always arrives.
     const melde = zeilen.filter(z => z.progress);
     assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
-    const fertig = melde.map(z => z.progress.fertig);
+    const fertig = melde.map(z => z.progress.done);
     assert.deepEqual(
       fertig,
       [...fertig].sort((a, b) => a - b),
@@ -254,8 +254,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     );
     assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
     for (const z of melde) {
-      assert.equal(z.fortschritt.total, 3, 'Der Nenner ist die Zahl der Posten');
-      assert.equal(z.fortschritt.phase, 'schreiben');
+      assert.equal(z.progress.total, 3, 'Der Nenner ist die Zahl der Posten');
+      assert.equal(z.progress.phase, 'write');
     }
 
     const letzte = zeilen[zeilen.length - 1];

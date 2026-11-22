@@ -168,11 +168,11 @@ test('a 401 leads back to the login, not into a dead UI', () => {
   assert.match(fn, /if \(!loggedInAccount\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
   assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
-  assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
+  assert.match(fn, /showLogin\(\{ expired: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
   // The message appears once in the login card (showLogin), not as a toast.
   assert.match(
     core,
-    /o\.abgelaufen \? (o\.hint \|\| )?tRaw\('auth\.session_expired'\)/,
+    /o\.expired \? (o\.hint \|\| )?tRaw\('auth\.session_expired'\)/,
     'Ohne Meldung wüsste niemand, warum',
   );
 

@@ -19,7 +19,7 @@ const DATEN = {
   setNumber: '10179-1',
   setName: 'Millennium Falcon',
   condition: 'N',
-  direction: 'unter',
+  direction: 'below',
   threshold: 200,
   price: 180,
   currency: 'CHF',

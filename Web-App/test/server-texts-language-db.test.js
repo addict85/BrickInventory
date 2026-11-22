@@ -58,7 +58,7 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
 
   await t.test('tiles with codes', async () => {
     const jobs = (await hole('admin/jobs', 'en')).jobs;
-    assert.deepEqual(jobs.bricksetRetry.sub_parts, [{ code: 'keine_ausstehenden' }]);
+    assert.deepEqual(jobs.bricksetRetry.sub_parts, [{ code: 'none_pending' }]);
     assert.deepEqual(jobs.pdfJobs?.sub_parts ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
     for (const [name, k] of Object.entries(jobs))
       if (k.sub_parts) for (const s of k.sub_parts) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);

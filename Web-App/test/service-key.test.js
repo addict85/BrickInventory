@@ -47,7 +47,7 @@ function satz(contexts = undefined) {
 }
 
 /** The clients of the external sources are not a service but its content; they count as one. */
-const GANZ = new Set(['quellen', 'drossel']);
+const GANZ = new Set(['sources', 'drossel']);
 
 /** Every service as `bereich.name` or `bereich.teil.name`. */
 function leaves(x, ago) {

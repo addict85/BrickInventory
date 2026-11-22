@@ -9,8 +9,8 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
-const { appSchnittstelle } = require('./helpers/contract');
-const { v2PathOf: V2_PATH_OF } = require('./helpers/sources').buildAndRequire()('src/http/apiV1Alias.js');
+const { appRoutes, appAddresses } = require('./helpers/contract');
+const _req = require('./helpers/sources').buildAndRequire();
 
 function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -115,8 +115,8 @@ test('every route has a caller or a registered reason', () => {
   const text = [
     ...sources.map(p => fs.readFileSync(p, 'utf8')),
     // The app still calls /api/v1 (the alias): its paths count under their v2 name.
-    ...appSchnittstelle().routen.map(r => V2_PATH_OF(r.methode, `/api${r.path}`).path),
-    ...appSchnittstelle().adressen,
+    ...appRoutes(_req).map(r => r.path),
+    ...appAddresses(_req),
   ].join('\n');
 
   assert.ok(routen.length >= 120, `Nur ${routen.length} Routen gefunden — Muster veraltet?`);

@@ -85,8 +85,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   async function jobPut(jobId, userId, status = 'done') {
     await db.run(
       `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
-                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
-                          CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
+                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'running' THEN 'test' END,
+                          CASE WHEN $3 = 'running' THEN NOW() + INTERVAL '1 hour' END)`,
       [jobs.pdfKey(jobId), userId, status === 'done' ? 'done' : 'running'],
     );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });

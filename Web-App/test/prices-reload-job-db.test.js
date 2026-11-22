@@ -10,7 +10,7 @@
  *      account and currency one open job” (two open ones) and “concurrent …”
  *   B  in ergaenzePreisAuftrag `DO UPDATE …` replaced by `DO NOTHING` → red:
  *      “per account and currency …” (the new items are missing)
- *   C  in setMoved again fixed 'offen' instead of OFFEN_ODER_ERSETZT → red:
+ *   C  in setMoved again fixed 'pending' instead of OFFEN_ODER_ERSETZT → red:
  *      “the running one goes back while its follow-up job waiting” (23505)
  *   D  the same in giveBack → red: the same test (23505 when giving back)
  *   E  `waiting = false` removed in belegeAuftrag → red: “postponed waiting, no longer occupies”
@@ -48,7 +48,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'price_refresh'`);
   const zeilen = () =>
     db.all(
-      `SELECT id::text AS id, status, waiting, payload->'posten' AS items, payload->>'waehrung' AS currency
+      `SELECT id::text AS id, status, waiting, payload->'items' AS items, payload->>'currency' AS currency
          FROM jobs WHERE type = 'price_refresh' AND user_id = $1 ORDER BY id`,
       [uid],
     );
@@ -72,8 +72,8 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     assert.deepEqual(
       z.map(x => [x.currency, x.status, x.items.map(p => p.number)]),
       [
-        ['CHF', 'offen', ['1-1', '2-1', '3-1']],
-        ['EUR', 'offen', ['9-1']],
+        ['CHF', 'pending', ['1-1', '2-1', '3-1']],
+        ['EUR', 'pending', ['9-1']],
       ],
     );
   });
@@ -110,8 +110,8 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     assert.deepEqual(
       (await zeilen()).map(x => [x.status, x.items.length]),
       [
-        ['laeuft', 1],
-        ['offen', 2],
+        ['running', 1],
+        ['pending', 2],
       ],
     );
   });
@@ -132,8 +132,8 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
       assert.deepEqual(
         z.map(x => [x.id, x.status]),
         [
-          [lauf.id, 'abgebrochen'],
-          [sequence, 'offen'],
+          [lauf.id, 'cancelled'],
+          [sequence, 'pending'],
         ],
       );
     }
@@ -146,12 +146,12 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     await D.moved(lauf, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
     assert.deepEqual(
       (await zeilen()).map(x => [x.status, x.waiting]),
-      [['offen', true]],
+      [['pending', true]],
     );
     await repo.claimJob(['price_refresh'], 60);
     assert.deepEqual(
       (await zeilen()).map(x => [x.status, x.waiting]),
-      [['laeuft', false]],
+      [['running', false]],
     );
   });
 
@@ -161,7 +161,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     const state = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);
     const gesehen = [];
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
-      preise_nachladen: {
+      price_refresh: {
         ausfuehren: async (_n, k) => {
           await k.progress({ done: 5.532, total: 8 });
           gesehen.push(await state());

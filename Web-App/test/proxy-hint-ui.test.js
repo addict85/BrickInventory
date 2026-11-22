@@ -32,7 +32,9 @@ const jobs = proxy_hint => ({
 });
 
 test('the hint is under background jobs', async () => {
-  const { w, d } = await openUi(jobs({ kind: 'eine_adresse', vars: { ip: '172.28.73.20', minutes: 61, count: 301 } }));
+  const { w, d } = await openUi(
+    jobs({ kind: 'single_address', vars: { ip: '172.28.73.20', minutes: 61, count: 301 } }),
+  );
   try {
     await reiter(w, 'monitor');
     await warte(() => d.getElementById('mon-proxy-hint'));

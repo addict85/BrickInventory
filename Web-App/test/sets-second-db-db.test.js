@@ -131,7 +131,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('price alert in the second database', async () => {
-    const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'unter', threshold: 12.5, condition: 'N' });
+    const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'below', threshold: 12.5, condition: 'N' });
     assert.equal(alarm.currency_code, 'CHF', 'die Währung des Alarms kommt aus der zweiten Datenbank');
     assert.equal((await sets.readSetAlerts(uid, SN)).length, 1);
     assert.equal(await sets.deleteAlarmOfSets(uid, SN, 'N'), 1);

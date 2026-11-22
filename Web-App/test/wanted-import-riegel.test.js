@@ -24,7 +24,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-const BERICHT = { success: true, preview: true, parsed: 1, items: [], created: 0, topped_up: 0, error: 0 };
+const BERICHT = { success: true, preview: true, parsed: 1, items: [], created: 0, topped_up: 0, failed: 0 };
 
 /** Opens the UI; requests to the XML import are answered by `antwort(nr)` (promise of a Response). */
 async function withImport(response) {
@@ -111,8 +111,8 @@ test('the latch opens again even after an error', async () => {
 
 test('the progress arrives piece by piece and fills the bar', async () => {
   const stuecke = [
-    `${JSON.stringify({ fortschritt: { phase: 'rebrickable', fertig: 1, total: 4 } })}\n{"success":true,"vorschau":tr`,
-    `ue,"gelesen":7,"posten":[]}\n`,
+    `${JSON.stringify({ progress: { phase: 'rebrickable', done: 1, total: 4 } })}\n{"success":true,"preview":tr`,
+    `ue,"parsed":7,"items":[]}\n`,
   ];
   let weiter;
   const { w, d, importe, choose } = await withImport(async () => ({

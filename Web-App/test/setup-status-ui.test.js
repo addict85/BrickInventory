@@ -47,8 +47,8 @@ test('the state shows ready or missing per check', async () => {
     await warte(() => d.querySelectorAll('#es-list .es-row').length === 6);
 
     assert.equal(d.querySelectorAll('#es-list .es-row').length, 6, 'jede Prüfung braucht eine Zeile');
-    assert.ok(d.getElementById('es-datenbank').classList.contains('ok'), 'bereit ist nicht als solches markiert');
-    assert.equal(d.querySelector('#es-datenbank .es-value').textContent, 'bereit', 'bereit steht als Text');
+    assert.ok(d.getElementById('es-database').classList.contains('ok'), 'bereit ist nicht als solches markiert');
+    assert.equal(d.querySelector('#es-database .es-value').textContent, 'bereit', 'bereit steht als Text');
     assert.ok(d.getElementById('es-ca').classList.contains('missing'));
     assert.equal(d.querySelector('#es-ca .es-value').textContent, 'fehlt');
     // The missing certificate names the reason, not only the color.

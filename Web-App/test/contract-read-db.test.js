@@ -31,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
 const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
-const { contractTo, appSchnittstelle } = require('./helpers/contract');
+const { contractTo, appRoutes } = require('./helpers/contract');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -228,9 +228,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     ..._req('src/jobQueue/service.js'),
     ...require('./helpers/sources').testArea('jobQueue').jobs,
   }.placeJobOne('instructions', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
-  await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
-    auftrag,
-  ]);
+  await db.run(`UPDATE jobs SET progress = '{"done":1,"total":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
   await db.run(`INSERT INTO job_pauses (type, until_at, reason) VALUES ('exchange_rates', NOW() + INTERVAL '1 hour', 'Vertrag')
                 ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason`);
   aufraeumen.push(
@@ -252,7 +250,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     .vouchers.createVoucher(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code, triggered, last_triggered_at, last_price)
-                VALUES ($1, $2, 'N', 'unter', 55, 'EUR', true, NOW(), 50)`,
+                VALUES ($1, $2, 'N', 'below', 55, 'EUR', true, NOW(), 50)`,
     [uid, SET],
   );
 
@@ -272,7 +270,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = appSchnittstelle().routen.filter(r => r.methode === 'GET');
+  const routen = appRoutes(_req).filter(r => r.methode === 'GET');
   const values = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const deviations = [],
@@ -327,7 +325,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   // Every route with page_size: page 2 of size 1 is empty, total still counts
   // the whole list, and without page_size everything comes.
   const { openapi } = _req('src/contract/openapi.js');
-  const paged = Object.entries(openapi().paths)
+  const paged = Object.entries(openapi(2).paths)
     .filter(([p, ops]) => !p.includes('{') && ops.get?.parameters?.some(x => x.name === 'page_size'))
     .map(([p]) => p);
   const pagesError = [];

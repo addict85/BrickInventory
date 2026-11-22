@@ -115,7 +115,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
       is_admin: true,
       admin_password: PASS,
     });
-    assert.deepEqual(await mails('verwalter_ernannt', 2), [
+    assert.deepEqual(await mails('admin_appointed', 2), [
       { an: NAMEN[0], konto: NAMEN[3], durch: NAMEN[0], name: undefined },
       { an: NAMEN[1], konto: NAMEN[3], durch: NAMEN[0], name: undefined },
     ]);
@@ -125,7 +125,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     gesendet.length = 0;
     await ruf('PUT', `/users/${nutzer}/admin`, { is_admin: true, admin_password: PASS });
     assert.deepEqual(
-      (await mails('verwalter_ernannt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_appointed', 3)).map(m => [m.an, m.konto]),
       [
         [NAMEN[0], NAMEN[2]],
         [NAMEN[2], NAMEN[2]],
@@ -144,12 +144,12 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [zwei]);
     await ruf('DELETE', `/users/${zwei}/second-factor`, { admin_password: PASS });
     assert.deepEqual(
-      (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
+      (await mails('takeover_announced', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
     );
     await faellig();
     assert.deepEqual(
-      (await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]),
+      (await mails('second_factor_removed', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
     );
     assert.deepEqual(

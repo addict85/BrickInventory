@@ -31,19 +31,19 @@ export type PdfJob = {
   etaSeconds?: number | null;
 };
 
-const STATUS: Record<string, PdfJob['status']> = { open: 'running', running: 'running', done: 'done' };
+const STATUS: Record<string, PdfJob['status']> = { pending: 'running', running: 'running', done: 'done' };
 
 /** Under row security and filtered by account: a foreign job is no job. */
 export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfJob | null> {
   const z = await k.jobQueue.ownJob('pdf', pdfKey(id), uid);
-  const { fehlendeBilder, etaSekunden } = z?.progress ?? {};
+  const { missingImages, etaSeconds } = z?.progress ?? {};
   return z
     ? {
         status: STATUS[z.status] ?? 'error',
         error: z.status === 'done' ? null : (z.error_message ?? null),
         user_id: Number(z.user_id),
-        missingImages: typeof fehlendeBilder === 'number' ? fehlendeBilder : null,
-        etaSeconds: typeof etaSekunden === 'number' ? etaSekunden : null,
+        missingImages: typeof missingImages === 'number' ? missingImages : null,
+        etaSeconds: typeof etaSeconds === 'number' ? etaSeconds : null,
       }
     : null;
 }
@@ -132,7 +132,7 @@ export async function startPdfJob(
       userId: uid,
       maxAttempts: 2,
       schluessel: pdfKey(jobId),
-      fortschritt: { fehlendeBilder: missingImages, etaSekunden: Math.max(3, Math.round(missingImages) + 3) },
+      progress: { missingImages, etaSeconds: Math.max(3, Math.round(missingImages) + 3) },
     },
   );
   return { jobId };

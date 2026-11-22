@@ -81,7 +81,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       {
-        wechselkurse: {
+        exchange_rates: {
           ausfuehren: async () => {
             for (let i = 0; i < 3; i++) results.push((await k.checkAndCountQuota('brickset')).allowed);
           },

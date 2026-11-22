@@ -125,22 +125,22 @@ test('manual parts and figures: list and valuation state the same condition', { 
     // confusion from which the error above arose. Nobody read it
     // (looked up in both clients).
     assert.deepEqual(Object.keys(bewertung).sort(), [
+      'converted_purchase_prices',
       'currency',
-      'kaufpreise_fremde_waehrung',
-      'kaufpreise_umgerechnet',
+      'foreign_currency_purchases',
       'parts',
-      'preise_ausstehend',
+      'prices_pending',
       'total_value',
-      'wert_gesamt',
+      'value_total',
     ]);
     assert.deepEqual(Object.keys(figValuation).sort(), [
+      'converted_purchase_prices',
       'currency',
       'figs',
-      'kaufpreise_fremde_waehrung',
-      'kaufpreise_umgerechnet',
-      'preise_ausstehend',
+      'foreign_currency_purchases',
+      'prices_pending',
       'total_value',
-      'wert_gesamt',
+      'value_total',
     ]);
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
@@ -152,8 +152,8 @@ test('the app fetches the manual pieces from their own address', () => {
   // What the app calls stands in shared/app-schnittstelle.json (generated from its source text).
   const gerufen = new Set(
     require('./helpers/contract')
-      .appSchnittstelle()
-      .routen.map(r => `${r.methode} ${r.path}`),
+      .appRoutes(_req)
+      .map(r => `${r.methode} ${r.path}`),
   );
   assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'Die App ruft /parts/manual nicht');
   assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'Die App ruft /minifigs/manual nicht');

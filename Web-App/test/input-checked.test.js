@@ -99,7 +99,7 @@ test('every input and query is closed', () => {
 });
 
 test('the query is in the OpenAPI description', () => {
-  const dok = _req('src/contract/openapi.js').openapi();
+  const dok = _req('src/contract/openapi.js').openapi(2);
   const abfrage = dok.paths['/api/v2/sets'].get.parameters.filter(p => p.in === 'query');
   assert.deepEqual(abfrage.map(p => p.name).sort(), [
     'accounts',

@@ -70,5 +70,8 @@ export function watchViaAccess(
   return deregister;
 }
 
-/** The last event of an SSE stream whose access ended. */
-export const SSE_ACCESS_ENDED = 'event: zugang_beendet\ndata: {"reason":"access_ended"}\n\n';
+/** The last event of an SSE stream whose access ended; v1 clients get the former German name. */
+export const sseAccessEnded = (v1: boolean): string =>
+  v1
+    ? 'event: zugang_beendet\ndata: {"reason":"zugang_beendet"}\n\n'
+    : 'event: access_ended\ndata: {"reason":"access_ended"}\n\n';

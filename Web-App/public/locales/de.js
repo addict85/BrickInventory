@@ -956,7 +956,7 @@ window.I18N_DE = {
   'wanted.col_rb_id': 'Rebrickable-Nr. eintragen',
   'wanted.col_set_color': 'Farbe setzen',
   'wanted.reason_number_unknown': 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt',
-  'wanted.reason_color_unknown': 'BrickLink-Farbe {color} ist im Katalog keiner Rebrickable-Farbe zugeordnet',
+  'wanted.reason_color_unknown': 'BrickLink-Farbe {blColor} ist im Katalog keiner Rebrickable-Farbe zugeordnet',
   'wanted.out_created': 'wird angelegt',
   'wanted.out_created_done': 'angelegt',
   'wanted.out_topped_up': 'aufgestockt',

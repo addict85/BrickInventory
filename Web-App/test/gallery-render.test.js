@@ -80,7 +80,7 @@ test('prices go into the existing tile; an empty container is hidden', async () 
         preise.then(() => ({
           success: true,
           currency: 'EUR',
-          sets: [{ set_number: '10294-1', quantity: 1, tile_price: 679.99, tile_source: 'markt' }],
+          sets: [{ set_number: '10294-1', quantity: 1, tile_price: 679.99, tile_source: 'market' }],
           totals: { purchase: '0', current: '679.99', foreign_currency_purchases: 0 },
         })),
     },

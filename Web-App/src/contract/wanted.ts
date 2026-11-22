@@ -96,7 +96,7 @@ export const WantedXmlResult = z.looseObject({
   parsed: whole,
   created: whole,
   topped_up: whole,
-  error: whole,
+  failed: whole,
   items: z.array(
     z.looseObject({
       kind: z.string(),
@@ -144,7 +144,7 @@ v1Keys(WantedListResponse, { item: 'merkposten' });
 v1Keys(WantedItemReply, { item: 'merkposten' });
 v1Keys(WantedItemOwnerReply, { merged: 'zusammengefuehrt' });
 v1Keys(WantedItemDeleted, { deleted: 'geloescht' });
-v1Keys(WantedXmlResult, { error: 'fehler' });
+v1Keys(WantedXmlResult, { failed: 'fehler' });
 v1Keys(WantedXmlResult.shape.items.element, { quantity: 'menge', condition: 'zustand', reason: 'grund' });
 
 export const routes = {

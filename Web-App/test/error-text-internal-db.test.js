@@ -51,7 +51,7 @@ Object.assign(require('./helpers/sources').testArea('sets'), {
       set_number: e.setNumber,
       name: e.setNumber,
       catalog_pending: true,
-      supplement: 'ausstehend',
+      supplement: 'pending',
       besitzer: e.requester,
     };
   },
@@ -97,7 +97,7 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
     // The set is already created: the end says that a job completes it, instead of “error”.
     assert.equal(letztes.step, 'done');
     assert.equal(letztes.success, true);
-    assert.equal(letztes.supplement, 'ausstehend');
+    assert.equal(letztes.supplement, 'pending');
     assert.equal(letztes.catalog_pending, true);
   });
 

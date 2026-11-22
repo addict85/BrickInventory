@@ -5,7 +5,7 @@
  * the hint „nicht CHF wie das Ausgabeland“.
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  in loadVouchers() again `einstellungsStand?.gutschein_land || 'de-CH'` → red: „EUR-Konto“
+ *   A  in loadVouchers() again `einstellungsStand?.voucher_country || 'de-CH'` → red: „EUR-Konto“
  *   B  landFuerWaehrung() always returns LAND_STANDARD → red: “server: …”
  */
 const test = require('node:test');

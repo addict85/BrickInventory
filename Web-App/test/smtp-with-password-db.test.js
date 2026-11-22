@@ -70,16 +70,16 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   const sensitiveBefore = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example'), ('smtp_user', 'versand')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
-  const landBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
+  const landBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'voucher_country'"))?.value;
   t.after(async () => {
     await db.run(
-      "DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'gutschein_land')",
+      "DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'voucher_country')",
     );
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
     for (const z of sensitiveBefore)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     if (landBefore !== undefined)
-      await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landBefore]);
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('voucher_country', $1)", [landBefore]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -146,7 +146,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       'smtp_insecure_tls kam über den Import',
     );
     // The rest of the file arrives — otherwise the case would check an import that does nothing at all.
-    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
+    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'voucher_country'"))?.value, 'AT');
     assert.deepEqual(r.body.smtp_skipped, ['smtp_host', 'smtp_insecure_tls']);
   });
 
@@ -187,7 +187,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       await new Promise(x => setTimeout(x, 25));
     assert.deepEqual(
       mails.filter(m => m.an === `${NAME}@example.org`),
-      [{ an: `${NAME}@example.org`, kind: 'einstellungen_geaendert', konto: 'registration_enabled' }],
+      [{ an: `${NAME}@example.org`, kind: 'settings_changed', konto: 'registration_enabled' }],
     );
   });
 });

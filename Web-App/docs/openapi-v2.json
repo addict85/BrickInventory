@@ -25137,7 +25137,7 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "error": {
+          "failed": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
@@ -25385,7 +25385,7 @@
           "parsed",
           "created",
           "topped_up",
-          "error",
+          "failed",
           "items",
           "open"
         ],

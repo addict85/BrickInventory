@@ -32,10 +32,10 @@ async function importWantedXml(
   };
   let lastUsed = 0,
     lastPhase = '';
-  const toBar = (state: { fertig: number; total: number }, unconditional = false) => {
+  const toBar = (state: { done: number; total: number }, unconditional = false) => {
     if (!jobRunning) return;
     after('wanted-import:auftrag', () =>
-      kx.jobQueue.reportJob(uid, { done: state.fertig, total: state.total }, unconditional),
+      kx.jobQueue.reportJob(uid, { done: state.done, total: state.total }, unconditional),
     );
   };
   try {
@@ -52,14 +52,14 @@ async function importWantedXml(
         // The state travels via the job to the waiting request (and its stream);
         // at most five times per second, the last one of each phase always.
         const now = kx.clock.now();
-        if (now - lastUsed >= 200 || state.fertig === state.total || state.phase !== lastPhase) {
+        if (now - lastUsed >= 200 || state.done === state.total || state.phase !== lastPhase) {
           lastUsed = now;
           lastPhase = state.phase;
-          const f = { ...state, done: state.fertig };
+          const f = { ...state };
           after('wanted-import:stand', () => k.progress(f));
         }
         // Created on the FIRST write progress: before that the denominator is unknown.
-        if (e.write && !jobRequested && state.phase === 'schreiben') {
+        if (e.write && !jobRequested && state.phase === 'write') {
           jobRequested = true;
           after('wanted-import:auftrag', async () => {
             jobRunning = await kx.jobQueue.startJob(uid, { total: state.total, current: e.fileName });
@@ -88,7 +88,7 @@ async function importWantedXml(
         ok: report.created + report.topped_up,
         // Open items are a note (⚠), neither created nor failed.
         warn: report.items.filter(p => p.outcome === 'open').length,
-        error: report.error,
+        error: report.failed,
         // The PROCESSED items, otherwise the bar would stop before the end.
         done: report.items.length,
         aborted: !!report.aborted,

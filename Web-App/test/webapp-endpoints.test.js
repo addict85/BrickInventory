@@ -317,8 +317,8 @@ test('what only the web app can do has a reason', () => {
   // The app's Retrofit routes (shared/app-schnittstelle.json); `{x}` becomes `:X`.
   const appPaths = new Set(
     require('./helpers/contract')
-      .appSchnittstelle()
-      .routen.map(r => form(r.path.replace(/\{[^}]+\}/g, ':X'))),
+      .appRoutes(require('./helpers/sources').buildAndRequire())
+      .map(r => form(r.path.replace(/\{[^}]+\}/g, ':X'))),
   );
   // MEASURED, there are 94 addresses.
   assert.ok(appPaths.size >= 60, `Nur ${appPaths.size} App-Adressen — Muster veraltet?`);

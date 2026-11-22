@@ -30,7 +30,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
   const spaeter = () =>
     db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'prices' AND status = 'pending'`);
   const faellig = async () =>
-    (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'prices' AND status = 'pending'`))?.now ===
+    (await db.get(`SELECT due_at <= NOW() AS now FROM jobs WHERE type = 'prices' AND status = 'pending'`))?.now ===
     true;
   const waitOnRun = async () => {
     for (let i = 0; i < 40; i++) {

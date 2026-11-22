@@ -255,8 +255,8 @@ async function readReally(write) {
   drawTable(resultReport);
   if (write) {
     toast(
-      tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.error }),
-      d.error ? 'info' : 'success',
+      tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.failed }),
+      d.failed ? 'info' : 'success',
     );
     // What gets reloaded depends on WHAT the list contained — and the report knows that better than the
     // button it came from: a wanted list may mix parts, figures AND sets.
@@ -304,7 +304,7 @@ function drawSummary(d) {
       ${d.rebrickable?.aborted ? html`<div>${ico('warning')} ${tRaw(RB_CANCEL_REASON[d.rebrickable.aborted])}</div>` : ''}
       ${d.corrections?.rejected?.length ? html`<div>${ico('warning')} <strong>${d.corrections.rejected.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
       ${d.aborted ? html`<div>${ico('warning')} ${tRaw('wanted.cancelled')}</div>` : ''}
-      ${!d.preview ? html`<div data-style="margin-top:.4rem"><strong>${d.created}</strong> ${tRaw('settings.wanted_written')}${d.topped_up ? html`, ${d.topped_up} ${tRaw('wanted.topped_up')}` : ''}${d.error ? html`, ${d.error} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
+      ${!d.preview ? html`<div data-style="margin-top:.4rem"><strong>${d.created}</strong> ${tRaw('settings.wanted_written')}${d.topped_up ? html`, ${d.topped_up} ${tRaw('wanted.topped_up')}` : ''}${d.failed ? html`, ${d.failed} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
     </div>`,
   );
 }
@@ -329,7 +329,7 @@ function row(p, i) {
   // wrong in an English table (seen exactly that way on the running server). If the code is missing (for
   // outcome 'error' the exception message is there instead), the sentence stays as is.
   const reason = p.reasonCode
-    ? t(`wanted.reason_${p.reasonCode}`, { color: p.blColor })
+    ? t(`wanted.reason_${p.reasonCode}`, { blColor: p.blColor })
     : p.reason
       ? esc(p.reason)
       : '';
@@ -361,7 +361,7 @@ function row(p, i) {
   const quantityCell = field('quantity', correction.quantity ?? p.quantity, 'type="number" min="1" step="1"');
   // The price per unit. Empty means "none" — then import fetches the market price, like MAXPRICE=-1 in
   // the file.
-  const priceValue = correction.kaufpreis !== undefined ? (correction.kaufpreis ?? '') : (p.maxPrice ?? '');
+  const priceValue = correction.purchase_price !== undefined ? (correction.purchase_price ?? '') : (p.maxPrice ?? '');
   const priceCell = field(
     'purchase-price',
     priceValue,
@@ -510,14 +510,14 @@ function wantedCorrectionValue() {
     if (raw !== '') {
       const z = Number(raw);
       if (!Number.isFinite(z) || z < 0) {
-        el.value = String(k.kaufpreis ?? old ?? '');
+        el.value = String(k.purchase_price ?? old ?? '');
         return;
       }
       // 0 means "none", like MAXPRICE=-1 in the file.
       w = z > 0 ? z : null;
     }
-    if (w === old) delete k.kaufpreis;
-    else k.kaufpreis = w;
+    if (w === old) delete k.purchase_price;
+    else k.purchase_price = w;
   } else return;
 
   setCorrection(i, k);

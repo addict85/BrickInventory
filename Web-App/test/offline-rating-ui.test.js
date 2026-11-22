@@ -121,7 +121,7 @@ const DATEN = {
         set_number: '10294-1',
         name: 'Titanic',
         condition: 'N',
-        direction: 'unter',
+        direction: 'below',
         threshold: 249,
         currency_code: 'EUR',
       },

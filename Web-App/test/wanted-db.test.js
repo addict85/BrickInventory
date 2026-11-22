@@ -198,7 +198,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       ..._req('src/finances/priceAlert.js'),
       ...require('./helpers/sources').testArea('finances').preisalarm,
     };
-    await P.setAlert(U.enkel, '10276-1', 'EUR', { direction: 'unter', threshold: 249, condition: 'U' });
+    await P.setAlert(U.enkel, '10276-1', 'EUR', { direction: 'below', threshold: 249, condition: 'U' });
     assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
 
     await W.fulfillWantedItem(U.enkel, U.enkel, '10276-1', 'U', {});
@@ -382,7 +382,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     );
 
     await W.addWantedItem(U.grandparent, sn, 'N');
-    await P.setAlert(U.grandparent, sn, 'EUR', { direction: 'unter', threshold: 99, condition: 'N' });
+    await P.setAlert(U.grandparent, sn, 'EUR', { direction: 'below', threshold: 99, condition: 'N' });
     const [vorher] = await W.wantedItemsOf([U.grandparent], sn);
     assert.ok(vorher, 'Aufbau: der Merkposten fehlt');
 

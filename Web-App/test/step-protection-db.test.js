@@ -302,7 +302,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
 
   await t.test('a challenge is only good for its action', async () => {
     const c = await ruf('/device/step/challenge', { method: 'POST', token, body: { action: 'admin' } });
-    const reinterpreted = c.body.message.replace('\nverwaltung\n', '\ngutschein\n');
+    const reinterpreted = c.body.message.replace('\nadmin\n', '\nvoucher\n');
     assert.notEqual(reinterpreted, c.body.message);
     const r = await ruf('/device/step/approval', {
       method: 'POST',

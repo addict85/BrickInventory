@@ -2406,7 +2406,7 @@ export type WantedXmlResult = {
   parsed: number;
   created: number;
   topped_up: number;
-  error: number;
+  failed: number;
   items: Array<{
     kind: string;
     blId: string;

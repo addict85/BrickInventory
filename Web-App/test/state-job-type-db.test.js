@@ -70,7 +70,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     await c.query(`INSERT INTO wanted (user_id, set_number, condition) VALUES
       (1, '1-1', 'n'), (1, '1-1', 'N'), (1, '2-1', 'u '), (1, '3-1', 'x'), (1, '4-1', 'n'), (1, '4-1', ' n')`);
     await c.query(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
-                   VALUES (1, '1-1', 'u', 'unter', 5, 'EUR'), (1, '2-1', '?', 'unter', 5, 'EUR')`);
+                   VALUES (1, '1-1', 'u', 'below', 5, 'EUR'), (1, '2-1', '?', 'below', 5, 'EUR')`);
     await c.query(`INSERT INTO price_cache (set_number, condition, currency_code) VALUES
       ('1-1', 'N', 'EUR'), ('1-1', 'n', 'EUR')`);
     await c.query(`INSERT INTO auftraege (art) VALUES ('preise'), ('verschwunden')`);
@@ -113,7 +113,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     const angemeldet = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .map(a => a.art);
+      .map(a => a.kind);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
     assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
     assert.deepEqual(inDb, [...angemeldet].sort());

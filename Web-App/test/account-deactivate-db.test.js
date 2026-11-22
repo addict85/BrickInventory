@@ -132,7 +132,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     const liste = (await rufe('GET', '/users', { cookie: chefKeks })).body.users;
     assert.equal(liste.find(u => u.id === nutzer).is_active, false);
     assert.equal(liste.find(u => u.id === chef).is_active, true);
-    assert.deepEqual(await protokoll(), ['konto_deaktiviert']);
+    assert.deepEqual(await protokoll(), ['account_deactivated']);
   });
 
   await t.test('without the admin password nothing changes', async () => {
@@ -152,7 +152,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     const a = await anmelden(NUTZER);
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
-    assert.deepEqual(await protokoll(), ['konto_deaktiviert', 'konto_reaktiviert']);
+    assert.deepEqual(await protokoll(), ['account_deactivated', 'account_reactivated']);
   });
 
   await t.test('unconfirmed: the same refusal, new link without account information', async () => {

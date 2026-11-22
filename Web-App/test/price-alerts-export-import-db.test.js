@@ -59,17 +59,17 @@ let MAIN = 0,
  * a query over ALL accounts looks just like the right one. That came up while
  * thinking through the counter-checks — the case „user_id left out" would have …
  */
-const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
+const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'below', s: 77, w: 'CHF' };
 
 /**
  * Four alerts. The third sits on a set that the account does NOT own —
  * exactly the case that would have fallen out as a column on sets.csv.
  */
 const ALERTS = [
-  { sn: '75192-1', c: 'N', r: 'unter', s: 600, w: 'CHF', owns: true },
-  { sn: '75192-1', c: 'U', r: 'ueber', s: 420.5, w: 'CHF', owns: true },
-  { sn: '10179-1', c: 'N', r: 'unter', s: 1200, w: 'CHF', owns: false },
-  { sn: '21309-1', c: 'U', r: 'ueber', s: 24.9, w: 'CHF', owns: false },
+  { sn: '75192-1', c: 'N', r: 'below', s: 600, w: 'CHF', owns: true },
+  { sn: '75192-1', c: 'U', r: 'above', s: 420.5, w: 'CHF', owns: true },
+  { sn: '10179-1', c: 'N', r: 'below', s: 1200, w: 'CHF', owns: false },
+  { sn: '21309-1', c: 'U', r: 'above', s: 24.9, w: 'CHF', owns: false },
 ];
 
 async function setup(accountCurrency = 'CHF') {
@@ -371,7 +371,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     await db.run(
       `INSERT INTO price_alerts
                     (user_id,set_number,condition,direction,threshold,currency_code,triggered)
-                  VALUES ($1,'75192-1','N','unter',600,'CHF',TRUE)`,
+                  VALUES ($1,'75192-1','N','below',600,'CHF',TRUE)`,
       [MAIN],
     );
     assert.equal(

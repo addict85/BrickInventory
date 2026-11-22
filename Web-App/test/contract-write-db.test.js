@@ -38,7 +38,7 @@ const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
-const { contractTo, appSchnittstelle } = require('./helpers/contract');
+const { contractTo, appRoutes } = require('./helpers/contract');
 const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 mailAttrappe();
 
@@ -213,7 +213,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = appSchnittstelle().routen.filter(r => r.methode !== 'GET');
+  const routen = appRoutes(_req).filter(r => r.methode !== 'GET');
 
   /** Values for the placeholders in the path; steps add new ones. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
@@ -391,7 +391,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     { m: 'DELETE', p: '/api/v2/sets/{setNumber}/acquisitions/{acqId}' },
     // The only entry is gone and with it the set — create it anew.
     { m: 'POST', p: '/api/v2/sets', body: { set_number: SET, quantity: 1, condition: 'N' } },
-    { m: 'PUT', p: '/api/v2/sets/{setNumber}/alert', body: { direction: 'unter', threshold: 30, condition: 'N' } },
+    { m: 'PUT', p: '/api/v2/sets/{setNumber}/alert', body: { direction: 'below', threshold: 30, condition: 'N' } },
     { m: 'DELETE', p: '/api/v2/sets/{setNumber}/alert', q: 'condition=N' },
     { m: 'PUT', p: '/api/v2/sets/{setNumber}/storage', body: { storage: 'Regal Probe 2' } },
     {
@@ -431,7 +431,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
             [uid, TEIL],
           )
         ).p;
-        w.id = String(
+        w.acqId = String(
           (
             await erst(`SELECT id FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 ORDER BY id LIMIT 1`, [
               uid,
@@ -441,8 +441,8 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'PUT', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}', body: { unit_price: 0.3 } },
-    { m: 'DELETE', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}' },
+    { m: 'PUT', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{acqId}', body: { unit_price: 0.3 } },
+    { m: 'DELETE', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{acqId}' },
     {
       m: 'POST',
       p: '/api/v2/parts',
@@ -467,7 +467,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       p: '/api/v2/minifigs/{figNumber}',
       body: { quantity: 2, unit_price: 4.5, condition: 'N' },
       danach: async () => {
-        w.id = String(
+        w.acqId = String(
           (
             await erst(
               `SELECT id FROM minifig_acquisitions WHERE user_id = $1 AND fig_number = $2 ORDER BY id LIMIT 1`,
@@ -477,8 +477,8 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/acquisitions/{id}', body: { unit_price: 5 } },
-    { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}/acquisitions/{id}' },
+    { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}', body: { unit_price: 5 } },
+    { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}' },
     { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGUR, quantity: 1, condition: 'N' } },
     { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/storage', body: { storage: 'Kiste' } },
     { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}' },
@@ -489,7 +489,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       m: 'POST',
       p: '/api/v2/wanted/{setNumber}/{condition}/take-over',
       davor: async () => {
-        w.setNumber = SET2;
+        w.setNumber = w.sn = SET2;
         w.condition = 'N';
       },
       body: { quantity: 1, purchase_price: 30 },
@@ -497,7 +497,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // The takeover entered SET2 — the purchase price moves into the sub-account.
     {
       m: 'POST',
-      p: '/api/v2/sets/{setNumber}/move',
+      p: '/api/v2/sets/{sn}/move',
       body: async () => ({
         to_user_id: sub,
         acquisition_ids: (

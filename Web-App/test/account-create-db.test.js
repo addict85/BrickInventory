@@ -7,7 +7,7 @@
  *      administrator password no account”
  *   B  back to `isAdmin ? 1 : 0` instead of strictBool → red: “"false" creates no
  *      administrator”
- *   C  protokolliere(…, 'konto_angelegt') removed → red: “the log …”
+ *   C  protokolliere(…, 'account_created') removed → red: “the log …”
  * Counter-checks (measured 01.11.2026):
  *   D  migration 0090 renamed to .sql.aus and nameTaken() removed from POST /users → red:
  *      “a name in another spelling is taken” and “the database rejects …”;
@@ -98,7 +98,7 @@ test('create account', { concurrency: 1 }, async t => {
     const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
       z => z.action,
     );
-    assert.deepEqual(p, ['konto_angelegt', 'verwalter_ernannt'], 'das Protokoll hält die Anlage nicht fest');
+    assert.deepEqual(p, ['account_created', 'admin_appointed'], 'das Protokoll hält die Anlage nicht fest');
   });
 
   await t.test('a name in a different spelling is taken', async () => {

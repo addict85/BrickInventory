@@ -178,8 +178,8 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
         baseline_pnl_pct: null,
       },
     ]);
-    assert.deepEqual(w.get('A'), { tile_price: 750, tile_pnl_pct: 114.3, tile_source: 'markt' });
-    assert.deepEqual(w.get('B'), { tile_price: 40, tile_pnl_pct: null, tile_source: 'kauf' });
+    assert.deepEqual(w.get('A'), { tile_price: 750, tile_pnl_pct: 114.3, tile_source: 'market' });
+    assert.deepEqual(w.get('B'), { tile_price: 40, tile_pnl_pct: null, tile_source: 'purchase' });
   });
 
   await t.test("without an account currency the installation's applies — for acquisitions and vouchers", async () => {

@@ -17,7 +17,7 @@ const source = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-toke
  */
 
 test('the lid colors come from the SAME source', () => {
-  const steine = source.listen.steine.values;
+  const steine = source.listen.steine.werte;
   assert.ok(
     steine.length === 6,
     `Die Steinliste hat ${steine.length} Eintraege statt sechs — sechs, damit die ` +

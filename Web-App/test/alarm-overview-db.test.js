@@ -87,9 +87,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   // The first draft of this test had made it up and ran
   // straight into “Die Richtung muss unter oder ueber sein" — the values landed
   // in the wrong places.
-  await setAlert(ich.id, '70002-1', 'CHF', { direction: 'unter', threshold: 30, condition: 'N' });
-  await setAlert(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // set unknown
-  await setAlert(fremd.id, '70002-1', 'CHF', { direction: 'unter', threshold: 10, condition: 'N' }); // fremd
+  await setAlert(ich.id, '70002-1', 'CHF', { direction: 'below', threshold: 30, condition: 'N' });
+  await setAlert(ich.id, '99999-9', 'CHF', { direction: 'above', threshold: 500, condition: 'U' }); // set unknown
+  await setAlert(fremd.id, '70002-1', 'CHF', { direction: 'below', threshold: 10, condition: 'N' }); // fremd
 
   // The CHILD's set — I do not own it, but I see it in the view.
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
@@ -102,7 +102,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     [kind.id],
   );
   await catalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
-  await setAlert(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
+  await setAlert(ich.id, '60000-1', 'CHF', { direction: 'below', threshold: 40, condition: 'N' });
 
   // The same set TWICE in the household — with me and with the child. Since the
   // join goes via the view, it can hit several rows;
@@ -165,10 +165,10 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     // auseinanderlaufen.
     assert.match(
       js,
-      /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(setNumber\)\}\/alert`/,
+      /'PUT', `\/v2\/sets\/\$\{encodeURIComponent\(setNumber\)\}\/alert`/,
       'Der Wert lässt sich nicht ändern — genau das hat Marco verlangt.',
     );
-    assert.match(js, /'DELETE', `\/v1\/sets\//, 'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
+    assert.match(js, /'DELETE', `\/v2\/sets\//, 'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
   });
 
   await t.test('5. image and ownership come along — for the tile and for the click', async () => {
@@ -228,7 +228,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     // The app's model (shared/app-schnittstelle.json, generated from its source text).
     const app = require('./helpers/contract').appSchnittstelle().modelle.Preisalarm?.felder ?? [];
     assert.ok(app.includes('set_number'), 'Modell Preisalarm nicht gefunden — umbenannt?');
-    const fehlen = felder.filter(k => !app.includes(k));
+    // The app reads API v1, so a field arrives under its v1 name.
+    const { v1Field } = _req('src/contract/v1.js');
+    const fehlen = felder.filter(k => !app.includes(v1Field(undefined, k)));
     assert.deepEqual(
       fehlen,
       [],
