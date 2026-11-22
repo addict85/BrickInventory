@@ -33,6 +33,7 @@ import ch.brickinventoryapp.state.ui.OutboxNotifier
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -90,13 +91,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
 
         // Cleanup in the background; a plaintext token of older versions never counts, it just goes away.
         areas.application.launch {
-            // Voucher PDFs of an aborted run: the viewer was never left.
-            catchUnlessCancelled { cleanUpConfidentialPdfs(cacheDir) }
-            // Instructions of older versions lay in plaintext; new ones lie encrypted.
-            catchUnlessCancelled { cleanUpPlaintextInstructions(cacheDir) }
-            // Image cache of older versions (plaintext) and an expired parts list.
-            catchUnlessCancelled { cleanPlaintextImageCachesOn(cacheDir) }
-            catchUnlessCancelled { cleanOldPartListOn(filesDir, System.currentTimeMillis()) }
+            cleanUpLeftovers(cacheDir, filesDir, System.currentTimeMillis())
             catchUnlessCancelled { tokenAdoption.adoptOldToken() }
             // Reschedule the price alert fetch: reset app data or a
             // „Force Stop“ discard the jobs, the switch would otherwise stand on “on”
@@ -143,4 +138,15 @@ private class AtFirstUi(private val go: () -> Unit) : Application.ActivityLifecy
     override fun onActivityStopped(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
     override fun onActivityDestroyed(activity: Activity) = Unit
+}
+
+/** What an aborted run or an older version left behind; each step on its own, one failure stops none. */
+internal fun cleanUpLeftovers(cacheDir: File, filesDir: File, now: Long) {
+    // Voucher PDFs of an aborted run: the viewer was never left.
+    catchUnlessCancelled { cleanUpConfidentialPdfs(cacheDir) }
+    // Instructions of older versions lay in plaintext; new ones lie encrypted.
+    catchUnlessCancelled { cleanUpPlaintextInstructions(cacheDir) }
+    // Image cache of older versions (plaintext) and an expired parts list.
+    catchUnlessCancelled { cleanPlaintextImageCachesOn(cacheDir) }
+    catchUnlessCancelled { cleanOldPartListOn(filesDir, now) }
 }

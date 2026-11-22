@@ -1,6 +1,9 @@
 package ch.brickinventoryapp.finances
 
 import android.os.ParcelFileDescriptor
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
@@ -47,6 +50,7 @@ import java.net.UnknownHostException
  *      text) → red “an error carries its class …”
  *   G  counter-checks/pdf-erneut-tot.patch: again() does not load → red “after an error
  *      Erneut versuchen loads …”
+ *   H  onCleared() without `open.close()` → red “leaving the viewer closes …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfViewerViewModelTest {
@@ -185,6 +189,24 @@ class PdfViewerViewModelTest {
         vm.again()
         advanceUntilIdle()
         assertEquals(2, loader.addresses.size)
+    }
+
+    /** A voucher PDF lies in a memory area; leaving the viewer must release it. */
+    @Test
+    fun `leaving the viewer closes the loaded source`() = runTest(tick) {
+        val loader = Loader()
+        val vm = vm(loader)
+        val store = ViewModelStore()
+        val factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = vm as T
+        }
+        ViewModelProvider.create(store, factory)[PdfViewerViewModel::class]
+        vm.open(INSTRUCTION, SERVER)
+        advanceUntilIdle()
+        assertFalse("loaded means open", loader.source.too)
+        store.clear()
+        assertTrue("the source stays open after leaving", loader.source.too)
     }
 
     @Test

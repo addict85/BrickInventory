@@ -23,8 +23,7 @@ import java.io.File
  *   A  in appearance() the `&& systemDark` removed → red “with a choice dark
  *      only with a dark system, in the same design”
  *   B  `?: true` → `?: false` → red “without a saved choice the app follows the system"
- *   C  MainActivity without `dark = view.dark` → red “MainActivity
- *      draws the effective design”
+ *   C  MainActivity without `dark = view.dark` → red in MainActivityDesignTest
  *   D  installSplashScreen() after super.onCreate() → red “the start does not flash white"
  *   E  `&& hasDarkVersion(design)` removed → red “Workbench stays as it is“
  *   F  in appearance() the branch `Brightness.DARK -> true` removed →
@@ -98,15 +97,6 @@ class EffectiveDesignTest {
     fun `an explicit choice persists`() {
         assertEquals(false, darkAfterSystemApplies(false))
         assertEquals(true, darkAfterSystemApplies(true))
-    }
-
-    @Test
-    fun `MainActivity draws the effective design`() {
-        val src = Sources.withoutComments(Sources.read("app/MainActivity.kt"))
-        assertTrue("MainActivity does not use appearance() — the choice would have no effect",
-            Regex("""appearance\(theme,\s*brightness,\s*isSystemInDarkTheme\(\),\s*systemColors,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
-        assertTrue("MainActivity does not pass the dark variant to the theme",
-            Regex("""(\w+) = appearance\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dark\s*=\s*\1\.dark,\s*systemColors\s*=\s*\1\.systemColors\)""").containsMatchIn(src))
     }
 
     /**

@@ -35,7 +35,8 @@ import java.io.InputStream
  *
  * Counter-checks (run here):
  *   the download button outside `if (s is PdfLoadState.Ready)` (with a fresh empty source) → red “while loading …”;
- *   savePdfToDownloads copies `ByteArray(0)` instead of `source.inbox()` → red “the button copies …”.
+ *   savePdfToDownloads copies `ByteArray(0)` instead of `source.inbox()` → red “the button copies …”;
+ *   the print button pulled ahead of `if (savable)` → red “a voucher PDF can be neither …”.
  */
 @RunWith(RobolectricTestRunner::class)
 class PdfDownloadTest {
@@ -54,11 +55,11 @@ class PdfDownloadTest {
 
     private var state by mutableStateOf<PdfLoadState>(PdfLoadState.Rendering)
 
-    private fun show(state: PdfLoadState) {
+    private fun show(state: PdfLoadState, savable: Boolean = true) {
         this.state = state
         compose.setContent {
             BrickInventoryManagerTheme {
-                PdfViewerScreen(this.state, "Falcon", savable = true, onBack = {},
+                PdfViewerScreen(this.state, "Falcon", savable = savable, onBack = {},
                     renderPage = { _, _, w -> Bitmap.createBitmap(w, w, Bitmap.Config.ARGB_8888) },
                     write = { _, _ -> }, onAgain = {})
             }
@@ -66,7 +67,23 @@ class PdfDownloadTest {
         compose.waitForIdle()
     }
 
-    private fun buttons() = compose.onAllNodesWithContentDescription(ctx.getString(R.string.pdfview_download)).fetchSemanticsNodes()
+    private fun buttons(label: Int = R.string.pdfview_download) =
+        compose.onAllNodesWithContentDescription(ctx.getString(label)).fetchSemanticsNodes()
+
+    /** The print dialog offers „Als PDF speichern“: a voucher PDF (number and PIN) gets neither. */
+    @Test
+    fun `a voucher PDF can be neither downloaded nor printed`() {
+        show(PdfLoadState.Ready(source, pageCount = 1), savable = false)
+        assertEquals(0, buttons().size)
+        assertEquals(0, buttons(R.string.pdfview_print).size)
+    }
+
+    @Test
+    fun `an instruction can be downloaded and printed`() {
+        show(PdfLoadState.Ready(source, pageCount = 1))
+        assertEquals(1, buttons().size)
+        assertEquals(1, buttons(R.string.pdfview_print).size)
+    }
 
     @Test
     fun `while loading there is no download button`() {
