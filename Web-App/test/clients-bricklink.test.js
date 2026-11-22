@@ -90,7 +90,9 @@ test('429 and 5xx with a JSON body are errors too', async t => {
     [429, { meta: { code: 429, message: 'TOO_MANY_REQUESTS' } }],
     [503, { meta: { code: 503, message: 'SERVICE_UNAVAILABLE' } }],
   ];
-  await httpsStub(t, (_c, res) => reply(res, ...antworten.shift()));
+  await httpsStub(t, (_c, res) =>
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift())),
+  );
   const bl = createBricklink(clientsAccess());
   await assert.rejects(bl.bricklinkRequest('GET', PRICE), /API Error 429: TOO_MANY_REQUESTS/);
   await assert.rejects(bl.bricklinkRequest('GET', PRICE), /API Error 503: SERVICE_UNAVAILABLE/);

@@ -24,7 +24,7 @@ const nacheinander =
   (_c, res) => {
     const a = antworten.length > 1 ? antworten.shift() : antworten[0];
     if (a === 'abbruch') res.socket?.destroy();
-    else if (a !== 'haengt') reply(res, ...a);
+    else if (a !== 'haengt') reply(res, .../** @type {[number, any, Record<string, string>?]} */ (a));
   };
 
 test('setDetails: a hit with image, the set leaves the queue', async t => {
@@ -75,7 +75,10 @@ test('the daily limit in the body and a 429 queue the set for tomorrow', async t
 test('Cloudflare 1015 is passed on to the instruction queue; a plain 429 queues', async t => {
   await httpsStub(t, nacheinander([429, 'error code: 1015'], [429, 'Too Many Requests'], [429, 'error code: 1015']));
   const z = clientsAccess();
-  await assert.rejects(createBrickset(z).getInstructions('10294-1'), err => err.isCloudflare === true);
+  await assert.rejects(
+    createBrickset(z).getInstructions('10294-1'),
+    (/** @type {any} */ err) => err.isCloudflare === true,
+  );
   assert.deepEqual(await createBrickset(z).getInstructions('10294-1'), { instructions: [], usesFallback: false });
   assert.match(z.seen.reserved[0]?.error ?? '', /Quota exceeded: Daily API key usage limit exceeded/);
   // In setDetails the block is no quota: the set leaves the queue, the fallback applies.

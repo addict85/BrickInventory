@@ -28,7 +28,7 @@ const byPath = routes => (c, res) => {
   const p = c.path.split('?')[0];
   const a = routes[p];
   if (typeof a === 'function') return a(c, res);
-  if (a) return reply(res, ...a);
+  if (a) return reply(res, .../** @type {[number, any, Record<string, string>?]} */ (a));
   reply(res, 404, { detail: 'Not found.' });
 };
 
@@ -62,11 +62,12 @@ test('without key or quota a set lookup is locked; the access check uses the sam
   const stub = await httpsStub(t, byPath({ [`${API}/themes/`]: [200, { count: 1, next: null, results: [] }] }));
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } })).holeSet('10294-1'),
-    err => err instanceof rb.RebrickableLocked && err.grund === 'kein_schluessel',
+    (/** @type {any} */ err) => err instanceof rb.RebrickableLocked && err.grund === 'kein_schluessel',
   );
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ allowed: false })).holeSet('10294-1'),
-    err => err instanceof rb.RebrickableLocked && err.grund === 'kontingent' && /100\/Tag/.test(err.message),
+    (/** @type {any} */ err) =>
+      err instanceof rb.RebrickableLocked && err.grund === 'kontingent' && /100\/Tag/.test(err.message),
   );
   assert.equal(stub.calls.length, 0);
   await rb.createRebrickable(clientsAccess()).checkRebrickableAccess();
@@ -302,7 +303,7 @@ test('a dropped connection is retried, the third drop is thrown', async t => {
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
   const lauf = k.httpsGetRobust('https://rebrickable.com/api/v3/x/', {}, 5000);
-  const erwartet = assert.rejects(lauf, err => err.isTransient === true);
+  const erwartet = assert.rejects(lauf, (/** @type {any} */ err) => err.isTransient === true);
   while (stub.calls.length < 5) {
     await new Promise(r => setImmediate(r));
     mock.timers.tick(1500);
@@ -362,12 +363,12 @@ test('downloads: only allowed hosts, only complete files with the right start', 
   assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf'), undefined, PDF), true);
   assert.deepEqual(fs.readFileSync(ziel('ok.pdf')), pdf);
   assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf')), true, 'schon da');
-  for (const [n, max] of [
+  for (const [n, max] of /** @type {[string, number | undefined][]} */ ([
     ['klein.pdf', undefined],
     ['falsch.pdf', undefined],
     ['fehlt.pdf', undefined],
     ['gross.pdf', 1000],
-  ]) {
+  ])) {
     assert.equal(await rb.downloadFile(cdn(n), ziel(n), max, PDF), false, n);
     assert.equal(fs.existsSync(ziel(n)), false, `${n} bleibt liegen`);
   }

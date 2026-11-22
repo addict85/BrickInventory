@@ -34,7 +34,9 @@ test('UPCitemdb: the first title, otherwise null', async t => {
     langsam,
     [200, '{'],
   ];
-  const stub = await httpsStub(t, (_c, res) => reply(res, ...(antworten.shift() ?? [500, ''])));
+  const stub = await httpsStub(t, (_c, res) =>
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift() ?? [500, ''])),
+  );
   const get = createRebrickable(clientsAccess()).httpsGetRobust;
   assert.equal(await productTitle(get, '5702016914313'), 'LEGO Icons 10294 Titanic');
   assert.equal(stub.calls[0].host, 'api.upcitemdb.com');
@@ -111,7 +113,9 @@ test('the revocation list: only from Google, no redirect', async t => {
     [200, '{"entries":{}}'],
     [302, '', { location: 'https://android.googleapis.com/anders' }],
   ];
-  await httpsStub(t, (_c, res) => reply(res, ...antworten.shift()));
+  await httpsStub(t, (_c, res) =>
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift())),
+  );
   assert.equal((await revocationListFetch()).toString(), '{"entries":{}}');
   await assert.rejects(revocationListFetch(), /Widerrufsliste: HTTP 302/);
 });
