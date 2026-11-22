@@ -101,14 +101,14 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   }
   const { base } = testServer(_req, { sitzung: { userId: chef, username: namen[0], isAdmin: true }, t });
   const ruf = async (methode, weg, body, b = base) => {
-    const r = await fetch(`${b}/api/v1/auth${weg}`, {
+    const r = await fetch(`${b}/api/v2/auth${weg}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...body, code: body?.code ?? codes.shift() }),
     });
     return { status: r.status, body: await r.json() };
   };
-  const zugaenge = async uid => {
+  const accesses = async uid => {
     await db.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
       `ueb-${uid}-${Date.now()}`,
       uid,
@@ -118,7 +118,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
       JSON.stringify({ userId: uid }),
     ]);
   };
-  const stand = async uid => ({
+  const state = async uid => ({
     tokens: (await db.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [uid])).length,
     sitzungen: (await db.all(`SELECT 1 FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).length,
     faktor: (await db.all('SELECT 1 FROM second_factor WHERE user_id = $1', [uid])).length,
@@ -133,7 +133,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [uid]);
     return _req('src/account/adminActions.js').runDueTakeoversFrom();
   };
-  const offen = async uid =>
+  const open = async uid =>
     (await db.all('SELECT type FROM admin_takeovers WHERE target_id = $1 ORDER BY type', [uid])).map(z => z.type);
   const inFrist = r => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -150,48 +150,48 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('a normal account: password and factor also only after the deadline, with mail and link', async () => {
     mails.length = 0;
     await faktor(nutzer);
-    await zugaenge(nutzer);
-    const f = await ruf('DELETE', `/users/${nutzer}/zweiter-faktor`, { admin_password: PASS });
+    await accesses(nutzer);
+    const f = await ruf('DELETE', `/users/${nutzer}/second-factor`, { admin_password: PASS });
     const p = await ruf('PUT', `/users/${nutzer}/password`, { password: NEU, admin_password: PASS });
     for (const r of [p, f]) inFrist(r);
-    assert.deepEqual(await stand(nutzer), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
+    assert.deepEqual(await state(nutzer), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
     const link = await abortLink(nutzer);
     assert.ok(link, 'das Ziel bekommt Mail und Abbruch-Link');
     const anAdmin = mails.filter(m => m.type === 'verwaltung_uebernahme_angekuendigt');
     assert.ok(anAdmin.length >= 1 && anAdmin.every(m => !m.abbruch), 'die Verwalter erfahren davon, ohne Link');
     assert.equal(await faellig(nutzer), 2);
-    assert.deepEqual(await stand(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
+    assert.deepEqual(await state(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
     // The link of a normal account cancels like that of an administrator.
     mails.length = 0;
     inFrist(await ruf('PUT', `/users/${nutzer}/password`, { password: PASS, admin_password: PASS }));
-    const r = await fetch(`${base}/api/v1/auth/uebernahme-abbrechen`, {
+    const r = await fetch(`${base}/api/v2/auth/cancel-takeover`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: '' },
       body: JSON.stringify({ token: await abortLink(nutzer) }),
     });
     assert.equal(r.status, 200, await r.text());
-    assert.deepEqual(await offen(nutzer), []);
+    assert.deepEqual(await open(nutzer), []);
     // Deactivating a normal account takes nothing over: it stays immediate.
-    const a = await ruf('PUT', `/users/${nutzer2}/aktiv`, { is_active: false, admin_password: PASS });
+    const a = await ruf('PUT', `/users/${nutzer2}/active`, { is_active: false, admin_password: PASS });
     assert.deepEqual([a.status, a.body.effective_at, (await konten(nutzer2)).is_active], [200, undefined, false]);
   });
 
   await t.test('an admin account: announced, effective only after the deadline, then the accesses end', async () => {
     await faktor(vw);
-    await zugaenge(vw);
+    await accesses(vw);
     const p = await ruf('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS });
-    const f = await ruf('DELETE', `/users/${vw}/zweiter-faktor`, { admin_password: PASS });
+    const f = await ruf('DELETE', `/users/${vw}/second-factor`, { admin_password: PASS });
     for (const r of [p, f]) inFrist(r);
-    assert.deepEqual(await stand(vw), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
+    assert.deepEqual(await state(vw), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
     assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 0, 'vor der Frist');
     assert.equal(await faellig(vw), 2);
-    assert.deepEqual(await stand(vw), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
-    assert.deepEqual(await offen(vw), []);
+    assert.deepEqual(await state(vw), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
+    assert.deepEqual(await open(vw), []);
   });
 
   await t.test('deactivating, revoking the role and deleting an admin: announced, then effective', async () => {
     mails.length = 0;
-    inFrist(await ruf('PUT', `/users/${vw4}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw4}/active`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw5}/admin`, { is_admin: false, admin_password: PASS }));
     inFrist(await ruf('DELETE', `/users/${vw6}`, { admin_password: PASS }));
     assert.deepEqual(
@@ -218,60 +218,60 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('first revoke the role, then take over: both announced', async () => {
     inFrist(await ruf('PUT', `/users/${vw2}/admin`, { is_admin: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw2}/password`, { password: NEU, admin_password: PASS }));
-    assert.deepEqual(await offen(vw2), ['passwort', 'rolle_entziehen']);
-    assert.equal((await stand(vw2)).neuesPasswort, false);
+    assert.deepEqual(await open(vw2), ['passwort', 'rolle_entziehen']);
+    assert.equal((await state(vw2)).neuesPasswort, false);
   });
 
   await t.test('a login of the target cancels the announcement', async () => {
     const eigene = await withFactor(vw3);
-    inFrist(await ruf('DELETE', `/users/${vw3}/zweiter-faktor`, { admin_password: PASS }));
+    inFrist(await ruf('DELETE', `/users/${vw3}/second-factor`, { admin_password: PASS }));
     // A separate server: the login would otherwise write into the administrator's session.
     const anmeldung = testServer(_req, { sitzung: {}, t }).base;
-    const a = await fetch(`${anmeldung}/api/v1/auth/login`, {
+    const a = await fetch(`${anmeldung}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: namen[4], password: PASS, code: eigene[0], ohne_token: true }),
+      body: JSON.stringify({ username: namen[4], password: PASS, code: eigene[0], without_token: true }),
     });
     assert.equal(a.status, 200, await a.text());
-    assert.deepEqual(await offen(vw3), []);
+    assert.deepEqual(await open(vw3), []);
     await faellig(vw3);
-    assert.equal((await stand(vw3)).faktor, 1, 'der Faktor fiel trotz Anmeldung');
+    assert.equal((await state(vw3)).faktor, 1, 'der Faktor fiel trotz Anmeldung');
   });
 
   await t.test('the link from the mail cancels without login, once', async () => {
     mails.length = 0;
-    inFrist(await ruf('PUT', `/users/${vw7}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw7}/active`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw7}/password`, { password: NEU, admin_password: PASS }));
     const link = await abortLink(vw7);
     const abbrechen = token =>
-      fetch(`${base}/api/v1/auth/uebernahme-abbrechen`, {
+      fetch(`${base}/api/v2/auth/cancel-takeover`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: '' },
         body: JSON.stringify({ token }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
-    assert.equal((await abbrechen('falsch')).body.code, 'abbruch_link_ungueltig');
-    assert.deepEqual(await offen(vw7), ['deaktivieren', 'passwort']);
+    assert.equal((await abbrechen('falsch')).body.code, 'cancel_link_invalid');
+    assert.deepEqual(await open(vw7), ['deaktivieren', 'passwort']);
     const r = await abbrechen(link);
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.deepEqual(await offen(vw7), []);
-    assert.equal((await abbrechen(link)).body.code, 'abbruch_link_ungueltig', 'nur einmal');
+    assert.deepEqual(await open(vw7), []);
+    assert.equal((await abbrechen(link)).body.code, 'cancel_link_invalid', 'nur einmal');
     await faellig(vw7);
     assert.deepEqual(await konten(vw7), { is_admin: true, is_active: true });
   });
 
   await t.test('a due takeover is dropped if the target was deactivated', async () => {
     // a) deactivation and password become due at the same time
-    inFrist(await ruf('PUT', `/users/${vw8}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw8}/active`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw8}/password`, { password: NEU, admin_password: PASS }));
     await faellig(vw8);
-    assert.deepEqual([(await konten(vw8)).is_active, (await stand(vw8)).neuesPasswort], [false, false]);
+    assert.deepEqual([(await konten(vw8)).is_active, (await state(vw8)).neuesPasswort], [false, false]);
     // b) deactivated another way since the announcement
     inFrist(await ruf('PUT', `/users/${vw9}/password`, { password: NEU, admin_password: PASS }));
     await S.asAccount(chef, () => _req('src/account/adminActions.js').persistActive(chef, vw9, false), {
       verwalter: true,
     });
     await faellig(vw9);
-    assert.equal((await stand(vw9)).neuesPasswort, false);
+    assert.equal((await state(vw9)).neuesPasswort, false);
   });
 
   await t.test('a QR pickup of the target cancels the announcement', async () => {
@@ -286,35 +286,35 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     const qr = await ruf('POST', '/qr-token', { password: PASS, code: eigene[0] }, ziel);
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     const roh = (weg, body) =>
-      fetch(`${ziel}/api/v1/auth${weg}`, {
+      fetch(`${ziel}/api/v2/auth${weg}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       }).then(async r => ({ status: r.status, body: await r.json() }));
     const m = await roh('/qr-login', { token: qr.body.token, label: 'Pixel Probe' });
     assert.equal(m.status, 200, JSON.stringify(m.body));
-    const b = await roh(`/qr-kopplung/${qr.body.kopplung}/bestaetigen`, { code: m.body.code });
+    const b = await roh(`/qr-pairing/${qr.body.pairing}/confirm`, { code: m.body.code });
     assert.equal(b.status, 200, JSON.stringify(b.body));
-    assert.deepEqual(await offen(vw), ['passwort']);
-    const a = await roh('/qr-login/abholen', { abholung: m.body.abholung });
+    assert.deepEqual(await open(vw), ['passwort']);
+    const a = await roh('/qr-login/collect', { pickup: m.body.pickup });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual(await offen(vw), []);
+    assert.deepEqual(await open(vw), []);
   });
 
   await t.test('the account list shows announced changes with their time', async () => {
-    const r = await fetch(`${base}/api/v1/auth/users`).then(x => x.json());
+    const r = await fetch(`${base}/api/v2/auth/users`).then(x => x.json());
     const z = r.users.find(u => u.id === vw2);
-    assert.deepEqual(z.angekuendigt.map(a => a.type).sort(), ['passwort', 'rolle_entziehen']);
-    assert.ok(z.angekuendigt.every(a => Date.parse(a.effective_at) > Date.now()));
+    assert.deepEqual(z.announced.map(a => a.type).sort(), ['passwort', 'rolle_entziehen']);
+    assert.ok(z.announced.every(a => Date.parse(a.effective_at) > Date.now()));
   });
 
   await t.test('… whoever lost the role no longer enforces anything', async () => {
     await db.run('UPDATE users SET is_admin = false WHERE id = $1', [chef]);
     try {
-      assert.equal((await offen(vw2)).length, 2);
+      assert.equal((await open(vw2)).length, 2);
       assert.equal(await faellig(vw2), 0);
-      assert.deepEqual(await offen(vw2), [], 'die Ankündigung bleibt nicht liegen');
-      assert.deepEqual([(await stand(vw2)).neuesPasswort, (await konten(vw2)).is_admin], [false, true]);
+      assert.deepEqual(await open(vw2), [], 'die Ankündigung bleibt nicht liegen');
+      assert.deepEqual([(await state(vw2)).neuesPasswort, (await konten(vw2)).is_admin], [false, true]);
     } finally {
       await db.run('UPDATE users SET is_admin = true WHERE id = $1', [chef]);
     }

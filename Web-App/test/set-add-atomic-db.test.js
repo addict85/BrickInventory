@@ -48,8 +48,8 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     },
     getThemeName: async () => 'Test',
     setDetails: async () => null,
-    bricklinkRequest: async (_m, pfad) => {
-      netz.push(`preis ${pfad.split('/')[3]}`);
+    bricklinkRequest: async (_m, path) => {
+      netz.push(`preis ${path.split('/')[3]}`);
       return { avg_price: '42', qty_avg_price: '42', currency_code: 'EUR' };
     },
   });
@@ -70,7 +70,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       await db.run('DELETE FROM set_acquisitions WHERE set_number = $1', [sn]);
       await db.run('DELETE FROM sets WHERE set_number = $1', [sn]);
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
-      await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [sn]);
+      await db.run("DELETE FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [sn]);
     }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND]]);
   };
@@ -111,7 +111,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
   await t.test('the request asks no network and enqueues the job', async () => {
     netz.length = 0;
     const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
-    const r = await fetch(`${base}/api/v1/sets`, {
+    const r = await fetch(`${base}/api/v2/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: SN2, condition: 'U' }),
@@ -123,10 +123,10 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
         action: j.action,
         set_number: j.set_number,
         name: j.name,
-        katalog_offen: j.katalog_offen,
-        ergaenzung: j.ergaenzung,
+        catalog_pending: j.catalog_pending,
+        supplement: j.supplement,
       },
-      { action: 'added', set_number: SN2, name: `Set ${SN2}`, katalog_offen: true, ergaenzung: 'ausstehend' },
+      { action: 'added', set_number: SN2, name: `Set ${SN2}`, catalog_pending: true, supplement: 'ausstehend' },
     );
     assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
     // rb_sets does not know the set: the capture creates it as 'api', including the set_catalog row.
@@ -139,12 +139,12 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       { name: `Set ${SN2}`, source: 'api', katalog: true },
     );
     const a = await db.get(
-      "SELECT payload, dedupe_key FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
+      "SELECT payload, dedupe_key FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1",
       [SN2],
     );
     assert.ok(a, 'kein Auftrag eingestellt');
-    assert.equal(a.payload.art, 'ergaenzen');
-    assert.equal(a.dedupe_key, `nacharbeit:${haupt}:${SN2}`);
+    assert.equal(a.payload.kind, 'ergaenzen');
+    assert.equal(a.dedupe_key, `rework:${haupt}:${SN2}`);
   });
 
   await t.test('the job completes catalog and purchase price', async () => {
@@ -165,8 +165,8 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       [haupt, SN2],
     );
     assert.deepEqual(
-      { preis: Number(erf.purchase_price), geschaetzt: erf.price_estimated, zustand: erf.condition },
-      { preis: 42, geschaetzt: true, zustand: 'U' },
+      { preis: Number(erf.purchase_price), geschaetzt: erf.price_estimated, condition: erf.condition },
+      { preis: 42, geschaetzt: true, condition: 'U' },
     );
     assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
     // A second run does not ask the catalog again: stream and job do not interfere.

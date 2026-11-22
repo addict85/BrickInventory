@@ -59,9 +59,9 @@ const MEASUREMENT = `(() => {
 })()`;
 
 test('large font and narrow devices: collection readable', { timeout: 180_000 }, async t => {
-  const app = await startApp(t, { name: `gross_${process.pid}`, bestand: patternCollection });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `gross_${process.pid}`, holding: patternCollection });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, ruhig } = app;

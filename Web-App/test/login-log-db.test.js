@@ -38,8 +38,8 @@ const { testServer } = require('./helpers/server');
 const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _name, art) => {
-    mails.push({ an, art });
+  mailAccountNotice: async (an, _name, kind) => {
+    mails.push({ an, kind });
     return { success: true };
   },
 });
@@ -98,15 +98,15 @@ test('login events in the log', { concurrency: 1 }, async t => {
 
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const ruf = (weg, body) =>
-    fetch(`${base}/api/v1/auth${weg}`, {
+    fetch(`${base}/api/v2/auth${weg}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then(r => r.status);
   const anmelden = (username, password, code) =>
-    ruf('/login', { username, password, ohne_token: true, ...(code ? { code } : {}) });
+    ruf('/login', { username, password, without_token: true, ...(code ? { code } : {}) });
   /** The warning lines of an event as parsed JSON. */
-  const ereignisse = art => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === art);
+  const ereignisse = kind => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === kind);
   const waitOnMails = async n => {
     for (let i = 0; i < 60 && mails.length < n; i++) await new Promise(r => setTimeout(r, 25));
   };
@@ -116,7 +116,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     const [z] = ereignisse('anmeldung_fehlgeschlagen');
     assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
     // Depending on the machine, localhost is 127.0.0.1 or ::1 (shortened to the /64).
-    assert.match(z.kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
+    assert.match(z.kontext.address, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(
       !zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(FALSCH),
@@ -142,10 +142,10 @@ test('login events in the log', { concurrency: 1 }, async t => {
   await t.test('a successful login: exactly one info line with account and address', async () => {
     infos.length = 0;
     assert.equal(await anmelden(NAME, PASS), 200);
-    const erfolg = infos.map(z => JSON.parse(z)).filter(z => /^\[anmeldung\] anmeldung_erfolgreich/.test(z.nachricht));
+    const erfolg = infos.map(z => JSON.parse(z)).filter(z => /^\[anmeldung\] anmeldung_erfolgreich/.test(z.message));
     assert.equal(erfolg.length, 1, infos.join('\n'));
     assert.equal(erfolg[0].kontext.konto, uid);
-    assert.match(erfolg[0].kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
+    assert.match(erfolg[0].kontext.address, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(erfolg[0].kontext.zugang, 'passwort');
     assert.ok(
       ![...infos, ...zeilen].join('\n').includes(NAME) && !infos.join('\n').includes(PASS),
@@ -162,7 +162,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
       [uid, uid, uid, uid, uid],
     );
     await waitOnMails(1);
-    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, art: 'anmeldung_gebremst' }]);
+    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'anmeldung_gebremst' }]);
   });
 
   await t.test('the lock is in the log', async () => {
@@ -187,7 +187,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     const richtig = zf.hotp(zf.fromBase32(g), zf.timeStep());
     assert.equal(await anmelden(FACTOR, PASS, richtig === '000000' ? '000001' : '000000'), 401);
     assert.deepEqual(
-      ereignisse('zweiter_faktor_falsch').map(z => z.kontext.konto),
+      ereignisse('second_factor_wrong').map(z => z.kontext.konto),
       [zfId],
     );
   });
@@ -196,7 +196,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     zeilen.length = 0;
     assert.equal(await ruf('/change-password', { current: FALSCH, newPassword: 'Neues-Passwort-77' }), 400);
     const [z] = ereignisse('bestaetigung_fehlgeschlagen');
-    assert.deepEqual([z?.kontext.konto, z?.kontext.art], [uid, 'passwort']);
+    assert.deepEqual([z?.kontext.konto, z?.kontext.kind], [uid, 'passwort']);
     assert.ok(!zeilen.join('\n').includes(FALSCH));
   });
 

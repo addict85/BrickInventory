@@ -15,7 +15,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** index.html plus all frontend building blocks — NOT the built bundle. */
-function quellen() {
+function sources() {
   const js = fs
     .readdirSync(path.join(ROOT, 'public/js'))
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
@@ -25,11 +25,11 @@ function quellen() {
 
 function numberFields() {
   const treffer = [];
-  for (const [p, s] of quellen()) {
+  for (const [p, s] of sources()) {
     for (const m of s.matchAll(/<input\b[^>]*>/g)) {
       const tag = m[0];
       if (!/type=["']?number|inputmode=["']?decimal/.test(tag)) continue;
-      treffer.push({ datei: p, zeile: s.slice(0, m.index).split('\n').length, tag });
+      treffer.push({ datei: p, row: s.slice(0, m.index).split('\n').length, tag });
     }
   }
   return treffer;
@@ -41,7 +41,7 @@ test('1. every type="number" carries an inputmode', () => {
   // empty list would be green forever without ever having looked at a field.
   assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
 
-  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.zeile}`);
+  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.row}`);
   assert.deepEqual(
     ohne,
     [],
@@ -59,7 +59,7 @@ test('2. prices and thresholds get `decimal`, not `numeric`', () => {
   for (const f of numberFields()) {
     const commaField = /step=["']?0?\.\d/.test(f.tag);
     const modus = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
-    if (commaField && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
+    if (commaField && modus !== 'decimal') falsch.push(`${f.datei}:${f.row} (${modus})`);
   }
   assert.deepEqual(
     falsch,
@@ -75,6 +75,6 @@ test('3. money fields are text fields: type="number" discards "149,95"', () => {
   // it is read with readAmount() (money-input.test.js checks the behavior).
   const falsch = numberFields()
     .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
-    .map(f => `${f.datei}:${f.zeile}`);
+    .map(f => `${f.datei}:${f.row}`);
   assert.deepEqual(falsch, []);
 });

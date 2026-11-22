@@ -89,7 +89,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
       },
       { parallel: 1 },
     );
-    await placeJobOne('wechselkurse', {}, { userId: uid });
+    await placeJobOne('exchange_rates', {}, { userId: uid });
     while (await w.processOne()) {
       /* until the table is empty */
     }

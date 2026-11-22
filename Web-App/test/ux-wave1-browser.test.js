@@ -50,7 +50,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
   const app = await startApp(t, {
     name: NAME,
     allDesigns: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternCollection(db, uid);
       // One instruction of each kind: imported from outside, imported and stored, uploaded by hand.
       // Shared rows outlive the account; those of an earlier run would add to the three.
@@ -69,8 +69,8 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       );
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -204,10 +204,10 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
 
   await t.test('inert background and live regions', async () => {
     await oeffneSet();
-    const offen = await b.auswerten(
+    const open = await b.auswerten(
       `({ app: document.getElementById('app').inert, dialog: document.getElementById('set-modal').inert, toasts: document.getElementById('toasts').inert })`,
     );
-    assert.deepEqual(offen, { app: true, dialog: false, toasts: false });
+    assert.deepEqual(open, { app: true, dialog: false, toasts: false });
     await zu();
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
     assert.equal(

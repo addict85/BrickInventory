@@ -13,28 +13,28 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-const posten = (feld, nr, name) => ({
-  [`${feld}_number`]: nr,
-  [`${feld}_name`]: name,
+const items = (field, nr, name) => ({
+  [`${field}_number`]: nr,
+  [`${field}_name`]: name,
   quantity: 1,
   condition: 'N',
   conditions: ['N'],
   acquisitions: [],
   avg_price: 2,
   purchase_price: 1,
-  wert_gesamt: 2,
+  value_total: 2,
   total_value: '2.00',
   display_value: '2.00',
 });
 
 async function finanzen() {
   const o = await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       condition: 'N',
       total_value: '5',
-      kaufpreise_fremde_waehrung: 0,
+      foreign_currency_purchases: 0,
       totals: { min: '0', avg: '5', max: '0', qty_avg: '5' },
       sets: [
         {
@@ -42,7 +42,7 @@ async function finanzen() {
           name: 'Titanic',
           quantity: 1,
           avg_price: 5,
-          wert_gesamt: 5,
+          value_total: 5,
           from_cache: true,
           is_fallback: false,
           no_price: false,
@@ -51,19 +51,19 @@ async function finanzen() {
         },
       ],
     },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '2',
-      wert_gesamt: 2,
-      parts: [{ ...posten('part', '3001', 'Stein 2 x 4'), color_id: 5, color_name: 'Red' }],
+      value_total: 2,
+      parts: [{ ...items('part', '3001', 'Stein 2 x 4'), color_id: 5, color_name: 'Red' }],
     },
-    '/v1/finance/minifigs-valuation': {
+    '/v2/finance/minifigs-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '2',
-      wert_gesamt: 2,
-      figs: [posten('fig', 'sw0001', 'Luke')],
+      value_total: 2,
+      figs: [items('fig', 'sw0001', 'Luke')],
     },
   });
   await reiter(o.w, 'finance');
@@ -75,7 +75,7 @@ async function finanzen() {
     [...o.d.querySelectorAll('#fin-tbl [data-fin-kind]')]
       .filter(el => el.style.display !== 'none')
       .map(el => el.dataset.finKind);
-  o.chip = art => o.d.querySelector(`#fin-filter [data-click="finFilter"][data-arg="${art}"]`).click();
+  o.chip = kind => o.d.querySelector(`#fin-filter [data-click="finFilter"][data-arg="${kind}"]`).click();
   return o;
 }
 
@@ -104,9 +104,9 @@ test('web app: empty means all, the filter accumulates and survives redrawing', 
     assert.deepEqual(o.sichtbar(), ['figs'], 'ein zweiter Klick nimmt die Art nicht wieder heraus');
     // The search redraws the table: the old section is replaced.
     const vorher = o.d.querySelector('#fin-tbl [data-fin-kind="figs"]');
-    const feld = o.d.getElementById('fin-search');
-    feld.value = '0';
-    feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+    const field = o.d.getElementById('fin-search');
+    field.value = '0';
+    field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.ok(
       await warte(() => !vorher.isConnected && o.d.querySelectorAll('#fin-tbl [data-fin-kind]').length === 3, 1500),
       'nicht neu gezeichnet',

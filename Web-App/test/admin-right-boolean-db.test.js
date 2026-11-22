@@ -46,8 +46,8 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
       [app, false],
     ]) {
       const req = { method: 'GET', path: '/x', headers: { authorization: `Bearer ${token}` }, ip: '127.0.0.1' };
-      await new Promise((weiter, fehler) => {
-        const res = { status: () => res, json: r => fehler(new Error(JSON.stringify(r))), setHeader: () => {} };
+      await new Promise((weiter, error) => {
+        const res = { status: () => res, json: r => error(new Error(JSON.stringify(r))), setHeader: () => {} };
         requireToken(req, res, weiter);
       });
       assert.equal(req.apiUser.is_admin, soll);

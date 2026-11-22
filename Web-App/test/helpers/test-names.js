@@ -10,18 +10,18 @@
 const STANDARD = 'postgres://tester:test@localhost/cattest';
 
 /** The base database (not the copy test-run.js creates per file). */
-function basisUrl() {
+function baseUrl() {
   return new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || STANDARD);
 }
 
 /** `<basis>_vorlage` — the same stem as the template in scripts/test-run.js. */
 function stamm() {
-  return `${decodeURIComponent(basisUrl().pathname.slice(1))}_vorlage`.toLowerCase();
+  return `${decodeURIComponent(baseUrl().pathname.slice(1))}_vorlage`.toLowerCase();
 }
 
 /** Name for a database or role of this process: `<stamm>_<art>_<pid>`. */
-function testName(art) {
-  return `${stamm()}_${art}_${process.pid}`;
+function testName(kind) {
+  return `${stamm()}_${kind}_${process.pid}`;
 }
 
 const id = s => `"${String(s).replace(/"/g, '""')}"`;
@@ -38,9 +38,9 @@ const lebt = pid => {
  * Delete leftovers of earlier runs of the same kind whose process no longer lives:
  * first databases, then roles (a role with objects cannot be deleted).
  */
-async function cleanRemainder(admin, art) {
-  const muster = `${stamm()}_${art}_%`.replace(/_/g, '\\_');
-  const pidFrom = name => Number(name.slice(`${stamm()}_${art}_`.length).match(/^\d+/)?.[0]);
+async function cleanRemainder(admin, kind) {
+  const muster = `${stamm()}_${kind}_%`.replace(/_/g, '\\_');
+  const pidFrom = name => Number(name.slice(`${stamm()}_${kind}_`.length).match(/^\d+/)?.[0]);
   const tot = name => {
     const pid = pidFrom(name);
     return pid > 0 && pid !== process.pid && !lebt(pid);
@@ -51,4 +51,4 @@ async function cleanRemainder(admin, art) {
   for (const { n } of rollen.filter(r => tot(r.n))) await admin.query(`DROP ROLE IF EXISTS ${id(n)}`).catch(() => {});
 }
 
-module.exports = { basisUrl, stamm, testName, cleanRemainder, id };
+module.exports = { baseUrl, stamm, testName, cleanRemainder, id };

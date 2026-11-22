@@ -46,15 +46,15 @@ test('color and category list see the same inventory in the household', { concur
     await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
         ('3001',4,'Red'), ('3002',1,'Blue')
         ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
-    await holdsPart(db, haupt, '3001', { setNumber: '0001-1', menge: 2, colorId: 4 });
-    await holdsPart(db, kind, '3002', { setNumber: '0002-1', menge: 5, colorId: 1 });
+    await holdsPart(db, haupt, '3001', { setNumber: '0001-1', quantity: 2, colorId: 4 });
+    await holdsPart(db, kind, '3002', { setNumber: '0002-1', quantity: 5, colorId: 1 });
 
     const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
-    const hole = async pfad => (await fetch(base + pfad)).json();
+    const hole = async path => (await fetch(base + path)).json();
 
     for (const modus of ['all', 'own']) {
-      const farben = await hole(`/api/v1/parts/colors?accounts=${modus}`);
-      const kats = await hole(`/api/v1/parts/categories?accounts=${modus}`);
+      const farben = await hole(`/api/v2/parts/colors?accounts=${modus}`);
+      const kats = await hole(`/api/v2/parts/categories?accounts=${modus}`);
       assert.ok(farben.success, `Farben (${modus}): ${JSON.stringify(farben)}`);
       assert.ok(kats.success, `Kategorien (${modus}): ${JSON.stringify(kats)}`);
 
@@ -71,8 +71,8 @@ test('color and category list see the same inventory in the household', { concur
 
     // And the difference between the modes must be there at all — otherwise
     // the equality above would be the same statement twice.
-    const alle = await hole('/api/v1/parts/categories?accounts=all');
-    const eigen = await hole('/api/v1/parts/categories?accounts=own');
+    const alle = await hole('/api/v2/parts/categories?accounts=all');
+    const eigen = await hole('/api/v2/parts/categories?accounts=own');
     assert.ok(
       alle.categories.length > eigen.categories.length,
       'Mit dem Haushalt muessen mehr Kategorien da sein als ohne — sonst greift ' +

@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
-const LEER = { '/v1/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
+const LEER = { '/v2/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 
 test('collection: search without hits', async () => {
   const { w, d, aufrufe } = await openUi(LEER);
@@ -28,7 +28,7 @@ test('collection: search without hits', async () => {
     knopf.click();
     await takt(30);
     assert.equal(d.getElementById('gs').value, '');
-    const neu = aufrufe.slice(vorher).find(a => a.url.includes('/v1/sets?'));
+    const neu = aufrufe.slice(vorher).find(a => a.url.includes('/v2/sets?'));
     assert.ok(neu, 'Die Sammlung wurde nicht neu geladen');
     assert.doesNotMatch(neu.url, /search=/);
   } finally {
@@ -51,7 +51,7 @@ test('collection: theme filter without hits', async () => {
 });
 
 test('wishlist: search without hits', async () => {
-  const { w, d } = await openUi({ '/v1/wanted': { success: true, merkposten: [] } });
+  const { w, d } = await openUi({ '/v2/wanted': { success: true, item: [] } });
   try {
     await reiter(w, 'wanted');
     d.getElementById('mks').value = 'xyz';

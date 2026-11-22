@@ -18,10 +18,10 @@ const { openUi, reiter } = require('./helpers/ui');
 /** A response that only arrives on call. */
 function withheld() {
   let los;
-  const antwort = new Promise(r => {
+  const response = new Promise(r => {
     los = r;
   });
-  return { antwort, los: (/** @type {any} */ d) => los(d) };
+  return { response, los: (/** @type {any} */ d) => los(d) };
 }
 
 const set = (nr, name) => ({ set_number: nr, name, quantity: 1 });
@@ -30,10 +30,10 @@ const teil = (nr, name) => ({ part_number: nr, part_name: name, color_id: 5, col
 test('gallery: a late response of an old search is discarded', async () => {
   const alt = withheld();
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/sets': url =>
+    '/v2/sets': url =>
       new URL(url, 'http://x').searchParams.get('search') === 'new'
         ? { success: true, sets: [set('10300-1', 'NEU-Set')], count: 1, total: 1 }
-        : alt.antwort,
+        : alt.response,
   });
   try {
     const gs = d.getElementById('gs');
@@ -42,7 +42,7 @@ test('gallery: a late response of an old search is discarded', async () => {
     assert.ok(await warte(() => /NEU-Set/.test(d.getElementById('gallery').textContent)));
     alt.los({ success: true, sets: [set('10294-1', 'ALT-Set')], count: 1, total: 1 });
     await warte(() => /ALT-Set/.test(d.getElementById('gallery').textContent), 300);
-    assert.ok(aufrufe.filter(a => a.url.includes('/v1/sets?')).length >= 2, 'beide Anfragen liefen');
+    assert.ok(aufrufe.filter(a => a.url.includes('/v2/sets?')).length >= 2, 'beide Anfragen liefen');
     assert.match(d.getElementById('gallery').textContent, /NEU-Set/);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /ALT-Set/);
   } finally {
@@ -55,14 +55,14 @@ test('gallery: a late follow-up page of an old search is not appended', async ()
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const sequence = withheld();
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/sets': url => {
+    '/v2/sets': url => {
       const q = new URL(url, 'http://x').searchParams;
       if (q.get('search') === 'new') return { success: true, sets: [set('10300-1', 'NEU-Set')], count: 1, total: 1 };
-      return q.get('page') === '2' ? sequence.antwort : { success: true, sets: erste, count: 60, total: 200 };
+      return q.get('page') === '2' ? sequence.response : { success: true, sets: erste, count: 60, total: 200 };
     },
   });
   try {
-    assert.ok(await warte(() => aufrufe.some(a => /\/v1\/sets\?.*page=2/.test(a.url))));
+    assert.ok(await warte(() => aufrufe.some(a => /\/v2\/sets\?.*page=2/.test(a.url))));
     const gs = d.getElementById('gs');
     gs.value = 'new';
     gs.dispatchEvent(new w.Event('input'));
@@ -78,10 +78,10 @@ test('gallery: a late follow-up page of an old search is not appended', async ()
 test('parts list: a late response of an old filter is discarded', async () => {
   const alt = withheld();
   const { w, d, warte } = await openUi({
-    '/v1/parts': url =>
+    '/v2/parts': url =>
       new URL(url, 'http://x').searchParams.get('spare') === '0'
         ? { success: true, parts: [teil('3001', 'NEU-Teil')], total: 1, page: 1, page_size: 100 }
-        : alt.antwort,
+        : alt.response,
   });
   try {
     await reiter(w, 'parts');

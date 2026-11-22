@@ -7,7 +7,7 @@
  *   importWorker(t, _req);
  *
  * @param {{ after: (f: () => unknown) => void }} t
- * @param {(pfad: string) => any} _req  buildAndRequire() of the test file
+ * @param {(path: string) => any} _req  buildAndRequire() of the test file
  */
 function importWorker(t, _req) {
   const { startJobWorker } = _req('jobs/startJobs.js');

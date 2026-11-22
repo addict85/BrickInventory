@@ -58,8 +58,8 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
     // Derived parts and minifigures — they hang on the set and must
     // go along. If they stay, they keep appearing in the parts list and
     // finance sums without there being a set for them.
-    await holdsPart(db, uid, '3001', { setNumber: sn, menge: 10, colorId: 4 });
-    await holdsMinifig(db, uid, 'cty0001', { setNumber: sn, menge: 1 });
+    await holdsPart(db, uid, '3001', { setNumber: sn, quantity: 10, colorId: 4 });
+    await holdsMinifig(db, uid, 'cty0001', { setNumber: sn, quantity: 1 });
   }
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
@@ -68,10 +68,10 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
   const FC = _req('src/finances/financeCalc.js');
 
   try {
-    const liste = await (await fetch(`${base}/api/v1/sets/${ROUTE}/acquisitions`)).json();
+    const liste = await (await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions`)).json();
     const acqId = liste.acquisitions?.[0]?.id;
     assert.ok(acqId, 'Vorbedingung: es gibt eine Erfassung');
-    const r = await fetch(`${base}/api/v1/sets/${ROUTE}/acquisitions/${acqId}`, { method: 'DELETE' });
+    const r = await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions/${acqId}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal((await r.json()).new_quantity, 0);
 
@@ -140,12 +140,12 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
                     VALUES ($1,$2,9,'U',2, NOW() - INTERVAL '1 day')`,
         [uid, BLEIBT],
       );
-      const l = await (await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions`)).json();
+      const l = await (await fetch(`${base}/api/v2/sets/${BLEIBT}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
-      await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
+      await fetch(`${base}/api/v2/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
       assert.ok(await haltRow(db, uid, BLEIBT), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
-      const menge = await quantityOf(db, uid, BLEIBT);
-      assert.ok(menge > 0, `Menge ${menge}`);
+      const quantity = await quantityOf(db, uid, BLEIBT);
+      assert.ok(quantity > 0, `Menge ${quantity}`);
     });
   } finally {
     await aufraeumen();

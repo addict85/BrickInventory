@@ -32,16 +32,16 @@ function dateien() {
 
 test('every font size takes a step of the scale', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  const stufen = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
-  assert.ok(stufen.size >= 8, `Nur ${stufen.size} Stufen in styles.css gefunden — greift die Suche noch?`);
+  const levels = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
+  assert.ok(levels.size >= 8, `Nur ${levels.size} Stufen in styles.css gefunden — greift die Suche noch?`);
   const frei = [],
     fehlt = [];
   for (const f of dateien()) {
     const zeilen = fs.readFileSync(f, 'utf8').split('\n');
     zeilen.forEach((z, i) => {
-      const ort = `${path.relative(PUB, f)}:${i + 1}`;
-      for (const m of z.matchAll(/font-size:\s*[0-9]*\.?[0-9]+rem/g)) frei.push(`${ort}  ${m[0]}`);
-      for (const m of z.matchAll(/var\(--fs-(\d+)\)/g)) if (!stufen.has(m[1])) fehlt.push(`${ort}  --fs-${m[1]}`);
+      const location = `${path.relative(PUB, f)}:${i + 1}`;
+      for (const m of z.matchAll(/font-size:\s*[0-9]*\.?[0-9]+rem/g)) frei.push(`${location}  ${m[0]}`);
+      for (const m of z.matchAll(/var\(--fs-(\d+)\)/g)) if (!levels.has(m[1])) fehlt.push(`${location}  --fs-${m[1]}`);
     });
   }
   assert.deepEqual(

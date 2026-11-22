@@ -32,8 +32,8 @@ const NUMBER = `bildtest${process.pid}`;
 function placeAfter(t, { status = 200, typ = 'image/png', body = Buffer.from('PNGDATEN') } = {}) {
   const aufrufe = [];
   const echt = https.get;
-  /** @type {any} */ (https).get = (adresse, _o, cb) => {
-    aufrufe.push(String(adresse));
+  /** @type {any} */ (https).get = (address, _o, cb) => {
+    aufrufe.push(String(address));
     const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
@@ -97,13 +97,13 @@ test('downloadImage', { concurrency: 1 }, async t => {
   await t.test('foreign host: no fetch', async tt => {
     aufraeumen();
     const aufrufe = placeAfter(tt);
-    for (const adresse of [
+    for (const address of [
       'https://169.254.169.254/latest/meta-data.png',
       'https://localhost/x.png',
       'http://cdn.rebrickable.com/x.png',
       'https://rebrickable.com.boese.example/x.png',
     ])
-      assert.equal(await downloadImage(adresse, NUMBER, 0, 'part'), null, adresse);
+      assert.equal(await downloadImage(address, NUMBER, 0, 'part'), null, address);
     assert.deepEqual(aufrufe, [], 'fremder Host wird abgerufen');
   });
 

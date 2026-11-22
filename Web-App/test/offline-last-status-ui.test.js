@@ -25,7 +25,7 @@ const withStyle = w =>
   });
 const MERK = {
   success: true,
-  merkposten: [{ id: 1, set_number: '10497-1', name: 'Galaxie-Forscher', condition: 'N', quantity: 1 }],
+  item: [{ id: 1, set_number: '10497-1', name: 'Galaxie-Forscher', condition: 'N', quantity: 1 }],
 };
 
 function netz(w, an) {
@@ -35,7 +35,7 @@ function netz(w, an) {
 
 test('wishlist: last state instead of an error, even after reloading the page', async () => {
   // First visit with network; the second (as after F5) without, with the storage of this tab.
-  const erst = await openUi({ '/v1/wanted': MERK });
+  const erst = await openUi({ '/v2/wanted': MERK });
   await reiter(erst.w, 'wanted');
   await warte(() => erst.d.querySelector('#mk-list .mk-row'));
   const speicher = Object.fromEntries(
@@ -44,7 +44,7 @@ test('wishlist: last state instead of an error, even after reloading the page', 
   erst.w.close();
   const { w, d, ruhig } = await openUi(
     {
-      '/v1/wanted': () => {
+      '/v2/wanted': () => {
         throw new TypeError('Failed to fetch');
       },
     },
@@ -70,7 +70,7 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
   let offline = true;
   const { w, d } = await openUi(
     {
-      '/v1/wanted': () => {
+      '/v2/wanted': () => {
         if (offline) throw new TypeError('Failed to fetch');
         return MERK;
       },

@@ -38,7 +38,7 @@ const PUB = path.join(__dirname, '..', 'public');
 
 /** Handler names in the markup and in the templates (structure); whether they are registered is told by the runtime. */
 function namesInMarkup() {
-  const quellen = [
+  const sources = [
     fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'),
     ...fs
       .readdirSync(path.join(PUB, 'js'))
@@ -51,7 +51,7 @@ function namesInMarkup() {
       ),
   ];
   const namen = new Set();
-  for (const s of quellen)
+  for (const s of sources)
     for (const m of s.matchAll(/data-(?:click|change|input|blur|keydown)="([A-Za-z_$][\w$]*)"/g)) namen.add(m[1]);
   // The log viewer runs in its own window with its own table (logviewer-ui.test.js).
   for (const n of ['loadLogs', 'renderLogs', 'toggleAuto', 'toggleLevel']) namen.delete(n);

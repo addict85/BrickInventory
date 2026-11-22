@@ -189,7 +189,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'https://cdn.example/70002-1.jpg',
       'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.',
     );
-    assert.equal(meins.besitzt, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
+    assert.equal(meins.owns, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
     // The second LEFT JOIN must not multiply any row: sets is unique over
     // (user_id, set_number). Two rows would be the proof here.
     assert.equal(
@@ -199,7 +199,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     );
 
     assert.equal(
-      fremdes.besitzt,
+      fremdes.owns,
       false,
       'Ein Alarm auf ein Set, das NICHT in der Sammlung liegt, gilt als vorhanden — ' +
         'die Zeile wäre anklickbar und der Klick endete in einer Fehlermeldung.',
@@ -232,7 +232,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     assert.deepEqual(
       fehlen,
       [],
-      'Diese Felder liefert /v1/alerts, und die App hat keinen Platz dafür:\n  ' +
+      'Diese Felder liefert /v2/alerts, und die App hat keinen Platz dafür:\n  ' +
         fehlen.join('\n  ') +
         '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.',
     );
@@ -297,7 +297,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const fromKind = a.find(x => x.set_number === '60000-1');
     assert.ok(fromKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
     assert.equal(
-      fromKind.besitzt,
+      fromKind.owns,
       true,
       'Ein Set des Haushalts gilt als nicht vorhanden — die Zeile wäre nicht ' +
         'anklickbar, obwohl die Detailansicht es öffnet. Genau das war Marcos Befund.',

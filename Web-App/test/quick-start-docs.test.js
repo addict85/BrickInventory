@@ -52,27 +52,29 @@ function quickStart(datei, abschnitt) {
 }
 
 function sandbox(t) {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'schnellstart-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  fs.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(ort, 'compose.yaml'));
-  fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(ort, '.env.example'));
-  fs.copyFileSync(path.join(ROOT, 'Caddyfile'), path.join(ort, 'Caddyfile'));
-  fs.cpSync(path.join(ROOT, 'scripts'), path.join(ort, 'scripts'), { recursive: true });
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'schnellstart-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  fs.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(location, 'compose.yaml'));
+  fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(location, '.env.example'));
+  fs.copyFileSync(path.join(ROOT, 'Caddyfile'), path.join(location, 'Caddyfile'));
+  fs.cpSync(path.join(ROOT, 'scripts'), path.join(location, 'scripts'), { recursive: true });
   // cosign and docker as stand-ins: the signature check reports DIGEST, docker only records.
-  const bin = path.join(ort, 'ersatz-bin');
+  const bin = path.join(location, 'ersatz-bin');
   fs.mkdirSync(bin);
   fs.writeFileSync(
     path.join(bin, 'cosign'),
     `#!/bin/sh\necho '[{"critical":{"image":{"docker-manifest-digest":"${DIGEST}"}}}]'\n`,
     { mode: 0o755 },
   );
-  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${ort}/docker.log"\n`, { mode: 0o755 });
-  return ort;
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${location}/docker.log"\n`, {
+    mode: 0o755,
+  });
+  return location;
 }
 
-function compose(ort, ...args) {
-  return spawnSync('docker', ['compose', '-f', path.join(ort, 'compose.yaml'), ...args], {
-    cwd: ort,
+function compose(location, ...args) {
+  return spawnSync('docker', ['compose', '-f', path.join(location, 'compose.yaml'), ...args], {
+    cwd: location,
     encoding: 'utf8',
     env: { PATH: process.env.PATH, HOME: process.env.HOME },
   });
@@ -88,26 +90,30 @@ for (const { datei, abschnitt } of DOKUS) {
       return;
     }
     assert.ok(PUBLISHED, 'IMAGE in docker-publish.yml nicht gefunden');
-    const ort = sandbox(t);
-    const schritte = quickStart(datei, abschnitt);
+    const location = sandbox(t);
+    const steps = quickStart(datei, abschnitt);
     const dockerRows = [];
-    for (const zeile of schritte) {
-      if (/^(git|cd)\s/.test(zeile)) continue;
-      if (/^docker\s/.test(zeile)) {
-        dockerRows.push(zeile);
+    for (const row of steps) {
+      if (/^(git|cd)\s/.test(row)) continue;
+      if (/^docker\s/.test(row)) {
+        dockerRows.push(row);
         continue;
       }
       // sudo only for the file permissions; CA_ORDNER names the same folder as the
       // default and allows the run without root (CI).
-      const r = spawnSync('sh', ['-c', zeile.replace(/^sudo\s+/, '')], {
-        cwd: ort,
+      const r = spawnSync('sh', ['-c', row.replace(/^sudo\s+/, '')], {
+        cwd: location,
         encoding: 'utf8',
-        env: { PATH: `${path.join(ort, 'ersatz-bin')}:${process.env.PATH}`, HOME: ort, CA_ORDNER: './caddy/ca' },
+        env: {
+          PATH: `${path.join(location, 'ersatz-bin')}:${process.env.PATH}`,
+          HOME: location,
+          CA_ORDNER: './caddy/ca',
+        },
       });
-      assert.equal(r.status, 0, `Schritt scheitert: ${zeile}\n${r.stdout}${r.stderr}`);
+      assert.equal(r.status, 0, `Schritt scheitert: ${row}\n${r.stdout}${r.stderr}`);
     }
-    const gezogen = fs.existsSync(path.join(ort, 'docker.log'))
-      ? fs.readFileSync(path.join(ort, 'docker.log'), 'utf8')
+    const gezogen = fs.existsSync(path.join(location, 'docker.log'))
+      ? fs.readFileSync(path.join(location, 'docker.log'), 'utf8')
       : '';
     assert.ok(
       dockerRows.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(gezogen),
@@ -118,7 +124,7 @@ for (const { datei, abschnitt } of DOKUS) {
       'der Schnellstart startet (docker compose up -d)',
     );
 
-    const k = compose(ort, 'config', '--format', 'json');
+    const k = compose(location, 'config', '--format', 'json');
     assert.equal(k.status, 0, `docker compose config: ${k.stderr}`);
     const j = JSON.parse(k.stdout);
     const dienste = Object.keys(j.services);
@@ -143,7 +149,7 @@ for (const { datei, abschnitt } of DOKUS) {
     assert.ok(brauchen.size >= 3, `nur ${brauchen.size} Secrets — liest der Test die richtige Datei?`);
     for (const s of brauchen) {
       const f = j.secrets[s].file;
-      assert.ok(fs.existsSync(f), `Secret ${s}: ${path.relative(ort, f)} fehlt`);
+      assert.ok(fs.existsSync(f), `Secret ${s}: ${path.relative(location, f)} fehlt`);
     }
     for (const s of ['session_secret', 'db_password', 'db_app_password'])
       assert.ok(fs.statSync(j.secrets[s].file).size >= 16, `Secret ${s} ist leer`);
@@ -155,7 +161,7 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const f of ['zwischen.key', 'zwischen-kette.crt', 'root.crt'])
       assert.ok(
         fs.existsSync(path.join(ca.source, f)),
-        `Caddy findet ${f} nicht unter ${path.relative(ort, ca.source)}`,
+        `Caddy findet ${f} nicht unter ${path.relative(location, ca.source)}`,
       );
 
     // Reachable only via Caddy; app, jobs and schluessel share the published image.

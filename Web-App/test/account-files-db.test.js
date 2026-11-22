@@ -102,7 +102,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
   await t.test('uploaded: encrypted on disk, delivered decrypted', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([original], { type: 'application/pdf' }), 'g.pdf');
-    const r = await fetch(`${ziel.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${ziel.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
     const roh = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
@@ -110,14 +110,14 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
     assert.ok(ofDisk.pin !== PIN && ofDisk.number !== NR, 'PIN und Kartennummer stehen im Klartext auf der Platte');
     assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
     const { ticket } = await (
-      await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf-freigabe`, {
+      await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf-grant`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password: ADMIN_PW }),
       })
     ).json();
     const aus = Buffer.from(
-      await (await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer(),
+      await (await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer(),
     );
     assert.ok(aus.equals(original), 'das ausgelieferte PDF ist nicht das hochgeladene');
   });

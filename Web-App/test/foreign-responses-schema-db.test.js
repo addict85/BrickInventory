@@ -52,7 +52,7 @@ test('third-party responses against their schema', { concurrency: 1 }, async t =
   await S.setGlobalSetting('brickset_api_key', 'bs-test');
   await k.setQuotaBack('rebrickable');
   await k.setQuotaBack('brickset');
-  const rb = require('./helpers/sources').testServices().externalSources.quellen;
+  const rb = require('./helpers/sources').testServices().externalSources.sources;
   const bs = rb.brickset;
 
   await t.test('Rebrickable: a matching response arrives typed', async () => {

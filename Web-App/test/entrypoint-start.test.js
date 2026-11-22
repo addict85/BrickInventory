@@ -176,11 +176,11 @@ test('the repair step follows no symlink and stays on the volume', t => {
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
-  const geaendert = fs.readFileSync(protokoll, 'utf8').split('\n').filter(Boolean);
-  assert.ok(geaendert.includes(path.join(daten, 'images', 'bild.jpg')), geaendert.join('\n'));
-  assert.ok(geaendert.includes(path.join(daten, 'verweis')), 'der Symlink selbst gehört dem Dienst');
-  assert.equal(geaendert.filter(z => z.startsWith(aussen)).length, 0, 'root ändert eine Datei hinter dem Symlink');
-  assert.ok(geaendert.includes('-h'));
+  const changed = fs.readFileSync(protokoll, 'utf8').split('\n').filter(Boolean);
+  assert.ok(changed.includes(path.join(daten, 'images', 'bild.jpg')), changed.join('\n'));
+  assert.ok(changed.includes(path.join(daten, 'verweis')), 'der Symlink selbst gehört dem Dienst');
+  assert.equal(changed.filter(z => z.startsWith(aussen)).length, 0, 'root ändert eine Datei hinter dem Symlink');
+  assert.ok(changed.includes('-h'));
 });
 
 // Counter-check (measured 01.11.2026): setzeMarke again with `printf … > "$MARKE"`

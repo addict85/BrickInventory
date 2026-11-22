@@ -38,7 +38,7 @@ test('parts: the table loads the set mapping', async () => {
     knopf.click();
     await ruhig();
     assert.ok(
-      aufrufe.slice(vorher).some(a => /\/v1\/parts\?.*with_sets=1/.test(a.url)),
+      aufrufe.slice(vorher).some(a => /\/v2\/parts\?.*with_sets=1/.test(a.url)),
       'der Wechsel hat nicht neu geladen',
     );
     assert.equal(d.getElementById('parts-view').value, 'table');

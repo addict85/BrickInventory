@@ -20,7 +20,7 @@ const PUB = path.join(ROOT, 'public');
 const CLASS = /\.(-?[A-Za-z_][\w-]*)(?=[\s,{:.[)>~+]|$)/g;
 
 /** All source files of the UI — without comments, without the bundle. */
-function quellen() {
+function sources() {
   const out = [];
   const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -41,7 +41,7 @@ function quellen() {
 }
 
 test('every class name styles something or is a handle', () => {
-  const dateien = quellen();
+  const dateien = sources();
   assert.ok(dateien.length >= 20, `Nur ${dateien.length} Quelldateien gefunden`);
 
   // Defined: everything that stands as a selector in a stylesheet — AND what the

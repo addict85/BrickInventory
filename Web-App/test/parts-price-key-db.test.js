@@ -102,7 +102,7 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     );
 
     // 3. WITHOUT a mapping the Rebrickable number applies
-    await holdsPart(db, uid, RB2, { menge: 1, colorId: FARBE });
+    await holdsPart(db, uid, RB2, { quantity: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,15.00,15.00,NOW())

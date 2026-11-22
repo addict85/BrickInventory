@@ -5,9 +5,9 @@
  * with a broken connection; the rest runs for real.
  *
  * Counter-check (measured 11.11.2026): the former catch branch (token → 401
- * token_ungueltig, otherwise 200 loggedIn: false) → red in both subtests.
+ * token_invalid, otherwise 200 loggedIn: false) → red in both subtests.
  * Counter-check (measured 16.11.2026): checkSessionVersion passes the read error on again as
- * next(e) → red: “with session …” (500 interner_fehler; the session version is no longer
+ * next(e) → red: “with session …” (500 internal_error; the session version is no longer
  * cached without a listen connection, src/account/sessionVersion.ts).
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -43,7 +43,7 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
   const me = async (kopf = {}) => {
-    const r = await fetch(`${base}/api/v1/auth/me`, { headers: kopf });
+    const r = await fetch(`${base}/api/v2/auth/me`, { headers: kopf });
     return { status: r.status, body: await r.json() };
   };
   /** Every query fails while `work` runs. */
@@ -53,10 +53,10 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     const zugang = require('./helpers/sources').testAccess();
     const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
     const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
-    const fehler = async () => {
+    const error = async () => {
       throw new Error('Verbindung zur Datenbank verloren');
     };
-    for (const p of pools) Object.assign(p, { query: fehler, connect: fehler });
+    for (const p of pools) Object.assign(p, { query: error, connect: error });
     try {
       return await work();
     } finally {
@@ -68,7 +68,7 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     Object.assign(sitzung, { userId: uid, username: NAME });
     assert.equal((await me()).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
     const r = await withError(() => me());
-    assert.deepEqual([r.status, r.body.code, r.body.loggedIn], [503, 'server_ausgelastet', undefined]);
+    assert.deepEqual([r.status, r.body.code, r.body.loggedIn], [503, 'server_busy', undefined]);
     for (const k of Object.keys(sitzung)) delete sitzung[k];
   });
 
@@ -77,6 +77,6 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     assert.equal((await me(kopf)).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
     tokenCache.emptyTokenCache();
     const r = await withError(() => me(kopf));
-    assert.deepEqual([r.status, r.body.code], [503, 'server_ausgelastet']);
+    assert.deepEqual([r.status, r.body.code], [503, 'server_busy']);
   });
 });

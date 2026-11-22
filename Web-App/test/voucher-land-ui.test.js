@@ -26,10 +26,10 @@ test('server: country for the account currency', () => {
 
 test('EUR account without a stored country: Germany, no deviation hint', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
-    '/v1/vouchers': {
+    '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', has_pdf: false }],
     },
   });
   try {

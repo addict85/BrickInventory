@@ -38,14 +38,14 @@ const sichtbar = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].
 test('account bar, field error in the grid, bottom bar, set image', { concurrency: 1, timeout: 420_000 }, async t => {
   const app = await startApp(t, {
     name: `r27_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       // An image delivered by the own server: only with an image is the zoom button usable.
       await db.run(`UPDATE set_catalog SET image_local = '/favicon.svg' WHERE set_number = '10294-1'`);
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -56,7 +56,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
 
   // First: only without a loaded list and curve does the error land in the chart box.
   await t.test('N3 finance error: period, chips and search gone, back after success', async () => {
-    const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'interner_fehler' });
+    const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'internal_error' });
     const intercept = d => {
       if (d.method !== 'Fetch.requestPaused') return;
       b.tab('Fetch.fulfillRequest', {
@@ -67,15 +67,15 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       }).catch(() => {});
     };
     b.listener.push(intercept);
-    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/finance/valuation*', requestStage: 'Request' }] });
+    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v2/finance/valuation*', requestStage: 'Request' }] });
     const ELEMENTS = '.period-choice .period-btn, #fin-filter button, #fin-search';
     try {
       await groesse(b, 1280, 900, false);
       await zu('#/finanzen');
       await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand');
-      const fehler = await b.auswerten(sichtbar(ELEMENTS));
-      assert.equal(fehler.length, 9);
-      assert.deepEqual(fehler, Array(9).fill(false), 'im Fehlerfall sichtbar');
+      const error = await b.auswerten(sichtbar(ELEMENTS));
+      assert.equal(error.length, 9);
+      assert.deepEqual(error, Array(9).fill(false), 'im Fehlerfall sichtbar');
     } finally {
       await b.tab('Fetch.disable');
       b.listener.splice(b.listener.indexOf(intercept), 1);
@@ -121,7 +121,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
           assert.ok(m.gerollt > 300, `Seite zu kurz zum Rollen (${m.gerollt} px)`);
           assert.ok(Math.abs(m.oben - m.soll) <= 1, `Leiste rollt weg: oben ${m.oben} px statt ${m.soll} px`);
           assert.ok(m.unten < m.lowerBar, 'Leiste über der unteren Navigation');
-          assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
+          assert.notEqual(m.reason, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
           assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
           if (ansicht !== 'Hintergrundarbeiten') return;
           // A jump to the very top: the heading is in view and not below the bar.
@@ -226,7 +226,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
   // The computed background color does not know the gradient above it.
   await t.test('contrast "hochglanz" light (390 px): badge and quiet text on their gradient', async () => {
     const sharp = require('sharp');
-    const bild = async r =>
+    const image = async r =>
       (
         await sharp(
           Buffer.from(
@@ -267,18 +267,18 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
           return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height,
             farbe: getComputedStyle(e).color.match(/[\\d.]+/g).slice(0, 3).map(Number) }; })()`);
         const { farbe, ...excerpt } = r;
-        const mit = await bild(excerpt);
+        const mit = await image(excerpt);
         await b.auswerten(
           `document.querySelector('${sel}').style.setProperty('color', 'transparent', 'important'); true`,
         );
-        const ohne = await bild(excerpt);
+        const ohne = await image(excerpt);
         await b.auswerten(`document.querySelector('${sel}').style.removeProperty('color'); true`);
-        const werte = [];
+        const values = [];
         for (let i = 0; i < ohne.length; i += 3)
           if (Math.abs(mit[i] - ohne[i]) + Math.abs(mit[i + 1] - ohne[i + 1]) + Math.abs(mit[i + 2] - ohne[i + 2]) > 60)
-            werte.push(kontrast(farbe, [ohne[i], ohne[i + 1], ohne[i + 2]]));
-        assert.ok(werte.length > 20, `${sel}: keine Schriftpixel gefunden (${werte.length})`);
-        const min = Math.min(...werte);
+            values.push(kontrast(farbe, [ohne[i], ohne[i + 1], ohne[i + 2]]));
+        assert.ok(values.length > 20, `${sel}: keine Schriftpixel gefunden (${values.length})`);
+        const min = Math.min(...values);
         assert.ok(min >= 4.5, `${sel}: ${min.toFixed(2)}:1 unter der Schrift`);
       }
     } finally {

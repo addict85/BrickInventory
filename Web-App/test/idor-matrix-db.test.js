@@ -133,18 +133,18 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
 
   // ── What the victim owns, created through the API ───────────────────────
   als(opfer);
-  const ort = (await ok('POST', '/api/v1/storage/locations', { name: `Ort ${MARKE}` })).ort.id;
-  await ok('POST', '/api/v1/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
-  await ok('POST', '/api/v1/parts', {
+  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
+  await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
+  await ok('POST', '/api/v2/parts', {
     part_number: TEIL,
     color_id: FARBE,
     color_name: 'Rot',
     quantity: 3,
     condition: 'N',
   });
-  await ok('POST', '/api/v1/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
+  await ok('POST', '/api/v2/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
   const gutschein = (
-    await ok('POST', '/api/v1/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
+    await ok('POST', '/api/v2/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
   ).voucher.id;
   const id1 = sql => db.get(sql, [opfer]).then(z => z.id);
   const setAcq = await id1('SELECT id FROM set_acquisitions WHERE user_id = $1');
@@ -157,9 +157,9 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
       [opfer, SET, `Anleitung ${MARKE}`, `/data/instructions/${SET}_1.pdf`],
     )
   ).id;
-  await ok('POST', '/api/v1/sets', { set_number: SET2, quantity: 1, condition: 'N' });
-  await ok('DELETE', `/api/v1/sets/${SET2}`);
-  const papierkorb = await id1('SELECT id FROM trash WHERE user_id = $1');
+  await ok('POST', '/api/v2/sets', { set_number: SET2, quantity: 1, condition: 'N' });
+  await ok('DELETE', `/api/v2/sets/${SET2}`);
+  const trash = await id1('SELECT id FROM trash WHERE user_id = $1');
   const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
   const nonce = `idor${process.pid}${Date.now()}`;
   const qr = (
@@ -176,13 +176,13 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SET}_1.pdf`), `Anleitung ${MARKE}`);
 
   // The victim reaches its own rows with the same identifiers: the matrix hits real rows.
-  assert.equal((await ruf('GET', `/api/v1/auth/qr-kopplung/${qr}`)).status, 200);
+  assert.equal((await ruf('GET', `/api/v2/auth/qr-pairing/${qr}`)).status, 200);
   assert.equal((await ruf('GET', `/data/uploads/${opfer}/rechnung.pdf`)).status, 200);
   assert.equal((await ruf('GET', `/data/instructions/${SET}_1.pdf`)).status, 200);
 
   const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
-  const bestand = async () => {
+  const holding = async () => {
     const aus = { users: (await db.all('SELECT * FROM users WHERE id = $1', [opfer])).map(z => JSON.stringify(z)) };
     for (const { table_name: tab, column_name: sp } of spalten)
       aus[`${tab}.${sp}`] = (await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]))
@@ -190,11 +190,11 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
         .sort();
     return aus;
   };
-  const vorher = await bestand();
+  const vorher = await holding();
 
   // ── The routes from the routers, and the victim's values for them ────────
   const ids = {
-    id: [ort, gutschein, papierkorb, qr, opfer, setAcq],
+    id: [location, gutschein, trash, qr, opfer, setAcq],
     acqId: [setAcq, teilAcq, figAcq],
     instrId: [anleitung],
     tokenId: [auth.tokenDigest(token).slice(0, 16)],
@@ -207,7 +207,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     colorId: FARBE,
     figNumber: FIGUR,
     condition: 'N',
-    art: 'x',
+    kind: 'x',
   };
   const routen = routesOf(app).filter(
     ([, p]) => p.startsWith('/data/') || [...p.matchAll(/:(\w+)/g)].some(m => ROW_IDS.test(m[1])),
@@ -242,7 +242,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     const rumpfe =
       methode === 'GET' || vertrag?.formular
         ? [undefined]
-        : [example(vertrag?.eingabe, wert), example(vertrag?.eingabe, wert, true)];
+        : [example(vertrag?.input, wert), example(vertrag?.input, wert, true)];
     for (const rumpf of rumpfe) {
       const leer = muster.startsWith('/data/') ? null : await ruf(methode, keiner(muster), rumpf);
       for (const weg of wege) {
@@ -274,7 +274,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   await t.test('never a 2xx, always 403 or 404', () => assert.deepEqual(abweichend, []));
   await t.test("no response carries the victim's data", () => assert.deepEqual(leaks, []));
   await t.test("none of the victim's rows changes", async () => {
-    const nachher = await bestand();
+    const nachher = await holding();
     assert.deepEqual(
       Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k])),
       [],

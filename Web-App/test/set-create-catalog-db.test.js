@@ -56,9 +56,9 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
       const r = await require('./helpers/sources').areaPage('sets').acquireSet({
         requester: uid,
         setNumber: SN,
-        menge: 1,
+        quantity: 1,
         kaufpreis: 10,
-        zustand: 'N',
+        condition: 'N',
       });
       assert.equal(r.action, 'added');
       const kat = await db.get('SELECT name, year FROM rb_sets WHERE set_num=$1', [SN]);
@@ -69,8 +69,8 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
     await t.test('an input without a digit is not created as a set', async () => {
       const { acquireSet } = require('./helpers/sources').areaPage('sets');
       await assert.rejects(
-        acquireSet({ requester: uid, setNumber: 'abc', menge: 1, zustand: 'N', ifPresent: 'aufstocken' }),
-        (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
+        acquireSet({ requester: uid, setNumber: 'abc', quantity: 1, condition: 'N', ifPresent: 'aufstocken' }),
+        (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'set_number_invalid',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { possibleSetNumber } = _req('src/infra/setNumber.js');

@@ -66,16 +66,16 @@ const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 /** Batch size and cap from the module — the test repeats no number. */
 const { BATCH: STAPEL, PASS_MAX_NOTES: DECKEL } = IQ;
 
-const angelegt = [];
+const created = [];
 /** Put image AND preview in place — the job has nothing to do for this note. */
 function finishedImage(sn) {
   for (const f of [`${sn}.jpg`, `${sn}_thumb.jpg`]) {
     const p = path.join(SET_IMAGES_DIR, f);
     fs.writeFileSync(p, 'x');
-    angelegt.push(p);
+    created.push(p);
   }
 }
-const offen = async p =>
+const open = async p =>
   (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [p + '%'])).c;
 /**
  * Enqueue notes — with ASCENDING `requested_at`.
@@ -120,9 +120,9 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
     const duration = Date.now() - t0;
 
     assert.equal(
-      await offen(P),
+      await open(P),
       0,
-      `Nach einem Takt liegen noch ${await offen(P)} von ${COUNT} Notizen. ` +
+      `Nach einem Takt liegen noch ${await open(P)} von ${COUNT} Notizen. ` +
         'Genau das war Marcos Lage: Der Job arbeitete ab, aber mit ' +
         `${STAPEL} je zwanzig Sekunden — für 1113 fertige Bilder gut 37 Minuten.`,
     );
@@ -184,11 +184,11 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
           'von Stapeln NICHT erhöhen.',
       );
       assert.equal(e.work, STAPEL);
-      assert.ok((await offen(P)) > 0, 'Der Rest muss liegenbleiben');
+      assert.ok((await open(P)) > 0, 'Der Rest muss liegenbleiben');
       // Precondition for the spacing test: the ten requests really lay in
       // more than one batch.
       assert.ok(
-        e.gesamt > STAPEL,
+        e.total > STAPEL,
         `alle ${e.work} Anfragen lagen in einem einzigen Stapel — dann prüft ` +
           'der Abstandstest unten die Stapelgrenze gar nicht',
       );
@@ -235,7 +235,7 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
     loadTimes.length = 0;
     const e = await IQ._tickPass();
     assert.equal(
-      await offen(P),
+      await open(P),
       0,
       'Ein Takt muss die ganze Strecke abräumen — die drei fehlenden Bilder ' +
         'liegen unter dem Kontingent, die fertigen kosten nichts',
@@ -272,8 +272,8 @@ test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 
 
   try {
     const e = await IQ._tickPass();
-    assert.equal(e.gesamt, DECKEL, `${e.gesamt} Notizen in einem Takt — der Deckel liegt bei ${DECKEL}`);
-    assert.equal(await offen(P), COUNT - DECKEL, 'Der Rest muss auf den nächsten Takt warten');
+    assert.equal(e.total, DECKEL, `${e.total} Notizen in einem Takt — der Deckel liegt bei ${DECKEL}`);
+    assert.equal(await open(P), COUNT - DECKEL, 'Der Rest muss auf den nächsten Takt warten');
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
@@ -309,13 +309,13 @@ test('expired notes are really deleted', { concurrency: 1 }, async t => {
     // Precondition: the batch does not even touch the old note — exactly
     // that is why it stayed.
     const e = await IQ._tickPass();
-    assert.equal(e.gesamt, 1, 'Die alte Notiz darf nicht abgearbeitet werden');
-    assert.equal(await offen(P), 1, 'Nur die alte Notiz sollte noch liegen');
+    assert.equal(e.total, 1, 'Die alte Notiz darf nicht abgearbeitet werden');
+    assert.equal(await open(P), 1, 'Nur die alte Notiz sollte noch liegen');
 
     const weg = await IQ._deleteExpired();
     assert.ok(weg >= 1, 'Es wurde keine verfallene Notiz gelöscht');
     assert.equal(
-      await offen(P),
+      await open(P),
       0,
       'Die verfallene Notiz liegt weiterhin da — sie zählt dann für immer in ' +
         'der Kachel mit, ohne je bearbeitet zu werden',
@@ -370,15 +370,15 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
     { env: process.env, stdio: 'pipe' },
   );
 
-  const zeile = await db.get(`SELECT value FROM run_state WHERE key='imgqueue_last_run'`);
+  const row = await db.get(`SELECT value FROM run_state WHERE key='imgqueue_last_run'`);
   assert.ok(
-    zeile?.value,
+    row?.value,
     'Der Durchgang eines anderen Prozesses ist hier nicht sichtbar. Dann meldet ' +
       'die Kachel „Job noch nicht gelaufen", während im Log Durchgänge stehen — ' +
       'genau Marcos Befund.',
   );
-  const stand = JSON.parse(zeile.value);
-  assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
+  const state = JSON.parse(row.value);
+  assert.ok(Date.now() - state.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
   // And now up to the TILE
   const IQhier = _req('src/images/imageDemandRun.js');
@@ -397,10 +397,11 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
     /** @type {any} */ (req).apiUser = { user_id: uid, is_admin: 1 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   try {
-    const kachel = (await (await fetch(`http://localhost:${portOf(srv)}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
+    const kachel = (await (await fetch(`http://localhost:${portOf(srv)}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
     assert.ok(
       kachel?.queueLastRun,
       'Die Kachel kennt den Durchgang des anderen Prozesses nicht. Genau so kam ' +
@@ -436,11 +437,11 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
     await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, NULL)`, [`https://cdn/${P}.jpg`]);
     const e = await IQ._workStack();
     assert.equal(
-      e.ohneNummer,
+      e.withoutNumber,
       1,
       'Eine Notiz ohne Setnummer verschwindet spurlos — sie zählte als ' + '„bearbeitet", ohne irgendwo aufzutauchen',
     );
-    assert.equal(e.geholt + e.vorschau + e.uebersprungen, 0);
+    assert.equal(e.geholt + e.preview + e.uebersprungen, 0);
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]).catch(() => {});
   });
 
@@ -455,7 +456,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
       await einreihen(P, 1, 2);
       const e = await IQ._workStack();
       assert.equal(e.notLoaded, 2, 'Marcos Fall: zwei Notizen, kein Bild, und kein Zähler nannte den Grund');
-      assert.equal(e.gesamt, 2);
+      assert.equal(e.total, 2);
       assert.match(
         IQ.message(e),
         /2 Download fehlgeschlagen/,
@@ -510,7 +511,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
 });
 
 test('clean up', { concurrency: 1 }, async () => {
-  for (const f of angelegt) fs.rmSync(f, { force: true });
+  for (const f of created) fs.rmSync(f, { force: true });
   // Last test of this file — only here is the pool closed. (Lesson from
   // an earlier round: a pool closed earlier makes every following DB test
   // red, and the message does not name the reason.)

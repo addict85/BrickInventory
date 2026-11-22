@@ -31,14 +31,14 @@ const { startApp, warte } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
 test('metrics, charts, messages', { timeout: 280_000 }, async t => {
-  const app = await startApp(t, { name: `r11_${process.pid}`, bestand: patternCollection, allDesigns: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `r11_${process.pid}`, holding: patternCollection, allDesigns: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db } = app;
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(300);
   };
 
@@ -53,7 +53,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     // Named briefly since UX check 25 (B2); what „bewertet“ means stands in the tooltip and below the cards.
     assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
     assert.match(z.unter, /^Insgesamt bezahlt: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
-    assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
+    assert.ok(z.unter.includes(z.total), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.total}`);
   });
 
   await t.test('value line in the accent color', async () => {

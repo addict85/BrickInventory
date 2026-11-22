@@ -31,7 +31,7 @@ const einreihen = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
   await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, $2)`, [`https://cdn/${sn}.jpg`, sn]);
 };
-const merker = async sn => db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+const marker = async sn => db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
 
 test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t => {
   try {
@@ -56,7 +56,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     const e = await IQ._workStack();
     await IM._writeBuffer();
     assert.equal(e.notLoaded, 1);
-    const m = await merker(sn);
+    const m = await marker(sn);
     assert.ok(
       m,
       'Ein 404 muss gemerkt werden — sonst wird jedes alte Set bei ' + 'jedem Blättern erneut beim CDN gesucht',
@@ -153,7 +153,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await IM._writeBuffer();
     assert.equal(e.notLoaded, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
     assert.equal(
-      await merker(sn),
+      await marker(sn),
       undefined,
       'Ein vorübergehender Fehler wurde als „Bild existiert nicht" vermerkt. ' +
         'Genau so verschwinden Bilder für sieben Tage, ohne dass je etwas ' +
@@ -220,25 +220,25 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
     await IM._writeBuffer();
 
     await t.test('image-diag names the flag and the reason', async () => {
-      const a = await (await fetch(`${base}/api/v1/admin/image-diag/${P}_1`)).json();
-      assert.ok(a.merker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' + 'kam in der Diagnose nicht vor');
-      assert.match(a.merker.grund || '', /404/);
+      const a = await (await fetch(`${base}/api/v2/admin/image-diag/${P}_1`)).json();
+      assert.ok(a.marker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' + 'kam in der Diagnose nicht vor');
+      assert.match(a.marker.reason || '', /404/);
       assert.ok(
-        a.hinweise.some(h => /als fehlend/.test(h)),
+        a.hints.some(h => /als fehlend/.test(h)),
         'Der Klartext-Hinweis fehlt — dann muss man die Antwort erst deuten',
       );
     });
 
     await t.test('withdrawing works', async () => {
       const r = await (
-        await fetch(`${base}/api/v1/admin/forget-image-misses`, {
+        await fetch(`${base}/api/v2/admin/forget-image-misses`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ set_numbers: [`${P}_1`] }),
         })
       ).json();
-      assert.equal(r.entfernt, 1);
-      assert.equal(await merker(`${P}_1`), undefined, 'Der Eintrag steht noch');
+      assert.equal(r.removed, 1);
+      assert.equal(await marker(`${P}_1`), undefined, 'Der Eintrag steht noch');
       assert.equal(
         IM.isKnownMissing(`set:${P}_1`),
         false,
@@ -251,7 +251,7 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
       IM.rememberMissing('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
       await IM._writeBuffer();
       await (
-        await fetch(`${base}/api/v1/admin/forget-image-misses`, {
+        await fetch(`${base}/api/v2/admin/forget-image-misses`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: '{}',

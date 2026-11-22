@@ -16,11 +16,11 @@ const { openUi, warte, takt } = require('./helpers/ui');
 test('login: errors at the field', async t => {
   const { w, d } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Benutzername oder Passwort falsch',
-        code: 'anmeldedaten_ungueltig',
+        code: 'credentials_invalid',
       },
     },
     { loggedIn: false },

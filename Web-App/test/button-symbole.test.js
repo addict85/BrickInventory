@@ -11,9 +11,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi } = require('./helpers/ui');
 
-for (const sprache of ['de', 'en']) {
-  test(`no button starts with a plus (${sprache})`, async () => {
-    const { w, d } = await openUi({}, { sprache });
+for (const language of ['de', 'en']) {
+  test(`no button starts with a plus (${language})`, async () => {
+    const { w, d } = await openUi({}, { language });
     try {
       const knoepfe = [...d.querySelectorAll('button, .btn')];
       assert.ok(knoepfe.length > 100, 'Knöpfe nicht gefunden');

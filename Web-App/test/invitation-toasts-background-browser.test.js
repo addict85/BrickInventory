@@ -37,16 +37,16 @@ const { LAYOUT } = require('./helpers/layout-measurement');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
+const open = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
 const CODE = /^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){3}$/;
 
 test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, async t => {
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r13x_${process.pid}`;
-  const app = await startApp(t, { name: NAME, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: NAME, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, port, ruhig } = app;
@@ -54,13 +54,13 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   await ruhig();
   buildAndRequire();
   const haushalt = require('./helpers/sources').testServices().household;
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(300);
   };
   const zu = async () => {
     await b.auswerten(klick('#cd-cancel'));
-    await bis(`!(${offen})`, 'Dialog zu');
+    await bis(`!(${open})`, 'Dialog zu');
   };
   const andere = (
     await db.get(
@@ -88,7 +88,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     // As typed: lower case and without dashes.
     await b.auswerten(`document.getElementById('household-redeem-code').value = ${JSON.stringify(code.replace(/-/g, '').toLowerCase())};
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
-    await bis(offen, 'Bestätigung');
+    await bis(open, 'Bestätigung');
     assert.equal(await b.auswerten(text('#cd-title')), `Einladung von „${ANDERE}“ annehmen?`);
     assert.match(
       await b.auswerten(text('#cd-msg')),
@@ -102,8 +102,8 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       `[...document.querySelectorAll('#toasts .toast.error')].some(x => /abgelaufen|ungültig/i.test(x.textContent))`,
       'Absage',
     );
-    assert.equal(await b.auswerten(offen), false);
-    const fremd = await fetch(`http://127.0.0.1:${port}/api/v1/settings/household/redeem/pruefen`, {
+    assert.equal(await b.auswerten(open), false);
+    const fremd = await fetch(`http://127.0.0.1:${port}/api/v2/settings/household/redeem/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
@@ -118,7 +118,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     await b.auswerten(
       `document.getElementById('prof-email').value = 'neu-${process.pid}@example.org'; document.getElementById('btn-sav-prof').click(); true`,
     );
-    await bis(offen, 'Passwortabfrage');
+    await bis(open, 'Passwortabfrage');
     assert.equal(await b.auswerten(text('#cd-title')), 'E-Mail-Adresse ändern?');
     assert.match(
       await b.auswerten(text('#cd-msg')),
@@ -158,7 +158,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
     await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
-    assert.equal(await b.auswerten(offen), false, 'Rückfrage vor Wiederherstellbarem');
+    assert.equal(await b.auswerten(open), false, 'Rückfrage vor Wiederherstellbarem');
     await b.auswerten(`[...document.querySelectorAll('#toasts .toast-action')].at(-1).click(); true`);
     await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
     await ruhig();

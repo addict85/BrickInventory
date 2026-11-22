@@ -18,7 +18,7 @@ const { DECLARED_KINDS } = _req('startup/wiring.js');
 test('exactly what is declared is registered', () => {
   const angemeldet = testServices()
     .jobQueue.signedInKinds()
-    .map(a => a.art)
+    .map(a => a.kind)
     .sort();
   assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet — greift die Verdrahtung noch?`);
   assert.deepEqual(angemeldet, Object.keys(DECLARED_KINDS).sort());
@@ -27,7 +27,7 @@ test('exactly what is declared is registered', () => {
 test('the Brickset resubmission registers its kind with payload, the run is provided by the catalog', async () => {
   const brickset = testServices()
     .jobQueue.signedInKinds()
-    .find(a => a.art === 'brickset');
+    .find(a => a.kind === 'brickset');
   assert.ok(brickset?.exklusiv, 'brickset ist exklusiv angemeldet');
   assert.equal(brickset.payload.safeParse({ set_number: '10001-1', versuch: 2 }).success, true);
   assert.equal(brickset.payload.safeParse({ set_number: '' }).success, false);

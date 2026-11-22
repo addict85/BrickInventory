@@ -194,11 +194,11 @@ test('nobody writes the item count of a set anymore', () => {
     ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
-  for (const [zeile, muster] of /** @type {[string, RegExp][]} */ (proben)) {
-    assert.ok(muster.test(zeile), `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
+  for (const [row, muster] of /** @type {[string, RegExp][]} */ (proben)) {
+    assert.ok(muster.test(row), `Das Muster greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
   }
   // And the opposite direction: what is allowed must NOT trigger.
-  for (const zeile of [
+  for (const row of [
     'UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE parts SET quantity = COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a), 0)',
   ]) {
@@ -208,7 +208,7 @@ test('nobody writes the item count of a set anymore', () => {
       ['bei Konflikt', onConflict],
       ['legt an', legtAn],
     ])) {
-      assert.ok(!muster.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
+      assert.ok(!muster.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.slice(0, 70)}`);
     }
   }
 });

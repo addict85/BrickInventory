@@ -32,11 +32,11 @@ const REST = 800;
 /** Open the set detail, like a click on the tile. */
 async function detail(antworten = {}) {
   const o = await openUi({
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] },
     },
-    [`/v1/sets/${SN}/alert`]: (_u, opt) =>
+    [`/v2/sets/${SN}/alert`]: (_u, opt) =>
       opt.method === 'PUT'
         ? {
             success: true,
@@ -94,7 +94,7 @@ test("web app: saved while typing, debounced with the app's idle time", async ()
 
 test('web app: an empty field deletes, a condition change only loads', async () => {
   const o = await detail({
-    [`/v1/sets/${SN}/alert`]: (_u, opt) =>
+    [`/v2/sets/${SN}/alert`]: (_u, opt) =>
       opt.method === 'DELETE'
         ? { success: true }
         : {
@@ -113,13 +113,13 @@ test('web app: an empty field deletes, a condition change only loads', async () 
   });
   try {
     assert.equal(o.d.getElementById('m-alert-dir').value, 'ueber');
-    const zustand = o.d.getElementById('m-alert-cond');
-    zustand.value = 'U';
-    zustand.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const condition = o.d.getElementById('m-alert-cond');
+    condition.value = 'U';
+    condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
     assert.deepEqual(schreibend(o), [], 'ein Zustandswechsel schreibt');
-    zustand.value = 'N';
-    zustand.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    condition.value = 'N';
+    condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
     tap(o, '');
     assert.ok(await warte(() => schreibend(o).length === 1, REST + 1000), 'nichts gelöscht');
@@ -132,16 +132,16 @@ test('web app: an empty field deletes, a condition change only loads', async () 
 
 test('web app: open alerts — the first visit only remembers, afterwards the notification as in the app', async () => {
   const JETZT = '2026-11-10T08:00:00.123Z';
-  const offen = {
+  const open = {
     success: true,
     now: JETZT,
     alerts: [{ set_number: SN, direction: 'unter', threshold: 200, last_price: 199.5, currency_code: 'CHF' }],
   };
   const meldungen = o => [...o.d.querySelectorAll('#toasts > *')].map(t => t.textContent.trim());
-  const erst = await openUi({ '/v1/alerts/pending': offen });
+  const erst = await openUi({ '/v2/alerts/pending': open });
   try {
     await erst.ruhig();
-    const abruf = erst.aufrufe.filter(a => a.url.includes('/v1/alerts/pending'));
+    const abruf = erst.aufrufe.filter(a => a.url.includes('/v2/alerts/pending'));
     assert.equal(abruf.length, 1, 'beim Öffnen nicht nachgefragt');
     assert.doesNotMatch(abruf[0].url, /since=/);
     assert.deepEqual(
@@ -150,7 +150,7 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
       'beim ersten Besuch gemeldet',
     );
     assert.equal(
-      erst.w.localStorage.getItem(`bim_alert_seen_${ANMELDUNG['/v1/auth/me'].user.id}`),
+      erst.w.localStorage.getItem(`bim_alert_seen_${ANMELDUNG['/v2/auth/me'].user.id}`),
       JETZT,
       'nicht die Marke des Servers',
     );
@@ -158,14 +158,14 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
     erst.w.close();
   }
   const dann = await openUi(
-    { '/v1/alerts/pending': offen },
+    { '/v2/alerts/pending': open },
     {
-      before: w => w.localStorage.setItem(`bim_alert_seen_${ANMELDUNG['/v1/auth/me'].user.id}`, '2026-11-09T08:00:00Z'),
+      before: w => w.localStorage.setItem(`bim_alert_seen_${ANMELDUNG['/v2/auth/me'].user.id}`, '2026-11-09T08:00:00Z'),
     },
   );
   try {
     await dann.ruhig();
-    assert.ok(dann.aufrufe.some(a => a.url.includes('/v1/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
+    assert.ok(dann.aufrufe.some(a => a.url.includes('/v2/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
     assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
     // Currency of the alert, two decimals, amount as a currency amount of the language („199,50 CHF“),
     // like Alarmabholung.text() of the app.

@@ -4,13 +4,13 @@
  * missing. The startup state goes out anonymously only with its known fields.
  *
  * Counter-checks (measured 01.11.2026):
- *   A  in /api/v1/health `startup` again for everyone → red: “anonymously only the status"
- *   B  /api/v1/health/ready without databaseResponds() (always 200) → red: “without a database
+ *   A  in /api/v2/health `startup` again for everyone → red: “anonymously only the status"
+ *   B  /api/v2/health/ready without databaseResponds() (always 200) → red: “without a database
  *      ready reports 503"
  *   C  startup-status without publicStartState() → red: “the
  *      startup state only names its fields" (pfad and fehler went out)
  *   D  progress in the contract back to z.number().int() → red: the same check
- *      (vertrag_verletzt; the server reports steps with a fraction, e.g. 2.37)
+ *      (contract_violated; the server reports steps with a fraction, e.g. 2.37)
  *   E  (03.11.2026) startup-status again with step for everyone (logged in
  *      always true) → red: “anonymously only the progress"
  *
@@ -63,8 +63,8 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
       progress: 2.37,
       total: 8,
       sub: '40%',
-      pfad: '/app/data/geheim.csv',
-      fehler: 'Error: ECONNREFUSED at /app/dist/jobs/x.js:12',
+      path: '/app/data/geheim.csv',
+      error: 'Error: ECONNREFUSED at /app/dist/jobs/x.js:12',
     }),
   );
   t.after(async () => {
@@ -98,27 +98,27 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  const hole = (pfad, kopf = {}) =>
-    fetch(`http://127.0.0.1:${port}${pfad}`, { headers: kopf }).then(async r => ({
+  const hole = (path, kopf = {}) =>
+    fetch(`http://127.0.0.1:${port}${path}`, { headers: kopf }).then(async r => ({
       status: r.status,
       body: await r.json(),
     }));
-  for (let i = 0; i < 240 && (await hole('/api/v1/health/live').catch(() => null)) === null; i++) await warte(250);
+  for (let i = 0; i < 240 && (await hole('/api/v2/health/live').catch(() => null)) === null; i++) await warte(250);
 
   await t.test('anonymously only the status, the admin sees more', async () => {
-    const anonym = await hole('/api/v1/health');
+    const anonym = await hole('/api/v2/health');
     assert.deepEqual(anonym, { status: 200, body: { status: 'starting' } }, log.slice(-1500));
-    const verwalter = await hole('/api/v1/health', { authorization: `Bearer ${token}` });
+    const verwalter = await hole('/api/v2/health', { authorization: `Bearer ${token}` });
     assert.deepEqual(Object.keys(verwalter.body).sort(), ['db_pool', 'startup', 'status', 'uptime_seconds']);
   });
 
   await t.test('the startup state only names its fields', async () => {
-    const r = await hole('/api/v1/startup-status', { authorization: `Bearer ${token}` });
+    const r = await hole('/api/v2/startup-status', { authorization: `Bearer ${token}` });
     assert.deepEqual(r.body, { ready: false, step: 'Teile laden...', progress: 2.37, total: 8, sub: '40%' });
   });
 
   await t.test('anonymously only the progress, not the step', async () => {
-    const r = await hole('/api/v1/startup-status');
+    const r = await hole('/api/v2/startup-status');
     assert.deepEqual(
       r.body,
       { ready: false, step: null, progress: 2.37, total: 8, sub: null },
@@ -127,8 +127,8 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
   });
 
   await t.test('live and ready answer with the database', async () => {
-    assert.deepEqual(await hole('/api/v1/health/live'), { status: 200, body: { status: 'ok' } });
-    assert.deepEqual(await hole('/api/v1/health/ready'), { status: 200, body: { status: 'ok' } });
+    assert.deepEqual(await hole('/api/v2/health/live'), { status: 200, body: { status: 'ok' } });
+    assert.deepEqual(await hole('/api/v2/health/ready'), { status: 200, body: { status: 'ok' } });
   });
 
   await t.test('without a database ready reports 503, live still 200', async () => {
@@ -143,23 +143,23 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
         'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()',
         [name],
       );
-      assert.deepEqual(await hole('/api/v1/health/ready'), {
+      assert.deepEqual(await hole('/api/v2/health/ready'), {
         status: 503,
         body: {
           success: false,
-          code: 'datenbank_nicht_erreichbar',
+          code: 'database_unreachable',
           status: 'unavailable',
           error: 'Datenbank nicht erreichbar',
         },
       });
-      assert.deepEqual(await hole('/api/v1/health/live'), { status: 200, body: { status: 'ok' } });
+      assert.deepEqual(await hole('/api/v2/health/live'), { status: 200, body: { status: 'ok' } });
     } finally {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS true`);
       await admin.end();
     }
     let r;
     for (let i = 0; i < 40; i++) {
-      r = await hole('/api/v1/health/ready');
+      r = await hole('/api/v2/health/ready');
       if (r.status === 200) break;
       await warte(250);
     }

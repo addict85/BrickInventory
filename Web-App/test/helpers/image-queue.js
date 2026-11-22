@@ -6,7 +6,7 @@
 async function emptyQueue(db) {
   await db.run('DELETE FROM image_wanted').catch(() => {});
   // A predecessor's throttle pause would otherwise hold the batch (job_pauses).
-  await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`).catch(() => {});
+  await db.run(`DELETE FROM job_pauses WHERE type = 'image_demand'`).catch(() => {});
 }
 
 module.exports.emptyQueue = emptyQueue;

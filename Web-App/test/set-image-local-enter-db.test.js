@@ -41,10 +41,10 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
   t.after(() => db.pool.end().catch(() => {}));
   const { SET_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-  const angelegt = [];
+  const created = [];
   const put = (datei, inhalt = Buffer.alloc(300, 1)) => {
     fs.writeFileSync(datei, inhalt);
-    angelegt.push(datei);
+    created.push(datei);
   };
   const job = `7${process.pid}-1`,
     proxy = `6${process.pid}-1`;
@@ -54,10 +54,10 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     await db.run(`UPDATE set_catalog SET image_local = NULL, image_url = $2 WHERE set_number = $1`, [sn, cdn(sn)]);
   }
   t.after(async () => {
-    for (const f of angelegt) fs.rmSync(f, { force: true });
+    for (const f of created) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[job, proxy]]).catch(() => {});
   });
-  const lokal = async sn =>
+  const local = async sn =>
     (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn]))?.image_local;
 
   await t.test('the image job registers the file', async () => {
@@ -68,7 +68,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     IQ.rememberUsed(cdn(job), job);
     await IQ._writeBuffer();
     await IQ._workStack();
-    assert.equal(await lokal(job), `/images/sets/${job}.jpg`);
+    assert.equal(await local(job), `/images/sets/${job}.jpg`);
   });
 
   await t.test('the proxy registers existing files including source, even without a set_catalog row', async () => {

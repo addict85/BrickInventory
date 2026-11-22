@@ -26,7 +26,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { downloadFile } = _req('clients/rebrickable.js');
 
 /** Intercept https.get and http.get; `antwort(url)` returns { status, kopf, teile }. */
-function intercept(t, antwort) {
+function intercept(t, response) {
   const echt = { https: https.get, http: http.get };
   const abgerufen = [];
   const fang = (url, _opt, cb) => {
@@ -34,14 +34,14 @@ function intercept(t, antwort) {
     const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
-    const a = antwort(String(url));
+    const a = response(String(url));
     const res = /** @type {any} */ (new PassThrough());
     res.statusCode = a.status;
     res.headers = a.kopf || {};
     setImmediate(() => {
       cb(res);
       (async () => {
-        for (const teil of a.teile || []) {
+        for (const teil of a.parts || []) {
           if (res.destroyed) return;
           res.write(teil);
           await new Promise(r => setImmediate(r));
@@ -65,7 +65,7 @@ test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 const ziel = name => path.join(ordner, name);
 
 test('only https', async t => {
-  const abgerufen = intercept(t, () => ({ status: 200, teile: [Buffer.alloc(500, 1)] }));
+  const abgerufen = intercept(t, () => ({ status: 200, parts: [Buffer.alloc(500, 1)] }));
   assert.equal(await downloadFile('http://cdn.rebrickable.com/media/x.pdf', ziel('a.pdf')), false);
   assert.deepEqual(abgerufen, [], 'eine http-Adresse wird abgerufen');
   assert.equal(fs.existsSync(ziel('a.pdf')), false);
@@ -75,27 +75,27 @@ test('a redirect to http is not followed', async t => {
   const abgerufen = intercept(t, u =>
     u.endsWith('/start.pdf')
       ? { status: 302, kopf: { location: 'http://cdn.rebrickable.com/ziel.pdf' } }
-      : { status: 200, teile: [Buffer.alloc(500, 1)] },
+      : { status: 200, parts: [Buffer.alloc(500, 1)] },
   );
   assert.equal(await downloadFile('https://cdn.rebrickable.com/start.pdf', ziel('b.pdf')), false);
   assert.equal(abgerufen.length, 1);
 });
 
 test('above the limit: aborted in the stream, nothing stored', async t => {
-  intercept(t, () => ({ status: 200, teile: Array.from({ length: 50 }, () => Buffer.alloc(1000, 2)) }));
+  intercept(t, () => ({ status: 200, parts: Array.from({ length: 50 }, () => Buffer.alloc(1000, 2)) }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/gross.pdf', ziel('c.pdf'), 10_000), false);
   await new Promise(r => setTimeout(r, 50));
   assert.equal(fs.existsSync(ziel('c.pdf')), false, 'die zu grosse Datei liegt auf der Platte');
 });
 
 test('Content-Length above the limit: not even written', async t => {
-  intercept(t, () => ({ status: 200, kopf: { 'content-length': '999999' }, teile: [Buffer.alloc(500, 1)] }));
+  intercept(t, () => ({ status: 200, kopf: { 'content-length': '999999' }, parts: [Buffer.alloc(500, 1)] }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/gross2.pdf', ziel('d.pdf'), 10_000), false);
   assert.equal(fs.existsSync(ziel('d.pdf')), false);
 });
 
 test('below the limit: stored', async t => {
-  intercept(t, () => ({ status: 200, teile: [Buffer.alloc(3000, 3), Buffer.alloc(3000, 4)] }));
+  intercept(t, () => ({ status: 200, parts: [Buffer.alloc(3000, 3), Buffer.alloc(3000, 4)] }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/klein.pdf', ziel('e.pdf'), 10_000), true);
   assert.equal(fs.statSync(ziel('e.pdf')).size, 6000);
 });

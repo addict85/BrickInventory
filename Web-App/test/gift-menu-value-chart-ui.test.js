@@ -29,7 +29,7 @@ const zahl = s => {
   return /,\d\d/.test(o) ? o.replace(/\./g, '').replace(/,/g, '.') : o;
 };
 const SETS = {
-  '/v1/sets': {
+  '/v2/sets': {
     success: true,
     total: 2,
     themes: [],
@@ -54,17 +54,17 @@ const SETS = {
       },
     ],
   },
-  '/v1/finance/pnl': {
+  '/v2/finance/pnl': {
     success: true,
     currency: 'EUR',
     totals: { grand_total: '350', purchase: '199.99' },
     sets: [
       // The server no longer sends a percentage at purchase price 0; the tile must not show it even if it does.
-      { set_number: '10300-1', kachel_preis: 163.8, kachel_pnl_pct: 1637000 },
-      { set_number: '21318-1', kachel_preis: 186.2, kachel_pnl_pct: -6.9 },
+      { set_number: '10300-1', tile_price: 163.8, tile_pnl_pct: 1637000 },
+      { set_number: '21318-1', tile_price: 186.2, tile_pnl_pct: -6.9 },
     ],
   },
-  '/v1/finance/valuation': {
+  '/v2/finance/valuation': {
     success: true,
     currency: 'EUR',
     totals: { min: '0', avg: '350', max: '0' },
@@ -75,8 +75,8 @@ const SETS = {
         quantity: 1,
         purchase_price: 0,
         avg_price: 163.8,
-        wert_gesamt: 163.8,
-        pnl_prozent: null,
+        value_total: 163.8,
+        pnl_percent: null,
         acquisitions: [
           {
             id: 1,
@@ -84,22 +84,22 @@ const SETS = {
             quantity: 1,
             purchase_price: 0,
             avg_price: 163.8,
-            wert_gesamt: 163.8,
-            pnl_prozent: null,
+            value_total: 163.8,
+            pnl_percent: null,
           },
         ],
       },
     ],
   },
-  '/v1/sets/10300-1': {
+  '/v2/sets/10300-1': {
     success: true,
     set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1 },
   },
-  '/v1/sets/10300-1/acquisitions': {
+  '/v2/sets/10300-1/acquisitions': {
     success: true,
     acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 0, created_at: '2026-06-01T10:00:00Z' }],
   },
-  '/v1/sets/10300-1/price-history': {
+  '/v2/sets/10300-1/price-history': {
     success: true,
     by_condition: { N: { market_price: 163.8, purchase_price: 0, pnl_pct: null } },
   },
@@ -124,9 +124,9 @@ test('gift in tile, table and detail', async () => {
 
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#fin-tbl tbody tr'));
-    const zeile = d.querySelector('#fin-tbl tbody tr');
-    assert.equal(text(zeile.querySelector('.fin-guv')), 'Geschenk');
-    assert.match(zahl(text(zeile.querySelectorAll('.price-cell')[0])), /^(EUR)?0\.00(€)?$/);
+    const row = d.querySelector('#fin-tbl tbody tr');
+    assert.equal(text(row.querySelector('.fin-guv')), 'Geschenk');
+    assert.match(zahl(text(row.querySelectorAll('.price-cell')[0])), /^(EUR)?0\.00(€)?$/);
 
     await reiter(w, 'gallery');
     d.querySelector('#gallery [data-click="openModal"]').click();
@@ -143,12 +143,12 @@ test('gift in tile, table and detail', async () => {
 test('set without image: the same cube as in the tile', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const cube = html.match(/<symbol id="i-set"[^>]*>(.*?)<\/symbol>/)[1];
-  const bild = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'), 'utf8');
-  for (const pfad of cube.match(/d="[^"]+"/g)) assert.ok(bild.includes(pfad), `${pfad} fehlt im Platzhalterbild`);
+  const image = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'), 'utf8');
+  for (const path of cube.match(/d="[^"]+"/g)) assert.ok(image.includes(path), `${path} fehlt im Platzhalterbild`);
 });
 
 test('menu page: no tab marked, name in the header', async () => {
-  const { w, d } = await openUi({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
+  const { w, d } = await openUi({ '/v2/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
     await sicht(w, 'profile');
     assert.deepEqual(
@@ -206,7 +206,7 @@ const HISTORY = {
   success: true,
   currency: 'EUR',
   period_change_pct: 5,
-  messpunkte: 4,
+  data_points: 4,
   points: [1700, 1750, 1720, 1850].map((value, i) => ({ x_label: moments[i], value })),
   chart: { values: [{ values: moments.map(x => ({ x })) }] },
 };
@@ -214,8 +214,8 @@ const HISTORY = {
 test('value chart: currency, cost basis, axis break, crosshair via keyboard', async () => {
   const { w, d } = await openUi({
     ...SETS,
-    '/v1/finance/portfolio-history': HISTORY,
-    '/v1/finance/pnl': { ...SETS['/v1/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } },
+    '/v2/finance/portfolio-history': HISTORY,
+    '/v2/finance/pnl': { ...SETS['/v2/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } },
   });
   try {
     await reiter(w, 'finance');
@@ -240,7 +240,7 @@ test('value chart: currency, cost basis, axis break, crosshair via keyboard', as
 test('period without history', async () => {
   const { w, d } = await openUi({
     ...SETS,
-    '/v1/finance/portfolio-history': { success: true, currency: 'EUR', points: [], messpunkte: 0 },
+    '/v2/finance/portfolio-history': { success: true, currency: 'EUR', points: [], data_points: 0 },
   });
   try {
     await reiter(w, 'finance');
@@ -262,11 +262,11 @@ test('period without history', async () => {
 });
 
 test('placeholders per language', async () => {
-  for (const [sprache, erwartet] of [
+  for (const [language, erwartet] of [
     ['de', 'z. B. 79,99'],
     ['en', 'e.g. 79.99'],
   ]) {
-    const { w, d } = await openUi({}, { sprache });
+    const { w, d } = await openUi({}, { language });
     try {
       assert.equal(d.getElementById('add-price').placeholder, erwartet);
     } finally {

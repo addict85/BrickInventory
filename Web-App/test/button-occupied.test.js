@@ -14,7 +14,7 @@ const JS = path.join(__dirname, '..', 'public', 'js');
 
 /** The content of the bracket group from `auf` — strings and comments respected. */
 function gruppe(t, auf) {
-  let tiefe = 0,
+  let depth = 0,
     i = auf;
   while (i < t.length) {
     const c = t[i];
@@ -36,10 +36,10 @@ function gruppe(t, auf) {
       i++;
       continue;
     }
-    if (c === '(') tiefe++;
+    if (c === '(') depth++;
     else if (c === ')') {
-      tiefe--;
-      if (!tiefe) return t.slice(auf + 1, i);
+      depth--;
+      if (!depth) return t.slice(auf + 1, i);
     }
     i++;
   }
@@ -52,36 +52,36 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
 
   const falsch = [],
     ungenutzt = [];
-  let gefunden = 0;
+  let found = 0;
   for (const name of dateien) {
     const src = fs.readFileSync(path.join(JS, name), 'utf8');
     for (const m of src.matchAll(/buttonBusy\s*\(/g)) {
       // Skip the definition itself and the import.
       const davor = src.slice(Math.max(0, m.index - 30), m.index);
       if (/function\s+$/.test(davor) || /import .*$/.test(davor)) continue;
-      gefunden++;
-      const zeile = src.slice(0, m.index).split('\n').length;
+      found++;
+      const row = src.slice(0, m.index).split('\n').length;
       const args = gruppe(src, m.index + m[0].length - 1);
       // Split off the second argument at the top level.
-      let tiefe = 0,
+      let depth = 0,
         zweites = null;
       for (let i = 0; i < args.length; i++) {
         const c = args[i];
-        if ('([{'.includes(c)) tiefe++;
-        else if (')]}'.includes(c)) tiefe--;
-        else if (c === ',' && tiefe === 0) {
+        if ('([{'.includes(c)) depth++;
+        else if (')]}'.includes(c)) depth--;
+        else if (c === ',' && depth === 0) {
           zweites = args.slice(i + 1).trim();
           break;
         }
       }
-      if (zweites && /^(async\b|\(|function\b)/.test(zweites)) falsch.push(`${name}:${zeile}`);
+      if (zweites && /^(async\b|\(|function\b)/.test(zweites)) falsch.push(`${name}:${row}`);
       // And the return value MUST land somewhere — otherwise the button stays
       // occupied forever.
       if (!/(=|return|\?|:)\s*$/.test(davor.trimEnd() + ' '.repeat(0)) && !/[=?:]\s*$/.test(davor.trimEnd()))
-        ungenutzt.push(`${name}:${zeile}`);
+        ungenutzt.push(`${name}:${row}`);
     }
   }
-  assert.ok(gefunden >= 5, `Nur ${gefunden} Aufrufe gefunden — greift die Suche noch?`);
+  assert.ok(found >= 5, `Nur ${found} Aufrufe gefunden — greift die Suche noch?`);
   assert.deepEqual(
     falsch,
     [],
@@ -111,20 +111,20 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   const auf = src.indexOf('export function buttonBusy');
   assert.ok(auf > 0, 'buttonBusy() nicht gefunden — umbenannt?');
   const start = src.indexOf('{', src.indexOf(')', auf));
-  let tiefe = 0,
+  let depth = 0,
     ende = start;
   for (let i = start; i < src.length; i++) {
-    if (src[i] === '{') tiefe++;
+    if (src[i] === '{') depth++;
     else if (src[i] === '}') {
-      tiefe--;
-      if (!tiefe) {
+      depth--;
+      if (!depth) {
         ende = i;
         break;
       }
     }
   }
-  const quelle = src.slice(auf, ende + 1).replace(/^export\s+/, '');
-  const knopfBesetzt = new Function(`${quelle}; return buttonBusy;`)();
+  const source = src.slice(auf, ende + 1).replace(/^export\s+/, '');
+  const knopfBesetzt = new Function(`${source}; return buttonBusy;`)();
 
   const LABEL = '📦 Bereits vorhandene Teile eintragen';
   const dom = new JSDOM(`<button class="btn bs" id="b">${LABEL}</button>`);

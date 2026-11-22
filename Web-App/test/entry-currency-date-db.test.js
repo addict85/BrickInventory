@@ -68,9 +68,9 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
       await acquireSet({
         requester: uid,
         setNumber: SN,
-        menge: 1,
+        quantity: 1,
         kaufpreis: 100,
-        zustand: 'N',
+        condition: 'N',
         recordedAt: '2020-05-05',
         ifPresent: 'aufstocken',
       });

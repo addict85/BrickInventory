@@ -9,7 +9,7 @@
  *   A  plRenderSets() back with titel/text instead of titleKey/textKey → red:
  *      “build list in account language” (“Noch keine Sets …”; measured again 13.11.2026
  *      with titel instead of titleKey: “Diese Bauliste ist noch leer”)
- *   B  in doLogin back to d.code==='anmeldedaten_ungueltig' → red: both
+ *   B  in doLogin back to d.code==='credentials_invalid' → red: both
  *      login tests
  */
 const test = require('node:test');
@@ -20,7 +20,7 @@ const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('build list in the account language', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
+    '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
   });
   try {
     await reiter(w, 'partslist');
@@ -34,8 +34,8 @@ test('build list in the account language', async () => {
   }
 });
 
-async function anmelden(antwort) {
-  const o = await openUi({ '/v1/auth/login': antwort }, { loggedIn: false });
+async function anmelden(response) {
+  const o = await openUi({ '/v2/auth/login': response }, { loggedIn: false });
   await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'falsch-falsch';
@@ -48,7 +48,7 @@ test('login: wrong password without confirmation link', async () => {
   const { w, d } = await anmelden({
     $status: 401,
     success: false,
-    code: 'anmeldedaten_ungueltig',
+    code: 'credentials_invalid',
     error: 'Benutzername oder Passwort falsch',
   });
   try {
@@ -62,7 +62,7 @@ test('login: address not confirmed, with confirmation link', async () => {
   const { w, d } = await anmelden({
     $status: 403,
     success: false,
-    code: 'email_nicht_bestaetigt',
+    code: 'email_not_confirmed',
     unverified: true,
     error: 'E-Mail-Adresse noch nicht bestätigt',
   });

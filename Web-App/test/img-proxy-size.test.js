@@ -86,14 +86,14 @@ app.use((req, _res, next) => {
 });
 app.get('/p', passThroughImage);
 const srv = app.listen(0);
-const hole = (adresse, thumb = false) =>
+const hole = (address, thumb = false) =>
   fetch(
-    `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/p?url=${encodeURIComponent(adresse)}${thumb ? '&thumb=1' : ''}`,
+    `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/p?url=${encodeURIComponent(address)}${thumb ? '&thumb=1' : ''}`,
   )
     .then(async r => ({ status: r.status, n: (await r.arrayBuffer().catch(() => new ArrayBuffer(0))).byteLength }))
-    .catch(e => ({ status: 0, n: 0, fehler: e }));
+    .catch(e => ({ status: 0, n: 0, error: e }));
 const imCache = () => (fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir) : []);
-const adresse = name => `https://cdn.rebrickable.com/media/parts/elements/${name}-${process.pid}.jpg`;
+const address = name => `https://cdn.rebrickable.com/media/parts/elements/${name}-${process.pid}.jpg`;
 
 /** Intercepts console.error while `work` runs. */
 async function withErrors(work) {
@@ -122,7 +122,7 @@ test('an image exactly at the limit goes out and into the cache', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
-  const r = await hole(adresse('grenze'));
+  const r = await hole(address('grenze'));
   assert.deepEqual([r.status, r.n], [200, SET_IMG_MAX_BYTES]);
   assert.ok(
     await bis(() =>
@@ -146,7 +146,7 @@ test('an image above the limit is discarded, counted and reported', async t => {
     withLength = laenge;
     const vorher = imgProxyFailures[zaehler];
     const zeilen = await withErrors(async () => {
-      await hole(adresse(`zugross-${laenge}`));
+      await hole(address(`zugross-${laenge}`));
       await bis(() => imgProxyFailures[zaehler] > vorher);
     });
     assert.equal(imgProxyFailures[zaehler] - vorher, 1, `Content-Length ${laenge}: nicht in der Fehlerzählung`);
@@ -161,18 +161,18 @@ test('an image above the limit is discarded, counted and reported', async t => {
 
 test('the local download discards the same image and reports it', async () => {
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 5);
-  let pfad = 'unberührt';
+  let path = 'unberührt';
   const zeilen = await withErrors(async () => {
-    pfad = await downloadSetImage(adresse('lokal'), '99999-1');
+    path = await downloadSetImage(address('lokal'), '99999-1');
   });
-  assert.equal(pfad, null);
+  assert.equal(path, null);
   assert.ok(
     zeilen.some(z => /99999-1: Bild grösser als 20 MB/.test(z)),
     zeilen.join('\n'),
   );
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 5);
   assert.equal(
-    await downloadSetImage(adresse('lokal2'), '99998-1'),
+    await downloadSetImage(address('lokal2'), '99998-1'),
     '/images/sets/99998-1.jpg',
     'an der Grenze nicht gespeichert',
   );
@@ -183,9 +183,9 @@ test('the preview arises from the completely written cache', async t => {
   cdnBody = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
     .jpeg()
     .toBuffer();
-  const r = await hole(adresse('vorschau'), true);
+  const r = await hole(address('vorschau'), true);
   assert.deepEqual([r.status, r.n], [200, cdnBody.length], 'zuerst geht das Original hinaus');
   assert.ok(await bis(() => imCache().some(f => f.endsWith('_thumb.jpg')), 10_000), 'keine Vorschau entstanden');
-  const vorschau = imCache().find(f => f.endsWith('_thumb.jpg'));
-  assert.equal((await sharp(path.join(cacheDir, vorschau)).metadata()).width, 200);
+  const preview = imCache().find(f => f.endsWith('_thumb.jpg'));
+  assert.equal((await sharp(path.join(cacheDir, preview)).metadata()).width, 200);
 });

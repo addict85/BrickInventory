@@ -38,11 +38,11 @@ test('acquisition and inventory', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const erfassung = (tx, menge = 1) =>
+  const erfassung = (tx, quantity = 1) =>
     tx.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, $3, 'N')`, [
       uid,
       SET,
-      menge,
+      quantity,
     ]);
 
   await t.test('an acquisition without an inventory row fails at COMMIT', async () => {

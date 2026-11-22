@@ -77,17 +77,17 @@ function smtpServer(z) {
     s.on('data', b => {
       puffer += b.toString('latin1');
       for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
-        const zeile = puffer.slice(0, i);
+        const row = puffer.slice(0, i);
         puffer = puffer.slice(i + 2);
         if (daten !== null) {
-          if (zeile === '.') {
+          if (row === '.') {
             post.push(daten);
             daten = null;
             s.write('250 angenommen\r\n');
-          } else daten += zeile + '\n';
+          } else daten += row + '\n';
           continue;
         }
-        const command = zeile.slice(0, 4).toUpperCase();
+        const command = row.slice(0, 4).toUpperCase();
         if (command === 'EHLO') s.write('250-test\r\n250 AUTH PLAIN\r\n');
         else if (command === 'AUTH') s.write('235 ok\r\n');
         else if (command === 'DATA') {
@@ -142,7 +142,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     await db.pool.end().catch(() => {});
   });
 
-  const setze = async werte => {
+  const setze = async values => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = {
       smtp_host: '127.0.0.1',
@@ -150,7 +150,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
       smtp_pass: 'p',
       smtp_secure: '1',
       smtp_from: 'test@example.org',
-      ...werte,
+      ...values,
     };
     for (const [k, v] of Object.entries(alle))
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
@@ -171,7 +171,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     assert.equal(r.delivered, false);
     assert.match(r.error, /Zertifikat \(PEM\) oder seinen SHA-256-Fingerabdruck/);
     assert.equal(await mailer.reportSmtpLegacySetting(), true);
-    assert.equal((await mailer.testSmtp()).code, 'smtp_zertifikat');
+    assert.equal((await mailer.testSmtp()).code, 'smtp_certificate');
   });
 
   await t.test('with PEM it is delivered, with the right fingerprint too', async () => {
@@ -203,11 +203,11 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const { base } = routerServer(_req, {
       sitzung: { userId: uid, isAdmin: true },
-      routen: { '/api/v1': 'routes/api_v1/settings.js' },
+      routen: { '/api/v2': 'routes/api_v1/settings.js' },
       t,
     });
     const speichere = body =>
-      fetch(`${base}/api/v1/settings`, {
+      fetch(`${base}/api/v2/settings`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ admin_password: PASS, ...body }),

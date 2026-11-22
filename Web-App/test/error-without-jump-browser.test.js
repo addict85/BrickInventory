@@ -47,7 +47,7 @@ const CASES = [
     hash: '#/bauliste',
     bereit: `!!document.getElementById('btn-pl-add')?.getClientRects().length`,
     trigger: `document.getElementById('pl-setnr').value = 'abc,,99999999-9'; document.getElementById('btn-pl-add').click();`,
-    feld: 'pl-setnr',
+    field: 'pl-setnr',
   },
   {
     name: 'Merkliste',
@@ -55,35 +55,35 @@ const CASES = [
     bereit: `!!document.getElementById('mk-box')`,
     vorher: `document.getElementById('mk-box').open = true;`,
     trigger: `document.getElementById('mk-add').click();`,
-    feld: 'mk-num',
+    field: 'mk-num',
   },
   {
     name: 'Lagerorte',
     hash: '#/lagerorte',
     bereit: `!!document.querySelector('[data-click="createLocation"]')?.getClientRects().length`,
     trigger: `document.querySelector('[data-click="createLocation"]').click();`,
-    feld: 'storage-new',
+    field: 'storage-new',
   },
   {
     name: 'Passwort',
     hash: '#/konto',
     bereit: `!!document.getElementById('btn-sav-pw')?.getClientRects().length`,
     trigger: `document.getElementById('pw-n').value = 'neu-Passwort-1'; document.getElementById('pw-r').value = 'anders-Passwort-1'; document.getElementById('btn-sav-pw').click();`,
-    feld: 'pw-r',
+    field: 'pw-r',
   },
   {
     name: 'Preisalarm',
     hash: '#/alarme',
     bereit: `!!document.getElementById('alert-new-button')?.getClientRects().length`,
     trigger: `document.getElementById('alert-new-button').click();`,
-    feld: 'alert-new-set',
+    field: 'alert-new-set',
   },
   {
     name: 'Voucher',
     hash: '#/gutscheine',
     bereit: `!!document.querySelector('[data-click="saveVoucher"]')?.getClientRects().length`,
     trigger: `document.querySelector('[data-click="saveVoucher"]').click();`,
-    feld: 'v-number',
+    field: 'v-number',
   },
   {
     name: 'Set erfassen',
@@ -91,14 +91,14 @@ const CASES = [
     bereit: `!!document.querySelector('[data-click="openCapture"][data-arg="set"]')`,
     vorher: `document.querySelector('[data-click="openCapture"][data-arg="set"]').click();`,
     trigger: `document.getElementById('add-num').value = '10294-1'; document.getElementById('add-price').value = 'abc'; document.getElementById('btn-add').click();`,
-    feld: 'add-price',
+    field: 'add-price',
   },
 ];
 
 test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `sprung_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -120,29 +120,29 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
           await ruhig();
         }
         // A message from the previous pass is cleared by the field itself as soon as one types.
-        await b.auswerten(`(() => { const e = document.getElementById(${JSON.stringify(f.feld)});
+        await b.auswerten(`(() => { const e = document.getElementById(${JSON.stringify(f.field)});
           e.value = ''; e.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
         await ruhig();
-        const vor = await b.auswerten(SITUATION(f.feld));
+        const ago = await b.auswerten(SITUATION(f.field));
         await b.auswerten(`(() => { ${f.trigger} return true; })()`);
-        await bis(`!document.getElementById(${JSON.stringify(f.feld + '-error')})?.hidden`, `${f.name}: Meldung`);
+        await bis(`!document.getElementById(${JSON.stringify(f.field + '-error')})?.hidden`, `${f.name}: Meldung`);
         await ruhig();
-        const nach = await b.auswerten(SITUATION(f.feld));
+        const nach = await b.auswerten(SITUATION(f.field));
         assert.ok(nach.meldung, 'Meldung sichtbar');
-        assert.ok(nach.meldung.y >= nach.feld.u - 1, `Meldung unter dem Feld (${nach.meldung.y} < ${nach.feld.u})`);
-        assert.ok(nach.meldung.x <= nach.feld.x + 1, `Meldung beginnt am Feld (${nach.meldung.x} > ${nach.feld.x})`);
+        assert.ok(nach.meldung.y >= nach.field.u - 1, `Meldung unter dem Feld (${nach.meldung.y} < ${nach.field.u})`);
+        assert.ok(nach.meldung.x <= nach.field.x + 1, `Meldung beginnt am Feld (${nach.meldung.x} > ${nach.field.x})`);
         // Directly below, not below the whole form: at most one element row (60 px) in between.
-        assert.ok(nach.meldung.y - nach.feld.u < 60, `Meldung ${nach.meldung.y - nach.feld.u} px unter dem Feld`);
-        assert.equal(nach.teile.length, vor.teile.length);
-        const verschoben = vor.teile
-          .map((a, i) => ({ a, z: nach.teile[i] }))
+        assert.ok(nach.meldung.y - nach.field.u < 60, `Meldung ${nach.meldung.y - nach.field.u} px unter dem Feld`);
+        assert.equal(nach.parts.length, ago.parts.length);
+        const moved = ago.parts
+          .map((a, i) => ({ a, z: nach.parts[i] }))
           .filter(({ a, z }) => {
             if (Math.abs(a.x - z.x) > 0.5) return true;
-            const onLine = a.y < vor.feld.u - 1;
+            const onLine = a.y < ago.field.u - 1;
             return onLine ? Math.abs(a.y - z.y) > 0.5 : z.y < a.y - 0.5;
           })
           .map(({ a, z }) => `${a.was}: (${a.x}|${a.y}) → (${z.x}|${z.y})`);
-        assert.deepEqual(verschoben, []);
+        assert.deepEqual(moved, []);
         await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove());
           document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`);
       });

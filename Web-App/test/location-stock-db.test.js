@@ -54,36 +54,36 @@ test('storage location stock against a real database', { concurrency: 1 }, async
 
   await t.test('create, and creating the same twice is no second entry', async () => {
     const a = await L.createStorage(U.grandparent, 'Regal A');
-    assert.equal(a.war_neu, true);
-    assert.equal(a.ort.name, 'Regal A');
+    assert.equal(a.was_new, true);
+    assert.equal(a.location.name, 'Regal A');
 
     // Upper/lower case does NOT decide: „Regal A" and „regal a" are
     // the same shelf. Two entries for it would be a trap in the
     // selection list, not a choice.
     const b = await L.createStorage(U.grandparent, 'regal a');
-    assert.equal(b.war_neu, false, '„regal a" wurde als zweiter Ort angelegt');
-    assert.equal(b.ort.id, a.ort.id);
+    assert.equal(b.was_new, false, '„regal a" wurde als zweiter Ort angelegt');
+    assert.equal(b.location.id, a.location.id);
     // And the original name stays — the first spelling wins.
-    assert.equal(b.ort.name, 'Regal A');
+    assert.equal(b.location.name, 'Regal A');
   });
 
   await t.test('empty and too long are rejected, not bent into shape', async () => {
     for (const roh of ['', '   ', null, undefined]) {
       await assert.rejects(
         () => L.createStorage(U.grandparent, roh),
-        (/** @type {any} */ e) => String(e.code) === 'lagerort_leer',
+        (/** @type {any} */ e) => String(e.code) === 'storage_empty',
         `${JSON.stringify(roh)} wurde angenommen`,
       );
     }
     await assert.rejects(
       () => L.createStorage(U.grandparent, 'x'.repeat(61)),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_zu_lang',
+      (/** @type {any} */ e) => String(e.code) === 'storage_too_long',
     );
     // Exactly on the limit is allowed — otherwise the number in the
     // error message („höchstens 60") would be a lie.
     const rand = await L.createStorage(U.grandparent, 'y'.repeat(60));
-    assert.equal(rand.war_neu, true);
-    await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.ort.id]);
+    assert.equal(rand.was_new, true);
+    await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.location.id]);
   });
 
   await t.test('every account has its own stock', async () => {
@@ -132,8 +132,8 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   });
 
   await t.test('renaming takes the assignments along', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
-    await L.renameStorage(U.enkel, ort.id, 'Kiste 3');
+    const location = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
+    await L.renameStorage(U.enkel, location.id, 'Kiste 3');
     // The statement is the same as before, the path there a different one: until
     // migration 0031 benenneOrtUm() wrote the new name into three tables,
     // and exactly that could miss a spelling. Now the row carries
@@ -150,27 +150,27 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   });
 
   await t.test('renaming to a taken name is rejected', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kiste 3');
+    const location = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kiste 3');
     await assert.rejects(
-      () => L.renameStorage(U.enkel, ort.id, 'kinderzimmer'),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_doppelt',
+      () => L.renameStorage(U.enkel, location.id, 'kinderzimmer'),
+      (/** @type {any} */ e) => String(e.code) === 'storage_duplicate',
       'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
     );
     // Its own name onto itself is fine, on the other hand — otherwise
     // „Kiste 3" could not be corrected to „KISTE 3".
-    await L.renameStorage(U.enkel, ort.id, 'KISTE 3');
+    await L.renameStorage(U.enkel, location.id, 'KISTE 3');
     assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'KISTE 3'));
   });
 
   await t.test('a foreign account cannot rename anything', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
+    const location = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
-      () => L.renameStorage(U.grandparent, ort.id, 'Opas Keller'),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
+      () => L.renameStorage(U.grandparent, location.id, 'Opas Keller'),
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
     );
     await assert.rejects(
-      () => L.deleteStorage(U.grandparent, ort.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
+      () => L.deleteStorage(U.grandparent, location.id),
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
     );
   });
 
@@ -178,7 +178,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     const belegt = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.deleteStorage(U.enkel, belegt.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => String(e.code) === 'storage_in_use',
       'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
     );
 

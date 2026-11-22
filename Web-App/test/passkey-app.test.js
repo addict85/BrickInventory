@@ -22,15 +22,15 @@ const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { loadConfig, ConfigError } = _req('src/infra/config.js');
 const { androidOrigins: origins } = _req('src/factors/androidApp.js');
-const androidOrigins = () => origins(_req('src/infra/config.js').konfig());
+const androidOrigins = () => origins(_req('src/infra/config.js').config());
 
 /** A hash whose base64 contains a „+“ and a „/“: base64url must replace them. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
 const WITH_COLON = HASH.toString('hex').toUpperCase().match(/../g).join(':');
 
-function withEnvironment(t, werte) {
-  const vorher = Object.fromEntries(Object.keys(werte).map(k => [k, process.env[k]]));
-  environment(werte);
+function withEnvironment(t, values) {
+  const vorher = Object.fromEntries(Object.keys(values).map(k => [k, process.env[k]]));
+  environment(values);
   t.after(() => {
     for (const [k, v] of Object.entries(vorher)) {
       if (v === undefined) environment({ [k]: undefined });
@@ -78,7 +78,7 @@ test('the origin is base64url of the hash, regardless of the notation it is ente
 });
 
 test('a wrong fingerprint or package name is a startup error with a name', () => {
-  const fehler = env => {
+  const error = env => {
     try {
       loadConfig(env);
       return [];
@@ -87,11 +87,11 @@ test('a wrong fingerprint or package name is a startup error with a name', () =>
       return e.error;
     }
   };
-  assert.match(fehler({ PASSKEY_ANDROID_CERTIFICATES: 'AB:CD' }).join(), /PASSKEY_ANDROID_CERTIFICATES: AB:CD/);
+  assert.match(error({ PASSKEY_ANDROID_CERTIFICATES: 'AB:CD' }).join(), /PASSKEY_ANDROID_CERTIFICATES: AB:CD/);
   assert.match(
-    fehler({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') + 'x' }).join(),
+    error({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') + 'x' }).join(),
     /kein SHA-256/,
   );
-  assert.match(fehler({ PASSKEY_ANDROID_PACKAGE: 'kein paket' }).join(), /PASSKEY_ANDROID_PACKAGE/);
-  assert.deepEqual(fehler({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') }), []);
+  assert.match(error({ PASSKEY_ANDROID_PACKAGE: 'kein paket' }).join(), /PASSKEY_ANDROID_PACKAGE/);
+  assert.deepEqual(error({ PASSKEY_ANDROID_CERTIFICATES: crypto.randomBytes(32).toString('hex') }), []);
 });

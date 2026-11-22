@@ -71,16 +71,16 @@ test('gateway detection', () => {
 });
 
 /** Requests via the trusted proxy; `ip` is what Express reads from X-Forwarded-For. */
-function viaProxy(trust, ips, { minuten }) {
+function viaProxy(trust, ips, { minutes }) {
   const meldungen = [];
-  let jetzt = 0;
+  let now = 0;
   const mw = proxyHint(
     trust,
     t => meldungen.push(t),
-    () => jetzt,
+    () => now,
   );
   ips.forEach((ip, i) => {
-    jetzt = Math.round((i / Math.max(ips.length - 1, 1)) * minuten * 60_000);
+    now = Math.round((i / Math.max(ips.length - 1, 1)) * minutes * 60_000);
     mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
   });
   return meldungen;
@@ -88,7 +88,7 @@ function viaProxy(trust, ips, { minuten }) {
 const viele = (ip, n = EINE_ADDRESS.anfragen + 10) => Array(n).fill(ip);
 
 test('a single client address over an hour is reported — once, with VORGELAGERTER_PROXY', () => {
-  const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * EINE_ADDRESS.anfragen), { minuten: 61 });
+  const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * EINE_ADDRESS.anfragen), { minutes: 61 });
   assert.equal(m.length, 1, 'eine einzige Client-Adresse über eine Stunde wird gemeldet');
   assert.match(m[0], /Client-Adresse 172\.28\.73\.20\b/);
   assert.match(m[0], /VORGELAGERTER_PROXY/);
@@ -97,23 +97,23 @@ test('a single client address over an hour is reported — once, with VORGELAGER
 test('two client addresses, too short or without TRUST_PROXY: no hint', () => {
   const gemischt = viele('192.168.1.20');
   gemischt[10] = '192.168.1.21';
-  assert.deepEqual(viaProxy('172.28.73.10', gemischt, { minuten: 120 }), [], 'zwei Client-Adressen: kein Hinweis');
+  assert.deepEqual(viaProxy('172.28.73.10', gemischt, { minutes: 120 }), [], 'zwei Client-Adressen: kein Hinweis');
   assert.deepEqual(
-    viaProxy('172.28.73.10', viele('192.168.1.20'), { minuten: 10 }),
+    viaProxy('172.28.73.10', viele('192.168.1.20'), { minutes: 10 }),
     [],
     'nach zehn Minuten noch kein Hinweis',
   );
   assert.deepEqual(
-    viaProxy('172.28.73.10', viele('192.168.1.20', EINE_ADDRESS.anfragen - 1), { minuten: 120 }),
+    viaProxy('172.28.73.10', viele('192.168.1.20', EINE_ADDRESS.anfragen - 1), { minutes: 120 }),
     [],
     'zu wenige Anfragen',
   );
   // Without TRUST_PROXY only the hint about the untrusted proxy reports (above).
   assert.deepEqual(
-    viaProxy(undefined, viele('192.168.1.20'), { minuten: 120 }).filter(t => /VORGELAGERTER_PROXY/.test(t)),
+    viaProxy(undefined, viele('192.168.1.20'), { minutes: 120 }).filter(t => /VORGELAGERTER_PROXY/.test(t)),
     [],
     'ohne TRUST_PROXY',
   );
   // Without an evaluated X-Forwarded-For req.ip is the proxy itself.
-  assert.deepEqual(viaProxy('172.28.73.10', viele('172.28.73.10'), { minuten: 120 }), [], 'ohne Auswertung');
+  assert.deepEqual(viaProxy('172.28.73.10', viele('172.28.73.10'), { minutes: 120 }), [], 'ohne Auswertung');
 });

@@ -1,6 +1,6 @@
 /**
  * The hint about a proxy in front of Caddy (all clients with one address) does
- * not only stand in the log: GET /api/v1/admin/jobs carries it for admins, and
+ * not only stand in the log: GET /api/v2/admin/jobs carries it for admins, and
  * the background jobs show it (proxy-hint-ui.test.js).
  *
  * Counter-checks (measured 13.11.2026, each on its own):
@@ -38,41 +38,41 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     await db.pool.end().catch(() => {});
   });
   // Like startup/app.ts: the hint provider lies on the app object, the administration reads it there.
-  let jetzt = 0;
+  let now = 0;
   const meldungen = [];
   const mw = proxyHint(
     '172.28.73.10',
     m => meldungen.push(m),
-    () => jetzt,
+    () => now,
   );
   await adminWithFactor(_req, uid);
   const { app, base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   app.locals.proxyHint = mw;
-  const jobs = async () => (await fetch(`${base}/api/v1/admin/jobs`)).json();
+  const jobs = async () => (await fetch(`${base}/api/v2/admin/jobs`)).json();
 
   await t.test('without a hint: null', async () => {
     const d = await jobs();
     assert.equal(d.success, true);
-    assert.equal(d.proxy_hinweis, null);
+    assert.equal(d.proxy_hint, null);
   });
 
   await t.test('after the hint in the log it is in the response', async () => {
     // For one hour only the address of the proxy in front, as behind Nginx Proxy Manager with `keiner`.
     for (let i = 0; i <= EINE_ADDRESS.anfragen; i++) {
-      jetzt = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
+      now = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
       const ip = '::ffff:172.28.73.20';
       mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
     }
     assert.equal(meldungen.length, 1, 'Hinweis im Protokoll');
-    const h = (await jobs()).proxy_hinweis;
-    assert.deepEqual([h?.art, h?.vars?.ip], ['eine_adresse', '172.28.73.20'], JSON.stringify(h));
-    assert.ok(h.vars.minuten >= 60 && h.vars.anzahl >= EINE_ADDRESS.anfragen, JSON.stringify(h));
+    const h = (await jobs()).proxy_hint;
+    assert.deepEqual([h?.kind, h?.vars?.ip], ['eine_adresse', '172.28.73.20'], JSON.stringify(h));
+    assert.ok(h.vars.minutes >= 60 && h.vars.count >= EINE_ADDRESS.anfragen, JSON.stringify(h));
   });
 
   await t.test('the app puts its hint provider where the administration reads', () => {
     const echt = _req('startup/app.js').buildApp({
       pool: db.systemPool,
-      konfig: _req('src/infra/config.js').konfig(),
+      config: _req('src/infra/config.js').config(),
       sitzungsGeheimnis: 'p'.repeat(48),
       dienste: require('./helpers/sources').testServices(),
     });
@@ -86,6 +86,6 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     } finally {
       console.warn = leise;
     }
-    assert.deepEqual(proxyHintStatus(echt), { art: 'docker_netz', vars: { ip: '172.28.73.30' } });
+    assert.deepEqual(proxyHintStatus(echt), { kind: 'docker_netz', vars: { ip: '172.28.73.30' } });
   });
 });

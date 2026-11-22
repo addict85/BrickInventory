@@ -35,13 +35,13 @@ async function seed() {
 }
 
 /** Set the market price — what the price run otherwise fetches from BrickLink. */
-async function setPrice(preis, condition = 'N', waehrung = 'EUR') {
+async function setPrice(preis, condition = 'N', currency = 'EUR') {
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
      VALUES ($1,$2,$3,$4,NOW())
      ON CONFLICT (set_number, currency_code, condition)
        DO UPDATE SET avg_price = $4, fetched_at = NOW()`,
-    [SN, condition, waehrung, preis],
+    [SN, condition, currency, preis],
   );
 }
 
@@ -93,21 +93,21 @@ test('price alert against a real database', async t => {
   await t.test('nonsensical input is rejected, not bent into shape', async () => {
     // A silently corrected threshold would be worse than a
     // refusal: the alert would stand there and report never or always.
-    for (const [feld, wert] of [
+    for (const [field, wert] of [
       ['direction', 'seitwärts'],
       ['threshold', 0],
       ['threshold', -5],
       ['threshold', 'abc'],
       ['condition', 'X'],
     ]) {
-      const eingabe = { direction: 'unter', threshold: 200, condition: 'N', [feld]: wert };
+      const eingabe = { direction: 'unter', threshold: 200, condition: 'N', [field]: wert };
       // Checked on `code`, not on the message: fachfehler() sets as
       // `message` the GERMAN sentence — a test on it would break on every
       // rephrasing without the behavior changing.
       await assert.rejects(
         () => A.setAlert(U.ich, SN, 'EUR', eingabe),
         (/** @type {any} */ e) => String(e.code || '').startsWith('alarm_'),
-        `${feld}=${wert} wurde angenommen`,
+        `${field}=${wert} wurde angenommen`,
       );
     }
   });

@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { konfig, readConfigNew, setConfig } = _req('src/infra/config.js');
+const { config, readConfigNew, setConfig } = _req('src/infra/config.js');
 
 const vorher = process.env.PORT;
 test.after(() => {
@@ -26,14 +26,14 @@ test('after the first read the environment changes nothing any more', () => {
   process.env.PORT = '4101';
   assert.equal(readConfigNew().port, 4101);
   process.env.PORT = '4102';
-  assert.equal(konfig().port, 4101);
+  assert.equal(config().port, 4101);
   assert.equal(readConfigNew().port, 4102);
 });
 
 test('setConfig lays values over it, null lifts them', () => {
   process.env.PORT = '4103';
   assert.equal(setConfig({ port: 5 }).port, 5);
-  assert.equal(konfig().port, 5);
+  assert.equal(config().port, 5);
   assert.equal(setConfig(null).port, 4103);
 });
 

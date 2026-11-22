@@ -57,8 +57,9 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
     /** @type {any} */ (req).apiUser = { user_id: uid };
     next();
   });
-  app.use('/api/v1', idempotency(require('./helpers/sources').testServices().idempotency));
-  app.post('/api/v1/parts', async (req, res) => {
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', idempotency(require('./helpers/sources').testServices().idempotency));
+  app.post('/api/v2/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
       if (rollback) throw new Error('zurückgerollt');
@@ -72,7 +73,7 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const url = `http://localhost:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/api/v1/parts`;
+  const url = `http://localhost:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/api/v2/parts`;
   const sende = k =>
     fetch(url, {
       method: 'POST',
@@ -101,7 +102,7 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
     danach = 'antworten';
     const r = await sende('k-abbruch');
     assert.equal(r.status, 409);
-    assert.equal((await r.json()).code, 'idempotenz_nicht_wiederholbar');
+    assert.equal((await r.json()).code, 'idempotency_not_repeatable');
     assert.equal(await effects('k-abbruch'), 1);
   });
 

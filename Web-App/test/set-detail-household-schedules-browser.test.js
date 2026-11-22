@@ -99,7 +99,7 @@ async function settingsOneLocation(_t, a) {
   await b.auswerten(`(() => { const s = document.getElementById('mon-cache-ttl'); s.value = '168';
     s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await bis(`${text('#mon-cache-ttl + .field-status')} === 'Gespeichert ✓'`, '„Gespeichert ✓“ am Feld');
-  const ttl = await b.auswerten(`fetch('/api/v1/admin/cache-ttl').then(r => r.json()).then(d => d.ttl)`);
+  const ttl = await b.auswerten(`fetch('/api/v2/admin/cache-ttl').then(r => r.json()).then(d => d.ttl)`);
   assert.equal(String(ttl), '168');
   await b.auswerten(`(() => { const f = document.querySelector('#settings-schedules .mon-minutes, #settings-schedules .mon-time');
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
@@ -188,9 +188,9 @@ async function pathTilesAxis(_t, a) {
 }
 
 test('set detail in the household, schedules, tiles', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await startApp(t, { name: `r19_${process.pid}`, bestand: patternHousehold });
-  if (a.grund) {
-    t.skip(a.grund);
+  const a = await startApp(t, { name: `r19_${process.pid}`, holding: patternHousehold });
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   await a.ruhig();

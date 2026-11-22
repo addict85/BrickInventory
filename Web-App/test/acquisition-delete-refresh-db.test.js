@@ -89,7 +89,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
 
     // 1. Marco's case: delete the newest entry.
     await aufbauen();
-    let r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
+    let r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     let e = await eltern();
     assert.equal(
@@ -112,7 +112,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
         [uid, SN],
       )
     )[0].id;
-    r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alte}`, { method: 'DELETE' });
+    r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${alte}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     e = await eltern();
     assert.equal(
@@ -125,7 +125,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
     //  no parent row either.
     await aufbauen();
     for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
-      await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
+      await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
     }
     assert.equal(await eltern(), undefined, 'Ohne Erfassungen darf keine Set-Zeile mit Menge 0 zurückbleiben');
   } finally {

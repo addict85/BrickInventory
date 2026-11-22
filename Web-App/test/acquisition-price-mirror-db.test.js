@@ -55,12 +55,12 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
       .avg_purchase_price;
 
   try {
-    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
-      ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-      ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
+    for (const [name, path] of /** @type {[string, (id: number) => string][]} */ ([
+      ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
+      ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
       const id = await aufbauen();
-      const r = await fetch(`${base}${pfad(id)}`, {
+      const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: 107.0 }),
@@ -91,7 +91,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
                   VALUES ($1,$2,200.00,'U',1, NOW() + INTERVAL '1 day')`,
       [uid, SN],
     );
-    const r2 = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alt}`, {
+    const r2 = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${alt}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 50.0 }),

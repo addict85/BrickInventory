@@ -24,19 +24,19 @@ function dateien(subfolder, extension) {
 }
 
 test('no function without a single caller', () => {
-  const quellen = ['routes', 'src', 'jobs', 'db']
+  const sources = ['routes', 'src', 'jobs', 'db']
     .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
-  const korpus = quellen
+  const korpus = sources
     .concat(dateien('test', '.js'))
     .map(f => ohneKommentare(fs.readFileSync(f, 'utf8')))
     .join('\n');
 
-  assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
+  assert.ok(sources.length > 20, `nur ${sources.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
 
   const tot = [];
   let geprueft = 0;
-  for (const datei of quellen) {
+  for (const datei of sources) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)) {
       const name = m[1];
@@ -55,23 +55,23 @@ test('no function without a single caller', () => {
  * The second half: EXPORTED names without callers.
  */
 test('no exported value without a single caller', () => {
-  const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
+  const sources = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
     .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
-  const withTests = quellen.concat(dateien('test', '.js'));
-  assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien — die Pruefung liefe ins Leere`);
+  const withTests = sources.concat(dateien('test', '.js'));
+  assert.ok(sources.length > 20, `nur ${sources.length} Quelldateien — die Pruefung liefe ins Leere`);
 
   const inhalt = new Map(withTests.map(f => [f, ohneKommentare(fs.readFileSync(f, 'utf8'))]));
 
   // Counted SEPARATELY per notation — see the self-proof below.
-  const gefunden = { inline: 0, liste: 0 };
+  const found = { inline: 0, liste: 0 };
 
   /** Exported VALUES (no types) of a file. */
   const exportedValues = src => {
     const namen = new Set();
     for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/gm)) {
       namen.add(m[1]);
-      gefunden.inline++;
+      found.inline++;
     }
     for (const m of src.matchAll(/^export\s*\{([^}]*)\}/gm))
       for (const roh of m[1].split(',')) {
@@ -81,7 +81,7 @@ test('no exported value without a single caller', () => {
         // leave it out. Better one finding fewer than a false alarm.
         if (n && !/^[A-Z][A-Za-z]*$/.test(n)) {
           namen.add(n);
-          gefunden.liste++;
+          found.liste++;
         }
       }
     return namen;
@@ -108,7 +108,7 @@ test('no exported value without a single caller', () => {
   };
 
   const tot = [];
-  for (const datei of quellen) {
+  for (const datei of sources) {
     const src = inhalt.get(datei);
     for (const name of exportedValues(src)) {
       const anderswo = [...inhalt].some(([f, t]) => f !== datei && new RegExp(`\\b${name}\\b`).test(t));
@@ -121,13 +121,13 @@ test('no exported value without a single caller', () => {
   // Not as a sum: a self-proof that adds numbers covers up the death
   // of one summand — exactly the kind of error it is built against.
   assert.ok(
-    gefunden.inline > 70,
-    `Nur ${gefunden.inline} Exporte in der Form \`export function x\` gefunden ` +
+    found.inline > 70,
+    `Nur ${found.inline} Exporte in der Form \`export function x\` gefunden ` +
       '(GEMESSEN: 139) — dieses Muster ist veraltet.',
   );
   assert.ok(
-    gefunden.liste > 125,
-    `Nur ${gefunden.liste} Exporte in der Form \`export { x }\` gefunden ` +
+    found.liste > 125,
+    `Nur ${found.liste} Exporte in der Form \`export { x }\` gefunden ` +
       '(GEMESSEN: 252) — dieses Muster ist veraltet. Genau dieses fand upsert().',
   );
 

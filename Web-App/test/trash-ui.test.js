@@ -24,33 +24,33 @@ const SET = {
   added_at: '2026-11-01T10:00:00Z',
   instructions: [],
 };
-const eintrag = (id, user_id, anzahl) => ({
+const eintrag = (id, user_id, count) => ({
   id,
   type: 'set',
   number: '21318-1',
   color_id: null,
   label: 'Tree House',
-  anzahl,
+  count,
   user_id,
   deleted_at: '2026-11-15T10:00:00Z',
-  endgueltig_am: '2026-12-15T10:00:00Z',
+  purge_at: '2026-12-15T10:00:00Z',
 });
 
 function antworten() {
   const korb = [eintrag(7, 1, 1), eintrag(8, 2, 2)];
   return {
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 2, username: 'lena', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 2, username: 'lena', is_self: false, depth: 1 },
       ],
     },
-    '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-    '/v1/sets/21318-1': (_u, o) =>
-      o.method === 'DELETE' ? { success: true, papierkorb: [7] } : { success: true, set: SET },
-    '/v1/papierkorb': () => ({ success: true, eintraege: korb }),
-    '/v1/papierkorb/7/wiederherstellen': () => {
+    '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+    '/v2/sets/21318-1': (_u, o) =>
+      o.method === 'DELETE' ? { success: true, trash: [7] } : { success: true, set: SET },
+    '/v2/trash': () => ({ success: true, entries: korb }),
+    '/v2/trash/7/restore': () => {
       korb.splice(0, 1);
       return { success: true, type: 'set', number: '21318-1', user_id: 1 };
     },
@@ -85,7 +85,7 @@ test('focus and toast after restoring in the trash', async () => {
     const knopf = d.querySelector('[data-click="restoreFromTrash"][data-arg="7"]');
     knopf.focus();
     knopf.click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v1/papierkorb/7/wiederherstellen')));
+    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/trash/7/restore')));
     await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 1);
     assert.ok(
       await warte(() => d.activeElement?.getAttribute('data-arg') === '8'),

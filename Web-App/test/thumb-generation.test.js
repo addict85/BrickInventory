@@ -20,12 +20,12 @@ test('previewFrom() actually creates a smaller file', async () => {
 
   const name = `zz-thumbtest-${process.pid}`;
   const original = path.join(ordner, `${name}.jpg`);
-  const vorschau = path.join(ordner, `${name}_thumb.jpg`);
-  fs.rmSync(vorschau, { force: true });
+  const preview = path.join(ordner, `${name}_thumb.jpg`);
+  fs.rmSync(preview, { force: true });
 
   // A real JPEG — Jimp must be able to read it; a buffer full of zeros does not suffice.
-  const bild = new Jimp({ width: 800, height: 600, color: 0xff0000ff });
-  await bild.write(original);
+  const image = new Jimp({ width: 800, height: 600, color: 0xff0000ff });
+  await image.write(original);
 
   try {
     const { previewFrom } = _req('src/images/thumbs.js');
@@ -36,9 +36,9 @@ test('previewFrom() actually creates a smaller file', async () => {
       'previewFrom lieferte null — der Fehler wird im catch verschluckt, ' +
         'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
     );
-    assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
+    assert.ok(fs.existsSync(preview), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
     assert.ok(
-      fs.statSync(vorschau).size < fs.statSync(original).size,
+      fs.statSync(preview).size < fs.statSync(original).size,
       'die Vorschau muss KLEINER sein als das Original — sonst wäre sie nutzlos',
     );
     assert.ok(
@@ -47,7 +47,7 @@ test('previewFrom() actually creates a smaller file', async () => {
     );
   } finally {
     fs.rmSync(original, { force: true });
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
   }
 });
 

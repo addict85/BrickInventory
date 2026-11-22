@@ -71,7 +71,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   const hochladen = async (inhalt, typ, name, set = SET) => {
     const form = new FormData();
     form.append('file', new Blob([inhalt], { type: typ }), name);
-    const r = await fetch(`${base}/api/v1/sets/${set}/instructions/upload`, { method: 'POST', body: form });
+    const r = await fetch(`${base}/api/v2/sets/${set}/instructions/upload`, { method: 'POST', body: form });
     return { status: r.status, body: await r.json() };
   };
   const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner) : []);
@@ -95,7 +95,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   await t.test('a text as a PDF', async () => {
     const r = await hochladen(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
     assert.equal(r.status, 400, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'datei_inhalt_falsch');
+    assert.equal(r.body.code, 'file_content_wrong');
     assert.equal(dateien().length, 1, 'die abgewiesene Datei liegt noch im Ordner');
   });
 
@@ -111,7 +111,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     const vorher = dateien().length;
     const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
     assert.equal(r.status, 413, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'upload_kontingent_voll');
+    assert.equal(r.body.code, 'upload_quota_full');
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
   });
 
@@ -120,21 +120,21 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     st.after(() => environment({ UPLOAD_TOTAL_MB: undefined }));
     const vorher = dateien().length;
     const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
-    assert.deepEqual([r.status, r.body.code], [507, 'upload_gesamt_voll'], JSON.stringify(r.body));
+    assert.deepEqual([r.status, r.body.code], [507, 'upload_total_full'], JSON.stringify(r.body));
     assert.match(r.body.error, /alle Konten|all accounts/);
     assert.equal(dateien().length, vorher);
     const form = new FormData();
     form.append('file', new Blob([PDF, Buffer.alloc(2048, 0x20)], { type: 'application/pdf' }), 'gutschein.pdf');
-    const g = await fetch(`${base}/api/v1/vouchers/pdf`, { method: 'POST', body: form });
-    assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_gesamt_voll'], 'Gutschein-PDF');
+    const g = await fetch(`${base}/api/v2/vouchers/pdf`, { method: 'POST', body: form });
+    assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_total_full'], 'Gutschein-PDF');
     // Already at the header: a response although the content never comes.
     const upfront = await new Promise((fertig, fehl) => {
       const a = require('node:http').request(
-        `${base}/api/v1/sets/${SET}/instructions/upload`,
+        `${base}/api/v2/sets/${SET}/instructions/upload`,
         { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '4096' } },
-        antwort => {
-          antwort.resume();
-          fertig(antwort.statusCode);
+        response => {
+          response.resume();
+          fertig(response.statusCode);
           a.destroy();
         },
       );
@@ -158,14 +158,14 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {
       const anfrage = http.request(
-        `${base}/api/v1/sets/${SET}/instructions/upload`,
+        `${base}/api/v2/sets/${SET}/instructions/upload`,
         {
           method: 'POST',
           headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(10 * 1024 * 1024) },
         },
-        antwort => {
-          antwort.resume();
-          fertig(antwort.statusCode);
+        response => {
+          response.resume();
+          fertig(response.statusCode);
           anfrage.destroy();
         },
       );

@@ -16,11 +16,11 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt, ANMELDUNG } = require('./helpers/ui');
 
 const HAUSHALT = {
-  '/v1/sets/household-members': {
+  '/v2/sets/household-members': {
     success: true,
     members: [
-      { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-      { id: 7, username: 'ben', is_self: false, tiefe: 1 },
+      { id: 1, username: 'anna', is_self: true, depth: 0 },
+      { id: 7, username: 'ben', is_self: false, depth: 1 },
     ],
   },
 };
@@ -33,17 +33,17 @@ const GEMERKT = {
 const remember = w => {
   for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
 };
-const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v1\/sets(\?|$)/.test(a.url));
+const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v2\/sets(\?|$)/.test(a.url));
 
 test('login resets the account and location filters before the list loads', async () => {
   const o = await openUi(
     {
       ...ANMELDUNG,
       ...HAUSHALT,
-      '/v1/auth/me': { success: true, loggedIn: false },
-      '/v1/auth/login': {
+      '/v2/auth/me': { success: true, loggedIn: false },
+      '/v2/auth/login': {
         success: true,
-        user: { id: 1, username: 'anna', is_admin: false, zweiterFaktorPflicht: false },
+        user: { id: 1, username: 'anna', is_admin: false, secondFactorRequired: false },
       },
     },
     { loggedIn: false, before: remember },
@@ -86,10 +86,10 @@ test('the choice is remembered and goes to the server', async () => {
   const o = await openUi(HAUSHALT);
   try {
     await o.ruhig();
-    const feld = o.d.getElementById('scope-gallery');
-    assert.equal(feld.style.display, '', 'der Kontofilter ist bei einem Haushalt verborgen');
-    feld.value = 'own';
-    feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const field = o.d.getElementById('scope-gallery');
+    assert.equal(field.style.display, '', 'der Kontofilter ist bei einem Haushalt verborgen');
+    field.value = 'own';
+    field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(30);
     await o.ruhig();
     assert.equal(o.w.localStorage.getItem('bim_scope_gallery'), 'own');

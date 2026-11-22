@@ -18,20 +18,20 @@ const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources')
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 /** The sort values of a source — everything that looks like a WANTED_SORTS key. */
-function sortValues(quelle) {
-  return [...new Set(quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
+function sortValues(source) {
+  return [...new Set(source.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
 }
 
 test('1. the web app sends all four filters to the server', async () => {
   const o = await openUi({
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 7, username: 'ben', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 7, username: 'ben', is_self: false, depth: 1 },
       ],
     },
-    '/v1/wanted': { success: true, merkposten: [] },
+    '/v2/wanted': { success: true, item: [] },
   });
   try {
     await reiter(o.w, 'wanted');
@@ -47,11 +47,11 @@ test('1. the web app sends all four filters to the server', async () => {
     setze('mksort', 'price_asc');
     setze('mks', 'Burg');
     assert.ok(
-      await warte(() => o.aufrufe.some(a => /\/v1\/wanted\?.*search=Burg/.test(a.url)), 2000),
+      await warte(() => o.aufrufe.some(a => /\/v2\/wanted\?.*search=Burg/.test(a.url)), 2000),
       'die Suche lädt nicht neu',
     );
     await o.ruhig();
-    const p = new URL(o.aufrufe.filter(a => /\/v1\/wanted\?/.test(a.url)).at(-1).url, 'http://x').searchParams;
+    const p = new URL(o.aufrufe.filter(a => /\/v2\/wanted\?/.test(a.url)).at(-1).url, 'http://x').searchParams;
     assert.deepEqual(
       [p.get('search'), p.get('condition'), p.get('sort'), p.get('accounts')],
       ['Burg', 'U', 'price_asc', '7'],
@@ -78,8 +78,8 @@ test('3. the web app offers exactly the sortings the server knows', () => {
 
   // ── Web app: the <option> values of the sort field ────────────────────────
   const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
-  const feld = html.slice(html.indexOf('id="mksort"'));
-  const webValues = sortValues(feld.slice(0, feld.indexOf('</select>')));
+  const field = html.slice(html.indexOf('id="mksort"'));
+  const webValues = sortValues(field.slice(0, field.indexOf('</select>')));
   assert.deepEqual(
     webValues,
     erlaubt,
@@ -95,9 +95,9 @@ test('4. the default sorting is the same in server and web app', () => {
   assert.match(firstRow, /added_desc/, 'WANTED_SORTS beginnt nicht mit added_desc');
 
   const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
-  const feld = html.slice(html.indexOf('id="mksort"'));
+  const field = html.slice(html.indexOf('id="mksort"'));
   assert.match(
-    feld.slice(0, 200),
+    field.slice(0, 200),
     /<option value="added_desc"/,
     'Die Webapp hat eine andere Vorgabe — das erste <option> ist die Vorauswahl.',
   );

@@ -39,12 +39,12 @@ function setup(w) {
       <button id="innen" data-click="stopEvent">x</button></div>
     <table><tbody><tr id="zeile" tabindex="0" data-click="stopEvent"><td>1</td></tr></tbody></table>`;
   d.body.appendChild(ziel);
-  const klicks = { karte: 0, zeile: 0 };
+  const klicks = { karte: 0, row: 0 };
   d.getElementById('karte').addEventListener('click', e => {
     if (e.target.id === 'karte') klicks.karte++;
   });
   d.getElementById('zeile').addEventListener('click', () => {
-    klicks.zeile++;
+    klicks.row++;
   });
   return klicks;
 }
@@ -68,7 +68,7 @@ test('cards and rows via keyboard', async t => {
   await t.test('table row: Enter yes, space bar no', () => {
     taste(w, d.getElementById('zeile'), 'Enter');
     taste(w, d.getElementById('zeile'), ' ');
-    assert.equal(k.zeile, 1);
+    assert.equal(k.row, 1);
   });
   await t.test('a button in the card does not trigger the card', () => {
     taste(w, d.getElementById('innen'), 'Enter');

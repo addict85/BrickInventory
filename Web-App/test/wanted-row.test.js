@@ -30,10 +30,10 @@ test.after(() =>
 
 test('the web app row shows market price and trash, no takeover button', async () => {
   const o = await openUi({
-    '/v1/wanted': {
+    '/v2/wanted': {
       success: true,
-      merkposten: [
-        { set_number: '10305-1', condition: 'N', user_id: 1, name: 'Burg', marktpreis: 349.99, waehrung: 'EUR' },
+      item: [
+        { set_number: '10305-1', condition: 'N', user_id: 1, name: 'Burg', market_price: 349.99, currency: 'EUR' },
       ],
     },
   });
@@ -52,7 +52,7 @@ test('the web app row shows market price and trash, no takeover button', async (
 
 test('manual entries: trash on the tile, storage location and delete in the detail', async () => {
   const o = await openUi({
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       parts: [{ part_number: '3001', color_id: 4, quantity: 3, user_id: 1, part_name: 'Stein', storage: 'Kiste 3' }],
       total: 1,
@@ -87,11 +87,13 @@ test('the query of the manual parts delivers the storage location', async t => {
   await weg();
   t.after(weg);
   await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `mz${U}`]);
-  const ort = (await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])).id;
-  await holdsPart(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
-  const teile = await require('./helpers/sources').handlerModule(_req).manualPartsList([U], U);
+  const location = (
+    await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])
+  ).id;
+  await holdsPart(db, U, `mz-${U}`, { colorId: 4, quantity: 2, storageId: location });
+  const parts = await require('./helpers/sources').handlerModule(_req).manualPartsList([U], U);
   assert.deepEqual(
-    teile.map(p => [p.part_number, p.storage]),
+    parts.map(p => [p.part_number, p.storage]),
     [[`mz-${U}`, 'Kiste 3']],
   );
 });

@@ -20,7 +20,7 @@
  *      csv.import_title back to “CSV Import” → red: same place; settings.users_new back to “Neuen Benutzer
  *      erstellen” → red: same place
  *   F  (16.11.2026) users.role.user (de) back to “Benutzer” → red: “no text … untranslated” and “the
- *      roles are called …”; maillink.cancel.ok back to “übrigen Verwalter”, FEHLER.nur_admins (de)
+ *      roles are called …”; maillink.cancel.ok back to “übrigen Verwalter”, FEHLER.admins_only (de)
  *      back to “Nur für Admins”, settings.admins_only (en) back to “Admins only” → each red: “the roles are called …”
  */
 const test = require('node:test');
@@ -149,7 +149,7 @@ test('the roles are called Standard and Administrator, also in server error text
   assert.equal(en['users.role.user'], 'Standard');
   assert.equal(en['users.role.admin'], 'Administrator');
   const { ERRORS } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
-  assert.match(ERRORS.letzter_verwalter.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
+  assert.match(ERRORS.last_admin.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
   const serverDe = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.de]));
   const serverEn = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.en]));
   const alt = [
@@ -191,7 +191,7 @@ test('the trash in the brick theme has a white background from the start, not on
 
 const GRAY = 'Dark Bluish Gray';
 const COLORS = {
-  '/v1/parts': {
+  '/v2/parts': {
     success: true,
     total: 1,
     page: 1,
@@ -207,19 +207,19 @@ const COLORS = {
       },
     ],
   },
-  '/v1/parts/colors': {
+  '/v2/parts/colors': {
     success: true,
     colors: [{ color_name: GRAY, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }],
   },
-  '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
+  '/v2/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
 };
 
 test('color names: displayed in German, stored and filtered in English', async () => {
-  for (const [sprache, sichtbar] of [
+  for (const [language, sichtbar] of [
     ['de', 'Dunkelbläulichgrau'],
     ['en', GRAY],
   ]) {
-    const { w, d } = await openUi(COLORS, { sprache });
+    const { w, d } = await openUi(COLORS, { language });
     try {
       await reiter(w, 'parts');
       assert.ok(
@@ -229,16 +229,16 @@ test('color names: displayed in German, stored and filtered in English', async (
       );
       const option = d.querySelector('#ap-color-select option[data-name]');
       // data-name goes to the backend and to BrickLink on saving: English.
-      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], sprache);
+      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], language);
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),
         sichtbar,
-        `${sprache}: Gruppenüberschrift`,
+        `${language}: Gruppenüberschrift`,
       );
-      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${sprache}: Kachel`);
+      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${language}: Kachel`);
       const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAY);
       assert.ok(filter, 'Der Filterwert bleibt englisch');
-      assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${sprache}: Filterbeschriftung`);
+      assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${language}: Filterbeschriftung`);
     } finally {
       w.close();
     }
@@ -249,7 +249,7 @@ test('the purchase price detail dialog loads the part image in full size via the
   const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
   const { w, d } = await openUi({
     ...COLORS,
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       parts: [
         {

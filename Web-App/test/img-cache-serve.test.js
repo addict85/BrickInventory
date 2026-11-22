@@ -56,7 +56,7 @@ async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
   const res = fakeRes();
   const streamed = [];
   const noted = [];
-  const erledigt = await deliverFromCache({
+  const done = await deliverFromCache({
     res,
     req: { fresh },
     cacheFile: path.join(dir, 'bild'),
@@ -66,7 +66,7 @@ async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
     note: () => noted.push(1),
     streamFileToResponse: (_res, datei) => streamed.push(datei),
   });
-  return { erledigt, res, streamed, noted };
+  return { done, res, streamed, noted };
 }
 
 /** Create a file with `n` bytes. */
@@ -84,16 +84,16 @@ test('delivery order of the image cache', async t => {
 
   await t.test('nothing in the cache → the caller has to fetch from the CDN', async () => {
     aufraeumen();
-    const { erledigt, streamed } = await ruf(dir, { wantThumb: false });
-    assert.equal(erledigt, false, 'false heisst: nicht beantwortet, bitte holen');
+    const { done, streamed } = await ruf(dir, { wantThumb: false });
+    assert.equal(done, false, 'false heisst: nicht beantwortet, bitte holen');
     assert.deepEqual(streamed, []);
   });
 
   await t.test('original there, preview wanted → original IMMEDIATELY, preview reserved', async () => {
     aufraeumen();
     datei(orig, 5000);
-    const { erledigt, streamed, res } = await ruf(dir, { wantThumb: true });
-    assert.equal(erledigt, true);
+    const { done, streamed, res } = await ruf(dir, { wantThumb: true });
+    assert.equal(done, true);
     assert.deepEqual(
       streamed,
       [orig],
@@ -157,14 +157,14 @@ test('delivery order of the image cache', async t => {
     datei(thumb, 900);
 
     const v = await ruf(dir, { wantThumb: true, fresh: true });
-    assert.equal(v.erledigt, true, '304 ist eine FERTIGE Antwort');
+    assert.equal(v.done, true, '304 ist eine FERTIGE Antwort');
     assert.equal(v.res.code, 304);
     assert.equal(v.res.beendet, true);
     assert.deepEqual(v.streamed, [], 'Bei 304 darf kein Bild mehr rausgehen');
 
     fs.unlinkSync(thumb);
     const o = await ruf(dir, { wantThumb: false, fresh: true });
-    assert.equal(o.erledigt, true);
+    assert.equal(o.done, true);
     assert.equal(o.res.code, 304);
     assert.deepEqual(o.streamed, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
   });

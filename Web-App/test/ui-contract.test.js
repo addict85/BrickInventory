@@ -4,7 +4,7 @@
  * of a test after adding missing required fields.
  *
  * Counter-checks (05.11.2026, each on its own):
- *   A  `count` removed from ANMELDUNG['/v1/sets'] → „Standardantworten“ red
+ *   A  `count` removed from ANMELDUNG['/v2/sets'] → „Standardantworten“ red
  *   B  call of checkResponse() removed in the helper's fetch → “the UI's fetch
  *      delivers the completed response” and “a wrong test response …” red
  *   C  error responses without a check (status >= 400 skipped) → “error response
@@ -25,51 +25,51 @@ const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/contrac
 test('default responses fulfill the contract without additions', () => {
   const deviations = [];
   let geprueft = 0;
-  for (const [pfad, antwort] of [...Object.entries(ANMELDUNG), ...Object.entries(SIGNED_OUT)]) {
-    const schema = routeForRequest('GET', '/api' + pfad)?.antwort;
+  for (const [path, response] of [...Object.entries(ANMELDUNG), ...Object.entries(SIGNED_OUT)]) {
+    const schema = routeForRequest('GET', '/api' + path)?.response;
     if (!schema) {
-      deviations.push(`${pfad}: keine Route mit Vertrag`);
+      deviations.push(`${path}: keine Route mit Vertrag`);
       continue;
     }
     geprueft++;
-    const r = schema.safeParse(JSON.parse(JSON.stringify(antwort)));
+    const r = schema.safeParse(JSON.parse(JSON.stringify(response)));
     if (!r.success)
-      deviations.push(`${pfad}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
+      deviations.push(`${path}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
   }
   assert.ok(geprueft >= 22, `nur ${geprueft} Standardantworten geprüft`);
   assert.deepEqual(deviations, []);
 });
 
 test('checkResponse adds required fields and throws on the wrong type', () => {
-  const supplemented = checkResponse('GET', '/api/v1/sets', { success: true, sets: [{ set_number: '10294-1' }] });
+  const supplemented = checkResponse('GET', '/api/v2/sets', { success: true, sets: [{ set_number: '10294-1' }] });
   assert.equal(supplemented.count, 0);
   assert.equal(supplemented.sets[0].set_number, '10294-1');
   assert.deepEqual(supplemented.sets[0].conditions, []);
   assert.throws(
-    () => checkResponse('GET', '/api/v1/sets', { success: true, sets: [], count: '3' }),
-    /verletzt den Vertrag: GET \/api\/v1\/sets \(200\): count/,
+    () => checkResponse('GET', '/api/v2/sets', { success: true, sets: [], count: '3' }),
+    /verletzt den Vertrag: GET \/api\/v2\/sets \(200\): count/,
   );
   // Deliberately broken, with a reason: goes out unchanged.
   const kaputt = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
-  assert.equal(checkResponse('GET', '/api/v1/sets', kaputt), kaputt);
+  assert.equal(checkResponse('GET', '/api/v2/sets', kaputt), kaputt);
 });
 
 test('error response without code violates the contract', () => {
   assert.throws(
-    () => checkResponse('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt' }),
+    () => checkResponse('GET', '/api/v2/sets', { $status: 500, success: false, error: 'kaputt' }),
     /\(500\): code/,
   );
   assert.doesNotThrow(() =>
-    checkResponse('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt', code: 'interner_fehler' }),
+    checkResponse('GET', '/api/v2/sets', { $status: 500, success: false, error: 'kaputt', code: 'internal_error' }),
   );
 });
 
 test("the UI's fetch delivers the completed response", async () => {
   const { w } = await openUi({
-    '/v1/sets': { success: true, sets: [{ set_number: '10294-1', name: 'Titanic' }] },
+    '/v2/sets': { success: true, sets: [{ set_number: '10294-1', name: 'Titanic' }] },
   });
   try {
-    const d = await (await w.fetch('/api/v1/sets')).json();
+    const d = await (await w.fetch('/api/v2/sets')).json();
     assert.equal(d.count, 0);
     assert.equal(d.sets[0].name, 'Titanic');
     assert.equal(typeof d.sets[0].quantity, 'number');
@@ -87,8 +87,8 @@ test('a wrong test response makes the test red', () => {
     const test = require('node:test');
     const { openUi } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'ui.js'))});
     test('probe', async () => {
-      const { w, warte } = await openUi({ '/v1/sets': { success: true, sets: [], count: 'drei' } });
-      await w.fetch('/api/v1/sets');
+      const { w, warte } = await openUi({ '/v2/sets': { success: true, sets: [], count: 'drei' } });
+      await w.fetch('/api/v2/sets');
       await warte(() => false, 200);
       w.close();
     });`,
@@ -100,5 +100,5 @@ test('a wrong test response makes the test red', () => {
   });
   fs.rmSync(path.dirname(datei), { recursive: true, force: true });
   assert.notEqual(r.status, 0, r.stdout);
-  assert.match(r.stdout, /Testantwort verletzt den Vertrag: GET \/api\/v1\/sets \(200\): count/);
+  assert.match(r.stdout, /Testantwort verletzt den Vertrag: GET \/api\/v2\/sets \(200\): count/);
 });

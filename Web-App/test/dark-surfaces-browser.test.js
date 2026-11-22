@@ -76,9 +76,9 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
   const app = await startApp(t, {
     name: `dunkel_${process.pid}`,
     allDesigns: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
-      await holdsSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
+      await holdsSet(db, uid, '75192-1', 1, { preis: 650, condition: 'U' });
       // An instruction so that the badge with the instruction count is on the card.
       await db.run(
         `INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`,
@@ -86,11 +86,11 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
       );
       await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
                     ON CONFLICT DO NOTHING`);
-      await holdsPart(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
+      await holdsPart(db, uid, '3001', { setNumber: '10300-1', quantity: 4, colorId: 5 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -104,7 +104,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
     const collect = async wo => {
       // If the login mask is shown, the rest would measure only it; then name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'none'}`);
+        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.rejected.join(', ') || 'none'}`);
       const r = await b.auswerten(MEASUREMENT);
       for (const x of r.surfaces) funde.surfaces.add(`${wo}: ${x}`);
       for (const x of r.texte) funde.texte.add(`${wo}: ${x}`);

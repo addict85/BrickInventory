@@ -36,7 +36,7 @@ function token(secondsValid) {
 }
 
 /** A response as `fetch` delivers it — only the four pieces used. */
-function antwort({ status = 200, json = {}, text = '', cookies = [] } = {}) {
+function response({ status = 200, json = {}, text = '', cookies = [] } = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -72,13 +72,13 @@ function double(antworten = {}) {
     protokoll.push({ url, init });
     for (const [muster, wert] of Object.entries(antworten)) {
       if (!url.includes(muster)) continue;
-      return Array.isArray(wert) ? (wert.shift() ?? antwort({ status: 500 })) : wert;
+      return Array.isArray(wert) ? (wert.shift() ?? response({ status: 500 })) : wert;
     }
     // Default: page loads, login gives a cookie with a token, query delivers
     // 250 CHF.
-    if (url.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
-    if (url.includes('/Login')) return antwort({ cookies: [`gqauth=${token(3600)}; Path=/`] });
-    return antwort({ json: BALANCE_RESPONSE });
+    if (url.includes('/gift-cards/balance')) return response({ text: '<html></html>' });
+    if (url.includes('/Login')) return response({ cookies: [`gqauth=${token(3600)}; Path=/`] });
+    return response({ json: BALANCE_RESPONSE });
   };
   return { abruf, protokoll };
 }
@@ -132,7 +132,7 @@ test('balance query', async t => {
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: leadTime.abruf });
 
     const { abruf, protokoll } = double({
-      giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ json: BALANCE_RESPONSE })],
+      giftCardBalanceQuery: [response({ status: 401 }), response({ json: BALANCE_RESPONSE })],
     });
     const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf });
     assert.equal(g.amount, 250, 'Der zweite Versuch mit frischer Sitzung muss gelingen');
@@ -148,7 +148,7 @@ test('balance query', async t => {
   await t.test('4. a 401 with a FRESH session is not retried', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double({
-      giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ status: 401 })],
+      giftCardBalanceQuery: [response({ status: 401 }), response({ status: 401 })],
     });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
@@ -166,7 +166,7 @@ test('balance query', async t => {
   await t.test('5. HTTP 403 is BOT PROTECTION and is not retried', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double({
-      giftCardBalanceQuery: antwort({ status: 403, text: 'Attention Required! Cloudflare' }),
+      giftCardBalanceQuery: response({ status: 403, text: 'Attention Required! Cloudflare' }),
     });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
@@ -177,7 +177,7 @@ test('balance query', async t => {
 
     // And already the PAGE can give 403 — then it is the same case.
     vorrat.clear();
-    const b = double({ 'gift-cards/balance': antwort({ status: 403, text: 'blocked' }) });
+    const b = double({ 'gift-cards/balance': response({ status: 403, text: 'blocked' }) });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
       e => e instanceof G.BotProtection,
@@ -200,7 +200,7 @@ test('balance query', async t => {
     );
 
     // 2. The bot protection strikes.
-    const b = double({ giftCardBalanceQuery: antwort({ status: 403, text: 'blocked' }) });
+    const b = double({ giftCardBalanceQuery: response({ status: 403, text: 'blocked' }) });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
       e => e instanceof G.BotProtection,
@@ -236,7 +236,7 @@ test('balance query', async t => {
     // server log and in the response to the browser.
     const echo = `Invalid gift card ${NUMBER} with pin ${PIN}`;
     const { abruf } = double({
-      giftCardBalanceQuery: antwort({ status: 400, text: echo }),
+      giftCardBalanceQuery: response({ status: 400, text: echo }),
     });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
@@ -254,7 +254,7 @@ test('balance query', async t => {
     // And the same path for a GraphQL error in the body (HTTP 200).
     vorrat.clear();
     const b = double({
-      giftCardBalanceQuery: antwort({ json: { errors: [{ message: echo }] } }),
+      giftCardBalanceQuery: response({ json: { errors: [{ message: echo }] } }),
     });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
@@ -302,7 +302,7 @@ test('balance query', async t => {
   await t.test('5c. a login with errors in the body continues as LoginAbgelehnt', async () => {
     // Counter-check (14.11.2026): `throw e` deleted in the catch of baueSitzung → red (guest token error).
     vorrat.clear();
-    const { abruf } = double({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
+    const { abruf } = double({ Login: response({ json: { errors: [{ message: 'gesperrt' }] } }) });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
       e => e instanceof G.LoginRejected && String(Object(e).message) === 'Login: gesperrt',
@@ -315,9 +315,9 @@ test('balance query', async t => {
     // one country too many, the user would get a refusal instead of a balance.
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const block = html.slice(html.indexOf('<select id="voucher-country"'));
-    const werte = [...block.slice(0, block.indexOf('</select>')).matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);
+    const values = [...block.slice(0, block.indexOf('</select>')).matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);
     assert.deepEqual(
-      werte,
+      values,
       [...G.COUNTRIES],
       'Das Auswahlfeld in public/index.html und LAENDER in ' + 'src/vouchers/balanceLookup.ts sagen Verschiedenes.',
     );

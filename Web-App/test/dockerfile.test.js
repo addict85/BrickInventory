@@ -66,16 +66,16 @@ test('the image carries no database password', () => {
 // Counter-check (measured on 28.10.2026): the digest on the second FROM line
 // removed → red. A tag like node:26-alpine points to another image tomorrow.
 test('base images are fixed by digest', () => {
-  const quellen = {
+  const sources = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
     'compose.yaml': fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8'),
   };
-  const lose = [];
-  for (const [name, text] of Object.entries(quellen))
+  const loose = [];
+  for (const [name, text] of Object.entries(sources))
     for (const m of text.matchAll(/^\s*(?:FROM|image:)\s+(node|postgres)(:[^\s]+)/gm))
-      if (!/@sha256:[0-9a-f]{64}/.test(m[2])) lose.push(`${name}: ${m[1]}${m[2]}`);
-  assert.ok([...quellen.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
-  assert.deepEqual(lose, []);
+      if (!/@sha256:[0-9a-f]{64}/.test(m[2])) loose.push(`${name}: ${m[1]}${m[2]}`);
+  assert.ok([...sources.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
+  assert.deepEqual(loose, []);
 });
 
 // Counter-check (30.10.2026): the rm line in the runtime stage removed → red.
@@ -87,8 +87,8 @@ test('the runtime image carries no npm, corepack or yarn', () => {
     .split('\n')
     .filter(l => !l.trim().startsWith('#'))
     .join('\n');
-  for (const pfad of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
-    assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
+  for (const path of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
+    assert.ok(laufzeit.includes(path), `${path} bleibt im Laufzeit-Image`);
 });
 
 test('secrets and backups stay out of image and repository', t => {
@@ -108,8 +108,8 @@ test('secrets and backups stay out of image and repository', t => {
   // “no Git working tree”, red with REQUIRE_DB=1.
   const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
   if (baum.error || baum.status !== 0) {
-    const grund = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
-    missingPrecondition(t, grund, `.gitignore lässt sich nicht prüfen, ${grund}`);
+    const reason = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
+    missingPrecondition(t, reason, `.gitignore lässt sich nicht prüfen, ${reason}`);
     return;
   }
   const git = spawnSync(
@@ -136,12 +136,12 @@ test('install scripts only run selectively, for exactly the packages that have o
     .map(([n]) => n.replace(/^.*node_modules\//, ''))
     .sort();
   assert.ok(mitSkript.includes('esbuild'), `Vorbedingung: esbuild hat ein Install-Skript (${mitSkript})`);
-  const quellen = {
+  const sources = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
     'web-ci.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8'),
     'sicherheit.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'sicherheit.yml'), 'utf8'),
   };
-  for (const [name, text] of Object.entries(quellen)) {
+  for (const [name, text] of Object.entries(sources)) {
     const code = text
       .split('\n')
       .filter(l => !/^\s*#/.test(l))
@@ -167,11 +167,11 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
   const nutzer = [...laufzeit.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
   assert.equal(nutzer.at(-1), 'brickinv', 'das Image startet ohne --user als root');
   assert.match(laufzeit, /adduser -S brickinv/, 'der Nutzer entsteht im Laufzeit-Stage');
-  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
+  const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
   try {
-    const app = path.join(ort, 'app'),
-      bin = path.join(ort, 'bin'),
-      spur = path.join(ort, 'spur');
+    const app = path.join(location, 'app'),
+      bin = path.join(location, 'bin'),
+      spur = path.join(location, 'spur');
     fs.mkdirSync(path.join(app, 'data'), { recursive: true });
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(app, 'data-permissions.sh'), 'echo daten-rechte >> "$SPUR"\n');
@@ -181,13 +181,13 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
     ersatz('su-exec', 'echo "su-exec $1" >> "$SPUR"; shift; KENNUNG=1000 exec "$@"');
     ersatz('node', 'echo "node $*" >> "$SPUR"');
     const ep = fs.readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8').replaceAll('/app/', `${app}/`);
-    const script = path.join(ort, 'entrypoint.sh');
+    const script = path.join(location, 'entrypoint.sh');
     fs.writeFileSync(script, ep, { mode: 0o755 });
     const lauf = kennung => {
       fs.rmSync(spur, { force: true });
       const r = spawnSync('sh', [script], {
         encoding: 'utf8',
-        cwd: ort,
+        cwd: location,
         env: { PATH: `${bin}:/usr/bin:/bin`, KENNUNG: kennung, SPUR: spur },
       });
       assert.equal(r.status, 0, r.stderr);
@@ -196,6 +196,6 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
     assert.deepEqual(lauf('1000'), ['node dist/server.js'], 'ohne root startet node direkt, ohne su-exec');
     assert.deepEqual(lauf('0'), ['daten-rechte', 'su-exec brickinv', 'node dist/server.js']);
   } finally {
-    fs.rmSync(ort, { recursive: true, force: true });
+    fs.rmSync(location, { recursive: true, force: true });
   }
 });

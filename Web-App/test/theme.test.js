@@ -27,7 +27,7 @@ const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
 const BOOT = fs.readFileSync(path.join(PUB, 'js', 'theme-boot.js'), 'utf8');
 
 /** theme-boot.js in an empty window: server value in the <html>, cache, response of the server. */
-function bootWindow({ server = '', gecacht = '', antwort = {} } = {}) {
+function bootWindow({ server = '', cached = '', response = {} } = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const attr = server ? ` data-theme="${server}"` : '';
   const dom = new jsdom.JSDOM(`<!doctype html><html${attr}><head></head><body></body></html>`, {
@@ -41,10 +41,10 @@ function bootWindow({ server = '', gecacht = '', antwort = {} } = {}) {
   let letzte = Promise.resolve();
   w.fetch = (/** @type {string} */ url) => {
     fetches.push(String(url));
-    letzte = Promise.resolve({ ok: true, json: async () => antwort });
+    letzte = Promise.resolve({ ok: true, json: async () => response });
     return letzte;
   };
-  if (gecacht) w.localStorage.setItem('bim_theme', gecacht);
+  if (cached) w.localStorage.setItem('bim_theme', cached);
   w.eval(BOOT);
   const responseDa = async () => {
     await letzte;
@@ -53,7 +53,7 @@ function bootWindow({ server = '', gecacht = '', antwort = {} } = {}) {
   return { w, fetches, responseDa, thema: () => w.document.documentElement.getAttribute('data-theme') };
 }
 
-// „GET /api/v1/settings/theme ist ohne Login erreichbar" stood here as an order in the
+// „GET /api/v2/settings/theme ist ohne Login erreichbar" stood here as an order in the
 // source text; executed, design-per-account-db.test.js checks it („ohne Anmeldung: die Vorgabe").
 
 test('the boot script is before startup and login markup', () => {
@@ -68,16 +68,16 @@ test('the boot script is before startup and login markup', () => {
 });
 
 test('without a server value the cache applies immediately, then the sync with the server', async () => {
-  const b = bootWindow({ gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  const b = bootWindow({ cached: 'brick', response: { success: true, theme: 'hochglanz' } });
   assert.equal(b.thema(), 'brick', 'Der zuletzt bekannte Wert muss vor jeder Antwort gelten');
-  assert.deepEqual(b.fetches, ['/api/v1/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
+  assert.deepEqual(b.fetches, ['/api/v2/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
   await b.responseDa();
   assert.equal(b.thema(), 'hochglanz', 'Der Serverwert wird nicht angewendet');
   assert.equal(b.w.localStorage.getItem('bim_theme'), 'hochglanz', 'Der Serverwert landet nicht im Cache');
 });
 
 test('a server-set value applies, without sync and without a jump', async () => {
-  const b = bootWindow({ server: 'noppe', gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  const b = bootWindow({ server: 'noppe', cached: 'brick', response: { success: true, theme: 'hochglanz' } });
   await b.responseDa();
   assert.equal(b.thema(), 'noppe');
   assert.deepEqual(b.fetches, [], 'Steht der Wert schon im HTML, ist jede Anfrage überflüssig');
@@ -90,9 +90,9 @@ test('applyTheme runs via the boot helper (cache stays current)', async t => {
   const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
   const { w } = await openUi(
     {
-      '/v1/settings/raw': {
+      '/v2/settings/raw': {
         success: true,
-        settings: { ...ANMELDUNG['/v1/settings/raw'].settings, app_theme: 'brick' },
+        settings: { ...ANMELDUNG['/v2/settings/raw'].settings, app_theme: 'brick' },
       },
     },
     {
@@ -251,7 +251,7 @@ test('the server sets data-theme itself, and a design change applies immediately
     sitzung: { userId: admin, username: name, isAdmin: true },
     t,
   });
-  const r = await fetch(base + '/api/v1/settings/admin/theme', {
+  const r = await fetch(base + '/api/v2/settings/admin/theme', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ theme: 'noppe' }),
@@ -346,7 +346,7 @@ test('whoever lets the tab bar wrap must make it narrower', () => {
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.css'));
   assert.ok(dateien.length >= 4, `Nur ${dateien.length} Designs — greift die Suche noch?`);
 
-  const fehler = [];
+  const error = [];
   let betroffen = 0;
   for (const name of dateien) {
     const css = fs.readFileSync(path.join(ordner, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -358,7 +358,7 @@ test('whoever lets the tab bar wrap must make it narrower', () => {
     // Every @media block that sets the tab padding is the error.
     for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
       if (/\.ntab\s*\{[^}]*padding/.test(m[1])) {
-        fehler.push(`${name}: ${m[0].slice(0, m[0].indexOf('{')).trim()}`);
+        error.push(`${name}: ${m[0].slice(0, m[0].indexOf('{')).trim()}`);
       }
     }
   }
@@ -367,7 +367,7 @@ test('whoever lets the tab bar wrap must make it narrower', () => {
     'Kein Design lässt die Reiterleiste umbrechen UND deckelt den Inhalt — ' + 'dann ist diese Regel leer wahr',
   );
   assert.deepEqual(
-    fehler,
+    error,
     [],
     'Hier hängt die Breite der Reiter an der FENSTERbreite, obwohl sie in ' +
       'einem gedeckelten Behälter stehen. Auf einem breiten Bildschirm greift ' +

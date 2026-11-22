@@ -51,7 +51,7 @@ test('parts valuation: no lookup per part', async t => {
     for (let i = 0; i < N; i++) {
       // Since migration 0035 condition and price stand in the acquisition, the
       // piece count since 0038 — holdsPart() creates both.
-      await holdsPart(db, UID, NR(i), { menge: 1, colorId: 4 });
+      await holdsPart(db, UID, NR(i), { quantity: 1, colorId: 4 });
       // The production case: the backfill job has looked it up. A row with an
       // EMPTY bl_id means „no differing number" (migration 0037) —
       // so the price cache key stays the Rebrickable number.
@@ -61,11 +61,11 @@ test('parts valuation: no lookup per part', async t => {
       );
       // Warm price cache — the normal case. Without it one measures the
       // BrickLink fetch along, which no longer exists on the second call.
-      for (const zustand of ['N', 'U'])
+      for (const condition of ['N', 'U'])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
            VALUES ($1, 4, $2, 'EUR', 1.5, 1.4, NOW()) ON CONFLICT DO NOTHING`,
-          [NR(i), zustand],
+          [NR(i), condition],
         );
     }
     // Color table: rb_colors is remembered as a WHOLE. Without a row for color 4

@@ -1,6 +1,6 @@
 /**
  * The login form asks the server which methods it offers
- * (/v1/auth/registration-status). If it asks twice, the most recent response applies,
+ * (/v2/auth/registration-status). If it asks twice, the most recent response applies,
  * even if the older one arrives later. Since logging out reloads the page,
  * a page asks twice like this: at the start without a session, and after logging in and
  * an expired session. The start question answers 8 s late and says the opposite.
@@ -19,10 +19,10 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
   const name = `aw_${process.pid}`;
   const app = await startApp(t, {
     name,
-    bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
+    holding: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -32,7 +32,7 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
     source: `(() => {
     const echt = window.fetch.bind(window); let n = 0;
     window.fetch = (url, o) => {
-      if (!String(url).includes('/v1/auth/registration-status')) return echt(url, o);
+      if (!String(url).includes('/v2/auth/registration-status')) return echt(url, o);
       const erste = ++n === 1;
       const antwort = () => new Response(JSON.stringify({ success: true, enabled: true, passkey: true,
         passwort_vergessen: !erste }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -49,7 +49,7 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
   await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
   // The session ends at the server; the next call of the app gets 401 and shows the form again.
-  await b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => {
+  await b.auswerten(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => {
     document.querySelector('.ntab[data-tab="finance"]').click(); return true; })`);
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Sitzung abgelaufen');
   await bis(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege eingetragen');

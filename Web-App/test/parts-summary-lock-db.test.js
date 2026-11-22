@@ -31,7 +31,7 @@ test('rebuild gives way to a held account lock', async t => {
   const u = (
     await db.get(`INSERT INTO users (username, password_hash) VALUES ('sperre_'||floor(random()*1e9),'x') RETURNING id`)
   ).id;
-  const stand = async () => ({
+  const state = async () => ({
     zeilen: (await db.get('SELECT COUNT(*)::int AS n FROM parts_summary WHERE user_id = $1', [u])).n,
     version:
       (await db.get('SELECT built_version::int AS built_version FROM parts_summary_state WHERE user_id = $1', [u]))
@@ -46,14 +46,14 @@ test('rebuild gives way to a held account lock', async t => {
     await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, u]);
     await PS.rebuildSummary(u, { v: 7 });
     assert.deepEqual(
-      await stand(),
+      await state(),
       { zeilen: 1, version: null },
       'Bei gehaltener Sperre darf nichts geschrieben werden',
     );
     await halter.query('COMMIT');
 
     await PS.rebuildSummary(u, { v: 7 });
-    assert.deepEqual(await stand(), { zeilen: 0, version: 7 }, 'Ohne Sperre baut rebuild neu');
+    assert.deepEqual(await state(), { zeilen: 0, version: 7 }, 'Ohne Sperre baut rebuild neu');
   } finally {
     await halter.query('ROLLBACK').catch(() => {});
     halter.release();

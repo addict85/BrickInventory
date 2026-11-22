@@ -47,8 +47,8 @@ test('no fixed text in textContent, placeholder, title, toast, confirm or alert'
         geprueft++;
         // At least two consecutive letters — „…" is not text.
         if (!/[^\W\d_]{2,}/u.test(m[1])) continue;
-        const zeile = src.slice(0, m.index).split('\n').length;
-        fest.push(`${rel}:${zeile}  „${m[1].slice(0, 50)}"`);
+        const row = src.slice(0, m.index).split('\n').length;
+        fest.push(`${rel}:${row}  „${m[1].slice(0, 50)}"`);
       }
   // Self-proof: if no pattern triggers any more, the list would be empty and the test
   // green without having checked anything.

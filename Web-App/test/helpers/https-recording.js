@@ -5,13 +5,13 @@
 const https = require('node:https');
 const { EventEmitter } = require('node:events');
 
-/** @returns {Promise<{ art: 'get' | 'request', optionen: Record<string, any> }[]>} */
+/** @returns {Promise<{ kind: 'get' | 'request', options: Record<string, any> }[]>} */
 async function recording(/** @type {() => Promise<unknown>} */ lauf) {
-  /** @type {{ art: 'get' | 'request', optionen: Record<string, any> }[]} */
+  /** @type {{ kind: 'get' | 'request', options: Record<string, any> }[]} */
   const aufrufe = [];
   const echt = { get: https.get, request: https.request };
-  const fake = (/** @type {'get' | 'request'} */ art) => (/** @type {unknown} */ _u, /** @type {any} */ optionen) => {
-    aufrufe.push({ art, optionen });
+  const fake = (/** @type {'get' | 'request'} */ kind) => (/** @type {unknown} */ _u, /** @type {any} */ options) => {
+    aufrufe.push({ kind, options });
     const req = Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
     setImmediate(() => req.emit('error', Object.assign(new Error('attrappe'), { code: 'ECONNREFUSED' })));
     return req;

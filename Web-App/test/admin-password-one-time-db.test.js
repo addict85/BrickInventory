@@ -1,7 +1,7 @@
 /**
  * A password assigned by an administrator (new account or foreign password
  * set) only applies until the first login: afterwards the server only allows
- * the change (403 passwort_wechsel_noetig), only the own password
+ * the change (403 password_change_required), only the own password
  * opens the rest. On the real server (dist/server.js) with a real administrator
  * including second factor.
  *
@@ -93,19 +93,19 @@ test('passwords assigned by an admin only apply until the first change', {
   });
   const basis = `http://127.0.0.1:${port}`;
   assert.ok(
-    await bis(async () => (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) !== null, 60_000),
+    await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000),
     `der Server startet nicht:\n${log.slice(-2000)}`,
   );
 
-  const ruf = (keks, pfad, o = {}) =>
-    fetch(basis + pfad, {
+  const ruf = (keks, path, o = {}) =>
+    fetch(basis + path, {
       ...o,
       headers: { 'content-type': 'application/json', origin: basis, ...(keks ? { cookie: keks } : {}) },
     });
   const anmelden = async (name, passwort, code) => {
-    const r = await ruf(null, '/api/v1/auth/login', {
+    const r = await ruf(null, '/api/v2/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username: name, password: passwort, ohne_token: true, ...(code ? { code } : {}) }),
+      body: JSON.stringify({ username: name, password: passwort, without_token: true, ...(code ? { code } : {}) }),
     });
     const body = await r.json();
     assert.equal(r.status, 200, `${name}: ${JSON.stringify(body)}\n${log.slice(-800)}`);
@@ -117,21 +117,21 @@ test('passwords assigned by an admin only apply until the first change', {
   async function onlyUntilToSwitch(name, vergeben) {
     const a = await anmelden(name, vergeben);
     assert.equal(a.user.mustChangePassword, true, 'die Anmeldung meldet den Pflichtwechsel');
-    const gesperrt = await ruf(a.keks, '/api/v1/stats');
+    const gesperrt = await ruf(a.keks, '/api/v2/stats');
     assert.equal(gesperrt.status, 403);
-    assert.equal((await gesperrt.json()).code, 'passwort_wechsel_noetig');
-    const w = await ruf(a.keks, '/api/v1/auth/change-password', {
+    assert.equal((await gesperrt.json()).code, 'password_change_required');
+    const w = await ruf(a.keks, '/api/v2/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({ current: vergeben, newPassword: `Eigenes-Passwort-${P}-neu` }),
     });
     assert.equal(w.status, 200, await w.clone().text());
     const keks = w.headers.get('set-cookie').split(';')[0];
-    assert.equal((await ruf(keks, '/api/v1/stats')).status, 200);
+    assert.equal((await ruf(keks, '/api/v2/stats')).status, 200);
   }
 
   await t.test('an account created by an admin', async () => {
     const vergeben = 'Vom-Verwalter-vergeben-1';
-    const r = await ruf(chefKeks, '/api/v1/auth/users', {
+    const r = await ruf(chefKeks, '/api/v2/auth/users', {
       method: 'POST',
       body: JSON.stringify({ username: NEU, password: vergeben, admin_password: CHEF_PW, code: codes[1] }),
     });
@@ -141,7 +141,7 @@ test('passwords assigned by an admin only apply until the first change', {
 
   await t.test('a password set by an admin', async () => {
     const vergeben = 'Vom-Verwalter-gesetzt-2';
-    const r = await ruf(chefKeks, `/api/v1/auth/users/${alt}/password`, {
+    const r = await ruf(chefKeks, `/api/v2/auth/users/${alt}/password`, {
       method: 'PUT',
       body: JSON.stringify({ password: vergeben, admin_password: CHEF_PW, code: codes[2] }),
     });

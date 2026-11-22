@@ -171,7 +171,7 @@ test('reset link only with APP_BASE_URL, never from the Host header — even out
       'Reset-Code an den Host aus dem Header — ohne APP_BASE_URL darf keiner entstehen',
     );
     assert.equal(bekannt.status, 503);
-    assert.equal(bekannt.body.code, 'passwort_reset_nicht_eingerichtet');
+    assert.equal(bekannt.body.code, 'password_reset_not_configured');
     assert.deepEqual(unbekannt, bekannt, 'Die Antwort verrät die E-Mail: bekannt und unbekannt unterscheiden sich');
 
     environment({ APP_BASE_URL: 'https://lego.example.org/' });

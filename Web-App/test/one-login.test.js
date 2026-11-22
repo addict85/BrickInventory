@@ -30,12 +30,12 @@ const ALLOWED = {
 
 /** All .ts under routes/, also in subfolders. */
 function routesFiles(dir, praefix = '') {
-  const gefunden = [];
+  const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([praefix + e.name, path.join(dir, e.name)]);
   }
-  return gefunden;
+  return found;
 }
 
 test('no handler asks the session for the user identifier itself', () => {
@@ -53,13 +53,13 @@ test('no handler asks the session for the user identifier itself', () => {
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
-      const zeile = src.slice(0, m.index).split('\n').length;
+      const row = src.slice(0, m.index).split('\n').length;
       // Allowed files are SEARCHED nevertheless: their hit proves that
       // the exception still describes something. Whoever skips it instead
       // never notices when it becomes moot — and then a dead
       // entry permanently exempts a whole file from the check.
       if (rel in ALLOWED) gebraucht.add(rel);
-      else violations.push(`${rel}:${zeile}  ${m[0]}`);
+      else violations.push(`${rel}:${row}  ${m[0]}`);
     }
   }
 

@@ -65,9 +65,9 @@ const UNBEDIENBAR = `(() => {
   return [...funde]; })()`;
 
 test('click areas with the keyboard', { timeout: 280_000 }, async t => {
-  const app = await startApp(t, { name: `kft_${process.pid}`, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `kft_${process.pid}`, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -78,9 +78,9 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
   await t.test('every click area is operable', async () => {
     const funde = [];
     let geprueft = 0;
-    for (const [seite, schritte] of SEITEN) {
+    for (const [seite, steps] of SEITEN) {
       await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
-      for (const s of schritte) {
+      for (const s of steps) {
         await b.auswerten(s);
         await rest();
       }

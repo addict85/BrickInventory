@@ -77,14 +77,14 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
     503,
     'Ohne APP_BASE_URL muss die Route absagen — sonst traegt der Code die Browseradresse.',
   );
-  const grund = await abgelehnt.json();
-  assert.equal(grund.success, false);
+  const reason = await abgelehnt.json();
+  assert.equal(reason.success, false);
   assert.equal(
-    grund.code,
-    'qr_ohne_basis_url',
+    reason.code,
+    'qr_without_base_url',
     'Die Absage nennt ihren Grund nicht — die Oberflaeche kann nicht sagen, was zu tun ist.',
   );
-  assert.match(grund.error, /APP_BASE_URL/, 'Der Satz fuer den Nutzer nennt die Variable nicht, die zu setzen ist.');
+  assert.match(reason.error, /APP_BASE_URL/, 'Der Satz fuer den Nutzer nennt die Variable nicht, die zu setzen ist.');
 
   // THAT is the core: the refusal stands BEFORE the database access. If it stood
   // behind it, an access code would lie here that opens an account for five minutes
@@ -138,19 +138,19 @@ test('3. one source for QR code, mail button and reset links', () => {
   );
 
   for (const datei of ['src/account/loginFlow.ts', 'routes/auth/registration.ts', 'src/mail/mailer.ts']) {
-    const quelle = lies(datei);
+    const source = lies(datei);
     assert.ok(
-      !/process\.env\.APP_BASE_URL/.test(quelle),
+      !/process\.env\.APP_BASE_URL/.test(source),
       `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`,
     );
-    assert.match(quelle, /basisUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
+    assert.match(source, /basisUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
   }
 
   // The QR branch must not guess a host: for this code the same applies as
   // for a link in a mail — a guessed address is worse than
   // none. (getBaseUrl further down MAY do it, see the reasoning there.)
   const auth = lies('routes/auth/qr.ts');
-  const i = auth.search(/router\.endpoint\(\s*'POST \/api\/v1\/auth\/qr-token'/);
+  const i = auth.search(/router\.endpoint\(\s*'POST \/api\/v2\/auth\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
   const rumpf = auth.slice(i, auth.indexOf('\n  router.', i + 10));
   assert.ok(

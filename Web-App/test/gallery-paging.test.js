@@ -26,11 +26,11 @@ const { holdsSet, holdsMinifig, holdsPart, catalogSet } = require('./helpers/inv
 
 // Five sets: quantity, theme and time added such that every sorting yields a different order.
 const SETS = [
-  { nr: '77101-1', name: 'Alpha', theme: 'Burg', menge: 3, vor: 5 },
-  { nr: '77102-1', name: "O'Brien 100%", theme: 'Stadt', menge: 1, vor: 4 },
-  { nr: '77103-1', name: 'Gamma', theme: 'Burg', menge: 2, vor: 3 },
-  { nr: '77104-1', name: 'Delta', theme: 'Weltraum', menge: 1, vor: 2 },
-  { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', menge: 3, vor: 1 },
+  { nr: '77101-1', name: 'Alpha', theme: 'Burg', quantity: 3, ago: 5 },
+  { nr: '77102-1', name: "O'Brien 100%", theme: 'Stadt', quantity: 1, ago: 4 },
+  { nr: '77103-1', name: 'Gamma', theme: 'Burg', quantity: 2, ago: 3 },
+  { nr: '77104-1', name: 'Delta', theme: 'Weltraum', quantity: 1, ago: 2 },
+  { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', quantity: 3, ago: 1 },
 ];
 
 test('page-by-page lists on the server', { concurrency: 1 }, async t => {
@@ -47,10 +47,10 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   for (const s of SETS) {
     await catalogSet(db, s.nr, { name: s.name, theme: s.theme });
-    await holdsSet(db, uid, s.nr, s.menge);
+    await holdsSet(db, uid, s.nr, s.quantity);
     await db.run(
       `UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`,
-      [uid, s.nr, s.vor],
+      [uid, s.nr, s.ago],
     );
   }
   // The same minifigure in two sets and a second one: two groups.
@@ -64,10 +64,10 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const hole = async pfad => {
-    const r = await fetch(`${base}/api/v1${pfad}`);
+  const hole = async path => {
+    const r = await fetch(`${base}/api/v2${path}`);
     const b = await r.json();
-    assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(b)}`);
+    assert.equal(r.status, 200, `${path}: ${JSON.stringify(b)}`);
     return b;
   };
   const sequence = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
@@ -78,10 +78,10 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   });
 
   await t.test('an unknown sorting falls back to "most recently added"', async () => {
-    const vorgabe = ['E', 'D', 'G', 'O', 'A'];
-    assert.deepEqual(await sequence('sort=added_desc'), vorgabe);
+    const preset = ['E', 'D', 'G', 'O', 'A'];
+    assert.deepEqual(await sequence('sort=added_desc'), preset);
     for (const s of ['constructor', '__proto__', 'toString', 'name_asc;DROP TABLE sets', 'x'])
-      assert.deepEqual(await sequence(`sort=${encodeURIComponent(s)}`), vorgabe, s);
+      assert.deepEqual(await sequence(`sort=${encodeURIComponent(s)}`), preset, s);
   });
 
   await t.test('the search term is bound, not inserted', async () => {

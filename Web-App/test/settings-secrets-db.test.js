@@ -71,7 +71,7 @@ const EXEMPT = new Map([
   ],
   ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' + 'nur als Hash in der Datenbank.'],
   [
-    '/einrichtung',
+    '/setup',
     'Stand des Einrichtungs-Assistenten: je Quelle nur ja/nein, ' +
       'keine Werte, und nur für Verwalter. Dass kein Schlüssel ' +
       'herauskommt, prüft test/setup-db.test.js.',
@@ -79,21 +79,21 @@ const EXEMPT = new Map([
 ]);
 
 function leserouten() {
-  const quelle = ['settings.ts', 'settingsGlobal.ts']
+  const source = ['settings.ts', 'settingsGlobal.ts']
     .map(f => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'routes/api_v1', f), 'utf8'))
     .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
-  const gefunden = [...quelle.matchAll(/router\.endpoint\(\s*'GET \/api\/v1\/settings([^']*)'/g)].map(m => m[1] || '/');
+  const found = [...source.matchAll(/router\.endpoint\(\s*'GET \/api\/v2\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Self-proof: if the pattern did not apply, the list would be empty and the test
   // green without having looked at a single route.
   assert.ok(
-    gefunden.length >= 4,
-    `Nur ${gefunden.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`,
+    found.length >= 4,
+    `Nur ${found.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`,
   );
-  const veraltet = [...EXEMPT.keys()].filter(p => !gefunden.includes(p));
+  const veraltet = [...EXEMPT.keys()].filter(p => !found.includes(p));
   assert.deepEqual(veraltet, [], 'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
-  return gefunden.filter(p => !EXEMPT.has(p)).map(p => '/api/v1/settings' + (p === '/' ? '' : p));
+  return found.filter(p => !EXEMPT.has(p)).map(p => '/api/v2/settings' + (p === '/' ? '' : p));
 }
 
 /** All strings of a response — no matter how deeply wrapped. */
@@ -131,7 +131,8 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
     return app;
   };
   const srvUser = appFor(false).listen(0);
@@ -139,42 +140,42 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
   const baseUser = `http://localhost:${srvUser.address().port}`;
   const baseAdmin = `http://localhost:${srvAdmin.address().port}`;
 
-  const hol = async (base, pfad) => {
-    const r = await fetch(base + pfad);
-    assert.equal(r.status, 200, `${pfad} -> ${r.status}`);
+  const hol = async (base, path) => {
+    const r = await fetch(base + path);
+    assert.equal(r.status, 200, `${path} -> ${r.status}`);
     return allValues(await r.json());
   };
 
   try {
-    for (const pfad of leserouten()) {
+    for (const path of leserouten()) {
       // 1. An account WITHOUT admin rights must not see the keys at all.
-      const asUser = await hol(baseUser, pfad);
+      const asUser = await hol(baseUser, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!asUser.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
+        assert.ok(!asUser.includes(v), `${path}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
       }
 
       for (const [k, v] of Object.entries(MANAGEMENT)) {
-        assert.ok(!asUser.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k}`);
+        assert.ok(!asUser.includes(v), `${path}: ein Konto ohne Adminrechte bekommt ${k}`);
       }
 
       // 2. Even an admin only gets the mask — otherwise the values end up in the
       //    browser storage, where every XSS gap takes them along.
-      const alsAdmin = await hol(baseAdmin, pfad);
+      const alsAdmin = await hol(baseAdmin, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!alsAdmin.includes(v), `${pfad}: auch ein Admin darf ${k} nur maskiert bekommen`);
+        assert.ok(!alsAdmin.includes(v), `${path}: auch ein Admin darf ${k} nur maskiert bekommen`);
       }
       // Opposite direction: the mask must arrive at all, otherwise the
       // form cannot tell „set" from „not set" — a test
       // that only checks the absence would also be green with an empty response.
       assert.ok(
         alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
-        `${pfad}: der Admin muss die maskierte Fassung sehen`,
+        `${path}: der Admin muss die maskierte Fassung sehen`,
       );
       // Not even the end of the value: it shortens the guessing.
       for (const [k, v] of Object.entries(GEHEIM))
-        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${pfad}: die Maske von ${k} verrät „${v.slice(-4)}"`);
+        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${path}: die Maske von ${k} verrät „${v.slice(-4)}"`);
       for (const [k, v] of Object.entries(MANAGEMENT)) {
-        assert.ok(alsAdmin.includes(v), `${pfad}: der Verwalter braucht ${k} für sein Formular`);
+        assert.ok(alsAdmin.includes(v), `${path}: der Verwalter braucht ${k} für sein Formular`);
       }
     }
   } finally {

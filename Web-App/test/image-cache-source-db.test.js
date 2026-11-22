@@ -104,13 +104,13 @@ test('image sources come from the catalog, not from the client', { concurrency: 
   ];
 
   await t.test("the client's details are discarded", async () => {
-    const teile = fromClient();
-    await imagesFromCatalog(teile);
-    assert.equal(teile[0].image_url, GUT);
-    assert.equal(teile[0].image_local, null, 'der lokale Pfad des Clients bleibt stehen');
-    assert.equal(teile[1].image_url, null, 'eine eingetippte Adresse wird für alle abgelegt');
-    assert.equal(teile[2].image_url, null, 'ohne Katalogzeile bleibt die Adresse des Clients');
-    assert.equal(teile[2].image_local, null);
+    const parts = fromClient();
+    await imagesFromCatalog(parts);
+    assert.equal(parts[0].image_url, GUT);
+    assert.equal(parts[0].image_local, null, 'der lokale Pfad des Clients bleibt stehen');
+    assert.equal(parts[1].image_url, null, 'eine eingetippte Adresse wird für alle abgelegt');
+    assert.equal(parts[2].image_url, null, 'ohne Katalogzeile bleibt die Adresse des Clients');
+    assert.equal(parts[2].image_local, null);
   });
 
   await t.test('only the verified catalog address is fetched', async () => {

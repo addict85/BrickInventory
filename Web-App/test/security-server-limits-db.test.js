@@ -13,7 +13,7 @@
  *   H1  in handleRouteError the branch for 4xx without code deleted → red:
  *       „GET /% …“ (response „Failed to decode param '%'“); `fail()` in
  *       validate.ts again with `new Error` → red: „ein eigener Satz …“
- *   H2  in moveSource again 403 kein_schreibrecht for foreign
+ *   H2  in moveSource again 403 no_write_access for foreign
  *       rows → red: “a foreign entry responds like a missing one”
  *   H4  `app.use(onlyOwnHost)` deleted in server.ts → red: „ein fremder
  *       Host-Kopf …“; the exception for IP addresses deleted → red: „IP-Host“; bearer again
@@ -54,16 +54,16 @@ const freePort = () =>
   });
 
 /** A request with a freely chosen Host header; fetch sets it itself. */
-function withHost(port, host, pfad, kopf = {}) {
-  return new Promise((fertig, fehler) => {
-    const r = http.request({ host: '127.0.0.1', port, path: pfad, setHost: false, headers: { host, ...kopf } }, res => {
+function withHost(port, host, path, kopf = {}) {
+  return new Promise((fertig, error) => {
+    const r = http.request({ host: '127.0.0.1', port, path: path, setHost: false, headers: { host, ...kopf } }, res => {
       let text = '';
       res.on('data', d => {
         text += d;
       });
       res.on('end', () => fertig({ status: res.statusCode, text }));
     });
-    r.on('error', fehler);
+    r.on('error', error);
     r.end();
   });
 }
@@ -72,9 +72,9 @@ function withHost(port, host, pfad, kopf = {}) {
 function roh(port, text) {
   const start = Date.now();
   const s = net.connect(port, '127.0.0.1', () => s.write(text));
-  const ergebnis = { antwort: '', zu: null, socket: s };
+  const ergebnis = { response: '', zu: null, socket: s };
   s.on('data', d => {
-    ergebnis.antwort += d;
+    ergebnis.response += d;
   });
   s.on('error', () => {});
   s.on('close', () => {
@@ -145,14 +145,14 @@ test('server limits: slow requests, error texts, foreign hosts', {
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
     await warte(250);
 
   const anmelden = async name => {
-    const r = await fetch(`${basis}/api/v1/auth/login`, {
+    const r = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: name, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: name, password: PASS, without_token: true }),
     });
     assert.equal(r.status, 200, `${await r.clone().text()}\n${log}`);
     return r.headers.get('set-cookie').split(';')[0];
@@ -161,23 +161,23 @@ test('server limits: slow requests, error texts, foreign hosts', {
     keksB = await anmelden(namen[1]);
   const als =
     keks =>
-    (pfad, o = {}) =>
-      fetch(basis + pfad, {
+    (path, o = {}) =>
+      fetch(basis + path, {
         redirect: 'manual',
         ...o,
         headers: { cookie: keks, origin: basis, 'content-type': 'application/json', ...(o.headers || {}) },
       });
 
   await t.test('slow headers and bodies do not hold the server', async () => {
-    const kopf = roh(port, 'POST /api/v1/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\n');
+    const kopf = roh(port, 'POST /api/v2/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\n');
     const ohne = roh(
       port,
-      'POST /api/v1/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n' +
+      'POST /api/v2/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n' +
         'Content-Length: 200\r\n\r\n{',
     );
     const mit = roh(
       port,
-      `POST /api/v1/vouchers HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nCookie: ${keksA}\r\nOrigin: ${basis}\r\n` +
+      `POST /api/v2/vouchers HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nCookie: ${keksA}\r\nOrigin: ${basis}\r\n` +
         'Content-Type: application/json\r\nContent-Length: 200\r\n\r\n{',
     );
     try {
@@ -186,13 +186,13 @@ test('server limits: slow requests, error texts, foreign hosts', {
         ohne.zu !== null && ohne.zu < 13_000,
         `ein stockender Rumpf ohne Anmeldung wird beendet (nach ${ohne.zu} ms)`,
       );
-      assert.match(ohne.antwort, /^HTTP\/1\.1 408 [\s\S]*anfrage_zu_langsam/, ohne.antwort);
+      assert.match(ohne.response, /^HTTP\/1\.1 408 [\s\S]*request_too_slow/, ohne.response);
       await warte(1500);
-      assert.equal(mit.zu, null, 'ein stockender Rumpf mit Anmeldung (Upload) läuft weiter: ' + mit.antwort);
-      assert.equal(mit.antwort, '');
+      assert.equal(mit.zu, null, 'ein stockender Rumpf mit Anmeldung (Upload) läuft weiter: ' + mit.response);
+      assert.equal(mit.response, '');
       for (const ende = Date.now() + 8_000; kopf.zu === null && Date.now() < ende; ) await warte(200);
       assert.ok(kopf.zu !== null && kopf.zu < 18_000, `ein stockender Kopf wird beendet (nach ${kopf.zu} ms)`);
-      const r = await fetch(`${basis}/api/v1/health/live`);
+      const r = await fetch(`${basis}/api/v2/health/live`);
       assert.equal(r.status, 200);
     } finally {
       for (const v of [kopf, ohne, mit]) v.socket.destroy();
@@ -203,17 +203,17 @@ test('server limits: slow requests, error texts, foreign hosts', {
     const prozent = await fetch(`${basis}/%`);
     const p = await prozent.json();
     assert.equal(prozent.status, 400);
-    assert.equal(p.code, 'anfrage_ungueltig', `GET /% → ${JSON.stringify(p)}`);
-    const gzip = await fetch(`${basis}/api/v1/auth/login`, {
+    assert.equal(p.code, 'request_invalid', `GET /% → ${JSON.stringify(p)}`);
+    const gzip = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'content-encoding': 'gzip' },
       body: 'kein gzip',
     });
     const g = await gzip.json();
     assert.equal(gzip.status, 400);
-    assert.equal(g.code, 'anfrage_ungueltig', `gzip → ${JSON.stringify(g)}`);
+    assert.equal(g.code, 'request_invalid', `gzip → ${JSON.stringify(g)}`);
     assert.doesNotMatch(JSON.stringify([p, g]), /decode|header check|zlib/i);
-    const eigen = await als(keksA)('/api/v1/parts', {
+    const eigen = await als(keksA)('/api/v2/parts', {
       method: 'POST',
       body: JSON.stringify({ part_number: '!!', quantity: 1 }),
     });
@@ -231,7 +231,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
       )
     ).id;
     const umhaengen = async id => {
-      const r = await als(keksB)(`/api/v1/sets/10294-1/acquisitions/${id}`, {
+      const r = await als(keksB)(`/api/v2/sets/10294-1/acquisitions/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ owner_user_id: bob }),
       });
@@ -241,32 +241,32 @@ test('server limits: slow requests, error texts, foreign hosts', {
       fehlt = await umhaengen(2_000_000_000);
     assert.deepEqual(fremd, fehlt);
     assert.equal(fremd[0], 404);
-    assert.equal(fremd[1].code, 'kaufpreis_nicht_gefunden');
+    assert.equal(fremd[1].code, 'purchase_price_not_found');
     assert.equal(Number((await db.get('SELECT user_id FROM set_acquisitions WHERE id = $1', [acq])).user_id), alice);
   });
 
   await t.test('a foreign Host header is rejected, the own one is not', async () => {
-    const fremd = await withHost(port, 'boese.example', '/api/v1/auth/me');
+    const fremd = await withHost(port, 'boese.example', '/api/v2/auth/me');
     assert.equal(fremd.status, 421, 'ein fremder Host-Kopf wird abgewiesen');
-    assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
-    assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v1/auth/me')).status, 200);
-    assert.equal((await withHost(port, 'nas.example.lan', '/api/v1/auth/me')).status, 200);
-    assert.equal((await withHost(port, 'boese.example', '/api/v1/health/live')).status, 200);
+    assert.equal(JSON.parse(fremd.text).code, 'foreign_host');
+    assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v2/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'nas.example.lan', '/api/v2/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'boese.example', '/api/v2/health/live')).status, 200);
     assert.notEqual((await withHost(port, 'boese.example', '/ca.crt')).status, 421);
     assert.equal(
-      (await withHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+      (await withHost(port, 'boese.example', '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
       421,
       'ein Bearer-Kopf öffnet einen fremden Namen nicht',
     );
     for (const ip of [`192.168.1.20:${port}`, '10.0.0.5', '[fe80::1]:8080']) {
       assert.equal(
-        (await withHost(port, ip, '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+        (await withHost(port, ip, '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
         401,
         `ein IP-Host (${ip}) geht an die Anmeldung`,
       );
     }
     assert.equal(
-      (await withHost(port, '1.2.3.4.boese.example', '/api/v1/auth/me')).status,
+      (await withHost(port, '1.2.3.4.boese.example', '/api/v2/auth/me')).status,
       421,
       'ein Name mit Ziffern ist keine Adresse',
     );
@@ -284,18 +284,18 @@ test('server limits: slow requests, error texts, foreign hosts', {
     assert.match(seite.headers.get('content-type'), /text\/html/);
     assert.equal(seite.headers.get('cache-control'), 'no-store');
     assert.match(await seite.text(), /id="panel-verify"/);
-    const stand = async () =>
+    const state = async () =>
       (await db.get('SELECT email_verified FROM users WHERE id = $1', [unconfirmed])).email_verified;
-    assert.equal(await stand(), false, 'der Link allein bestätigt nichts');
+    assert.equal(await state(), false, 'der Link allein bestätigt nichts');
     const confirm = token =>
-      fetch(`${basis}/api/v1/auth/email-bestaetigen`, {
+      fetch(`${basis}/api/v2/auth/confirm-email`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token }),
       }).then(async r => [r.status, await r.json()]);
-    assert.deepEqual((await confirm('falsch'))[1].code, 'bestaetigungslink_ungueltig');
+    assert.deepEqual((await confirm('falsch'))[1].code, 'confirmation_link_invalid');
     assert.deepEqual(await confirm(MAILTOKEN), [200, { success: true }]);
-    assert.equal(await stand(), true);
+    assert.equal(await state(), true);
     assert.equal((await confirm(MAILTOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
   });
 });

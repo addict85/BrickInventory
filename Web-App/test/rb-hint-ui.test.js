@@ -22,8 +22,8 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
 const WITHOUT_KEY = {
-  '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
-  '/v1/sets': {
+  '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
+  '/v2/sets': {
     success: true,
     total: 1,
     themes: [],
@@ -45,7 +45,7 @@ test('without a Rebrickable key: collection with hint banner', async t => {
       assert.equal(d.getElementById('tab-gallery').classList.contains('active'), true);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), false);
       assert.ok(
-        aufrufe.some(a => /\/v1\/sets(\?|$)/.test(a.url)),
+        aufrufe.some(a => /\/v2\/sets(\?|$)/.test(a.url)),
         'Sammlung nicht geladen',
       );
     });
@@ -115,10 +115,10 @@ test('even after 31 days it stays away, another account sees it again', async t 
     const { w, d } = await openUi(
       {
         ...WITHOUT_KEY,
-        '/v1/auth/me': {
+        '/v2/auth/me': {
           success: true,
           loggedIn: true,
-          user: { id: 2, username: 'bert', is_admin: true, zweiterFaktorPflicht: false },
+          user: { id: 2, username: 'bert', is_admin: true, secondFactorRequired: false },
         },
       },
       { before: f => f.localStorage.setItem(schluessel, '1') },
@@ -135,11 +135,11 @@ test('even after 31 days it stays away, another account sees it again', async t 
 test('after “Später” in the wizard the banner appears', async () => {
   const { w, d, ruhig } = await openUi({
     ...WITHOUT_KEY,
-    '/v1/settings/einrichtung': {
+    '/v2/settings/setup': {
       success: true,
-      offen: true,
-      passwort_aendern: false,
-      quellen: { rebrickable: false },
+      open: true,
+      change_password: false,
+      sources: { rebrickable: false },
     },
   });
   try {

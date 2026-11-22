@@ -33,7 +33,7 @@ test('finance table can be recalculated and without wrapping in the header', {
 }, async t => {
   const app = await startApp(t, {
     name: `fintab_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
       await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
       for (const [nr, p] of [
@@ -49,8 +49,8 @@ test('finance table can be recalculated and without wrapping in the header', {
           .catch(() => {});
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -87,9 +87,9 @@ test('finance table can be recalculated and without wrapping in the header', {
   });
 
   await t.test('headers in one line', async () => {
-    const fehler = [];
-    for (const sprache of ['de', 'en']) {
-      if (sprache === 'en') {
+    const error = [];
+    for (const language of ['de', 'en']) {
+      if (language === 'en') {
         await b.auswerten(
           `(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
         );
@@ -104,9 +104,9 @@ test('finance table can be recalculated and without wrapping in the header', {
       }
       for (const w of [1280, 1440]) {
         await groesse(w);
-        for (const f of await b.auswerten(WRAP)) fehler.push(`${sprache} ${w}: ${f}`);
+        for (const f of await b.auswerten(WRAP)) error.push(`${language} ${w}: ${f}`);
       }
     }
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
   });
 });

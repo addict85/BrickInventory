@@ -97,7 +97,7 @@ function blattGilt(ordner, san, place = { crt: `${ordner}/zwischen.crt`, key: `$
   }
 }
 
-const oeffentlich = pem => crypto.createPublicKey(pem).export({ type: 'spki', format: 'der' }).toString('base64');
+const public_key = pem => crypto.createPublicKey(pem).export({ type: 'spki', format: 'der' }).toString('base64');
 
 /** The script behind Caddy's `command: [sh, -c, |]`, as Compose passes it ($$ → $). */
 function caddyScript() {
@@ -137,19 +137,19 @@ test('a root for a name: only this name, no IP addresses', async t => {
   });
 
   await t.test('no key of the root in the folder for Caddy', () => {
-    const wurzel = oeffentlich(fs.readFileSync(path.join(ordner, 'root.crt')));
+    const wurzel = public_key(fs.readFileSync(path.join(ordner, 'root.crt')));
     for (const f of fs.readdirSync(ordner)) {
       const inhalt = fs.readFileSync(path.join(ordner, f), 'utf8');
       if (!/PRIVATE KEY/.test(inhalt)) continue;
       assert.equal(f, 'zwischen.key');
-      assert.notEqual(oeffentlich(crypto.createPrivateKey(inhalt)), wurzel, `${f} ist der Schlüssel der Wurzel`);
+      assert.notEqual(public_key(crypto.createPrivateKey(inhalt)), wurzel, `${f} ist der Schlüssel der Wurzel`);
     }
-    const kette = fs
+    const chain = fs
       .readFileSync(path.join(ordner, 'zwischen-kette.crt'), 'utf8')
       .match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g);
     assert.deepEqual(
-      kette.map(oeffentlich),
-      [oeffentlich(fs.readFileSync(path.join(ordner, 'zwischen.crt'))), wurzel],
+      chain.map(public_key),
+      [public_key(fs.readFileSync(path.join(ordner, 'zwischen.crt'))), wurzel],
       'die Kette ist Zwischenstelle, dann Wurzel',
     );
   });
@@ -163,8 +163,8 @@ test('a root for a name: only this name, no IP addresses', async t => {
     const neu = einrichten(ordner, 'nas.example.lan', { NEU: '1', WURZEL_SCHLUESSEL: ablage });
     assert.equal(neu.status, 0, neu.stderr);
     assert.equal(
-      oeffentlich(crypto.createPrivateKey(fs.readFileSync(ablage))),
-      oeffentlich(fs.readFileSync(path.join(ordner, 'root.crt'))),
+      public_key(crypto.createPrivateKey(fs.readFileSync(ablage))),
+      public_key(fs.readFileSync(path.join(ordner, 'root.crt'))),
     );
   });
 
@@ -217,10 +217,10 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const caddysRoot = fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'ca-root-1.crt'), 'utf8');
   const lauf = async (withCa, env = {}) => {
-    const ort = fs.mkdtempSync(path.join(tmp, 'lauf-'));
-    const daten = path.join(ort, 'data/caddy/pki/authorities/local'),
-      eigen = path.join(ort, 'ca-eigen'),
-      vol = path.join(ort, 'vol');
+    const location = fs.mkdtempSync(path.join(tmp, 'lauf-'));
+    const daten = path.join(location, 'data/caddy/pki/authorities/local'),
+      eigen = path.join(location, 'ca-eigen'),
+      vol = path.join(location, 'vol');
     for (const d of [daten, eigen, vol]) fs.mkdirSync(d, { recursive: true });
     fs.writeFileSync(path.join(daten, 'root.crt'), caddysRoot);
     if (withCa) {
@@ -230,13 +230,13 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
     // As after switching to acme: the root from before is still in the volume.
     if (env.BRICK_TLS === 'acme') fs.writeFileSync(path.join(vol, 'root.crt'), 'alte wurzel\n');
     const script = caddyScript()
-      .replaceAll('/data/', `${ort}/data/`)
+      .replaceAll('/data/', `${location}/data/`)
       .replaceAll('/ca-wurzel', vol)
       .replaceAll('/ca-eigen/zwischen.key ]', `${eigen}/zwischen.key ]`)
       .replaceAll('q=/ca-eigen/', `q=${eigen}/`)
-      .replace(/exec caddy run .*/, `env > ${ort}/umgebung; exec sleep 60`);
-    const aus = fs.openSync(path.join(ort, 'aus'), 'w'),
-      fehl = fs.openSync(path.join(ort, 'fehl'), 'w');
+      .replace(/exec caddy run .*/, `env > ${location}/umgebung; exec sleep 60`);
+    const aus = fs.openSync(path.join(location, 'aus'), 'w'),
+      fehl = fs.openSync(path.join(location, 'fehl'), 'w');
     const p = spawn('sh', ['-c', script], {
       detached: true,
       stdio: ['ignore', aus, fehl],
@@ -254,9 +254,9 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
     });
     const fertig = () =>
       beendet !== null ||
-      (fs.existsSync(`${ort}/umgebung`) &&
+      (fs.existsSync(`${location}/umgebung`) &&
         (!withCa && env.BRICK_TLS === 'acme' ? true : fs.existsSync(`${vol}/root.crt`)) &&
-        /Fingerabdruck|^$/.test(fs.readFileSync(path.join(ort, 'aus'), 'utf8') || ''));
+        /Fingerabdruck|^$/.test(fs.readFileSync(path.join(location, 'aus'), 'utf8') || ''));
     for (let i = 0; i < 80 && !fertig(); i++) await new Promise(r => setTimeout(r, 100));
     await new Promise(r => setTimeout(r, 200));
     try {
@@ -266,16 +266,16 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
     }
     fs.closeSync(aus);
     fs.closeSync(fehl);
-    const environment = fs.existsSync(`${ort}/umgebung`) ? fs.readFileSync(`${ort}/umgebung`, 'utf8') : null;
+    const environment = fs.existsSync(`${location}/umgebung`) ? fs.readFileSync(`${location}/umgebung`, 'utf8') : null;
     const wert = n => environment?.match(new RegExp(`^${n}=(.*)$`, 'm'))?.[1];
     return {
       beendet,
       environment,
-      stdout: fs.readFileSync(path.join(ort, 'aus'), 'utf8'),
-      stderr: fs.readFileSync(path.join(ort, 'fehl'), 'utf8'),
+      stdout: fs.readFileSync(path.join(location, 'aus'), 'utf8'),
+      stderr: fs.readFileSync(path.join(location, 'fehl'), 'utf8'),
       wurzel: fs.existsSync(`${vol}/root.crt`) ? fs.readFileSync(`${vol}/root.crt`, 'utf8') : null,
       aussteller: wert('BRICK_TLS_AUSSTELLER'),
-      optionen: wert('BRICK_TLS_OPTIONEN'),
+      options: wert('BRICK_TLS_OPTIONEN'),
       eigen: environment?.includes('BRICK_CA_EIGEN=')
         ? environment.slice(environment.indexOf('BRICK_CA_EIGEN=')).split('\n').slice(0, 7).join('\n')
         : null,
@@ -294,7 +294,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
   await t.test("Caddy's CA only with CA_OHNE_NAMENSBESCHRAENKUNG=ja, with a warning", async () => {
     const r = await lauf(false, { CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' });
     assert.equal(r.beendet, null, r.stderr);
-    assert.deepEqual([r.wurzel, r.aussteller, r.optionen, r.eigen], [caddysRoot, 'internal', 'sign_with_root', null]);
+    assert.deepEqual([r.wurzel, r.aussteller, r.options, r.eigen], [caddysRoot, 'internal', 'sign_with_root', null]);
     assert.match(r.stderr, /WARNUNG: Caddys eigene CA ohne Namensbeschränkung/);
   });
   await t.test('the log names the fingerprint of the root', async () => {
@@ -309,7 +309,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
   await t.test('with own CA: an intermediate signs, the app gets the own root', async () => {
     const r = await lauf(true);
     assert.deepEqual(
-      [r.wurzel, r.aussteller, r.optionen, r.eigen],
+      [r.wurzel, r.aussteller, r.options, r.eigen],
       [
         'eigene wurzel\n',
         'internal',
@@ -322,9 +322,9 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
   await t.test('public name with acme: no own CA needed, no root for the app', async () => {
     const r = await lauf(false, { BRICK_TLS: 'acme', ACME_EMAIL: 'betrieb@example.org' });
     assert.equal(r.beendet, null, r.stderr);
-    assert.deepEqual([r.wurzel, r.aussteller, r.optionen], [null, 'acme', 'email betrieb@example.org']);
+    assert.deepEqual([r.wurzel, r.aussteller, r.options], [null, 'acme', 'email betrieb@example.org']);
     const withoutMail = await lauf(false, { BRICK_TLS: 'acme' });
-    assert.deepEqual([withoutMail.aussteller, withoutMail.optionen], ['acme', '']);
+    assert.deepEqual([withoutMail.aussteller, withoutMail.options], ['acme', '']);
     const boese = await lauf(false, { BRICK_TLS: 'acme', ACME_EMAIL: 'a@b.ch }\n}\nhttp:// {' });
     assert.notEqual(boese.beendet, null);
     assert.equal(boese.environment, null, 'eine Adresse mit Caddyfile-Zeichen ging durch');
@@ -372,7 +372,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
     return p;
   };
   // Under load (four test files in parallel) the first start with own CA takes longer than 10 s.
-  const kette = async ca => {
+  const chain = async ca => {
     for (let i = 0; i < 300; i++) {
       const r = await new Promise(fertig => {
         const s = tls.connect(
@@ -395,11 +395,11 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
   const p1 = starte(true);
   try {
     const wurzel = fs.readFileSync(path.join(ordner, 'root.crt'));
-    const r = await kette(wurzel);
+    const r = await chain(wurzel);
     assert.ok(r, `Caddy antwortet nicht:\n${protokoll}`);
     assert.equal(r.ok, true, 'der Client traut der Kette mit der eigenen Wurzel nicht');
     // Without `ca` the client adds nothing: this is the chain Caddy sends and the app pins.
-    const gesendet = await kette(null);
+    const gesendet = await chain(null);
     assert.equal(gesendet.liste.length, 3, 'Blatt, Zwischenstelle, Wurzel');
     assert.equal(gesendet.liste[2], new crypto.X509Certificate(wurzel).fingerprint256, 'die Wurzel steht in der Kette');
   } finally {
@@ -408,7 +408,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
   await new Promise(r => setTimeout(r, 300));
   const p2 = starte(false);
   try {
-    const r = await kette(null);
+    const r = await chain(null);
     assert.ok(r, `Caddy ohne eigene CA antwortet nicht:\n${protokoll}`);
     assert.equal(r.liste.length, 2, 'mit CA_OHNE_NAMENSBESCHRAENKUNG=ja: Blatt und Caddys Wurzel');
   } finally {
@@ -424,12 +424,12 @@ test('without an issuer the Caddyfile is invalid', { skip: !CADDY && 'kein Caddy
     });
   const ohne = adapt({});
   assert.notEqual(ohne.status, 0, 'ohne Aussteller fällt Caddy auf eine Vorgabe zurück');
-  for (const [aussteller, optionen, erwartet] of [
+  for (const [aussteller, options, erwartet] of [
     ['internal', 'sign_with_root', { module: 'internal', sign_with_root: true }],
     ['internal', 'ca local', { module: 'internal', ca: 'local' }],
     ['acme', 'email a@example.org', { module: 'acme', email: 'a@example.org' }],
   ]) {
-    const r = adapt({ BRICK_TLS_AUSSTELLER: aussteller, BRICK_TLS_OPTIONEN: optionen });
+    const r = adapt({ BRICK_TLS_AUSSTELLER: aussteller, BRICK_TLS_OPTIONEN: options });
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(JSON.parse(r.stdout).apps.tls.automation.policies, [
       { subjects: ['nas.example.lan'], issuers: [erwartet], reuse_private_keys: true },

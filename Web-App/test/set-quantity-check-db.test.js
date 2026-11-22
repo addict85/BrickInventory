@@ -32,11 +32,11 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
   await holdsSet(db, uid, SN, 2, { preis: 40 });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const setze = menge =>
-    fetch(`${base}/api/v1/sets/${SN}`, {
+  const setze = quantity =>
+    fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity: menge }),
+      body: JSON.stringify({ quantity: quantity }),
     });
 
   try {
@@ -59,8 +59,8 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
       assert.equal(r.status, 200);
       const j = await r.json();
       assert.equal(j.quantity, 0);
-      assert.ok(j.papierkorb, 'die Antwort nennt den Papierkorb-Eintrag');
-      const eintrag = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.papierkorb, uid]);
+      assert.ok(j.trash, 'die Antwort nennt den Papierkorb-Eintrag');
+      const eintrag = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.trash, uid]);
       assert.equal(eintrag?.number, SN);
       assert.equal(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]), undefined);
     });

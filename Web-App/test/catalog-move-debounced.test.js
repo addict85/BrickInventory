@@ -78,10 +78,10 @@ async function measureMove(debounced) {
 
   const fetches = [];
   w.api = (_method, url) => {
-    if (url.startsWith('/v1/catalog/meta')) {
+    if (url.startsWith('/v2/catalog/meta')) {
       return Promise.resolve({ success: true, themes: [], year_min: 2000, year_max: 2026, year_counts: [] });
     }
-    if (url.startsWith('/v1/catalog/sets?')) {
+    if (url.startsWith('/v2/catalog/sets?')) {
       const p = new w.URLSearchParams(url.split('?')[1]);
       const seite = parseInt(p.get('page') || '1', 10);
       fetches.push(seite);
@@ -92,7 +92,7 @@ async function measureMove(debounced) {
         sets: daten.slice((seite - 1) * 60, seite * 60),
       });
     }
-    if (url.startsWith('/v1/catalog/year-verteilung')) {
+    if (url.startsWith('/v2/catalog/year-distribution')) {
       return Promise.resolve({ success: true, years: [] });
     }
     return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
@@ -143,13 +143,13 @@ async function measureMove(debounced) {
   await warte(400); // rest after release — now loading may happen
 
   const inMove = fetches.slice(beforeTheMove);
-  const zustand = {
-    anzahl: inMove.length,
+  const condition = {
+    count: inMove.length,
     seiten: [...new Set(inMove)].sort((a, b) => a - b),
     setup: beforeTheMove,
   };
   dom.window.close();
-  return zustand;
+  return condition;
 }
 
 test('catalog: a drag across the bar loads the target, not the way there', async () => {
@@ -170,8 +170,8 @@ test('catalog: a drag across the bar loads the target, not the way there', async
 
   // And the actual assurance: WITH the rest period it stays at a handful.
   assert.ok(
-    mit.anzahl <= 10,
-    `Ein Zug ueber die Leiste loeste ${mit.anzahl} Seitenabrufe aus (Seiten ` +
+    mit.count <= 10,
+    `Ein Zug ueber die Leiste loeste ${mit.count} Seitenabrufe aus (Seiten ` +
       `${JSON.stringify(mit.seiten)}). Erwartet ist das Ziel samt Nachbarn. ` +
       `Geladen wird offenbar wieder unterwegs — genau Marcos „dauert einige Sekunden".`,
   );
@@ -179,8 +179,8 @@ test('catalog: a drag across the bar loads the target, not the way there', async
   // The gap is the most robust statement: both runs are in the same
   // process under the same conditions, a delay hits both.
   assert.ok(
-    ohne.anzahl >= mit.anzahl * 5,
-    `Mit Ruhe ${mit.anzahl} Abrufe, ohne ${ohne.anzahl} — die Ruhe macht keinen ` +
+    ohne.count >= mit.count * 5,
+    `Mit Ruhe ${mit.count} Abrufe, ohne ${ohne.count} — die Ruhe macht keinen ` +
       `Unterschied mehr. Entweder laedt der Zug am Timer vorbei, oder die ` +
       `Gegenprobe trifft die falsche Stelle.`,
   );

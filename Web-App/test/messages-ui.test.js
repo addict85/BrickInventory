@@ -18,7 +18,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 // Since 29.10. a list shows its load error itself (errorState);
 // a message comes from an action — here „Auf die Merkliste“.
-const FEHLER = { '/v1/wanted': { success: false, error: 'Merkliste kaputt' } };
+const FEHLER = { '/v2/wanted': { success: false, error: 'Merkliste kaputt' } };
 async function createWantedItem(w, d) {
   await reiter(w, 'wanted');
   d.getElementById('mk-num').value = '10294-1';
@@ -60,30 +60,30 @@ test('errors and button messages do not expire', async () => {
 
 test('the mouse on the message stops the deadline', async () => {
   const { w, d } = await openUi({
-    '/v1/wanted': (_u, o) => (o.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] }),
+    '/v2/wanted': (_u, o) => (o.method === 'POST' ? { success: true, was_new: true } : { success: true, items: [] }),
   });
   try {
     // Like catchZeitgeber, but clearTimeout takes a caught timer out again.
-    const offen = new Map();
+    const open = new Map();
     let n = 1e6;
     const setzen = w.setTimeout,
       loeschen = w.clearTimeout;
     w.setTimeout = (fn, ms, ...rest) => {
       if (typeof fn === 'function' && ms >= 3000) {
-        offen.set(++n, fn);
+        open.set(++n, fn);
         return n;
       }
       return setzen.call(w, fn, ms, ...rest);
     };
-    w.clearTimeout = id => (offen.has(id) ? offen.delete(id) : loeschen.call(w, id));
+    w.clearTimeout = id => (open.has(id) ? open.delete(id) : loeschen.call(w, id));
     await createWantedItem(w, d);
     await warte(() => d.querySelector('#toasts .toast.success'));
     const meldung = d.querySelector('#toasts .toast.success');
     meldung.dispatchEvent(new w.MouseEvent('mouseenter'));
-    for (const fn of [...offen.values()]) fn();
+    for (const fn of [...open.values()]) fn();
     assert.ok(meldung.isConnected, 'die Frist lief unter der Maus ab');
     meldung.dispatchEvent(new w.MouseEvent('mouseleave'));
-    for (const fn of [...offen.values()]) fn();
+    for (const fn of [...open.values()]) fn();
     assert.equal(meldung.isConnected, false, 'nach dem Verlassen läuft die Frist wieder');
   } finally {
     w.close();

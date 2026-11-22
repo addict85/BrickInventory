@@ -29,11 +29,11 @@ const HEADER = { hell: 'rgb(61, 90, 128)', dunkel: 'rgb(39, 56, 73)' };
 
 test('startup skeleton follows the device setting and the design', async t => {
   const app = await startApp(t, {
-    bestand: db =>
+    holding: db =>
       db.run(`INSERT INTO global_settings (key, value) VALUES ('app_theme', 'brick')
                              ON CONFLICT (key) DO UPDATE SET value = 'brick'`),
   });
-  if (app.grund) return t.skip(app.grund);
+  if (app.reason) return t.skip(app.reason);
   const { b } = app;
   // Only the boot script and the document run; everything else stays hanging, the skeleton stays standing.
   await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });

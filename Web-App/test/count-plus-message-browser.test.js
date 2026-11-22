@@ -21,7 +21,7 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `plus_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await catalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
       await holdsSet(db, uid, '21318-1', 1, { preis: 224.99 });
       await db
@@ -30,8 +30,8 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
         .catch(() => {});
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, uid, ruhig } = app;
@@ -55,11 +55,11 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
       JSON.stringify(texte),
     );
     assert.ok(!texte.some(x => /^Gespeichert/.test(x.trim())), `nur „Gespeichert“: ${JSON.stringify(texte)}`);
-    const zeile = await db.get(
+    const row = await db.get(
       `SELECT price_estimated, purchase_price FROM set_acquisitions WHERE user_id=$1 ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.equal(zeile.price_estimated, true, 'Testdaten: der Server schätzt den Preis');
+    assert.equal(row.price_estimated, true, 'Testdaten: der Server schätzt den Preis');
   });
   await t.test('the purchase price list explains ≈', async () => {
     await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'geschätzte Zeile');

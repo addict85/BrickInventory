@@ -8,7 +8,7 @@
  * Counter-checks (measured 03.11.2026, each alone):
  *   A  in checkConfirmation `withFactor = false` (password only, the old
  *      finding M1) → red: “… without code" for all marked routes
- *   B  in the contract the marker of DELETE /api/v1/bestand removed → red: “the
+ *   B  in the contract the marker of DELETE /api/v2/bestand removed → red: “the
  *      mandatory routes carry the marker"
  *   C  in the contract DELETE /users/:id with `eingabe: { admin_password }` instead of
  *      adminConfirmed() → red: “every password input carries the marker"
@@ -48,45 +48,45 @@ const PASS = 'Vertrag-Passwort-1';
 
 /** What a route needs besides password and code to get as far as the confirmation. */
 const EXTRA = {
-  'POST /api/v1/auth/users': { username: `bv_neu_${process.pid}`, password: 'Lang-genug-Passwort-1', is_admin: true },
-  'PUT /api/v1/auth/users/:id/admin': { is_admin: true },
-  'PUT /api/v1/auth/users/:id/aktiv': { is_active: false },
-  'PUT /api/v1/auth/users/:id/password': { password: 'Lang-genug-Passwort-2' },
-  'POST /api/v1/auth/change-password': { newPassword: 'Lang-genug-Passwort-3' },
-  'PUT /api/v1/auth/profile': { email: `bv_${process.pid}@neu.example` },
-  'POST /api/v1/settings/household/redeem': { code: 'EINLADUNG' },
-  'POST /api/v1/settings': { smtp_host: 'mail.bv.example' },
-  'POST /api/v1/settings/smtp-test': { to: 'fremd@bv.example' },
+  'POST /api/v2/auth/users': { username: `bv_neu_${process.pid}`, password: 'Lang-genug-Passwort-1', is_admin: true },
+  'PUT /api/v2/auth/users/:id/admin': { is_admin: true },
+  'PUT /api/v2/auth/users/:id/active': { is_active: false },
+  'PUT /api/v2/auth/users/:id/password': { password: 'Lang-genug-Passwort-2' },
+  'POST /api/v2/auth/change-password': { newPassword: 'Lang-genug-Passwort-3' },
+  'PUT /api/v2/auth/profile': { email: `bv_${process.pid}@neu.example` },
+  'POST /api/v2/settings/household/redeem': { code: 'EINLADUNG' },
+  'POST /api/v2/settings': { smtp_host: 'mail.bv.example' },
+  'POST /api/v2/settings/smtp-test': { to: 'fremd@bv.example' },
 };
 /** Mint new accesses, remove protection, delete everything (report M1) — and the emergency brake. */
 const PFLICHT = [
-  'POST /api/v1/auth/token-create',
-  'POST /api/v1/auth/qr-token',
-  'POST /api/v1/auth/users',
-  'PUT /api/v1/auth/users/:id/admin',
-  'PUT /api/v1/auth/users/:id/aktiv',
-  'PUT /api/v1/auth/users/:id/password',
-  'DELETE /api/v1/auth/users/:id',
-  'DELETE /api/v1/auth/users/:id/zweiter-faktor',
-  'DELETE /api/v1/bestand',
-  'POST /api/v1/auth/change-password',
-  'PUT /api/v1/auth/profile',
-  'DELETE /api/v1/auth/passkeys/:id',
-  'POST /api/v1/auth/passkey/registrieren/optionen',
-  'POST /api/v1/auth/zweiter-faktor/abschalten',
-  'POST /api/v1/settings/household/redeem',
-  'POST /api/v1/settings',
-  'POST /api/v1/settings/sessions/andere-beenden',
-  'DELETE /api/v1/settings/tokens/:tokenId',
-  'DELETE /api/v1/papierkorb',
-  'DELETE /api/v1/papierkorb/:id',
-  'DELETE /api/v1/vouchers/:id',
-  'POST /api/v1/vouchers/:id/klartext',
-  'POST /api/v1/vouchers/:id/pdf-freigabe',
-  'POST /api/v1/vouchers/export/pdf-freigabe',
+  'POST /api/v2/auth/token-create',
+  'POST /api/v2/auth/qr-token',
+  'POST /api/v2/auth/users',
+  'PUT /api/v2/auth/users/:id/admin',
+  'PUT /api/v2/auth/users/:id/active',
+  'PUT /api/v2/auth/users/:id/password',
+  'DELETE /api/v2/auth/users/:id',
+  'DELETE /api/v2/auth/users/:id/second-factor',
+  'DELETE /api/v2/inventory',
+  'POST /api/v2/auth/change-password',
+  'PUT /api/v2/auth/profile',
+  'DELETE /api/v2/auth/passkeys/:id',
+  'POST /api/v2/auth/passkey/register/options',
+  'POST /api/v2/auth/second-factor/disable',
+  'POST /api/v2/settings/household/redeem',
+  'POST /api/v2/settings',
+  'POST /api/v2/settings/sessions/end-others',
+  'DELETE /api/v2/settings/tokens/:tokenId',
+  'DELETE /api/v2/trash',
+  'DELETE /api/v2/trash/:id',
+  'DELETE /api/v2/vouchers/:id',
+  'POST /api/v2/vouchers/:id/plaintext',
+  'POST /api/v2/vouchers/:id/pdf-grant',
+  'POST /api/v2/vouchers/export/pdf-grant',
 ];
 /** Before login there is nothing to confirm. */
-const PUBLIC = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
+const PUBLIC = ['POST /api/v2/auth/login', 'POST /api/v2/auth/register', 'POST /api/v2/auth/reset-password'];
 const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];
 
 async function konto(name, admin) {
@@ -122,7 +122,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     await db
       .run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [
         [chef, ziel, ohne],
-        EXTRA['POST /api/v1/auth/users'].username,
+        EXTRA['POST /api/v2/auth/users'].username,
       ])
       .catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host' AND value = 'mail.bv.example'").catch(() => {});
@@ -147,10 +147,10 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
-  const markiert = Object.entries(CONTRACT).filter(([, r]) => r.bestaetigung);
+  const markiert = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
 
   await t.test('the mandatory routes carry the brand', () => {
-    const fehlt = PFLICHT.filter(k => !CONTRACT[k]?.bestaetigung);
+    const fehlt = PFLICHT.filter(k => !CONTRACT[k]?.confirmation);
     assert.deepEqual(fehlt, []);
   });
 
@@ -159,9 +159,9 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       .filter(
         ([k, r]) =>
           !PUBLIC.includes(k) &&
-          !r.bestaetigung &&
-          r.eingabe?.shape &&
-          PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success),
+          !r.confirmation &&
+          r.input?.shape &&
+          PASSWORTFELDER.some(f => r.input.shape[f]?.safeParse('x').success),
       )
       .map(([k]) => k);
     assert.deepEqual(withoutBrand, []);
@@ -174,18 +174,18 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
         `%-bestaetigen|${chef}|%`,
         `%-bestaetigen-konto|${chef}`,
       ]);
-      const { passwort, code } = route.bestaetigung;
+      const { password: passwort, code } = route.confirmation;
       const rumpf = { ...EXTRA[schluessel], [passwort]: PASS };
       const withoutCode = await ruf(basis, schluessel, rumpf);
       assert.deepEqual(
         [withoutCode.status, withoutCode.body.code],
-        [400, 'zweiter_faktor_noetig'],
+        [400, 'second_factor_required'],
         `${schluessel} ohne Code`,
       );
       const falsch = await ruf(basis, schluessel, { ...rumpf, [code]: '000000' });
       assert.deepEqual(
         [falsch.status, falsch.body.code],
-        [400, 'zweiter_faktor_falsch'],
+        [400, 'second_factor_wrong'],
         `${schluessel} mit falschem Code`,
       );
     });
@@ -193,7 +193,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
   assert.ok(markiert.length >= PFLICHT.length, `nur ${markiert.length} markierte Routen`);
 
   await t.test('with code it works, without a factor as before', async () => {
-    const r = await ruf(basis, 'DELETE /api/v1/auth/users/:id/zweiter-faktor', {
+    const r = await ruf(basis, 'DELETE /api/v2/auth/users/:id/second-factor', {
       admin_password: PASS,
       code: codes[0],
     });
@@ -202,7 +202,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     assert.equal(await require('./helpers/admin').takeoverNow(_req, db, ziel), 1);
     assert.equal(await zf.isActive(ziel), false);
     const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
-    const tok = await ruf(withoutFactor, 'POST /api/v1/auth/token-create', { password: PASS });
+    const tok = await ruf(withoutFactor, 'POST /api/v2/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });
 
@@ -231,14 +231,14 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
   });
 
   await t.test('no confirmation without the brand', async () => {
-    const route = CONTRACT['DELETE /api/v1/bestand'];
-    const marke = route.bestaetigung;
-    delete route.bestaetigung;
+    const route = CONTRACT['DELETE /api/v2/inventory'];
+    const marke = route.confirmation;
+    delete route.confirmation;
     try {
-      const r = await ruf(basis, 'DELETE /api/v1/bestand', { password: PASS, code: codes[1] });
+      const r = await ruf(basis, 'DELETE /api/v2/inventory', { password: PASS, code: codes[1] });
       assert.equal(r.status, 500, `ohne Marke keine Bestätigung: ${JSON.stringify(r.body)}`);
     } finally {
-      route.bestaetigung = marke;
+      route.confirmation = marke;
     }
   });
 });

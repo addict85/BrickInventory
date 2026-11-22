@@ -105,14 +105,14 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
     [uid, SN],
   );
   // One copy contains 10 parts and 1 minifigure.
-  await holdsPart(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
-  await holdsMinifig(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
+  await holdsPart(db, uid, '3001', { setNumber: SN, quantity: 10, colorId: 4 });
+  await holdsMinifig(db, uid, 'cty0001', { setNumber: SN, quantity: 1 });
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModule(_req);
   const setzen = n =>
-    fetch(`${base}/api/v1/sets/${SN}`, {
+    fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: n }),
@@ -172,7 +172,7 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
     });
 
     await t.test('deleting takes parts, minifigures and purchase prices along', async () => {
-      const r = await fetch(`${base}/api/v1/sets/${SN}`, { method: 'DELETE' });
+      const r = await fetch(`${base}/api/v2/sets/${SN}`, { method: 'DELETE' });
       assert.equal(r.status, 200);
       for (const tab of ['sets', 'parts', 'minifigs', 'set_acquisitions']) {
         const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE set_number=$1`, [SN])).c;

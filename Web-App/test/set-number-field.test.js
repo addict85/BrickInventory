@@ -20,19 +20,19 @@ const CORPUS = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'),
 ).faelle;
 
-async function versuche(o, nummer) {
+async function versuche(o, number) {
   const { d, w, aufrufe } = o;
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(20);
-  const feld = d.getElementById('add-num');
-  feld.value = nummer;
-  feld.dispatchEvent(new w.Event('input', { bubbles: true }));
+  const field = d.getElementById('add-num');
+  field.value = number;
+  field.dispatchEvent(new w.Event('input', { bubbles: true }));
   const vorher = aufrufe.length;
   d.getElementById('btn-add').click();
   await takt(30);
   const gesendet = aufrufe.slice(vorher).some(a => a.url.includes('/sets/add-stream'));
-  const fehler = d.getElementById('add-num-error');
-  return { gesendet, feld, fehler: fehler && !fehler.hidden ? fehler.textContent : '' };
+  const error = d.getElementById('add-num-error');
+  return { gesendet, field, error: error && !error.hidden ? error.textContent : '' };
 }
 
 test('abc is rejected, with a message at the field', async () => {
@@ -40,18 +40,18 @@ test('abc is rejected, with a message at the field', async () => {
   try {
     const r = await versuche(o, 'abc');
     assert.equal(r.gesendet, false, '„abc“ ging an den Server');
-    assert.match(r.fehler, /„abc“ ist keine Setnummer/);
-    assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
-    assert.equal(r.feld.getAttribute('aria-describedby'), 'add-num-error');
-    assert.equal(o.d.activeElement, r.feld, 'Der Fokus steht nicht im Feld');
+    assert.match(r.error, /„abc“ ist keine Setnummer/);
+    assert.equal(r.field.getAttribute('aria-invalid'), 'true');
+    assert.equal(r.field.getAttribute('aria-describedby'), 'add-num-error');
+    assert.equal(o.d.activeElement, r.field, 'Der Fokus steht nicht im Feld');
     // Typing clears the message away.
-    r.feld.value = '1';
-    r.feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+    r.field.value = '1';
+    r.field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.equal(o.d.getElementById('add-num-error').hidden, true);
     // Empty: the same place, own text.
     const leer = await versuche(o, '   ');
     assert.equal(leer.gesendet, false);
-    assert.match(leer.fehler, /Setnummer eingeben/);
+    assert.match(leer.error, /Setnummer eingeben/);
   } finally {
     o.w.close();
   }
@@ -76,8 +76,8 @@ test('valid numbers pass', async () => {
     assert.ok(korpus.length >= 10, 'Korpus nicht gelesen');
     for (const n of [...korpus, '10294', '10294-1', ' 42143-1 ', 'llca30-1', 'comcon001', '6284070-1', '71000-12']) {
       const r = await versuche(o, n);
-      assert.equal(r.gesendet, true, `„${n}“ wurde abgewiesen: ${r.fehler}`);
-      assert.equal(r.fehler, '');
+      assert.equal(r.gesendet, true, `„${n}“ wurde abgewiesen: ${r.error}`);
+      assert.equal(r.error, '');
     }
   } finally {
     o.w.close();

@@ -25,7 +25,7 @@ const NAME = 'A & B <C>';
 
 test('delete message names the set name literally', async () => {
   const { w, d } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 1,
       themes: [],
@@ -47,7 +47,7 @@ test('delete message names the set name literally', async () => {
 
 test('former link names the path literally', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/household': {
+    '/v2/settings/household': {
       success: true,
       currency: 'EUR',
       parent: null,
@@ -69,15 +69,15 @@ test('former link names the path literally', async () => {
 
 test('pause names an unknown job kind literally', async () => {
   const { w, d, ruhig } = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+    '/v2/admin/job-queue': {
       success: true,
-      auftraege: [],
-      zusammenfassung: [],
-      job_prozess: { laeuft: true },
-      bildbedarf: 0,
-      pausen: [{ type: 'x&y', until_at: '2026-11-05T12:00:00Z', reason: 'Wartung' }],
+      jobs: [],
+      summary: [],
+      job_process: { running: true },
+      image_demand: 0,
+      pauses: [{ type: 'x&y', until_at: '2026-11-05T12:00:00Z', reason: 'Wartung' }],
     },
   });
   try {

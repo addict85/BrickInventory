@@ -96,9 +96,9 @@ test('catalog import swaps instead of clearing', async t => {
     // Second connection: counts continuously while the import runs.
     const reader = await db.pool.connect();
     let minimum = Infinity;
-    let laeuft = true;
+    let running = true;
     const beobachten = (async () => {
-      while (laeuft) {
+      while (running) {
         const { rows } = await reader.query('SELECT count(*)::int AS c FROM rb_colors');
         minimum = Math.min(minimum, rows[0].c);
         await new Promise(r => setTimeout(r, 5));
@@ -108,7 +108,7 @@ test('catalog import swaps instead of clearing', async t => {
     const worker = _req('jobs/csvImportWorker.js');
     const total = await worker.TASKS.colors();
 
-    laeuft = false;
+    running = false;
     await beobachten;
     reader.release();
 
@@ -118,8 +118,8 @@ test('catalog import swaps instead of clearing', async t => {
       0,
       'ein Leser hat die Tabelle LEER gesehen — genau das Fenster, das der Umbau schliessen sollte',
     );
-    const jetzt = await db.get(`SELECT name FROM rb_colors WHERE id=1`);
-    assert.equal(jetzt.name, 'neu-1', 'die neuen Daten sind nicht angekommen');
+    const now = await db.get(`SELECT name FROM rb_colors WHERE id=1`);
+    assert.equal(now.name, 'neu-1', 'die neuen Daten sind nicht angekommen');
   });
 
   await t.test('an empty file does not replace the existing data', async () => {
@@ -191,8 +191,8 @@ test('catalog import swaps instead of clearing', async t => {
     writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '7,"Trans ""Neon"" Grün",C91A09,f']);
     const worker = _req('jobs/csvImportWorker.js');
     await worker.TASKS.colors();
-    const zeile = await db.get('SELECT name FROM rb_colors WHERE id=7');
-    assert.equal(zeile.name, 'Trans "Neon" Grün');
+    const row = await db.get('SELECT name FROM rb_colors WHERE id=7');
+    assert.equal(row.name, 'Trans "Neon" Grün');
   });
 
   await t.test('rb_sets mirrors the dump: new, changed, with reference, without reference', async () => {
@@ -276,15 +276,15 @@ test('catalog import swaps instead of clearing', async t => {
 test("the import process builds its access via createDb, without the requests' deadlines", async t => {
   const zugang = _req('src/catalog/index.js').createImportAccess();
   t.after(() => zugang.pool.end());
-  let zeile;
+  let row;
   try {
-    zeile = (await zugang.systemPool.query('SHOW statement_timeout')).rows[0];
+    row = (await zugang.systemPool.query('SHOW statement_timeout')).rows[0];
   } catch (e) {
     keineDb(t, e);
     return;
   }
   assert.notEqual(zugang.systemPool, zugang.pool, 'der Tausch braucht einen eigenen Pool');
-  assert.equal(zeile.statement_timeout, '0');
+  assert.equal(row.statement_timeout, '0');
 });
 
 test('the CSV download goes via abruf.ts, with deadline, cap and host list', () => {
@@ -292,8 +292,8 @@ test('the CSV download goes via abruf.ts, with deadline, cap and host list', () 
   // on abruf.ts; here only that the download takes this path.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
   const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));
-  for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
-    assert.ok(call.includes(feld), `der Download ruft openHttps ohne ${feld}`);
+  for (const field of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
+    assert.ok(call.includes(field), `der Download ruft openHttps ohne ${field}`);
   assert.doesNotMatch(
     ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/catalog/csvSync.ts'), 'utf8')),
     /from 'https'/,

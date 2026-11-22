@@ -77,37 +77,37 @@ async function startServer(t, env) {
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
     await warte(250);
   return { basis, log: () => log };
 }
 
 /** Log in, ask with the cookie who one is, log out. */
 async function pass(server, kopf) {
-  const login = await fetch(`${server.basis}/api/v1/auth/login`, {
+  const login = await fetch(`${server.basis}/api/v2/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...kopf },
-    body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+    body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
   const roh = await login.text();
   assert.equal(login.status, 200, `${roh}\n${server.log()}`);
   const setzen = login.headers.get('set-cookie');
   const cookie = setzen.split(';')[0];
-  const ich = async () => (await fetch(`${server.basis}/api/v1/auth/me`, { headers: { cookie, ...kopf } })).json();
+  const ich = async () => (await fetch(`${server.basis}/api/v2/auth/me`, { headers: { cookie, ...kopf } })).json();
   const angemeldet = await ich();
   // A bearer header next to it must not switch off the origin check.
-  const fremd = await fetch(`${server.basis}/api/v1/auth/logout`, {
+  const fremd = await fetch(`${server.basis}/api/v2/auth/logout`, {
     method: 'POST',
     headers: { cookie, ...kopf, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' },
   });
   await fremd.arrayBuffer();
-  const ab = await fetch(`${server.basis}/api/v1/auth/logout`, {
+  const ab = await fetch(`${server.basis}/api/v2/auth/logout`, {
     method: 'POST',
     headers: { cookie, ...kopf, 'sec-fetch-site': 'same-origin' },
   });
   await ab.arrayBuffer();
   return {
-    antwort: JSON.parse(roh),
+    response: JSON.parse(roh),
     setzen,
     cookie,
     angemeldet,
@@ -144,17 +144,17 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
     assert.match(d.loeschen ?? '', /^__Host-bim\.sid=;.*Path=\/.*Expires=Thu, 01 Jan 1970/, `Abmelden: ${d.loeschen}`);
     assert.match(d.loeschen, /; Secure(;|$)/, 'ohne Secure verwirft der Browser den Löschbefehl');
     assert.equal(d.danach.loggedIn, false);
-    assert.equal(d.antwort.keks_fehlt, false, 'über https kein Hinweis');
+    assert.equal(d.response.cookie_missing, false, 'über https kein Hinweis');
     // The same login via http: express-session does not set the Secure cookie, the response says so.
-    const ohne = await fetch(`${server.basis}/api/v1/auth/login`, {
+    const ohne = await fetch(`${server.basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     const a = await ohne.json();
     assert.equal(ohne.status, 200, JSON.stringify(a));
     assert.equal(ohne.headers.get('set-cookie'), null, 'Cookie über http gesetzt');
-    assert.equal(a.keks_fehlt, true, 'über http: keks_fehlt');
+    assert.equal(a.cookie_missing, true, 'über http: keks_fehlt');
   });
 
   await t.test('without TLS: bim.sid without prefix and without Secure', async st => {
@@ -166,6 +166,6 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
     assert.equal(d.fremd, 403, 'die Herkunftsprüfung erkennt das Cookie');
     assert.match(d.loeschen ?? '', /^bim\.sid=;/, `Abmelden: ${d.loeschen}`);
     assert.equal(d.danach.loggedIn, false);
-    assert.equal(d.antwort.keks_fehlt, false, 'COOKIE_SECURE=0: das Cookie ging über http hinaus');
+    assert.equal(d.response.cookie_missing, false, 'COOKIE_SECURE=0: das Cookie ging über http hinaus');
   });
 });

@@ -83,7 +83,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   const importiere = async zeilen => {
     const fd = new FormData();
     fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
-    const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${base}/api/v2/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
   const auftrag = () => db.get('SELECT status, done, results FROM import_status WHERE user_id=$1', [uid]);

@@ -64,11 +64,11 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
         `INSERT INTO sets (user_id, set_number, storage_id) VALUES ($1,$2,$3), ($1,$4,NULL), ($1,$5,NULL)`,
         [A, T1, lager, `${T1}-1`, T2],
       );
-      const kauf = (sn, preis, menge) =>
+      const kauf = (sn, preis, quantity) =>
         c.query(
           `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
          VALUES ($1,$2,$3,$4,'N','CHF','2026-01-05T12:00:00Z')`,
-          [A, sn, menge, preis],
+          [A, sn, quantity, preis],
         );
       await kauf(T1, 10, 1);
       await kauf(`${T1}-1`, 10, 2);
@@ -177,7 +177,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
-      await holdsPart(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 }); // written bare
+      await holdsPart(db, uid, 'SNF1', { setNumber: `F${PID}`, quantity: 2, colorId: 4 }); // written bare
       const { partsQuery } = _req('src/parts/queries.js');
       for (const filter of [`F${PID}`, `F${PID}-1`]) {
         const r = await partsQuery([uid], { set_number: filter, page_size: 60 });

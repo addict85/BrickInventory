@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/settings/export/data via the real route: the ZIP from archiver
+ * GET /api/v2/settings/export/data via the real route: the ZIP from archiver
  * can be unpacked, contains all five files, and the account's parts
  * are in it. test/zip-export.test.js only rebuilds the archive; this test
  * holds the route across an upgrade of archiver or its dependencies.
@@ -54,7 +54,7 @@ test("the data export delivers an unpackable ZIP with the account's data", {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const r = await fetch(`${base}/api/v1/settings/export/data`);
+  const r = await fetch(`${base}/api/v2/settings/export/data`);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');
   const zip = path.join(dir, 'export.zip');
@@ -70,7 +70,7 @@ test("the data export delivers an unpackable ZIP with the account's data", {
     ['merkliste.csv', 'minifiguren.csv', 'preisalarme.csv', 'sets.csv', 'teile.csv'],
     'alle fünf Dateien',
   );
-  const teile = fs.readFileSync(path.join(dir, 'teile.csv'), 'utf8');
-  assert.ok(teile.startsWith('﻿'), 'BOM fehlt');
-  assert.match(teile, /3001zip/);
+  const parts = fs.readFileSync(path.join(dir, 'teile.csv'), 'utf8');
+  assert.ok(parts.startsWith('﻿'), 'BOM fehlt');
+  assert.match(parts, /3001zip/);
 });

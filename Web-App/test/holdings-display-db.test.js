@@ -91,10 +91,10 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // while the row above showed CHF 3.94 — two answers to
       // the same question, one below the other.
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
-      const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
-      assert.ok(werte.length, 'keine Diagrammwerte');
-      assert.equal(Math.max(...werte), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...werte)}`);
-      assert.equal(Math.min(...werte), 3.94);
+      const values = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
+      assert.ok(values.length, 'keine Diagrammwerte');
+      assert.equal(Math.max(...values), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...values)}`);
+      assert.equal(Math.min(...values), 3.94);
     });
 
     await t.test('without any acquisition the history stays visible anyway', async () => {
@@ -118,10 +118,10 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
 
     await t.test('an account with quantity 0 no longer stands as an owner', async () => {
       const r = await readSets([mainId, subId], {});
-      const zeile = r.sets.find(s => s.set_number === SN);
-      assert.ok(zeile, 'das Set fehlt in der Galerie');
-      assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
-      const namen = (zeile.owners || []).map(o => o.username);
+      const row = r.sets.find(s => s.set_number === SN);
+      assert.ok(row, 'das Set fehlt in der Galerie');
+      assert.equal(row.quantity, 1, 'die Menge des Haushalts ist die Summe');
+      const namen = (row.owners || []).map(o => o.username);
       assert.deepEqual(
         namen,
         [SUB],

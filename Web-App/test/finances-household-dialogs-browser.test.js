@@ -37,16 +37,16 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r12x_${process.pid}`;
-  const app = await startApp(t, { name: NAME, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: NAME, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, ruhig } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(300);
   };
   const telefon = an =>
@@ -76,7 +76,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('finances: sums without double counting', async () => {
     const z =
-      await b.auswerten(`Promise.all([fetch('/api/v1/finance/pnl').then(r => r.json()), fetch('/api/v1/finance/valuation').then(r => r.json())])
+      await b.auswerten(`Promise.all([fetch('/api/v2/finance/pnl').then(r => r.json()), fetch('/api/v2/finance/valuation').then(r => r.json())])
       .then(([p, v]) => ({ kauf: p.totals.sets_purchase, markt: v.totals.avg, baum: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
     // 679.99 + 650 + 0 (gift) + 199.99 + 210; market value 712.40 + 801.50 + 163.80 + 2 × 186.20.
     assert.deepEqual(z, { kauf: '1739.98', markt: '2050.10', baum: [2] });
@@ -93,16 +93,16 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       'Benutzerliste',
       100,
     );
-    for (const [aktion, titel] of /** @type {[string, RegExp][]} */ ([
+    for (const [action, titel] of /** @type {[string, RegExp][]} */ ([
       ['delUser', /^Konto „r12x_\d+“ löschen\?$/],
       ['toggleAdmin', /^„r12x_\d+“ zum Administrator machen\?$/],
       ['toggleActive', /^Konto „r12x_\d+“ deaktivieren\?$/],
     ])) {
       await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)});
-        z.querySelector('[data-click="${aktion}"]').click(); return true; })()`);
-      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${aktion}`);
+        z.querySelector('[data-click="${action}"]').click(); return true; })()`);
+      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${action}`);
       assert.match(await b.auswerten(text('#cd-title')), titel);
-      if (aktion === 'delUser')
+      if (action === 'delUser')
         assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${ANDERE}“ endgültig löschen`));
       await b.auswerten(klick('#cd-cancel'));
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Dialog zu');
@@ -156,7 +156,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
     const z = await b.auswerten(`({ offen: document.getElementById('mk-box').open,
       oben: document.querySelector('#mk-list .mk-row').getBoundingClientRect().top, hoehe: innerHeight })`);
-    assert.equal(z.offen, false, 'Formular am Telefon zugeklappt');
+    assert.equal(z.open, false, 'Formular am Telefon zugeklappt');
     assert.ok(z.oben < z.hoehe * 0.6, `erster Merkposten im ersten Bild: ${JSON.stringify(z)}`);
   });
 
@@ -188,7 +188,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       const z = await b.auswerten(`(() => { const s = getComputedStyle(document.querySelector('.button-floating'));
         return { deckend: s.opacity, grund: s.backgroundColor }; })()`);
       assert.equal(z.deckend, '1', 'der gesperrte Knopf ist deckend');
-      assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.grund}`);
+      assert.doesNotMatch(z.reason, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.reason}`);
     } finally {
       await b.tab('Network.emulateNetworkConditions', {
         offline: false,
@@ -252,7 +252,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('401 without success ends the session', async () => {
     // Like an upstream proxy: 401 without a JSON field success.
-    await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v1/wanted')
+    await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v2/wanted')
       ? Promise.resolve(new Response('{"message":"Unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) : f(u, o); return true; })()`);
     await geh('merkliste');
     await bis(

@@ -27,11 +27,11 @@ test('account switches and unique address', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const K = `schalter${process.pid}`;
   const leeren = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
-  const put = (n, extra = '', werte = []) =>
+  const put = (n, extra = '', values = []) =>
     db.get(
       `INSERT INTO users (username, password_hash${extra ? ', ' + extra : ''})
-            VALUES ($1, 'x'${werte.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
-      [`${K}${n}`, ...werte],
+            VALUES ($1, 'x'${values.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
+      [`${K}${n}`, ...values],
     );
   await leeren();
 

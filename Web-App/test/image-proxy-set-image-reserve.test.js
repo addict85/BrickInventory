@@ -35,10 +35,10 @@ test('image proxy reserves set images for images/sets', async t => {
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-  const angelegt = [];
+  const created = [];
   const put = (datei, inhalt = Buffer.alloc(300, 1)) => {
     fs.writeFileSync(datei, inhalt);
-    angelegt.push(datei);
+    created.push(datei);
   };
   /** A cache hit: the proxy then does not ask the CDN. */
   const imCache = url => {
@@ -56,7 +56,7 @@ test('image proxy reserves set images for images/sets', async t => {
   t.after(() => {
     server.close();
     ende();
-    for (const f of angelegt) fs.rmSync(f, { force: true });
+    for (const f of created) fs.rmSync(f, { force: true });
   });
   const hole = async url => {
     notes.length = 0;
@@ -82,7 +82,7 @@ test('image proxy reserves set images for images/sets', async t => {
   });
   await t.test('what the proxy has lies under images/sets afterwards', async () => {
     const abgelegt = path.join(SET_IMAGES_DIR, `${fehlt}.jpg`);
-    angelegt.push(abgelegt);
+    created.push(abgelegt);
     assert.equal(await hole(missingUrl), 200);
     assert.deepEqual(
       fs.readFileSync(abgelegt),
@@ -107,7 +107,7 @@ test('image proxy reserves set images for images/sets', async t => {
     const neu = `7${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${neu}.jpg`;
     imCache(url);
-    angelegt.push(path.join(SET_IMAGES_DIR, `${neu}.jpg`));
+    created.push(path.join(SET_IMAGES_DIR, `${neu}.jpg`));
     const alle = [];
     for (let i = 0; i < 3; i++) {
       assert.equal(await hole(url), 200);

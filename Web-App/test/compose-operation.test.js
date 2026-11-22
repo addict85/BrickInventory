@@ -24,7 +24,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-function konfig() {
+function config() {
   const r = spawnSync(
     'docker',
     ['compose', '-f', path.join(ROOT, 'compose.yaml'), '--profile', 'tools', 'config', '--format', 'json'],
@@ -40,16 +40,16 @@ function konfig() {
       },
     },
   );
-  if (r.error || r.status !== 0) return { fehler: r.error?.message || r.stderr };
+  if (r.error || r.status !== 0) return { error: r.error?.message || r.stderr };
   return { j: JSON.parse(r.stdout) };
 }
 
 /** @param {import('node:test').TestContext} t */
 function withKonfig(t) {
-  const { j, fehler } = konfig();
+  const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`no docker compose: ${fehler}`);
+    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${error}`);
+    t.skip(`no docker compose: ${error}`);
   }
   return j;
 }
@@ -79,9 +79,9 @@ test('every tmpfs is without exec, without setuid and limited in size', t => {
   const falsch = [];
   for (const [n, d] of Object.entries(j.services))
     for (const eintrag of d.tmpfs ?? []) {
-      const optionen = eintrag.split(':')[1]?.split(',') ?? [];
+      const options = eintrag.split(':')[1]?.split(',') ?? [];
       const noetig = [eintrag.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
-      if (!noetig.every(o => optionen.includes(o)) || !optionen.some(o => /^size=\d+[km]$/.test(o)))
+      if (!noetig.every(o => options.includes(o)) || !options.some(o => /^size=\d+[km]$/.test(o)))
         falsch.push(`${n}: ${eintrag}`);
     }
   assert.deepEqual(falsch, []);

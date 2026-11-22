@@ -22,7 +22,7 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
   const { openUi, reiter, warte } = require('./helpers/ui');
   const anfragen = [];
   const { w, d } = await openUi({
-    '/v1/sets/10294-1/parts-list': {
+    '/v2/sets/10294-1/parts-list': {
       success: true,
       parts: [
         {
@@ -36,12 +36,12 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
         },
       ],
     },
-    '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
-    '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
-    '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
-    '/v1/parts/owned': (url, opt) => {
-      anfragen.push({ url, teile: JSON.parse(opt.body).teile });
-      return { success: true, bestand: { '3001|4': { gesamt: 5, lose: 2 } } };
+    '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+    '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
+    '/v2/parts/owned': (url, opt) => {
+      anfragen.push({ url, parts: JSON.parse(opt.body).parts });
+      return { success: true, holding: { '3001|4': { total: 5, loose: 2 } } };
     },
   });
   try {
@@ -51,25 +51,25 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
     await warte(() => d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
     d.getElementById('btn-pl-gen').click();
     assert.ok(await warte(() => d.querySelector('.pl-have-input'), 3000), 'keine Bauliste');
-    const feld = () => d.querySelector('.pl-have-input').value;
+    const field = () => d.querySelector('.pl-have-input').value;
 
     d.getElementById('btn-pl-stock').click();
-    assert.ok(await warte(() => anfragen.length === 1 && feld() === '5'), `alles: ${feld()}`);
+    assert.ok(await warte(() => anfragen.length === 1 && field() === '5'), `alles: ${field()}`);
     // With the BrickLink number the server would find nothing — and “not found” looks like “don't have it”.
-    assert.deepEqual(anfragen[0].teile, [{ part_number: '3001', color_id: 4 }]);
-    assert.match(anfragen[0].url, /\/api\/v1\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
+    assert.deepEqual(anfragen[0].parts, [{ part_number: '3001', color_id: 4 }]);
+    assert.match(anfragen[0].url, /\/api\/v2\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
     assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Statustext ohne Übersetzung');
 
-    const lose = d.getElementById('pl-stock-lose');
-    lose.checked = true;
-    lose.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => anfragen.length === 2 && feld() === '2'), `nur lose: ${feld()}`);
+    const loose = d.getElementById('pl-stock-lose');
+    loose.checked = true;
+    loose.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => anfragen.length === 2 && field() === '2'), `nur lose: ${field()}`);
 
     const subs = d.getElementById('pl-stock-subs');
     subs.checked = true;
     subs.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => anfragen.length === 3), 'mit Unterkonten nicht neu gefragt');
-    assert.match(anfragen[2].url, /\/api\/v1\/parts\/owned$/, 'mit Unterkonten trotzdem nur das eigene Konto');
+    assert.match(anfragen[2].url, /\/api\/v2\/parts\/owned$/, 'mit Unterkonten trotzdem nur das eigene Konto');
   } finally {
     w.close();
   }

@@ -10,7 +10,7 @@
  *      default” (/settings/raw: app_theme ''), “unknown design rejected”
  *   D  in indexHtml again ALLOWED = ['classic', 'brick'] → red: “index.html”
  *      (classic instead of noppe)
- *   E  (30.10.) GET /api/v1/settings again with getGlobalSetting('app_theme')
+ *   E  (30.10.) GET /api/v2/settings again with getGlobalSetting('app_theme')
  *      → red: “app with token” (noppe instead of werkbank)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -52,7 +52,7 @@ test('theme per account', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const hole = async (pfad, o = {}) => (await fetch(base + '/api/v1/settings' + pfad, o)).json();
+  const hole = async (path, o = {}) => (await fetch(base + '/api/v2/settings' + path, o)).json();
   const setze = theme =>
     hole('/user/theme', {
       method: 'POST',
@@ -66,14 +66,14 @@ test('theme per account', { concurrency: 1 }, async t => {
 
   await t.test('without login: the default', async () => {
     als(null);
-    assert.deepEqual(await hole('/theme'), { success: true, theme: 'noppe', vorgabe: 'noppe', eigenes: null });
+    assert.deepEqual(await hole('/theme'), { success: true, theme: 'noppe', preset: 'noppe', own: null });
   });
 
   await t.test('account with its own theme, the other follows the default', async () => {
     als(ids[0]);
     const r = await setze('werkbank');
     assert.equal(r.success, true, JSON.stringify(r));
-    assert.deepEqual(await hole('/theme'), { success: true, theme: 'werkbank', vorgabe: 'noppe', eigenes: 'werkbank' });
+    assert.deepEqual(await hole('/theme'), { success: true, theme: 'werkbank', preset: 'noppe', own: 'werkbank' });
     assert.equal(
       (await hole('/raw')).settings.app_theme,
       'werkbank',
@@ -89,7 +89,7 @@ test('theme per account', { concurrency: 1 }, async t => {
     const token = await _req('src/account/deviceToken.js').createToken(ids[0], 'Prüfung', true);
     const withToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', withToken)).theme, 'werkbank');
-    assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
+    assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v2/settings nennt die Vorgabe');
   });
 
   await t.test('unknown theme rejected', async () => {
@@ -111,7 +111,7 @@ test('theme per account', { concurrency: 1 }, async t => {
     als(ids[0]);
     assert.equal((await setze('')).success, true);
     await setGlobalSetting('app_theme', 'brick');
-    assert.deepEqual(await hole('/theme'), { success: true, theme: 'brick', vorgabe: 'brick', eigenes: null });
+    assert.deepEqual(await hole('/theme'), { success: true, theme: 'brick', preset: 'brick', own: null });
     assert.equal((await hole('/raw')).settings.app_theme, 'brick');
   });
 });

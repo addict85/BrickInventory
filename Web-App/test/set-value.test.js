@@ -154,26 +154,26 @@ test('a cached zero price does not permanently block the fallback', () => {
   const { cacheUsable } = _req('src/finances/calculation/prices.js');
   // Time is a parameter: a fixed instant instead of the computer's clock.
   const JETZT = Date.UTC(2026, 0, 10, 12);
-  const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
+  const ago = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
   assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', fetched_at: ago(1) }, 24, JETZT),
     true,
     'ein frischer 0-Eintrag antwortet',
   );
   assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', fetched_at: ago(7) }, 24, JETZT),
     false,
     'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
   );
   assert.equal(cacheUsable({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: ago(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
   assert.equal(
-    cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
+    cacheUsable({ avg_price: '12.5', fetched_at: ago(20) }, 24, JETZT),
     true,
     'ein Preis gilt das volle Fenster',
   );
   assert.equal(
-    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: ago(7) }, 24, JETZT),
     true,
     'ein Mengenschnitt allein ist ein Preis (marketPriceFrom) und gilt das volle Fenster',
   );
@@ -186,7 +186,7 @@ test('the finances view shows avg_price as market price', () => {
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finances.js'), 'utf8');
   assert.match(
     fin,
-    /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
+    /const total\s*=\s*acq \? acq\.value_total : s\.value_total;/,
     'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg',
   );
   assert.match(
@@ -252,7 +252,7 @@ test('finances: purchase price instead of a second market price column', () => {
 test('a late response does not write into a foreign dialog', () => {
   const src = require('./helpers/sources').adminSource();
   // Since round 24 (N7) the figure count comes from the catalog; only the price history is loaded afterwards.
-  const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
+  const i = src.indexOf("api('GET', `/v2/sets/${sn}/price-history`)");
   assert.ok(i > 0, 'Die Nachfrage nach dem Preisverlauf fehlt');
   const fn = src.slice(i, i + 500);
   assert.match(

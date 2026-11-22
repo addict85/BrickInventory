@@ -34,26 +34,26 @@ const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses
 /** @param {Record<string, string[]>} antworten  host → addresses */
 function withDns(t, antworten) {
   const echt = dns.lookup;
-  const gefragt = [];
+  const asked = [];
   /** @type {any} */ (dns).lookup = (host, opt, callback) => {
     const liste = antworten[host];
     if (!liste) return echt(host, opt, callback);
-    gefragt.push(host);
+    asked.push(host);
     const a = liste.map(address => ({ address, family: address.includes(':') ? 6 : 4 }));
     setImmediate(() => (opt?.all ? callback(null, a) : callback(null, a[0].address, a[0].family)));
   };
   t.after(() => {
     dns.lookup = echt;
   });
-  return gefragt;
+  return asked;
 }
 
-async function grund(promise) {
+async function reason(promise) {
   try {
     await promise;
   } catch (e) {
     assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
-    return e.grund;
+    return e.reason;
   }
   return 'kein Fehler';
 }
@@ -126,26 +126,26 @@ test('mixed responses: only the allowed addresses go on', async t => {
 });
 
 test('an allowed host that resolves internally is not connected', async t => {
-  const gefragt = withDns(t, {
+  const asked = withDns(t, {
     'rebrickable.com': ['127.0.0.1'],
     'cdn.rebrickable.com': ['10.0.0.9', '169.254.169.254'],
   });
   const o = { hosts: ['rebrickable.com', 'cdn.rebrickable.com'], maxBytes: 1000, zeitlimitMs: 3000 };
-  assert.equal(await grund(holeHttps('https://rebrickable.com/api/v3/x', o)), 'adresse');
+  assert.equal(await reason(holeHttps('https://rebrickable.com/api/v3/x', o)), 'adresse');
   assert.equal(
-    await grund(holeHttps('https://cdn.rebrickable.com/a.png', { ...o, methode: 'POST', rumpf: '{}' })),
+    await reason(holeHttps('https://cdn.rebrickable.com/a.png', { ...o, methode: 'POST', rumpf: '{}' })),
     'adresse',
   );
-  assert.deepEqual(gefragt, ['rebrickable.com', 'cdn.rebrickable.com']);
+  assert.deepEqual(asked, ['rebrickable.com', 'cdn.rebrickable.com']);
 });
 
 test('the image proxy pool also checks the address', async t => {
-  const gefragt = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
+  const asked = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
   assert.equal(
-    await grund(oeffneBild('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
+    await reason(oeffneBild('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
     'adresse',
   );
-  assert.deepEqual(gefragt, ['cdn.rebrickable.com']);
+  assert.deepEqual(asked, ['cdn.rebrickable.com']);
 });
 
 test('from LEGO only the hosts of the instructions', () => {

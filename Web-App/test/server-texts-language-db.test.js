@@ -44,8 +44,8 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
   );
   await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  const hole = async (pfad, sprache) =>
-    (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
+  const hole = async (path, language) =>
+    (await fetch(`${base}/api/v2/${path}`, { headers: { 'Accept-Language': language } })).json();
 
   await t.test('price errors in English', async () => {
     const en = (await hole('finance/valuation', 'en')).sets.find(s => s.set_number === '10294-1');
@@ -58,9 +58,9 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
 
   await t.test('tiles with codes', async () => {
     const jobs = (await hole('admin/jobs', 'en')).jobs;
-    assert.deepEqual(jobs.bricksetRetry.sub_teile, [{ code: 'keine_ausstehenden' }]);
-    assert.deepEqual(jobs.pdfJobs?.sub_teile ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
+    assert.deepEqual(jobs.bricksetRetry.sub_parts, [{ code: 'keine_ausstehenden' }]);
+    assert.deepEqual(jobs.pdfJobs?.sub_parts ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
     for (const [name, k] of Object.entries(jobs))
-      if (k.sub_teile) for (const s of k.sub_teile) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
+      if (k.sub_parts) for (const s of k.sub_parts) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
   });
 });

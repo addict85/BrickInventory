@@ -46,34 +46,34 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
   const NUR = '&q=JV';
 
   /** The same computation as in the browser: share → running number → year. */
-  const etikett = (verteilung, gesamt, anteil) => {
-    let nummer = Math.round(anteil * (gesamt - 1));
+  const etikett = (verteilung, total, anteil) => {
+    let number = Math.round(anteil * (total - 1));
     for (const e of verteilung) {
-      if (nummer < e.n) return e.year;
-      nummer -= e.n;
+      if (number < e.n) return e.year;
+      number -= e.n;
     }
     return verteilung[verteilung.length - 1].year;
   };
   /** What really stands at this place — from the real list. */
-  const thereStands = async (gesamt, anteil, filter = '') => {
-    const nr = Math.round(anteil * (gesamt - 1));
+  const thereStands = async (total, anteil, filter = '') => {
+    const nr = Math.round(anteil * (total - 1));
     const seite = Math.floor(nr / 60) + 1;
-    const d = await hol(`/api/v1/catalog/sets?limit=60&page=${seite}${NUR}${filter}`);
+    const d = await hol(`/api/v2/catalog/sets?limit=60&page=${seite}${NUR}${filter}`);
     return d.sets[nr - (seite - 1) * 60].year;
   };
 
   try {
     for (const sort of ['year_desc', 'year_asc']) {
       await t.test(`sorting ${sort}`, async () => {
-        const v = (await hol(`/api/v1/catalog/year-verteilung?sort=${sort}${NUR}`)).years.filter(x => x.year);
-        const gesamt = v.reduce((s, e) => s + e.n, 0);
-        assert.ok(gesamt > 1000, `zu wenige Sets: ${gesamt}`);
+        const v = (await hol(`/api/v2/catalog/year-distribution?sort=${sort}${NUR}`)).years.filter(x => x.year);
+        const total = v.reduce((s, e) => s + e.n, 0);
+        assert.ok(total > 1000, `zu wenige Sets: ${total}`);
         for (const anteil of [0, 0.25, 0.5, 0.75, 0.9, 1]) {
-          const echt = await thereStands(gesamt, anteil, `&sort=${sort}`);
+          const echt = await thereStands(total, anteil, `&sort=${sort}`);
           assert.equal(
-            etikett(v, gesamt, anteil),
+            etikett(v, total, anteil),
             echt,
-            `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, gesamt, anteil)}`,
+            `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, total, anteil)}`,
           );
         }
       });
@@ -83,17 +83,17 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
       // The distribution MUST know the filters. One over the whole catalog
       // would be just as far off with a set theme as the linear estimate —
       // theme 2 contains only the 2010s.
-      const v = (await hol(`/api/v1/catalog/year-verteilung?sort=year_desc&theme_id=2${NUR}`)).years.filter(
+      const v = (await hol(`/api/v2/catalog/year-distribution?sort=year_desc&theme_id=2${NUR}`)).years.filter(
         x => x.year,
       );
-      const gesamt = v.reduce((s, e) => s + e.n, 0);
-      assert.equal(gesamt, 1000, `Filter nicht berücksichtigt: ${gesamt}`);
+      const total = v.reduce((s, e) => s + e.n, 0);
+      assert.equal(total, 1000, `Filter nicht berücksichtigt: ${total}`);
       for (const anteil of [0, 0.5, 1]) {
-        const echt = await thereStands(gesamt, anteil, '&sort=year_desc&theme_id=2');
+        const echt = await thereStands(total, anteil, '&sort=year_desc&theme_id=2');
         assert.equal(
-          etikett(v, gesamt, anteil),
+          etikett(v, total, anteil),
           echt,
-          `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, gesamt, anteil)}`,
+          `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, total, anteil)}`,
         );
       }
     });
@@ -102,12 +102,12 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
       // Counter-check in the test itself: without it someone could replace the distribution
       // with a straight line again and the test would stay green if the stage
       // happened to be evenly distributed.
-      const v = (await hol(`/api/v1/catalog/year-verteilung?sort=year_desc${NUR}`)).years.filter(x => x.year);
-      const gesamt = v.reduce((s, e) => s + e.n, 0);
+      const v = (await hol(`/api/v2/catalog/year-distribution?sort=year_desc${NUR}`)).years.filter(x => x.year);
+      const total = v.reduce((s, e) => s + e.n, 0);
       const min = Math.min(...v.map(x => x.year)),
         max = Math.max(...v.map(x => x.year));
       const linear = a => Math.round(max - a * (max - min));
-      const echt = await thereStands(gesamt, 0.9, '&sort=year_desc');
+      const echt = await thereStands(total, 0.9, '&sort=year_desc');
       assert.notEqual(linear(0.9), echt, 'Die Bühne ist gleichverteilt — dann prüft dieser Test die Verteilung nicht');
     });
   } finally {

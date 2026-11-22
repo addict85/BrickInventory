@@ -26,7 +26,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 // anna is the logged-in account: there are no buttons against oneself.
 const NUTZER = {
-  '/v1/auth/users': {
+  '/v2/auth/users': {
     success: true,
     users: [
       { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
@@ -36,7 +36,7 @@ const NUTZER = {
         is_admin: false,
         is_active: false,
         created_at: '2026-10-02T00:00:00Z',
-        zweiter_faktor: true,
+        second_factor: true,
       },
       { id: 3, username: 'carla', is_admin: true, is_active: true, created_at: '2026-10-03T00:00:00Z' },
     ],
@@ -78,8 +78,8 @@ test('actions of the user table are named', async () => {
       const wort = k.querySelector('span')?.textContent.trim();
       assert.ok(wort, `Knopf ${k.dataset.click} ohne sichtbares Wort`);
       assert.ok(k.getAttribute('title'), `Knopf ${k.dataset.click} ohne Tooltip`);
-      const zeile = k.closest('tr').querySelector('strong').textContent;
-      assert.equal(k.getAttribute('aria-label'), `${wort}: ${zeile}`);
+      const row = k.closest('tr').querySelector('strong').textContent;
+      assert.equal(k.getAttribute('aria-label'), `${wort}: ${row}`);
     }
   } finally {
     w.close();
@@ -97,8 +97,8 @@ test('revoking admin rights sends is_admin:false', async () => {
     assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin')));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'));
+    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin')));
+    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
   } finally {
@@ -121,9 +121,9 @@ test('deactivating and activating send is_active with the password', async () =>
       assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
       d.getElementById('cd-pw').value = 'mein-passwort';
       d.getElementById('cd-confirm').click();
-      await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/v1/auth/users/${id}/aktiv`)));
+      await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`)));
       await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
-      const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v1/auth/users/${id}/aktiv`));
+      const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`));
       assert.ok(put, `Kein Aufruf für Konto ${id}`);
       assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
     }
@@ -145,8 +145,8 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
   };
   const { w, d, aufrufe } = await openUi({
     ...NUTZER,
-    '/v1/settings/raw': roh,
-    '/v1/settings': { success: true },
+    '/v2/settings/raw': roh,
+    '/v2/settings': { success: true },
   });
   try {
     await reiter(w, 'settings');
@@ -159,7 +159,7 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Passwortdialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    const isPost = a => a.method === 'POST' && a.url.endsWith('/v1/settings');
+    const isPost = a => a.method === 'POST' && a.url.endsWith('/v2/settings');
     await warte(() => aufrufe.some(isPost));
     const post = aufrufe.find(isPost);
     assert.ok(post, 'Nicht gespeichert');
@@ -206,12 +206,12 @@ test('jump bar to the sections', async () => {
     const fehlt = ziele.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
     assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt im Raster');
     // Subpages: exactly one active, the click switches it and does not jump.
-    const aktiv = () => [...d.querySelectorAll('#global-settings-grid > .ssec.settings-active')].map(s => s.id);
-    assert.equal(aktiv().length, 1);
+    const active = () => [...d.querySelectorAll('#global-settings-grid > .ssec.settings-active')].map(s => s.id);
+    assert.equal(active().length, 1);
     const link = d.querySelector('.settings-nav a[data-arg="usermgmt"]');
     const klick = new w.MouseEvent('click', { bubbles: true, cancelable: true });
     link.dispatchEvent(klick);
-    assert.deepEqual(aktiv(), ['usermgmt']);
+    assert.deepEqual(active(), ['usermgmt']);
     assert.equal(link.getAttribute('aria-current'), 'page');
     assert.equal(klick.defaultPrevented, true, 'der Link soll nicht zum Anker springen');
     assert.equal(d.querySelectorAll('.settings-nav a[aria-current]').length, 1);

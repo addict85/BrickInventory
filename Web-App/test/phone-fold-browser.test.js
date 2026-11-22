@@ -32,9 +32,9 @@ const messen = `(() => {
 })()`;
 
 test('collection on the phone: card above the fold, prices without overlap', { timeout: 120_000 }, async t => {
-  const app = await startApp(t, { name: `falz_${process.pid}`, bestand: patternCollection, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `falz_${process.pid}`, holding: patternCollection, telefon: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   for (const [breite, hoehe] of [

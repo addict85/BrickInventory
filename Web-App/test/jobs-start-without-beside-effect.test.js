@@ -23,7 +23,7 @@ test('the catalog reconciliation gets the import process', async () => {
   const stummel = { inTransaction: () => false, transaction: async () => {} };
   const d = require(path.join(ROOT, 'dist/startup/wiring.js')).buildServices(stummel);
   await editor(d).csv_sync.ausfuehren({ onStart: true }, {});
-  const pfad = aufrufe[0]?.[3];
-  assert.match(String(pfad), /[\\/]jobs[\\/]csvImportWorker\.js$/);
-  assert.ok(fs.existsSync(pfad), `${pfad} fehlt`);
+  const workerPath = aufrufe[0]?.[3];
+  assert.match(String(workerPath), /[\\/]jobs[\\/]csvImportWorker\.js$/);
+  assert.ok(fs.existsSync(workerPath), `${path} fehlt`);
 });

@@ -107,13 +107,13 @@ test('web app and app get the same endpoints', () => {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // And the second version must not come back: every household route exactly once.
-  for (const pfad of [
-    "/api/v1/settings/household'",
-    "/api/v1/settings/household/invite'",
-    "/api/v1/settings/household/redeem'",
-    "/api/v1/settings/household/unlink'",
+  for (const path of [
+    "/api/v2/settings/household'",
+    "/api/v2/settings/household/invite'",
+    "/api/v2/settings/household/redeem'",
+    "/api/v2/settings/household/unlink'",
   ])
-    assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
+    assert.equal(src.split(path).length - 1, 1, `${path} steht nicht genau einmal in routes/api_v1/settings.ts`);
   // No own rule in the route — they are in src/household/household.ts.
   assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
@@ -269,10 +269,10 @@ test('the UI shows owners and account selection only in the household', () => {
   // part, manual minifigure. Previously the account selection was only there for sets.
   // Since then there are FOUR forms — the catalog dialog (“add to
   // gallery") was the only one not connected and always added to the …
-  for (const feld of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
+  for (const field of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
     assert.ok(
-      gal.includes(`'${feld}'`),
-      `Die Kontoauswahl fehlt im Erfassungsweg ${feld} — dort landet dann alles ` +
+      gal.includes(`'${field}'`),
+      `Die Kontoauswahl fehlt im Erfassungsweg ${field} — dort landet dann alles ` +
         'stillschweigend beim eigenen Konto',
     );
   }
@@ -306,7 +306,7 @@ test('the account filter applies per view and is sent along everywhere', () => {
   const core = require('./helpers/sources').coreSource();
   // 'wanted' was added on 24.09. (Marco's specification: “In der Merkliste
   // noch einen Filter analog den Sets einbauen inkl. Inhaber"). The server
-  // always understood `accounts=` on /v1/wanted — only the
+  // always understood `accounts=` on /v2/wanted — only the
   // choice in the UIs was missing.
   assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'wanted'\];/);
   assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/, 'Die Wahl soll einen Neuladen überleben');
@@ -325,10 +325,10 @@ test('the account filter applies per view and is sent along everywhere', () => {
   // Addresses under /v1 since stage 5 — the rule is unchanged: ALL four
   // queries of the tab carry the same filter.
   for (const ep of [
-    '/v1/finance/valuation',
-    '/v1/finance/parts-valuation',
-    '/v1/finance/minifigs-valuation',
-    '/v1/finance/pnl',
+    '/v2/finance/valuation',
+    '/v2/finance/parts-valuation',
+    '/v2/finance/minifigs-valuation',
+    '/v2/finance/pnl',
   ]) {
     assert.ok(
       fin.includes(`'${ep}'+scopeQuery('finance')`) || fin.includes(`\`${ep}\${scopeQuery('finance')}\``),
@@ -371,7 +371,7 @@ test('moving ONLY goes via the purchase price', async () => {
   const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
-    (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'kaufpreise_angeben',
+    (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'purchase_prices_required',
     'move ohne acquisition_ids muss abgelehnt werden',
   );
 
@@ -397,10 +397,10 @@ test('manual parts and minifigures also move via the purchase price', () => {
   // Since the layer rebuild the rule stands in the service; the route only calls it.
   const f = 'src/collection/acquisitions.ts';
   const src = kompakt(read(f));
-  assert.ok(src.includes('t.inventory.manualEntryReassign(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
-    /if \(to === null\) failDomain\('verboten', 'kein_schreibrecht'\)/,
+    /if \(to === null\) failDomain\('verboten', 'no_write_access'\)/,
     `${f}: ohne Schreibrecht muss 403 kommen`,
   );
 });
@@ -418,5 +418,5 @@ test('the app routes know the owner change', () => {
     /t\.sets\.setEntriesReassign\(String\(keys\[0\]\), from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
   );
-  assert.match(v1, /t\.inventory\.manualEntryReassign\(art, keys, id, from, to\)/);
+  assert.match(v1, /t\.inventory\.manualEntryReassign\(kind, keys, id, from, to\)/);
 });

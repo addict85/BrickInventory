@@ -79,12 +79,12 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   const zeilen = async nr =>
     (
       await db.all(
-        `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS zustand
+        `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS condition
        FROM part_acquisitions WHERE user_id=$1 AND part_number=$2
-      ORDER BY zustand`,
+      ORDER BY condition`,
         [UID, nr],
       )
-    ).map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
+    ).map(z => ({ quantity: Number(z.quantity), preis: z.preis, condition: z.condition }));
 
   await t.test('two conditions, two rows', async () => {
     await addPurchaseAtTag('part', UID, ['3001', 4], {
@@ -112,8 +112,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.deepEqual(
       await zeilen('3001'),
       [
-        { menge: 3, preis: 1.5, zustand: 'N' },
-        { menge: 2, preis: 0.5, zustand: 'U' },
+        { quantity: 3, preis: 1.5, condition: 'N' },
+        { quantity: 2, preis: 0.5, condition: 'U' },
       ],
       'Der Mischpreis 1.10 wäre die alte Rechnung über zwei verschiedene Käufe',
     );
@@ -143,8 +143,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.deepEqual(
       (await zeilen('3002')).sort((x, y) => x.preis - y.preis),
       [
-        { menge: 3, preis: 2, zustand: 'N' },
-        { menge: 2, preis: 4, zustand: 'N' },
+        { quantity: 3, preis: 2, condition: 'N' },
+        { quantity: 2, preis: 4, condition: 'N' },
       ],
       'Die Einzelkäufe müssen rekonstruierbar bleiben — kein Mischpreis 3',
     );
@@ -160,8 +160,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     const z = await zeilen('3004');
     assert.deepEqual(
       z,
-      [{ menge: 12, preis: 1, zustand: 'N' }],
-      `Statt 12 sind ${z.reduce((s, r) => s + r.menge, 0)} angekommen: ${JSON.stringify(z)}`,
+      [{ quantity: 12, preis: 1, condition: 'N' }],
+      `Statt 12 sind ${z.reduce((s, r) => s + r.quantity, 0)} angekommen: ${JSON.stringify(z)}`,
     );
   });
 

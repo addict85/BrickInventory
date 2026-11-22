@@ -49,21 +49,21 @@ const RECORD = `(() => {
 test('header of the collection: the same and without a jump', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `kopf_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
     },
     intercept: [
       { muster: '*household-members*', contains: '/household-members', delay: 600 },
       { muster: '*settings/raw*', contains: '/settings/raw', delay: 300 },
-      { muster: '*/v1/stats*', contains: '/v1/stats', delay: 900 },
+      { muster: '*/v1/stats*', contains: '/v2/stats', delay: 900 },
       // List and parts filter only come after the skeleton: then the select fields visibly fill.
-      { muster: '*/v1/sets?*', contains: '/v1/sets?', delay: 1200 },
-      { muster: '*/v1/parts/colors*', contains: '/v1/parts/colors', delay: 1200 },
+      { muster: '*/v1/sets?*', contains: '/v2/sets?', delay: 1200 },
+      { muster: '*/v1/parts/colors*', contains: '/v2/parts/colors', delay: 1200 },
     ],
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

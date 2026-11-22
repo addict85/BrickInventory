@@ -247,15 +247,15 @@ test('a dump without an end marker leaves nothing at the target', t => {
 test('restore.sh rejects psql commands in the dump', t => {
   const a = setup(t);
   const geknackt = path.join(a.tmp, 'geknackt');
-  for (const zeile of [`\\! touch '${geknackt}'`, `  \\copy x to program 'touch ${geknackt}'`]) {
+  for (const row of [`\\! touch '${geknackt}'`, `  \\copy x to program 'touch ${geknackt}'`]) {
     const dump = path.join(a.tmp, 'fremd.sql');
     fs.writeFileSync(
       dump,
-      `-- Dump\nCOPY t (x) FROM stdin;\n\\\\in den Daten erlaubt\n\\.\n${zeile}\n-- PostgreSQL database dump complete\n`,
+      `-- Dump\nCOPY t (x) FROM stdin;\n\\\\in den Daten erlaubt\n\\.\n${row}\n-- PostgreSQL database dump complete\n`,
     );
     execFileSync('gzip', ['-f', dump]);
     const r = a.lauf('restore.sh', [`${dump}.gz`], {}, 'ja\n');
-    assert.notEqual(r.status, 0, `eingespielt: ${zeile}`);
+    assert.notEqual(r.status, 0, `eingespielt: ${row}`);
     assert.match(r.stderr, /psql-Befehle/);
     assert.ok(!fs.existsSync(path.join(a.tmp, 'eingespielt.sql')), 'psql bekam den Dump');
   }

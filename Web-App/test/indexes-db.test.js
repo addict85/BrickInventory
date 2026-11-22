@@ -25,7 +25,7 @@ const INDIZES = `
          i.indisunique AS eindeutig, i.indpred IS NOT NULL AS teil, i.indexprs IS NOT NULL AS ausdruck,
          pg_get_expr(i.indpred, i.indrelid) AS bedingung,
          (ARRAY(SELECT unnest(i.indkey::int2[])))[1:i.indnkeyatts] AS spalten,
-         ARRAY(SELECT unnest(i.indclass::oid[])) AS klassen, am.amname AS art
+         ARRAY(SELECT unnest(i.indclass::oid[])) AS klassen, am.amname AS kind
     FROM pg_index i
     JOIN pg_class c ON c.oid = i.indexrelid
     JOIN pg_class t ON t.oid = i.indrelid
@@ -45,7 +45,7 @@ test('indexes', { concurrency: 1 }, async t => {
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d
           FROM ix a JOIN ix b ON a.indrelid = b.indrelid AND a.indexrelid <> b.indexrelid
          WHERE NOT a.eindeutig AND NOT a.teil AND NOT a.ausdruck AND NOT b.teil
-           AND a.art = 'btree' AND b.art = 'btree'
+           AND a.kind = 'btree' AND b.kind = 'btree'
            AND array_length(a.spalten, 1) <= array_length(b.spalten, 1)
            AND a.spalten = b.spalten[1:array_length(a.spalten, 1)]
            AND a.klassen[1:array_length(a.spalten, 1)] = b.klassen[1:array_length(a.spalten, 1)]

@@ -42,8 +42,8 @@ const CALL = /\bt(?:Raw)?\(\s*'([a-z0-9_.]+)'|\bt(?:Raw)?\(\s*"([a-z0-9_.]+)"|da
 
 test('every called i18n key is in the dictionary', () => {
   const { de, en } = loadTranslations();
-  const vorhanden = new Set([...Object.keys(de), ...Object.keys(en)]);
-  assert.ok(vorhanden.size >= 400, `Nur ${vorhanden.size} Schlüssel geladen — Pfad oder Format veraltet?`);
+  const existing = new Set([...Object.keys(de), ...Object.keys(en)]);
+  assert.ok(existing.size >= 400, `Nur ${existing.size} Schlüssel geladen — Pfad oder Format veraltet?`);
 
   const dateien = oberflaeche();
   assert.ok(dateien.length >= 15, `Nur ${dateien.length} Quelldateien gefunden`);
@@ -70,7 +70,7 @@ test('every called i18n key is in the dictionary', () => {
   );
 
   const fehlend = [...gerufen]
-    .filter(([k]) => !k.endsWith('.') && !vorhanden.has(k))
+    .filter(([k]) => !k.endsWith('.') && !existing.has(k))
     .map(([k, rel]) => `${k}   (${rel})`)
     .sort();
   assert.deepEqual(

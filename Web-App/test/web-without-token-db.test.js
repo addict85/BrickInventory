@@ -61,10 +61,11 @@ test('browser without token', { concurrency: 1 }, async t => {
       name: KEKS,
     }),
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
   const srv = app.listen(0);
-  const basis = `http://localhost:${srv.address().port}/api/v1`;
+  const basis = `http://localhost:${srv.address().port}/api/v2`;
   t.after(async () => {
     await new Promise(r => srv.close(r));
     await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)]).catch(() => {});
@@ -96,7 +97,7 @@ test('browser without token', { concurrency: 1 }, async t => {
 
   let eigene;
   await t.test('no token for the browser', async () => {
-    const r = await anmelden({ ohne_token: true });
+    const r = await anmelden({ without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.token, undefined, 'Der Browser bekommt einen Token, den ein Skript lesen könnte');
     assert.equal(await tokens(), 0);
@@ -117,16 +118,16 @@ test('browser without token', { concurrency: 1 }, async t => {
   });
 
   await t.test('the own session stays', async () => {
-    await anmelden({ ohne_token: true }); // a second browser
+    await anmelden({ without_token: true }); // a second browser
     assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
-    const ohne = await ruf('/settings/sessions/andere-beenden', {
+    const ohne = await ruf('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
       body: { password: 'falsch-1234' },
     });
-    assert.deepEqual([ohne.status, ohne.body?.code], [400, 'aktuelles_passwort_falsch']);
+    assert.deepEqual([ohne.status, ohne.body?.code], [400, 'current_password_wrong']);
     assert.equal(await sitzungen(), 2, 'ohne richtiges Passwort wurden Sitzungen beendet');
-    const r = await ruf('/settings/sessions/andere-beenden', {
+    const r = await ruf('/settings/sessions/end-others', {
       method: 'POST',
       cookie: eigene,
       body: { password: PASS },

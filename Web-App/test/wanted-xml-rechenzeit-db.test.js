@@ -34,10 +34,10 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-function item(id, farbe, menge) {
+function item(id, farbe, quantity) {
   return (
     `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>${id}</ITEMID><COLOR>${farbe}</COLOR>` +
-    `<MAXPRICE>-1.0000</MAXPRICE><MINQTY>${menge}</MINQTY><CONDITION>X</CONDITION></ITEM>\n`
+    `<MAXPRICE>-1.0000</MAXPRICE><MINQTY>${quantity}</MINQTY><CONDITION>X</CONDITION></ITEM>\n`
   );
 }
 
@@ -56,7 +56,7 @@ test('1. open tags without an end cost no quadratic computing time', () => {
   for (const [name, xml] of Object.entries(faelle)) {
     const { r, ms } = duration(() => readWantedList(xml));
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Zerlegen ist nicht linear`);
-    assert.equal(r.posten.length, 0, `${name}: ${r.posten.length} Posten aus Müll gelesen`);
+    assert.equal(r.items.length, 0, `${name}: ${r.items.length} Posten aus Müll gelesen`);
   }
 });
 
@@ -69,7 +69,7 @@ test('2. valid items stay correct, even next to an open block', () => {
     '<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>offen</ITEMID>\n</INVENTORY>';
   const r = readWantedList(xml);
   assert.deepEqual(
-    r.posten.map(p => [p.blId, p.blFarbe, p.menge]),
+    r.items.map(p => [p.blId, p.blColor, p.quantity]),
     [
       ['3001', 5, 3],
       ['x126', 95, 14],
@@ -102,7 +102,7 @@ test('3. the route rejects a list above the XML limit', async t => {
   const senden = async xml => {
     const fd = new FormData();
     fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-    const r = await fetch(`${srv.base}/api/v1/wanted-list/import/xml`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/wanted-list/import/xml`, { method: 'POST', body: fd });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
 
@@ -117,5 +117,5 @@ test('3. the route rejects a list above the XML limit', async t => {
 
   const klein = await senden('<INVENTORY>\n' + item('99999', 5, 1) + '</INVENTORY>');
   assert.equal(klein.status, 200, `kleine Liste: ${klein.status} ${JSON.stringify(klein.body)}`);
-  assert.equal(klein.body.gelesen, 1);
+  assert.equal(klein.body.parsed, 1);
 });

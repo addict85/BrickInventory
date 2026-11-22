@@ -63,9 +63,9 @@ const MEASURE = wurzelSel => `(() => {
 })()`;
 
 test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t => {
-  const app = await startApp(t, { name: `dlg_${process.pid}`, bestand: patternCollection, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `dlg_${process.pid}`, holding: patternCollection, telefon: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -147,9 +147,9 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     await b.tab('Input.insertText', { text: '149,95' });
     await b.auswerten(`document.querySelector('#acq-modal .acq-price').blur(); true`);
     await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marke „Gespeichert“');
-    const zeile = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
-    assert.equal(zeile.set_number, sn);
-    assert.equal(Number(zeile.purchase_price), 149.95);
+    const row = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
+    assert.equal(row.set_number, sn);
+    assert.equal(Number(row.purchase_price), 149.95);
     // Displayed in the form of the language: de-DE “149,95”, de-CH “149.95”.
     assert.match(await b.auswerten(`document.getElementById('acq-price-${id}').value`), /^149[.,]95$/);
   });

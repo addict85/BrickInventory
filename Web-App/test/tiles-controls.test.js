@@ -19,7 +19,7 @@ const tabbar = wurzel => [...wurzel.querySelectorAll(TABBAR)].filter(el => el.ge
 
 test('gallery: the trash is not in the tab order', async () => {
   const { w, d } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 2,
       themes: [],
@@ -53,27 +53,25 @@ test('gallery: the trash is not in the tab order', async () => {
 
 test('wishlist: without a name the number appears once, space stays on the right', async () => {
   const { w, d } = await openUi({
-    '/v1/wanted': {
+    '/v2/wanted': {
       success: true,
-      merkposten: [
-        { set_number: '99999-1', name: null, condition: 'N', user_id: 1, marktpreis: 12.5, waehrung: 'EUR' },
-      ],
+      item: [{ set_number: '99999-1', name: null, condition: 'N', user_id: 1, market_price: 12.5, currency: 'EUR' }],
     },
   });
   try {
     await reiter(w, 'wanted');
     await warte(() => d.querySelector('.mk-row'));
-    const zeile = d.querySelector('.mk-row');
-    const n = (zeile.textContent.match(/99999-1/g) || []).length;
+    const row = d.querySelector('.mk-row');
+    const n = (row.textContent.match(/99999-1/g) || []).length;
     assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
     // Since 29.10. the class (styles.css) holds the space; the row carries no inline style any more.
-    assert.equal(zeile.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
+    assert.equal(row.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
     assert.match(
       require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),
       /\.mk-row\{[^}]*padding:10px 44px 10px 10px/,
       'rechts kein Platz für den Papierkorb',
     );
-    assert.equal(tabbar(zeile).filter(el => el !== zeile).length, 0, 'der Papierkorb steht in der Tab-Folge');
+    assert.equal(tabbar(row).filter(el => el !== row).length, 0, 'der Papierkorb steht in der Tab-Folge');
   } finally {
     w.close();
   }

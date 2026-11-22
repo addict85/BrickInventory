@@ -86,9 +86,9 @@ test('wishlist: market price from the cache', async t => {
     // compare text, and that would otherwise only show up when sorting.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const neu = liste.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(typeof neu.marktpreis, 'number', `marktpreis ist ${typeof neu.marktpreis}`);
-    assert.equal(neu.marktpreis, 500);
-    assert.equal(neu.waehrung, 'EUR');
+    assert.equal(typeof neu.market_price, 'number', `marktpreis ist ${typeof neu.market_price}`);
+    assert.equal(neu.market_price, 500);
+    assert.equal(neu.currency, 'EUR');
   });
 
   await t.test('2. every condition gets ITS price', async () => {
@@ -96,7 +96,7 @@ test('wishlist: market price from the cache', async t => {
     // the new price — and nobody could tell from the number.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const karte = Object.fromEntries(
-      liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.marktpreis]),
+      liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.market_price]),
     );
     assert.deepEqual(karte, { N: 500, U: 300 }, 'Der gebrauchte Merkposten zeigt nicht den Gebrauchtpreis.');
   });
@@ -104,8 +104,8 @@ test('wishlist: market price from the cache', async t => {
   await t.test("3. the reader's currency decides", async () => {
     const chf = await M.wantedItemsOf([U.ich], undefined, 'CHF');
     const neu = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(neu.marktpreis, 999, 'Der Preis stammt aus der falschen Währung.');
-    assert.equal(neu.waehrung, 'CHF');
+    assert.equal(neu.market_price, 999, 'Der Preis stammt aus der falschen Währung.');
+    assert.equal(neu.currency, 'CHF');
   });
 
   await t.test('4. no price in the cache means null, not 0', async () => {
@@ -114,7 +114,7 @@ test('wishlist: market price from the cache', async t => {
     // a missing statement.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const ohne = liste.find(w => w.set_number === '75192-1');
-    assert.equal(ohne.marktpreis, null);
+    assert.equal(ohne.market_price, null);
   });
 
   await t.test('5. the filter on ONE set still works', async () => {
@@ -125,7 +125,7 @@ test('wishlist: market price from the cache', async t => {
     const eins = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
     assert.equal(eins.length, 2, `${eins.length} Zeilen statt 2 — Parameterfolge verrutscht?`);
     assert.ok(eins.every(w => w.set_number === '10179-1'));
-    assert.equal(eins.find(w => w.condition === 'U').marktpreis, 300);
+    assert.equal(eins.find(w => w.condition === 'U').market_price, 300);
   });
 
   await db.pool.end().catch(() => {});

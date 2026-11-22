@@ -65,7 +65,7 @@ test('create account', { concurrency: 1 }, async t => {
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, ohne_token: true });
+  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, without_token: true });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const cookie = a.cookie.split(';')[0];
   const konto = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
@@ -108,7 +108,7 @@ test('create account', { concurrency: 1 }, async t => {
       cookie,
     );
     assert.equal(r.status, 409, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'benutzername_vergeben');
+    assert.equal(r.body.code, 'username_taken');
     const n = await db.get('SELECT COUNT(*)::int AS n FROM users WHERE lower(username) = lower($1)', [NEU[1]]);
     assert.equal(n.n, 1);
   });

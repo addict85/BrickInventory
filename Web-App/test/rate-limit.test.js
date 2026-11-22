@@ -63,7 +63,7 @@ test('the daily quota counts for the installation, not per worker', () => {
 });
 
 test('a changed limit applies immediately in ALL workers', () => {
-  // Before: PUT /api/v1/admin/api-limits called setMax() — that only applied in the
+  // Before: PUT /api/v2/admin/api-limits called setMax() — that only applied in the
   // worker that handled the request. The others kept running with the old value
   // until a restart, and at startup
   // loadDailyLimitsFromDb() had to copy the value into every process.
@@ -145,7 +145,7 @@ test('on DB outage the fallback kicks in', () => {
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
     );
   }
-  assert.match(src, /eintraege: new Map/, 'In-Memory-Rückfall fehlt');
+  assert.match(src, /entries: new Map/, 'In-Memory-Rückfall fehlt');
 });
 
 test('the call sites wait for the result', () => {
@@ -163,23 +163,23 @@ test('the call sites wait for the result', () => {
   ];
 
   const withoutAwait = [];
-  let gefunden = 0;
+  let found = 0;
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(/\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/g)) {
       // Look at the line itself — an `await` in front suffices. Import and
       // definition are not calls and do not count.
       const rowsStart = src.lastIndexOf('\n', m.index) + 1;
-      const zeile = src.slice(rowsStart, src.indexOf('\n', m.index));
-      if (/^\s*(import|export)\b/.test(zeile) || /\bfunction\s+\w+\s*\(/.test(zeile)) continue;
-      gefunden++;
-      if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(zeile))
-        withoutAwait.push(`${path.relative(ROOT, datei)}: ${zeile.trim()}`);
+      const row = src.slice(rowsStart, src.indexOf('\n', m.index));
+      if (/^\s*(import|export)\b/.test(row) || /\bfunction\s+\w+\s*\(/.test(row)) continue;
+      found++;
+      if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(row))
+        withoutAwait.push(`${path.relative(ROOT, datei)}: ${row.trim()}`);
     }
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything.
-  assert.ok(gefunden >= 3, `nur ${gefunden} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
+  assert.ok(found >= 3, `nur ${found} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
   assert.deepEqual(
     withoutAwait,
     [],
@@ -227,7 +227,7 @@ test('jobs with an external quota have a cross-process lock', () => {
 
   // And the callers must await the result.
   //
-  // The manual kick lies only under /api/v1/admin/trigger-price-job, the
+  // The manual kick lies only under /api/v2/admin/trigger-price-job, the
   // web app calls the same address: with two paths one can lose the `await`
   // without it standing out.
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');

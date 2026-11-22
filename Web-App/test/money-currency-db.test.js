@@ -39,8 +39,8 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
     assert.equal(geld.aufRappen(-12345), -1.23);
     assert.equal(
       geld.sumFrom([
-        { preis: 0.07, menge: 1000 },
-        { preis: null, menge: 5 },
+        { preis: 0.07, quantity: 1000 },
+        { preis: null, quantity: 5 },
       ]),
       70,
     );
@@ -91,23 +91,23 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
     const r = await valueSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
     assert.equal(set.total_avg, '361.00', '120,3333 × 3 ist 361,00');
-    assert.equal(set.wert_gesamt, 361);
+    assert.equal(set.value_total, 361);
     assert.equal(r.totals.avg, '361.00');
-    assert.equal(r.kaufpreise_fremde_waehrung, 1, 'ein Kaufpreis in EUR wird gezählt');
+    assert.equal(r.foreign_currency_purchases, 1, 'ein Kaufpreis in EUR wird gezählt');
     assert.equal(set.purchase_price, 100, 'der EUR-Kaufpreis geht nicht in den Schnitt');
-    assert.equal(set.pnl_prozent, 20.3);
+    assert.equal(set.pnl_percent, 20.3);
     assert.equal(set.pnl_pct, '20.3');
-    assert.equal(r.ttl_stunden, Number(r.ttl_hours));
+    assert.equal(r.cache_ttl_hours, Number(r.ttl_hours));
   });
 
   await t.test('the tile comes ready-made from the server', async () => {
     const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const r = await gainAndLoss(uid, [uid]);
-    const zeile = r.sets.find(s => s.set_number === SN);
-    assert.equal(zeile.kachel_preis, 120.33);
-    assert.equal(zeile.kachel_pnl_pct, 20.3);
-    assert.equal(typeof zeile.pnl_prozent, 'number');
-    assert.equal(r.totals.kaufpreise_fremde_waehrung, 1);
+    const row = r.sets.find(s => s.set_number === SN);
+    assert.equal(row.tile_price, 120.33);
+    assert.equal(row.tile_pnl_pct, 20.3);
+    assert.equal(typeof row.pnl_percent, 'number');
+    assert.equal(r.totals.foreign_currency_purchases, 1);
   });
 
   await t.test('only a purchase price in EUR: no P&L instead of thousands of percent', async () => {
@@ -128,15 +128,15 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
       [FIG],
     );
     const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
-    const teile = await valueParts(uid, [uid]);
-    const figuren = await valueMinifigs(uid, [uid]);
-    const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
+    const parts = await valueParts(uid, [uid]);
+    const minifigs = await valueMinifigs(uid, [uid]);
+    const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_percent };
     assert.deepEqual(
       {
-        eur: sicht(teile.parts.find(z => z.part_number === PART_EUR)),
-        chf: sicht(teile.parts.find(z => z.part_number === TEIL_CHF)),
-        figur: sicht(figuren.figs.find(z => z.fig_number === FIG)),
-        fremd: [teile.kaufpreise_fremde_waehrung, figuren.kaufpreise_fremde_waehrung],
+        eur: sicht(parts.parts.find(z => z.part_number === PART_EUR)),
+        chf: sicht(parts.parts.find(z => z.part_number === TEIL_CHF)),
+        figur: sicht(minifigs.figs.find(z => z.fig_number === FIG)),
+        fremd: [parts.foreign_currency_purchases, minifigs.foreign_currency_purchases],
       },
       {
         eur: { markt: 2.1, kauf: null, pnl: null },
@@ -178,8 +178,8 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
         baseline_pnl_pct: null,
       },
     ]);
-    assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3, kachel_quelle: 'markt' });
-    assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null, kachel_quelle: 'kauf' });
+    assert.deepEqual(w.get('A'), { tile_price: 750, tile_pnl_pct: 114.3, tile_source: 'markt' });
+    assert.deepEqual(w.get('B'), { tile_price: 40, tile_pnl_pct: null, tile_source: 'kauf' });
   });
 
   await t.test("without an account currency the installation's applies — for acquisitions and vouchers", async () => {

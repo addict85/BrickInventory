@@ -12,16 +12,16 @@ const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
 const SN = '10326-1';
-const FEHLER = { $status: 500, success: false, code: 'interner_fehler', error: 'Datenbank gestört' };
+const FEHLER = { $status: 500, success: false, code: 'internal_error', error: 'Datenbank gestört' };
 const meldungen = d => [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent);
 
 test('purchase price dialog: a read error is a message, not an empty list', async () => {
   const o = await openUi({
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Museum', quantity: 5, conditions: ['N'], instructions: [] },
     },
-    [`/v1/sets/${SN}/acquisitions`]: FEHLER,
+    [`/v2/sets/${SN}/acquisitions`]: FEHLER,
   });
   try {
     const knopf = o.d.createElement('button');
@@ -48,7 +48,7 @@ async function rememberFromCatalog(antworten, schwelle) {
 }
 
 test('remember from the catalog: a rejected remember is reported', async () => {
-  const o = await rememberFromCatalog({ '/v1/wanted': FEHLER });
+  const o = await rememberFromCatalog({ '/v2/wanted': FEHLER });
   try {
     assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'keine Meldung');
   } finally {
@@ -59,9 +59,9 @@ test('remember from the catalog: a rejected remember is reported', async () => {
 test('remember from the catalog: … the alert too', async () => {
   const o = await rememberFromCatalog(
     {
-      '/v1/wanted': { success: true, war_neu: false },
-      [`/v1/sets/${encodeURIComponent(SN)}/alert`]: { ...FEHLER, error: 'Alarm abgelehnt' },
-      [`/v1/sets/${encodeURIComponent(SN)}`]: { success: true, set: null },
+      '/v2/wanted': { success: true, was_new: false },
+      [`/v2/sets/${encodeURIComponent(SN)}/alert`]: { ...FEHLER, error: 'Alarm abgelehnt' },
+      [`/v2/sets/${encodeURIComponent(SN)}`]: { success: true, set: null },
     },
     '12',
   );

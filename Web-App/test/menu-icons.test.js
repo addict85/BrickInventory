@@ -127,9 +127,9 @@ test('every entry carries its icon', () => {
 test('no icon stands for two things', () => {
   // The measured finding of 17.10.: on the web 📦 stood for „Lagerorte" AND for
   // „Daten exportieren". In the app there had long been two symbols.
-  const doppelt = (eintraege, name) => {
+  const doppelt = (entries, name) => {
     const gesehen = new Map();
-    for (const [schluessel, zeichen] of eintraege) {
+    for (const [schluessel, zeichen] of entries) {
       if (gesehen.has(zeichen)) return `${name}: ${zeichen} steht für "${gesehen.get(zeichen)}" UND "${schluessel}"`;
       gesehen.set(zeichen, schluessel);
     }

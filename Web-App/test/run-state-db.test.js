@@ -62,10 +62,10 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
       // old name and with its old columns (laufzustand.schluessel);
       // 0124 (applied long ago) would otherwise have renamed it right afterwards, as
       // with a real order of the migrations.
-      const zustand = (await c.query(`SELECT schluessel AS key FROM laufzustand ORDER BY 1`)).rows.map(r => r.key);
-      const konfig = (await c.query(`SELECT key FROM global_settings ORDER BY 1`)).rows.map(r => r.key);
-      assert.deepEqual(zustand, ['instr_queue_trigger', 'job_monitor_priceJob', 'rb_csv_last_sync']);
-      assert.deepEqual(konfig, ['currency']);
+      const condition = (await c.query(`SELECT schluessel AS key FROM laufzustand ORDER BY 1`)).rows.map(r => r.key);
+      const config = (await c.query(`SELECT key FROM global_settings ORDER BY 1`)).rows.map(r => r.key);
+      assert.deepEqual(condition, ['instr_queue_trigger', 'job_monitor_priceJob', 'rb_csv_last_sync']);
+      assert.deepEqual(config, ['currency']);
     } finally {
       await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
       await c.query('SET search_path TO public').catch(() => {});
@@ -74,23 +74,23 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
   });
 
   const jm = _req('src/management/tiles.js');
-  const { jobQueue: auftraege } = require('./helpers/sources').testServices();
-  const imgDlAdd = n => auftraege.countState('imgdl_pending_count', n);
+  const { jobQueue: jobs } = require('./helpers/sources').testServices();
+  const imgDlAdd = n => jobs.countState('imgdl_pending_count', n);
 
   await t.test('the tiles read the state from the job table', async () => {
-    await db.run("DELETE FROM jobs WHERE type = 'preise'");
+    await db.run("DELETE FROM jobs WHERE type = 'prices'");
     await db.run(`INSERT INTO jobs (type, payload, status, locked_by, deadline_at, progress, updated_at)
-                  VALUES ('preise', '{}', 'laeuft', 'p', NOW() + INTERVAL '1 min', '{"erledigt": 3, "gesamt": 9, "text": "10001-1"}',
+                  VALUES ('prices', '{}', 'running', 'p', NOW() + INTERVAL '1 min', '{"done": 3, "total": 9, "text": "10001-1"}',
                           NOW() - INTERVAL '1 min')`);
     // The next scheduled run is younger, but not the one that is currently working.
-    await db.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('preise', '{}', 'plan:preise')`);
+    await db.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('prices', '{}', 'plan:prices')`);
     const k = (await jm.tiles()).priceJob;
     assert.deepEqual(
       { status: k.status, progress: k.progress, total: k.total, sub: k.sub },
       { status: 'running', progress: 3, total: 9, sub: '10001-1' },
       'die Kachel zeigt den laufenden Auftrag',
     );
-    await db.run("DELETE FROM jobs WHERE type = 'preise'");
+    await db.run("DELETE FROM jobs WHERE type = 'prices'");
   });
 
   await t.test('the image counter counts concurrent calls exactly', async () => {

@@ -53,12 +53,12 @@ require.cache[blPath].exports = Object.assign({}, echt, {
 /** Runs the job that the valuation queued for missing prices. */
 async function nachladen() {
   const a = await db.get(
-    `SELECT id, payload FROM jobs WHERE type = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
+    `SELECT id, payload FROM jobs WHERE type = 'price_refresh' AND status = 'pending' ORDER BY id DESC LIMIT 1`,
   );
   if (!a) return false;
   const { reloadPrices } = _req('src/finances/reloadPrices.js');
   await reloadPrices(a.payload, { signal: new AbortController().signal, progress: async () => true });
-  await db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
+  await db.run(`DELETE FROM jobs WHERE type = 'price_refresh'`);
   return true;
 }
 
@@ -78,7 +78,7 @@ async function konto(name, set) {
     [uid],
   );
   await catalogSet(db, set, { name: 'Rückfallprobe', year: 2026 });
-  await holdsSet(db, uid, set, 1, { preis: 119, zustand: 'U' });
+  await holdsSet(db, uid, set, 1, { preis: 119, condition: 'U' });
   return uid;
 }
 
@@ -107,14 +107,14 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
   fetches = [];
   const vorher = await valueSets(uid, [uid]);
   assert.deepEqual(fetches, [], 'die Bewertung ruft selbst BrickLink ab');
-  assert.equal(vorher.preise_ausstehend, 1, 'der fehlende Preis steht nicht als Auftrag an');
+  assert.equal(vorher.prices_pending, 1, 'der fehlende Preis steht nicht als Auftrag an');
   assert.ok(await nachladen());
-  const zeile = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
-  assert.ok(zeile, 'Set fehlt in der Bewertung');
+  const row = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  assert.ok(row, 'Set fehlt in der Bewertung');
   assert.equal(
-    zeile.avg_price,
+    row.avg_price,
     111,
-    `kein Marktpreis: ${JSON.stringify({ avg: zeile.avg_price, no_price: zeile.no_price, fetches })}`,
+    `kein Marktpreis: ${JSON.stringify({ avg: row.avg_price, no_price: row.no_price, fetches })}`,
   );
   assert.deepEqual(fetches, ['N'], 'Gebraucht ist frisch geprüft und darf nicht erneut abgerufen werden');
 
@@ -161,7 +161,7 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
   const frisch = await value();
   assert.deepEqual(fetches, [], 'frische Markierung: es wird trotzdem abgerufen');
   assert.equal(frisch.no_price, true);
-  assert.equal(frisch.bl_unbekannt, true, 'der Grund fehlt — die Anzeige kann ihn nicht nennen');
+  assert.equal(frisch.bl_unknown, true, 'der Grund fehlt — die Anzeige kann ihn nicht nennen');
 
   // Ten days old: it is asked again, and the price arrives.
   await db.run(`UPDATE catalog_cache SET fetched_at = NOW() - INTERVAL '10 days' WHERE set_number = $1`, [SET]);

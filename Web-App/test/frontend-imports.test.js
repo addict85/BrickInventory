@@ -67,23 +67,23 @@ test('every frontend module imports what it calls', () => {
     .filter(f => f !== 'logviewer.js');
   assert.ok(dateien.length > 8, `nur ${dateien.length} Frontend-Module gefunden`);
 
-  const quellen = new Map();
-  for (const f of dateien) quellen.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
+  const sources = new Map();
+  for (const f of dateien) sources.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
 
   // i18n.js belongs to it
-  quellen.set('../i18n.js', ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
+  sources.set('../i18n.js', ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
 
   // All names declared ANYWHERE in the frontend. Only these are
   // checked — thereby the test does not trigger on browser globals.
   const bekannt = new Map();
-  for (const [f, src] of quellen) for (const n of declaredTop(src)) bekannt.set(n, f);
+  for (const [f, src] of sources) for (const n of declaredTop(src)) bekannt.set(n, f);
 
   const fehlend = [];
-  for (const [f, src] of quellen) {
-    const lokal = declared(src);
+  for (const [f, src] of sources) {
+    const local = declared(src);
     const imp = imported(src);
     for (const [name, herkunft] of bekannt) {
-      if (herkunft === f || lokal.has(name) || imp.has(name) || KNOWN_WRONG_HITS.has(`${f}:${name}`)) continue;
+      if (herkunft === f || local.has(name) || imp.has(name) || KNOWN_WRONG_HITS.has(`${f}:${name}`)) continue;
       // Call of the name, not as a property (obj.name) and not as a
       // string in an action list.
       const call = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);

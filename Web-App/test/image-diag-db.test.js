@@ -34,7 +34,7 @@ test('the image diagnostics describe every situation in plain text', { concurren
   const MIT = `9000-${process.pid}`; // file present
   const OHNE = `9001-${process.pid}`; // nothing present
   const original = path.join(ordner, `${MIT}.jpg`);
-  const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
+  const preview = path.join(ordner, `${MIT}_thumb.jpg`);
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
@@ -48,12 +48,12 @@ test('the image diagnostics describe every situation in plain text', { concurren
   await holdsSet(db, uid, OHNE, 1);
   await catalogSet(db, OHNE, { name: 'Ohne alles' });
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
-  fs.rmSync(vorschau, { force: true });
+  fs.rmSync(preview, { force: true });
 
   await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
-    const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
+    const r = await fetch(`${base}/api/v2/admin/image-diag/${sn}`);
     assert.equal(r.status, 200, 'die Diagnose muss antworten');
     return r.json();
   };
@@ -61,42 +61,42 @@ test('the image diagnostics describe every situation in plain text', { concurren
   try {
     // A) Exactly Marco's situation: original present, preview missing.
     let d = await frag(MIT);
-    assert.equal(d.lokal.original.vorhanden, true, 'das Original muss gefunden werden');
-    assert.equal(d.lokal.vorschau.vorhanden, false);
+    assert.equal(d.local.original.existing, true, 'das Original muss gefunden werden');
+    assert.equal(d.local.preview.existing, false);
     assert.ok(
-      d.hinweise.some(h => /Vorschau fehlt/.test(h)),
-      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Vorschau fehlt/.test(h)),
+      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hints.join(' | ')}`,
     );
 
     // B) Nothing known — neither file nor address.
     d = await frag(OHNE);
     assert.ok(
-      d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
-      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
+      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hints.join(' | ')}`,
     );
 
     // C) After generation everything is together — and the sizes are right.
     await _req('src/images/thumbs.js').previewFrom(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
-      d.hinweise.some(h => /Alles vorhanden/.test(h)),
-      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Alles vorhanden/.test(h)),
+      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hints.join(' | ')}`,
     );
     assert.ok(
-      d.lokal.vorschau.bytes < d.lokal.original.bytes,
+      d.local.preview.bytes < d.local.original.bytes,
       'die gemeldete Vorschau muss kleiner sein als das Original',
     );
 
     // The diagnosis must repair NOTHING — otherwise the tool changes the
     // state it is supposed to describe.
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
     await frag(MIT);
-    assert.equal(fs.existsSync(vorschau), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
+    assert.equal(fs.existsSync(preview), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]).catch(() => {});
     fs.rmSync(original, { force: true });
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const quellen = require('./helpers/sources');
+const sources = require('./helpers/sources');
 const WEB = path.join(__dirname, '..');
 const ANKER = new Set(
   [...fs.readFileSync(path.join(WEB, 'UPGRADE.md'), 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)].map(m => m[1]),
@@ -45,23 +45,23 @@ test('every reference hits an anchor, no more section numbers; the startup messa
 
   const fehlend = [],
     nummern = [];
-  let gefunden = 0;
+  let found = 0;
   for (const f of dateien()) {
     const text = fs.readFileSync(f, 'utf8');
     const rel = path.relative(WEB, f);
     for (const a of references(text)) {
-      gefunden++;
+      found++;
       if (!ANKER.has(a)) fehlend.push(`${rel}: #${a}`);
     }
-    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(quellen.ohneKommentare(text)))
+    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(sources.ohneKommentare(text)))
       nummern.push(rel);
   }
-  assert.ok(gefunden >= 20, `nur ${gefunden} Verweise gefunden — greift die Suche noch?`);
+  assert.ok(found >= 20, `nur ${found} Verweise gefunden — greift die Suche noch?`);
   assert.deepEqual(fehlend, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
   assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
 
   // The message the operator really sees at startup: superuser without a way out.
-  quellen.buildDist();
+  sources.buildDist();
   const lauf = spawnSync(
     process.execPath,
     ['-e', "require('./dist/startup/database.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],

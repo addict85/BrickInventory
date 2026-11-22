@@ -6,7 +6,7 @@
  * Counter-checks (measured 04.11.2026, each on its own):
  *   A  in btn-sav-prof directly api('PUT', …) without confirmWithPassword → red:
  *      all three cases (no dialog opens)
- *   B  in confirmWithPassword the repetition on aktuelles_passwort_falsch
+ *   B  in confirmWithPassword the repetition on current_password_wrong
  *      removed → red: “a wrong password asks again”
  */
 const test = require('node:test');
@@ -14,9 +14,9 @@ const assert = require('node:assert/strict');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
 const PROFIL = {
-  '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+  '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
 };
-const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v1/auth/profile'));
+const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v2/auth/profile'));
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
 async function speichern(w, d) {
@@ -65,10 +65,10 @@ test('a wrong password asks again', async () => {
   let n = 0;
   const { w, d, aufrufe } = await openUi({
     ...PROFIL,
-    '/v1/auth/profile': (_url, o) =>
+    '/v2/auth/profile': (_url, o) =>
       o?.method === 'PUT' && ++n === 1
-        ? { success: false, code: 'aktuelles_passwort_falsch', error: 'Aktuelles Passwort falsch' }
-        : PROFIL['/v1/auth/profile'],
+        ? { success: false, code: 'current_password_wrong', error: 'Aktuelles Passwort falsch' }
+        : PROFIL['/v2/auth/profile'],
   });
   try {
     await speichern(w, d);

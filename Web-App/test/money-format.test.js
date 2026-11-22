@@ -26,14 +26,14 @@ const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
  * the parenthesis depth is counted along and only a comma on level 1 counts.
  */
 function hatSecondArgument(src, ab) {
-  let tiefe = 0;
+  let depth = 0;
   for (let i = ab; i < src.length; i++) {
     const c = src[i];
-    if (c === '(' || c === '[' || c === '{') tiefe++;
+    if (c === '(' || c === '[' || c === '{') depth++;
     else if (c === ')' || c === ']' || c === '}') {
-      tiefe--;
-      if (tiefe === 0) return false;
-    } else if (c === ',' && tiefe === 1) return true;
+      depth--;
+      if (depth === 0) return false;
+    } else if (c === ',' && depth === 1) return true;
   }
   return false;
 }
@@ -51,21 +51,21 @@ test('every fmtN call names the currency', () => {
     ]);
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skriptdateien gefunden`);
 
-  let gefunden = 0;
+  let found = 0;
   const ohne = [];
   for (const [rel, src] of dateien)
     for (const m of src.matchAll(/\bfmtN\(/g)) {
       // The definition itself is not a call.
       if (/function\s+fmtN\($/.test(src.slice(0, m.index + 5))) continue;
-      gefunden++;
+      found++;
       if (!hatSecondArgument(src, m.index + 4)) {
-        const zeile = src.slice(0, m.index).split('\n').length;
-        ohne.push(`${rel}:${zeile}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
+        const row = src.slice(0, m.index).split('\n').length;
+        ohne.push(`${rel}:${row}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
       }
     }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything. MEASURED there are 30 calls.
-  assert.ok(gefunden >= 20, `Nur ${gefunden} fmtN-Aufrufe gefunden — Muster veraltet?`);
+  assert.ok(found >= 20, `Nur ${found} fmtN-Aufrufe gefunden — Muster veraltet?`);
 
   assert.deepEqual(
     ohne.sort(),
@@ -85,7 +85,7 @@ test('every fmtN call names the currency', () => {
  */
 test('the fallback of fmtN is the configured currency', async () => {
   const { w } = await openUi({
-    '/v1/settings/raw': { success: true, settings: { ...ANMELDUNG['/v1/settings/raw'].settings, currency: 'CHF' } },
+    '/v2/settings/raw': { success: true, settings: { ...ANMELDUNG['/v2/settings/raw'].settings, currency: 'CHF' } },
   });
   try {
     assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `ohne Währung: ${w.__fmtN(12.5)}`);

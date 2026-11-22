@@ -51,27 +51,27 @@ test.after(async () => {
 
 /** A PDF from raw stream contents — enough for pdfText. */
 function pdfFrom(streams) {
-  const teile = [Buffer.from('%PDF-1.4\n')];
+  const parts = [Buffer.from('%PDF-1.4\n')];
   streams.forEach((s, i) => {
-    teile.push(
+    parts.push(
       Buffer.from(`${i + 1} 0 obj\n<< /Length ${s.length} /Filter /FlateDecode >>\nstream\n`),
       s,
       Buffer.from('\nendstream\nendobj\n'),
     );
   });
-  teile.push(Buffer.from('%%EOF\n'));
-  return Buffer.concat(teile);
+  parts.push(Buffer.from('%%EOF\n'));
+  return Buffer.concat(parts);
 }
 
 function duration(f) {
   const t = process.hrtime.bigint();
-  let fehler = null;
+  let error = null;
   try {
     f();
   } catch (e) {
-    fehler = e;
+    error = e;
   }
-  return { fehler, ms: Number(process.hrtime.bigint() - t) / 1e6 };
+  return { error, ms: Number(process.hrtime.bigint() - t) / 1e6 };
 }
 
 // Above the limit per stream, below the sum: case 1 checks the limit per stream.
@@ -79,21 +79,21 @@ const BOMBE = pdfFrom([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 
 test('1. a stream that unpacks beyond the limit is rejected', () => {
   assert.ok(BOMBE.length < 100 * 1024, `Vorbedingung: Bombe wiegt ${BOMBE.length} Bytes`);
-  const { fehler } = duration(() => pdfText(BOMBE));
-  assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
+  const { error } = duration(() => pdfText(BOMBE));
+  assert.ok(error instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${error}`);
 });
 
 test('2. many streams just below the limit add up', () => {
   const fast = zlib.deflateSync(Buffer.alloc(STREAM_MAX_BYTES - 1024));
   const n = Math.ceil(UNPACKED_MAX_BYTES / STREAM_MAX_BYTES) + 1;
-  const { fehler } = duration(() => pdfText(pdfFrom(Array(n).fill(fast))));
-  assert.ok(fehler instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${fehler}`);
+  const { error } = duration(() => pdfText(pdfFrom(Array(n).fill(fast))));
+  assert.ok(error instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${error}`);
 });
 
 test('3. more streams than allowed are rejected', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
-  const { fehler } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
-  assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
+  const { error } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
+  assert.ok(error instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${error}`);
   assert.equal(
     pdfText(pdfFrom(Array(10).fill(klein))).split('\n').length,
     10,
@@ -110,8 +110,8 @@ test('4. open beginnings cost no quadratic computing time', () => {
     'Leerraum im Text': pdfFrom([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
   };
   for (const [name, pdf] of Object.entries(faelle)) {
-    const { fehler, ms } = duration(() => valuesFromPdf(pdf));
-    assert.equal(fehler, null, `${name}: ${fehler}`);
+    const { error, ms } = duration(() => valuesFromPdf(pdf));
+    assert.equal(error, null, `${name}: ${error}`);
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Lesen ist nicht linear`);
   }
 });
@@ -165,18 +165,18 @@ async function twoFonts(inhalt) {
 test('6. when replacing, the last font BEFORE the operator counts', async () => {
   const { replaceAmount } = _req('src/vouchers/pdfExport.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
-  const unsicher = await replaceAmount(
+  const uncertain = await replaceAmount(
     await twoFonts('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.equal(unsicher.data, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
-  assert.equal(unsicher.rejected, 1);
+  assert.equal(uncertain.data, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
+  assert.equal(uncertain.rejected, 1);
 
   const sicher = await replaceAmount(
     await twoFonts('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.ok(sicher.data, `WinAnsi abgelehnt: ${sicher.grund}`);
+  assert.ok(sicher.data, `WinAnsi abgelehnt: ${sicher.reason}`);
   assert.equal(valuesFromPdf(sicher.data).amount, 250);
 });
 
@@ -201,24 +201,24 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   const srv = testServer(_req, { sitzung: { userId: uid }, t });
 
   // With typed values: the route then also stores an unreadable PDF.
-  async function hochladen(pdf, nummer) {
+  async function hochladen(pdf, number) {
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');
-    fd.append('number', nummer);
+    fd.append('number', number);
     fd.append('pin', '1234');
     fd.append('amount', '50');
     fd.append('currency', 'CHF');
-    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
-    const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nummer);
-    const zeile = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND number_search=$2', [uid, nummer_suche]);
-    return { status: r.status, body: await r.json().catch(() => ({})), zeile };
+    const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
+    const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(uid, number);
+    const row = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND number_search=$2', [uid, nummer_suche]);
+    return { status: r.status, body: await r.json().catch(() => ({})), row };
   }
 
   await t.test('7. a decompression bomb is rejected even with typed-in values', async () => {
     const r = await hochladen(BOMBE, '5045076374450099991');
     assert.equal(r.status, 422, `Status ${r.status}: ${JSON.stringify(r.body)}`);
-    assert.equal(r.body.code, 'pdf_unlesbar');
-    assert.equal(r.zeile, undefined, 'Der Gutschein wurde trotzdem angelegt');
+    assert.equal(r.body.code, 'pdf_unreadable');
+    assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
   });
 
   await t.test('8. a PDF over 2 MB is not accepted', async () => {
@@ -229,10 +229,10 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
     ]);
     const r = await hochladen(gross, '5045076374450099992');
     assert.ok(r.status >= 400, `Status ${r.status}: ${JSON.stringify(r.body)}`);
-    assert.equal(r.zeile, undefined, 'Der Gutschein wurde trotzdem angelegt');
+    assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
 
     const klein = await hochladen(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
     assert.ok(klein.status < 300, `kleines PDF: ${klein.status} ${JSON.stringify(klein.body)}`);
-    assert.ok(klein.zeile, 'Vorbedingung: Mit getippten Werten wird ein kleines PDF abgelegt');
+    assert.ok(klein.row, 'Vorbedingung: Mit getippten Werten wird ein kleines PDF abgelegt');
   });
 });

@@ -126,7 +126,7 @@ async function startCaddy(t, appPort, upstream) {
   });
   let port = 0;
   const agent = new https.Agent({ keepAlive: false });
-  const anfrage = (methode, pfad, xff) =>
+  const anfrage = (methode, path, xff) =>
     new Promise(fertig => {
       const r = https.request(
         {
@@ -136,7 +136,7 @@ async function startCaddy(t, appPort, upstream) {
           rejectUnauthorized: false,
           agent,
           method: methode,
-          path: pfad,
+          path: path,
           headers: { host: 'nas.example.lan', ...(xff ? { 'x-forwarded-for': xff } : {}) },
         },
         res => {
@@ -150,7 +150,7 @@ async function startCaddy(t, appPort, upstream) {
       r.on('error', () => fertig({ status: null, rumpf: '' }));
       r.end(methode === 'POST' ? '{}' : undefined);
     });
-  let fehler = '';
+  let error = '';
   let bereit = null;
   for (let versuch = 1; bereit !== 200; versuch++) {
     port = await freePort();
@@ -161,7 +161,7 @@ async function startCaddy(t, appPort, upstream) {
       .replace('http:// {', `http://:${umleitung} {`)
       .replaceAll('app:3000', `127.0.0.1:${appPort}`);
     fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
-    fehler = '';
+    error = '';
     caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
       stdio: ['ignore', 'ignore', 'pipe'],
       env: {
@@ -176,17 +176,17 @@ async function startCaddy(t, appPort, upstream) {
       },
     });
     caddy.stderr.on('data', d => {
-      fehler = (fehler + d).slice(-4000);
+      error = (error + d).slice(-4000);
     });
     const bis = Date.now() + 30_000;
     while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
-      bereit = (await anfrage('GET', '/api/v1/health')).status;
+      bereit = (await anfrage('GET', '/api/v2/health')).status;
       if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
     }
-    if (bereit === 200 || versuch >= 3 || !fehler.includes('address already in use')) break;
+    if (bereit === 200 || versuch >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy?.exitCode}): ${fehler.slice(-600)}`);
+  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy?.exitCode}): ${error.slice(-600)}`);
   return anfrage;
 }
 
@@ -205,19 +205,19 @@ test('Caddy gives the app the client address behind an upstream proxy', {
 
   await t.test('keiner: the address that reaches Caddy', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('keiner').stdout);
-    assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
-    assert.equal((await anfrage('POST', '/api/v1/auth/login', '198.51.100.7')).rumpf, '127.0.0.1');
+    assert.equal((await anfrage('GET', '/api/v2/sets', '198.51.100.7')).rumpf, '127.0.0.1');
+    assert.equal((await anfrage('POST', '/api/v2/auth/login', '198.51.100.7')).rumpf, '127.0.0.1');
   });
 
   await t.test('with VORGELAGERTER_PROXY: the client, read from the right', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9 127.0.0.1').stdout);
     assert.equal(
-      (await anfrage('GET', '/api/v1/sets', '6.6.6.6, 198.51.100.7')).rumpf,
+      (await anfrage('GET', '/api/v2/sets', '6.6.6.6, 198.51.100.7')).rumpf,
       '198.51.100.7',
       'mit VORGELAGERTER_PROXY sieht die App den Client',
     );
     assert.equal(
-      (await anfrage('POST', '/api/v1/auth/login', '6.6.6.6, 198.51.100.7')).rumpf,
+      (await anfrage('POST', '/api/v2/auth/login', '6.6.6.6, 198.51.100.7')).rumpf,
       '198.51.100.7',
       'mit VORGELAGERTER_PROXY sieht die App den Client auch auf den Anmeldewegen',
     );
@@ -225,6 +225,6 @@ test('Caddy gives the app the client address behind an upstream proxy', {
 
   await t.test('another upstream proxy: again the address that reaches Caddy', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9').stdout);
-    assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
+    assert.equal((await anfrage('GET', '/api/v2/sets', '198.51.100.7')).rumpf, '127.0.0.1');
   });
 });

@@ -62,18 +62,18 @@ test('no element with data-i18n has child elements', () => {
     const tag = m[1];
     const rest = HTML.slice(m.index + m[0].length);
     // Up to the matching closing tag, nested ones of the same name counted.
-    let tiefe = 1,
+    let depth = 1,
       i = 0,
       ende = -1;
-    while (i < rest.length && tiefe > 0) {
+    while (i < rest.length && depth > 0) {
       const auf = rest.indexOf('<' + tag, i);
       const zu = rest.indexOf('</' + tag, i);
       if (zu === -1) break;
       if (auf !== -1 && auf < zu) {
-        tiefe++;
+        depth++;
         i = auf + 1;
       } else {
-        tiefe--;
+        depth--;
         i = zu + 1;
         ende = zu;
       }

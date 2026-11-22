@@ -24,7 +24,7 @@ function asSession(/** @type {Record<string, any>} */ s) {
 }
 
 /**
- * @param {(pfad: string) => any} _req  buildAndRequire() of the test file
+ * @param {(path: string) => any} _req  buildAndRequire() of the test file
  * @param {object} o
  * @param {object} [o.sitzung]  is provided as `req.session`
  * @param {{ after: Function }} [o.t]  The test context. If present, the server closes
@@ -35,7 +35,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const gestellt = asSession(sitzung);
   const app = _req('startup/app.js').buildApp({
     pool: testAccess().systemWebPool,
-    konfig: _req('src/infra/config.js').konfig(),
+    config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: testServices(),
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
@@ -53,12 +53,14 @@ function testServer(_req, { sitzung = {}, t } = {}) {
  * Substitute path from the time before baueApp: own routers behind express.json(), without session
  * and administrator checks. Only for files not yet converted to testServer;
  * their number may only sink (test/ratschen.test.js).
- * @param {(pfad: string) => any} _req
+ * @param {(path: string) => any} _req
  * @param {{ sitzung?: object, apiNutzer?: object, routen: Record<string, string>, t?: { after: Function } }} o
  */
 function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
   const express = require('express');
   const app = express();
+  // As in buildApp: /api/v1 is the alias of /api/v2, the routers hang under /api/v2.
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use(express.json());
   app.use((/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
     req.session = sitzung;
@@ -66,7 +68,8 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
     next();
   });
   app.use(_req('src/http/rememberAccount.js').rememberRequest);
-  for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, require('./sources').routerFrom(_req, modul));
+  for (const [path, modul] of Object.entries(routen))
+    app.use(path.replace(/^\/api\/v1(?=\/|$)/, '/api/v2'), require('./sources').routerFrom(_req, modul));
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);

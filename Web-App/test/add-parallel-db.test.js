@@ -38,14 +38,14 @@ test('capturing under load', { concurrency: 1 }, async t => {
 
   // Loaded unbound: in the transaction the service gets its context `t`.
   const { addPurchaseAtTag } = require(path.join(__dirname, '..', 'dist', 'src', 'inventory', 'acquisitions.js'));
-  const bestand = testContext('inventory');
+  const holding = testContext('inventory');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
 
-  const stand = async sn =>
+  const state = async sn =>
     db.get(
-      `SELECT COUNT(*)::int AS zeilen, COALESCE(SUM(quantity),0)::int AS menge
+      `SELECT COUNT(*)::int AS zeilen, COALESCE(SUM(quantity),0)::int AS quantity
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [uid, sn],
     );
@@ -54,15 +54,15 @@ test('capturing under load', { concurrency: 1 }, async t => {
     await holdsSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
-        bestand.transact(
+        holding.transact(
           tt => addPurchaseAtTag(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
           { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
       ),
     );
 
-    const s = await stand('70001-1');
-    assert.equal(s.menge, 10, `Menge ${s.menge} statt 10 — Erfassungen sind verloren gegangen`);
+    const s = await state('70001-1');
+    assert.equal(s.quantity, 10, `Menge ${s.quantity} statt 10 — Erfassungen sind verloren gegangen`);
     assert.equal(s.zeilen, 1, `${s.zeilen} Tageszeilen statt einer — die Regel „ein Kaufpreis je Tag" ist verletzt`);
   });
 
@@ -125,7 +125,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
                   VALUES ($1,'70002-1',1,5,'N', NOW() - INTERVAL '2 days')`,
       [uid],
     );
-    const s = await stand('70002-1');
+    const s = await state('70002-1');
     assert.equal(s.zeilen, 2, 'Der Index darf nur den GLEICHEN Tag verhindern');
   });
 
@@ -287,21 +287,21 @@ test('the parts list delivers what it reports', () => {
 
   // The response reports the ACTUAL page size, not the requested one.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
-  const antwort = v1.slice(
-    v1.indexOf("router.endpoint('GET /api/v1/parts'"),
-    v1.indexOf("router.endpoint('GET /api/v1/parts/brick-colors'"),
+  const response = v1.slice(
+    v1.indexOf("router.endpoint('GET /api/v2/parts'"),
+    v1.indexOf("router.endpoint('GET /api/v2/parts/brick-colors'"),
   );
   // What is checked is WHERE the number comes from, not how the line is written.
   //
   // A wording like `page_size: result.page_size` would be the wrong probe: it can
   // stand there without effect or be missing without the response changing.
   assert.match(
-    antwort,
+    response,
     /\.\.\.result/,
     'Die Antwort übernimmt das Ergebnis von partsQuery nicht mehr — dann fehlt page_size ganz',
   );
   assert.doesNotMatch(
-    antwort,
+    response,
     /page_size:\s*(parseInt\()?(String\()?req\.query/,
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde',
   );

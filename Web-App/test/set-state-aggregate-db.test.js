@@ -8,7 +8,7 @@
  *   B  changeAcquisition returns the bare response without withSetAggregate →
  *      red “both paths of an entry …” (and the following case, which builds on
  *      its part)
- *   C  POST /api/v1/sets passes `null` instead of the condition to acquireSet → red
+ *   C  POST /api/v2/sets passes `null` instead of the condition to acquireSet → red
  *      “the condition selected in the form arrives on creation”
  *   D  currentMarketPrice: `if (!condition)` → `if (true)` → red “an
  *      explicitly requested condition …” and “the market price as purchase price …”
@@ -99,10 +99,10 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const anfrage = async (
     /** @type {string} */ methode,
-    /** @type {string} */ pfad,
+    /** @type {string} */ path,
     /** @type {unknown} */ rumpf = undefined,
   ) => {
-    const r = await fetch(base + '/api/v1' + pfad, {
+    const r = await fetch(base + '/api/v2' + path, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: rumpf === undefined ? undefined : JSON.stringify(rumpf),
@@ -126,8 +126,8 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
     const r = await acquireSet({
       requester: uid,
       setNumber: SN,
-      menge: 1,
-      zustand: 'U',
+      quantity: 1,
+      condition: 'U',
       ifPresent: 'aufstocken',
     });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
@@ -146,12 +146,12 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
     const liste = (await readSets([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
     const einzeln = await readSet([uid], SN);
     assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
-    for (const feld of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
-      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `readSet() ohne ${feld}`);
+    for (const field of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
+      assert.ok(einzeln[field] !== undefined && einzeln[field] !== null, `readSet() ohne ${field}`);
       assert.equal(
-        String(einzeln[feld]),
-        String(liste[feld]),
-        `${feld}: readSet ${einzeln[feld]}, readSets ${liste[feld]}`,
+        String(einzeln[field]),
+        String(liste[field]),
+        `${field}: readSet ${einzeln[field]}, readSets ${liste[field]}`,
       );
     }
     assert.equal(einzeln.condition, 'U', 'eine gebrauchte Erfassung macht das Set gebraucht');
@@ -159,14 +159,14 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
   });
 
   await t.test('both paths of an entry deliver the aggregate — only for sets', async () => {
-    const geaendert = await anfrage('PUT', `/sets/${SN}/acquisitions/${erste}`, { condition: 'U' });
-    assert.equal(geaendert.status, 200, JSON.stringify(geaendert.body));
-    assert.equal(geaendert.body.set?.set_number, SN, 'Die Antwort auf das Ändern trägt kein Set-Aggregat');
-    assert.equal(geaendert.body.set.acq_count, 2);
-    assert.equal(geaendert.body.set.used_count, 2);
-    const geloescht = await anfrage('DELETE', `/sets/${SN}/acquisitions/${erste}`);
-    assert.equal(geloescht.status, 200, JSON.stringify(geloescht.body));
-    assert.equal(geloescht.body.set?.acq_count, 1, 'Die Antwort auf das Löschen trägt kein aktuelles Aggregat');
+    const changed = await anfrage('PUT', `/sets/${SN}/acquisitions/${erste}`, { condition: 'U' });
+    assert.equal(changed.status, 200, JSON.stringify(changed.body));
+    assert.equal(changed.body.set?.set_number, SN, 'Die Antwort auf das Ändern trägt kein Set-Aggregat');
+    assert.equal(changed.body.set.acq_count, 2);
+    assert.equal(changed.body.set.used_count, 2);
+    const deleted = await anfrage('DELETE', `/sets/${SN}/acquisitions/${erste}`);
+    assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+    assert.equal(deleted.body.set?.acq_count, 1, 'Die Antwort auf das Löschen trägt kein aktuelles Aggregat');
 
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,5,'manual')`, [uid, PN]);
     const tid = (
@@ -204,18 +204,18 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
   await t.test('gainAndLoss values by the condition of the entries', async () => {
     const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const pnl = await gainAndLoss(uid, [uid]);
-    const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
-    assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
+    const row = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
+    assert.ok(row, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
     assert.equal(
-      Number(zeile.current_price),
+      Number(row.current_price),
       33,
-      `Ein gebraucht erfasstes Set bekommt den Neupreis: ${JSON.stringify(zeile)}`,
+      `Ein gebraucht erfasstes Set bekommt den Neupreis: ${JSON.stringify(row)}`,
     );
   });
 
   await t.test('the price probe runs without a server error', async () => {
     // Via GET a link of a foreign site (lax cookie) already triggered the fetch.
-    const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
+    const perLink = await fetch(`${base}/api/v2/admin/price-probe?set=${SN}&live=1`);
     assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
     const r = await anfrage('POST', '/admin/price-probe', { set: SN });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -236,8 +236,8 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
         action: 'added',
         set_number: /** @type {any} */ (a[0]).setNumber,
         name: 'Testset',
-        katalog_offen: true,
-        ergaenzung: 'ausstehend',
+        catalog_pending: true,
+        supplement: 'ausstehend',
         besitzer: uid,
       };
     };
@@ -253,6 +253,6 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
     }
     assert.equal(aufrufe.length, 1, 'acquireSet wurde nicht gerufen');
     assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');
-    assert.equal(aufrufe[0][0].zustand, 'U', 'Der Zustand aus dem Formular kommt nicht bei acquireSet an');
+    assert.equal(aufrufe[0][0].condition, 'U', 'Der Zustand aus dem Formular kommt nicht bei acquireSet an');
   });
 });

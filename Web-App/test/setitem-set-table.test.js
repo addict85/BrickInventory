@@ -25,7 +25,7 @@ test('the web app shows the sets as a table with image, number and name, below t
     { set_number: '6080-1', set_name: 'Königsburg', quantity: 1, image_local: null, image_url: null },
   ];
   const o = await openUi({
-    '/v1/parts/3001/5/sets': {
+    '/v2/parts/3001/5/sets': {
       success: true,
       item: { name: 'Stein 2 x 4', color_name: 'Red', total_quantity: 5, owner_ids: [1] },
       sets: SETS,
@@ -49,13 +49,13 @@ test('the web app shows the sets as a table with image, number and name, below t
         ['6080-1', 'Königsburg'],
       ],
     );
-    const bild = zeilen[0].cells[0].querySelector('img');
-    assert.ok(bild, 'das erste Set hat kein Bild');
-    assert.match(bild.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'das lokale Bild fehlt');
-    assert.match(bild.dataset.orig ?? '', /10305-1\.jpg/, 'ohne data-orig kein Rückfall auf das CDN-Bild');
+    const image = zeilen[0].cells[0].querySelector('img');
+    assert.ok(image, 'das erste Set hat kein Bild');
+    assert.match(image.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'das lokale Bild fehlt');
+    assert.match(image.dataset.orig ?? '', /10305-1\.jpg/, 'ohne data-orig kein Rückfall auf das CDN-Bild');
     assert.ok(zeilen[1].cells[0].querySelector('.image-ph'), 'ein Set ohne Bild zeigt keinen Platzhalter');
-    const zeile = tabelle.closest('.dr');
-    assert.equal(zeile.style.flexDirection, 'column', 'die Tabelle steht neben der Beschriftung');
+    const row = tabelle.closest('.dr');
+    assert.equal(row.style.flexDirection, 'column', 'die Tabelle steht neben der Beschriftung');
   } finally {
     o.w.close();
   }

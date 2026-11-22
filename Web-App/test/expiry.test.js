@@ -33,7 +33,7 @@ function lauf(name, inhalt, env) {
     timeout: 60_000,
     env: { ...rest, ...env },
   });
-  return { status: r.status, fehler: r.error?.message, text: `${r.stdout}${r.stderr}`, ms: Date.now() - start };
+  return { status: r.status, error: r.error?.message, text: `${r.stdout}${r.stderr}`, ms: Date.now() - start };
 }
 
 test('an open server after the last test ends the file red and is named', () => {
@@ -42,7 +42,7 @@ test('an open server after the last test ends the file red and is named', () => 
     "test('lässt einen Server offen', () => { require('node:net').createServer().listen(0); });",
     { TEST_AUSLAUF_MS: '500' },
   );
-  assert.equal(r.fehler, undefined, `das Kind endete nicht: ${r.fehler}`);
+  assert.equal(r.error, undefined, `das Kind endete nicht: ${r.error}`);
   assert.equal(r.status, 1, r.text);
   assert.match(
     r.text,
@@ -57,7 +57,7 @@ test('a hanging t.after hits the deadline of the whole file', () => {
     "test('t.after hängt', (t) => { t.after(() => new Promise(() => { setInterval(() => {}, 1000); })); });",
     { TEST_AUSLAUF_MS: '60000', TEST_DATEI_FRIST_MS: '1500' },
   );
-  assert.equal(r.fehler, undefined, `das Kind endete nicht: ${r.fehler}`);
+  assert.equal(r.error, undefined, `das Kind endete nicht: ${r.error}`);
   assert.equal(r.status, 1, r.text);
   assert.match(r.text, /\[auslauf\] haken\.test\.js: nach 1\.5 s nicht fertig/);
 });

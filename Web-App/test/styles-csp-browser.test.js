@@ -76,20 +76,20 @@ async function cdp(wsUrl) {
     ws.onerror = f;
   });
   let n = 0;
-  const offen = new Map();
+  const open = new Map();
   const ereignisse = [];
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.id && offen.has(d.id)) {
-      const { r, f } = offen.get(d.id);
-      offen.delete(d.id);
+    if (d.id && open.has(d.id)) {
+      const { r, f } = open.get(d.id);
+      open.delete(d.id);
       d.error ? f(new Error(d.error.message)) : r(d.result);
     } else if (d.method) ereignisse.push(d);
   };
   const senden = (method, params = {}, sessionId) =>
     new Promise((r, f) => {
       const id = ++n;
-      offen.set(id, { r, f });
+      open.set(id, { r, f });
       ws.send(JSON.stringify({ id, method, params, sessionId }));
     });
   const { targetId } = await senden('Target.createTarget', { url: 'about:blank' });
@@ -144,7 +144,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     },
   });
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
     await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
   // Inline only the one block of the start skeleton, via its hash — no 'unsafe-inline'.
@@ -197,11 +197,11 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       if (await b.auswerten(ausdruck).catch(() => false)) return;
       await warte(100);
     }
-    const zustand = await b
+    const condition = await b
       .auswerten(`JSON.stringify({ v: window.__verstoesse,
       lerr: document.getElementById('lerr')?.textContent, text: document.body.innerText.slice(0, 300) })`)
       .catch(e => e.message);
-    assert.fail(`Zeitüberschreitung: ${was} — ${zustand}`);
+    assert.fail(`Zeitüberschreitung: ${was} — ${condition}`);
   };
   // Only click once the bundle has wired up the button — under load the
   // form already stands there before the script at the end of the page has run.

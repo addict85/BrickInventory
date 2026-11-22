@@ -20,17 +20,17 @@ const OTPAUTH = 'otpauth://totp/BrickInventory:anna?secret=JBSWY3DPEHPK3PXP&issu
 function oeffne(verwalter, kopiert) {
   return openUi(
     {
-      '/v1/auth/me': {
-        ...ANMELDUNG['/v1/auth/me'],
-        user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: verwalter },
+      '/v2/auth/me': {
+        ...ANMELDUNG['/v2/auth/me'],
+        user: { ...ANMELDUNG['/v2/auth/me'].user, is_admin: verwalter },
       },
-      '/v1/auth/profile': {
+      '/v2/auth/profile': {
         success: true,
         user: { username: 'anna', email: 'anna@example.org', email_verified: true },
       },
-      '/v1/auth/zweiter-faktor': { success: true, aktiv: true, codes_uebrig: 5 },
-      '/v1/auth/zweiter-faktor/abschalten': { success: true },
-      '/v1/auth/zweiter-faktor/einrichten': { success: true, geheimnis: 'JBSWY3DPEHPK3PXP', otpauth: OTPAUTH },
+      '/v2/auth/second-factor': { success: true, active: true, codes_left: 5 },
+      '/v2/auth/second-factor/disable': { success: true },
+      '/v2/auth/second-factor/setup': { success: true, secret: 'JBSWY3DPEHPK3PXP', otpauth: OTPAUTH },
     },
     {
       before: w =>
@@ -40,7 +40,7 @@ function oeffne(verwalter, kopiert) {
 }
 
 const dialog = d => ({
-  offen: d.getElementById('confirm-modal').style.display === 'flex',
+  open: d.getElementById('confirm-modal').style.display === 'flex',
   titel: d.getElementById('cd-title').textContent,
   text: d.getElementById('cd-msg').textContent,
   pw: !d.getElementById('cd-pw-wrap').hidden,
@@ -56,22 +56,22 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     const knopf = d.querySelector('#sf-surface [data-click="disableSecondFactor"]');
     assert.equal(knopf.textContent.trim(), 'Neu einrichten');
     knopf.click();
-    await warte(() => dialog(d).offen);
+    await warte(() => dialog(d).open);
     const f = dialog(d);
     assert.deepEqual([f.titel, f.pw, f.code], ['Neu einrichten', true, true], JSON.stringify(f));
     assert.match(f.text, /Administrator.*neuen ein/);
     d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-code').value = '123456';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/zweiter-faktor/einrichten')));
-    const ab = aufrufe.find(a => a.url.endsWith('/zweiter-faktor/abschalten'));
+    await warte(() => aufrufe.some(a => a.url.endsWith('/second-factor/setup')));
+    const ab = aufrufe.find(a => a.url.endsWith('/second-factor/disable'));
     assert.deepEqual(JSON.parse(ab.body), { password: 'geheim-Passwort-1', code: '123456' });
-    const ein = aufrufe.find(a => a.url.endsWith('/zweiter-faktor/einrichten'));
+    const ein = aufrufe.find(a => a.url.endsWith('/second-factor/setup'));
     assert.deepEqual(JSON.parse(ein.body), { password: 'geheim-Passwort-1' });
     assert.ok(await warte(() => d.querySelector('#sf-required-surface #sf-key')), 'kein Schlüssel im Pflichtfeld');
     assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'Pflichtfeld nicht offen');
     assert.equal(d.getElementById('sf-start'), null, 'noch einmal „Einrichten“');
-    assert.equal(dialog(d).offen, false, 'zweite Passwortfrage');
+    assert.equal(dialog(d).open, false, 'zweite Passwortfrage');
     const link = d.getElementById('sf-otpauth');
     assert.equal(link.hidden, false, 'Link verborgen');
     assert.equal(link.getAttribute('href'), OTPAUTH);
@@ -89,16 +89,16 @@ test('account without admin rights: switching off as announced, without setup', 
     await sicht(w, 'profile');
     await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
     d.querySelector('#sf-surface [data-click="disableSecondFactor"]').click();
-    await warte(() => dialog(d).offen);
+    await warte(() => dialog(d).open);
     const f = dialog(d);
     assert.deepEqual([f.titel, f.pw, f.code], ['Abschalten', true, true], JSON.stringify(f));
     assert.match(f.text, /Passwort allein/);
     d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/zweiter-faktor/abschalten')));
-    await warte(() => !dialog(d).offen);
+    await warte(() => aufrufe.some(a => a.url.endsWith('/second-factor/disable')));
+    await warte(() => !dialog(d).open);
     assert.equal(
-      aufrufe.some(a => a.url.endsWith('/zweiter-faktor/einrichten')),
+      aufrufe.some(a => a.url.endsWith('/second-factor/setup')),
       false,
       'Einrichtung ohne Pflicht',
     );

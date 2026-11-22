@@ -45,14 +45,14 @@ const CARDS = [
   { nr: '5045076374450022277', pin: '1234', gedruckt: '150', app: 150 },
 ];
 
-function buildVoucher(amountText, nummer, pin) {
+function buildVoucher(amountText, number, pin) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
     const s = [];
     d.on('data', c => s.push(c));
     d.on('end', () => fertig(Buffer.concat(s)));
     d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
-    d.fontSize(12).text(nummer, 60, 140).text(`PIN: ${pin}`, 60, 170);
+    d.fontSize(12).text(number, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
   });
 }
@@ -106,13 +106,13 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     befunde = null;
   /** First the confirmed release, then the one fetch with the ticket. */
   const freigabe = () =>
-    fetch(`${srv.base}/api/v1/vouchers/export/pdf-freigabe`, {
+    fetch(`${srv.base}/api/v2/vouchers/export/pdf-grant`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ password: PASS }),
     });
   const exportiere = async () =>
-    fetch(`${srv.base}/api/v1/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
+    fetch(`${srv.base}/api/v2/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
 
   await t.test('1. the export delivers ONE PDF with all own vouchers', async () => {
     const r = await exportiere();
@@ -135,9 +135,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     befunde = JSON.parse(Buffer.from(kopf, 'base64').toString('utf-8'));
     assert.equal(befunde.length, 3, `${befunde.length} Befunde statt 3`);
     assert.deepEqual(
-      befunde.map(b => b.art),
+      befunde.map(b => b.kind),
       ['ersetzt', 'stimmte_schon', 'erzeugt'],
-      `Die Befunde lauten ${JSON.stringify(befunde.map(b => b.art))} — erwartet: der ` +
+      `Die Befunde lauten ${JSON.stringify(befunde.map(b => b.kind))} — erwartet: der ` +
         'erste wird ersetzt (400→250), der zweite stimmt schon (150), der dritte hat ' +
         'kein Original',
     );
@@ -147,7 +147,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // „⚠ …: Der Betrag im PDF stimmt schon", i.e. a warning about a
     // success. Here the difference is fixed.
     assert.equal(
-      befunde.filter(b => b.art === 'unveraendert' && b.grund).length,
+      befunde.filter(b => b.kind === 'unveraendert' && b.reason).length,
       0,
       'Ein „stimmt schon" darf nicht als offener Punkt zählen',
     );
@@ -167,9 +167,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
 
   await t.test('3. the exported PDF carries the APP amount, not the printed one', async () => {
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
-    const gelesen = await readPageByPage(pdf);
+    const parsed = await readPageByPage(pdf);
     for (const k of CARDS) {
-      const w = gelesen.find(x => x.number === k.nr);
+      const w = parsed.find(x => x.number === k.nr);
       assert.ok(w, `${k.nr} fehlt im Export`);
       assert.equal(
         w.amount,
@@ -187,18 +187,18 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // THE SAME address as for a single voucher (Marco's review
     // of 15.10.: one file field, not two). The server sees three pages and
     // answers with `mehrere` instead of `voucher`.
-    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
-    assert.ok(b.mehrere, `Erwartet den Stapelfall, bekam ${JSON.stringify(b)}`);
+    assert.ok(b.multiple, `Erwartet den Stapelfall, bekam ${JSON.stringify(b)}`);
     assert.equal(
       b.voucher,
       undefined,
       'Bei mehreren Gutscheinen darf kein einzelner „voucher" danebenstehen — ' +
         'eine Oberfläche müsste sonst raten, welcher der drei gemeint ist',
     );
-    assert.equal(b.mehrere.added, 3, `${b.mehrere.added} angelegt statt 3: ${JSON.stringify(b.mehrere.results)}`);
-    assert.equal(b.mehrere.errors, 0, `${b.mehrere.errors} Fehler: ${JSON.stringify(b.mehrere.results)}`);
+    assert.equal(b.multiple.added, 3, `${b.multiple.added} angelegt statt 3: ${JSON.stringify(b.multiple.results)}`);
+    assert.equal(b.multiple.errors, 0, `${b.multiple.errors} Fehler: ${JSON.stringify(b.multiple.results)}`);
 
     for (const k of CARDS) {
       const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND number_search=$2', [
@@ -230,7 +230,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     await db.run('UPDATE vouchers SET amount = 1 WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
-    const b = (await (await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd })).json()).mehrere;
+    const b = (await (await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd })).json()).multiple;
     assert.equal(b.added, 0, `${b.added} neu angelegt — die Karten gab es schon`);
     assert.equal(b.updated, 3, `${b.updated} aufgefrischt statt 3`);
     assert.equal(
@@ -267,7 +267,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   await t.test('7. a file that is not a PDF yields 422 and no entry', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([Buffer.from('kein PDF, nur Text')], { type: 'application/pdf' }), 'kaputt.pdf');
-    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     assert.equal(
       r.status,
       422,
@@ -275,9 +275,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     );
     assert.equal(
       (await r.json()).code,
-      'pdf_unlesbar',
+      'pdf_unreadable',
       'Seit beide Wege auf einer Adresse liegen, kommt die kaputte Datei beim ' +
-        'EINZELweg an. Ohne eigenen Code stünde dort „betrag_ungueltig" — eine ' +
+        'EINZELweg an. Ohne eigenen Code stünde dort „amount_invalid" — eine ' +
         'Auskunft über ein Feld, das es in dieser Datei gar nicht gibt.',
     );
     assert.equal(
@@ -297,13 +297,13 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     const eine = await buildVoucher('250', CARDS[0].nr, CARDS[0].pin);
     const fd = new FormData();
     fd.append('file', new Blob([eine], { type: 'application/pdf' }), 'einer.pdf');
-    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(b)}`);
-    assert.equal(b.mehrere, undefined, `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
+    assert.equal(b.multiple, undefined, `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
     assert.ok(b.voucher, 'Der Einzelfall antwortet mit `voucher`');
-    assert.equal(b.gelesen.number, CARDS[0].nr);
+    assert.equal(b.parsed.number, CARDS[0].nr);
     assert.equal(b.voucher.number, '…' + CARDS[0].nr.slice(-4), 'nach aussen nur das Ende');
-    assert.equal(b.voucher.hat_pdf, true, 'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
+    assert.equal(b.voucher.has_pdf, true, 'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
   });
 });

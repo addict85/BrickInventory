@@ -22,8 +22,8 @@ const MEASURE = `(() => { const r = id => document.getElementById(id).getBoundin
 
 test('price field: error message below the whole row', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `preisfehler_${process.pid}`, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

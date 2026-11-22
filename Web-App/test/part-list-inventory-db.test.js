@@ -38,27 +38,27 @@ async function seed() {
   await holdsSet(db, UID, '10276-1', 1);
 
   // Parts FROM the sets (source stays empty — exactly as partsImport.ts creates them).
-  const setTeil = async (setNr, num, farbe, menge) => {
+  const setTeil = async (setNr, num, farbe, quantity) => {
     // Description into the catalog, stock into parts (migration 0034).
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
                   ON CONFLICT (part_number) DO NOTHING`,
       [num],
     );
-    await holdsPart(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
+    await holdsPart(db, UID, num, { setNumber: setNr, quantity: quantity, colorId: farbe });
   };
   await setTeil('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
   await setTeil('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
 
   // Captured manually: hangs on no set.
-  await holdsPart(db, UID, '3003', { menge: 7, colorId: 0 });
+  await holdsPart(db, UID, '3003', { quantity: 7, colorId: 0 });
 
   // Part row whose set no longer stands in `sets` — the LEFT JOIN case.
   await setTeil('99999-1', '3004', 0, 4);
 
   // Minifigures: one from the set owned twice, one captured manually.
-  await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
-  await holdsMinifig(db, UID, 'cty0500', { menge: 2 });
+  await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', quantity: 1 });
+  await holdsMinifig(db, UID, 'cty0500', { quantity: 2 });
 }
 
 async function dbReachable() {
@@ -91,28 +91,28 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     { part_number: 'trn241', color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
-  const bestand = await ownedQuantitiesQuery([UID], frage);
+  const holding = await ownedQuantitiesQuery([UID], frage);
 
   await t.test('a set owned twice delivers its parts twice', () => {
     assert.equal(
-      bestand['3001|0']?.gesamt,
+      holding['3001|0']?.total,
       6,
       'Genau Marcos Befund: 3 Stück je Bausatz, das Set zweimal besessen — ' +
-        `erwartet 6, bekommen ${bestand['3001|0']?.gesamt}. Zählt sets.quantity nicht mit?`,
+        `erwartet 6, bekommen ${holding['3001|0']?.total}. Zählt sets.quantity nicht mit?`,
     );
-    assert.equal(bestand['3001|0']?.lose, 0, 'Ein Set-Teil ist nicht „lose"');
+    assert.equal(holding['3001|0']?.loose, 0, 'Ein Set-Teil ist nicht „lose"');
   });
 
   await t.test('a set owned once stays as it was', () => {
     // The opposite direction: the multiplication must not make more out of every
     // row, but only out of those with a piece count above one.
-    assert.equal(bestand['3002|0']?.gesamt, 5);
+    assert.equal(holding['3002|0']?.total, 5);
   });
 
   await t.test('manually captured parts are NEVER multiplied', () => {
-    assert.equal(bestand['3003|0']?.gesamt, 7);
+    assert.equal(holding['3003|0']?.total, 7);
     assert.equal(
-      bestand['3003|0']?.lose,
+      holding['3003|0']?.loose,
       7,
       'Manuell erfasste Teile sind genau das, was „nur manuell erfasste Teile" zählt',
     );
@@ -124,24 +124,24 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     // missing, even if it stood in the stock — silently, because „not
     // found" looks like „I don't have it".
     assert.equal(
-      bestand['trn241|0']?.gesamt,
+      holding['trn241|0']?.total,
       2,
       'Die Figur steckt in einem zweimal besessenen Set — erwartet 2, bekommen ' +
-        `${bestand['trn241|0']?.gesamt}. Wird die Tabelle minifigs gar nicht gelesen?`,
+        `${holding['trn241|0']?.total}. Wird die Tabelle minifigs gar nicht gelesen?`,
     );
-    assert.equal(bestand['trn241|0']?.lose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
+    assert.equal(holding['trn241|0']?.loose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
   });
 
   await t.test('manually captured figures count as loose', () => {
-    assert.equal(bestand['cty0500|0']?.gesamt, 2);
-    assert.equal(bestand['cty0500|0']?.lose, 2);
+    assert.equal(holding['cty0500|0']?.total, 2);
+    assert.equal(holding['cty0500|0']?.loose, 2);
   });
 
   await t.test('a part row without a set does not drop out of the response', () => {
     // The reason for LEFT instead of INNER: a deleted set would otherwise let its
     // part rows vanish without a trace — and the comparison would report a
     // part as missing that stands there.
-    assert.equal(bestand['3004|0']?.gesamt, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
+    assert.equal(holding['3004|0']?.total, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
   });
 });
 

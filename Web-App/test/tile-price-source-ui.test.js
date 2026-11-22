@@ -16,7 +16,7 @@ const { tileValues } = _req('src/finances/setValue.js');
 const { openUi, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const zeile = (nr, markt, kauf) => ({
+const row = (nr, markt, kauf) => ({
   set_number: nr,
   quantity: 1,
   current_price: markt,
@@ -27,11 +27,11 @@ const zeile = (nr, markt, kauf) => ({
 });
 
 test('tile price: market and purchase price labeled as the server delivers them', async () => {
-  const k = tileValues([zeile('42115-1', 0, 99.99), zeile('21318-1', 186.2, 199.99)]);
-  assert.equal(k.get('42115-1').kachel_quelle, 'kauf');
-  assert.equal(k.get('21318-1').kachel_quelle, 'markt');
+  const k = tileValues([row('42115-1', 0, 99.99), row('21318-1', 186.2, 199.99)]);
+  assert.equal(k.get('42115-1').tile_source, 'kauf');
+  assert.equal(k.get('21318-1').tile_source, 'markt');
   const { w, d } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 2,
       themes: [],
@@ -40,7 +40,7 @@ test('tile price: market and purchase price labeled as the server delivers them'
         { set_number: '21318-1', name: 'Tree House', year: 2019, quantity: 1, avg_purchase_price: 199.99 },
       ],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       totals: {},

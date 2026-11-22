@@ -37,8 +37,9 @@ test('repeated set import keeps storage location and identifier', { concurrency:
   const INV = 900000000 + (process.pid % 100000);
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal') RETURNING id`, [uid]))
-    .id;
+  const location = (
+    await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal') RETURNING id`, [uid])
+  ).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-t1', 'Eins'), ('fig-t2', 'Zwei')
                 ON CONFLICT (fig_number) DO UPDATE SET fig_name = EXCLUDED.fig_name`);
@@ -67,9 +68,9 @@ test('repeated set import keeps storage location and identifier', { concurrency:
   try {
     await t.test('the minifigure keeps identifier and storage location', async () => {
       assert.equal(await importMinifigs(SN, uid), 2);
-      await db.run('UPDATE minifigs SET storage_id=$1 WHERE user_id=$2 AND fig_number=$3', [ort, uid, 'fig-t1']);
+      await db.run('UPDATE minifigs SET storage_id=$1 WHERE user_id=$2 AND fig_number=$3', [location, uid, 'fig-t1']);
       const vorher = await figur('fig-t1');
-      assert.equal(vorher.storage_id, ort);
+      assert.equal(vorher.storage_id, location);
       assert.equal(await importMinifigs(SN, uid), 2);
       assert.deepEqual(await figur('fig-t1'), vorher);
     });
@@ -94,10 +95,10 @@ test('repeated set import keeps storage location and identifier', { concurrency:
     await t.test('the part keeps identifier, storage location and date', async () => {
       await db.run(
         `UPDATE parts SET storage_id=$1, added_at='2020-01-02T00:00:00Z' WHERE user_id=$2 AND part_number='tp-1'`,
-        [ort, uid],
+        [location, uid],
       );
       const vorher = await teil('tp-1');
-      assert.equal(vorher.storage_id, ort);
+      assert.equal(vorher.storage_id, location);
       await importParts(SN, uid);
       assert.deepEqual(await teil('tp-1'), vorher);
     });

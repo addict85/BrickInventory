@@ -50,12 +50,12 @@ test('storage location default against a real database', async t => {
     return;
   }
   await seed();
-  const bestand = require('./helpers/sources').testArea('inventory');
-  const L = { ..._req('src/inventory/storageLocation.js'), ...bestand.locationService, setDefault: bestand.setDefault };
+  const holding = require('./helpers/sources').testArea('inventory');
+  const L = { ..._req('src/inventory/storageLocation.js'), ...holding.locationService, setDefault: holding.setDefault };
 
-  const estrich = (await L.createStorage(U.ich, 'Estrich')).ort;
-  const cellar = (await L.createStorage(U.ich, 'Keller')).ort;
-  const fremd = (await L.createStorage(U.kind, 'Kinderzimmer')).ort;
+  const estrich = (await L.createStorage(U.ich, 'Estrich')).location;
+  const cellar = (await L.createStorage(U.ich, 'Keller')).location;
+  const fremd = (await L.createStorage(U.kind, 'Kinderzimmer')).location;
 
   await t.test('without a star there is no default', async () => {
     // The initial state, and it is a statement of its own: a UI
@@ -67,9 +67,9 @@ test('storage location default against a real database', async t => {
   await t.test('the star sets the default and it reads back', async () => {
     const gesetzt = await L.setDefault(U.ich, estrich.id);
     assert.equal(gesetzt.name, 'Estrich');
-    const gelesen = await L.defaultOf(U.ich);
-    assert.equal(gelesen?.id, estrich.id);
-    assert.equal(gelesen?.name, 'Estrich');
+    const parsed = await L.defaultOf(U.ich);
+    assert.equal(parsed?.id, estrich.id);
+    assert.equal(parsed?.name, 'Estrich');
   });
 
   await t.test('a second star replaces the first', async () => {
@@ -89,10 +89,10 @@ test('storage location default against a real database', async t => {
     // The child's nursery is not my shelf (migration 0020). Without
     // this boundary my star would stand at a place in another flat.
     // What is checked is `e.code` and not the text: the first draft searched for
-    // „lagerort_unbekannt" in the MESSAGE, and that one is in German …
+    // „storage_unknown" in the MESSAGE, and that one is in German …
     await assert.rejects(
       () => L.setDefault(U.ich, fremd.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
       'Ein fremder Ort liess sich als eigene Vorgabe setzen',
     );
     assert.equal(
@@ -121,7 +121,7 @@ test('storage location default against a real database', async t => {
   await t.test('DELETE: the default is gone, not broken', async () => {
     // The second statement. A place can only be deleted when nothing lies
     // in it (loescheOrt) — hence an own, empty place for this probe.
-    const kiste = (await L.createStorage(U.ich, 'Kiste 7')).ort;
+    const kiste = (await L.createStorage(U.ich, 'Kiste 7')).location;
     await L.setDefault(U.ich, kiste.id);
     assert.equal((await L.defaultOf(U.ich))?.name, 'Kiste 7');
     await L.deleteStorage(U.ich, kiste.id);

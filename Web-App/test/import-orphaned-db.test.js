@@ -53,10 +53,10 @@ test('orphaned imports', { concurrency: 1 }, async t => {
 
   await t.test('an orphaned job', async () => {
     await auftrag(ORPHANED_MIN + 1);
-    const stand = await jobGet(uid);
-    assert.equal(stand.status, 'error');
-    assert.match(stand.error, /unterbrochen/);
-    assert.equal(stand.current, null);
+    const state = await jobGet(uid);
+    assert.equal(state.status, 'error');
+    assert.match(state.error, /unterbrochen/);
+    assert.equal(state.current, null);
     assert.equal(await startJob(uid, { total: 5 }), true, 'Der verwaiste Auftrag sperrt weiter');
   });
 });

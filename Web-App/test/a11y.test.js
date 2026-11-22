@@ -27,9 +27,9 @@ const EXEMPT = new Set([
 ]);
 
 const FIN_SETS = [
-  { set_number: '10294-1', name: 'Titanic', avg_price: 600, wert_gesamt: 600 },
-  { set_number: '10295-1', name: 'Porsche', error: 'Zeitüberschreitung', avg_price: null, wert_gesamt: 0 },
-  { set_number: '10296-1', name: 'Mini', no_price: true, avg_price: null, wert_gesamt: 0 },
+  { set_number: '10294-1', name: 'Titanic', avg_price: 600, value_total: 600 },
+  { set_number: '10295-1', name: 'Porsche', error: 'Zeitüberschreitung', avg_price: null, value_total: 0 },
+  { set_number: '10296-1', name: 'Mini', no_price: true, avg_price: null, value_total: 0 },
 ].map(s => ({
   quantity: 1,
   from_cache: true,
@@ -44,12 +44,12 @@ let _o;
 /** One UI for all cases: loading takes time, the checks only read. */
 async function oberflaeche() {
   _o ??= await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       condition: 'N',
       total_value: '600',
-      kaufpreise_fremde_waehrung: 0,
+      foreign_currency_purchases: 0,
       totals: { min: '0', avg: '600', max: '0', qty_avg: '600' },
       sets: FIN_SETS,
     },
@@ -106,7 +106,7 @@ test('modal overlays are marked up as dialogs', async () => {
 
 test('the language is set on the <html> element', async () => {
   // Without lang= the screen reader guesses the pronunciation — audibly wrong in mixed German-English UIs.
-  const en = await openUi({}, { sprache: 'en' });
+  const en = await openUi({}, { language: 'en' });
   try {
     assert.equal(en.d.documentElement.lang, 'en');
   } finally {

@@ -226,7 +226,7 @@ async function setDetail(_t, a) {
       return { bild: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), letzte: zeilen.at(-1) }; })()`);
     if (!telefon) {
       assert.ok(l.chart.right <= l.det.left, `Preisverlauf nicht in der linken Spalte: ${JSON.stringify(l)}`);
-      assert.ok(l.chart.top >= l.bild.bottom, 'Preisverlauf nicht unter dem Bild');
+      assert.ok(l.chart.top >= l.image.bottom, 'Preisverlauf nicht unter dem Bild');
     } else assert.ok(l.chart.top >= l.letzte.bottom, 'Telefon: Preisverlauf nicht am Ende');
     await b.auswerten(CLOSE);
   }
@@ -242,8 +242,8 @@ async function telefon(_t, a) {
     const zu = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
     await bis(`document.querySelector('${knopf}').getAttribute('aria-expanded') === 'true'`, 'Filter offen');
-    const offen = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
-    assert.notEqual(offen, zu, 'Filterknopf offen sieht aus wie zu');
+    const open = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
+    assert.notEqual(open, zu, 'Filterknopf offen sieht aus wie zu');
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
 
     // Number row on one baseline.
@@ -283,18 +283,18 @@ test('tile names, grid, 200 % font, phone', { concurrency: 1, timeout: 400_000 }
   const name = `r22_${process.pid}`;
   const a = await startApp(t, {
     name,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
       // A job, so that „Einzelne Aufträge“ appears as an expandable list.
-      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', NOW() + interval '5 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('account_files', NOW() + interval '5 hours')`);
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'konto_dateien' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'account_files' AND status = 'pending'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [

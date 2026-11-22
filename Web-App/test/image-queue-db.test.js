@@ -68,7 +68,7 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       const stapel = IQ.BATCH;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
-      const n1 = (await IQ._workStack()).gesamt;
+      const n1 = (await IQ._workStack()).total;
       assert.ok(
         n1 > 0 && n1 <= stapel,
         `${n1} Bilder in einem Durchgang bei STAPEL=${stapel} — die Begrenzung greift nicht`,
@@ -109,7 +109,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
 
   await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  const kachel = async () => (await (await fetch(`${base}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
+  const kachel = async () => (await (await fetch(`${base}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
 
   try {
     await db.run(`DELETE FROM image_wanted`);
@@ -196,13 +196,13 @@ test('the job also reports pure skips', () => {
   const { message: meldung } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
     geholt: 0,
-    vorschau: 0,
+    preview: 0,
     uebersprungen: 10,
-    gesamt: 10,
+    total: 10,
     notLoaded: 0,
     noPreview: 0,
     knownMissing: 0,
-    ohneNummer: 0,
+    withoutNumber: 0,
     setAside: 0,
     work: 0,
   };

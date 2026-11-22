@@ -29,8 +29,8 @@ test('a trailing slash costs as much as the route Express finds', () => {
   for (const [m, p, k] of [
     ['POST', '/sets/partslist-pdf/', COST.auftrag],
     ['POST', '/sets/import/csv//', COST.auftrag],
-    ['GET', '/wanted/10294-1/preise/', COST.preis],
-    ['POST', '/vouchers/3/guthaben/', COST.abruf],
+    ['GET', '/wanted/10294-1/prices/', COST.preis],
+    ['POST', '/vouchers/3/balance/', COST.abruf],
     ['GET', '/catalog/sets/', COST.abruf],
     ['HEAD', '/settings/export/data/', COST.auftrag],
   ])
@@ -39,7 +39,7 @@ test('a trailing slash costs as much as the route Express finds', () => {
 
 test('routes with BrickLink or third-party fetches cost more than reading', () => {
   for (const [m, p] of [
-    ['GET', '/wanted/10294-1/preise'],
+    ['GET', '/wanted/10294-1/prices'],
     ['GET', '/sets/10294-1/price'],
   ])
     assert.equal(classification(m, p).kosten, COST.preis, `${m} ${p}`);
@@ -49,7 +49,7 @@ test('routes with BrickLink or third-party fetches cost more than reading', () =
     ['POST', '/sets/10294-1/parts'],
     ['POST', '/parts'],
     ['POST', '/minifigs'],
-    ['POST', '/vouchers/3/guthaben'],
+    ['POST', '/vouchers/3/balance'],
   ])
     assert.equal(classification(m, p).kosten, COST.abruf, `${m} ${p}`);
   assert.ok(COST.preis > COST.abruf);
@@ -73,23 +73,23 @@ test('the route answers 429 with Retry-After and error code', async t => {
     Object.assign(req, { session: { userId: 42 } });
     next();
   });
-  app.use('/api/v1', apiThrottle(store));
-  app.use('/api/v1', (req, res) => res.json({ success: true, pfad: req.path }));
+  app.use('/api/v2', apiThrottle(store));
+  app.use('/api/v2', (req, res) => res.json({ success: true, path: req.path }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const adresse = srv.address();
-  const base = `http://localhost:${typeof adresse === 'object' && adresse ? adresse.port : 0}/api/v1`;
+  const address = srv.address();
+  const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}/api/v1`;
 
   const ab = await fetch(base + '/sets');
   assert.equal(ab.status, 429);
-  assert.equal((await ab.json()).code, 'zu_viele_anfragen');
+  assert.equal((await ab.json()).code, 'too_many_requests');
   assert.equal(ab.headers.get('retry-after'), '123');
   assert.equal(ab.headers.get('ratelimit-remaining'), '0');
 
   // Without login nothing limits — login has its own brakes.
   const ohne = express();
-  ohne.use('/api/v1', apiThrottle(store));
-  ohne.use('/api/v1', (_req, res) => res.json({ success: true }));
+  ohne.use('/api/v2', apiThrottle(store));
+  ohne.use('/api/v2', (_req, res) => res.json({ success: true }));
   const srv2 = ohne.listen(0);
   t.after(() => new Promise(r => srv2.close(r)));
   const adresse2 = srv2.address();

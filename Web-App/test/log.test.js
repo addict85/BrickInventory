@@ -23,14 +23,14 @@ const P = _req('src/infra/log.js');
 
 /** An output to read along, with an adjustable clock. */
 function transcript() {
-  const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
-  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), now: () => m.uhr } };
+  const m = { out: [], err: [], clock: Date.parse('2026-10-30T12:00:00Z') };
+  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), now: () => m.clock } };
 }
 
 test('a line is JSON with time, level, message, request and context', t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
-  P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
+  P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { condition: 'N' }));
   console.log('ohne Anfrage');
   console.error('kaputt', new Error('Verbindung weg'));
   assert.equal(m.err.length, 2);
@@ -40,20 +40,20 @@ test('a line is JSON with time, level, message, request and context', t => {
     {
       zeit: '2026-10-30T12:00:00.000Z',
       stufe: 'warn',
-      nachricht: 'Preis fehlt für 10294-1',
+      message: 'Preis fehlt für 10294-1',
       pid: 0,
       rid: 'ab12',
-      kontext: { zustand: 'N' },
+      kontext: { condition: 'N' },
     },
   );
   assert.equal(warn.pid, process.pid);
   const info = JSON.parse(m.out[0]);
   assert.equal(info.stufe, 'info');
   assert.equal(info.rid, undefined);
-  const fehler = JSON.parse(m.err[1]);
-  assert.equal(fehler.nachricht, 'kaputt Verbindung weg');
-  assert.equal(fehler.kontext.fehler.message, 'Verbindung weg');
-  assert.match(fehler.kontext.fehler.stack, /log\.test\.js/);
+  const error = JSON.parse(m.err[1]);
+  assert.equal(error.message, 'kaputt Verbindung weg');
+  assert.equal(error.kontext.error.message, 'Verbindung weg');
+  assert.match(error.kontext.error.stack, /log\.test\.js/);
 });
 
 test('a line break stays in one entry; placeholders take the values', async t => {
@@ -61,8 +61,8 @@ test('a line break stays in one entry; placeholders take the values', async t =>
   t.after(P.installLog(output));
   const geschrieben = [];
   P.logToDatabase({
-    query: async (sql, werte) => {
-      if (sql.startsWith('INSERT')) geschrieben.push(werte);
+    query: async (sql, values) => {
+      if (sql.startsWith('INSERT')) geschrieben.push(values);
     },
   });
   // As a request could send it: a forged second entry in the path.
@@ -70,9 +70,9 @@ test('a line break stays in one entry; placeholders take the values', async t =>
   console.log('ohne Platzhalter', 'a\rb');
   await P.emptyLog();
   const json = JSON.parse(m.err[0]);
-  assert.equal(json.nachricht, '[route] GET /x ⏎ [route] gefälscht ⏎  404:');
+  assert.equal(json.message, '[route] GET /x ⏎ [route] gefälscht ⏎  404:');
   assert.deepEqual(json.kontext, { ok: 1 });
-  assert.equal(JSON.parse(m.out[0]).nachricht, 'ohne Platzhalter ab');
+  assert.equal(JSON.parse(m.out[0]).message, 'ohne Platzhalter ab');
   for (const [, text] of geschrieben) assert.doesNotMatch(text, /[\r\n]/, text);
 });
 
@@ -81,8 +81,8 @@ test('app_logs gets the lines in the previous text format', async t => {
   t.after(P.installLog(output));
   const geschrieben = [];
   P.logToDatabase({
-    query: async (sql, werte) => {
-      if (sql.startsWith('INSERT')) geschrieben.push(werte);
+    query: async (sql, values) => {
+      if (sql.startsWith('INSERT')) geschrieben.push(values);
     },
   });
   P.requestContext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
@@ -100,27 +100,23 @@ test('write errors: immediately, then collected per minute', async t => {
       throw new Error('Datenbank weg');
     },
   });
-  const zeile = async n => {
+  const row = async n => {
     for (let i = 0; i < n; i++) console.log('Zeile', i);
     await P.emptyLog();
   };
-  await zeile(3);
-  m.uhr += 10_000;
-  await zeile(2);
-  m.uhr += 10_000;
-  await zeile(4);
-  const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.nachricht.startsWith('app_logs:'));
+  await row(3);
+  m.clock += 10_000;
+  await row(2);
+  m.clock += 10_000;
+  await row(4);
+  const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.message.startsWith('app_logs:'));
   assert.equal(meldungen().length, 1, 'innerhalb der Minute nur die erste Meldung');
-  assert.equal(meldungen()[0].nachricht, 'app_logs: 3 Zeile(n) nicht geschrieben');
+  assert.equal(meldungen()[0].message, 'app_logs: 3 Zeile(n) nicht geschrieben');
   assert.equal(meldungen()[0].kontext.last_error, 'Datenbank weg');
-  m.uhr += 60_000;
+  m.clock += 60_000;
   P.reportWriteError();
   assert.equal(meldungen().length, 2);
-  assert.equal(
-    meldungen()[1].nachricht,
-    'app_logs: 6 Zeile(n) nicht geschrieben',
-    'der Rest der Minute in einer Zeile',
-  );
+  assert.equal(meldungen()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'der Rest der Minute in einer Zeile');
 });
 
 test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {

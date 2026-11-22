@@ -68,11 +68,11 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
   await t.test('the cache numbers say which part is missing', async () => {
     const { cacheStats: cacheStatistics } = _req('src/management/service.js');
     const heil = await cacheStatistics();
-    assert.equal(heil.degradiert, undefined, 'ohne Fehler keine Angabe');
+    assert.equal(heil.degraded, undefined, 'ohne Fehler keine Angabe');
     cacheKaputt = true;
     try {
       const r = await cacheStatistics();
-      assert.deepEqual(r.degradiert, ['cache']);
+      assert.deepEqual(r.degraded, ['cache']);
       assert.equal(r.prices, 0, 'der Ersatzwert bleibt — aber jetzt erkennbar');
       assert.equal(typeof r.price_stale, 'number');
     } finally {
@@ -106,12 +106,12 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
       priceBroken = false;
     }
     assert.equal(r.quantity, 2, 'die Menge ist trotzdem geschrieben');
-    assert.deepEqual(r.degradiert, ['kaufpreis']);
+    assert.deepEqual(r.degraded, ['kaufpreis']);
     const withoutPrice = await db.get(
       'SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL',
       [uid, SN],
     );
     assert.equal(withoutPrice.n, 1, 'die neue Erfassung ohne Preis — der Nachtrag holt ihn');
-    assert.equal((await changeSet(uid, SN, { quantity: 2 })).degradiert, undefined);
+    assert.equal((await changeSet(uid, SN, { quantity: 2 })).degraded, undefined);
   });
 });

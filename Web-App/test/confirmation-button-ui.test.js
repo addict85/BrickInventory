@@ -22,7 +22,7 @@ async function liesDialog(d) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(await warte(() => modal.style.display === 'flex'), 'der Bestätigungsdialog erscheint');
   const knopf = d.getElementById('cd-confirm');
-  const stand = {
+  const state = {
     text: knopf.textContent.trim(),
     rot: knopf.classList.contains('bd'),
     haupt: knopf.classList.contains('bp'),
@@ -32,22 +32,22 @@ async function liesDialog(d) {
   d.getElementById('cd-cancel').click();
   await warte(() => modal.style.display === 'none');
   await takt(10);
-  return stand;
+  return state;
 }
 
 test('confirmation dialogs: button text and color per caller', async () => {
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v1/settings/household': {
+    '/v2/settings/household': {
       success: true,
       currency: 'EUR',
       sub_accounts: [{ id: 7, username: 'ben' }],
       parents: [],
     },
-    '/v1/admin/cache-stats': { success: true, prices: 4, subsets: 2, catalog: 7 },
+    '/v2/admin/cache-stats': { success: true, prices: 4, subsets: 2, catalog: 7 },
   });
   try {
     d.getElementById('nu-n').value = 'carla';
@@ -89,12 +89,12 @@ test('confirmation dialogs: button text and color per caller', async () => {
 test('confirmation dialogs in English: the same verb translated', async () => {
   const { w, d } = await openUi(
     {
-      '/v1/vouchers': {
+      '/v2/vouchers': {
         success: true,
-        vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+        vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
       },
     },
-    { sprache: 'en' },
+    { language: 'en' },
   );
   try {
     d.getElementById('nu-n').value = 'carla';

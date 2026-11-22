@@ -2,7 +2,7 @@
  * The server answers in the language that the requester SHOWS.
  *
  * Counter-checks (measured 10.11.2026, each on its own, reverted):
- *   A  in the German text of einladungen_zu_viele `{n}` replaced by `n` → red:
+ *   A  in the German text of too_many_invites `{n}` replaced by `n` → red:
  *      “every entry of the table has both languages and the same placeholders”
  *   B  in api() (api.js) the header Accept-Language deleted (bundle rebuilt)
  *      → red: “the web app tells the server which language it shows”
@@ -20,12 +20,12 @@ const ALLOWED = {};
 
 /** All .ts under the given folders, also in subfolders. */
 function tsFiles(dir, praefix = '') {
-  const gefunden = [];
+  const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...tsFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...tsFiles(path.join(dir, e.name), praefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([praefix + e.name, path.join(dir, e.name)]);
   }
-  return gefunden;
+  return found;
 }
 
 test('no route sends a fixed error sentence', () => {
@@ -55,13 +55,13 @@ test('no route sends a fixed error sentence', () => {
       // Variables and empty values are not sentences.
       if (!text || text.length < 4) continue;
       if (/^[a-z_.]+$/.test(text)) continue;
-      const zeile = src.slice(0, m.index).split('\n').length;
+      const row = src.slice(0, m.index).split('\n').length;
       // An allowed file is SEARCHED nevertheless — only its hit does not end up
       // in the violations, but proves that the exception is still
       // needed. If one skips it right away instead, its entry can
       // remain for years without describing anything any more.
       if (belowFolder in ALLOWED) gebraucht.add(belowFolder);
-      else violations.push(`${belowFolder}:${zeile}  ${text.slice(0, 60)}`);
+      else violations.push(`${belowFolder}:${row}  ${text.slice(0, 60)}`);
     }
   }
 
@@ -100,15 +100,15 @@ test('every entry of the table has both languages and the same placeholders', ()
   const skewed = [];
   for (const code of codes) {
     const vars = {};
-    for (const sprache of ['de', 'en']) {
-      if (!String(ERRORS[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
-      for (const [, n] of String(ERRORS[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
+    for (const language of ['de', 'en']) {
+      if (!String(ERRORS[code][language] || '').trim()) skewed.push(`${code}: ${language} fehlt`);
+      for (const [, n] of String(ERRORS[code][language] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
     }
     // Filled with all placeholders of both languages, no brace remains in either.
-    for (const sprache of ['de', 'en']) {
-      const text = errorText(code, sprache, vars);
-      if (/\{\w+\}/.test(text)) skewed.push(`${code}/${sprache}: ${text}`);
-      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) skewed.push(`${code}/${sprache}: {${n}} fehlt`);
+    for (const language of ['de', 'en']) {
+      const text = errorText(code, language, vars);
+      if (/\{\w+\}/.test(text)) skewed.push(`${code}/${language}: ${text}`);
+      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) skewed.push(`${code}/${language}: {${n}} fehlt`);
     }
   }
   assert.deepEqual(skewed, []);
@@ -117,15 +117,15 @@ test('every entry of the table has both languages and the same placeholders', ()
 test('the web app tells the server which language it shows', async () => {
   // Without this header the server would fall back to German, and the table above would be ineffective.
   const { openUi } = require('./helpers/ui');
-  for (const sprache of ['en', 'de']) {
-    const { w, aufrufe } = await openUi({}, { sprache });
+  for (const language of ['en', 'de']) {
+    const { w, aufrufe } = await openUi({}, { language });
     try {
-      const api = aufrufe.filter(a => a.url.includes('/api/v1/'));
+      const api = aufrufe.filter(a => a.url.includes('/api/v2/'));
       assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);
       assert.deepEqual(
-        api.filter(a => a.headers['Accept-Language'] !== sprache).map(a => a.url),
+        api.filter(a => a.headers['Accept-Language'] !== language).map(a => a.url),
         [],
-        `ohne Sprache ${sprache}`,
+        `ohne Sprache ${language}`,
       );
     } finally {
       w.close();

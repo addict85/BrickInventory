@@ -72,19 +72,19 @@ test('trash', { concurrency: 1 }, async t => {
 
   const H = testServer(_req, { sitzung: { userId: haupt }, t });
   const F = testServer(_req, { sitzung: { userId: fremd }, t });
-  const api = async (srv, methode, pfad, body) => {
-    const r = await fetch(srv.base + '/api/v1' + pfad, {
+  const api = async (srv, methode, path, body) => {
+    const r = await fetch(srv.base + '/api/v2' + path, {
       method: methode,
       ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
     });
     return { status: r.status, body: await r.json() };
   };
-  const eintraege = async srv => (await api(srv, 'GET', '/papierkorb')).body.eintraege;
+  const entries = async srv => (await api(srv, 'GET', '/trash')).body.entries;
 
   try {
     await t.test('set of the sub-account: delete, view, restore', async () => {
       await holdsSet(db, sub, SN, 2, { preis: 12.5, am: '2026-03-01T10:00:00Z' });
-      await holdsPart(db, sub, '3001', { setNumber: SN, menge: 4, colorId: 4 });
+      await holdsPart(db, sub, '3001', { setNumber: SN, quantity: 4, colorId: 4 });
       const vorher = await rows(sub);
       assert.equal(vorher.sets.length, 1);
 
@@ -92,56 +92,56 @@ test('trash', { concurrency: 1 }, async t => {
       assert.equal(weg.status, 200);
       assert.deepEqual((await rows(sub)).sets, [], 'Vorbedingung: das Set ist weg');
 
-      const liste = await eintraege(H);
+      const liste = await entries(H);
       const e = liste.find(x => x.type === 'set' && x.number === SN);
       assert.ok(e, 'Set fehlt im Papierkorb');
       assert.equal(e.user_id, sub, 'Der Eintrag gehört dem Konto, dem das Set gehörte');
-      assert.equal(e.anzahl, 2);
-      assert.deepEqual(weg.body.papierkorb, [e.id], 'Die Antwort nennt den Eintrag — dafür gibt es „Rückgängig"');
+      assert.equal(e.count, 2);
+      assert.deepEqual(weg.body.trash, [e.id], 'Die Antwort nennt den Eintrag — dafür gibt es „Rückgängig"');
 
       // A foreign account does not see the entry and cannot bring it back.
-      assert.equal((await eintraege(F)).length, 0);
+      assert.equal((await entries(F)).length, 0);
       assert.equal(
-        (await api(F, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status,
+        (await api(F, 'POST', `/trash/${e.id}/restore`)).status,
         404,
         'fremdes Konto darf nicht wiederherstellen',
       );
-      assert.equal((await api(F, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 404);
+      assert.equal((await api(F, 'DELETE', `/trash/${e.id}`, { password: PASS })).status, 404);
 
-      const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
+      const r = await api(H, 'POST', `/trash/${e.id}/restore`);
       assert.equal(r.status, 200, JSON.stringify(r.body));
       const nachher = await rows(sub);
       assert.deepEqual(nachher.sets, vorher.sets);
       assert.deepEqual(nachher.setTeile, vorher.setTeile);
       assert.deepEqual(nachher.setPurchase, vorher.setPurchase, 'Kaufpreis und Datum kommen unverändert zurück');
-      assert.equal((await eintraege(H)).length, 0, 'Wiederhergestelltes verlässt den Papierkorb');
+      assert.equal((await entries(H)).length, 0, 'Wiederhergestelltes verlässt den Papierkorb');
     });
 
     await t.test('newly created: restore rejects and changes nothing', async () => {
       assert.equal((await api(H, 'DELETE', `/sets/${SN}`)).status, 200);
       await holdsSet(db, sub, SN, 1, { preis: 99 });
       const neu = await rows(sub);
-      const [e] = await eintraege(H);
-      const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
+      const [e] = await entries(H);
+      const r = await api(H, 'POST', `/trash/${e.id}/restore`);
       assert.equal(r.status, 409);
       assert.deepEqual(await rows(sub), neu, 'Der neue Bestand bleibt, wie er ist');
-      assert.equal((await eintraege(H)).length, 1, 'Der Eintrag bleibt liegen');
-      const ohne = await api(H, 'DELETE', `/papierkorb/${e.id}`);
+      assert.equal((await entries(H)).length, 1, 'Der Eintrag bleibt liegen');
+      const ohne = await api(H, 'DELETE', `/trash/${e.id}`);
       assert.deepEqual(
         [ohne.status, ohne.body.code],
-        [400, 'aktuelles_passwort_falsch'],
+        [400, 'current_password_wrong'],
         'endgültig löschen ohne Passwort',
       );
-      assert.equal((await eintraege(H)).length, 1, 'ohne Passwort ist der Eintrag weg');
-      assert.equal((await api(H, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 200);
-      assert.equal((await eintraege(H)).length, 0);
+      assert.equal((await entries(H)).length, 1, 'ohne Passwort ist der Eintrag weg');
+      assert.equal((await api(H, 'DELETE', `/trash/${e.id}`, { password: PASS })).status, 200);
+      assert.equal((await entries(H)).length, 0);
       await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SN]);
       await db.run('DELETE FROM sets WHERE set_number=$1', [SN]);
     });
 
     await t.test('manual part and manual minifigure', async () => {
-      await holdsPart(db, haupt, PN, { colorId: 5, menge: 3, preis: 0.25, zustand: 'U' });
-      await holdsMinifig(db, haupt, FN, { menge: 1, preis: 4 });
+      await holdsPart(db, haupt, PN, { colorId: 5, quantity: 3, preis: 0.25, condition: 'U' });
+      await holdsMinifig(db, haupt, FN, { quantity: 1, preis: 4 });
       const vorher = await rows(haupt);
       const tw = await api(H, 'DELETE', `/parts/${PN}/5`);
       const fw = await api(H, 'DELETE', `/minifigs/${FN}`);
@@ -150,43 +150,42 @@ test('trash', { concurrency: 1 }, async t => {
       const leer = await rows(haupt);
       assert.deepEqual([leer.teil, leer.partPurchase, leer.figur, leer.figPurchase], [[], [], [], []]);
 
-      const liste = await eintraege(H);
+      const liste = await entries(H);
       const teil = liste.find(x => x.type === 'teil'),
         figur = liste.find(x => x.type === 'figur');
       assert.ok(teil && figur, JSON.stringify(liste));
       assert.equal(teil.color_id, 5);
-      assert.equal(teil.anzahl, 3);
-      assert.deepEqual([tw.body.papierkorb, fw.body.papierkorb], [[teil.id], [figur.id]]);
-      for (const e of [teil, figur])
-        assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
+      assert.equal(teil.count, 3);
+      assert.deepEqual([tw.body.trash, fw.body.trash], [[teil.id], [figur.id]]);
+      for (const e of [teil, figur]) assert.equal((await api(H, 'POST', `/trash/${e.id}/restore`)).status, 200);
       const nachher = await rows(haupt);
       for (const k of ['teil', 'partPurchase', 'figur', 'figPurchase']) assert.deepEqual(nachher[k], vorher[k], k);
     });
 
     await t.test('a snapshot survives a dropped column', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
-      const [e] = await eintraege(H);
+      const [e] = await entries(H);
       await db.run(`UPDATE trash SET rows = jsonb_set(rows, '{parts,0,gibt_es_nicht_mehr}', '"x"') WHERE id=$1`, [
         e.id,
       ]);
-      const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
+      const r = await api(H, 'POST', `/trash/${e.id}/restore`);
       assert.equal(r.status, 200, 'unbekannte Spalte: ' + JSON.stringify(r.body));
     });
 
     await t.test('“Alle meine Daten löschen”: everything own into the trash, nothing foreign', async () => {
       await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [ids]);
       await holdsSet(db, haupt, SN, 1, { preis: 5 });
-      await holdsPart(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
-      await holdsPart(db, haupt, PN, { colorId: 5, menge: 3 });
-      await holdsMinifig(db, haupt, FN, { menge: 1 });
+      await holdsPart(db, haupt, '3001', { setNumber: SN, quantity: 2, colorId: 4 });
+      await holdsPart(db, haupt, PN, { colorId: 5, quantity: 3 });
+      await holdsMinifig(db, haupt, FN, { quantity: 1 });
       // A set of the sub-account: the main account sees it, „meine Daten" it is not.
       const SN2 = `${SN.replace(/-\d+$/, '')}9-1`; // with version: otherwise the database adds it (migration 0074)
       await holdsSet(db, sub, SN2, 1);
       const vorher = await rows(haupt);
 
-      const r = await api(H, 'DELETE', '/bestand', { password: PASS });
+      const r = await api(H, 'DELETE', '/inventory', { password: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
-      assert.deepEqual([r.body.sets, r.body.teile, r.body.figuren], [1, 1, 1]);
+      assert.deepEqual([r.body.sets, r.body.parts, r.body.minifigs], [1, 1, 1]);
       const nachher = await rows(haupt);
       for (const k of ['sets', 'setTeile', 'setPurchase', 'teil', 'partPurchase', 'figur', 'figPurchase'])
         assert.deepEqual(nachher[k], [], `${k} ist nicht weg`);
@@ -195,14 +194,14 @@ test('trash', { concurrency: 1 }, async t => {
         'Das Set des Unterkontos wurde mitgelöscht',
       );
 
-      const liste = await eintraege(H);
+      const liste = await entries(H);
       const arten = liste
         .filter(e => e.user_id === haupt)
         .map(e => e.type)
         .sort();
       assert.deepEqual(arten, ['figur', 'set', 'teil'], 'Figur fehlt (oder Set/Teil) im Papierkorb');
       assert.deepEqual(
-        r.body.papierkorb.sort(),
+        r.body.trash.sort(),
         liste
           .filter(e => e.user_id === haupt)
           .map(e => e.id)
@@ -211,7 +210,7 @@ test('trash', { concurrency: 1 }, async t => {
 
       // And everything comes back individually, as before.
       for (const e of liste.filter(e => e.user_id === haupt))
-        assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
+        assert.equal((await api(H, 'POST', `/trash/${e.id}/restore`)).status, 200);
       assert.deepEqual(await rows(haupt), vorher);
       await db.run('DELETE FROM set_acquisitions WHERE set_number = ANY($1)', [[SN, SN2]]);
       // Part and figure stay: the next case deletes them itself.
@@ -222,26 +221,18 @@ test('trash', { concurrency: 1 }, async t => {
     await t.test('after 30 days the background run clears up, not before', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
       assert.equal((await api(H, 'DELETE', `/minifigs/${FN}`)).status, 200);
-      const [a, b] = await eintraege(H);
+      const [a, b] = await entries(H);
       await db.run("UPDATE trash SET deleted_at = NOW() - interval '31 days' WHERE id=$1", [a.id]);
       await db.run("UPDATE trash SET deleted_at = NOW() - interval '29 days' WHERE id=$1", [b.id]);
       assert.ok((await pk.cleanTrashOn()) >= 1);
       assert.deepEqual(
-        (await eintraege(H)).map(x => x.id),
+        (await entries(H)).map(x => x.id),
         [b.id],
       );
-      const ohne = await api(H, 'DELETE', '/papierkorb', { password: 'falsch-Passwort-1' });
-      assert.deepEqual(
-        [ohne.status, ohne.body.code],
-        [400, 'aktuelles_passwort_falsch'],
-        'Leeren mit falschem Passwort',
-      );
-      assert.equal((await eintraege(H)).length, 1, 'Leeren mit falschem Passwort hat entfernt');
-      assert.equal(
-        (await api(H, 'DELETE', '/papierkorb', { password: PASS })).body.entfernt,
-        1,
-        'Leeren entfernt den Rest',
-      );
+      const ohne = await api(H, 'DELETE', '/trash', { password: 'falsch-Passwort-1' });
+      assert.deepEqual([ohne.status, ohne.body.code], [400, 'current_password_wrong'], 'Leeren mit falschem Passwort');
+      assert.equal((await entries(H)).length, 1, 'Leeren mit falschem Passwort hat entfernt');
+      assert.equal((await api(H, 'DELETE', '/trash', { password: PASS })).body.removed, 1, 'Leeren entfernt den Rest');
     });
   } finally {
     await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [ids]).catch(() => {});

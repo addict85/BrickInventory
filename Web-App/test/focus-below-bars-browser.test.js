@@ -63,9 +63,9 @@ async function tabGang(app, ansicht) {
 }
 
 test('focus below fixed bars', { concurrency: 1, timeout: 400_000 }, async t => {
-  const app = await startApp(t, { name: `fokl_${process.pid}`, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `fokl_${process.pid}`, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b } = app;

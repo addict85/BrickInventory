@@ -57,7 +57,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await holdsPart(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: sn, quantity: 1, colorId: farbe });
   }
 }
 
@@ -164,7 +164,7 @@ test('storage location against a real database', async t => {
   await t.test('names that are too long are rejected, not truncated', async () => {
     // Truncating would mean: the database holds something other than what was entered,
     // and nobody learns of it.
-    assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /lagerort_zu_lang|zu lang/i);
+    assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /storage_too_long|zu lang/i);
     assert.equal(
       L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS)).length,
       L.LOCATION_MAX_CHARS,
@@ -176,27 +176,27 @@ test('storage location against a real database', async t => {
     await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
-    const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
-    const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
+    const locations = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
+    const karte = Object.fromEntries(locations.map(o => [o.location, o]));
     // „Kiste 3" has a set AND two part rows — one place, not two
     // entries. Delivering two separate lists would mean that every UI
     // merges them itself, and each one on its own.
     // `figuren`: a minifigure carries a storage location too (migration 0024).
-    assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
-    assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
+    assert.deepEqual(karte['Kiste 3'], { location: 'Kiste 3', sets: 1, parts: 2, minifigs: 0 });
+    assert.deepEqual(karte['Regal B'], { location: 'Regal B', sets: 1, parts: 0, minifigs: 0 });
     // Alphabetical — the selection list should not differ on every call.
     assert.deepEqual(
-      orte.map(o => o.ort),
-      [...orte.map(o => o.ort)].sort(),
+      locations.map(o => o.location),
+      [...locations.map(o => o.location)].sort(),
     );
     // And nothing foreign.
-    assert.ok(!orte.some(o => o.ort === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
+    assert.ok(!locations.some(o => o.location === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
   });
 
   await t.test('the overview follows the scope', async () => {
     await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.ort);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
+    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
+    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
     assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
     assert.ok(
       !unten.includes('Kiste 3'),

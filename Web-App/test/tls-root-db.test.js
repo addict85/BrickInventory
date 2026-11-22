@@ -68,9 +68,9 @@ test("for comparison on the device: SHA-256 of the whole certificate, as in Cadd
     .toUpperCase()
     .match(/../g)
     .join(':');
-  const stand = _req('src/infra/tlsRoot.js').tlsStatusFrom(PEM1);
-  assert.equal(stand.zert_sha256, hex);
-  assert.notEqual(stand.zert_sha256, stand.fp_hex);
+  const state = _req('src/infra/tlsRoot.js').tlsStatusFrom(PEM1);
+  assert.equal(state.cert_sha256, hex);
+  assert.notEqual(state.cert_sha256, state.fp_hex);
 });
 
 test('cookie only over TLS: in production and behind https, can be switched off', () => {
@@ -107,11 +107,12 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   );
   app.use(_req('routes/certificate.js').buildCertificateRouter());
   app.use(
-    '/api/v1',
+    '/api/v2',
     _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
   t.after(async () => {
@@ -126,13 +127,13 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
       headers: { 'content-type': 'application/json', ...(o.cookie ? { cookie: o.cookie } : {}) },
       ...(o.body ? { body: JSON.stringify(o.body) } : {}),
     });
-  const anmeldung = await ruf('/api/v1/auth/login', {
-    body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true },
+  const anmeldung = await ruf('/api/v2/auth/login', {
+    body: { username: 'tls_nutzer', password: 'richtigesPasswort1', without_token: true },
   });
   await anmeldung.text(); // the session only stands in the store after the last byte
   const cookie = anmeldung.headers.get('set-cookie').split(';')[0];
   const qr = async () =>
-    (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
+    (await ruf('/api/v2/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
   const zert = (proto = 'https') => fetch(basis + '/ca.crt', { headers: { 'x-forwarded-proto': proto } });
   // No file yet (Caddy has not created the CA): no fp, 404.
@@ -150,13 +151,13 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   const klar = await zert('http');
   assert.equal(klar.status, 403, 'über HTTP keine Wurzel');
   assert.doesNotMatch(await klar.text(), /BEGIN CERTIFICATE/);
-  const tls = await (await ruf('/api/v1/settings/tls', { cookie })).json();
+  const tls = await (await ruf('/api/v2/settings/tls', { cookie })).json();
   assert.equal(tls.fp, FP1);
-  assert.equal(tls.zert_sha256, tlsStatusFrom(PEM1).zert_sha256);
+  assert.equal(tls.cert_sha256, tlsStatusFrom(PEM1).cert_sha256);
   assert.equal(tls.https, true);
   const q = await qr();
   assert.equal(q.fp, FP1);
-  assert.equal(q.zert_sha256, tlsStatusFrom(PEM1).zert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
+  assert.equal(q.cert_sha256, tlsStatusFrom(PEM1).cert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
   assert.equal(q.url, 'https://lego.test');
 
   // The file is swapped (new CA): the server rereads without a restart.

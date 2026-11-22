@@ -70,11 +70,11 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
   });
   const base = routerServer(_req, {
     sitzung: { userId: chef, username: NAMEN[0], isAdmin: true },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
+    routen: { '/api/v2/auth': 'routes/auth.js' },
     t,
   }).base;
   const ruf = async (methode, weg, body) => {
-    const r = await fetch(`${base}/api/v1/auth${weg}`, {
+    const r = await fetch(`${base}/api/v2/auth${weg}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -84,8 +84,8 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     return JSON.parse(text);
   };
   /** The mails go out on the side; wait briefly until they arrive. */
-  const mails = async (type, anzahl) => {
-    for (let i = 0; i < 60 && gesendet.filter(m => m.type === type).length < anzahl; i++)
+  const mails = async (type, count) => {
+    for (let i = 0; i < 60 && gesendet.filter(m => m.type === type).length < count; i++)
       await new Promise(r => setTimeout(r, 25));
     return gesendet
       .filter(m => m.type === type && NAMEN.some(n => m.an === `${n}@example.org`))
@@ -142,7 +142,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
 
   await t.test('removed second factor', async () => {
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [zwei]);
-    await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
+    await ruf('DELETE', `/users/${zwei}/second-factor`, { admin_password: PASS });
     assert.deepEqual(
       (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
@@ -189,14 +189,14 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
 
   await t.test('own second factor set up and switched off', async () => {
     const zf = _req('src/factors/secondFactor.js');
-    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
-    const code = versatz => zf.hotp(zf.fromBase32(geheimnis), zf.timeStep() + versatz);
-    await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
+    const { secret } = await ruf('POST', '/second-factor/setup', { password: PASS });
+    const code = versatz => zf.hotp(zf.fromBase32(secret), zf.timeStep() + versatz);
+    await ruf('POST', '/second-factor/confirm', { code: code(0) });
     assert.deepEqual(
       (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),
       [NAMEN[0]],
     );
-    await ruf('POST', '/zweiter-faktor/abschalten', { password: PASS, code: code(1) });
+    await ruf('POST', '/second-factor/disable', { password: PASS, code: code(1) });
     assert.deepEqual(
       (await mails('zweiter_faktor_abgeschaltet', 1)).map(m => m.an),
       [NAMEN[0]],

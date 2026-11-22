@@ -35,32 +35,32 @@ const SCHLUESSEL = ['rebrickable_api_key', 'einrichtung_erledigt'];
 test('setup wizard only above an empty collection', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `einr_${process.pid}`,
-    bestand: async db => {
+    holding: async db => {
       await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     },
     // The fetch at Rebrickable runs in the server; here its response is fixed.
     intercept: [
       {
-        muster: '*quelle-testen*',
-        contains: 'quelle-testen',
-        antwort: {
+        muster: '*test-source*',
+        contains: 'test-source',
+        response: {
           success: false,
-          code: 'quelle_nicht_erreichbar',
+          code: 'source_unreachable',
           error: 'Rebrickable ist nicht erreichbar. Bitte die Internetverbindung des Servers prüfen.',
           details: 'getaddrinfo ENOTFOUND rebrickable.com',
         },
       },
     ],
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, uid, ruhig } = app;
-  const offen = `document.getElementById('setup-modal').classList.contains('open')`;
+  const open = `document.getElementById('setup-modal').classList.contains('open')`;
 
   await t.test('empty collection: wizard, text and headings', async () => {
-    await bis(offen, 'Assistent');
+    await bis(open, 'Assistent');
     const text = await b.auswerten(`document.querySelector('#setup-modal .wiz-step.active')?.textContent || ''`);
     assert.match(text, /Rebrickable/);
     assert.doesNotMatch(text, /bleibt die Sammlung leer/);
@@ -81,28 +81,28 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
   });
 
   await t.test('check key: error at the field, in plain text', async () => {
-    const pruefen = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
-    const stand = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, ungueltig: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
+    const check = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
+    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, ungueltig: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
       fokus: document.activeElement?.id, zeichen: document.getElementById('wiz-status-rebrickable').className,
       toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) })`;
-    await b.auswerten(pruefen);
+    await b.auswerten(check);
     await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
-    const leer = await b.auswerten(stand);
-    assert.match(leer.fehler, /Schlüssel eintragen/);
+    const leer = await b.auswerten(state);
+    assert.match(leer.error, /Schlüssel eintragen/);
     assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
     await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
-    await b.auswerten(pruefen);
+    await b.auswerten(check);
     await bis(
       `/nicht erreichbar/.test(document.getElementById('wiz-error-rebrickable').textContent)`,
       'Klartext statt Rohtext',
       100,
     );
-    const z = await b.auswerten(stand);
+    const z = await b.auswerten(state);
     assert.ok(
       await db.get("SELECT 1 FROM global_settings WHERE key = 'rebrickable_api_key'"),
       'in der Einrichtung speichert der Assistent den ersten Schlüssel ohne Passwortfrage',
     );
-    assert.match(z.fehler, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
+    assert.match(z.error, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
     assert.match(z.zeichen, /missing/, '✗ neben dem Titel');
     assert.deepEqual(z.toasts, []);
     await b.auswerten(
@@ -128,7 +128,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
       300,
     );
     await ruhig();
-    assert.equal(await b.auswerten(offen), false, 'Assistent über der gefüllten Sammlung');
+    assert.equal(await b.auswerten(open), false, 'Assistent über der gefüllten Sammlung');
     assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Hinweisband fehlt');
   });
 });

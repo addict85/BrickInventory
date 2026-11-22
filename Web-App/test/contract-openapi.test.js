@@ -7,14 +7,14 @@
  * Counter-checks (measured 31.10.2026):
  *   A  in docs/openapi.json a field name (used_count) changed → red: “the
  *      checked-in openapi.json is generated”
- *   B  the entry 'GET /api/v1/parts/stats' in src/contract/parts.ts
+ *   B  the entry 'GET /api/v2/parts/stats' in src/contract/parts.ts
  *      renamed → red: “every route has a contract” names it
- *   C  an entry 'GET /api/v1/gibt-es-nicht' added → red: “no contract
+ *   C  an entry 'GET /api/v2/gibt-es-nicht' added → red: “no contract
  *      without a route”
  *   D  the same key in sets.ts and teile.ts → red: “no key
  *      twice” (the later one would silently overwrite the earlier one)
- *   E  (05.11.2026) `klein: true` removed from 'GET /api/v1/storage' → red:
- *      “every long list takes pages” names /api/v1/storage
+ *   E  (05.11.2026) `klein: true` removed from 'GET /api/v2/storage' → red:
+ *      “every long list takes pages” names /api/v2/storage
  *   F  (15.11.2026) SetItem.added_at back to `.optional()` → red: “response fields are
  *      required …” (720 optional, 719 allowed); SetItem.acq_count back to `.nullable()`
  *      → red (701 nullable, 700 allowed)
@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { DATEI, alsText } = require('../scripts/contract-openapi.js');
+const { DATEI, DATEI_V2, alsText } = require('../scripts/contract-openapi.js');
 const { CONTRACT, AREAS } = _req('src/contract/index.js');
 const { openapi } = _req('src/contract/openapi.js');
 
@@ -41,13 +41,13 @@ function routesOf(router, basis) {
   return aus;
 }
 const EXPRESS = [
-  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'), '/api/v1'),
-  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/auth.js'), '/api/v1/auth'),
+  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'), '/api/v2'),
+  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/auth.js'), '/api/v2/auth'),
   // Directly in server.ts: they answer before the routers are in place.
-  'GET /api/v1/startup-status',
-  'GET /api/v1/health',
-  'GET /api/v1/health/live',
-  'GET /api/v1/health/ready',
+  'GET /api/v2/startup-status',
+  'GET /api/v2/health',
+  'GET /api/v2/health/live',
+  'GET /api/v2/health/ready',
 ];
 
 test('every route has a contract', () => {
@@ -66,7 +66,7 @@ test('no contract without a route', () => {
 });
 
 test('no key twice', () => {
-  const summe = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routen).length, 0);
+  const summe = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routes).length, 0);
   assert.equal(Object.keys(CONTRACT).length, summe);
 });
 
@@ -74,6 +74,14 @@ test('the checked-in openapi.json is generated', () => {
   assert.ok(
     fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
     'docs/openapi.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
+  );
+});
+
+test('the checked-in openapi-v2.json is generated from the same contract', () => {
+  // Counter-check (22.11.2026): in docs/openapi-v2.json the first `"heartbeat"` renamed to `lebenszeichen` → red.
+  assert.ok(
+    fs.readFileSync(DATEI_V2, 'utf8') === alsText(openapi(2)),
+    'docs/openapi-v2.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
   );
 });
 
@@ -86,8 +94,8 @@ test('every long list takes pages', () => {
   for (const [p, ops] of Object.entries(o.paths)) {
     const get = ops.get;
     if (!get) continue;
-    const antwort = schema(get.responses[200].content['application/json']?.schema);
-    const listen = Object.values(antwort?.properties ?? {}).filter(v => schema(v)?.type === 'array');
+    const response = schema(get.responses[200].content['application/json']?.schema);
+    const listen = Object.values(response?.properties ?? {}).filter(v => schema(v)?.type === 'array');
     const namen = (get.parameters ?? []).map(x => x.name);
     if (listen.length && !get['x-klein'] && !namen.includes('page_size')) ohne.push(p);
     if ((get.parameters ?? []).some(x => x.name === 'limit' && !x.deprecated)) limit.push(p);
@@ -98,33 +106,40 @@ test('every long list takes pages', () => {
 
 /** The contract file of each area key (the keys are tags in openapi.json and stay). */
 const CONTRACT_FILE = {
-  grund: 'base',
-  gemeinsam: 'shared',
-  bestand: 'inventory',
-  einstellungen: 'settings',
-  figuren: 'minifigs',
-  finanzen: 'finances',
-  geraet: 'device',
-  gutscheine: 'vouchers',
-  haushalt: 'household',
-  katalog: 'catalog',
-  konto: 'account',
-  merkliste: 'wanted',
+  base: 'base',
+  shared: 'shared',
+  inventory: 'inventory',
+  settings: 'settings',
+  minifigs: 'minifigs',
+  finances: 'finances',
+  device: 'device',
+  vouchers: 'vouchers',
+  household: 'household',
+  catalog: 'catalog',
+  account: 'account',
+  wanted: 'wanted',
   sets: 'sets',
-  teile: 'parts',
-  verwaltung: 'management',
+  parts: 'parts',
+  management: 'management',
 };
 
 /** The contract file of a schema: where its object is exported, otherwise the scope of the route that names it. */
 function fileJeSchema() {
   // The documents carry the v1 names of the schemas (src/contract/v1Names.ts).
   const { v1SchemaName } = _req('src/contract/v1Names.js');
+  const { v1Key } = _req('src/contract/v1Routes.js');
   const datei = new Map();
-  for (const f of ['grund', 'gemeinsam', ...Object.keys(AREAS)])
+  for (const f of ['base', 'shared', ...Object.keys(AREAS)])
     for (const [n, w] of Object.entries(_req(`src/contract/${CONTRACT_FILE[f]}.js`)))
       if (!datei.has(v1SchemaName(n)) && w?._zod) datei.set(v1SchemaName(n), f);
   for (const [b, m] of Object.entries(AREAS))
-    for (const k of Object.keys(m.routen)) datei.set(k.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, ''), b);
+    for (const k of Object.keys(m.routes))
+      datei.set(
+        v1Key(k)
+          .replace(/[^A-Za-z0-9]+/g, '_')
+          .replace(/_+$/, ''),
+        b,
+      );
   return datei;
 }
 
@@ -154,10 +169,10 @@ function responseFields(o) {
     const z = je[d];
     const zaehle = s => {
       if (!s || typeof s !== 'object' || s.$ref) return;
-      const pflicht = new Set(s.required ?? []);
+      const required = new Set(s.required ?? []);
       for (const [k, v] of Object.entries(s.properties ?? {})) {
         z.felder++;
-        if (!pflicht.has(k)) z.frei++;
+        if (!required.has(k)) z.frei++;
         if (nullbar(v)) z.nullbar++;
       }
       for (const [k, v] of Object.entries(s)) if (typeof v === 'object') zaehle(k === 'properties' ? null : v);
@@ -173,20 +188,20 @@ test('response fields are required where the server always delivers them: option
   // Per contract file so that it is visible where the contract is still soft; total 1728 → 1449 fields,
   // optional 719 → 329 (41.6 % → 22.7 %), nullable 700 → 484.
   const LIMIT = {
-    bestand: { frei: 10, nullbar: 12 },
-    einstellungen: { frei: 14, nullbar: 11 },
-    figuren: { frei: 21, nullbar: 27 },
-    finanzen: { frei: 62, nullbar: 125 },
-    gemeinsam: { frei: 35, nullbar: 50 },
-    geraet: { frei: 0, nullbar: 0 },
-    gutscheine: { frei: 10, nullbar: 17 },
-    haushalt: { frei: 1, nullbar: 4 },
-    katalog: { frei: 2, nullbar: 21 },
-    konto: { frei: 52, nullbar: 55 },
-    merkliste: { frei: 32, nullbar: 33 },
+    inventory: { frei: 10, nullbar: 12 },
+    settings: { frei: 14, nullbar: 11 },
+    minifigs: { frei: 21, nullbar: 27 },
+    finances: { frei: 62, nullbar: 125 },
+    shared: { frei: 35, nullbar: 50 },
+    device: { frei: 0, nullbar: 0 },
+    vouchers: { frei: 10, nullbar: 17 },
+    household: { frei: 1, nullbar: 4 },
+    catalog: { frei: 2, nullbar: 21 },
+    account: { frei: 52, nullbar: 55 },
+    wanted: { frei: 32, nullbar: 33 },
     sets: { frei: 39, nullbar: 58 },
-    teile: { frei: 9, nullbar: 20 },
-    verwaltung: { frei: 42, nullbar: 51 },
+    parts: { frei: 9, nullbar: 20 },
+    management: { frei: 42, nullbar: 51 },
   };
   const je = responseFields(openapi());
   const summe = Object.values(je).reduce((a, z) => a + z.felder, 0);
@@ -196,9 +211,9 @@ test('response fields are required where the server always delivers them: option
     weniger = [];
   for (const [datei, z] of Object.entries(je)) {
     const s = LIMIT[datei];
-    for (const art of /** @type {const} */ (['frei', 'nullbar'])) {
-      if (z[art] > s[art]) toMuch.push(`${datei}: ${z[art]} ${art}, erlaubt ${s[art]}`);
-      if (z[art] < s[art]) weniger.push(`${datei} ${art} ${z[art]}`);
+    for (const kind of /** @type {const} */ (['frei', 'nullbar'])) {
+      if (z[kind] > s[kind]) toMuch.push(`${datei}: ${z[kind]} ${kind}, erlaubt ${s[kind]}`);
+      if (z[kind] < s[kind]) weniger.push(`${datei} ${kind} ${z[kind]}`);
     }
   }
   assert.deepEqual(toMuch, []);

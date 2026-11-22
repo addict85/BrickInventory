@@ -14,9 +14,9 @@ test('color values only get into the markup via escHex', () => {
   let checked = 0;
   for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js') && n !== 'app.bundle.js')) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
-    src.split('\n').forEach((zeile, i) => {
+    src.split('\n').forEach((row, i) => {
       // Interpolated color fields: color_hex, colour_hex, .hex
-      for (const m of zeile.matchAll(/\$\{([^{}]*(?:color_hex|colour_hex|\.hex)\b[^{}]*)\}/g)) {
+      for (const m of row.matchAll(/\$\{([^{}]*(?:color_hex|colour_hex|\.hex)\b[^{}]*)\}/g)) {
         checked++;
         // Two allowed versions of the same check: escHex() delivers
         // `#RRGGBB` for style, rawHex() the bare six digits for

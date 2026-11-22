@@ -77,7 +77,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
 
   const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
   const { base } = testServer(_req, { sitzung, t });
-  const r = await fetch(`${base}${AUTH}/konto`, {
+  const r = await fetch(`${base}${AUTH}/account`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ password: PASS }),

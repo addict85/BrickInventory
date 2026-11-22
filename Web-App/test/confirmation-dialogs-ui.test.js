@@ -1,6 +1,6 @@
 /**
  * The dialogs of the routes with re-confirmation offer the second factor:
- * if the server reports zweiter_faktor_noetig, the UI asks for the code
+ * if the server reports second_factor_required, the UI asks for the code
  * (or, where the browser can and the account has passkeys, a
  * passkey) and repeats the request. Real bundle in jsdom.
  *
@@ -23,17 +23,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
-/** Answers without code with zweiter_faktor_noetig and remembers every body. */
+/** Answers without code with second_factor_required and remembers every body. */
 function withFactor(liste, passkey = false) {
   return (_url, o) => {
     const body = JSON.parse(o.body);
     liste.push(body);
     return body.code || body.passkey
-      ? { success: true, sets: 0, teile: 0, figuren: 0 }
+      ? { success: true, sets: 0, parts: 0, minifigs: 0 }
       : {
           $status: 400,
           success: false,
-          code: 'zweiter_faktor_noetig',
+          code: 'second_factor_required',
           error: 'Code fehlt',
           ...(passkey ? { passkey: true } : {}),
         };
@@ -59,7 +59,7 @@ async function confirm(d, { passwort, code }) {
 
 test('delete everything asks for the code', async () => {
   const rufe = [];
-  const { w, d } = await openUi({ '/v1/bestand': withFactor(rufe) });
+  const { w, d } = await openUi({ '/v2/inventory': withFactor(rufe) });
   try {
     d.getElementById('btn-dall').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '654321' });
@@ -74,7 +74,7 @@ test('delete everything asks for the code', async () => {
 test('creating an account asks for the code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
-    '/v1/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(rufe)(url, o) : { success: true, users: [] }),
+    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(rufe)(url, o) : { success: true, users: [] }),
   });
   try {
     d.getElementById('nu-n').value = 'bert';
@@ -94,8 +94,8 @@ test('the passkey replaces the code', async () => {
   const puffer = () => new Uint8Array([1, 2, 3]).buffer;
   const { w, d } = await openUi(
     {
-      '/v1/bestand': withFactor(rufe, true),
-      '/v1/auth/passkey/anmelden/optionen': { success: true, optionen: { challenge: 'AAAA', allowCredentials: [] } },
+      '/v2/inventory': withFactor(rufe, true),
+      '/v2/auth/passkey/login/options': { success: true, options: { challenge: 'AAAA', allowCredentials: [] } },
     },
     {
       before: fenster => {
@@ -137,8 +137,7 @@ test('the passkey replaces the code', async () => {
 test('emptying the trash asks for password and code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
-    '/v1/papierkorb': (url, o) =>
-      o?.method === 'DELETE' ? withFactor(rufe)(url, o) : { success: true, eintraege: [] },
+    '/v2/trash': (url, o) => (o?.method === 'DELETE' ? withFactor(rufe)(url, o) : { success: true, entries: [] }),
   });
   try {
     d.getElementById('trash-empty').click();
@@ -153,11 +152,11 @@ test('emptying the trash asks for password and code', async () => {
 test('deleting a voucher asks for password and code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v1/vouchers/3': withFactor(rufe),
+    '/v2/vouchers/3': withFactor(rufe),
   });
   try {
     await sicht(w, 'vouchers');
@@ -175,17 +174,17 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
   const releases = [],
     fetches = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: true }],
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: true }],
     },
-    '/v1/vouchers/3/pdf-freigabe': (_u, o) => {
+    '/v2/vouchers/3/pdf-grant': (_u, o) => {
       releases.push(JSON.parse(o.body));
-      return { success: true, ticket: 'T-123', gueltig_sek: 60 };
+      return { success: true, ticket: 'T-123', valid_seconds: 60 };
     },
-    '/v1/vouchers/3/pdf': u => {
+    '/v2/vouchers/3/pdf': u => {
       fetches.push(String(u));
-      return { $status: 403, success: false, error: 'abgelehnt', code: 'kein_zugriff_konto' };
+      return { $status: 403, success: false, error: 'abgelehnt', code: 'no_account_access' };
     },
   });
   try {
@@ -202,7 +201,7 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
     d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => fetches.length === 1), 'kein Abruf des PDFs');
     assert.deepEqual(releases, [{ password: 'Mein-Passwort-1' }]);
-    assert.match(fetches[0], /\/api\/v1\/vouchers\/3\/pdf\?ticket=T-123$/);
+    assert.match(fetches[0], /\/api\/v2\/vouchers\/3\/pdf\?ticket=T-123$/);
   } finally {
     w.close();
   }
@@ -211,11 +210,11 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
 test('the voucher list shows the mask, number and PIN only after confirmation', async () => {
   const rufe = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v1/vouchers/3/klartext': (_u, o) => {
+    '/v2/vouchers/3/plaintext': (_u, o) => {
       rufe.push(JSON.parse(o.body));
       return { success: true, id: 3, number: '6123456789012', pin: '4711' };
     },

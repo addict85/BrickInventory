@@ -44,9 +44,9 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
     await bookEntry(require('./helpers/sources').testContext('sets'), {
       konto: uid,
       setNumber: sn,
-      menge: 1,
+      quantity: 1,
       kaufpreis: 10,
-      zustand: z,
+      condition: z,
     });
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);

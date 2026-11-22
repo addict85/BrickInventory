@@ -77,7 +77,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
   const anmelden = async name => {
     const a = await ruf(AUTH + '/login', {
       method: 'POST',
-      body: { username: name, password: PASS, ohne_token: true },
+      body: { username: name, password: PASS, without_token: true },
     });
     assert.equal(a.status, 200, `Anmeldung von ${name} scheiterte: ${JSON.stringify(a.body)}`);
     assert.ok(a.cookie, 'Ohne Set-Cookie gibt es keine Sitzung');

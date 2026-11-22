@@ -68,14 +68,15 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
     /** @type {any} */ (req).apiUser = { user_id: 1, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(async () => {
     srv.close();
     await db.pool.end().catch(() => {});
   });
 
-  const r = await fetch(`http://127.0.0.1:${portOf(srv)}/api/v1/sets/60052-1/parts-list`);
+  const r = await fetch(`http://127.0.0.1:${portOf(srv)}/api/v2/sets/60052-1/parts-list`);
   const d = await r.json();
   assert.equal(d.success, true, JSON.stringify(d));
   const nach = nr => d.parts.find(p => p.part_number === nr);

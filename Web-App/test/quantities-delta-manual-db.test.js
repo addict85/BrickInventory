@@ -84,8 +84,8 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
 
   await t.test('via the route: step down, response with the quantity afterwards', async () => {
     const { base } = testServer(_req, { t, sitzung: { userId: uid } });
-    const put = (pfad, body) =>
-      fetch(`${base}/api/v1/${pfad}`, {
+    const put = (path, body) =>
+      fetch(`${base}/api/v2/${path}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),

@@ -27,8 +27,8 @@ test.after(() =>
 const INVENTORY_ALTER = 0;
 
 test('no new column change in db/database.ts', () => {
-  const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
-  const treffer = quelle.match(/ALTER TABLE \w+ ADD COLUMN/g) || [];
+  const source = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
+  const treffer = source.match(/ALTER TABLE \w+ ADD COLUMN/g) || [];
 
   assert.ok(
     treffer.length <= INVENTORY_ALTER,

@@ -18,28 +18,28 @@
  *      red: “a second click …” (new file accepted during the run)
  *   E  in readStream `rest = lines.pop() ?? ''` → `rest = ''` → red: “the
  *      progress arrives piece by piece …” (report about two pieces breaks)
- *   F  `p.set('strom', '1')` deleted → red: the same check
+ *   F  `p.set('stream', '1')` deleted → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-const BERICHT = { success: true, vorschau: true, gelesen: 1, posten: [], angelegt: 0, aufgestockt: 0, fehler: 0 };
+const BERICHT = { success: true, preview: true, parsed: 1, items: [], created: 0, topped_up: 0, error: 0 };
 
 /** Opens the UI; requests to the XML import are answered by `antwort(nr)` (promise of a Response). */
-async function withImport(antwort) {
+async function withImport(response) {
   const o = await openUi();
   const importe = [];
   const davor = o.w.fetch;
   o.w.fetch = (url, opt) => {
     if (!String(url).includes('/wanted-list/import/xml')) return davor(url, opt);
     importe.push(String(url));
-    return antwort(importe.length);
+    return response(importe.length);
   };
   const choose = name => {
-    const feld = o.d.getElementById('wanted-xml-part');
-    Object.defineProperty(feld, 'files', { configurable: true, value: [new o.w.File(['<INVENTORY/>'], name)] });
-    feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const field = o.d.getElementById('wanted-xml-part');
+    Object.defineProperty(field, 'files', { configurable: true, value: [new o.w.File(['<INVENTORY/>'], name)] });
+    field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
   };
   const knopf = id => o.d.getElementById(id);
   return { ...o, importe, choose, knopf };
@@ -111,7 +111,7 @@ test('the latch opens again even after an error', async () => {
 
 test('the progress arrives piece by piece and fills the bar', async () => {
   const stuecke = [
-    `${JSON.stringify({ fortschritt: { phase: 'rebrickable', fertig: 1, gesamt: 4 } })}\n{"success":true,"vorschau":tr`,
+    `${JSON.stringify({ fortschritt: { phase: 'rebrickable', fertig: 1, total: 4 } })}\n{"success":true,"vorschau":tr`,
     `ue,"gelesen":7,"posten":[]}\n`,
   ];
   let weiter;
@@ -144,7 +144,7 @@ test('the progress arrives piece by piece and fills the bar', async () => {
     );
     choose('liste.xml');
     assert.ok(await warte(() => typeof weiter === 'function'));
-    assert.match(importe[0], /[?&]strom=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
+    assert.match(importe[0], /[?&]stream=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
     assert.equal(box.style.display, '');
     assert.equal(wrap.getAttribute('aria-valuenow'), '25');
     assert.match(d.getElementById('wanted-xml-progress-text').textContent, /1.*4/);

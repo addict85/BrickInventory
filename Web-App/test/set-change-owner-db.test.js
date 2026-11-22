@@ -41,11 +41,11 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     const subId = await factory.konto(SUB);
     await factory.subAccount(mainId, subId);
     // Set AND acquisition belong to the SUB-ACCOUNT.
-    await factory.setRecorded(subId, SET, { preis: 10, zustand: 'N' });
+    await factory.setRecorded(subId, SET, { preis: 10, condition: 'N' });
 
     const { changeSet } = require('./helpers/sources').areaPage('sets');
     // Purchase price and condition stand in the acquisition, the quantity is its sum.
-    const stand = async () => ({
+    const state = async () => ({
       set: await db.get(
         `SELECT s.user_id,
                 COALESCE((SELECT SUM(a.quantity) FROM set_acquisitions a
@@ -62,14 +62,14 @@ test("purchase price and condition land in the owner's account", { concurrency: 
 
     // 1. The price — the branch that was already right before.
     await changeSet(mainId, SET, { purchase_price: 99 });
-    let s = await stand();
+    let s = await state();
     assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
     // 2. The condition — exactly here the change disappeared.
     //    Counter-check: in writeInLastEntry ownerId replaced by the caller
     //    -> this substep red (carried out).
     await changeSet(mainId, SET, { condition: 'U' });
-    s = await stand();
+    s = await state();
     assert.equal(
       s.erf.condition,
       'U',

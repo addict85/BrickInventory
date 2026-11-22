@@ -34,19 +34,19 @@ test('focus when switching the fields of the login card', async () => {
 
 test('forgot password: title, explanation and Enter submits', async () => {
   const { w, d, aufrufe } = await openUi(
-    { '/v1/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
+    { '/v2/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
     { loggedIn: false },
   );
   try {
     klick(d, 'link-forgot');
     assert.equal(d.querySelector('#panel-forgot h1').textContent.trim(), 'Passwort vergessen', 'Titel');
     assert.match(d.title, /^Passwort vergessen – /);
-    const feld = d.getElementById('forgot-email');
-    assert.match(d.getElementById(feld.getAttribute('aria-describedby')).textContent, /Link/);
-    feld.value = 'anna@example.org';
-    feld.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    const field = d.getElementById('forgot-email');
+    assert.match(d.getElementById(field.getAttribute('aria-describedby')).textContent, /Link/);
+    field.value = 'anna@example.org';
+    field.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     assert.ok(
-      await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/auth/forgot-password'))),
+      await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/forgot-password'))),
       'Enter sendet ab',
     );
     assert.ok(await warte(() => d.getElementById('forgot-success').style.display === 'block'));

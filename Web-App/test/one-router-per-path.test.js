@@ -6,8 +6,8 @@
  * loaded modules.
  *
  * Counter-checks (31.10.2026):
- *   • a second router under /api/v1/auth in server.ts
- *     (`app.use('/api/v1/auth', zertifikatRouter)`) → “one router per mount point” red.
+ *   • a second router under /api/v2/auth in server.ts
+ *     (`app.use('/api/v2/auth', zertifikatRouter)`) → “one router per mount point” red.
  *   • `router.get('/settings/theme', …)` a second time in
  *     routes/api_v1/settings.ts → “every route exactly once” red.
  */
@@ -37,7 +37,7 @@ function routen(router, praefix = '') {
 
 /** Router mounts in startup/app.ts: path → router module. */
 function einhaengungen() {
-  const v1 = { mount: '/api/v1', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
+  const v1 = { mount: '/api/v2', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
   // The parts of routes/auth.ts are already in its stack.
   return [v1, ...routerEinhaengungen({ withoutParts: true })];
 }
@@ -67,7 +67,7 @@ test('every route exactly once', () => {
   }
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
   assert.ok(
-    alle.includes('GET /api/v1/settings/theme') && alle.includes('GET /api/v1/settings'),
+    alle.includes('GET /api/v2/settings/theme') && alle.includes('GET /api/v2/settings'),
     'die Einstellungen fehlen in der Liste',
   );
   const gesehen = new Set(),

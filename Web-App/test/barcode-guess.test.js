@@ -11,8 +11,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { isGuess, CHECKED } = _req('src/catalog/barcodeSource.js');
 
 test('verified paths are not a guess', () => {
-  for (const quelle of ['catalog_cache', 'rebrickable-ean', 'brickset-ean', 'brickset-item', 'rebrickable-direct']) {
-    assert.equal(isGuess(quelle), false, `${quelle} gilt als Vermutung`);
+  for (const source of ['catalog_cache', 'rebrickable-ean', 'brickset-ean', 'brickset-item', 'rebrickable-direct']) {
+    assert.equal(isGuess(source), false, `${source} gilt als Vermutung`);
   }
   // Self-proof: if the list were empty, the loop above would not pass.
   assert.ok(CHECKED.size >= 5, `nur ${CHECKED.size} geprüfte Quellen — Liste geschrumpft?`);
@@ -31,8 +31,8 @@ test('the two guessing paths are marked as a guess', () => {
 test('an unknown source counts as a guess', () => {
   // The core of the allow list: an eighth path is automatically uncertain instead of
   // silently passing as a hit.
-  for (const quelle of ['irgendwas-neues', '', null, undefined]) {
-    assert.equal(isGuess(quelle), true, `"${quelle}" ging als geprüft durch`);
+  for (const source of ['irgendwas-neues', '', null, undefined]) {
+    assert.equal(isGuess(source), true, `"${source}" ging als geprüft durch`);
   }
 });
 

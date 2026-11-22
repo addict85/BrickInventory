@@ -54,7 +54,8 @@ test('the main account can change the purchase price of a sub-account acquisitio
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
     return app;
   };
 
@@ -67,7 +68,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
 
   try {
     // 1. The reported case: web app route, main account changes a sub-account row.
-    let r = await fetch(`${baseMain}/api/v1/sets/${SET}/acquisitions/${acqId}`, {
+    let r = await fetch(`${baseMain}/api/v2/sets/${SET}/acquisitions/${acqId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 25.5 }),
@@ -84,7 +85,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
     assert.equal(parseFloat(onOwner.purchase_price), 25.5, 'die Erfassung des Unterkontos muss den neuen Preis tragen');
 
     // 2. The same change via the Android route.
-    r = await fetch(`${baseMain}/api/v1/sets/${SET}/acquisitions/${acqId}`, {
+    r = await fetch(`${baseMain}/api/v2/sets/${SET}/acquisitions/${acqId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 31.0 }),
@@ -103,7 +104,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
     );
     const fremdeId = (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [mainId, SET]))
       .id;
-    r = await fetch(`${baseSub}/api/v1/sets/${SET}/acquisitions/${fremdeId}`, {
+    r = await fetch(`${baseSub}/api/v2/sets/${SET}/acquisitions/${fremdeId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 1.0 }),

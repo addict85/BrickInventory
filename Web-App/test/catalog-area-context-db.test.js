@@ -19,8 +19,8 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { buildServices } = _req('startup/wiring.js');
 
@@ -50,10 +50,10 @@ test('catalog with its own access', { concurrency: 1 }, async t => {
   if (!db) return;
   const weg = async () => {
     await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTORY]);
-    await quellen.testServices().externalSources.setQuotaBack('brickset');
+    await sources.testServices().externalSources.setQuotaBack('brickset');
   };
   t.after(async () => {
-    quellen.buildAndRequire();
+    sources.buildAndRequire();
     await weg();
     await db.pool.end();
   });
@@ -62,7 +62,7 @@ test('catalog with its own access', { concurrency: 1 }, async t => {
 
   const sql = [];
   const contexts = {};
-  const { catalog: katalog } = buildServices(countingAccess(quellen.testAccess(), sql), { contexts });
+  const { catalog: katalog } = buildServices(countingAccess(sources.testAccess(), sql), { contexts });
 
   await t.test('reading goes via the passed access', async () => {
     assert.equal(await katalog.newestInventory(SN), INVENTORY);

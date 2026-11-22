@@ -172,7 +172,7 @@ test('a 401 leads back to the login, not into a dead UI', () => {
   // The message appears once in the login card (showLogin), not as a toast.
   assert.match(
     core,
-    /o\.abgelaufen \? (o\.hinweis \|\| )?tRaw\('auth\.session_expired'\)/,
+    /o\.abgelaufen \? (o\.hint \|\| )?tRaw\('auth\.session_expired'\)/,
     'Ohne Meldung wüsste niemand, warum',
   );
 

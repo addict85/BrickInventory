@@ -20,16 +20,16 @@ const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
 test('the schedule inserts server values escaped', async () => {
   const o = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/job-queue': {
       success: true,
-      auftraege: [],
-      zusammenfassung: [],
-      job_prozess: { laeuft: true },
-      bildbedarf: 0,
-      pausen: [],
+      jobs: [],
+      summary: [],
+      job_process: { running: true },
+      image_demand: 0,
+      pauses: [],
     },
-    '/v1/admin/jobs': {
+    '/v2/admin/jobs': {
       success: true,
       jobs: { priceJob: { status: 'idle', progress: 0, total: 0 }, imgDl: { status: 'idle', progress: 0, total: 0 } },
       schedules: { priceJob: { type: 'daily', time: BOESE }, imgDl: { type: 'interval', minutes: 15 } },

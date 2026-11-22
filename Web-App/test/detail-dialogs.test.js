@@ -32,11 +32,11 @@ const WITH_TRASH = [
 
 test('the trash is the same size in every detail dialog', () => {
   for (const [name, modal, knopf] of WITH_TRASH) {
-    const zeile = dialog(modal)
+    const row = dialog(modal)
       .split('\n')
       .find(z => z.includes(`id="${knopf}"`));
-    assert.ok(zeile, `${name}: der Papierkorb #${knopf} fehlt`);
-    const klassen = /class="([^"]*)"/.exec(zeile)?.[1] ?? '';
+    assert.ok(row, `${name}: der Papierkorb #${knopf} fehlt`);
+    const klassen = /class="([^"]*)"/.exec(row)?.[1] ?? '';
     assert.ok(
       klassen.includes('btn') && klassen.includes('bd'),
       `${name}: #${knopf} traegt nicht mehr „btn bd" (${klassen})`,

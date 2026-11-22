@@ -75,7 +75,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
     [SN, CUR],
   );
 
-  await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
+  await holdsPart(db, subId, PN, { quantity: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`,
@@ -87,7 +87,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
     [PN, CUR],
   );
 
-  await holdsMinifig(db, subId, FN, { menge: 0 }); // quantity 0: the acquisition behind it carries it
+  await holdsMinifig(db, subId, FN, { quantity: 0 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`,
@@ -107,7 +107,8 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
     return app;
   };
   const srv = appFor(mainId).listen(0);
@@ -118,36 +119,37 @@ test("price history: the main account sees the sub-account's acquisitions", { co
   // rule, not the credential — the equivalence of the credentials stands in
   // api-parity.
   const CASES = [
-    ['Set', `/api/v1/sets/${SN}/price-history`],
-    ['Teil', `/api/v1/parts/${PN}/4/price-history`],
-    ['Minifigur', `/api/v1/minifigs/${FN}/price-history`],
+    ['Set', `/api/v2/sets/${SN}/price-history`],
+    ['Teil', `/api/v2/parts/${PN}/4/price-history`],
+    ['Minifigur', `/api/v2/minifigs/${FN}/price-history`],
   ];
 
   try {
-    for (const [art, pfad] of CASES) {
-      const r = await fetch(base + pfad);
-      assert.equal(r.status, 200, `${art}: ${pfad} -> ${r.status}`);
+    for (const [kind, path] of CASES) {
+      const r = await fetch(base + path);
+      assert.equal(r.status, 200, `${kind}: ${path} -> ${r.status}`);
       const b = await r.json();
       const n = b.by_condition?.N;
       assert.ok(
         n,
-        `${art}: keine Zeile für „Neu" — die Erfassung des Unterkontos ` + 'wurde nicht gefunden (fehlendes Blickfeld)',
+        `${kind}: keine Zeile für „Neu" — die Erfassung des Unterkontos ` +
+          'wurde nicht gefunden (fehlendes Blickfeld)',
       );
-      assert.ok(n.purchase_price > 0, `${art}: der Kaufpreis des Unterkontos fehlt`);
-      assert.ok(n.pnl_pct != null, `${art}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
+      assert.ok(n.purchase_price > 0, `${kind}: der Kaufpreis des Unterkontos fehlt`);
+      assert.ok(n.pnl_pct != null, `${kind}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
     }
 
     // Opposite direction: with accounts=own the main account explicitly looks only
     // at ITSELF — then the row must NOT appear. Without this check the
     // test would also be green if somebody replaced the scope by „all accounts of the
     // installation\".
-    for (const [art, pfad] of CASES) {
-      const r = await fetch(`${base}${pfad}?accounts=own`);
+    for (const [kind, path] of CASES) {
+      const r = await fetch(`${base}${path}?accounts=own`);
       const b = await r.json();
       assert.equal(
         b.by_condition?.N,
         undefined,
-        `${art}: mit accounts=own darf die Erfassung des Unterkontos nicht mitzählen`,
+        `${kind}: mit accounts=own darf die Erfassung des Unterkontos nicht mitzählen`,
       );
     }
   } finally {

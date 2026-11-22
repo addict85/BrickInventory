@@ -37,7 +37,7 @@ test('jobs of dead job processes', { concurrency: 1 }, async t => {
     (
       await db.get(
         `INSERT INTO jobs (type, payload, status, locked_by, deadline_at, started_at, attempts)
-     VALUES ('aufraeumen', '{}', 'laeuft', $1, NOW() + interval '5 minutes', NOW(), 1) RETURNING id`,
+     VALUES ('cleanup', '{}', 'running', $1, NOW() + interval '5 minutes', NOW(), 1) RETURNING id`,
         [occupiedOf],
       )
     ).id;
@@ -51,12 +51,12 @@ test('jobs of dead job processes', { concurrency: 1 }, async t => {
   await prozess.registerProcess();
 
   await t.test('the start takes over the job of a dead process', async () => {
-    assert.notEqual(await status(tot), 'laeuft');
+    assert.notEqual(await status(tot), 'running');
   });
   await t.test('a living process keeps its job', async () => {
-    assert.equal(await status(anderer), 'laeuft');
+    assert.equal(await status(anderer), 'running');
   });
   await t.test('the own claims stay', async () => {
-    assert.equal(await status(eigener), 'laeuft');
+    assert.equal(await status(eigener), 'running');
   });
 });

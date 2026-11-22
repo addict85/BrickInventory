@@ -1,6 +1,6 @@
 /**
  * Concurrent exchanges of the same token: exactly one gets a new
- * token, the others 409 tausch_laeuft; the issued one applies. A second
+ * token, the others 409 token_swap_running; the issued one applies. A second
  * exchange from another /24 network counts as a copy and ends the family.
  *
  * Counter-checks (measured 05.11.2026, each on its own):
@@ -42,11 +42,12 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
   const app = express();
   app.use(express.json());
   app.use(
-    '/api/v1',
+    '/api/v2',
     _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
   t.after(async () => {
@@ -55,19 +56,19 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const ruf = async (weg, token, method = 'GET') => {
-    const r = await fetch(basis + '/api/v1' + weg, { method, headers: { authorization: `Bearer ${token}` } });
+    const r = await fetch(basis + '/api/v2' + weg, { method, headers: { authorization: `Bearer ${token}` } });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
   await t.test('six concurrent exchanges: one new, the others 409', async () => {
     const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
-    const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/token-rotieren', alt, 'POST')));
-    const stand = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
+    const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/rotate-token', alt, 'POST')));
+    const state = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
     const neu = antworten.filter(a => a.status === 200);
-    assert.equal(neu.length, 1, stand);
+    assert.equal(neu.length, 1, state);
     assert.ok(
-      antworten.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'tausch_laeuft'),
-      stand,
+      antworten.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'token_swap_running'),
+      state,
     );
     tokenCache.emptyTokenCache();
     assert.equal((await ruf('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');

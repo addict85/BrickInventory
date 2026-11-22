@@ -24,7 +24,7 @@ const { keineDb } = require('./helpers/db');
 const DIST = path.join(__dirname, '..', 'dist');
 const modul = require(path.join(DIST, 'db', 'database.js'));
 const { buildServices } = require(path.join(DIST, 'startup', 'wiring.js'));
-const { konfig } = require(path.join(DIST, 'src', 'infra', 'config.js'));
+const { config } = require(path.join(DIST, 'src', 'infra', 'config.js'));
 const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'accountContext.js'));
 
 test('transaction context per connection', { concurrency: 1 }, async t => {
@@ -40,7 +40,7 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end());
   /** @type {Record<string, any>} */
   const contexts = {};
-  buildServices(db, { contexts, konfig: konfig() });
+  buildServices(db, { contexts, config: config() });
   const k = contexts.collection;
   const imSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
 

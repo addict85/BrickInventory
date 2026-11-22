@@ -52,8 +52,8 @@ test('confirm password', { concurrency: 1 }, async t => {
 
   const withSession = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const withoutSession = testServer(_req, { sitzung: {}, t });
-  const post = async (srv, pfad, body, kopf = {}) => {
-    const r = await fetch(`${srv.base}${AUTH}${pfad}`, {
+  const post = async (srv, path, body, kopf = {}) => {
+    const r = await fetch(`${srv.base}${AUTH}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...kopf },
       body: JSON.stringify(body),
@@ -65,7 +65,7 @@ test('confirm password', { concurrency: 1 }, async t => {
     const token = await _req('src/account/deviceToken.js').createToken(uid, 'Probe');
     const r = await post(withoutSession, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'nur_mit_sitzung');
+    assert.equal(r.body.code, 'session_only');
   });
 
   await t.test('from the session only with the password', async () => {
@@ -83,15 +83,15 @@ test('confirm password', { concurrency: 1 }, async t => {
     const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
     assert.equal(r.status, 429, JSON.stringify(r.body));
     // The same brake applies to the second factor.
-    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
+    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 429);
   });
 
   await t.test('a success resets the counter', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
-    for (let i = 0; i < 4; i++) await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' });
-    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);
+    for (let i = 0; i < 4; i++) await post(withSession, '/second-factor/setup', { password: 'falsch' });
+    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 200);
     assert.equal(
-      (await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' })).status,
+      (await post(withSession, '/second-factor/setup', { password: 'falsch' })).status,
       400,
       'nach dem Erfolg zählt wieder von vorn',
     );

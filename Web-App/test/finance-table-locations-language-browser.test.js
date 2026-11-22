@@ -15,7 +15,7 @@
  *      “foreign currency …” and “language switch …” (placeholder “z. B. 79.99”)
  *   D  einstandZelle() without the branch for kaufpreis_original → red:
  *      “foreign currency and tile …”
- *   E  loadLocations() fills the select from /v1/storage again → red:
+ *   E  loadLocations() fills the select from /v2/storage again → red:
  *      “new storage location …”
  *   F  the listener on languageChanged in konten-orte.js deleted → red:
  *      “language switch …” (afterwards also the two following ones, the page stays
@@ -44,7 +44,7 @@ test('finance table, storage locations, number format, screen reader', {
     KIND = `${NAME}_kind`;
   const app = await startApp(t, {
     name: NAME,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       const kid = await patternHousehold(db, uid);
       // Occupied: Vitrine; empty: Regal Keller (patternCollection). A purchase in ARS with market price: for ARS
       // the ECB publishes no rate, not even in CI with network.
@@ -68,15 +68,15 @@ test('finance table, storage locations, number format, screen reader', {
       await holdsSet(db, kid, '75313-1', 1, { preis: 700 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(400);
   };
   const groesse = async (w, h = 900) => {
@@ -89,7 +89,7 @@ test('finance table, storage locations, number format, screen reader', {
     fs.mkdirSync(process.env.BELEG_ORDNER, { recursive: true });
     fs.writeFileSync(path.join(process.env.BELEG_ORDNER, `${name}.png`), Buffer.from(data, 'base64'));
   };
-  const sprache = async l => {
+  const language = async l => {
     await b.auswerten(
       `(() => { const s = document.getElementById('lang-select'); s.value = '${l}'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
@@ -104,7 +104,7 @@ test('finance table, storage locations, number format, screen reader', {
   );
 
   await t.test('finance table without horizontal scrolling at 683, 820, 1024 and 1280 px', async () => {
-    const fehler = [];
+    const error = [];
     for (const w of [683, 820, 1024, 1280]) {
       await groesse(w, w === 683 ? 450 : 900);
       await b.auswerten(`document.querySelector('[data-fin-kind="sets"]').scrollIntoView(); true`);
@@ -115,12 +115,12 @@ test('finance table, storage locations, number format, screen reader', {
         return { seite: document.documentElement.scrollWidth, fenster: innerWidth, rollt: tw.scrollWidth - tw.clientWidth,
                  stand: Math.round(stand.getBoundingClientRect().right), wert: Math.round(wert.getBoundingClientRect().right),
                  rand: Math.round(tw.getBoundingClientRect().right) }; })()`);
-      if (m.seite > m.fenster) fehler.push(`${w}: Seite ${m.seite} px breit`);
-      if (m.rollt > 1) fehler.push(`${w}: Tabelle rollt ${m.rollt} px`);
-      if (m.stand > m.rand + 1 || m.wert > m.rand + 1)
-        fehler.push(`${w}: Stand/Marktwert bei ${m.stand}/${m.wert}, Rand ${m.rand}`);
+      if (m.seite > m.fenster) error.push(`${w}: Seite ${m.seite} px breit`);
+      if (m.rollt > 1) error.push(`${w}: Tabelle rollt ${m.rollt} px`);
+      if (m.state > m.rand + 1 || m.wert > m.rand + 1)
+        error.push(`${w}: Stand/Marktwert bei ${m.state}/${m.wert}, Rand ${m.rand}`);
     }
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
     await groesse(1280);
   });
 
@@ -180,19 +180,19 @@ test('finance table, storage locations, number format, screen reader', {
       neu: [...document.querySelectorAll('#add-storage-sel option')].pop()?.textContent,
       aria: document.getElementById('gs').getAttribute('aria-label'),
       preis: document.getElementById('add-price').getAttribute('placeholder') })`;
-    await sprache('en');
+    await language('en');
     assert.deepEqual(await b.auswerten(lies), {
       konto: 'All accounts',
-      ort: 'All locations',
+      location: 'All locations',
       kein: '— no location —',
       neu: '＋ new location …',
       aria: 'Search sets',
       preis: 'e.g. 79.99',
     });
-    await sprache('de');
+    await language('de');
     assert.deepEqual(await b.auswerten(lies), {
       konto: 'Alle Konten',
-      ort: 'Alle Lagerorte',
+      location: 'Alle Lagerorte',
       kein: '— kein Lagerort —',
       neu: '＋ neuer Lagerort …',
       aria: 'Sets suchen',

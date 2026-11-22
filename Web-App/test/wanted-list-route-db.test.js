@@ -49,11 +49,11 @@ test.after(async () => {
 
 let MAIN = 0;
 
-function item(typ, id, farbe, menge = 1) {
+function item(typ, id, farbe, quantity = 1) {
   return (
     `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
     (farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`) +
-    `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${menge}</MINQTY>\n` +
+    `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${quantity}</MINQTY>\n` +
     `<CONDITION>X</CONDITION>\n<NOTIFY>N</NOTIFY>\n</ITEM>`
   );
 }
@@ -69,7 +69,7 @@ const XML = liste(
 async function hochladen(base, xml, abfrage = '') {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -77,7 +77,7 @@ async function hochladen(base, xml, abfrage = '') {
 async function uploadStream(base, xml, abfrage) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
   const roh = await r.text();
   const zeilen = roh
     .split('\n')
@@ -134,9 +134,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   await t.test('2. the preview writes NOTHING', async () => {
     const { status, body } = await hochladen(srv.base, XML);
     assert.equal(status, 200, `Erwartet 200, bekam ${status}: ${JSON.stringify(body)}`);
-    assert.equal(body.vorschau, true, 'Ohne schreiben=1 ist das keine Vorschau');
-    assert.equal(body.gelesen, 3, `${body.gelesen} Posten gelesen statt 3`);
-    assert.equal(body.angelegt, 0, `${body.angelegt} angelegt — die Vorschau schreibt nicht`);
+    assert.equal(body.preview, true, 'Ohne schreiben=1 ist das keine Vorschau');
+    assert.equal(body.parsed, 3, `${body.parsed} Posten gelesen statt 3`);
+    assert.equal(body.created, 0, `${body.created} angelegt — die Vorschau schreibt nicht`);
 
     // Checked against the TABLE and not the response: a route that
     // reports "vorschau: true" and writes anyway would look right in the
@@ -151,13 +151,13 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   await t.test('3. the preview names the stages separately and the open items', async () => {
     const { body } = await hochladen(srv.base, XML);
     assert.deepEqual(
-      body.stufen,
+      body.levels,
       { gleich_vermerkt: 1, zuordnung: 1 },
-      `Stufen: ${JSON.stringify(body.stufen)} — erwartet je eine aus bl_mapping`,
+      `Stufen: ${JSON.stringify(body.levels)} — erwartet je eine aus bl_mapping`,
     );
-    assert.equal(body.offen.length, 1, `${body.offen.length} offen statt 1`);
+    assert.equal(body.open.length, 1, `${body.open.length} offen statt 1`);
     assert.equal(
-      body.offen[0].blId,
+      body.open[0].blId,
       '99999',
       'Der offene Posten wird nicht mit seiner BrickLink-Nummer genannt — dann kann ' + 'ihn niemand nachsehen',
     );
@@ -167,14 +167,14 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('4. with schreiben=1 manual parts are created — with quantity and color', async () => {
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
-    assert.equal(body.vorschau, false);
-    assert.equal(body.angelegt, 2, `${body.angelegt} angelegt statt 2: ${JSON.stringify(body.posten)}`);
-    assert.equal(body.fehler, 0, `${body.fehler} Fehler: ${JSON.stringify(body.posten)}`);
+    const { body } = await hochladen(srv.base, XML, '?write=1');
+    assert.equal(body.preview, false);
+    assert.equal(body.created, 2, `${body.created} angelegt statt 2: ${JSON.stringify(body.items)}`);
+    assert.equal(body.error, 0, `${body.error} Fehler: ${JSON.stringify(body.items)}`);
 
     // Stage 2: the number stays, the color is mapped (BL 5 → RB 4).
     const a = await db.get(
-      `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS menge
+      `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS quantity
          FROM parts p LEFT JOIN part_acquisitions pa
            ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
         WHERE p.user_id=$1 AND p.part_number='3001' GROUP BY p.color_id`,
@@ -182,7 +182,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     );
     assert.ok(a, '3001 wurde nicht angelegt');
     assert.equal(Number(a.color_id), 4, `Farbe ${a.color_id} statt 4 (BL 5 = Rebrickable 4)`);
-    assert.equal(a.menge, 3, `Menge ${a.menge} statt 3 — MINQTY war 3`);
+    assert.equal(a.quantity, 3, `Menge ${a.quantity} statt 3 — MINQTY war 3`);
 
     // Stage 1: the deviating number must be CONVERTED, not taken over.
     assert.ok(
@@ -224,16 +224,16 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
     const { body } = await hochladen(srv.base, mit);
     assert.deepEqual(
-      body.fremdeArten,
+      body.foreignTypes,
       { B: 1, G: 1 },
-      `fremdeArten: ${JSON.stringify(body.fremdeArten)} — ein Buch und ein Zubehör`,
+      `fremdeArten: ${JSON.stringify(body.foreignTypes)} — ein Buch und ein Zubehör`,
     );
   });
 
   // The progress
 
   await t.test('7. with strom=1 progress lines come, finally the report', async () => {
-    const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?schreiben=1&strom=1');
+    const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?write=1&stream=1');
     assert.equal(status, 200);
     assert.match(
       typ,
@@ -244,9 +244,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
     // The import runs as a job; the request reads its state at intervals,
     // so intermediate states can coincide. The last one always arrives.
-    const melde = zeilen.filter(z => z.fortschritt);
+    const melde = zeilen.filter(z => z.progress);
     assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
-    const fertig = melde.map(z => z.fortschritt.fertig);
+    const fertig = melde.map(z => z.progress.fertig);
     assert.deepEqual(
       fertig,
       [...fertig].sort((a, b) => a - b),
@@ -254,14 +254,14 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     );
     assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
     for (const z of melde) {
-      assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
+      assert.equal(z.fortschritt.total, 3, 'Der Nenner ist die Zahl der Posten');
       assert.equal(z.fortschritt.phase, 'schreiben');
     }
 
     const letzte = zeilen[zeilen.length - 1];
     assert.equal(letzte.success, true, 'Die letzte Zeile ist der Bericht');
-    assert.equal(letzte.vorschau, false, 'mit schreiben=1 ist es kein Probelauf');
-    assert.equal(letzte.gelesen, 3);
+    assert.equal(letzte.preview, false, 'mit schreiben=1 ist es kein Probelauf');
+    assert.equal(letzte.parsed, 3);
     assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
@@ -269,7 +269,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
   await t.test('9. an import leaves a completed job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
+    const { body } = await hochladen(srv.base, XML, '?write=1');
     assert.equal(body.success, true);
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
@@ -291,9 +291,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     const results = Array.isArray(job.results) ? job.results : JSON.parse(job.results || '[]');
     assert.equal(
       results.filter(r => r.success).length,
-      body.angelegt + body.aufgestockt,
+      body.created + body.topped_up,
       `results zählt ${results.length} Einträge, der Bericht nennt ` +
-        `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`,
+        `${body.created} angelegt und ${body.topped_up} aufgestockt`,
     );
 
     // Every line NAMES its item (Marco's finding of 21.10.)
@@ -311,25 +311,25 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
         'hochgeladen hat. 4162 trägt bei Rebrickable eine ANDERE Nummer; im ' +
         'Protokoll steht die aus seiner Datei',
     );
-    const angelegt = results.filter(r => r.success);
+    const created = results.filter(r => r.success);
     assert.ok(
-      angelegt.every(r => r.action === 'added' || r.action === 'updated'),
+      created.every(r => r.action === 'added' || r.action === 'updated'),
       `action muss 'added' oder 'updated' sein, sonst schreibt die Anzeige ` +
-        `„updated_at" für alles: ${JSON.stringify(angelegt)}`,
+        `„updated_at" für alles: ${JSON.stringify(created)}`,
     );
-    const offen = results.find(r => r.set_number === '99999');
+    const open = results.find(r => r.set_number === '99999');
     assert.equal(
-      offen.isWarning,
+      open.isWarning,
       true,
       'Ein offener Posten ist eine Anmerkung, kein Fehler — dieselbe ' + 'Einteilung wie bei den Zahlen darüber',
     );
-    assert.ok(offen.error, 'Ohne Grund steht in der Zeile nur die Nummer');
+    assert.ok(open.error, 'Ohne Grund steht in der Zeile nur die Nummer');
   });
 
   await t.test('10. a PREVIEW creates no job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
     const { body } = await hochladen(srv.base, XML);
-    assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
+    assert.equal(body.preview, true, 'Vorbedingung: das ist eine Vorschau');
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.equal(
       job,
@@ -351,7 +351,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
       [MAIN],
     );
 
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
+    const { body } = await hochladen(srv.base, XML, '?write=1');
     assert.equal(body.success, true, 'Der Import selbst läuft weiter');
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
@@ -368,32 +368,30 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     const r = await (async () => {
       const fd = new FormData();
       fd.append('file', new Blob([XML], { type: 'text/xml' }), 'wanted.xml');
-      return fetch(`${srv.base}/api/v1/wanted-list/import/xml`, { method: 'POST', body: fd });
+      return fetch(`${srv.base}/api/v2/wanted-list/import/xml`, { method: 'POST', body: fd });
     })();
     assert.match(r.headers.get('content-type') || '', /application\/json/);
     const roh = await r.text();
     assert.ok(!roh.includes('"progress"'), 'Ohne strom=1 darf keine Fortschrittszeile in der Antwort stehen');
     const body = JSON.parse(roh);
     assert.equal(body.success, true);
-    assert.equal(body.gelesen, 3);
+    assert.equal(body.parsed, 3);
   });
 
   await t.test('9. a set goes through acquireSet: created, then topped up, with follow-up work', async () => {
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
     const datei = liste(item('S', SN, null, 2));
-    const erst = (await hochladen(srv.base, datei, '?schreiben=1')).body;
-    assert.equal(erst.angelegt, 1, JSON.stringify(erst));
-    const dann = (await hochladen(srv.base, datei, '?schreiben=1')).body;
-    assert.equal(dann.aufgestockt, 1, JSON.stringify(dann));
-    const menge = await db.get(
+    const erst = (await hochladen(srv.base, datei, '?write=1')).body;
+    assert.equal(erst.created, 1, JSON.stringify(erst));
+    const dann = (await hochladen(srv.base, datei, '?write=1')).body;
+    assert.equal(dann.topped_up, 1, JSON.stringify(dann));
+    const quantity = await db.get(
       'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
       [MAIN, SN],
     );
-    assert.equal(menge.n, 4);
-    const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [
-      SN,
-    ]);
+    assert.equal(quantity.n, 4);
+    const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [SN]);
     assert.ok(nacharbeit.length >= 1, 'ohne Nacharbeit bliebe das Set ohne Katalog');
   });
 });

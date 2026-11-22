@@ -26,13 +26,13 @@ const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button],
 test('finances on the computer: controls at least 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `finklick_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
       await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -47,7 +47,7 @@ test('finances on the computer: controls at least 32 px', { concurrency: 1, time
     const m =
       await b.auswerten(`({ sort: document.querySelectorAll('.sort-button').length, zeile: document.querySelectorAll('.row-open').length,
       kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
-    assert.ok(m.sort >= 3 && m.zeile >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
+    assert.ok(m.sort >= 3 && m.row >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
     assert.equal(m.kopf, 58, 'Kopfleiste ist nicht mehr 58 px hoch');
   });
 });

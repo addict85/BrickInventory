@@ -24,8 +24,8 @@ test('line comment: reference line and reference at end of line disappear', () =
 });
 
 test('wrapped reference: “Ausführlich:” at end of line, path on the next line', () => {
-  const pfad = V.replace('Ausführlich: ', '');
-  assert.equal(removeReferences(`  // Warum. Ausführlich:\n  // ${pfad}\n  f();`), '  // Warum.\n  f();');
+  const path = V.replace('Ausführlich: ', '');
+  assert.equal(removeReferences(`  // Warum. Ausführlich:\n  // ${path}\n  f();`), '  // Warum.\n  f();');
 });
 
 test('JSDoc end moves to the last content line, tags stay', () => {
@@ -66,9 +66,9 @@ test('the script cleans a tree and leaves node_modules and foreign files alone',
     fs.writeFileSync(path.join(wurzel, 'baum', 'a.ts'), `// Warum.\n// ${V}\n`);
     fs.writeFileSync(path.join(wurzel, 'node_modules', 'b.js'), `// ${V}\n`);
     fs.writeFileSync(path.join(wurzel, 'baum', 'c.md'), `${V}\n`);
-    const pruefen = script('--pruefen');
-    assert.equal(pruefen.status, 1);
-    assert.match(pruefen.stdout, /1 Dateien mit Verweisen\nbaum[\\/]a\.ts/);
+    const check = script('--pruefen');
+    assert.equal(check.status, 1);
+    assert.match(check.stdout, /1 Dateien mit Verweisen\nbaum[\\/]a\.ts/);
     assert.equal(lies('baum/a.ts'), `// Warum.\n// ${V}\n`, '--pruefen schreibt nicht');
     assert.equal(script().status, 0);
     assert.equal(lies('baum/a.ts'), '// Warum.\n');

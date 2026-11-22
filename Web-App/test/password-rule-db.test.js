@@ -42,19 +42,19 @@ const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 
 test('the rule itself', () => {
   assert.equal(passwordLack('Brick-Sammlung-2026'), null);
-  assert.equal(passwordLack('1234567'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('1234567'), 'password_too_short');
   // Since 04.11.2026 at least 12 characters: the common ones below already fail on the length.
-  assert.equal(passwordLack('password1'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('password1'), 'password_too_short');
   for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
-    assert.equal(passwordLack(p), 'passwort_zu_haeufig', p);
+    assert.equal(passwordLack(p), 'password_too_common', p);
   assert.equal(
     passwordLack('Mein-Name-Ist-Lego', 'mein-name-ist-lego'),
-    'passwort_zu_haeufig',
+    'password_too_common',
     'der Benutzername als Passwort',
   );
   // argon2id reads the whole password: long sentences and umlauts work, only oversize does not.
   assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
-  assert.equal(passwordLack('a'.repeat(1025)), 'passwort_zu_lang');
+  assert.equal(passwordLack('a'.repeat(1025)), 'password_too_long');
 });
 
 test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -92,7 +92,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   });
   const { base } = routerServer(_req, {
     sitzung: { userId: chef, username: CHEF, isAdmin: true },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
+    routen: { '/api/v2/auth': 'routes/auth.js' },
     t,
   });
   /** @param {string} pw @returns {[string, string, object][]} */
@@ -107,15 +107,15 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     ['POST', '/users', { username: `regel_vw_${process.pid}`, password: pw, admin_password: PASS }],
     ['PUT', `/users/${ziel}/password`, { password: pw, admin_password: PASS }],
   ];
-  const ruf = async ([methode, pfad, rumpf]) => {
+  const ruf = async ([methode, path, rumpf]) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE 'reset-password|%'");
-    const r = await fetch(`${base}/api/v1/auth${pfad}`, {
+    const r = await fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(rumpf),
     });
     const b = await r.json();
-    return `${pfad} ${r.status} ${b.code ?? ''}`;
+    return `${path} ${r.status} ${b.code ?? ''}`;
   };
 
   await t.test('common passwords are rejected on all five paths', async () => {
@@ -123,11 +123,11 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     for (const w of wege('sonnenschein')) ist.push(await ruf(w));
     assert.deepEqual(
       ist,
-      wege('').map(([, p]) => `${p} 400 passwort_zu_haeufig`),
+      wege('').map(([, p]) => `${p} 400 password_too_common`),
     );
     const text = (
       await (
-        await fetch(`${base}/api/v1/auth/reset-password`, {
+        await fetch(`${base}/api/v2/auth/reset-password`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ token: 'x', password: 'ICHLIEBEDICH' }),
@@ -137,7 +137,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 
-  // Above 1024 characters the contract already rejects (eingabe_ungueltig), otherwise the rule.
+  // Above 1024 characters the contract already rejects (input_invalid), otherwise the rule.
   await t.test('oversized passwords are rejected', async () => {
     const ist = [];
     for (const w of wege('Ä'.repeat(1025))) ist.push((await ruf(w)).replace(/ \S*$/, ''));
@@ -165,7 +165,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
           password: 'Brick-Sammlung-2026',
         },
       ]),
-      '/register 400 benutzername_ungueltig',
+      '/register 400 username_invalid',
     );
   });
 
@@ -175,22 +175,22 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   await t.test('the username is no password, even without a name in the session', async () => {
     const app = routerServer(_req, {
       sitzung: { userId: chef, isAdmin: true },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
+      routen: { '/api/v2/auth': 'routes/auth.js' },
       t,
     });
-    const setze = (methode, pfad, rumpf) =>
-      fetch(`${app.base}/api/v1/auth${pfad}`, {
+    const setze = (methode, path, rumpf) =>
+      fetch(`${app.base}/api/v2/auth${path}`, {
         method: methode,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(rumpf),
       }).then(async r => `${r.status} ${(await r.json()).code ?? ''}`);
     assert.equal(
       await setze('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }),
-      '400 passwort_zu_haeufig',
+      '400 password_too_common',
     );
     assert.equal(
       await setze('PUT', `/users/${ziel}/password`, { password: ZIEL, admin_password: PASS }),
-      '400 passwort_zu_haeufig',
+      '400 password_too_common',
     );
     assert.ok(
       await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
@@ -218,7 +218,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     ]);
     assert.equal(
       await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]),
-      '/reset-password 400 passwort_zu_haeufig',
+      '/reset-password 400 password_too_common',
     );
     assert.ok(
       !(await passwordFits(
@@ -231,13 +231,13 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   });
 
   // Counter-check (measured 11.11.2026): changeOwnPassword() (src/account/loginFlow.ts)
-  // lets passwort_zu_kurz through → red (/change-password 200 instead of 400).
+  // lets password_too_short through → red (/change-password 200 instead of 400).
   await t.test('passwords that are too short are rejected on all five paths', async () => {
     const ist = [];
     for (const w of wege('Kurz-12345')) ist.push(await ruf(w));
     assert.deepEqual(
       ist,
-      wege('').map(([, p]) => `${p} 400 passwort_zu_kurz`),
+      wege('').map(([, p]) => `${p} 400 password_too_short`),
     );
   });
 
@@ -262,7 +262,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     const gut = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
     // The own password last: the paths before it confirm with PASS.
     /** @type {[string, string, object, string][]} */
-    const schritte = [
+    const steps = [
       ['POST', '/register', { username: NEU, email: `regel_${process.pid}@example.org`, password: gut }, NEU],
       ['POST', '/reset-password', { token: roh, password: gut }, ZIEL],
       ['POST', '/users', { username: VW, password: gut, admin_password: PASS }, VW],
@@ -270,9 +270,9 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
       ['POST', '/change-password', { current: PASS, newPassword: gut }, CHEF],
     ];
     const ist = [];
-    for (const [methode, pfad, rumpf, name] of schritte) {
-      const antwort = await ruf([methode, pfad, rumpf]);
-      ist.push(`${antwort.split(' ')[0]} ${antwort.split(' ')[1]} ${await runden(name)}`);
+    for (const [methode, path, rumpf, name] of steps) {
+      const response = await ruf([methode, path, rumpf]);
+      ist.push(`${response.split(' ')[0]} ${response.split(' ')[1]} ${await runden(name)}`);
     }
     assert.deepEqual(
       ist,

@@ -34,23 +34,23 @@ const NAMEN = [
 ];
 
 function sandbox(t) {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnisse-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnisse-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
   const lauf = (mehr = {}) =>
     spawnSync('sh', ['-c', 'umask 022; exec sh "$0"', SCRIPT], {
-      cwd: ort,
+      cwd: location,
       encoding: 'utf8',
       env: { PATH: process.env.PATH, ...mehr },
     });
-  const lies = n => fs.readFileSync(path.join(ort, 'geheimnisse', n), 'utf8');
-  return { ort, lauf, lies };
+  const lies = n => fs.readFileSync(path.join(location, 'geheimnisse', n), 'utf8');
+  return { location, lauf, lies };
 }
 
 test('a new installation gets random secrets, only reachable by the owner', t => {
   const s = sandbox(t);
   const r = s.lauf();
   assert.equal(r.status, 0, r.stderr);
-  const ordner = path.join(s.ort, 'geheimnisse');
+  const ordner = path.join(s.location, 'geheimnisse');
   assert.deepEqual(fs.readdirSync(ordner).sort(), NAMEN);
   assert.equal(fs.statSync(ordner).mode & 0o777, 0o700, 'der Ordner ist für andere offen');
   for (const n of NAMEN) assert.equal(fs.statSync(path.join(ordner, n)).mode & 0o777, 0o444, `${n}: Modus`);
@@ -65,9 +65,9 @@ test('a new installation gets random secrets, only reachable by the owner', t =>
 
 test('an existing installation takes over the values from .env', t => {
   const s = sandbox(t);
-  fs.mkdirSync(path.join(s.ort, 'pgdata18'));
+  fs.mkdirSync(path.join(s.location, 'pgdata18'));
   fs.writeFileSync(
-    path.join(s.ort, '.env'),
+    path.join(s.location, '.env'),
     [
       'BRICK_HOST=nas.example.lan',
       'SESSION_SECRET="alt-sitzung-mindestens-zweiunddreissig-zeichen"',
@@ -92,23 +92,27 @@ test('an existing installation takes over the values from .env', t => {
 
 test('an existing database without DB_PASSWORD does not get a new one', t => {
   const s = sandbox(t);
-  fs.mkdirSync(path.join(s.ort, 'pgdata18'));
+  fs.mkdirSync(path.join(s.location, 'pgdata18'));
   const r = s.lauf();
   assert.notEqual(r.status, 0, 'ein neues Superuser-Passwort passte nicht zur Datenbank');
   assert.match(r.stderr, /DB_PASSWORD/);
-  assert.equal(fs.existsSync(path.join(s.ort, 'geheimnisse', 'db_password')), false);
+  assert.equal(fs.existsSync(path.join(s.location, 'geheimnisse', 'db_password')), false);
 });
 
 test('a second run changes nothing, PGWEB=ja only fills the empty ones', t => {
   const s = sandbox(t);
   assert.equal(s.lauf().status, 0);
   const vorher = Object.fromEntries(NAMEN.map(n => [n, s.lies(n)]));
-  fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);
+  fs.chmodSync(path.join(s.location, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
   for (const n of NAMEN.filter(n => n !== 'pgweb_db_password')) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
-  assert.equal(fs.statSync(path.join(s.ort, 'geheimnisse')).mode & 0o777, 0o700, 'ein offener Ordner bleibt offen');
+  assert.equal(
+    fs.statSync(path.join(s.location, 'geheimnisse')).mode & 0o777,
+    0o700,
+    'ein offener Ordner bleibt offen',
+  );
   const pw = s.lies('pgweb_db_password');
   assert.equal(s.lauf({ PGWEB: 'ja' }).status, 0);
   assert.equal(s.lies('pgweb_db_password'), pw);

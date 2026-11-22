@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
 const RESPONSES = {
-  '/v1/parts/manual': {
+  '/v2/parts/manual': {
     success: true,
     parts: [
       {
@@ -27,7 +27,7 @@ const RESPONSES = {
       },
     ],
   },
-  '/v1/parts/3001/4/acquisitions': {
+  '/v2/parts/3001/4/acquisitions': {
     success: true,
     acquisitions: [
       {

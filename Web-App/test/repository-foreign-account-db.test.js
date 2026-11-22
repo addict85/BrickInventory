@@ -132,15 +132,15 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
   });
 
   await t.test('the inventory row of a foreign account stays', async () => {
-    const zeile = (
+    const row = (
       await db.get(
         `INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,'fig-000002','manual') RETURNING id`,
         [fremd],
       )
     ).id;
-    await ein(tx => versch.removeManual(tx, 'fig', eigen, ['fig-000002'], zeile));
-    assert.ok(await lies('minifigs', zeile), 'mit dem Konto des Absenders ist es eine fremde Zeile');
-    await ein(tx => versch.removeManual(tx, 'fig', fremd, ['fig-000002'], zeile));
-    assert.equal(await lies('minifigs', zeile), undefined, 'Gegenprobe: das eigene Konto entfernt');
+    await ein(tx => versch.removeManual(tx, 'fig', eigen, ['fig-000002'], row));
+    assert.ok(await lies('minifigs', row), 'mit dem Konto des Absenders ist es eine fremde Zeile');
+    await ein(tx => versch.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
+    assert.equal(await lies('minifigs', row), undefined, 'Gegenprobe: das eigene Konto entfernt');
   });
 });

@@ -41,7 +41,7 @@ test('the catalog list triggers no image work at all', { concurrency: 1 }, async
   try {
     // Ten pages in quick succession — as when scrolling through.
     for (let seite = 1; seite <= 10; seite++)
-      await (await fetch(`${base}/api/v1/catalog/sets?limit=60&page=${seite}&sort=year_desc`)).json();
+      await (await fetch(`${base}/api/v2/catalog/sets?limit=60&page=${seite}&sort=year_desc`)).json();
     // Wait until the queue would have run through.
     await new Promise(r => setTimeout(r, 2500));
 

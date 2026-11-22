@@ -49,7 +49,7 @@ async function withObserver(antworten = {}) {
 
 test('at startup and in the gallery no image has an empty src', async () => {
   const { w, d, warte, leer } = await withObserver({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       sets: [
         {
@@ -74,7 +74,7 @@ test('at startup and in the gallery no image has an empty src', async () => {
 
 test('a load error retries without an empty src', async () => {
   const { w, d, warte, leer } = await withObserver({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       sets: [
         {
@@ -110,12 +110,12 @@ test('a load error retries without an empty src', async () => {
 test('closing the zoom removes the image instead of clearing src', async () => {
   const { w, d, leer } = await withObserver();
   try {
-    const bild = d.getElementById('lightbox-img');
-    bild.setAttribute('src', '/api/v1/img-proxy?url=x');
+    const image = d.getElementById('lightbox-img');
+    image.setAttribute('src', '/api/v1/img-proxy?url=x');
     d.getElementById('img-lightbox').classList.add('open');
     d.querySelector('#img-lightbox [data-click="closeImageLightbox"]').click();
     assert.equal(d.getElementById('img-lightbox').classList.contains('open'), false);
-    assert.equal(bild.hasAttribute('src'), false);
+    assert.equal(image.hasAttribute('src'), false);
     assert.deepEqual(leer, []);
   } finally {
     w.close();

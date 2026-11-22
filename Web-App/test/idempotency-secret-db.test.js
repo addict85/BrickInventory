@@ -45,7 +45,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const zf = _req('src/factors/secondFactor.js');
-const geheimnis = _req('src/infra/secret.js');
+const secret = _req('src/infra/secret.js');
 const { idempotency, responseIsSecret } = _req('src/idempotency/http/middleware.js');
 const { notRetryable } = _req('src/contract/base.js');
 const { CONTRACT } = _req('src/contract/index.js');
@@ -86,21 +86,22 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
   app.use(express.json());
   app.use((req, _res, next) => {
     req.session = { userId: uid };
-    if (!req.originalUrl.startsWith('/api/v1/auth')) req.apiUser = { user_id: uid, is_admin: 0 };
+    if (!req.originalUrl.startsWith('/api/v2/auth')) req.apiUser = { user_id: uid, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', idempotency(require('./helpers/sources').testServices().idempotency));
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', idempotency(require('./helpers/sources').testServices().idempotency));
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const post = (pfad, key, body, methode = 'POST') =>
-    fetch(`http://127.0.0.1:${srv.address().port}/api/v1${pfad}`, {
+  const post = (path, key, body, methode = 'POST') =>
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v2${path}`, {
       method: methode,
       body: JSON.stringify(body),
       headers: { 'content-type': 'application/json', 'idempotency-key': key },
     }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
-  const zeile = k => db.get('SELECT status, response FROM idempotency WHERE user_id = $1 AND key = $2', [uid, k]);
+  const row = k => db.get('SELECT status, response FROM idempotency WHERE user_id = $1 AND key = $2', [uid, k]);
 
   await t.test('the repetition with a wrong password gets neither PIN nor response', async () => {
     const neu = await post('/vouchers', 'v-1', {
@@ -110,51 +111,51 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
       currency: 'CHF',
     });
     assert.equal(neu.status, 200, JSON.stringify(neu.body));
-    const pfad = `/vouchers/${neu.body.voucher.id}/klartext`;
-    const erst = await post(pfad, 'k-1', { password: PASS });
+    const path = `/vouchers/${neu.body.voucher.id}/plaintext`;
+    const erst = await post(path, 'k-1', { password: PASS });
     assert.deepEqual([erst.status, erst.body.pin], [200, '4321'], JSON.stringify(erst.body));
-    assert.deepEqual(await zeile('k-1'), { status: 200, response: null });
-    const falsch = await post(pfad, 'k-1', { password: 'falsch-falsch-falsch' });
+    assert.deepEqual(await row('k-1'), { status: 200, response: null });
+    const falsch = await post(path, 'k-1', { password: 'falsch-falsch-falsch' });
     assert.equal(falsch.status, 409, JSON.stringify(falsch.body));
-    assert.equal(falsch.body.code, 'idempotenz_nicht_wiederholbar');
+    assert.equal(falsch.body.code, 'idempotency_not_repeatable');
     assert.equal(falsch.replay, null);
     assert.ok(!JSON.stringify(falsch.body).includes('4321'));
   });
 
   let g;
   await t.test('the TOTP secret is in no column of the database', async () => {
-    const r = await post('/auth/zweiter-faktor/einrichten', 'zf-1', { password: PASS });
+    const r = await post('/auth/second-factor/setup', 'zf-1', { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    g = r.body.geheimnis;
+    g = r.body.secret;
     assert.match(g, /^[A-Z2-7]{32}$/);
     assert.deepEqual(await occurrences(g), []);
-    assert.deepEqual(await zeile('zf-1'), { status: 200, response: null });
+    assert.deepEqual(await row('zf-1'), { status: 200, response: null });
   });
 
   await t.test('the repetition gets 409 instead of a second secret', async () => {
-    const r = await post('/auth/zweiter-faktor/einrichten', 'zf-1', { password: PASS });
+    const r = await post('/auth/second-factor/setup', 'zf-1', { password: PASS });
     assert.equal(r.status, 409);
-    assert.equal(r.body.code, 'idempotenz_nicht_wiederholbar');
+    assert.equal(r.body.code, 'idempotency_not_repeatable');
     assert.equal(r.replay, null);
   });
 
   await t.test('the recovery codes are nowhere in plaintext either', async () => {
     const code = zf.hotp(zf.fromBase32(g), zf.timeStep());
-    const r = await post('/auth/zweiter-faktor/bestaetigen', 'zf-2', { code });
+    const r = await post('/auth/second-factor/confirm', 'zf-2', { code });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.codes.length, 10);
     for (const wc of r.body.codes) assert.deepEqual(await occurrences(wc), [], wc);
-    assert.equal((await post('/auth/zweiter-faktor/bestaetigen', 'zf-2', { code })).status, 409);
+    assert.equal((await post('/auth/second-factor/confirm', 'zf-2', { code })).status, 409);
   });
 
   await t.test('ordinary responses are stored encrypted and repeated', async () => {
     const erst = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.replay, null);
-    const z = await zeile('p-1');
+    const z = await row('p-1');
     assert.ok(z.response.startsWith('v2:'), z.response);
     assert.equal(
-      geheimnis.decrypt(z.response, _req('src/idempotency/service.js').responseContext(uid, 'p-1')),
+      secret.decrypt(z.response, _req('src/idempotency/service.js').responseContext(uid, 'p-1')),
       JSON.stringify(erst.body),
     );
     const nochmal = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
@@ -163,20 +164,20 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
 
   await t.test('the fingerprint does not reveal the password', async () => {
     const dienst = _req('src/idempotency/service.js');
-    const pfad = '/api/v1/auth/zweiter-faktor/einrichten';
+    const path = '/api/v2/auth/second-factor/setup';
     const alt = require('node:crypto')
       .createHash('sha256')
-      .update(`POST ${pfad}\n${JSON.stringify({ password: PASS })}`)
+      .update(`POST ${path}\n${JSON.stringify({ password: PASS })}`)
       .digest('hex');
     assert.deepEqual(await occurrences(alt), [], 'der SHA-256 des Rumpfs mit Passwort liegt in der Tabelle');
     assert.match(
       (await db.get("SELECT request FROM idempotency WHERE user_id = $1 AND key = 'zf-1'", [uid])).request,
       /^h1:[0-9a-f]{64}$/,
     );
-    const abdruck = rumpf => dienst.fingerprint('POST', pfad, rumpf);
+    const abdruck = rumpf => dienst.fingerprint('POST', path, rumpf);
     assert.equal(
-      abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', faktor_code: '2', pin: '3', x: 1 }),
-      abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }),
+      abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', factor_code: '2', pin: '3', x: 1 }),
+      abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', factor_code: '8', pin: '7', x: 1 }),
     );
     assert.notEqual(
       abdruck({ password: 'a', x: 1 }),
@@ -185,12 +186,12 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
     );
     const vorher = abdruck({ x: 1 });
     environment({ DATA_KEY: Buffer.alloc(32, 8).toString('base64') });
-    geheimnis._forgetKey();
+    secret._forgetKey();
     try {
       assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar');
     } finally {
       environment({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
-      geheimnis._forgetKey();
+      secret._forgetKey();
     }
 
     await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
@@ -200,7 +201,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
   });
 
   await t.test('the migration removes plaintext and the repetition is refused', async () => {
-    const abdruck = _req('src/idempotency/service.js').fingerprint('POST', '/api/v1/storage/locations', {
+    const abdruck = _req('src/idempotency/service.js').fingerprint('POST', '/api/v2/storage/locations', {
       name: 'Alt',
     });
     await db.run(
@@ -226,33 +227,33 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
       );
     }
     assert.deepEqual(await occurrences('klartext-aus-frueher'), []);
-    assert.equal((await zeile('v1-1')).response, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
+    assert.equal((await row('v1-1')).response, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
     const r = await post('/storage/locations', 'alt-1', { name: 'Alt' });
     assert.equal(r.status, 409);
-    assert.equal(r.body.code, 'idempotenz_nicht_wiederholbar');
+    assert.equal(r.body.code, 'idempotency_not_repeatable');
   });
 });
 
 test('every writing route with access or code is on the list', () => {
   // `code` is otherwise the error code; the invitation code therefore stands separately below.
   const SECRET_FIELDS = ['token', 'codes', 'geheimnis', 'otpauth'];
-  const gefunden = [],
+  const found = [],
     fehlt = [];
   for (const [key, route] of Object.entries(CONTRACT)) {
-    const [methode, pfad] = key.split(' ');
-    if (methode === 'GET' || !route.antwort?.shape) continue;
-    if (!SECRET_FIELDS.some(f => f in route.antwort.shape)) continue;
-    (responseIsSecret(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(key);
+    const [methode, path] = key.split(' ');
+    if (methode === 'GET' || !route.response?.shape) continue;
+    if (!SECRET_FIELDS.some(f => f in route.response.shape)) continue;
+    (responseIsSecret(methode, path.replace(/:\w+/g, '1')) ? found : fehlt).push(key);
   }
   assert.deepEqual(fehlt, []);
-  assert.ok(gefunden.length >= 9, `nur ${gefunden.length} Routen erkannt: ${gefunden.join(', ')}`);
-  assert.equal(responseIsSecret('POST', '/api/v1/settings/household/invite'), true);
-  assert.equal(responseIsSecret('POST', '/api/v1/vouchers/7/klartext'), true);
-  assert.equal(responseIsSecret('PUT', '/api/v1/parts/3001/5'), false);
+  assert.ok(found.length >= 9, `nur ${found.length} Routen erkannt: ${found.join(', ')}`);
+  assert.equal(responseIsSecret('POST', '/api/v2/settings/household/invite'), true);
+  assert.equal(responseIsSecret('POST', '/api/v2/vouchers/7/plaintext'), true);
+  assert.equal(responseIsSecret('PUT', '/api/v2/parts/3001/5'), false);
 });
 
 test('every route with confirmation is not repeatable', () => {
-  const withConfirmation = Object.entries(CONTRACT).filter(([, r]) => r.bestaetigung);
+  const withConfirmation = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
   assert.ok(withConfirmation.length >= 20, `nur ${withConfirmation.length} Routen mit Bestätigung`);
   const retryable = withConfirmation
     .map(([k]) => k.split(' '))

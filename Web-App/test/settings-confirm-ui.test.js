@@ -1,7 +1,7 @@
 /**
  * The server only changes registration and API key with a password. The
  * UI sends without it first; if the server demands it
- * (aktuelles_passwort_erforderlich), it asks in a dialog and sends again.
+ * (current_password_required), it asks in a dialog and sends again.
  * Cancelling takes the checkmark back.
  *
  * Counter-checks (measured 04.11.2026, each on its own):
@@ -15,15 +15,15 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 const posts = aufrufe =>
-  aufrufe.filter(a => a.method === 'POST' && /\/v1\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
+  aufrufe.filter(a => a.method === 'POST' && /\/v2\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
 /** The server demands the password until it stands in the body. */
 const SERVER = {
-  '/v1/settings': (_url, o) =>
+  '/v2/settings': (_url, o) =>
     o?.method === 'POST' && !JSON.parse(o.body).admin_password
       ? {
           $status: 400,
           success: false,
-          code: 'aktuelles_passwort_erforderlich',
+          code: 'current_password_required',
           error: 'Bitte das aktuelle Passwort eingeben.',
         }
       : { success: true },
@@ -33,9 +33,9 @@ test('registration asks for the password', async () => {
   const { w, d, aufrufe } = await openUi(SERVER);
   try {
     await reiter(w, 'settings');
-    const feld = d.getElementById('reg-enabled');
-    feld.checked = true;
-    feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    const field = d.getElementById('reg-enabled');
+    field.checked = true;
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => openDialog(d)), 'kein Dialog');
     d.getElementById('cd-pw').value = 'Chef-Passwort-1';
     d.getElementById('cd-confirm').click();
@@ -53,14 +53,14 @@ test('cancel takes back the checkmark', async () => {
   const { w, d, aufrufe } = await openUi(SERVER);
   try {
     await reiter(w, 'settings');
-    const feld = d.getElementById('reg-enabled');
-    feld.checked = true;
-    feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    const field = d.getElementById('reg-enabled');
+    field.checked = true;
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => openDialog(d)), 'kein Dialog');
     d.getElementById('cd-cancel').click();
     await warte(() => !openDialog(d));
-    await warte(() => !feld.checked, 500);
-    assert.equal(feld.checked, false, 'das Häkchen bleibt nach Abbrechen stehen');
+    await warte(() => !field.checked, 500);
+    assert.equal(field.checked, false, 'das Häkchen bleibt nach Abbrechen stehen');
     assert.equal(posts(aufrufe).length, 1);
   } finally {
     w.close();

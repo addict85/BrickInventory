@@ -32,10 +32,11 @@ test('parts summary: state', { concurrency: 1 }, async t => {
     TEIL = `stand${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Kiste 1') RETURNING id`, [uid]))
-    .id;
+  const location = (
+    await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Kiste 1') RETURNING id`, [uid])
+  ).id;
   await holdsSet(db, uid, SN, 1);
-  await holdsPart(db, uid, TEIL, { setNumber: SN, menge: 2, colorId: 4, storageId: ort });
+  await holdsPart(db, uid, TEIL, { setNumber: SN, quantity: 2, colorId: 4, storageId: location });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Alter Name')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = 'Alter Name'`,
@@ -46,7 +47,7 @@ test('parts summary: state', { concurrency: 1 }, async t => {
     await t.test('a renamed storage location invalidates the summary', async () => {
       await PS.rebuildNow(uid);
       assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
-      await db.run(`UPDATE storage_locations SET name = 'Regal B' WHERE id = $1`, [ort]);
+      await db.run(`UPDATE storage_locations SET name = 'Regal B' WHERE id = $1`, [location]);
       assert.equal(await PS.summaryFresh(uid, { strict: true }), false);
       await PS.rebuildNow(uid);
       const z = await db.get('SELECT storage FROM parts_summary WHERE user_id=$1', [uid]);

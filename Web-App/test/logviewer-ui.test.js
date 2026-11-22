@@ -68,7 +68,7 @@ test('loads with the session cookie and only shows the chosen levels, escaped', 
   try {
     await takt(10);
     assert.equal(aufrufe.length, 1);
-    assert.match(aufrufe[0].url, /\/api\/v1\/admin\/logs\?minutes=15$/);
+    assert.match(aufrufe[0].url, /\/api\/v2\/admin\/logs\?minutes=15$/);
     assert.equal(aufrufe[0].credentials, 'same-origin');
     assert.equal(aufrufe[0].headers.Authorization, undefined, 'kein Token mehr');
     const zeilen = d.querySelectorAll('#log-wrap .ll');

@@ -20,44 +20,44 @@ const path = require('node:path');
 const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/ui');
 
 const KONTO = admin => ({
-  '/v1/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } },
+  '/v2/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v2/auth/me'].user, is_admin: admin } },
 });
 // Every view gets an empty, contract-conforming response (checkResponse adds the required fields).
 const SICHTDATEN = Object.fromEntries(
   [
-    '/v1/vouchers',
-    '/v1/alerts',
-    '/v1/storage/locations',
-    '/v1/storage',
-    '/v1/papierkorb',
-    '/v1/settings/tokens',
-    '/v1/settings/tls',
-    '/v1/settings/household',
-    '/v1/auth/profile',
-    '/v1/auth/zweiter-faktor',
-    '/v1/auth/passkeys',
+    '/v2/vouchers',
+    '/v2/alerts',
+    '/v2/storage/locations',
+    '/v2/storage',
+    '/v2/trash',
+    '/v2/settings/tokens',
+    '/v2/settings/tls',
+    '/v2/settings/household',
+    '/v2/auth/profile',
+    '/v2/auth/second-factor',
+    '/v2/auth/passkeys',
   ].map(p => [p, { success: true }]),
 );
-const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="openView"]')];
+const entries = d => [...d.querySelectorAll('.umenu-item[data-click="openView"]')];
 
 test('every menu entry opens its area and loads it', async () => {
   const o = await openUi(SICHTDATEN);
   try {
     await o.ruhig();
-    const namen = eintraege(o.d).map(e => e.dataset.arg);
+    const namen = entries(o.d).map(e => e.dataset.arg);
     assert.equal(namen.length, 7, `${namen.length} Sichten im Menü statt sieben`);
-    const fehler = [];
+    const error = [];
     for (const name of namen) {
       const vorher = o.aufrufe.length;
       await sicht(o.w, name);
       await o.ruhig();
-      const aktiv = [...o.d.querySelectorAll('.tab.active')].map(t => t.id);
-      if (aktiv.join() !== `tab-${name}`) fehler.push(`${name}: aktiv ist ${aktiv.join(', ') || 'nichts'}`);
-      if (o.aufrufe.length === vorher) fehler.push(`${name}: lädt nichts`);
+      const active = [...o.d.querySelectorAll('.tab.active')].map(t => t.id);
+      if (active.join() !== `tab-${name}`) error.push(`${name}: aktiv ist ${active.join(', ') || 'nichts'}`);
+      if (o.aufrufe.length === vorher) error.push(`${name}: lädt nichts`);
     }
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
     assert.deepEqual(
-      o.fehler.map(e => e.message),
+      o.error.map(e => e.message),
       [],
       'ein Lader ist gescheitert',
     );
@@ -70,7 +70,7 @@ test('every view without a tab is reachable via the menu', async () => {
   const o = await openUi();
   try {
     const reiter = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
-    const inMenu = new Set(eintraege(o.d).map(e => e.dataset.arg));
+    const inMenu = new Set(entries(o.d).map(e => e.dataset.arg));
     const surfaces = [...o.d.querySelectorAll('.tab[id^="tab-"]')].map(t => t.id.slice(4));
     assert.ok(surfaces.length >= 14, `nur ${surfaces.length} Flächen gefunden`);
     assert.deepEqual(
@@ -100,7 +100,7 @@ test('only an admin sees settings and background jobs', async () => {
 
 test('every menu entry keeps its icon, even after translating', async () => {
   const words = require('./helpers/sources').loadTranslations().en;
-  const o = await openUi({}, { sprache: 'en' });
+  const o = await openUi({}, { language: 'en' });
   try {
     await o.ruhig();
     const knoepfe = [...o.d.querySelectorAll('#umenu-pop button')];
@@ -121,7 +121,7 @@ test('every menu entry keeps its icon, even after translating', async () => {
 });
 
 test('logout stands once, in the drawer, and logs out', async () => {
-  const o = await openUi({ '/v1/auth/logout': { success: true } });
+  const o = await openUi({ '/v2/auth/logout': { success: true } });
   try {
     await o.ruhig();
     const knopf = o.d.querySelectorAll('#btn-logout');
@@ -132,7 +132,7 @@ test('logout stands once, in the drawer, and logs out', async () => {
     await takt(30);
     await o.ruhig();
     assert.ok(
-      o.aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/auth/logout')),
+      o.aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/logout')),
       'kein Abmeldeaufruf',
     );
     assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'die Anmeldemaske erscheint nicht');

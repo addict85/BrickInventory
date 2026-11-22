@@ -64,10 +64,10 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   await anlegen(mainId, OWN);
   await anlegen(subId, KIND);
 
-  const stand = async sn => ({
+  const state = async sn => ({
     // From the acquisitions (migration 0036), across ALL accounts — the test
     // asks „how many copies are there in total".
-    menge: (
+    quantity: (
       await db.get(
         `SELECT COALESCE(SUM(a.quantity),0)::int AS q
          FROM set_acquisitions a
@@ -82,8 +82,8 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
 
   const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
-  const erfassen = async (pfad, sn) => {
-    const r = await fetch(base + pfad, {
+  const erfassen = async (path, sn) => {
+    const r = await fetch(base + path, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: sn, quantity: 1 }),
@@ -97,12 +97,12 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       ['eigenes', OWN],
       ['Unterkonto', KIND],
     ]) {
-      for (const [name, pfad] of [
-        ['Android/Webapp (v1)', '/api/v1/sets'],
-        ['Webapp (add-stream)', '/api/v1/sets/add-stream'],
+      for (const [name, path] of [
+        ['Android/Webapp (v1)', '/api/v2/sets'],
+        ['Webapp (add-stream)', '/api/v2/sets/add-stream'],
       ]) {
-        const vor = await stand(sn);
-        const r = await erfassen(pfad, sn);
+        const ago = await state(sn);
+        const r = await erfassen(path, sn);
         assert.equal(r.status, 200, `${wer}/${name}: ${r.status}`);
         assert.equal(r.body?.action, 'exists', `${wer}/${name}: erwartet action=exists, war ${JSON.stringify(r.body)}`);
         assert.match(
@@ -110,8 +110,8 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
           /application\/json/,
           `${wer}/${name}: die Antwort muss gewöhnliches JSON sein — es gibt nichts zu verfolgen`,
         );
-        const nach = await stand(sn);
-        assert.deepEqual(nach, vor, `${wer}/${name}: es wurde geschrieben, obwohl das Set schon da ist`);
+        const nach = await state(sn);
+        assert.deepEqual(nach, ago, `${wer}/${name}: es wurde geschrieben, obwohl das Set schon da ist`);
       }
     }
 
@@ -119,10 +119,10 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     //    as new although "97001-1" has long existed, and the whole rule
     //    hangs exactly on that.
     const withoutSuffix = OWN.replace(/-\d+$/, '');
-    const vor = await stand(OWN);
-    const r = await erfassen('/api/v1/sets', withoutSuffix);
+    const ago = await state(OWN);
+    const r = await erfassen('/api/v2/sets', withoutSuffix);
     assert.equal(r.body?.action, 'exists', 'ohne Suffix eingegeben muss dasselbe Set erkannt werden');
-    assert.deepEqual(await stand(OWN), vor);
+    assert.deepEqual(await state(OWN), ago);
 
     // 3. The pre-query says the same as the capture — otherwise the
     //    scanner could show an intermediate dialog for a set that is afterwards
@@ -133,17 +133,17 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       [NEU, false],
       [withoutSuffix, true],
     ]) {
-      const e = await (await fetch(`${base}/api/v1/sets/exists/${encodeURIComponent(sn)}`)).json();
+      const e = await (await fetch(`${base}/api/v2/sets/exists/${encodeURIComponent(sn)}`)).json();
       assert.equal(e.exists, erwartet, `exists für ${sn}`);
       if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
     }
     // Without a hit the pre-query names the number as it would be created (with suffix).
     const newWithoutSuffix = NEU.replace(/-1$/, '');
-    const none = await (await fetch(`${base}/api/v1/sets/exists/${newWithoutSuffix}`)).json();
+    const none = await (await fetch(`${base}/api/v2/sets/exists/${newWithoutSuffix}`)).json();
     assert.deepEqual([none.exists, none.set_number], [false, NEU], 'exists: false, set_number');
     // The own account wins if both have the same set.
     await anlegen(subId, OWN);
-    const beide = await (await fetch(`${base}/api/v1/sets/exists/${OWN}`)).json();
+    const beide = await (await fetch(`${base}/api/v2/sets/exists/${OWN}`)).json();
     assert.equal(
       beide.owner_user_id,
       mainId,
@@ -153,16 +153,16 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
 
     // 4. EXCEPTION: the CSV import tops up (ifPresent: 'aufstocken').
     const { acquireSet } = require('./helpers/sources').areaPage('sets');
-    const vorImport = await stand(KIND);
+    const vorImport = await state(KIND);
     const erg = await acquireSet({
       requester: subId,
       setNumber: KIND,
-      menge: 1,
-      zustand: 'N',
+      quantity: 1,
+      condition: 'N',
       ifPresent: 'aufstocken',
     });
     assert.equal(erg.action, 'updated', 'der Import muss aufstocken — sonst steht der CSV-Import still');
-    assert.equal((await stand(KIND)).menge, vorImport.menge + 1);
+    assert.equal((await state(KIND)).quantity, vorImport.quantity + 1);
   } finally {
     await aufraeumen();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});

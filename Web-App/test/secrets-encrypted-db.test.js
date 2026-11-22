@@ -52,13 +52,13 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
     const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
     assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
-    const gelesen = await settings.readSettings(uid, true);
-    assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
+    const parsed = await settings.readSettings(uid, true);
+    assert.equal(parsed.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
   });
 
   await t.test('voucher PIN', async () => {
     const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-    const r = await fetch(`${base}/api/v1/vouchers`, {
+    const r = await fetch(`${base}/api/v2/vouchers`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ number: '5045076374450012121', pin: '8642', amount: 50, currency: 'CHF' }),

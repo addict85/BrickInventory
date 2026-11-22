@@ -24,13 +24,13 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
   const app = await startApp(t, {
     name: `masse_${process.pid}`,
     allDesigns: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await catalogSet(db, '75192-1', { name: 'Millennium Falcon', year: 2017, theme: THEMA, pieces: 7541 });
       await holdsSet(db, uid, '75192-1');
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis } = app;
@@ -70,7 +70,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
       assert.equal(m.ring, '3px');
       assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `Grund ${m.hell} bei dunkel=${dunkel}`);
       assert.deepEqual(
-        m.stufen.map(s => s.replace(/^\W+\s*/, '')),
+        m.levels.map(s => s.replace(/^\W+\s*/, '')),
         ['Hinweise', 'Warnungen', 'Fehler'],
       );
       await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);

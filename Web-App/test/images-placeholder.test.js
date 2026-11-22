@@ -62,18 +62,18 @@ const SET_PARTS = [
 ];
 
 const RESPONSES = {
-  '/v1/sets': { success: true, sets: SETS, total: 1, themes: [] },
-  '/v1/parts/manual': { success: true, parts: TEILE },
-  '/v1/parts': { success: true, parts: SET_PARTS, total: 1 },
-  '/v1/minifigs/manual': { success: true, figs: FIGUREN },
-  '/v1/minifigs': { success: true, figs: [{ ...FIGUREN[0], source: 'set', total_quantity: 1 }], total: 1 },
-  '/v1/finance/valuation': {
+  '/v2/sets': { success: true, sets: SETS, total: 1, themes: [] },
+  '/v2/parts/manual': { success: true, parts: TEILE },
+  '/v2/parts': { success: true, parts: SET_PARTS, total: 1 },
+  '/v2/minifigs/manual': { success: true, figs: FIGUREN },
+  '/v2/minifigs': { success: true, figs: [{ ...FIGUREN[0], source: 'set', total_quantity: 1 }], total: 1 },
+  '/v2/finance/valuation': {
     success: true,
     currency: 'EUR',
     totals: { min: '0', avg: '0', max: '0' },
     sets: [{ ...SETS[0], purchase_price: 629, avg_price: 0, total_avg: '0' }],
   },
-  '/v1/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0', parts: TEILE },
+  '/v2/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0', parts: TEILE },
 };
 
 /** All <img> of an area that come from templates. */
@@ -127,10 +127,10 @@ test('gallery: a broken image becomes a placeholder', async () => {
   try {
     await warte(() => d.querySelector('#gallery .sc img'));
     const img = d.querySelector('#gallery .sc img');
-    const fehler = () => img.dispatchEvent(new w.Event('error'));
-    fehler(); // 1st attempt: retry in one second
-    fehler(); // 2nd attempt: full resolution (data-orig)
-    fehler(); // 3rd attempt: placeholder
+    const error = () => img.dispatchEvent(new w.Event('error'));
+    error(); // 1st attempt: retry in one second
+    error(); // 2nd attempt: full resolution (data-orig)
+    error(); // 3rd attempt: placeholder
     await takt(10);
     const sci = d.querySelector('#gallery .sc .sci');
     assert.equal(sci.querySelector('img[data-onerror]'), null, 'Das kaputte Bild steht noch da');

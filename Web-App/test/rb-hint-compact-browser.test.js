@@ -17,8 +17,8 @@ const { startApp } = require('./helpers/app-browser');
 
 test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `rbband_${process.pid}`, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

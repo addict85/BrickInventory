@@ -42,11 +42,11 @@ const item = (typ, id, farbe) =>
   '<MINQTY>1</MINQTY><CONDITION>N</CONDITION></ITEM>';
 const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>${i.join('')}</INVENTORY>\n`;
 
-async function hochladen(base, xml, korrekturen) {
+async function hochladen(base, xml, corrections) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  fd.append('korrekturen', JSON.stringify(korrekturen));
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml?schreiben=1`, { method: 'POST', body: fd });
+  fd.append('corrections', JSON.stringify(corrections));
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml?write=1`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -104,11 +104,11 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
 
   await t.test("the import only writes Anna's mapping", async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
-      { index: 0, blId: 'sw0001a', art: 'fig', rbId: 'fig-000001' },
-      { index: 1, blId: '3001', art: 'part', rbId: '3003', rbFarbe: 4 },
+      { index: 0, blId: 'sw0001a', kind: 'fig', rbId: 'fig-000001' },
+      { index: 1, blId: '3001', kind: 'part', rbId: '3003', rbColor: 4 },
     ]);
     assert.equal(status, 200, JSON.stringify(body));
-    assert.equal(body.korrekturen?.angewandt, 2, JSON.stringify(body.korrekturen));
+    assert.equal(body.corrections?.applied, 2, JSON.stringify(body.corrections));
     assert.deepEqual(await gemeinsam(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
     const eigen = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
     assert.deepEqual(
@@ -141,21 +141,21 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     const repo = require('./helpers/sources').testArea('finances').valuation;
     // Every account values its stock; two foreign accounts are never in one valuation.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
-    const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));
-    const teile = await je2(ids => repo.manualPartsToValuation(ids));
-    const je = (zeilen, feld) => Object.fromEntries(zeilen.map(z => [z.user_id, z[feld]]));
-    assert.deepEqual(je(figuren, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
-    assert.deepEqual(je(teile, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
+    const minifigs = await je2(ids => repo.manualMinifigsToValuation(ids));
+    const parts = await je2(ids => repo.manualPartsToValuation(ids));
+    const je = (zeilen, field) => Object.fromEntries(zeilen.map(z => [z.user_id, z[field]]));
+    assert.deepEqual(je(minifigs, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
+    assert.deepEqual(je(parts, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
   });
 
   await t.test("the next import: Anna's correction resolves for Anna, not for Bruno", async () => {
     const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
     const { readWantedList } = _req('src/wanted/wantedParser.js');
-    const { posten } = readWantedList(liste(item('P', '3001', 5)));
-    assert.equal((await asAccount(ANNA, () => resolveLocalOn(posten, ANNA)))[0].rbId, '3003');
-    const bruno = (await asAccount(BRUNO, () => resolveLocalOn(posten, BRUNO)))[0];
+    const { items } = readWantedList(liste(item('P', '3001', 5)));
+    assert.equal((await asAccount(ANNA, () => resolveLocalOn(items, ANNA)))[0].rbId, '3003');
+    const bruno = (await asAccount(BRUNO, () => resolveLocalOn(items, BRUNO)))[0];
     assert.equal(bruno.rbId, '3001');
-    assert.equal(bruno.sicherheit, 'katalogtreffer');
+    assert.equal(bruno.confidence, 'katalogtreffer');
   });
 
   await t.test('the BrickLink no. of an own figure stays with the account', async () => {

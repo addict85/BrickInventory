@@ -69,7 +69,7 @@ test('join household', { concurrency: 1 }, async t => {
   };
   const { base } = testServer(_req, { sitzung: { userId: kind }, t });
   const einloesen = body =>
-    fetch(`${base}/api/v1/settings/household/redeem`, {
+    fetch(`${base}/api/v2/settings/household/redeem`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -80,7 +80,7 @@ test('join household', { concurrency: 1 }, async t => {
   await t.test('checking a code is throttled per account', async () => {
     const { code } = await createInvitation(haupt);
     const pruefe = () =>
-      fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
+      fetch(`${base}/api/v2/settings/household/redeem/check`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -89,7 +89,7 @@ test('join household', { concurrency: 1 }, async t => {
     assert.deepEqual([erste.status, erste.body.inviter?.username], [200, MAIN], JSON.stringify(erste.body));
     for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Prüfung ${i + 1}`);
     const r = await pruefe();
-    assert.deepEqual([r.status, r.body.code], [429, 'zu_viele_anfragen'], JSON.stringify(r.body));
+    assert.deepEqual([r.status, r.body.code], [429, 'too_many_requests'], JSON.stringify(r.body));
     assert.equal(r.body.inviter, undefined, 'gebremst nennt die Antwort niemanden');
     await pruefCounter();
   });
@@ -99,7 +99,7 @@ test('join household', { concurrency: 1 }, async t => {
     for (const body of [{ code }, { code, password: 'falsch' }]) {
       const r = await einloesen(body);
       assert.equal(r.status, 400, JSON.stringify(r.body));
-      assert.equal(r.body.code, 'aktuelles_passwort_falsch');
+      assert.equal(r.body.code, 'current_password_wrong');
     }
     assert.equal(await verknuepft(), false);
   });
@@ -139,7 +139,7 @@ test('join household', { concurrency: 1 }, async t => {
     const { code } = await createInvitation(haupt2);
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
-    assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
+    assert.equal(ohne.body.code, 'second_factor_required');
     // Wait for the hint mail: written to stdout late, it disturbs the test run.
     const zeilen = [],
       echt = console.log;
@@ -148,7 +148,7 @@ test('join household', { concurrency: 1 }, async t => {
     };
     let mit;
     try {
-      mit = await einloesen({ code, password: PASS, faktor_code: codes[0] });
+      mit = await einloesen({ code, password: PASS, factor_code: codes[0] });
       for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
       console.log = echt;

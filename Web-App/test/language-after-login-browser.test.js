@@ -14,11 +14,11 @@ test('English UI without reloading', { timeout: 120_000 }, async t => {
   // Without administrator role: the administrator path loaded the dictionary on the side and hid the bug.
   const app = await startApp(t, {
     name: `sprache_${process.pid}`,
-    sprache: 'en',
-    bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
+    language: 'en',
+    holding: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   // Like a visitor with a German browser: log out, remember German, reload

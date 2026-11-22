@@ -46,11 +46,11 @@ function starte(env, ms = 25_000) {
     srv.stderr.on('data', d => {
       log += d;
     });
-    const uhr = setTimeout(() => {
+    const clock = setTimeout(() => {
       srv.kill('SIGKILL');
     }, ms);
     srv.on('exit', code => {
-      clearTimeout(uhr);
+      clearTimeout(clock);
       fertig({ code, log });
     });
   });
@@ -87,12 +87,12 @@ test('a 5xx names no internals without NODE_ENV', () => {
   environment({ NODE_ENV: undefined });
   try {
     const { handleRouteError } = _req('src/http/httpResponse.js');
-    let antwort;
+    let response;
     const res = {
       headersSent: false,
       status: () => ({
         json: b => {
-          antwort = b;
+          response = b;
         },
       }),
     };
@@ -103,8 +103,8 @@ test('a 5xx names no internals without NODE_ENV', () => {
     } finally {
       console.error = warn;
     }
-    assert.equal(antwort.code, 'interner_fehler');
-    assert.doesNotMatch(antwort.error, /geheim_intern/);
+    assert.equal(response.code, 'internal_error');
+    assert.doesNotMatch(response.error, /geheim_intern/);
   } finally {
     environment({ NODE_ENV: alt });
   }

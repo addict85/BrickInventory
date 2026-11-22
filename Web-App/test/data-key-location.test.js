@@ -30,7 +30,7 @@ function lade(wurzel, env = {}) {
     encoding: 'utf8',
     env: { ...process.env, DATA_KEY: '', DATA_KEY_FILE: '', APP_ROOT: wurzel, ...env },
   });
-  return { schluessel: r.status === 0 ? r.stdout : null, fehler: r.stderr, status: r.status };
+  return { schluessel: r.status === 0 ? r.stdout : null, error: r.stderr, status: r.status };
 }
 
 function installation(t) {
@@ -48,8 +48,8 @@ test('the key from DATA_KEY_FILE is used, nothing ends up in data/', t => {
   fs.mkdirSync(path.dirname(datei));
   fs.writeFileSync(datei, k + '\n', { mode: 0o600 });
   const r = lade(wurzel, { DATA_KEY_FILE: datei });
-  assert.equal(r.schluessel, k, r.fehler);
-  assert.doesNotMatch(r.fehler, /Datenordner/);
+  assert.equal(r.schluessel, k, r.error);
+  assert.doesNotMatch(r.error, /Datenordner/);
   assert.deepEqual(fs.readdirSync(path.join(wurzel, 'data')), []);
 });
 
@@ -69,15 +69,15 @@ test('an old installation with data/.datenschluessel keeps running and is warned
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), alt, { mode: 0o600 });
   const neu = path.join(wurzel, 'schluessel', 'datenschluessel');
   const r = lade(wurzel, { DATA_KEY_FILE: neu });
-  assert.equal(r.schluessel, alt, r.fehler);
-  assert.match(r.fehler, /liegt im Datenordner .*verschieben.*UPGRADE\.md/s);
+  assert.equal(r.schluessel, alt, r.error);
+  assert.match(r.error, /liegt im Datenordner .*verschieben.*UPGRADE\.md/s);
   assert.equal(fs.existsSync(neu), false, 'ein zweiter Schlüssel ist entstanden');
   // After the move: no more warning.
   fs.mkdirSync(path.dirname(neu));
   fs.renameSync(path.join(wurzel, 'data', '.datenschluessel'), neu);
   const danach = lade(wurzel, { DATA_KEY_FILE: neu });
   assert.equal(danach.schluessel, alt);
-  assert.doesNotMatch(danach.fehler, /Datenordner/);
+  assert.doesNotMatch(danach.error, /Datenordner/);
 });
 
 test('two different keys stop the startup', t => {
@@ -87,5 +87,5 @@ test('two different keys stop the startup', t => {
   fs.writeFileSync(path.join(wurzel, 'schluessel', 'datenschluessel'), zufall());
   const r = lade(wurzel);
   assert.equal(r.schluessel, null);
-  assert.match(r.fehler, /Zwei verschiedene Datenschlüssel/);
+  assert.match(r.error, /Zwei verschiedene Datenschlüssel/);
 });

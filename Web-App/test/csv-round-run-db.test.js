@@ -70,9 +70,9 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
 
-  const erfassungen = (tabelle, nummer, farbe, u) =>
+  const erfassungen = (tabelle, number, farbe, u) =>
     db.all(
-      `SELECT ${nummer}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
+      `SELECT ${number}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
             condition, day::text AS tag
        FROM ${tabelle} WHERE user_id=$1 ORDER BY day, condition`,
       [u],
@@ -99,7 +99,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   await t.test("sets: the import's row reader reads every column of the export", async () => {
     const { rows } = setCsvRows(await setsAlsCsv(A));
     assert.deepEqual(rows, [
-      { sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
+      { sn: 'RL10001-1', qty: 2, row: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
     ]);
   });
 });

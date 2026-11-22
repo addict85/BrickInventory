@@ -1,5 +1,5 @@
 /**
- * The instruction fetch as job 'anleitung' (src/catalog/loadInstruction.ts):
+ * The instruction fetch as job 'instructions' (src/catalog/loadInstruction.ts):
  * spacing only after a real fetch, the Cloudflare ladder as a pause of the
  * whole kind, the lock against a second job process, a set only open
  * once. The fetch itself is rebuilt; what is checked is what the handler
@@ -56,16 +56,16 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { JobMove } = _req('jobs/jobWorker.js');
-  const pause = () => A.liesPause('anleitung');
+  const pause = () => A.liesPause('instructions');
   const inSec = async () => {
     const p = await pause();
     return p ? Math.round((new Date(p.until_at).getTime() - Date.now()) / 1000) : null;
   };
-  const zuruecksetzen = () => db.run(`DELETE FROM job_pauses WHERE type = 'anleitung'`);
+  const zuruecksetzen = () => db.run(`DELETE FROM job_pauses WHERE type = 'instructions'`);
   t.after(async () => {
     Module.prototype.require = realRequire;
     await zuruecksetzen();
-    await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'instructions'`);
     await db.pool.end().catch(() => {});
   });
 
@@ -88,7 +88,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     for (let i = 0; i < 5; i++) {
       await assert.rejects(Q.loadInstruction({ set_number: '10003-1' }), e => e instanceof JobMove);
       gesehen.push(await inSec());
-      await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'anleitung'`);
+      await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'instructions'`);
     }
     assert.deepEqual(
       gesehen.slice(0, 4).map(s => Math.round(s / 60)),
@@ -120,11 +120,11 @@ test('instructions as a job', { concurrency: 1 }, async t => {
   });
 
   await t.test('a set is open only once', async () => {
-    await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'instructions'`);
     const E = _req('src/catalog/instructionJob.js');
     await E.enqueueInstruction('10005');
     await E.enqueueInstruction('10005-1');
-    const z = await require('./helpers/sources').testServices().jobQueue.countKind('anleitung');
-    assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
+    const z = await require('./helpers/sources').testServices().jobQueue.countKind('instructions');
+    assert.equal(z.open + z.running, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

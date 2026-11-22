@@ -25,7 +25,7 @@ test('a failed condition change is an error', { concurrency: 1 }, async t => {
   const FUNKTION = `zustand_sperre_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
-  await holdsSet(db, uid, SET, 1, { zustand: 'N' });
+  await holdsSet(db, uid, SET, 1, { condition: 'N' });
   // Only this set: other test files do not share the table, but the template.
   await db.exec(`
     CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$

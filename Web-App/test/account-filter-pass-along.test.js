@@ -18,28 +18,28 @@ const { openUi, reiter } = require('./helpers/ui');
 
 // The CSV import status is polled on a timer, not by the filter change: if
 // a poll falls into the window, it is not a fetch behind the account filter.
-const BACKGROUND = new Set(['/api/v1/sets/import/csv/status']);
+const BACKGROUND = new Set(['/api/v2/sets/import/csv/status']);
 
 /** What every tab must refetch after the change — with the filter. */
 const NEW_LOADED = {
-  gallery: ['/v1/sets', '/v1/stats'],
-  parts: ['/v1/parts', '/v1/parts/manual', '/v1/parts/stats', '/v1/parts/colors', '/v1/parts/categories'],
-  minifigs: ['/v1/minifigs', '/v1/minifigs/manual', '/v1/minifigs/stats'],
+  gallery: ['/v2/sets', '/v2/stats'],
+  parts: ['/v2/parts', '/v2/parts/manual', '/v2/parts/stats', '/v2/parts/colors', '/v2/parts/categories'],
+  minifigs: ['/v2/minifigs', '/v2/minifigs/manual', '/v2/minifigs/stats'],
   finance: [
-    '/v1/finance/valuation',
-    '/v1/finance/parts-valuation',
-    '/v1/finance/minifigs-valuation',
-    '/v1/finance/pnl',
+    '/v2/finance/valuation',
+    '/v2/finance/parts-valuation',
+    '/v2/finance/minifigs-valuation',
+    '/v2/finance/pnl',
   ],
 };
 
 test('every fetch behind the account filter passes the account filter along', async () => {
   const { w, d, aufrufe, ruhig } = await openUi({
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 2, username: 'ben', is_self: false, depth: 1 },
       ],
     },
   });

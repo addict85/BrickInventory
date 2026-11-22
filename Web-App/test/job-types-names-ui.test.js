@@ -17,23 +17,23 @@ const { buildAndRequire } = require('./helpers/sources');
 const { DECLARED_KINDS } = buildAndRequire()('startup/wiring.js');
 const ARTEN = Object.keys(DECLARED_KINDS).sort();
 
-for (const sprache of ['de', 'en']) {
-  test(`every registered job kind has a name (${sprache})`, async () => {
-    assert.ok(ARTEN.length > 15 && ARTEN.includes('katalog_nachzug'), `nur ${ARTEN.length} Arten`);
+for (const language of ['de', 'en']) {
+  test(`every registered job kind has a name (${language})`, async () => {
+    assert.ok(ARTEN.length > 15 && ARTEN.includes('catalog_followup'), `nur ${ARTEN.length} Arten`);
     const { w, d, warte, ruhig } = await openUi(
       {
-        '/v1/admin/job-status': { success: true, job: { running: false } },
-        '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-        '/v1/admin/auftraege': {
+        '/v2/admin/job-status': { success: true, job: { running: false } },
+        '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+        '/v2/admin/job-queue': {
           success: true,
-          auftraege: [],
-          zusammenfassung: ARTEN.map(art => ({ type: art, status: 'offen', anzahl: 1 })),
-          job_prozess: { laeuft: true },
-          bildbedarf: 0,
-          pausen: [],
+          jobs: [],
+          summary: ARTEN.map(kind => ({ type: kind, status: 'pending', count: 1 })),
+          job_process: { running: true },
+          image_demand: 0,
+          pauses: [],
         },
       },
-      { sprache },
+      { language },
     );
     try {
       await reiter(w, 'monitor');

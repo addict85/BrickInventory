@@ -31,16 +31,16 @@ const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, 
 
 /** Counts direction changes: if the client sends again after a response, a new round trip begins. */
 function countingBroker(ziel) {
-  const stand = { roundtrips: 0, responseKam: true };
+  const state = { roundtrips: 0, responseKam: true };
   const srv = net.createServer(a => {
     const b = net.connect(Number(ziel.port || 5432), ziel.hostname);
     a.on('data', d => {
-      if (stand.responseKam) stand.roundtrips++;
-      stand.responseKam = false;
+      if (state.responseKam) state.roundtrips++;
+      state.responseKam = false;
       b.write(d);
     });
     b.on('data', d => {
-      stand.responseKam = true;
+      state.responseKam = true;
       a.write(d);
     });
     for (const [x, y] of [
@@ -51,7 +51,7 @@ function countingBroker(ziel) {
       x.on('close', () => y.destroy());
     }
   });
-  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, stand })));
+  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, state })));
 }
 
 test('context per query in the pipeline', { concurrency: 1 }, async t => {
@@ -109,16 +109,16 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
 
   await t.test('one round trip for a query with an account', async () => {
     const ziel = new URL(process.env.DATABASE_URL);
-    const { srv, stand } = await countingBroker(ziel);
+    const { srv, state } = await countingBroker(ziel);
     const ueber = new URL(ziel);
     ueber.hostname = '127.0.0.1';
     ueber.port = String(srv.address().port);
     const nah = createDb({ ...k, verbindung: { connectionString: ueber.toString() }, pool: { ...k.pool, max: 1 } });
     try {
       await nah.get('SELECT 1');
-      stand.roundtrips = 0;
+      state.roundtrips = 0;
       assert.deepEqual(ids(await als(A, () => nah.all('SELECT user_id FROM sets'))), [A]);
-      assert.equal(stand.roundtrips, 1);
+      assert.equal(state.roundtrips, 1);
     } finally {
       await nah.pool.end();
       srv.close();

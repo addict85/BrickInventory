@@ -50,10 +50,10 @@ function script(id) {
 }
 
 function sandbox(t, metaWithDigest = true, { pushed = FROM_PUSH, inspection = REASSIGNED } = {}) {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'signatur-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  const bin = path.join(ort, 'bin'),
-    digests = path.join(ort, 'digests');
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'signatur-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  const bin = path.join(location, 'bin'),
+    digests = path.join(location, 'digests');
   fs.mkdirSync(bin);
   fs.mkdirSync(digests);
   fs.writeFileSync(path.join(digests, 'c'.repeat(64)), '');
@@ -61,7 +61,7 @@ function sandbox(t, metaWithDigest = true, { pushed = FROM_PUSH, inspection = RE
   fs.writeFileSync(
     path.join(bin, 'docker'),
     `#!/bin/sh
-echo "docker $*" >> "${ort}/aufrufe"
+echo "docker $*" >> "${location}/aufrufe"
 if [ "$2" = imagetools ] && [ "$3" = create ]; then
   case " $* " in (*" --dry-run "*) printf '%s' '${INDEX}'; exit 0 ;; esac
   while [ $# -gt 0 ]; do [ "$1" = --metadata-file ] && printf '%s' '${meta}' > "$2"; shift; done
@@ -72,23 +72,23 @@ exit 0
 `,
     { mode: 0o755 },
   );
-  fs.writeFileSync(path.join(bin, 'cosign'), `#!/bin/sh\necho "cosign $*" >> "${ort}/aufrufe"\n`, { mode: 0o755 });
-  return { ort, bin, digests };
+  fs.writeFileSync(path.join(bin, 'cosign'), `#!/bin/sh\necho "cosign $*" >> "${location}/aufrufe"\n`, { mode: 0o755 });
+  return { location, bin, digests };
 }
 
 function lauf(s, id, ersatz = {}, moreEnv = {}) {
   let text = script(id).replaceAll('${{ env.IMAGE }}', IMAGE).replaceAll(`$\{{ env.CADDY_IMAGE }}`, CADDY);
   for (const [k, v] of Object.entries(ersatz)) text = text.replaceAll(k, v);
-  const output = path.join(s.ort, `ausgabe-${id}`);
+  const output = path.join(s.location, `ausgabe-${id}`);
   fs.writeFileSync(output, '');
   const r = spawnSync('bash', ['-c', text], {
     cwd: s.digests,
     encoding: 'utf8',
     env: {
       PATH: `${s.bin}:${process.env.PATH}`,
-      RUNNER_TEMP: s.ort,
+      RUNNER_TEMP: s.location,
       GITHUB_OUTPUT: output,
-      GITHUB_STEP_SUMMARY: path.join(s.ort, 'summary'),
+      GITHUB_STEP_SUMMARY: path.join(s.location, 'summary'),
       DOCKER_METADATA_OUTPUT_JSON: JSON.stringify({ tags: [`${IMAGE}:latest`, `${IMAGE}:sha-1a2b3c4`] }),
       ...moreEnv,
     },
@@ -111,7 +111,7 @@ test('the digest from the push is signed, not the moved tag', t => {
   const sig = lauf(s, 'signatur', { '${{ steps.manifest.outputs.digest }}': m.aus.digest });
   assert.equal(sig.code, 0, sig.log);
   const signiert = fs
-    .readFileSync(path.join(s.ort, 'aufrufe'), 'utf8')
+    .readFileSync(path.join(s.location, 'aufrufe'), 'utf8')
     .split('\n')
     .filter(z => z.startsWith('cosign sign'));
   assert.deepEqual(signiert, [`cosign sign --yes --recursive ${IMAGE}@${FROM_PUSH}`]);
@@ -141,7 +141,7 @@ function artifacts() {
   };
 }
 
-const callsIn = s => fs.readFileSync(path.join(s.ort, 'aufrufe'), 'utf8').split('\n');
+const callsIn = s => fs.readFileSync(path.join(s.location, 'aufrufe'), 'utf8').split('\n');
 
 // Counter-checks (measured 11.11.2026, each individually): in the step `signatur-caddy`
 // `${{ env.IMAGE }}` instead of `${{ env.CADDY_IMAGE }}` → red „signiert wird das
@@ -180,13 +180,13 @@ test('Caddy is built, signed and attested like the app image, on the digest from
     );
   }
   const bau = schritt('Caddy bauen und als Digest hochladen');
-  for (const zeile of [
+  for (const row of [
     /file: \$\{\{ env\.CONTEXT \}\}\/Dockerfile\.caddy/,
     /no-cache: true/,
     /provenance: mode=max/,
     /sbom: generator=\S+@sha256:[0-9a-f]{64}/,
   ])
-    assert.match(bau, zeile);
+    assert.match(bau, row);
   // The app manifest collects its digests via a pattern; the Caddy artifacts must not fall under it.
   const { muster, caddy: caddyName } = artifacts();
   assert.ok(muster && caddyName, `${muster} / ${caddyName}`);

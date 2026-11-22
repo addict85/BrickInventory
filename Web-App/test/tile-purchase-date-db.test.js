@@ -39,13 +39,13 @@ test('readSets delivers the last purchase', { concurrency: 1 }, async t => {
   const { sets } = await readSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');
-  assert.equal(new Date(s.letzter_kauf).toISOString().slice(0, 10), '2025-07-14');
+  assert.equal(new Date(s.last_purchase).toISOString().slice(0, 10), '2025-07-14');
 });
 
 test('the tile shows the purchase date', async () => {
   const { w, d } = await openUi(
     {
-      '/v1/sets': {
+      '/v2/sets': {
         success: true,
         total: 1,
         themes: [],
@@ -56,7 +56,7 @@ test('the tile shows the purchase date', async () => {
             quantity: 2,
             conditions: ['N'],
             added_at: '2026-10-28T08:00:00Z',
-            letzter_kauf: '2025-07-14T10:00:00Z',
+            last_purchase: '2025-07-14T10:00:00Z',
           },
         ],
       },

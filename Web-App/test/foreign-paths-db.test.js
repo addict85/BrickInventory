@@ -86,13 +86,13 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   const { base } = routerServer(_req, {
     sitzung: { userId: 1 },
     apiNutzer: { user_id: 1, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v2': 'routes/api_v1/index.js' },
     t,
   });
   let geprueft = 0;
-  const { fetchSetParts } = require('./helpers/sources').testServices().externalSources.quellen;
+  const { fetchSetParts } = require('./helpers/sources').testServices().externalSources.sources;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
-    const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
+    const r = await fetch(`${base}/api/v2/sets/${roh}/parts-list`);
     assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);
     abgerufen.length = 0;
     await fetchSetParts(decodeURIComponent(roh));

@@ -33,22 +33,22 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     name: `mass_${process.pid}`,
     allDesigns: true,
     telefon: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await holdsSet(db, uid, '10294-1', 1, { preis: 4894.77 });
       await db
         .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('10294-1', 'N', 'EUR', 4005.5, 5002.2, 6295.5, 5000, 10, NOW())
                     ON CONFLICT DO NOTHING`)
         .catch(() => {});
-      await holdsPart(db, uid, '3001', { colorId: 4, menge: 250, preis: 0.12 });
+      await holdsPart(db, uid, '3001', { colorId: 4, quantity: 250, preis: 0.12 });
       await db.run(
         `INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '10276-1', 'N') ON CONFLICT DO NOTHING`,
         [uid],
       );
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -81,13 +81,13 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
       `!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-cost-basis').textContent)`,
       'Finanzkacheln',
     );
-    const fehler =
+    const error =
       await b.auswerten(`[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length).map(e => {
       const r = document.createRange(); r.selectNodeContents(e);
       const zeilen = new Set([...r.getClientRects()].map(q => Math.round(q.top))).size;
       const kachel = e.closest('.fstat').getBoundingClientRect(), text = r.getBoundingClientRect();
       return (zeilen > 1 || text.right > kachel.right + 0.5) ? e.id + ': ' + zeilen + ' Zeilen, „' + e.textContent.trim() + '“' : null; }).filter(Boolean)`);
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
   });
 
   await t.test('phone: delete button covers nothing', async () => {
@@ -124,13 +124,13 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
   await t.test('Noppe: bottom bar at least 4.5:1', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'noppe'); true`);
     await ruhig();
-    const werte = await b.auswerten(`(() => { const k = ${CONTRAST};
+    const values = await b.auswerten(`(() => { const k = ${CONTRAST};
       const nav = getComputedStyle(document.querySelector('nav')).backgroundColor;
       return [...document.querySelectorAll('nav .ntab:not(.active)')].filter(e => e.getClientRects().length)
         .map(e => Math.round(k(getComputedStyle(e).color, nav) * 100) / 100); })()`);
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'classic'); true`);
-    assert.ok(werte.length >= 3, `nur ${werte.length} Reiter`);
-    assert.ok(Math.min(...werte) >= 4.5, `Kontraste: ${werte}`);
+    assert.ok(values.length >= 3, `nur ${values.length} Reiter`);
+    assert.ok(Math.min(...values) >= 4.5, `Kontraste: ${values}`);
   });
 
   await groesse(1280, 900, false);

@@ -24,9 +24,9 @@ const labels = d =>
   );
 /** @param {Record<string, number>} s */
 const stats = s => ({
-  '/v1/stats': {
+  '/v2/stats': {
     success: true,
-    stats: { ...ANMELDUNG['/v1/stats'].stats, ...s },
+    stats: { ...ANMELDUNG['/v2/stats'].stats, ...s },
   },
 });
 
@@ -60,19 +60,19 @@ test('M1 several sets with parts: plural, no explanation', async () => {
 test('M2 empty code in the second step: message at the field, no second request', async () => {
   const { w, d, aufrufe } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Code aus der Authenticator-App nötig',
-        code: 'zweiter_faktor_noetig',
-        zweiter_faktor: true,
+        code: 'second_factor_required',
+        second_factor: true,
       },
     },
     { loggedIn: false },
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const logins = () => aufrufe.filter(a => a.url.includes('/v1/auth/login')).length;
+    const logins = () => aufrufe.filter(a => a.url.includes('/v2/auth/login')).length;
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
@@ -98,7 +98,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     assert.equal(text(d.getElementById('lc-error')), '');
     d.getElementById('btn-login').click();
     await warte(() => logins() === 2);
-    assert.equal(JSON.parse(aufrufe.filter(a => a.url.includes('/v1/auth/login'))[1].body).code, '123456');
+    assert.equal(JSON.parse(aufrufe.filter(a => a.url.includes('/v2/auth/login'))[1].body).code, '123456');
   } finally {
     w.close();
   }
@@ -107,11 +107,11 @@ test('M2 empty code in the second step: message at the field, no second request'
 test('M2 first step without a code field: the code is not required', async () => {
   const { w, d, aufrufe } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Benutzername oder Passwort falsch',
-        code: 'anmeldedaten_ungueltig',
+        code: 'credentials_invalid',
       },
     },
     { loggedIn: false },
@@ -122,7 +122,7 @@ test('M2 first step without a code field: the code is not required', async () =>
     d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
     await warte(() => text(d.getElementById('lerr')));
-    assert.equal(aufrufe.filter(a => a.url.includes('/v1/auth/login')).length, 1);
+    assert.equal(aufrufe.filter(a => a.url.includes('/v2/auth/login')).length, 1);
     assert.equal(text(d.getElementById('lc-error')), '');
   } finally {
     w.close();
@@ -131,7 +131,7 @@ test('M2 first step without a code field: the code is not required', async () =>
 
 test('N6 change password: length and repetition reported at once', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+    '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
     await sicht(w, 'profile');
@@ -143,7 +143,7 @@ test('N6 change password: length and repetition reported at once', async () => {
     assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-n');
     assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Rückfrage trotz Fehler');
-    assert.equal(aufrufe.filter(a => a.url.endsWith('/v1/auth/change-password')).length, 0);
+    assert.equal(aufrufe.filter(a => a.url.endsWith('/v2/auth/change-password')).length, 0);
 
     // Only the repetition wrong: only there a message, the old one at the first field is gone.
     d.getElementById('pw-n').value = 'lang-genug-Passwort-1';
@@ -159,7 +159,7 @@ test('N6 change password: length and repetition reported at once', async () => {
 
 test('N7 finances: sum per area below the area, at the bottom only the grand total', async () => {
   const { w, d } = await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: '650', avg: '700', max: '760' },
@@ -171,12 +171,12 @@ test('N7 finances: sum per area below the area, at the bottom only the grand tot
           purchase_price: 629,
           avg_price: 700,
           total_avg: '700',
-          wert_gesamt: 700,
-          acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: 700, wert_gesamt: 700 }],
+          value_total: 700,
+          acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: 700, value_total: 700 }],
         },
       ],
     },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -208,10 +208,10 @@ test('N7 finances: sum per area below the area, at the bottom only the grand tot
 test('N10 without HTTPS: up front only "unencrypted", the operator hint only with a missing cookie', async () => {
   const { w, d } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         success: true,
         user: { id: 1, username: 'anna', is_admin: false },
-        keks_fehlt: true,
+        cookie_missing: true,
       },
     },
     { loggedIn: false, url: 'http://192.168.1.20/' },

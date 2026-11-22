@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const TEILE = {
-  '/v1/parts': {
+  '/v2/parts': {
     success: true,
     total: 3,
     parts: [
@@ -52,12 +52,12 @@ const TEILE = {
   },
 };
 
-for (const [sprache, eins, zwei] of [
+for (const [language, eins, zwei] of [
   ['de', '1 Sorte', '2 Sorten'],
   ['en', '1 kind', '2 kinds'],
 ]) {
-  test(`${sprache}: groups of the parts`, async () => {
-    const { w, d } = await openUi(TEILE, { sprache });
+  test(`${language}: groups of the parts`, async () => {
+    const { w, d } = await openUi(TEILE, { language });
     try {
       await reiter(w, 'parts');
       await warte(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
@@ -71,7 +71,7 @@ for (const [sprache, eins, zwei] of [
 
 test('finances: a position without a price', async () => {
   const { w, d } = await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: '0', avg: '0', max: '0', qty_avg: '0' },

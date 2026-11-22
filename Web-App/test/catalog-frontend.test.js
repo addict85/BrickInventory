@@ -84,7 +84,7 @@ for (let k = 0; k < 4; k++)
 const requests = [];
 function fakeApi(_method, url) {
   requests.push(url);
-  if (url.startsWith('/v1/catalog/meta')) {
+  if (url.startsWith('/v2/catalog/meta')) {
     const counts = {};
     for (const s of DATA) counts[s.year] = (counts[s.year] || 0) + 1;
     return Promise.resolve({
@@ -95,7 +95,7 @@ function fakeApi(_method, url) {
       year_counts: Object.entries(counts).map(([y, n]) => ({ year: +y, n })),
     });
   }
-  if (url.startsWith('/v1/catalog/sets?')) {
+  if (url.startsWith('/v2/catalog/sets?')) {
     const p = new w.URLSearchParams(url.split('?')[1]);
     let rows = DATA.slice();
     if (p.get('q')) rows = rows.filter(s => s.name.includes(p.get('q')) || s.set_number.includes(p.get('q')));
@@ -111,7 +111,7 @@ function fakeApi(_method, url) {
       sets: rows.slice((page - 1) * limit, page * limit),
     });
   }
-  if (url.startsWith('/v1/catalog/year-verteilung')) {
+  if (url.startsWith('/v2/catalog/year-distribution')) {
     const p = new w.URLSearchParams(url.split('?')[1] || '');
     const absteigend = p.get('sort') !== 'year_asc';
     const counts = {};
@@ -226,64 +226,64 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   // tiles load and the page gets longer.
   check('Griff folgt der wachsenden Seite', /ResizeObserver/.test(kern), null);
 
-  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
-  check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(quelle), null);
+  const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
+  check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(source), null);
   // The observer measures against the WINDOW again.
-  check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);
+  check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(source), null);
   // And the second path that loads independently of the observer — exactly the bug
   // Marco reported (“no entries appear when scrolling").
-  check('Seiten laden auch ohne Beobachter', /_loadVisiblePages/.test(quelle), null);
+  check('Seiten laden auch ohne Beobachter', /_loadVisiblePages/.test(source), null);
   check(
     'nach dem Füllen wird erneut nachgesehen',
-    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_loadVisiblePages\(\)/.test(quelle),
+    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_loadVisiblePages\(\)/.test(source),
     null,
   );
-  check('Kacheln tragen ihr Jahr', /data-year="/.test(quelle), null);
+  check('Kacheln tragen ihr Jahr', /data-year="/.test(source), null);
   // Unloaded pages are ONE empty block, not 60 tile placeholders: with
   // 25 000 sets that would be over 25 000 elements at once.
-  check('leere Seite ist ein einzelner Block', /class="cat-page cat-page-ph" data-page=/.test(quelle), null);
+  check('leere Seite ist ein einzelner Block', /class="cat-page cat-page-ph" data-page=/.test(source), null);
   // And its height is MEASURED on the FIRST real page. Guessed it would be
   // wrong as soon as the window yields a different column count — then the list
   // jumps when loading more and one loses the place.
   check(
     'Höhe wird gemessen, nicht geraten',
-    /first\.offsetHeight/.test(quelle) && /_setPlaceholderHeight\(\)/.test(quelle),
+    /first\.offsetHeight/.test(source) && /_setPlaceholderHeight\(\)/.test(source),
     null,
   );
   // The reliable loading path: the scroll event itself, throttled.
-  check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', atMovement/.test(quelle), null);
+  check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', atMovement/.test(source), null);
   check(
     'gedrosselt über requestAnimationFrame',
-    /requestAnimationFrame\([\s\S]{0,120}_loadVisiblePages/.test(quelle),
+    /requestAnimationFrame\([\s\S]{0,120}_loadVisiblePages/.test(source),
     null,
   );
   // The load while dragging
   check(
     'Blocklagen kommen aus dem Gedächtnis',
-    /_catBlockStates/.test(quelle) && /function _measureBlocks/.test(quelle),
+    /_catBlockStates/.test(source) && /function _measureBlocks/.test(source),
     null,
   );
   check(
     'beim Rollen wird NICHT neu gemessen',
-    !/requestAnimationFrame\([\s\S]{0,160}_measureBlocks/.test(quelle),
+    !/requestAnimationFrame\([\s\S]{0,160}_measureBlocks/.test(source),
     null,
   );
   // 2. Loading only happens at rest; that this works is measured by catalog-move-debounced.test.js.
-  check('Laden wartet auf Ruhe', /_catLoadTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
+  check('Laden wartet auf Ruhe', /_catLoadTimer = setTimeout\(tun, \d+\)/.test(source), null);
   // The observer is gone — one path that always applies instead of two
   // that are supposed to complement each other.
-  check('kein zweiter Ladeweg mehr', !/new IntersectionObserver/.test(quelle), null);
-  check('der Katalog meldet sein Etikett an', /setScrollLabel\(/.test(quelle), null);
-  check('Etikett liest zuerst die sichtbare Kachel', /card\.dataset\.year/.test(quelle), null);
+  check('kein zweiter Ladeweg mehr', !/new IntersectionObserver/.test(source), null);
+  check('der Katalog meldet sein Etikett an', /setScrollLabel\(/.test(source), null);
+  check('Etikett liest zuerst die sichtbare Kachel', /card\.dataset\.year/.test(source), null);
   // And where nothing is loaded, the computation uses the actual DISTRIBUTION,
   // not a linear estimate. The linear version showed “1966" at 90 %, where
   // in truth it was 1995 — Marco's finding.
   check(
     'Etikett rechnet über die Verteilung',
-    /_catYearDistribution/.test(quelle) && /year-verteilung/.test(quelle),
+    /_catYearDistribution/.test(source) && /year-verteilung/.test(source),
     null,
   );
-  check('keine lineare Schätzung mehr', !/_catYearMax - anteil \* spanne/.test(quelle), null);
+  check('keine lineare Schätzung mehr', !/_catYearMax - anteil \* spanne/.test(source), null);
 
   check('Etikett ist angemeldet', typeof w.__scrollLabelFn === 'function', typeof w.__scrollLabelFn);
 

@@ -24,7 +24,7 @@ const { holdsSet } = require('./helpers/inventory');
 test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `hoehe_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await db.run(`DELETE FROM global_settings WHERE key = 'rebrickable_api_key'`);
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`,
@@ -32,8 +32,8 @@ test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 },
       for (let i = 0; i < 12; i++) await holdsSet(db, uid, `${71000 + i}-1`, 1, { preis: 10 + i });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

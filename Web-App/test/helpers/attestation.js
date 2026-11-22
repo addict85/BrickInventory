@@ -27,13 +27,13 @@ const nichts = () => Buffer.from([0x05, 0x00]);
 const wahr = b => tlv([0x01], Buffer.from([b ? 0xff : 0x00]));
 const oid = s => {
   const z = s.split('.').map(Number);
-  const teile = [40 * z[0] + z[1]];
+  const parts = [40 * z[0] + z[1]];
   for (const x of z.slice(2)) {
     const b = [x & 0x7f];
     for (let r = x >> 7; r; r >>= 7) b.unshift((r & 0x7f) | 0x80);
-    teile.push(...b);
+    parts.push(...b);
   }
-  return tlv([0x06], Buffer.from(teile));
+  return tlv([0x06], Buffer.from(parts));
 };
 /** [n] EXPLICIT, also with tag numbers above 30 (KeyMint uses up to 7xx). */
 const kontext = (n, innen) => {
@@ -47,10 +47,10 @@ const zeit = d => tlv([0x17], Buffer.from(d.toISOString().replace(/[-:T]/g, '').
 const ECDSA_SHA256 = seq(oid('1.2.840.10045.4.3.2'));
 
 /**
- * @param {{ subject: string, aussteller: string, oeffentlich: import('node:crypto').KeyObject,
+ * @param {{ subject: string, aussteller: string, public_key: import('node:crypto').KeyObject,
  *   signierer: import('node:crypto').KeyObject, ca?: boolean, extensions?: Buffer[], von?: Date, bis?: Date }} z
  */
-function zertifikat({ subject, aussteller, oeffentlich, signierer, ca = false, extensions = [], von, bis }) {
+function zertifikat({ subject, aussteller, public_key, signierer, ca = false, extensions = [], von, bis }) {
   const ext = [...extensions];
   if (ca)
     ext.push(seq(oid('2.5.29.19'), tlv([0x01], Buffer.from([0xff])), oktette(seq(tlv([0x01], Buffer.from([0xff]))))));
@@ -61,7 +61,7 @@ function zertifikat({ subject, aussteller, oeffentlich, signierer, ca = false, e
     name(aussteller),
     seq(zeit(von ?? new Date(Date.now() - 86_400_000)), zeit(bis ?? new Date(Date.now() + 365 * 86_400_000))),
     name(subject),
-    oeffentlich.export({ format: 'der', type: 'spki' }),
+    public_key.export({ format: 'der', type: 'spki' }),
     ...(ext.length ? [kontext(3, seq(...ext))] : []),
   );
   const sig = sign('sha256', tbs, { key: signierer, dsaEncoding: 'der' });
@@ -76,7 +76,7 @@ const pem = der =>
 
 function newRoot(cn = 'Test-Attestierungswurzel') {
   const k = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const der = zertifikat({ subject: cn, aussteller: cn, oeffentlich: k.publicKey, signierer: k.privateKey, ca: true });
+  const der = zertifikat({ subject: cn, aussteller: cn, public_key: k.publicKey, signierer: k.privateKey, ca: true });
   return { ...k, cn, der, pem: pem(der) };
 }
 
@@ -87,16 +87,16 @@ const DIGEST = createHash('sha256').update('brickinventory-test-signatur').diges
 const DIGEST_HEX = DIGEST.toString('hex').toUpperCase();
 
 /**
- * A loaded revocation list in run_state, as the job `widerrufsliste`
+ * A loaded revocation list in run_state, as the job `revocation_list`
  * stores it; without it the server accepts no key.
  * @param {{ run: (sql: string, p: unknown[]) => Promise<unknown> }} db
- * @param {string[]} [nummern] @param {Date} [stand]
+ * @param {string[]} [nummern] @param {Date} [state]
  */
-function storeRevocationList(db, nummern = [], stand = new Date()) {
+function storeRevocationList(db, nummern = [], state = new Date()) {
   return db.run(
     `INSERT INTO run_state (key, value) VALUES ('attestation_widerruf', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-    [JSON.stringify({ stand: stand.toISOString(), nummern })],
+    [JSON.stringify({ state: state.toISOString(), nummern })],
   );
 }
 
@@ -108,7 +108,7 @@ const UMGEBUNG = {
 };
 
 /**
- * @typedef {{ challenge: Buffer, wurzel?: ReturnType<typeof newRoot>, sicherheit?: number,
+ * @typedef {{ challenge: Buffer, wurzel?: ReturnType<typeof newRoot>, confidence?: number,
  *   paket?: string, digest?: Buffer, withoutLock?: boolean, alsoWithoutLogin?: boolean,
  *   withoutExtension?: boolean, frist?: number, herkunft?: number, kurve?: number, algorithm?: number,
  *   openBootloader?: boolean, bootState?: number, withoutRootOfTrust?: boolean, patch?: number }} Abweichung
@@ -147,9 +147,9 @@ function beschreibung(o) {
   const sw = [kontext(709, oktette(app))];
   return seq(
     ganz(300),
-    aufz(o.sicherheit ?? 1),
+    aufz(o.confidence ?? 1),
     ganz(300),
-    aufz(o.sicherheit ?? 1),
+    aufz(o.confidence ?? 1),
     oktette(o.challenge),
     oktette(Buffer.alloc(0)),
     seq(...sw),
@@ -161,14 +161,14 @@ function beschreibung(o) {
  * A chain like the keystore's getCertificateChain(), Base64, leaf first.
  * @param {Abweichung} o  challenge: the server's nonce as bytes
  */
-function kette(o) {
+function chain(o) {
   const w = o.wurzel ?? WURZEL;
   const zwischen = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const blatt = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const zThe = zertifikat({
     subject: 'Test-Zwischenstufe',
     aussteller: w.cn,
-    oeffentlich: zwischen.publicKey,
+    public_key: zwischen.publicKey,
     signierer: w.privateKey,
     ca: true,
   });
@@ -176,16 +176,16 @@ function kette(o) {
   const bThe = zertifikat({
     subject: 'Android Keystore Key',
     aussteller: 'Test-Zwischenstufe',
-    oeffentlich: blatt.publicKey,
+    public_key: blatt.publicKey,
     signierer: zwischen.privateKey,
     extensions: ext,
     von: new Date(0),
     bis: new Date('2048-01-01T00:00:00Z'),
   });
   return {
-    kette: [bThe, zThe, w.der].map(d => d.toString('base64')),
+    chain: [bThe, zThe, w.der].map(d => d.toString('base64')),
     privateKey: blatt.privateKey,
-    oeffentlich: blatt.publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
+    public_key: blatt.publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
   };
 }
 
@@ -201,7 +201,7 @@ module.exports = {
   DIGEST_HEX,
   UMGEBUNG,
   newRoot,
-  kette,
+  chain,
   beschreibung,
   storeRevocationList,
 };

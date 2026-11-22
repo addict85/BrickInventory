@@ -63,7 +63,7 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
   await c.query(`INSERT INTO part_catalog (part_number, part_name, name_von) VALUES ('3003', 'Brunos Stein', 43)`);
   await c.query(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('75192-1', '3003', 0, 1)`);
 
-  const zeile = async nr =>
+  const row = async nr =>
     (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
 
   await t.test('the set list only has its own columns', async () => {
@@ -78,27 +78,27 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
   });
 
   await t.test('the view shows the same values as before', async () => {
-    const z = await zeile('3001');
+    const z = await row('3001');
     assert.equal(z.color_name, 'Red');
     assert.equal(z.color_hex, 'C91A09');
     assert.equal(z.category_name, 'Bricks');
     assert.equal(z.image_url, 'https://cdn.rebrickable.com/3001.jpg');
     assert.equal(z.image_local, '/images/parts/3001_4.jpg');
     assert.equal(z.quantity, 6);
-    assert.equal((await zeile('3002')).is_spare, 1);
+    assert.equal((await row('3002')).is_spare, 1);
   });
 
   await t.test('the verified name from the set list replaces the placeholder', async () => {
-    assert.equal((await zeile('3001')).part_name, 'Brick 2 x 4');
+    assert.equal((await row('3001')).part_name, 'Brick 2 x 4');
     const k = (await c.query(`SELECT part_name, name_von FROM part_catalog WHERE part_number = '3001'`)).rows[0];
     assert.deepEqual(k, { part_name: 'Brick 2 x 4', name_von: null });
   });
 
   await t.test('an existing verified value stays', async () => {
-    assert.equal((await zeile('3002')).part_name, 'Brick 2x3 geprüft');
+    assert.equal((await row('3002')).part_name, 'Brick 2x3 geprüft');
   });
 
   await t.test('a placeholder does not appear in the set list', async () => {
-    assert.equal((await zeile('3003')).part_name, null);
+    assert.equal((await row('3003')).part_name, null);
   });
 });

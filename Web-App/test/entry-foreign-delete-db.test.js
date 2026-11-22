@@ -51,14 +51,14 @@ test('delete foreign acquisitions', { concurrency: 1 }, async t => {
   ).id;
 
   const { base } = testServer(_req, { sitzung: { userId: a }, t });
-  const loesche = pfad => fetch(base + pfad, { method: 'DELETE' }).then(r => r.status);
+  const loesche = path => fetch(base + path, { method: 'DELETE' }).then(r => r.status);
 
   await t.test('Teil', async () => {
-    assert.equal(await loesche(`/api/v1/parts/3001/4/acquisitions/${teil}`), 404);
+    assert.equal(await loesche(`/api/v2/parts/3001/4/acquisitions/${teil}`), 404);
     assert.ok(await db.get('SELECT 1 FROM part_acquisitions WHERE id = $1', [teil]), 'die fremde Zeile ist weg');
   });
   await t.test('figure', async () => {
-    assert.equal(await loesche(`/api/v1/minifigs/sw0001/acquisitions/${figur}`), 404);
+    assert.equal(await loesche(`/api/v2/minifigs/sw0001/acquisitions/${figur}`), 404);
     assert.ok(await db.get('SELECT 1 FROM minifig_acquisitions WHERE id = $1', [figur]), 'die fremde Zeile ist weg');
   });
 });

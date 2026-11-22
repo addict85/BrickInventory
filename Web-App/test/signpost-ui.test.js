@@ -17,15 +17,15 @@ const { openUi } = require('./helpers/ui');
 const WITHOUT_PATH =
   /unter Einstellungen\b|in den Einstellungen\b|in the settings\b|under Settings\b|in Settings\b|Reiter (Sets|Teile)/i;
 
-for (const sprache of ['de', 'en']) {
-  test(`${sprache}: signposts are correct`, async () => {
-    const { w, d } = await openUi({}, { sprache });
+for (const language of ['de', 'en']) {
+  test(`${language}: signposts are correct`, async () => {
+    const { w, d } = await openUi({}, { language });
     try {
       const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
       const sections = [...d.querySelectorAll('.settings-nav a')].map(a => a.textContent.trim());
       assert.ok(menue.length >= 8 && sections.length >= 5, `Menü/Abschnitte nicht gerendert: ${menue} / ${sections}`);
-      const words = sprache === 'de' ? w.I18N_DE : w.I18N_EN;
-      const MENU = sprache === 'de' ? 'Menü' : 'Menu';
+      const words = language === 'de' ? w.I18N_DE : w.I18N_EN;
+      const MENU = language === 'de' ? 'Menü' : 'Menu';
       const funde = [];
       let gesehen = 0;
       for (const [k, text] of Object.entries(words)) {
@@ -33,7 +33,7 @@ for (const sprache of ['de', 'en']) {
         if (WITHOUT_PATH.test(text)) funde.push(`${k}: Ziel ohne Pfad — „${text.match(WITHOUT_PATH)[0]}“`);
         // After „Menü → “ a menu item must stand (the longest one that fits);
         // after „Einstellungen → “ a section of the settings.
-        const einst = sprache === 'de' ? 'Einstellungen' : 'Settings';
+        const einst = language === 'de' ? 'Einstellungen' : 'Settings';
         const beginnt = (rest, namen) =>
           [...namen]
             .sort((x, y) => y.length - x.length)

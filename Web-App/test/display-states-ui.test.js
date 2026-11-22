@@ -24,7 +24,7 @@ const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
 
 test('metrics without k: 1300 parts are shown as the full number', async () => {
   const { w, d } = await openUi({
-    '/v1/stats': {
+    '/v2/stats': {
       success: true,
       stats: { total_sets: 14, total_parts: 1300, total_minifigs: 19, total_instructions: 0 },
     },
@@ -57,25 +57,25 @@ const HISTORY = (() => {
     '2026-10-28',
     '2026-10-29',
   ];
-  const werte = tage.map((_, i) => 4219 + i * 63.7);
+  const values = tage.map((_, i) => 4219 + i * 63.7);
   return {
     success: true,
     currency: 'EUR',
-    messpunkte: tage.length,
+    data_points: tage.length,
     period_change_pct: 15,
-    points: werte.map((value, i) => ({ x_label: i % 3 ? '' : 'x', value, y_frac: 0.5 })),
+    points: values.map((value, i) => ({ x_label: i % 3 ? '' : 'x', value, y_frac: 0.5 })),
     y_axis: [],
     chart: {
       x: tage,
-      values: [{ name: 'total', firstRealIndex: 0, values: tage.map((x, i) => ({ x, y: werte[i] })) }],
+      values: [{ name: 'total', firstRealIndex: 0, values: tage.map((x, i) => ({ x, y: values[i] })) }],
     },
   };
 })();
 
 test('value chart: division by 1-2-5, real time axis, month names', async () => {
   const { w, d } = await openUi({
-    '/v1/finance/portfolio-history': HISTORY,
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } },
+    '/v2/finance/portfolio-history': HISTORY,
+    '/v2/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } },
   });
   try {
     await reiter(w, 'finance');
@@ -119,7 +119,7 @@ test('finances: placeholder while loading instead of "—"', async () => {
     freigeben = r;
   });
   const { w, d } = await openUi({
-    '/v1/finance/valuation': () =>
+    '/v2/finance/valuation': () =>
       spaeter.then(() => ({
         success: true,
         currency: 'EUR',
@@ -150,7 +150,7 @@ test('parts: while they load, no empty box "manually captured parts"', async () 
     freigeben = r;
   });
   const { w, d } = await openUi({
-    '/v1/parts/manual': () =>
+    '/v2/parts/manual': () =>
       spaeter.then(() => ({
         success: true,
         parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_name: 'Red', color_id: 4, quantity: 3 }],
@@ -171,7 +171,7 @@ test('parts: while they load, no empty box "manually captured parts"', async () 
 
 test('account: without email it does not say "verified"', async () => {
   const { w, d } = await openUi({
-    '/v1/auth/profile': {
+    '/v2/auth/profile': {
       success: true,
       user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' },
     },
@@ -187,7 +187,7 @@ test('account: without email it does not say "verified"', async () => {
 
 test('account: a pending address stands below the field, the valid one in the field', async () => {
   const { w, d } = await openUi({
-    '/v1/auth/profile': {
+    '/v2/auth/profile': {
       success: true,
       user: {
         username: 'anna',
@@ -211,22 +211,20 @@ test('account: a pending address stands below the field, the valid one in the fi
 
 test('no hint about the Rebrickable key above the setup wizard', async () => {
   const { w, d, ruhig } = await openUi({
-    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
-    '/v1/settings/einrichtung': {
+    '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
+    '/v2/settings/setup': {
       success: true,
-      offen: true,
-      passwort_aendern: false,
-      quellen: { rebrickable: false },
+      open: true,
+      change_password: false,
+      sources: { rebrickable: false },
     },
   });
   try {
     await warte(() => d.getElementById('setup-modal').classList.contains('open'));
     await ruhig();
     assert.ok(d.getElementById('setup-modal').classList.contains('open'), 'der Assistent ist zu');
-    const hinweise = [...d.querySelectorAll('#toasts .toast')]
-      .map(t => t.textContent)
-      .filter(t => /Rebrickable/.test(t));
-    assert.deepEqual(hinweise, []);
+    const hints = [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent).filter(t => /Rebrickable/.test(t));
+    assert.deepEqual(hints, []);
     assert.equal(d.getElementById('rb-hint').hidden, true, 'Hinweisband über dem Assistenten');
   } finally {
     w.close();
@@ -235,14 +233,14 @@ test('no hint about the Rebrickable key above the setup wizard', async () => {
 
 test("account: own theme or the admin's default", async () => {
   const aufrufe = [];
-  let eigenes = null;
+  let own = null;
   const { w, d } = await openUi({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
-    '/v1/settings/theme': () => ({ success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }),
-    '/v1/settings/user/theme': (_url, o) => {
+    '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+    '/v2/settings/theme': () => ({ success: true, theme: own || 'noppe', preset: 'noppe', own }),
+    '/v2/settings/user/theme': (_url, o) => {
       aufrufe.push(JSON.parse(o.body));
-      eigenes = JSON.parse(o.body).theme || null;
-      return { success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes };
+      own = JSON.parse(o.body).theme || null;
+      return { success: true, theme: own || 'noppe', preset: 'noppe', own };
     },
   });
   try {

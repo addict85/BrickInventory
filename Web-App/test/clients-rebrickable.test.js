@@ -62,12 +62,12 @@ test('without key or quota a set lookup is locked; the access check uses the sam
   const stub = await httpsStub(t, byPath({ [`${API}/themes/`]: [200, { count: 1, next: null, results: [] }] }));
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } })).holeSet('10294-1'),
-    (/** @type {any} */ err) => err instanceof rb.RebrickableLocked && err.grund === 'kein_schluessel',
+    (/** @type {any} */ err) => err instanceof rb.RebrickableLocked && err.reason === 'kein_schluessel',
   );
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ allowed: false })).holeSet('10294-1'),
     (/** @type {any} */ err) =>
-      err instanceof rb.RebrickableLocked && err.grund === 'kontingent' && /100\/Tag/.test(err.message),
+      err instanceof rb.RebrickableLocked && err.reason === 'kontingent' && /100\/Tag/.test(err.message),
   );
   assert.equal(stub.calls.length, 0);
   await rb.createRebrickable(clientsAccess()).checkRebrickableAccess();
@@ -136,9 +136,9 @@ test('the part list page by page; 403 means refused', async t => {
     }),
   );
   const k = rb.createRebrickable(clientsAccess());
-  const { teile, verweigert } = await k.fetchSetParts('10294-1');
+  const { parts, verweigert } = await k.fetchSetParts('10294-1');
   assert.deepEqual(
-    teile.map(p => [p.part.part_num, p.color.id, p.quantity, p.is_spare]),
+    parts.map(p => [p.part.part_num, p.color.id, p.quantity, p.is_spare]),
     [
       ['3001', 0, 4, false],
       ['3002', 0, 2, false],
@@ -146,12 +146,12 @@ test('the part list page by page; 403 means refused', async t => {
     ],
   );
   assert.equal(verweigert, false);
-  assert.deepEqual(await k.fetchSetParts('geheim-1'), { teile: [], verweigert: true });
-  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { teile: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehler-1'), { teile: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { teile: [], verweigert: false });
+  assert.deepEqual(await k.fetchSetParts('geheim-1'), { parts: [], verweigert: true });
+  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { parts: [], verweigert: false });
+  assert.deepEqual(await k.fetchSetParts('fehler-1'), { parts: [], verweigert: false });
+  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { parts: [], verweigert: false });
   assert.deepEqual(await rb.createRebrickable(clientsAccess({ allowed: false })).fetchSetParts('10294-1'), {
-    teile: [],
+    parts: [],
     verweigert: false,
   });
   await assert.rejects(
@@ -167,8 +167,8 @@ test('a foreign `next` does not get the key', async t => {
   // fetch.ts would refuse the host as well; the client must not even try, and says why.
   const gemeldet = [];
   t.mock.method(console, 'error', (...a) => gemeldet.push(a.join(' ')));
-  const { teile } = await rb.createRebrickable(clientsAccess()).fetchSetParts('10294-1');
-  assert.equal(teile.length, 2);
+  const { parts } = await rb.createRebrickable(clientsAccess()).fetchSetParts('10294-1');
+  assert.equal(parts.length, 2);
   assert.ok(
     gemeldet.some(z => /next zeigt auf einen fremden Host, 10294-1 bleibt unvollständig/.test(z)),
     gemeldet.join('\n'),

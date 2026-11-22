@@ -96,7 +96,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     listener = await db.ownConnection();
     await listener.query(`LISTEN ${hh.HOUSEHOLD_CHANNEL}`);
     const angekommen = new Promise((auf, ab) => {
-      const uhr = setTimeout(
+      const clock = setTimeout(
         () =>
           ab(
             new Error(
@@ -107,7 +107,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
       );
       listener.on('notification', m => {
         if (m.channel === hh.HOUSEHOLD_CHANNEL) {
-          clearTimeout(uhr);
+          clearTimeout(clock);
           auf(m);
         }
       });

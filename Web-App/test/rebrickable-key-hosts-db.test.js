@@ -62,7 +62,7 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
     else await S.deleteGlobalValues('rebrickable_api_key');
   });
   const { fetchSetParts, httpsGetRobust, rebrickableRaw } =
-    require('./helpers/sources').testServices().externalSources.quellen;
+    require('./helpers/sources').testServices().externalSources.sources;
   const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
 
   await t.test('next on api.upcitemdb.com is not followed', async () => {
@@ -102,7 +102,7 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
             }),
           };
     const r = await fetchSetParts('10294-1');
-    assert.equal(r.teile.length, 2, 'die zweite Seite fehlt');
+    assert.equal(r.parts.length, 2, 'die zweite Seite fehlt');
   });
 
   await t.test('rebrickableRaw reaches no other host', async () => {

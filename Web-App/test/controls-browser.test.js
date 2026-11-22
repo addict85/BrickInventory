@@ -32,9 +32,9 @@ const { LAYOUT } = require('./helpers/layout-measurement');
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
 test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, async t => {
-  const app = await startApp(t, { name: `bedien_${process.pid}`, bestand: patternHousehold, allDesigns: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `bedien_${process.pid}`, holding: patternHousehold, allDesigns: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

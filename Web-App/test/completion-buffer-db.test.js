@@ -31,16 +31,16 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   const { closeBufferAndTicks } = _req('startup/shutdown.js');
 
   // Which timers are created, and which end again.
-  const offen = new Set();
+  const open = new Set();
   const echt = { set: global.setInterval, clear: global.clearInterval };
   // @ts-expect-error — recording with exactly the shape the timers use.
   global.setInterval = (fn, ms) => {
     const h = echt.set(fn, ms);
-    offen.add(h);
+    open.add(h);
     return h;
   };
   global.clearInterval = h => {
-    offen.delete(h);
+    open.delete(h);
     echt.clear(h);
   };
   const zurueck = P.installLog({ out: () => {}, err: () => {}, now: () => Date.now() });
@@ -53,7 +53,7 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   P.logToDatabase(db.pool);
   await B.setUpImageDemand();
   await F.setUpImageGaps();
-  assert.ok(offen.size >= 4, `Aufbau: ${offen.size} Takte, erwartet mindestens vier`);
+  assert.ok(open.size >= 4, `Aufbau: ${open.size} Takte, erwartet mindestens vier`);
 
   B.rememberUsed(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);
   F.rememberMissing(`fehlt:${kennung}`, '404');
@@ -79,7 +79,7 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   });
 
   await t.test('every tick is ended', () => {
-    assert.equal(offen.size, 0, `${offen.size} Takt(e) laufen weiter`);
+    assert.equal(open.size, 0, `${open.size} Takt(e) laufen weiter`);
   });
 
   await t.test('afterwards the log no longer writes to the database', async () => {

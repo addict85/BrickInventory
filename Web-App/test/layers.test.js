@@ -36,20 +36,20 @@ function ohneKommentare(s) {
 
 /** All .ts files of the inner layers. */
 function innerFiles() {
-  const gefunden = [];
+  const found = [];
   const lauf = rel => {
     const voll = path.join(ROOT, rel);
     if (!fs.existsSync(voll)) return;
     for (const e of fs.readdirSync(voll, { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
       if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) gefunden.push(kind);
+      else if (e.name.endsWith('.ts')) found.push(kind);
     }
   };
   // startup/ is the outsourced server start (only server.ts uses it) and
   // counts to the outer layer; its own rule stands further below.
   ['src', 'jobs', 'clients', 'db'].forEach(lauf);
-  return gefunden;
+  return found;
 }
 
 /** Source text of a file (relative to ROOT) without comments. */
@@ -353,19 +353,19 @@ test('no import cycles in the inner layers', () => {
     kanten.set(d, ziele);
   }
   const cycles = [];
-  const zustand = new Map(); // 1 = on the path, 2 = done
-  const pfad = [];
+  const visitState = new Map(); // 1 = on the path, 2 = done
+  const trail = [];
   const visit = d => {
-    zustand.set(d, 1);
-    pfad.push(d);
+    visitState.set(d, 1);
+    trail.push(d);
     for (const z of kanten.get(d) || []) {
-      if (zustand.get(z) === 1) cycles.push(pfad.slice(pfad.indexOf(z)).concat(z).join(' → '));
-      else if (!zustand.has(z)) visit(z);
+      if (visitState.get(z) === 1) cycles.push(trail.slice(trail.indexOf(z)).concat(z).join(' → '));
+      else if (!visitState.has(z)) visit(z);
     }
-    pfad.pop();
-    zustand.set(d, 2);
+    trail.pop();
+    visitState.set(d, 2);
   };
-  for (const d of dateien) if (!zustand.has(d)) visit(d);
+  for (const d of dateien) if (!visitState.has(d)) visit(d);
   assert.deepEqual(cycles, []);
 });
 
@@ -706,7 +706,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
       !z.startsWith(`src/${b}/http/`)
     );
   };
-  const tiefe = dateien =>
+  const depth = dateien =>
     dateien.flatMap(d =>
       resolvedImports(d, { withTypes: true })
         .filter(z => tief(d, z))
@@ -714,7 +714,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
     );
   // Counter-check (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
   // in routes/auth/users.ts → rot.
-  assert.deepEqual(tiefe(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
+  assert.deepEqual(depth(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
   assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
   indexWithoutAccess(indizes);
@@ -724,7 +724,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
 const ACCESS_PARAMETER = /\b(?:Db|DbInterface|Pool|PoolClient|ClientBase|\w+Kontext|\w+Dienste)\b/;
 
 /** The declaration of an exported name, also via `export { … } from` and further imports. */
-function declaration(rel, name, tiefe = 0) {
+function declaration(rel, name, depth = 0) {
   const voll = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
   if (!voll) return null;
   const s = sourceText(voll);
@@ -738,7 +738,7 @@ function declaration(rel, name, tiefe = 0) {
   for (const m of s.matchAll(/(?:export|import) \{([^}]*)\} from '(\.[^']+)'/g))
     for (const teil of m[1].split(',')) {
       const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (b === name && tiefe < 3) return declaration(path.posix.join(path.posix.dirname(voll), m[2]), a, tiefe + 1);
+      if (b === name && depth < 3) return declaration(path.posix.join(path.posix.dirname(voll), m[2]), a, depth + 1);
     }
   return null;
 }
@@ -883,7 +883,7 @@ const SEND_ERROR_IN_ROUTES = new Map([
 test("routes catch no errors — the router's error path answers", () => {
   // Counter-checks: a route in routes/api_v1/minifigs.ts wrapped again in `try { … } catch (e) {
   // handleRouteError(res, e, undefined, req); }` → red (31.10.2026). In parts.ts
-  // `return sendError(req, res, 404, 'teil_nicht_manuell')` instead of notFound → red
+  // `return sendError(req, res, 404, 'part_not_manual')` instead of notFound → red
   // “sendError in routes”; in settings.ts again `String(req.eingabe.condition ?? '')` → red
   // “conversions of checked inputs” (14.11.2026). Refusals of the services (15.11.2026): in
   // routes/auth/users.ts again `if (r === LAST_ADMIN) fachfehler(…)` → red “route
@@ -1028,11 +1028,11 @@ test('docs/architecture.md names the order of the areas like LEVELS', () => {
   // Counter-check: `src/mail` and `src/settings` swapped in the table → red.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
-  const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
+  const levels = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
     [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]),
   );
-  assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
-  assert.deepEqual(stufen, LEVELS);
+  assert.ok(levels.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
+  assert.deepEqual(levels, LEVELS);
 });
 
 /** Every file below `dir` (relative to ROOT), without products and dependencies. */
@@ -1108,7 +1108,7 @@ test('docs/architecture.md names only what exists', () => {
   const fehlt = [];
   for (const s of spans) {
     if (/^\/[\w/:-]*$/.test(s)) {
-      if (![`'${s}`, `/api/v1${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
+      if (![`'${s}`, `/api/v2${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
     } else if (
       /^[\w-]+\.(ts|js|json|md|sql|html|grit|sh|yaml|txt)$/.test(s) ||
       (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (oben.has(s.split('/')[0]) || /^[<*]/.test(s)))

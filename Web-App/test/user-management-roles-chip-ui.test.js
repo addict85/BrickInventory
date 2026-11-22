@@ -25,7 +25,7 @@ const BEN = { id: 2, username: 'ben', is_admin: false, is_active: true, created_
 const CARLA = { id: 3, username: 'carla', is_admin: true, is_active: true, created_at: '2026-10-03T00:00:00Z' };
 const AB = '2026-11-17T10:00:00Z';
 
-const zeile = (d, name) =>
+const row = (d, name) =>
   [...d.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === name);
 
 async function confirm(d) {
@@ -38,44 +38,40 @@ async function confirm(d) {
 }
 
 test('X on the administrator chip revokes after confirmation', async () => {
-  let angekuendigt = false;
+  let announced = false;
   const { w, d, aufrufe } = await openUi({
-    '/v1/auth/users': () => ({
+    '/v2/auth/users': () => ({
       success: true,
-      users: [
-        ANNA,
-        BEN,
-        { ...CARLA, angekuendigt: angekuendigt ? [{ type: 'rolle_entziehen', effective_at: AB }] : [] },
-      ],
+      users: [ANNA, BEN, { ...CARLA, announced: announced ? [{ type: 'rolle_entziehen', effective_at: AB }] : [] }],
     }),
-    '/v1/auth/users/3/admin': () => {
-      angekuendigt = true;
+    '/v2/auth/users/3/admin': () => {
+      announced = true;
       return { success: true, effective_at: AB };
     },
   });
   try {
     await reiter(w, 'settings');
-    await warte(() => zeile(d, 'carla'));
-    const chip = zeile(d, 'carla').querySelector('.role-chip');
+    await warte(() => row(d, 'carla'));
+    const chip = row(d, 'carla').querySelector('.role-chip');
     assert.equal(chip?.textContent.trim(), 'Administrator', 'Chip mit dem Wort');
     const x = chip.querySelector('button.chip-remove');
     assert.ok(x, 'X im Chip');
     assert.equal(x.getAttribute('aria-label'), 'Administratorrechte von carla entziehen');
     assert.equal(x.getAttribute('type'), 'button');
     assert.equal(
-      zeile(d, 'carla').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'),
+      row(d, 'carla').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'),
       null,
       'kein Ernennen am Administrator',
     );
 
     x.click();
     assert.equal(await confirm(d), '„carla“ die Administratorrolle entziehen?');
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'))));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'));
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'))));
+    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
     // Against an administrator it only takes effect after 24 h; the list shows it.
     assert.ok(
-      await warte(() => /Angekündigt: Administratorrechte entziehen ab/.test(zeile(d, 'carla')?.textContent || '')),
+      await warte(() => /Angekündigt: Administratorrechte entziehen ab/.test(row(d, 'carla')?.textContent || '')),
       'Angekündigt fehlt nach der Antwort',
     );
     assert.match(d.getElementById('toasts').textContent, /Die Änderung gilt ab/);
@@ -86,13 +82,13 @@ test('X on the administrator chip revokes after confirmation', async () => {
 
 test('default chip without X, + administrator appoints', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] },
-    '/v1/auth/users/2/admin': { success: true },
+    '/v2/auth/users': { success: true, users: [ANNA, BEN, CARLA] },
+    '/v2/auth/users/2/admin': { success: true },
   });
   try {
     await reiter(w, 'settings');
-    await warte(() => zeile(d, 'ben'));
-    const z = zeile(d, 'ben');
+    await warte(() => row(d, 'ben'));
+    const z = row(d, 'ben');
     assert.equal(z.querySelector('.rb.ru')?.textContent.trim(), 'Standard');
     assert.equal(z.querySelector('.chip-remove'), null, 'Standard-Chip ohne X');
     const k = z.querySelector('button[data-click="toggleAdmin"][data-arg2="0"]');
@@ -103,8 +99,8 @@ test('default chip without X, + administrator appoints', async () => {
 
     k.click();
     assert.equal(await confirm(d), '„ben“ zum Administrator machen?');
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/2/admin'))));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/2/admin'));
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'))));
+    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: true, admin_password: 'mein-passwort' });
     assert.ok(await warte(() => /Rolle geändert/.test(d.getElementById('toasts').textContent)));
   } finally {
@@ -113,27 +109,27 @@ test('default chip without X, + administrator appoints', async () => {
 });
 
 test('own account: chip without X', async () => {
-  const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
+  const { w, d } = await openUi({ '/v2/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
   try {
     await reiter(w, 'settings');
-    await warte(() => zeile(d, 'anna'));
-    const z = zeile(d, 'anna');
+    await warte(() => row(d, 'anna'));
+    const z = row(d, 'anna');
     assert.equal(z.querySelector('.role-chip')?.textContent.trim(), 'Administrator');
     assert.equal(z.querySelectorAll('button').length, 0, 'kein Knopf gegen das eigene Konto');
-    assert.ok(zeile(d, 'carla').querySelector('.chip-remove'), 'Testdaten: ein fremder Administrator hat das X');
+    assert.ok(row(d, 'carla').querySelector('.chip-remove'), 'Testdaten: ein fremder Administrator hat das X');
   } finally {
     w.close();
   }
 });
 
 test('a single administrator: no X', async () => {
-  const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN] } });
+  const { w, d } = await openUi({ '/v2/auth/users': { success: true, users: [ANNA, BEN] } });
   try {
     await reiter(w, 'settings');
-    await warte(() => zeile(d, 'ben'));
+    await warte(() => row(d, 'ben'));
     assert.equal(d.querySelectorAll('#users-tbl .role-chip').length, 1, 'Testdaten: ein Administrator-Chip');
     assert.equal(d.querySelectorAll('#users-tbl .chip-remove').length, 0, 'den letzten Administrator entzieht kein X');
-    assert.ok(zeile(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'ernennen bleibt möglich');
+    assert.ok(row(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'ernennen bleibt möglich');
   } finally {
     w.close();
   }

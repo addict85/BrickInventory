@@ -36,7 +36,7 @@ function probebaum() {
   return d;
 }
 
-function ratsche(art, schranken, wurzel) {
+function ratsche(kind, schranken, wurzel) {
   const env = { ...process.env };
   if (wurzel) env.LINT_WURZEL = wurzel;
   if (schranken) {
@@ -44,7 +44,7 @@ function ratsche(art, schranken, wurzel) {
     fs.writeFileSync(datei, JSON.stringify(schranken));
     env.LINT_SCHRANKEN = datei;
   }
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), art], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), kind], {
     cwd: ROOT,
     env,
     encoding: 'utf8',
@@ -54,24 +54,24 @@ function ratsche(art, schranken, wurzel) {
   return { code: r.status, aus: r.stdout + r.stderr };
 }
 
-for (const art of ['lint', 'format']) {
-  test(`${art}: the existing code keeps the limit, and it is tight`, () => {
-    const r = ratsche(art);
+for (const kind of ['lint', 'format']) {
+  test(`${kind}: the existing code keeps the limit, and it is tight`, () => {
+    const r = ratsche(kind);
     assert.equal(r.code, 0, r.aus);
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
-    assert.ok(ist >= 0 && ist <= LIMITS[art], r.aus);
+    assert.ok(ist >= 0 && ist <= LIMITS[kind], r.aus);
     // Leeway for cleanups in parallel branches; more means: tighten the limit.
-    assert.ok(LIMITS[art] - ist <= 50, `Schranke ${LIMITS[art]}, gezählt ${ist}: nachziehen`);
+    assert.ok(LIMITS[kind] - ist <= 50, `Schranke ${LIMITS[kind]}, gezählt ${ist}: nachziehen`);
   });
 
-  test(`${art}: counts the findings of a sample tree`, () => {
-    const r = ratsche(art, { lint: 1, format: 1 }, probebaum());
+  test(`${kind}: counts the findings of a sample tree`, () => {
+    const r = ratsche(kind, { lint: 1, format: 1 }, probebaum());
     assert.equal(r.code, 0, r.aus);
-    assert.match(r.aus, new RegExp(`^\\[${art}\\] 1 .*\\(Schranke 1\\)`, 'm'));
+    assert.match(r.aus, new RegExp(`^\\[${kind}\\] 1 .*\\(Schranke 1\\)`, 'm'));
   });
 
-  test(`${art}: a limit that is too low is red`, () => {
-    const r = ratsche(art, { lint: 0, format: 0 }, probebaum());
+  test(`${kind}: a limit that is too low is red`, () => {
+    const r = ratsche(kind, { lint: 0, format: 0 }, probebaum());
     assert.equal(r.code, 1, r.aus);
     assert.match(r.aus, /erlaubt sind 0/);
   });

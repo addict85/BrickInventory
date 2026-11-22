@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
 /** The service throws the refusal; here it becomes a value so that concurrent calls stay countable. */
-const LAST = 'letzter_verwalter';
+const LAST = 'last_admin';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
 /** Like removeAccount(), without log: its entry for the concurrently deleted administrator would hit the foreign key. */
 /** In the system context as there: only the system role deletes accounts (0117). */
@@ -80,7 +80,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
 
   await t.test('the last admin keeps the role and the account active', async () => {
     const [x, y] = await zuruecksetzen();
-    assert.deepEqual(await K.setzeVerwalterRolle(y, false), { geaendert: true });
+    assert.deepEqual(await K.setzeVerwalterRolle(y, false), { changed: true });
     assert.equal(await alsWert(K.setzeVerwalterRolle(x, false)), LAST);
     assert.equal(await alsWert(K.setzeAktiv(x, false)), LAST);
     assert.equal(await remove(x, y), LAST);
@@ -91,19 +91,17 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     );
     assert.equal(await activeAdmin(), 1);
     // Another administrator may leave again, the role of non-administrators is free.
-    assert.deepEqual(await K.setzeVerwalterRolle(y, true), { geaendert: true });
-    assert.deepEqual(await K.setzeAktiv(y, false), { geaendert: true });
-    await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'benutzer_nicht_gefunden' });
+    assert.deepEqual(await K.setzeVerwalterRolle(y, true), { changed: true });
+    assert.deepEqual(await K.setzeAktiv(y, false), { changed: true });
+    await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'user_not_found' });
   });
 
   await t.test('concurrent revocation of the role', async () => {
-    await gleichzeitig(ziel =>
-      alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)),
-    );
+    await gleichzeitig(ziel => alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deactivation', async () => {
-    await gleichzeitig(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)));
+    await gleichzeitig(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deletion', async () => {

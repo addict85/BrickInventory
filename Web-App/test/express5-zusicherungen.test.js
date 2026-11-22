@@ -50,8 +50,8 @@ test('1. the start page is reachable even without a path', async () => {
     );
     // And the paths below still; otherwise one could calm the rule with
     // a pattern that ONLY matches the root.
-    for (const pfad of ['/start', '/tief/drin', '/reset-password']) {
-      assert.equal((await fetch(basis + pfad)).status, 200, `Das Muster ${muster} trifft ${pfad} nicht mehr`);
+    for (const path of ['/start', '/tief/drin', '/reset-password']) {
+      assert.equal((await fetch(basis + path)).status, 200, `Das Muster ${muster} trifft ${path} nicht mehr`);
     }
   } finally {
     await new Promise(r => srv.close(r));

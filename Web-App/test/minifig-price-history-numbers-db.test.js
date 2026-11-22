@@ -47,7 +47,7 @@ test('the figure price history finds the prices under the BrickLink number', { c
     // the field exists.
     // Since migration 0037 the number stands in bl_mapping — once per
     // figure, without an account. On the stock row it stood per account.
-    await holdsMinifig(db, uid, EIGENE, { menge: 0 }); // quantity 0: the acquisition behind it carries it
+    await holdsMinifig(db, uid, EIGENE, { quantity: 0 }); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig',$1,$2)
        ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
@@ -92,7 +92,7 @@ test('the figure price history finds the prices under the BrickLink number', { c
     assert.ok(v.history_new.length >= 1, 'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
 
     // And the other half: the OWN number must not drop away
-    await holdsMinifig(db, uid, WITHOUT_BL, { menge: 0 }); // quantity 0: the acquisition behind it carries it
+    await holdsMinifig(db, uid, WITHOUT_BL, { quantity: 0 }); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
        VALUES ($1,$2,1,3.00,'N')`,

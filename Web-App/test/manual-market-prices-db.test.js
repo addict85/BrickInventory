@@ -47,8 +47,8 @@ test('manual lists carry the market price from the cache', async t => {
     // checks the market price WITHOUT an acquisition, so it stays at the default value
     // 'N' that conditionFromAcquisitions() delivers without acquisitions.
     // bl_fig_number is gone with migration 0037; the same number in both …
-    await holdsMinifig(db, U, FIG, { menge: 1 });
-    await holdsPart(db, U, TEIL, { menge: 1, colorId: FARBE });
+    await holdsMinifig(db, U, FIG, { quantity: 1 });
+    await holdsPart(db, U, TEIL, { quantity: 1, colorId: FARBE });
 
     // ── 2 first: WITHOUT a cache entry ───────────────────────────────────────
     // This order is intended. If it stood at the end, an error in
@@ -74,16 +74,16 @@ test('manual lists carry the market price from the cache', async t => {
     );
 
     const figs = await MF.readManualMinifigs([U], U);
-    const teile = await H.manualPartsList([U], U);
+    const parts = await H.manualPartsList([U], U);
     assert.equal(
       Number(figs[0].avg_price),
       12.5,
       `der Marktpreis der Figur fehlt (avg_price=${JSON.stringify(figs[0].avg_price)}) — genau das war Marcos Befund`,
     );
     assert.equal(
-      Number(teile[0].avg_price),
+      Number(parts[0].avg_price),
       0.75,
-      `der Marktpreis des Teils fehlt (avg_price=${JSON.stringify(teile[0].avg_price)})`,
+      `der Marktpreis des Teils fehlt (avg_price=${JSON.stringify(parts[0].avg_price)})`,
     );
   } finally {
     await aufraeumen();

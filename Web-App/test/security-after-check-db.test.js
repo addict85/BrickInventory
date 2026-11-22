@@ -3,12 +3,12 @@
  *
  * Counter-checks (measured 01.11.2026):
  *   N1  `Cache-Control: no-store` deleted in the /api preamble of server.ts →
- *       red: “API and login paths …” (/api/v1/vouchers without header); the
+ *       red: “API and login paths …” (/api/v2/vouchers without header); the
  *       static file stays green, it has its own.
  *   H4  in asUploadError() the mapping of entity.parse.failed deleted →
  *       red: “broken JSON …” (response names „Expected double-quoted property name … at position 18")
  *   H2  router.param() switched off in contractRouter() → red: “too large IDs …”
- *       (path cases 400 wert_ungueltig from the second line); the check of
+ *       (path cases 400 value_invalid from the second line); the check of
  *       body and query in server.ts switched off → red (body cases); both
  *       and the mapping of 22003 gone → 500. Only 22003 gone → „PostgreSQL
  *       22003 …" red.
@@ -82,35 +82,35 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
     await warte(250);
 
-  const anmeldung = await fetch(`${basis}/api/v1/auth/login`, {
+  const anmeldung = await fetch(`${basis}/api/v2/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+    body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
   assert.equal(anmeldung.status, 200, `${await anmeldung.clone().text()}\n${log}`);
   const keks = anmeldung.headers.get('set-cookie').split(';')[0];
-  const holen = (pfad, o = {}) =>
-    fetch(basis + pfad, { redirect: 'manual', ...o, headers: { cookie: keks, origin: basis, ...(o.headers || {}) } });
+  const holen = (path, o = {}) =>
+    fetch(basis + path, { redirect: 'manual', ...o, headers: { cookie: keks, origin: basis, ...(o.headers || {}) } });
 
   await t.test('API and login paths carry no-store, static files do not', async () => {
-    const neu = await holen('/api/v1/vouchers', {
+    const neu = await holen('/api/v2/vouchers', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ number: '6006491234567890', pin: '1234', amount: 25, currency: 'CHF' }),
     });
     assert.equal(neu.status, 200, await neu.clone().text());
-    const liste = await holen('/api/v1/vouchers');
+    const liste = await holen('/api/v2/vouchers');
     assert.equal(liste.status, 200);
     assert.equal((await liste.json()).vouchers[0].pin, '•••');
-    assert.equal(liste.headers.get('cache-control'), 'no-store', '/api/v1/vouchers');
-    assert.equal(anmeldung.headers.get('cache-control'), 'no-store', 'POST /api/v1/auth/login');
-    for (const pfad of ['/api/v1/stats', '/reset-password?token=x', '/verify?token=x']) {
-      const r = await holen(pfad);
+    assert.equal(liste.headers.get('cache-control'), 'no-store', '/api/v2/vouchers');
+    assert.equal(anmeldung.headers.get('cache-control'), 'no-store', 'POST /api/v2/auth/login');
+    for (const path of ['/api/v2/stats', '/reset-password?token=x', '/verify?token=x']) {
+      const r = await holen(path);
       await r.arrayBuffer();
-      assert.equal(r.headers.get('cache-control'), 'no-store', pfad);
+      assert.equal(r.headers.get('cache-control'), 'no-store', path);
     }
     const statisch = await holen('/js/app.bundle.js');
     await statisch.arrayBuffer();
@@ -119,62 +119,62 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
   });
 
   await t.test('broken JSON and too large requests: uniform response without parser text', async () => {
-    for (const [pfad, withCookie] of /** @type {[string, boolean][]} */ ([
-      ['/api/v1/auth/login', false],
-      ['/api/v1/vouchers', true],
+    for (const [path, withCookie] of /** @type {[string, boolean][]} */ ([
+      ['/api/v2/auth/login', false],
+      ['/api/v2/vouchers', true],
     ])) {
-      const r = await (withCookie ? holen : (p, o) => fetch(basis + p, o))(pfad, {
+      const r = await (withCookie ? holen : (p, o) => fetch(basis + p, o))(path, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{"username": "x", ',
       });
       const text = await r.text();
-      assert.equal(r.status, 400, pfad);
+      assert.equal(r.status, 400, path);
       assert.deepEqual(
         JSON.parse(text),
-        { success: false, code: 'anfrage_json_ungueltig', error: 'Die Anfrage ist kein gültiges JSON' },
-        pfad,
+        { success: false, code: 'request_json_invalid', error: 'Die Anfrage ist kein gültiges JSON' },
+        path,
       );
-      assert.doesNotMatch(text, /position|Unexpected|Expected|SyntaxError|body-parser/i, pfad);
+      assert.doesNotMatch(text, /position|Unexpected|Expected|SyntaxError|body-parser/i, path);
     }
-    const gross = await fetch(`${basis}/api/v1/auth/login`, {
+    const gross = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'x'.repeat(300 * 1024) }),
     });
-    assert.deepEqual([gross.status, (await gross.json()).code], [413, 'anfrage_zu_gross']);
+    assert.deepEqual([gross.status, (await gross.json()).code], [413, 'request_too_large']);
   });
 
   await t.test('too large IDs in path and body yield 400, not 500', async () => {
     const GROSS = '99999999999999999999';
     const faelle = [
-      ['GET', `/api/v1/vouchers/${GROSS}/pdf`],
-      ['PUT', `/api/v1/storage/locations/${GROSS}`, { name: 'Estrich' }],
-      ['DELETE', '/api/v1/papierkorb/2147483648'],
-      ['PUT', `/api/v1/sets/10294-1/acquisitions/${GROSS}`, { quantity: 1 }],
-      ['PUT', `/api/v1/auth/users/${GROSS}/aktiv`, { is_active: true }],
-      ['POST', '/api/v1/settings/household/unlink', { sub_user_id: 99999999999 }],
-      ['POST', '/api/v1/settings/household/former/dismiss', { sub_user_id: GROSS }],
+      ['GET', `/api/v2/vouchers/${GROSS}/pdf`],
+      ['PUT', `/api/v2/storage/locations/${GROSS}`, { name: 'Estrich' }],
+      ['DELETE', '/api/v2/trash/2147483648'],
+      ['PUT', `/api/v2/sets/10294-1/acquisitions/${GROSS}`, { quantity: 1 }],
+      ['PUT', `/api/v2/auth/users/${GROSS}/active`, { is_active: true }],
+      ['POST', '/api/v2/settings/household/unlink', { sub_user_id: 99999999999 }],
+      ['POST', '/api/v2/settings/household/former/dismiss', { sub_user_id: GROSS }],
     ];
     const ergebnis = [];
-    for (const [methode, pfad, rumpf] of faelle) {
-      const r = await holen(pfad, {
+    for (const [methode, path, rumpf] of faelle) {
+      const r = await holen(path, {
         method: methode,
         headers: { 'content-type': 'application/json' },
         ...(rumpf ? { body: JSON.stringify(rumpf) } : {}),
       });
-      ergebnis.push(`${methode} ${pfad} ${r.status} ${(await r.json().catch(() => ({}))).code}`);
+      ergebnis.push(`${methode} ${path} ${r.status} ${(await r.json().catch(() => ({}))).code}`);
     }
     assert.deepEqual(
       ergebnis,
-      faelle.map(([m, p]) => `${m} ${p} 400 id_ungueltig`),
+      faelle.map(([m, p]) => `${m} ${p} 400 id_invalid`),
     );
-    const grenze = await holen('/api/v1/storage/locations/2147483647', {
+    const grenze = await holen('/api/v2/storage/locations/2147483647', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Estrich' }),
     });
-    assert.notEqual((await grenze.json()).code, 'id_ungueltig', '2³¹−1 ist noch eine gültige ID');
+    assert.notEqual((await grenze.json()).code, 'id_invalid', '2³¹−1 ist noch eine gültige ID');
   });
 });
 
@@ -183,5 +183,5 @@ test('PostgreSQL 22003 (value outside the column type) becomes 400, not 500', ()
     console.warn = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b.code])); } };
     handleRouteError(res, Object.assign(new Error('value "99999999999" is out of range for type integer'), { code: '22003' }), undefined, { method: 'GET', originalUrl: '/x' });`;
-  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['-e', script]).toString()), [400, 'wert_ungueltig']);
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['-e', script]).toString()), [400, 'value_invalid']);
 });

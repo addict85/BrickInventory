@@ -49,14 +49,14 @@ function kopfleiste() {
 function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${P('public', s)}">`).join('\n');
   const kopf = kopfleiste();
-  const teile = [];
+  const parts = [];
   for (const d of DESIGNS)
     for (const dunkel of d === 'werkbank' ? [true] : [false, true])
-      teile.push(
+      parts.push(
         `<div class="probe" data-theme="${d}"${dunkel ? ' data-dark' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
-<style>*{transition:none!important;animation:none!important}#umenu-pop{display:block!important;position:static!important}</style></head><body>${teile.join('\n')}
+<style>*{transition:none!important;animation:none!important}#umenu-pop{display:block!important;position:static!important}</style></head><body>${parts.join('\n')}
 <pre id="ergebnis"></pre>
 <script>
 function rgba(s){ const v=(s.match(/[\\d.]+/g)||[]).map(Number); return v.length<4?[...v,1]:v; }
@@ -108,16 +108,16 @@ test('every text in the header bar is readable in every theme', t => {
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
-  const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+  const values = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   // Per design: brand, name, seven views and log out — at least ten texts.
-  assert.ok(werte.length >= 11 * 10, `${werte.length} Messungen — greift die Auswahl noch?`);
+  assert.ok(values.length >= 11 * 10, `${values.length} Messungen — greift die Auswahl noch?`);
   assert.ok(
-    werte.some(w => /brick hell: Abmelden/.test(w.name)),
+    values.some(w => /brick hell: Abmelden/.test(w.name)),
     'Abmelden wird nicht gemessen',
   );
   // 4.5:1 — the WCAG threshold for normal text; the header only has small text.
   assert.deepEqual(
-    werte.filter(w => w.wert < 4.5).map(w => `${w.name} ${w.wert}:1`),
+    values.filter(w => w.wert < 4.5).map(w => `${w.name} ${w.wert}:1`),
     [],
   );
 });

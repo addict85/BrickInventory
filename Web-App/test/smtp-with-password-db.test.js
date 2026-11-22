@@ -4,7 +4,7 @@
  * bent. Saving without a change does not ask.
  *
  * Counter-check (measured on 28.10.2026): the password check in POST
- * /api/v1/settings removed → red: “without a password the mail server stays”.
+ * /api/v2/settings removed → red: “without a password the mail server stays”.
  * Counter-check (measured on 29.10.2026): smtp_* again in the key list
  * of POST /import → red: “the import does not switch the mail server”
  * (smtp_host was mail.angreifer.example afterwards).
@@ -17,7 +17,7 @@
  *      password, the administrators learn of it”
  *   C  the refusal without admin_password before the check removed → red: “without
  *      a password the mail server stays”, “without a password registration …”
- *      (aktuelles_passwort_falsch, counts toward the brake)
+ *      (current_password_wrong, counts toward the brake)
  *
  * A first API key (empty before) needs no password as long as the
  * setup is open: otherwise the wizard asks in the middle of the step.
@@ -44,8 +44,8 @@ const { dataOrSkip } = require('./helpers/db');
 const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _n, art, o) => {
-    mails.push({ an, art, konto: o.konto });
+  mailAccountNotice: async (an, _n, kind, o) => {
+    mails.push({ an, kind, konto: o.konto });
     return { success: true };
   },
 });
@@ -86,11 +86,11 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   });
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
+    routen: { '/api/v2': 'routes/api_v1/settings.js' },
     t,
   });
   const speichern = body =>
-    fetch(`${base}/api/v1/settings`, {
+    fetch(`${base}/api/v2/settings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -100,7 +100,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   await t.test('without a password the mail server stays', async () => {
     const r = await speichern({ smtp_host: 'mail.angreifer.example' });
     assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'aktuelles_passwort_erforderlich');
+    assert.equal(r.body.code, 'current_password_required');
     assert.equal(await host(), 'mail.alt.example');
   });
 
@@ -134,7 +134,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       ),
       'config.json',
     );
-    const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: fd }).then(async x => ({
+    const r = await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: fd }).then(async x => ({
       status: x.status,
       body: await x.json(),
     }));
@@ -147,7 +147,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     );
     // The rest of the file arrives — otherwise the case would check an import that does nothing at all.
     assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
-    assert.deepEqual(r.body.smtp_uebergangen, ['smtp_host', 'smtp_insecure_tls']);
+    assert.deepEqual(r.body.smtp_skipped, ['smtp_host', 'smtp_insecure_tls']);
   });
 
   const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
@@ -162,7 +162,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
     const r = await speichern({ brickset_api_key: 'erster-fremder' });
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich']);
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required']);
     assert.equal(await wert('brickset_api_key'), undefined);
   });
 
@@ -172,7 +172,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     );
     for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
       const r = await speichern(body);
-      assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], JSON.stringify(body));
+      assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], JSON.stringify(body));
     }
     assert.equal(await wert('registration_enabled'), '0');
     assert.notEqual(await wert('rebrickable_api_key'), 'fremder-schluessel');
@@ -187,7 +187,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       await new Promise(x => setTimeout(x, 25));
     assert.deepEqual(
       mails.filter(m => m.an === `${NAME}@example.org`),
-      [{ an: `${NAME}@example.org`, art: 'einstellungen_geaendert', konto: 'registration_enabled' }],
+      [{ an: `${NAME}@example.org`, kind: 'einstellungen_geaendert', konto: 'registration_enabled' }],
     );
   });
 });

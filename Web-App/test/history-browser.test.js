@@ -22,15 +22,15 @@ const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.ac
   dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
 
 test('address and history', { timeout: 180_000 }, async t => {
-  const app = await startApp(t, { name: `verlauf_${process.pid}`, bestand: patternCollection });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `verlauf_${process.pid}`, holding: patternCollection });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
-  const zustand = () => b.auswerten(ZUSTAND);
+  const condition = () => b.auswerten(ZUSTAND);
   const zurueck = async () => {
     await b.auswerten('history.back(); true');
     await warte(400);
@@ -39,9 +39,9 @@ test('address and history', { timeout: 180_000 }, async t => {
   await t.test('tabs write the address', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     await b.auswerten(`document.querySelector('.ntab[data-tab="wanted"]').click(); true`);
-    assert.equal((await zustand()).url, '#/merkliste');
+    assert.equal((await condition()).url, '#/merkliste');
     await zurueck();
-    assert.deepEqual(await zustand(), { url: '#/finanzen', ansicht: 'tab-finance', dialoge: [] });
+    assert.deepEqual(await condition(), { url: '#/finanzen', ansicht: 'tab-finance', dialoge: [] });
   });
 
   await t.test('back closes the dialog', async () => {
@@ -49,19 +49,19 @@ test('address and history', { timeout: 180_000 }, async t => {
     await bis(`!!document.querySelector('#gallery [data-click="openModal"]')`, 'Kacheln');
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
     await ruhig();
-    const offen = await zustand();
-    assert.deepEqual(offen.dialoge, ['set-modal']);
-    assert.match(offen.url, /^#\/sammlung\/set\/\d+-\d+$/);
+    const open = await condition();
+    assert.deepEqual(open.dialoge, ['set-modal']);
+    assert.match(open.url, /^#\/sammlung\/set\/\d+-\d+$/);
     await zurueck();
-    assert.deepEqual(await zustand(), { url: '#/sammlung', ansicht: 'tab-gallery', dialoge: [] });
+    assert.deepEqual(await condition(), { url: '#/sammlung', ansicht: 'tab-gallery', dialoge: [] });
     // Closed with the button: the dialog's entry drops, back leads to the previous view.
     await b.auswerten(`history.forward(); true`);
     await warte(800);
-    assert.deepEqual((await zustand()).dialoge, ['set-modal']);
+    assert.deepEqual((await condition()).dialoge, ['set-modal']);
     await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
     await warte(400);
     await zurueck();
-    assert.equal((await zustand()).ansicht, 'tab-finance');
+    assert.equal((await condition()).ansicht, 'tab-finance');
   });
 
   await t.test('filters in the address', async () => {
@@ -69,7 +69,7 @@ test('address and history', { timeout: 180_000 }, async t => {
     await b.auswerten(
       `const f = document.getElementById('gs'); f.value = 'Tree'; f.dispatchEvent(new Event('input', { bubbles: true })); true`,
     );
-    assert.equal((await zustand()).url, '#/sammlung?suche=Tree');
+    assert.equal((await condition()).url, '#/sammlung?suche=Tree');
   });
 
   await t.test('reloading opens the view of the address', async () => {

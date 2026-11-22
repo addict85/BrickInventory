@@ -29,12 +29,12 @@ const teil = (nr, name, farbe = 'Red') => ({
   total_quantity: 1,
   image_url: `https://cdn.rebrickable.com/media/parts/${nr}.jpg`,
 });
-const callsTo = (aufrufe, pfad) => aufrufe.filter(a => a.url.includes(`/api${pfad}?`)).map(a => abfrage(a.url));
+const callsTo = (aufrufe, path) => aufrufe.filter(a => a.url.includes(`/api${path}?`)).map(a => abfrage(a.url));
 
 test('gallery: first page with page and page_size, the follow-up page is appended', async () => {
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/sets': url =>
+    '/v2/sets': url =>
       abfrage(url).get('page') === '2'
         ? { success: true, sets: [set('9999-1', 'Folge-Set')], count: 1, total: 61 }
         : { success: true, sets: erste, count: 60, total: 61 },
@@ -44,7 +44,7 @@ test('gallery: first page with page and page_size, the follow-up page is appende
     assert.ok(await warte(() => kachel()));
     const firstTile = kachel();
     assert.ok(await warte(() => /Folge-Set/.test(d.getElementById('gallery').textContent)));
-    const [p1, p2] = callsTo(aufrufe, '/v1/sets');
+    const [p1, p2] = callsTo(aufrufe, '/v2/sets');
     assert.equal(p1.get('page'), '1');
     assert.equal(p1.get('page_size'), '60');
     assert.equal(p2.get('page'), '2');
@@ -62,7 +62,7 @@ test('gallery: first page with page and page_size, the follow-up page is appende
 
 test('gallery: search, sorting and theme filter reload at the server', async () => {
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       sets: [set('10294-1', 'Titanic')],
       count: 1,
@@ -76,19 +76,19 @@ test('gallery: search, sorting and theme filter reload at the server', async () 
       [...d.querySelectorAll('#gtheme option')].map(o => o.textContent),
       ['Alle Themen', 'Icons', '<b>Fett</b>'],
     );
-    const n = () => callsTo(aufrufe, '/v1/sets').length;
+    const n = () => callsTo(aufrufe, '/v2/sets').length;
     const vorher = n();
     d.getElementById('gs').value = 'tita';
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
     assert.ok(await warte(() => n() > vorher));
-    assert.equal(callsTo(aufrufe, '/v1/sets').at(-1).get('search'), 'tita');
+    assert.equal(callsTo(aufrufe, '/v2/sets').at(-1).get('search'), 'tita');
     d.getElementById('gsort').value = 'name_asc';
     d.getElementById('gsort').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/sets').at(-1).get('sort') === 'name_asc'));
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/sets').at(-1).get('sort') === 'name_asc'));
     d.getElementById('gtheme').value = 'Icons';
     d.getElementById('gtheme').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/sets').at(-1).get('theme') === 'Icons'));
-    assert.equal(callsTo(aufrufe, '/v1/sets').at(-1).get('sort'), 'name_asc');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/sets').at(-1).get('theme') === 'Icons'));
+    assert.equal(callsTo(aufrufe, '/v2/sets').at(-1).get('sort'), 'name_asc');
   } finally {
     w.close();
   }
@@ -96,7 +96,7 @@ test('gallery: search, sorting and theme filter reload at the server', async () 
 
 test('gallery: shows what the server delivers without filtering or sorting itself', async () => {
   const { w, d, warte } = await openUi({
-    '/v1/sets': url =>
+    '/v2/sets': url =>
       abfrage(url).get('search')
         ? { success: true, sets: [set('2-1', 'Zebra'), set('1-1', 'Affe')], count: 2, total: 2 }
         : { success: true, sets: [set('3-1', 'Start')], count: 1, total: 1 },
@@ -114,12 +114,12 @@ test('gallery: shows what the server delivers without filtering or sorting itsel
 
 test('parts list: pages with page_size, images as preview via the proxy', async () => {
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/parts': { success: true, parts: [teil('3001', 'Stein 2 x 4')], total: 1, page: 1, page_size: 100 },
+    '/v2/parts': { success: true, parts: [teil('3001', 'Stein 2 x 4')], total: 1, page: 1, page_size: 100 },
   });
   try {
     await reiter(w, 'parts');
     assert.ok(await warte(() => d.querySelector('#parts-main .part-card img')));
-    const [p] = callsTo(aufrufe, '/v1/parts');
+    const [p] = callsTo(aufrufe, '/v2/parts');
     assert.equal(p.get('page'), '1');
     assert.equal(p.get('page_size'), '100');
     assert.equal(p.get('with_sets'), null);
@@ -134,7 +134,7 @@ test('parts list: pages with page_size, images as preview via the proxy', async 
 test('parts list: a color group runs across the page boundary', async () => {
   const seite1 = [...Array.from({ length: 99 }, (_, i) => teil(`a${i}`, `Blau ${i}`, 'Blue')), teil('r1', 'Rot 1')];
   const { w, d, warte } = await openUi({
-    '/v1/parts': url =>
+    '/v2/parts': url =>
       abfrage(url).get('page') === '2'
         ? {
             success: true,
@@ -160,25 +160,25 @@ test('parts list: a color group runs across the page boundary', async () => {
 
 test('parts list: search loads both lists, spare part and view changes rebuild', async () => {
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
+    '/v2/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
   });
   try {
     await reiter(w, 'parts');
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/parts').length === 1));
-    const manuell = () => aufrufe.filter(a => a.url.includes('/api/v1/parts/manual')).length;
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length === 1));
+    const manuell = () => aufrufe.filter(a => a.url.includes('/api/v2/parts/manual')).length;
     const m0 = manuell();
     d.getElementById('parts-search').value = 'stein';
     d.getElementById('parts-search').dispatchEvent(new w.Event('input'));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/parts').length === 2 && manuell() > m0));
-    assert.equal(callsTo(aufrufe, '/v1/parts').at(-1).get('search'), 'stein');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length === 2 && manuell() > m0));
+    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('search'), 'stein');
     d.getElementById('parts-spare').value = '1';
     d.getElementById('parts-spare').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/parts').length === 3));
-    assert.equal(callsTo(aufrufe, '/v1/parts').at(-1).get('spare'), '1');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length === 3));
+    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('spare'), '1');
     d.getElementById('parts-view').value = 'table';
     d.getElementById('parts-view').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/parts').length === 4));
-    assert.equal(callsTo(aufrufe, '/v1/parts').at(-1).get('with_sets'), '1', 'in_sets nur in der Tabelle');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length === 4));
+    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('with_sets'), '1', 'in_sets nur in der Tabelle');
     assert.ok(await warte(() => d.querySelector('#parts-main table')));
     assert.ok(
       d.getElementById('parts-sentinel') &&
@@ -192,17 +192,17 @@ test('parts list: search loads both lists, spare part and view changes rebuild',
 
 test('parts list: color filter rebuilds at the server', async () => {
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
-    '/v1/parts/colors': { success: true, colors: [{ color_name: 'Red', unique_parts: 1 }] },
+    '/v2/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
+    '/v2/parts/colors': { success: true, colors: [{ color_name: 'Red', unique_parts: 1 }] },
   });
   try {
     await reiter(w, 'parts');
     assert.ok(await warte(() => [...d.querySelectorAll('#parts-color option')].some(o => o.value === 'Red')));
-    const n = callsTo(aufrufe, '/v1/parts').length;
+    const n = callsTo(aufrufe, '/v2/parts').length;
     d.getElementById('parts-color').value = 'Red';
     d.getElementById('parts-color').dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/parts').length > n));
-    assert.equal(callsTo(aufrufe, '/v1/parts').at(-1).get('color'), 'Red');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length > n));
+    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('color'), 'Red');
   } finally {
     w.close();
   }
@@ -210,7 +210,7 @@ test('parts list: color filter rebuilds at the server', async () => {
 
 test('minifigures: source and page size go to the server, the search reloads', async () => {
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/minifigs': {
+    '/v2/minifigs': {
       success: true,
       figs: [{ fig_number: 'sw0001', name: 'Luke', quantity: 1, source: 'set' }],
       total: 1,
@@ -218,16 +218,16 @@ test('minifigures: source and page size go to the server, the search reloads', a
   });
   try {
     await reiter(w, 'minifigs');
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/minifigs').length >= 1));
-    const [p] = callsTo(aufrufe, '/v1/minifigs');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/minifigs').length >= 1));
+    const [p] = callsTo(aufrufe, '/v2/minifigs');
     assert.equal(p.get('source'), 'set');
     assert.equal(p.get('page'), '1');
     assert.equal(p.get('page_size'), '60');
-    const n = callsTo(aufrufe, '/v1/minifigs').length;
+    const n = callsTo(aufrufe, '/v2/minifigs').length;
     d.getElementById('fig-search').value = 'luke';
     d.getElementById('fig-search').dispatchEvent(new w.Event('input', { bubbles: true }));
-    assert.ok(await warte(() => callsTo(aufrufe, '/v1/minifigs').length > n));
-    assert.equal(callsTo(aufrufe, '/v1/minifigs').at(-1).get('search'), 'luke');
+    assert.ok(await warte(() => callsTo(aufrufe, '/v2/minifigs').length > n));
+    assert.equal(callsTo(aufrufe, '/v2/minifigs').at(-1).get('search'), 'luke');
   } finally {
     w.close();
   }
@@ -237,7 +237,7 @@ test('minifigures: the follow-up page is appended, not rebuilt', async () => {
   const fig = (nr, name) => ({ fig_number: nr, name, quantity: 1, source: 'set' });
   const erste = Array.from({ length: 60 }, (_, i) => fig(`sw${1000 + i}`, `Figur ${i}`));
   const { w, d, warte } = await openUi({
-    '/v1/minifigs': url =>
+    '/v2/minifigs': url =>
       abfrage(url).get('page') === '2'
         ? { success: true, figs: [fig('sw9999', 'Folge-Figur')], total: 61 }
         : { success: true, figs: erste, total: 61 },

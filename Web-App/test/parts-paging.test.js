@@ -149,7 +149,7 @@ test('parts list against the database: pages, color filter and upper bound on bo
     );
   }
   await holdsSet(db, U, SN, 1);
-  for (const [nr, farbe] of TEILE) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, menge: 1 });
+  for (const [nr, farbe] of TEILE) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity: 1 });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
     await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
@@ -202,7 +202,7 @@ test('loading more only happens in the visible parts tab', async () => {
     };
   };
   const { w, d, aufrufe, ruhig } = await openUi(
-    { '/v1/parts': seite },
+    { '/v2/parts': seite },
     {
       before(w) {
         w.IntersectionObserver = class {
@@ -217,7 +217,7 @@ test('loading more only happens in the visible parts tab', async () => {
     },
   );
   try {
-    const seiten = () => aufrufe.filter(a => /\/api\/v1\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
+    const seiten = () => aufrufe.filter(a => /\/api\/v2\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
     await reiter(w, 'parts');
     assert.ok(await warte(() => seiten() >= 2), 'Die erste Seite füllt den Schirm nicht, die zweite kommt nicht');
     await ruhig();
@@ -240,8 +240,8 @@ test('loading more only happens in the visible parts tab', async () => {
 
 test('arguments from data-arg are treated as strings', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/minifigs/manual': { success: true, figs: [{ fig_number: 'fig-000001', fig_name: 'Figur', quantity: 2 }] },
-    '/v1/auth/users': {
+    '/v2/minifigs/manual': { success: true, figs: [{ fig_number: 'fig-000001', fig_name: 'Figur', quantity: 2 }] },
+    '/v2/auth/users': {
       success: true,
       users: [
         { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
@@ -257,7 +257,7 @@ test('arguments from data-arg are treated as strings', async () => {
     assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'Kein Mengenknopf');
     assert.equal(d.getElementById('man-det-qty').value, '2');
     d.querySelector('[data-click="manQtyChange"][data-arg="1"]').click();
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/minifigs/fig-000001'))));
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/minifigs/fig-000001'))));
     assert.deepEqual(JSON.parse(aufrufe.find(a => a.method === 'PUT').body), { quantity: 3 });
 
     // Grant rights: is_admin arrives as "0", and !"0" would be false.
@@ -267,8 +267,8 @@ test('arguments from data-arg are treated as strings', async () => {
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/4/admin'))));
-    assert.equal(JSON.parse(aufrufe.find(a => a.url.includes('/v1/auth/users/4/admin')).body).is_admin, true);
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));
+    assert.equal(JSON.parse(aufrufe.find(a => a.url.includes('/v2/auth/users/4/admin')).body).is_admin, true);
   } finally {
     w.close();
   }

@@ -52,7 +52,7 @@ test('a signed GET returns `data`; the signature checks out', async t => {
 test('without all four credentials nothing is asked', async t => {
   const stub = await httpsStub(t, (_c, res) => reply(res, 200, '{}'));
   const z = clientsAccess({ keys: { bricklink_token_secret: '' } });
-  await assert.rejects(createBricklink(z).bricklinkRequest('GET', PRICE), { code: 'bricklink_zugang_fehlt' });
+  await assert.rejects(createBricklink(z).bricklinkRequest('GET', PRICE), { code: 'bricklink_credentials_missing' });
   assert.deepEqual([stub.calls.length, z.seen.counted], [0, []]);
 });
 

@@ -30,10 +30,10 @@ Module.prototype.require = function (name, ...rest) {
     return new Proxy(m, {
       get: (t, k) => {
         if (k !== 'acquireSet') return t[k];
-        return async (_sk, { setNumber: sn, menge: qty }) => {
+        return async (_sk, { setNumber: sn, quantity: qty }) => {
           if (sn === 'abc') throw new Error('Das ist keine Setnummer');
           booked.push(`${sn}×${qty}`);
-          return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };
+          return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { catalog_pending: true } : {}) };
         };
       },
     });
@@ -67,43 +67,43 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const sende = async pruefen => {
+  const sende = async check => {
     const fd = new FormData();
     fd.append('file', new Blob([DATEI]), 'import-fehler.csv');
-    const r = await fetch(`${base}/api/v1/sets/import/csv${pruefen ? '?pruefen=1' : ''}`, { method: 'POST', body: fd });
+    const r = await fetch(`${base}/api/v2/sets/import/csv${check ? '?check=1' : ''}`, { method: 'POST', body: fd });
     assert.equal(r.status, 200);
     return r.json();
   };
 
   await t.test('the check names existing sets and starts nothing', async () => {
     const p = await sende(true);
-    assert.equal(p.gestartet, false);
+    assert.equal(p.started, false);
     assert.equal(p.total, 8, 'acht Datenzeilen gelesen');
-    assert.equal(p.vorhanden, 1);
-    assert.deepEqual(p.vorhanden_nummern, ['10305-1']);
+    assert.equal(p.existing, 1);
+    assert.deepEqual(p.existing_numbers, ['10305-1']);
     assert.equal(await db.get('SELECT 1 FROM import_status WHERE user_id=$1', [uid]), undefined, 'kein Lauf angelegt');
   });
 
   await sende(false);
   let s;
   await bis(async () => {
-    s = await (await fetch(`${base}/api/v1/sets/import/csv/status`)).json();
+    s = await (await fetch(`${base}/api/v2/sets/import/csv/status`)).json();
     return s.status !== 'running';
   });
 
   await t.test('every row with its result', () => {
     assert.equal(s.status, 'done');
     const kurz = s.results.map(
-      r => `${r.zeile}:${r.set_number}:${r.success ? (r.katalog_offen ? 'warn' : 'ok') : r.code || 'fehler'}`,
+      r => `${r.row}:${r.set_number}:${r.success ? (r.catalog_pending ? 'warn' : 'ok') : r.code || 'fehler'}`,
     );
     assert.deepEqual(kurz, [
       '2:10200-1:ok',
       '3:10305-1:ok',
       '4:abc:fehler',
-      '5:10312-1:csv_menge_ungueltig',
+      '5:10312-1:csv_quantity_invalid',
       '6:99999-1:warn',
-      '7::csv_keine_setnummer',
-      '8:10319-1:csv_menge_ungueltig',
+      '7::csv_no_set_number',
+      '8:10319-1:csv_quantity_invalid',
       '9:10326-1:ok',
     ]);
     assert.match(s.results[3].error, /Menge „x“ ungültig/);
@@ -113,6 +113,6 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
 
   await t.test('sums', () => {
     assert.deepEqual({ total: s.total, ok: s.ok, warn: s.warn, err: s.err }, { total: 8, ok: 3, warn: 1, err: 4 });
-    assert.ok(Date.now() - Date.parse(s.beendet_am) < 60_000, `beendet_am: ${s.beendet_am}`);
+    assert.ok(Date.now() - Date.parse(s.finished_at) < 60_000, `beendet_am: ${s.finished_at}`);
   });
 });

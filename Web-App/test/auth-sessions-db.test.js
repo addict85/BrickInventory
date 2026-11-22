@@ -64,7 +64,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
     const r = await fetch(`${basis}${AUTH}/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: user, password: passwort, ohne_token: true }),
+      body: JSON.stringify({ username: user, password: passwort, without_token: true }),
     });
     const body = await r.json();
     assert.equal(body.success, true, `Anmeldung ${user} fehlgeschlagen: ${JSON.stringify(body)}`);
@@ -191,10 +191,10 @@ test('a password change ends sessions AND tokens — against a real store', { co
         });
         return `${r.status} ${(await r.json()).code ?? ''}`;
       };
-      assert.equal(await setze(chef.cookie, chefId), '400 eigenes_konto_passwort', 'nicht für das eigene Konto');
+      assert.equal(await setze(chef.cookie, chefId), '400 own_account_password', 'nicht für das eigene Konto');
       assert.equal(
         await setze(chef.cookie, 2_000_000_000),
-        '404 benutzer_nicht_gefunden',
+        '404 user_not_found',
         'ein Unbekannter ist kein stiller Erfolg',
       );
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');

@@ -109,15 +109,15 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
   const { base } = testServer(_req, { sitzung: { userId: UID }, t });
-  const aendere = async (nummer, oldColor, koerper) => {
-    const r = await fetch(`${base}/api/v1/parts/${nummer}/${oldColor}/color`, {
+  const aendere = async (number, oldColor, koerper) => {
+    const r = await fetch(`${base}/api/v2/parts/${number}/${oldColor}/color`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(koerper),
     });
     return { status: r.status, body: await r.json() };
   };
-  const bestand = async () =>
+  const holding = async () =>
     db.all(
       `SELECT color_id, source, storage_id FROM parts WHERE user_id=$1 AND part_number='3001'
       ORDER BY color_id`,
@@ -131,7 +131,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       ORDER BY color_id, tag`,
         [UID],
       )
-    ).map(r => ({ farbe: r.color_id, menge: Number(r.quantity), tag: String(r.tag).slice(0, 10) }));
+    ).map(r => ({ farbe: r.color_id, quantity: Number(r.quantity), tag: String(r.tag).slice(0, 10) }));
   const leeren = async () => {
     await db.run(`DELETE FROM part_acquisitions`);
     await db.run(`DELETE FROM parts`);
@@ -163,16 +163,16 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
 
     const a = await aendere('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body.zusammengelegt, false, 'Es gab keine Zielzeile — nichts zusammenzulegen');
+    assert.equal(a.body.combined, false, 'Es gab keine Zielzeile — nichts zusammenzulegen');
 
     assert.deepEqual(
-      (await bestand()).map(r => r.color_id),
+      (await holding()).map(r => r.color_id),
       [4],
       'Nach der Änderung muss GENAU EINE Zeile dastehen, und zwar in Farbe 4',
     );
     assert.deepEqual(
       await erfassungen(),
-      [{ farbe: 4, menge: 10, tag: (await erfassungen())[0].tag }],
+      [{ farbe: 4, quantity: 10, tag: (await erfassungen())[0].tag }],
       'Die Erfassung muss mitgezogen sein — bleibt sie in Farbe 0 zurück, ist der ' +
         'Kaufpreis vom Teil abgeschnitten und die Stückzahl der neuen Zeile null',
     );
@@ -213,23 +213,23 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     const a = await aendere('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(
-      a.body.zusammengelegt,
+      a.body.combined,
       true,
       'Die Zielfarbe gab es schon — die Antwort muss das sagen, sonst hält der ' +
         'Aufrufer eine Vereinigung für einen Umzug',
     );
 
     assert.deepEqual(
-      (await bestand()).map(r => r.color_id),
+      (await holding()).map(r => r.color_id),
       [4],
       'Das Doppelte ist der ganze Grund für diese Funktion: Danach darf nur ' + 'die Zeile in Farbe 4 übrig sein',
     );
     const erf = await erfassungen();
     assert.deepEqual(
-      erf.map(e => ({ farbe: e.farbe, menge: e.menge })),
+      erf.map(e => ({ farbe: e.farbe, quantity: e.quantity })),
       [
-        { farbe: 4, menge: 7 },
-        { farbe: 4, menge: 10 },
+        { farbe: 4, quantity: 7 },
+        { farbe: 4, quantity: 10 },
       ],
       `Beide Erfassungen müssen in Farbe 4 stehen und BEIDE erhalten bleiben — ` +
         `da steht ${JSON.stringify(erf)}. Zusammen sind es 17 Stück, und keiner ` +
@@ -262,10 +262,10 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
       `Status ${a.status}: ${JSON.stringify(a.body)} — bricht die Anfrage am ` +
         'eindeutigen Tagesindex ab, hängt die Korrektur von der Uhr ab.',
     );
-    assert.equal(a.body.vereint, 1, 'Eine Erfassung musste addiert werden');
+    assert.equal(a.body.united, 1, 'Eine Erfassung musste addiert werden');
     assert.deepEqual(
-      (await erfassungen()).map(e => ({ farbe: e.farbe, menge: e.menge })),
-      [{ farbe: 4, menge: 17 }],
+      (await erfassungen()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
+      [{ farbe: 4, quantity: 17 }],
       'Aus 7 und 10 vom gleichen Tag muss EINE Erfassung mit 17 werden — ' +
         'verschwindet eine der beiden, fehlen Marco Stücke.',
     );
@@ -288,7 +288,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     const a = await aendere('3001', 0, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
-      (await erfassungen()).map(e => e.menge).sort((x, y) => x - y),
+      (await erfassungen()).map(e => e.quantity).sort((x, y) => x - y),
       [7, 10],
       'Seit Migration 0047 kein Mischpreis: zwei Käufe, zwei Zeilen, zusammen 17',
     );
@@ -305,7 +305,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     );
 
     assert.equal((await aendere('3001', 0, { color_id: 4 })).status, 200);
-    const zeilen = await bestand();
+    const zeilen = await holding();
     assert.equal(zeilen.length, 1);
     assert.equal(
       zeilen[0].storage_id,
@@ -330,7 +330,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         'Erfolgsmeldung.',
     );
     assert.deepEqual(
-      (await bestand()).map(r => r.color_id),
+      (await holding()).map(r => r.color_id),
       [4],
       'Die abgelehnte Anfrage darf nichts geändert haben',
     );
@@ -353,7 +353,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         'bestreiten, und der nächste Set-Import setzte sie zurück.',
     );
     assert.deepEqual(
-      (await bestand()).map(r => r.color_id),
+      (await holding()).map(r => r.color_id),
       [0],
       'Das Set-Teil darf nicht angetastet worden sein',
     );
@@ -378,12 +378,12 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     const a = await aendere('3001', 4, { color_id: 4 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
-      { v: a.body.verschoben, u: a.body.vereint, z: a.body.zusammengelegt },
+      { v: a.body.moved, u: a.body.united, z: a.body.combined },
       { v: 0, u: 0, z: false },
       'Gleiche Farbe heisst: nichts verschoben, nichts vereint, nichts zusammengelegt',
     );
     assert.deepEqual(
-      (await erfassungen()).map(e => e.menge),
+      (await erfassungen()).map(e => e.quantity),
       [5],
       'Die Erfassung muss unverändert dastehen',
     );
@@ -403,7 +403,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
 
     const a = await aendere('3001', 4, { color_id: 7 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body.bild, 'vorhanden', `Die Antwort sagt „${a.body.bild}" — erwartet „vorhanden"`);
+    assert.equal(a.body.image, 'vorhanden', `Die Antwort sagt „${a.body.image}" — erwartet „vorhanden"`);
     assert.equal(
       (await farbImage(7))?.image_url,
       'https://cdn.example/schon-da.jpg',
@@ -433,20 +433,20 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     // this environment there is none. So what is measured is the case „nothing
     // found" — and that must NOT take the change along.
     assert.equal(
-      a.body.bild,
+      a.body.image,
       null,
-      `Die Antwort sagt „${a.body.bild}" — erwartet null. Ein geratenes ` +
+      `Die Antwort sagt „${a.body.image}" — erwartet null. Ein geratenes ` +
         '„vorhanden" würde die Oberfläche um ihren Hinweis bringen.',
     );
     assert.deepEqual(
-      (await bestand()).map(r => r.color_id),
+      (await holding()).map(r => r.color_id),
       [7],
       'Die Farbe muss geändert sein, auch wenn kein Bild zu finden war — ' +
         'ein fehlendes Bild ist kein Grund, die Korrektur zurückzunehmen',
     );
     assert.deepEqual(
-      (await erfassungen()).map(e => ({ farbe: e.farbe, menge: e.menge })),
-      [{ farbe: 7, menge: 5 }],
+      (await erfassungen()).map(e => ({ farbe: e.farbe, quantity: e.quantity })),
+      [{ farbe: 7, quantity: 5 }],
       'Die Erfassung zieht mit',
     );
   });

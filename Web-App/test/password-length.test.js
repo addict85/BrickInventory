@@ -3,7 +3,7 @@
  * path that sets a password checks it is shown by password-rule-db.test.js
  * (“passwords that are too short are rejected on all five paths”).
  *
- * Counter-check (measured 11.11.2026): `passwort_zu_kurz` in src/infra/errorTexts.ts
+ * Counter-check (measured 11.11.2026): `password_too_short` in src/infra/errorTexts.ts
  * set to „mindestens 8 Zeichen“ → red “the error message names the same number …”.
  */
 const test = require('node:test');
@@ -47,14 +47,14 @@ test('the error message names the same number as the rule', () => {
   // The texts cannot follow the constant; a text that promises less
   // than the server demands leads the user into a refusal.
   const { errorText } = _req('src/infra/errorTexts.js');
-  for (const sprache of ['de', 'en'])
-    assert.match(errorText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), sprache);
+  for (const language of ['de', 'en'])
+    assert.match(errorText('password_too_short', language), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), language);
   // The web app fills in the number at runtime: there a placeholder, no number.
   const texte = require('./helpers/sources').loadTranslations();
-  for (const sprache of ['de', 'en']) {
-    const text = texte[sprache]['settings.password.too_short'];
-    assert.ok(text, `settings.password.too_short fehlt in ${sprache}.js`);
-    assert.ok(text.includes('{n}'), `${sprache}.js schreibt die Zahl aus statt {n} zu benutzen`);
+  for (const language of ['de', 'en']) {
+    const text = texte[language]['settings.password.too_short'];
+    assert.ok(text, `settings.password.too_short fehlt in ${language}.js`);
+    assert.ok(text.includes('{n}'), `${language}.js schreibt die Zahl aus statt {n} zu benutzen`);
   }
 });
 

@@ -67,7 +67,7 @@ function germanNames(allowed) {
     const code = codeOf(f, fs.readFileSync(f, 'utf8'));
     for (const m of code.matchAll(/[A-Za-z_$äöüÄÖÜß][\w$äöüÄÖÜß-]*(?:\.[A-Za-z_][\w-]*)*/g)) {
       const t = m[0];
-      // Segments of API paths and query parameters are the server's names (/v1/auth/zweiter-faktor?x=1).
+      // Segments of API paths and query parameters are the server's names (/v2/auth/second-factor?x=1).
       const before = code[m.index - 1];
       if (before === '/' || code[m.index + t.length] === '/' || /[?&]/.test(before ?? '')) continue;
       if (!germanWords(t).length || ok(t) || ok(t.replace(/^data-/, ''))) continue;
@@ -77,7 +77,7 @@ function germanNames(allowed) {
   return found;
 }
 
-/** Field names, parameters and enum values of the API contract (contract.d.ts and docs/openapi.json). */
+/** Field names, parameters and enum values of the API contract (contract.d.ts and docs/openapi-v2.json). */
 function contractNames() {
   const s = fs.readFileSync(path.join(WEB, 'frontend-types', 'contract.d.ts'), 'utf8');
   const names = new Set([
@@ -97,7 +97,7 @@ function contractNames() {
       }
     }
   };
-  visit(JSON.parse(fs.readFileSync(path.join(WEB, 'docs', 'openapi.json'), 'utf8')), '');
+  visit(JSON.parse(fs.readFileSync(path.join(WEB, 'docs', 'openapi-v2.json'), 'utf8')), '');
   return names;
 }
 

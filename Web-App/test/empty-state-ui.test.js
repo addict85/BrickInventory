@@ -45,13 +45,13 @@ test('add set exactly once', async () => {
 test('parts and minifigures likewise', async () => {
   const { w } = await openUi({}, { before: withStyle });
   try {
-    for (const [tab, art] of [
+    for (const [tab, kind] of [
       ['parts', 'part'],
       ['minifigs', 'fig'],
     ]) {
       await reiter(w, tab);
       await warte(() => !!w.document.querySelector(`#tab-${tab} .empty.empty-state`));
-      assert.equal(sichtbar(w, `#tab-${tab} [data-click="openCapture"][data-arg="${art}"]`).length, 1, tab);
+      assert.equal(sichtbar(w, `#tab-${tab} [data-click="openCapture"][data-arg="${kind}"]`).length, 1, tab);
     }
   } finally {
     w.close();

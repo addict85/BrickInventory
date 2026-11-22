@@ -46,8 +46,8 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const server = routerServer(_req, { t, sitzung: {}, routen: {} });
-  server.app.use('/api/v1', loginAtInbox);
-  server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
+  server.app.use('/api/v2', loginAtInbox);
+  server.app.get('/api/v2/probe', (_req2, res) => res.json({ ok: true }));
   // The cache only exists with a standing listen connection for revocations (fail closed).
   tokenCache.listenOnTokenRevocation();
   assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
@@ -74,7 +74,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   });
 
   const ruf = async token => {
-    const r = await fetch(`${server.base}/api/v1/probe`, { headers: { authorization: `Bearer ${token}` } });
+    const r = await fetch(`${server.base}/api/v2/probe`, { headers: { authorization: `Bearer ${token}` } });
     return { status: r.status, body: await r.json() };
   };
   const zufall = i => `unbekannt-${process.pid}-${i}-${Math.random()}`;
@@ -98,7 +98,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     abfragen = 0;
     const r = await ruf(zufall('danach'));
     assert.equal(abfragen, 0);
-    assert.equal(r.body.code, 'zu_viele_anfragen');
+    assert.equal(r.body.code, 'too_many_requests');
   });
 
   await t.test('the throttle responds 429, not 401', async () => {
@@ -106,9 +106,9 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   });
 
   await t.test('after the window the address counts as clean again', async () => {
-    const jetzt = Date.now() + bremse.FAILED_ATTEMPT_WINDOW_MS + 1000;
-    assert.equal(bremse.toManyFailedAttempts('::1', jetzt), false);
-    assert.equal(bremse.toManyFailedAttempts('127.0.0.1', jetzt), false);
+    const now = Date.now() + bremse.FAILED_ATTEMPT_WINDOW_MS + 1000;
+    assert.equal(bremse.toManyFailedAttempts('::1', now), false);
+    assert.equal(bremse.toManyFailedAttempts('127.0.0.1', now), false);
   });
 
   await t.test('a reused token does not count as a failed attempt', async () => {

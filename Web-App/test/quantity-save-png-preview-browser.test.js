@@ -96,7 +96,7 @@ async function transparentPreview(_t, a, nr) {
       const g = c.getContext('2d'); g.drawImage(bild, 0, 0);
       return { quelle: i.currentSrc.replace(/^.*\\/images\\//, ''), typ: r.headers.get('content-type'),
         rand: g.getImageData(0, 0, 1, 1).data[3], innen: g.getImageData(3, 2, 1, 1).data[3] }; })()`);
-    assert.match(m.quelle, /_thumb\.jpg$/, `Testdaten: Kachel zeigt die Vorschau: ${JSON.stringify(m)}`);
+    assert.match(m.source, /_thumb\.jpg$/, `Testdaten: Kachel zeigt die Vorschau: ${JSON.stringify(m)}`);
     assert.equal(m.typ, 'image/png', `Vorschau mit falschem Typ: ${JSON.stringify(m)}`);
     assert.deepEqual([m.rand, m.innen], [255, 0], `Transparenz ging verloren: ${JSON.stringify(m)}`);
   } finally {
@@ -113,7 +113,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
   });
   const a = await startApp(t, {
     name: `r25b_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternCollection(db, uid);
       // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
@@ -127,8 +127,8 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
       await holdsSet(db, uid, nr, 1, { preis: 5 });
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   await a.ruhig();

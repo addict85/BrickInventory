@@ -53,10 +53,10 @@ test('every list with a badge in the client carries it in the response too', asy
   // if the own account stands there, the assignment is wrong; if it is missing,
   // the main account sees stock without an origin.
   await holdsSet(db, kind, '75192-1', 1);
-  await holdsPart(db, kind, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-  await holdsPart(db, kind, '3020', { menge: 3, colorId: 0 });
-  await holdsMinifig(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
-  await holdsMinifig(db, kind, 'sw0002', { menge: 2 });
+  await holdsPart(db, kind, '3001', { setNumber: '75192-1', quantity: 10, colorId: 4 });
+  await holdsPart(db, kind, '3020', { quantity: 3, colorId: 0 });
+  await holdsMinifig(db, kind, 'sw0001', { setNumber: '75192-1', quantity: 1 });
+  await holdsMinifig(db, kind, 'sw0002', { quantity: 2 });
 
   const { scopeIds } = {
     ..._req('src/household/rules.js'),
@@ -70,12 +70,12 @@ test('every list with a badge in the client carries it in the response too', asy
 
   /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
-    ['/v1/sets', async () => (await S.readSets(uids, { page_size: 60 })).sets],
+    ['/v2/sets', async () => (await S.readSets(uids, { page_size: 60 })).sets],
     // manualPartsList/readManualMinifigs deliver a BARE array; the route
     // wraps it. The three other lists deliver an object with `total`.
-    ['/v1/parts/manual', async () => await P.manualPartsList(uids, {})],
-    ['/v1/minifigs', async () => (await M.readMinifigs(uids, { source: 'set' })).figs],
-    ['/v1/minifigs/manual', async () => await M.readManualMinifigs(uids, {})],
+    ['/v2/parts/manual', async () => await P.manualPartsList(uids, {})],
+    ['/v2/minifigs', async () => (await M.readMinifigs(uids, { source: 'set' })).figs],
+    ['/v2/minifigs/manual', async () => await M.readManualMinifigs(uids, {})],
   ];
 
   for (const [name, hole] of listen) {
@@ -96,9 +96,9 @@ test('every list with a badge in the client carries it in the response too', asy
   // by part number AND color across the whole household, and neither of the two
   // clients draws a badge there. If one is added, this assertion
   // strikes — then the aggregate belongs in the query too.
-  const teile = (await P.partsQuery(uids, { page_size: 60, exclude_manual: '1' })).parts;
-  assert.ok(teile?.length, 'Vorlage: Set-Teile fehlen');
-  for (const z of teile) {
+  const parts = (await P.partsQuery(uids, { page_size: 60, exclude_manual: '1' })).parts;
+  assert.ok(parts?.length, 'Vorlage: Set-Teile fehlen');
+  for (const z of parts) {
     assert.equal(
       z.owners,
       undefined,
@@ -128,7 +128,7 @@ test('in a single account there is no badge', async t => {
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
   await holdsSet(db, allein, '21318-1', 1);
-  await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
+  await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', quantity: 1 });
 
   const { scopeIds } = {
     ..._req('src/household/rules.js'),
@@ -142,8 +142,8 @@ test('in a single account there is no badge', async t => {
   // „mine" on every tile would only be noise — and additional fields in
   // every response. The same decision as for the sets all along.
   for (const [name, zeilen] of [
-    ['/v1/sets', (await S.readSets(uids, { page_size: 60 })).sets],
-    ['/v1/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
+    ['/v2/sets', (await S.readSets(uids, { page_size: 60 })).sets],
+    ['/v2/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);
     for (const z of zeilen) {

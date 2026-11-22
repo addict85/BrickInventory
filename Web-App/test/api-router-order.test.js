@@ -19,12 +19,12 @@ const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 
 /** Per mounted router: its routes and its middleware with a path, also from subrouters. */
-function bestand() {
+function holding() {
   const api = _req('routes/api_v1/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
   const collect = (r, aus = { routen: [], prefilters: [] }) => {
     for (const l of r.stack) {
-      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routen.push({ m, pfad: l.route.path, l });
+      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routen.push({ m, path: l.route.path, l });
       else if (!l.slash) aus.prefilters.push(l);
       else if (l.handle?.stack) collect(l.handle, aus);
     }
@@ -37,7 +37,7 @@ function bestand() {
 const beispiel = p => p.replace(/:\w+/g, 'x1');
 
 test('the routers under /api/v1 do not hit each other', () => {
-  const router = bestand();
+  const router = holding();
   assert.ok(router.length >= 15, `nur ${router.length} Router — greift die Suche noch?`);
   assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'keine Middleware mit Pfad gefunden');
   const muster = [];
@@ -46,10 +46,10 @@ test('the routers under /api/v1 do not hit each other', () => {
     for (const fremd of router.filter((_, j) => j !== i))
       for (const ziel of fremd.routen) {
         for (const eigen of r.routen)
-          if (eigen.m === ziel.m && eigen.l.match(beispiel(ziel.pfad)))
-            muster.push(`${eigen.m} ${eigen.pfad} trifft ${ziel.pfad}`);
+          if (eigen.m === ziel.m && eigen.l.match(beispiel(ziel.path)))
+            muster.push(`${eigen.m} ${eigen.path} trifft ${ziel.path}`);
         for (const v of r.prefilters)
-          if (v.match(beispiel(ziel.pfad))) middleware.push(`${v.name} vor ${ziel.m} ${ziel.pfad}`);
+          if (v.match(beispiel(ziel.path))) middleware.push(`${v.name} vor ${ziel.m} ${ziel.path}`);
       }
   });
   assert.deepEqual(muster, [], 'kein Muster trifft eine Route eines anderen Routers');
@@ -60,7 +60,7 @@ test('the app attaches the error path, once behind all routers', () => {
   const { errorResponse } = _req('src/http/httpResponse.js');
   const app = _req('startup/app.js').buildApp({
     pool: q.testAccess().systemPool,
-    konfig: _req('src/infra/config.js').konfig(),
+    config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: q.testServices(),
     sessionStorage: (/** @type {any} */ _q, /** @type {any} */ _r, /** @type {Function} */ n) => n(),

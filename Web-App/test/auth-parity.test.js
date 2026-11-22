@@ -47,7 +47,7 @@ function loginHandler() {
       // already gone — otherwise an explanatory text mentioning “password" would count.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
-      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
+      treffer.push({ datei: path.relative(ROOT, datei), path: m[1], koerper });
     }
   }
   return treffer;
@@ -63,7 +63,7 @@ test('an active, confirmed account may log in', () => {
 test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
+    assert.equal(r?.kind, 'verboten', `is_active=${v} muss verboten ergeben`);
   }
 });
 
@@ -75,7 +75,7 @@ test('an open registration is rejected, admins excepted', () => {
     is_admin: 0,
     registration_pending: true,
   });
-  assert.equal(r?.art, 'verboten');
+  assert.equal(r?.kind, 'verboten');
   assert.equal(r?.unverified, true);
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),
@@ -89,22 +89,22 @@ test('an open registration is rejected, admins excepted', () => {
 });
 
 test('every login with password goes through the same check', () => {
-  const gefunden = loginHandler();
+  const found = loginHandler();
   // Self-proof: if the pattern finds nothing, the error list would be empty and the
   // test green without having checked anything.
-  assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
-  const withPassword = gefunden.filter(h => /password/.test(h.koerper));
+  assert.ok(found.length >= 2, `Nur ${found.length} Anmelde-Routen gefunden — Muster veraltet?`);
+  const withPassword = found.filter(h => /password/.test(h.koerper));
   assert.equal(
     withPassword.length,
     1,
     `${withPassword.length} passwortbasierte Anmeldungen: ` +
-      withPassword.map(h => `${h.datei} ${h.pfad}`).join(', ') +
+      withPassword.map(h => `${h.datei} ${h.path}`).join(', ') +
       ' — es soll genau eine geben.',
   );
 
   const outlier = withPassword
     .filter(h => !/\b(checkCredentials|login)\(/.test(h.koerper))
-    .map(h => `${h.datei}  ${h.pfad}`);
+    .map(h => `${h.datei}  ${h.path}`);
   assert.deepEqual(
     outlier,
     [],

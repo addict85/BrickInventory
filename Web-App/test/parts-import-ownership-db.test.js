@@ -22,8 +22,8 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
@@ -31,15 +31,15 @@ const { testServer } = require('./helpers/server');
 const importe = [];
 const fetches = [];
 const replace = (rel, zusatz) => {
-  const pfad = require.resolve(path.join(quellen.DIST, rel));
+  const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
 };
 // Rebrickable set up at the wiring: every set of services asks via it.
-quellen.testSources(null, {
+sources.testSources(null, {
   fetchSetParts: async n => {
     fetches.push(n);
-    return { teile: [], verweigert: false };
+    return { parts: [], verweigert: false };
   },
 });
 replace('src/sets/setContentImport.js', {
@@ -50,7 +50,7 @@ replace('src/sets/setContentImport.js', {
   },
 });
 
-const db = quellen.testData();
+const db = sources.testData();
 const P = process.pid;
 
 test('parts import only in scope', { concurrency: 1 }, async t => {
@@ -92,14 +92,14 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
   const { base } = testServer(_req, { sitzung, t });
   const importiere = async (als, sn) => {
     sitzung.userId = als;
-    const r = await fetch(`${base}/api/v1/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });
+    const r = await fetch(`${base}/api/v2/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });
     return { status: r.status, body: await r.json() };
   };
 
   await t.test('a foreign set is not imported', async () => {
     const r = await importiere(H, FREMD);
     assert.equal(r.status, 404, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'set_nicht_gefunden');
+    assert.equal(r.body.code, 'set_not_found');
     assert.deepEqual(importe, []);
   });
 
@@ -124,7 +124,7 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
     assert.deepEqual([...new Set(status)], [200], 'bis zur Grenze geht jeder durch');
     const toMuch = await importiere(U, UNTER);
     assert.equal(toMuch.status, 429);
-    assert.equal(toMuch.body.code, 'zu_viele_anfragen');
+    assert.equal(toMuch.body.code, 'too_many_requests');
     assert.equal((await importiere(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
   });
 

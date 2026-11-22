@@ -138,13 +138,13 @@ async function logWindow(_t, a) {
   });
   const axe = result.value;
   assert.deepEqual(axe, []);
-  const stufen = await b.auswerten(
+  const levels = await b.auswerten(
     im(
       `[...document.querySelectorAll('.lvbtn')].map(k => [k.id, k.classList.contains('active'), k.getAttribute('aria-pressed')])`,
     ),
   );
-  assert.ok(stufen.length >= 3, `nur ${stufen.length} Stufenknöpfe`);
-  for (const [id, aktiv, gedrueckt] of stufen) assert.equal(gedrueckt, String(aktiv), id);
+  assert.ok(levels.length >= 3, `nur ${levels.length} Stufenknöpfe`);
+  for (const [id, active, gedrueckt] of levels) assert.equal(gedrueckt, String(active), id);
   const vorher = await b.auswerten(im(`document.getElementById('btn-info').getAttribute('aria-pressed')`));
   await b.auswerten(im(`document.getElementById('btn-info').click() ?? true`));
   assert.equal(
@@ -237,9 +237,9 @@ async function fokusring(_t, a) {
 }
 
 test('focus, PDF viewer, log window', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await startApp(t, { name: `r17_${process.pid}`, bestand: patternHousehold, allDesigns: true });
-  if (a.grund) {
-    t.skip(a.grund);
+  const a = await startApp(t, { name: `r17_${process.pid}`, holding: patternHousehold, allDesigns: true });
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   // The PDF viewer uploads an instruction; otherwise it would stay for the next account with the same number.

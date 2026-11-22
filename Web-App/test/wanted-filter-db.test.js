@@ -62,7 +62,7 @@ async function seed() {
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60000-1','Sale 50% Feuerwehr',2013)`);
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60001-1','Feuerwehr 5000er',2014)`);
 
-  const posten = [
+  const items = [
     [U.grandparent, '10179-1', 'N'],
     [U.grandparent, '10179-1', 'U'],
     [U.grandparent, '60000-1', 'N'],
@@ -72,8 +72,8 @@ async function seed() {
   ];
   // created_at staggered descending so that the default sorting has a
   // definite order and does not follow chance.
-  let tage = posten.length;
-  for (const [uid, sn, c] of posten) {
+  let tage = items.length;
+  for (const [uid, sn, c] of items) {
     await db.run(
       `INSERT INTO wanted (user_id, set_number, condition, created_at)
        VALUES ($1,$2,$3, NOW() - ($4 || ' days')::interval)`,
@@ -169,9 +169,13 @@ test('wishlist: search, condition, sorting, owner', async t => {
     assert.equal(nachName[0].name, 'Feuerwehr 5000er');
 
     const afterPrice = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'price_desc' });
-    assert.equal(afterPrice[0].marktpreis, 500);
-    assert.equal(afterPrice[1].marktpreis, 80);
-    assert.equal(afterPrice[afterPrice.length - 1].marktpreis, null, 'Ein Merkposten ohne Preis steht nicht am Ende.');
+    assert.equal(afterPrice[0].market_price, 500);
+    assert.equal(afterPrice[1].market_price, 80);
+    assert.equal(
+      afterPrice[afterPrice.length - 1].market_price,
+      null,
+      'Ein Merkposten ohne Preis steht nicht am Ende.',
+    );
 
     const afterNumber = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'num_asc' });
     assert.equal(afterNumber[0].set_number, '10179-1');
@@ -209,7 +213,7 @@ test('wishlist: search, condition, sorting, owner', async t => {
       sort: 'num_asc',
     });
     assert.deepEqual(nummern(liste), ['10179-1/N']);
-    assert.equal(liste[0].marktpreis, 500, 'Die Währung ist beim Zählen verrutscht.');
+    assert.equal(liste[0].market_price, 500, 'Die Währung ist beim Zählen verrutscht.');
   });
 
   await db.pool.end().catch(() => {});

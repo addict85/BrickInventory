@@ -1,7 +1,7 @@
 /**
  * Streams and summary reports give no internal error text to the client:
  * a domain error arrives with code and sentence, everything else (SQL, paths,
- * foreign APIs) as “interner_fehler” — the text only stands in the log.
+ * foreign APIs) as “internal_error” — the text only stands in the log.
  *
  * Counter-checks (measured 01.11.2026):
  *   A  in POST /sets/add-stream again `error: fehlertext(e)` → red: “the
@@ -21,17 +21,17 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const { testServer } = require('./helpers/server');
 
 const GEHEIM = 'relation "geheime_tabelle" does not exist';
 const replace = (rel, zusatz) => {
-  const pfad = require.resolve(path.join(quellen.DIST, rel));
+  const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
 };
 const { fileError, errorText } = _req('src/infra/errorTexts.js');
 // Before loading the routes: the services throw what would come from the database in production.
@@ -45,13 +45,13 @@ replace('src/wanted/repository/wanted.js', {
 // The process's sets services with two replaced; the routes get the same ones (routerFrom).
 Object.assign(require('./helpers/sources').testArea('sets'), {
   acquireSet: async e => {
-    if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'setnummer_ungueltig');
+    if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'set_number_invalid');
     return {
       action: 'added',
       set_number: e.setNumber,
       name: e.setNumber,
-      katalog_offen: true,
-      ergaenzung: 'ausstehend',
+      catalog_pending: true,
+      supplement: 'ausstehend',
       besitzer: e.requester,
     };
   },
@@ -60,7 +60,7 @@ Object.assign(require('./helpers/sources').testArea('sets'), {
   },
 });
 
-const db = quellen.testData();
+const db = sources.testData();
 
 test('no internal error text to the client', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -76,10 +76,10 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
 
   importWorker(t, _req);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const strom = async (setNumber, sprache = 'de') => {
-    const r = await fetch(`${base}/api/v1/sets/add-stream`, {
+  const stream = async (setNumber, language = 'de') => {
+    const r = await fetch(`${base}/api/v2/sets/add-stream`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'accept-language': sprache },
+      headers: { 'content-type': 'application/json', 'accept-language': language },
       body: JSON.stringify({ set_number: setNumber }),
     });
     const text = await r.text();
@@ -92,30 +92,30 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
   };
 
   await t.test('the acquisition stream names no internal text', async () => {
-    const letztes = await strom('GEHEIM-1', 'en');
+    const letztes = await stream('GEHEIM-1', 'en');
     assert.ok(!JSON.stringify(letztes).includes('geheime_tabelle'), JSON.stringify(letztes));
     // The set is already created: the end says that a job completes it, instead of “error”.
     assert.equal(letztes.step, 'done');
     assert.equal(letztes.success, true);
-    assert.equal(letztes.ergaenzung, 'ausstehend');
-    assert.equal(letztes.katalog_offen, true);
+    assert.equal(letztes.supplement, 'ausstehend');
+    assert.equal(letztes.catalog_pending, true);
   });
 
   await t.test('a domain error arrives with its code', async () => {
-    const letztes = await strom('FACH-1');
+    const letztes = await stream('FACH-1');
     assert.equal(letztes.status, 400);
-    assert.equal(letztes.code, 'setnummer_ungueltig');
-    assert.equal(letztes.error, errorText('setnummer_ungueltig', 'de'));
+    assert.equal(letztes.code, 'set_number_invalid');
+    assert.equal(letztes.error, errorText('set_number_invalid', 'de'));
   });
 
   await t.test('the CSV report names no internal text', async () => {
     const form = new FormData();
     form.append('file', new Blob(['set_number\n10283-1\n'], { type: 'text/csv' }), 'merkliste.csv');
-    const r = await fetch(`${base}/api/v1/wanted/import/csv`, { method: 'POST', body: form });
+    const r = await fetch(`${base}/api/v2/wanted/import/csv`, { method: 'POST', body: form });
     const j = await r.json();
     assert.equal(r.status, 200, JSON.stringify(j));
     assert.equal(j.errors, 1);
-    assert.equal(j.results[0].error, errorText('interner_fehler', 'de'));
+    assert.equal(j.results[0].error, errorText('internal_error', 'de'));
     assert.ok(!JSON.stringify(j).includes('geheime_tabelle'));
   });
 });

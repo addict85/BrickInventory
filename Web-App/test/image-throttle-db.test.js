@@ -8,7 +8,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Intercept the download and set the status code.
-let antwort = 403;
+let response = 403;
 const thumbAttempts = { n: 0 };
 let versuche = 0;
 
@@ -17,7 +17,7 @@ const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async (_u, _sn, info) => {
     versuche++;
-    if (info) info.status = antwort;
+    if (info) info.status = response;
     return null;
   },
   createPreview: async () => {
@@ -98,7 +98,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       [P],
     );
   };
-  const offen = async () =>
+  const open = async () =>
     (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [P + '%'])).c;
   const gemerkt = async () =>
     (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%'])).c;
@@ -107,7 +107,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
 
   try {
     await t.test('403 locks out no image and loses no note', async () => {
-      antwort = 403;
+      response = 403;
       versuche = 0;
       await fuellen();
       const IQ = _req('src/images/imageDemandRun.js');
@@ -116,9 +116,9 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
 
       // Put back is NOT processed
       assert.equal(
-        e.gesamt,
+        e.total,
         0,
-        `${e.gesamt} als bearbeitet gemeldet, obwohl der Stapel vor der ersten ` +
+        `${e.total} als bearbeitet gemeldet, obwohl der Stapel vor der ersten ` +
           'Zeile abbrach und alles zurückgelegt wurde',
       );
       assert.equal(
@@ -129,7 +129,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       );
       assert.match(IQ.message(e), /zurückgelegt/, 'Die Meldung verschweigt die Drosselung');
       assert.equal(
-        await offen(),
+        await open(),
         10,
         'Notizen sind verlorengegangen. Der Stapel wird mit DELETE … RETURNING ' +
           'geholt — beim Abbruch muss der GANZE Rest zurückgelegt werden.',
@@ -144,7 +144,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
 
     await t.test('the pause holds back the next run', async () => {
       const vorher = versuche;
-      const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
+      const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
       assert.equal(n, 0);
       assert.equal(
         versuche,
@@ -155,9 +155,9 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
 
     await t.test('404 on the other hand is remembered', async () => {
       // The pause from the previous substep stands in the database and would otherwise keep applying.
-      await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`);
+      await db.run(`DELETE FROM job_pauses WHERE type = 'image_demand'`);
       const IQ = _req('src/images/imageDemandRun.js');
-      antwort = 404;
+      response = 404;
       versuche = 0;
       await fuellen();
       await IQ._workStack();

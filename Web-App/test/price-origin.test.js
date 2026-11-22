@@ -51,19 +51,19 @@ async function setup(t) {
     "INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1",
     [FARBE],
   );
-  for (const { zustand, preis } of [
-    { zustand: 'N', preis: 0 },
-    { zustand: 'U', preis: 0.9 },
+  for (const { condition, preis } of [
+    { condition: 'N', preis: 0 },
+    { condition: 'U', preis: 0.9 },
   ]) {
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
       VALUES ($1,$2,$3,'EUR',$4,$4,NOW())`,
-      [TEIL, FARBE, zustand, preis],
+      [TEIL, FARBE, condition, preis],
     );
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price,fetched_at)
       VALUES ($1,$2,'EUR',$3,$3,NOW())`,
-      [FIG, zustand, preis * 10],
+      [FIG, condition, preis * 10],
     );
   }
   return db;
@@ -92,23 +92,23 @@ test('a typed-in number has no origin', async t => {
 
 test('the web app names the origin for part and minifigure', async () => {
   const de = require('./helpers/sources').loadTranslations().de;
-  const posten = art => (_url, o) =>
+  const items = kind => (_url, o) =>
     o.method === 'POST'
-      ? { success: true, action: 'added', [`${art}_number`]: `${art}-1`, price_from_condition: 'U' }
-      : ANMELDUNG[`/v1/${art === 'part' ? 'parts' : 'minifigs'}`];
-  const o = await openUi({ '/v1/parts': posten('part'), '/v1/minifigs': posten('fig') });
+      ? { success: true, action: 'added', [`${kind}_number`]: `${kind}-1`, price_from_condition: 'U' }
+      : ANMELDUNG[`/v2/${kind === 'part' ? 'parts' : 'minifigs'}`];
+  const o = await openUi({ '/v2/parts': items('part'), '/v2/minifigs': items('fig') });
   try {
     await o.ruhig();
-    for (const [art, nr, knopf, ergebnis] of [
+    for (const [kind, nr, knopf, ergebnis] of [
       ['part', 'ap-num-inline', 'btn-add-part', 'ap-inline-result'],
       ['fig', 'af-num-inline', 'btn-add-fig', 'af-inline-result'],
     ]) {
-      o.d.getElementById(nr).value = `${art}-1`;
+      o.d.getElementById(nr).value = `${kind}-1`;
       o.d.getElementById(knopf).click();
-      await warte(() => o.d.getElementById(ergebnis).textContent.startsWith(`${art}-1`));
+      await warte(() => o.d.getElementById(ergebnis).textContent.startsWith(`${kind}-1`));
       assert.ok(
         o.d.getElementById(ergebnis).textContent.includes(de['price.from_other_condition_used']),
-        `${art}: ${o.d.getElementById(ergebnis).textContent}`,
+        `${kind}: ${o.d.getElementById(ergebnis).textContent}`,
       );
     }
   } finally {

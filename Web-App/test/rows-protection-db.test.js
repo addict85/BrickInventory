@@ -214,14 +214,14 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   });
 
   await t.test('in the system context the cleanup sees all accounts', async () => {
-    const { trash: papierkorb } = buildWith(app).contexts.inventory;
-    assert.equal(await papierkorb.removeOlder(30), 0);
-    assert.equal(await inSystemContext('test', () => papierkorb.removeOlder(30)), 3);
+    const { trash } = buildWith(app).contexts.inventory;
+    assert.equal(await trash.removeOlder(30), 0);
+    assert.equal(await inSystemContext('test', () => trash.removeOlder(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM trash'), []);
   });
 
   await t.test('a job runs in the system context only if its kind is cross-account', async st => {
-    const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('wechselkurse', 'nacharbeit', 'preise')");
+    const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('exchange_rates', 'rework', 'prices')");
     st.after(leeren);
     const A_ = _req('src/jobQueue/service.js');
     const { createWorker } = _req('jobs/jobWorker.js');
@@ -241,15 +241,15 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       },
       preise: { ausfuehren: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
     });
-    await A_.placeJobOne('wechselkurse', {}, { schluessel: `rows-${process.pid}` });
+    await A_.placeJobOne('exchange_rates', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
     // Also from within a system context (server.ts starts the jobs in one).
-    await A_.placeJobOne('nacharbeit', { set_number: '10001-1', user_id: A }, { userId: A, maxAttempts: 1 });
+    await A_.placeJobOne('rework', { set_number: '10001-1', user_id: A }, { userId: A, maxAttempts: 1 });
     assert.equal(await inSystemContext('test', () => w.processOne()), true);
-    await A_.placeJobOne('preise', {}, { schluessel: `rows-${process.pid}` });
+    await A_.placeJobOne('prices', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
     // With an account the account counts, even for a marked kind.
-    await A_.placeJobOne('preise', {}, { userId: A, schluessel: `rows-a-${process.pid}` });
+    await A_.placeJobOne('prices', {}, { userId: A, schluessel: `rows-a-${process.pid}` });
     assert.equal(await w.processOne(), true);
     assert.deepEqual(gesehen, {
       'ohne Marke': [],
@@ -265,7 +265,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     'inSystemContext in the middle of the transaction is rejected; an account switch follows even after a savepoint',
     async () => {
       const n = async d => (await d.all('SELECT user_id FROM sets')).length;
-      const stand = await als(B, () =>
+      const state = await als(B, () =>
         app.transaction(async tx => {
           const vorher = await n(tx);
           const neben = await inSystemContext('test', () => n(app)).then(
@@ -282,7 +282,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
           return [vorher, neben, await als(A, () => n(tx.db)), await n(tx)];
         }),
       );
-      assert.deepEqual(stand, [1, 'BesideTheTransaction', 2, 1]);
+      assert.deepEqual(state, [1, 'BesideTheTransaction', 2, 1]);
     },
   );
 
@@ -311,17 +311,17 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     await assert.rejects(
       als(D, () => haushalt.redeemInvitation(D, code)),
       {
-        code: 'waehrung_ungleich',
+        code: 'currency_mismatch',
         vars: { haupt: 'USD', unter: 'EUR' },
       },
     );
   });
 
   await t.test("a currency change also reaches the sub-account's sub-account", async () => {
-    const einstellungen = serviceWith(app).settings;
+    const settings = serviceWith(app).settings;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => einstellungen.setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => settings.setUserSetting(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);
@@ -335,11 +335,11 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await inSystemContext('test', () => asRequest({ apiUser: { user_id: C } }, allSets))), [C]);
   });
   await t.test('jobs and credentials of other accounts stay hidden from the runtime role', async () => {
-    await su.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
-    await su.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('wechselkurse', '{}', $1)`, [
+    await su.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
+    await su.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('exchange_rates', '{}', $1)`, [
       `rows-sys-${process.pid}`,
     ]);
-    await su.run(`INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ('wechselkurse', '{}', $1, $2)`, [
+    await su.run(`INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ('exchange_rates', '{}', $1, $2)`, [
       C,
       `rows-c-${process.pid}`,
     ]);
@@ -352,10 +352,10 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       assert.deepEqual(ids(await als(C, () => app.all(`SELECT user_id FROM ${tabelle}`))), [C], tabelle);
     }
     assert.equal(
-      (await inSystemContext('test', () => app.all("SELECT 1 FROM jobs WHERE type = 'wechselkurse'"))).length,
+      (await inSystemContext('test', () => app.all("SELECT 1 FROM jobs WHERE type = 'exchange_rates'"))).length,
       2,
     );
-    await su.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
+    await su.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
     await su.run('DELETE FROM api_tokens WHERE user_id = $1', [C]);
   });
 
@@ -475,7 +475,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     const d = serviceWith(app);
     const kennung = `zs${process.pid}`;
     await su.run(
-      `INSERT INTO jobs (type, payload, user_id, dedupe_key, status) VALUES ('pdf', '{}', $1, $2, 'offen')`,
+      `INSERT INTO jobs (type, payload, user_id, dedupe_key, status) VALUES ('pdf', '{}', $1, $2, 'pending')`,
       [C, `pdf:${kennung}`],
     );
     st.after(() => su.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`]));

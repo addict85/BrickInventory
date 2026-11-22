@@ -17,8 +17,8 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
 const SN = '99871-1';
@@ -53,7 +53,7 @@ test('sets with their own context', { concurrency: 1 }, async t => {
   t.after(async () => {
     await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id = $1', [INVENTORY]);
     await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTORY]);
-    quellen.buildAndRequire();
+    sources.buildAndRequire();
     await db.pool.end();
   });
   await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id = $1', [INVENTORY]);
@@ -68,12 +68,12 @@ test('sets with their own context', { concurrency: 1 }, async t => {
   const sql = [],
     notiz = [],
     processNote = [];
-  const zugang = countingAccess(quellen.testAccess(), sql);
+  const zugang = countingAccess(sources.testAccess(), sql);
   const { buildServices } = _req('startup/wiring.js');
   const alle = buildServices(zugang);
   Object.assign(alle.catalog, recording(notiz));
   const sets = alle.sets;
-  quellen.replaceServices('catalog', recording(processNote));
+  sources.replaceServices('catalog', recording(processNote));
 
   await t.test('reading goes through the passed access', async () => {
     assert.equal(await sets.setInfo(SN), null);

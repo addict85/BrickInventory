@@ -43,14 +43,14 @@ test('figure estimate and set price per condition', async t => {
         JSON.stringify([{ part_num: 'abl-1', bl_part_num: 'abl-1', color_id: 5, quantity: 2 }]),
       ]);
       const farbe = Number(await fc.resolveBlColorId(5)) || 0;
-      for (const [zustand, preis] of [
+      for (const [condition, preis] of [
         ['N', 2],
         ['U', 3],
       ])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                       VALUES ('abl-1', $1, $2, 'EUR', $3, $3)`,
-          [farbe, zustand, preis],
+          [farbe, condition, preis],
         );
 
       assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });

@@ -46,10 +46,10 @@ test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_0
   const { base } = testServer(_req, { t });
   const anmelden = async passwort =>
     (
-      await fetch(`${base}/api/v1/auth/login`, {
+      await fetch(`${base}/api/v2/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username: NAME, password: passwort, ohne_token: true }),
+        body: JSON.stringify({ username: NAME, password: passwort, without_token: true }),
       })
     ).status;
   const gespeichert = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;

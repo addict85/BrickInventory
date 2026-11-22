@@ -62,21 +62,21 @@ test('the catalog answers the same no matter how the number is written', { concu
 
     // Counter-check: in src/infra/setNumber.ts the withVersion() removed from catalogEntry()
     // -> the row with „without version suffix" turns red.
-    for (const nummer of [BLANK, MITV]) {
+    for (const number of [BLANK, MITV]) {
       fetches = [];
-      const r = await fetchAndCachePrice(nummer, 'N', 'sold', 'EUR', 24);
+      const r = await fetchAndCachePrice(number, 'N', 'sold', 'EUR', 24);
       assert.equal(
         r,
         'skipped_gear',
-        `„${nummer}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
+        `„${number}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
           'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen',
       );
-      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
+      assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
 
       fetches = [];
-      const p = await fetchPrice(nummer, 'N', 'sold', 'EUR', 24);
-      assert.equal(p.no_price, true, `„${nummer}": Der Anfrageweg meldet keinen preislosen Eintrag`);
-      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
+      const p = await fetchPrice(number, 'N', 'sold', 'EUR', 24);
+      assert.equal(p.no_price, true, `„${number}": Der Anfrageweg meldet keinen preislosen Eintrag`);
+      assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
     }
   } finally {
     await aufraeumen();

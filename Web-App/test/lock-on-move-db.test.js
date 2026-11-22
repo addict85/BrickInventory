@@ -77,29 +77,29 @@ async function findingWarter(userId, scopeKey, isDone, limitMs = 5000) {
 
 /** The move, with a limit, so that a hang becomes a message. */
 function move(base, sn, acqIds, limitMs = 10000) {
-  const lauf = fetch(`${base}/api/v1/sets/${sn}/move`, {
+  const lauf = fetch(`${base}/api/v2/sets/${sn}/move`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ to_user_id: KIND, acquisition_ids: acqIds }),
   });
-  const zustand = { fertig: false };
+  const condition = { fertig: false };
   const tracked = lauf.then(
     r => {
-      zustand.fertig = true;
+      condition.fertig = true;
       return r;
     },
     e => {
-      zustand.fertig = true;
+      condition.fertig = true;
       throw e;
     },
   );
-  zustand.antwort = tracked;
+  condition.response = tracked;
   // The alarm is CLEARED as soon as the response is there. Without that an
   // open ten-second timer remains, keeps the process alive and
   // pushes the end of the file back — in a run with eighty
   // files that is not nothing.
   let alarm;
-  zustand.withLimit = Promise.race([
+  condition.withLimit = Promise.race([
     tracked,
     new Promise((_, ab) => {
       alarm = setTimeout(
@@ -114,7 +114,7 @@ function move(base, sn, acqIds, limitMs = 10000) {
       );
     }),
   ]).finally(() => clearTimeout(alarm));
-  return zustand;
+  return condition;
 }
 
 async function erfassungsIds(userId, sn) {

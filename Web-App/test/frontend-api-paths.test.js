@@ -16,7 +16,7 @@ function routen() {
   for (const r of require('./helpers/sources').routerEinhaengungen()) collect(`routes/${r.name}`, r.mount);
   // api_v1 is included via index.ts — read the files directly.
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1'))) {
-    if (f.endsWith('.ts')) collect(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v1');
+    if (f.endsWith('.ts')) collect(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v2');
   }
   // And the few that hang directly in server.ts (startup-status, health …).
   const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
@@ -39,8 +39,8 @@ function routen() {
 
 const ROUTES = routen();
 
-function passt(methode, pfad) {
-  const tp = pfad.replace(/^\/|\/$/g, '').split('/');
+function passt(methode, path) {
+  const tp = path.replace(/^\/|\/$/g, '').split('/');
   return ROUTES.some(([rm, rp]) => {
     if (rm !== methode) return false;
     const tr = rp.replace(/^\/|\/$/g, '').split('/');
@@ -73,7 +73,7 @@ test('every API path of the frontend hits a route', () => {
       .filter(x => x.endsWith('.js') && x !== 'app.bundle.js')
       .map(x => [x, path.join(ROOT, 'public', 'js', x)]),
   ];
-  const fehler = [];
+  const error = [];
   for (const [f, voll] of dateien) {
     const s = fs.readFileSync(voll, 'utf8');
 
@@ -90,7 +90,7 @@ test('every API path of the frontend hits a route', () => {
     }
     for (const [p, methoden] of direkt) {
       for (const me of methoden) {
-        if (!passt(me, p)) fehler.push(`${f}: ${me} ${p} — keine passende Route`);
+        if (!passt(me, p)) error.push(`${f}: ${me} ${p} — keine passende Route`);
       }
     }
 
@@ -102,7 +102,7 @@ test('every API path of the frontend hits a route', () => {
       const seg = p.replace(/^\/api\/?/, '').split('/')[0];
       if (!segmente.has(seg) || direkt.has(p)) continue;
       if (!['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].some(me => passt(me, p))) {
-        fehler.push(`${f}: ${p} — keine passende Route (Pfad in einer Variablen)`);
+        error.push(`${f}: ${p} — keine passende Route (Pfad in einer Variablen)`);
       }
     }
   }
@@ -115,10 +115,10 @@ test('every API path of the frontend hits a route', () => {
   );
 
   assert.deepEqual(
-    fehler,
+    error,
     [],
     'Frontend-Pfade ohne Route:\n  ' +
-      fehler.join('\n  ') +
+      error.join('\n  ') +
       '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.',
   );
 });

@@ -42,10 +42,10 @@ test('an already supplied set triggers no fetch', async t => {
     ['http', http],
     ['https', https],
   ])
-    for (const art of ['request', 'get']) {
-      const echt = modul[art];
-      t.mock.method(/** @type {any} */ (modul), art, (/** @type {any[]} */ ...a) => {
-        fetches.push(`${name}.${art}`);
+    for (const kind of ['request', 'get']) {
+      const echt = modul[kind];
+      t.mock.method(/** @type {any} */ (modul), kind, (/** @type {any[]} */ ...a) => {
+        fetches.push(`${name}.${kind}`);
         return echt.apply(modul, a);
       });
     }
@@ -64,9 +64,9 @@ test('an already supplied set triggers no fetch', async t => {
     [sn],
   );
 
-  const anzahl = await ins.loadSetInstructions(sn, null);
+  const count = await ins.loadSetInstructions(sn, null);
 
   assert.deepEqual(fetches, [], 'kein fremder Server für ein versorgtes Set');
   assert.equal(ins.lastFetchWarExtern(), false, 'Der Takt darf nach diesem Durchgang nicht warten');
-  assert.equal(anzahl, 1, 'Die vorhandene Anleitung wurde nicht gezählt');
+  assert.equal(count, 1, 'Die vorhandene Anleitung wurde nicht gezählt');
 });

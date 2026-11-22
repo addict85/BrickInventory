@@ -39,12 +39,12 @@ const SET = `7${process.pid}1-1`,
 
 /** A ZIP file with a CSV, as the ECB delivers it. */
 function zipWith(name, inhalt) {
-  return new Promise((ok, fehler) => {
+  return new Promise((ok, error) => {
     const a = new ZipArchive(),
-      teile = [];
-    a.on('data', d => teile.push(d))
-      .on('end', () => ok(Buffer.concat(teile)))
-      .on('error', fehler);
+      parts = [];
+    a.on('data', d => parts.push(d))
+      .on('end', () => ok(Buffer.concat(parts)))
+      .on('error', error);
     a.append(inhalt, { name });
     a.finalize();
   });
@@ -71,7 +71,7 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
     .listen(0);
   t.after(() => srv.close());
   const zip = await zipWith('eurofxref-hist.csv', HISTORY);
-  const lokal = url =>
+  const local = url =>
     fetch(`http://127.0.0.1:${portOf(srv)}${new URL(url).pathname}`).then(async r =>
       Buffer.from(await r.arrayBuffer()),
     );
@@ -89,8 +89,8 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
   const { reloadRates } = _req('src/finances/exchangeRates.js');
 
   await t.test('first the history, then the daily rates', async () => {
-    assert.deepEqual(await reloadRates(lokal), { quelle: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
-    assert.deepEqual(await reloadRates(lokal), { quelle: 'tag', rates: 2 });
+    assert.deepEqual(await reloadRates(local), { source: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
+    assert.deepEqual(await reloadRates(local), { source: 'tag', rates: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
     const r = await db.get(`SELECT per_eur FROM exchange_rates WHERE currency = 'CHF' AND day = '2026-01-07'`);
     assert.equal(r.per_eur, 0.96);
@@ -110,11 +110,11 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
                 VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
     [SET],
   );
-  const kauf = async (menge, preis, waehrung, am) => {
-    await record(db, uid, SET, menge, { preis, am });
+  const kauf = async (quantity, preis, currency, am) => {
+    await record(db, uid, SET, quantity, { preis, am });
     await db.run(
       `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
-      [waehrung, uid],
+      [currency, uid],
     );
   };
   await holdsSet(db, uid, SET, 0);
@@ -130,12 +130,12 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
     const pnl = await gainAndLoss(uid, [uid]);
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.purchase_price, (92.5 + 38) / 2, 'mengengewichtet über die umgerechneten Preise');
-    assert.equal(pnl.totals.kaufpreise_umgerechnet, 2);
-    assert.equal(pnl.totals.kaufpreise_fremde_waehrung, 1, 'XAU ohne Kurs bleibt draussen');
+    assert.equal(pnl.totals.converted_purchase_prices, 2);
+    assert.equal(pnl.totals.foreign_currency_purchases, 1, 'XAU ohne Kurs bleibt draussen');
     const { valueSets } = _req('src/finances/financeCalc.js');
     const b = await valueSets(uid, [uid]);
-    assert.equal(b.kaufpreise_umgerechnet, 2);
-    assert.equal(b.kaufpreise_fremde_waehrung, 1);
+    assert.equal(b.converted_purchase_prices, 2);
+    assert.equal(b.foreign_currency_purchases, 1);
   });
 
   await t.test('price history', async () => {
@@ -146,7 +146,7 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
   });
 
   await t.test('Teil', async () => {
-    await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
+    await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
     const { priceHistoryPart } = _req('src/finances/priceHistory.js');
     const v = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');

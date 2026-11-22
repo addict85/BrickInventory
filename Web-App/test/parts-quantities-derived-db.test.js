@@ -114,9 +114,9 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
 
   // What a stock row still is: THIS account has THIS part, from THAT
   // set, at THAT place, in THAT condition.
-  const teile = await columnsOf('parts');
+  const parts = await columnsOf('parts');
   for (const sp of ['id', 'user_id', 'part_number', 'color_id', 'set_number', 'source', 'storage_id']) {
-    assert.ok(teile.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
+    assert.ok(parts.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
   // Not disappeared but moved — and to TWO places, depending
@@ -243,13 +243,13 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     ['ALTER TABLE parts ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1', 'legt parts an'],
     ['ALTER TABLE minifigs ADD COLUMN quantity INTEGER DEFAULT 1', 'legt minifigs an'],
   ];
-  for (const [zeile, name] of proben) {
+  for (const [row, name] of proben) {
     const m = muster.find(([was]) => was === name)[1];
-    assert.ok(m.test(zeile), `Das Muster „${name}" greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
+    assert.ok(m.test(row), `Das Muster „${name}" greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
   }
   // And the opposite direction: what is allowed must NOT trigger. Without this
   // half a pattern that fits every line would be green too.
-  for (const zeile of [
+  for (const row of [
     'UPDATE part_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE minifig_acquisitions SET quantity = $1 WHERE id=$2',
     `INSERT INTO set_parts (set_number,part_number,color_id,quantity) VALUES ($1,$2,$3,$4)
@@ -257,7 +257,7 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     'UPDATE sets SET storage_id = $1 WHERE id=$2',
   ]) {
     for (const [was, m] of muster) {
-      assert.ok(!m.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.trim().slice(0, 70)}`);
+      assert.ok(!m.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.trim().slice(0, 70)}`);
     }
   }
 });
@@ -443,10 +443,10 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
       { part_number: '3070b', color_id: 0 },
     ],
   );
-  assert.equal(besitz['3001|4']?.gesamt, 12, 'Set-Teil: 6 × 2 Exemplare');
-  assert.equal(besitz['3001|4']?.lose, 0, 'Ein Teil im Set ist nicht lose');
-  assert.equal(besitz['3070b|0']?.gesamt, 5, 'Manuelle Position: 2 + 3');
-  assert.equal(besitz['3070b|0']?.lose, 5, 'Eine manuelle Position ist lose');
+  assert.equal(besitz['3001|4']?.total, 12, 'Set-Teil: 6 × 2 Exemplare');
+  assert.equal(besitz['3001|4']?.loose, 0, 'Ein Teil im Set ist nicht lose');
+  assert.equal(besitz['3070b|0']?.total, 5, 'Manuelle Position: 2 + 3');
+  assert.equal(besitz['3070b|0']?.loose, 5, 'Eine manuelle Position ist lose');
 
   // ── The dialog „which sets is it in?" ────────────────────────────
   //

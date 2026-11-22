@@ -108,10 +108,10 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
       ['1111', '3333'],
       'Vorbedingung: lesbar am eigenen Ort',
     );
-    const zeile = async id => db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
+    const row = async id => db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     // PIN from account a to account b, number within a from one row to another.
-    await db.run('UPDATE vouchers SET pin = $1 WHERE id = $2', [(await zeile(ga.id)).pin, gb.id]);
-    await db.run('UPDATE vouchers SET number = $1 WHERE id = $2', [(await zeile(ga.id)).number, ga2.id]);
+    await db.run('UPDATE vouchers SET pin = $1 WHERE id = $2', [(await row(ga.id)).pin, gb.id]);
+    await db.run('UPDATE vouchers SET number = $1 WHERE id = $2', [(await row(ga.id)).number, ga2.id]);
     assert.equal(await stumm(() => pinOf(b, gb.id)), null, 'PIN in fremdem Konto lesbar');
     assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'Nummer in anderer Zeile lesbar');
 
@@ -196,7 +196,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));
     await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [b, alsV1(totp)]);
-    const abdruck = idem.fingerprint('PUT', '/api/v1/x', { alt: true });
+    const abdruck = idem.fingerprint('PUT', '/api/v2/x', { alt: true });
     await db.run(
       `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'alt-1', $2, 200, $3)`,
       [a, abdruck, alsV1('{"alt":true}')],

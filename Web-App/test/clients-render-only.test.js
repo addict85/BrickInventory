@@ -36,8 +36,8 @@ test('the web app sums no money amounts itself', () => {
     const src = ohneKommentare(fs.readFileSync(path.join(dir, f), 'utf8'));
     const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${GELDFELDER})\b`, 'g');
     for (const m of src.matchAll(re)) {
-      const zeile = src.slice(0, m.index).split('\n').length;
-      const eintrag = `${f}:${zeile} summiert .${m[1]}`;
+      const row = src.slice(0, m.index).split('\n').length;
+      const eintrag = `${f}:${row} summiert .${m[1]}`;
       if (!ALLOWED.includes(eintrag)) treffer.push(eintrag);
     }
   }
@@ -55,7 +55,7 @@ test("the web app shows the server's total value", async () => {
   // Without a market price on the items the header number carries the total value; the server says 777,
   // the tables' own sum would be 0.
   const { w, d } = await openUi({
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],

@@ -38,8 +38,8 @@ test('no silent catch on an acquisition', () => {
         // The window after the call: up to the end of the statement.
         const fenster = src.slice(i, i + 400);
         if (/\)\s*\.catch\(\s*\(\s*_?\s*\)\s*=>\s*\{\s*\}\s*\)/.test(fenster)) {
-          const zeile = src.slice(0, i).split('\n').length;
-          violations.push(`${path.relative(ROOT, datei)}:${zeile}`);
+          const row = src.slice(0, i).split('\n').length;
+          violations.push(`${path.relative(ROOT, datei)}:${row}`);
         }
       }
     }
