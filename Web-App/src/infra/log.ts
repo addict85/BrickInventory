@@ -1,6 +1,7 @@
 /** Every console line as a JSON line for Docker and log collectors, and additionally into
  * app_logs for the admin. Report write errors there at most once per
  * minute. */
+import { format } from 'node:util';
 import * as logs from './repository/appLogs';
 import { processWide } from './processWide';
 
@@ -66,6 +67,14 @@ function logText(a: unknown): string {
 const isContext = (a: unknown): a is Record<string, unknown> =>
   typeof a === 'object' && a !== null && !Array.isArray(a) && !(a instanceof Error);
 
+/** One call stays one line in app_logs and its viewer: a line break from a request or a foreign
+ * response would otherwise fake a second entry. Here once, instead of at every call. */
+export function oneLine(s: string): string {
+  return s.replace(/\r?\n/g, ' ⏎ ').replace(/[\r\n]/g, '');
+}
+
+const PLACEHOLDER = /%[sdifjoOc%]/;
+
 export function split(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
   const parts = [...args];
   let kontext: Record<string, unknown> | undefined;
@@ -76,10 +85,13 @@ export function split(args: unknown[]): { nachricht: string; kontext?: Record<st
   }
   const error = parts.find((t): t is Error => t instanceof Error);
   if (error) kontext = { ...kontext, fehler: { name: error.name, message: error.message, stack: error.stack } };
-  const nachricht = parts
-    .map(t => (t instanceof Error ? t.message : logText(t)))
-    .join(' ')
-    .substring(0, MAX_TEXT);
+  const plain = parts.map(t => (t instanceof Error ? t.message : t));
+  // As console does it: placeholders in the first text take the following values.
+  const text =
+    plain.length > 1 && typeof plain[0] === 'string' && PLACEHOLDER.test(plain[0])
+      ? format(...plain)
+      : plain.map(logText).join(' ');
+  const nachricht = oneLine(text).substring(0, MAX_TEXT);
   return kontext ? { nachricht, kontext } : { nachricht };
 }
 

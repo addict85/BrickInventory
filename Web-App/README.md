@@ -194,6 +194,33 @@ abbrechen, wiederholen oder vorziehen. Ohne Compose (`npm start`) gilt
 `ROLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit
 Cluster beschreibt UPGRADE.md, Abschnitt 15.
 
+Mehrere `app`-Prozesse auf derselben Datenbank sind erlaubt (etwa
+`docker compose up --scale app=2` hinter einem Lastverteiler): Anfragebudget,
+PDF-Tickets und Anmeldebremsen zählen in PostgreSQL, Zwischenspeicher leeren
+sich über `LISTEN/NOTIFY` in allen Prozessen (UPGRADE.md, Abschnitt 71).
+
+### Metriken und Protokoll
+Jeder Prozess zählt im Prometheus-Textformat: HTTP-Antworten je Routenmuster
+und Status samt Dauer (`http_requests_total`, `http_request_duration_seconds`),
+Auftragsläufe und Warteschlange (`jobs_runs_total`, `job_duration_seconds`,
+`jobs_queue`, `jobs_heartbeat_age_seconds`), Verbindungspools
+(`db_pool_connections`) und Abrufe bei Rebrickable, BrickLink, Brickset, EZB …
+(`external_requests_total`, `external_request_duration_seconds`).
+
+- `app` liefert sie unter `/metrics`. Caddy gibt den Pfad nicht nach aussen
+  (404). Ohne `METRICS_TOKEN` antwortet er nur einem Aufruf vom selben Rechner
+  ohne Proxy, mit Token nur mit `Authorization: Bearer <Token>` – so fragt ein
+  Prometheus im Docker-Netz `http://app:3000/metrics` ab.
+- `jobs` hat keinen HTTP-Server; mit `METRICS_PORT` (z. B. 9464) öffnet er nur
+  `/metrics` darauf, mit denselben Regeln.
+
+Das Protokoll ist eine JSON-Zeile je Meldung (`zeit`, `stufe`, `nachricht`,
+`pid`, `rid`, `kontext`) auf stdout/stderr, daneben in `app_logs` für
+„Monitoring → Protokoll“. `rid` ist die Kennung der Anfrage: Caddy setzt
+`X-Request-Id`, die App übernimmt sie (sonst eine eigene), schickt sie in jeder
+Antwort zurück und nennt sie in Fehlerantworten als `request_id`. Ein
+Zeilenumbruch in einer Meldung wird zu `⏎`: Eine Meldung bleibt ein Eintrag.
+
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Jeder Prozess hält höchstens 15 Verbindungen,
 `app` und `jobs` zusammen also 30. Nur wenn die PostgreSQL-Instanz ein

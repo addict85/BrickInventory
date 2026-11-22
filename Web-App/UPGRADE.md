@@ -2504,7 +2504,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
 
 <a id="mehrere-web-prozesse"></a>
 
-## 71. Mehrere Web-Prozesse je Datenbank (Migration 0135)
+## 71. Mehrere Web-Prozesse je Datenbank, Metriken (Migration 0135)
 
 - Anfragebudget je Konto und PDF-Tickets liegen jetzt in PostgreSQL (`api_budget`,
   `pdf_tickets`, beide mit Zeilenschutz). Die Sperre „genau ein Web-Prozess“ aus
@@ -2515,4 +2515,10 @@ Daten, keine Bezeichner, und bleiben unverändert.
   Ströme) schützt den Speicher des einzelnen Prozesses, die CSP-Berichtsdrossel dessen
   Protokoll. Token-, Sitzungsversions- und Haushaltszwischenspeicher werden über
   `LISTEN/NOTIFY` in allen Prozessen geleert.
+- **Metriken** im Prometheus-Format unter `/metrics` (HTTP, Aufträge, Pools, Abrufe nach
+  draussen; README.md, „Metriken und Protokoll“). Caddy gibt den Pfad nicht nach aussen.
+  Wer ihn aus dem Docker-Netz abfragen will, setzt `METRICS_TOKEN` in `.env`; für den
+  `jobs`-Dienst zusätzlich `METRICS_PORT`. Ohne beides ändert sich nichts.
+- **Fehlerantworten** tragen neu `request_id` (gleich dem Kopf `X-Request-Id`); App und
+  Oberfläche lesen weiter nur `code`.
 - Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.

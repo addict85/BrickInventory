@@ -49,6 +49,10 @@ export interface AppConfig {
   dbSuperuserAllowed: boolean;
   port: number;
   hstsMaxAge: number;
+  /** Without one, /metrics answers only to a loopback client that did not come through a proxy. */
+  metricsToken: string | undefined;
+  /** Only the jobs-only process opens it, for /metrics alone; null: none. */
+  metricsPort: number | null;
   trustProxy: string | undefined;
   /** A network spanning more than eight addresses in TRUST_PROXY is intended (src/infra/proxyTrust.ts). */
   proxyNetworkConfirmed: boolean;
@@ -142,6 +146,8 @@ export const VARIABLES = [
   'NODE_ENV',
   'PORT',
   'HSTS_MAX_AGE',
+  'METRICS_TOKEN',
+  'METRICS_PORT',
   'TRUST_PROXY',
   'PROXY_NETWORK_CONFIRMED',
   'SESSION_SECRET',
@@ -432,6 +438,8 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     dbSuperuserAllowed: flag(env, 'DB_SUPERUSER_ALLOWED', f) === true,
     port: integer(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: integer(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
+    metricsToken: env.METRICS_TOKEN?.trim() || undefined,
+    metricsPort: env.METRICS_PORT?.trim() ? integer(env, 'METRICS_PORT', 9464, 1, 65535, f) : null,
     trustProxy: env.TRUST_PROXY,
     proxyNetworkConfirmed: flag(env, 'PROXY_NETWORK_CONFIRMED', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,

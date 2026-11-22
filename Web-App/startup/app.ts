@@ -33,6 +33,7 @@ import { registerImgProxy } from '../routes/imgProxy';
 import { guardFor, readBody } from '../routes/api_v1/middleware';
 import { stepProtectionAtInbox } from '../src/account/http/stepGuard';
 import { apiThrottle } from '../src/http/apiThrottle';
+import { httpMetrics, metricsEndpoint } from '../src/http/metrics';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/dataFiles';
 import { buildApiRouter } from '../routes/api_v1/index';
@@ -80,6 +81,16 @@ export function buildApp({
 }
 
 function baselineProtection(app: express.Express, k: AppConfig): void {
+  // First of all: every response, even a 421 of the host filter, carries the identifier and is counted.
+  // The proxy's identifier only if it passes src/infra/log.ts.
+  app.use((req, res, next) => {
+    const rid = requestId(req.headers['x-request-id']);
+    res.setHeader('X-Request-Id', rid);
+    requestContext.run({ rid }, () => next());
+  });
+  app.use(httpMetrics);
+  // Before the host filter: a scraper asks by container name, which is no public host.
+  app.use(metricsEndpoint(k.metricsToken));
   // Gzip/Brotli for everything from 1 KB; index.html shrinks by about 80 %.
   app.use(
     compression({
@@ -137,13 +148,6 @@ function baselineProtection(app: express.Express, k: AppConfig): void {
     },
     checkAppVersion,
   );
-
-  // One identifier per request for its log lines; the proxy's only if it passes src/infra/log.ts.
-  app.use((req, res, next) => {
-    const rid = requestId(req.headers['x-request-id']);
-    res.setHeader('X-Request-Id', rid);
-    requestContext.run({ rid }, () => next());
-  });
 }
 
 const securityHeaders =

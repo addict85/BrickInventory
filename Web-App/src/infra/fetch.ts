@@ -6,6 +6,39 @@ import { PassThrough, type Readable } from 'node:stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'node:http';
 import { hostAllowed, nextRedirect, REDIRECT_LIMIT } from './foreignAddresses';
 import { publicLookup } from './targetAddress';
+import { counter, histogram } from './metrics';
+
+const externalCalls = counter(
+  'external_requests_total',
+  'Requests to external services by host and outcome (status class or error reason).',
+);
+const externalTime = histogram('external_request_duration_seconds', 'Time to the response head, by host.');
+
+/** Only a host of the call's own list becomes a label: a foreign one comes from outside and is unbounded. */
+function measured<T extends FetchHeader>(url: string, o: FetchOptions, p: Promise<T>): Promise<T> {
+  const start = process.hrtime.bigint();
+  let host = 'other';
+  try {
+    const h = new URL(url).host;
+    if (o.hosts.includes(h)) host = h;
+  } catch {
+    host = 'invalid';
+  }
+  const record = (outcome: string) => {
+    externalCalls.inc({ host, outcome });
+    externalTime.observe({ host }, Number(process.hrtime.bigint() - start) / 1e9);
+  };
+  return p.then(
+    r => {
+      record(`${Math.floor(r.status / 100)}xx`);
+      return r;
+    },
+    (e: unknown) => {
+      record(e instanceof FetchError ? e.grund : 'netz');
+      throw e;
+    },
+  );
+}
 
 export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
 
@@ -167,7 +200,11 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
 }
 
 /** Whole response into memory — for API responses and small images. */
-export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> {
+export function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> {
+  return measured(url, o, fetchWhole(url, o));
+}
+
+async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> {
   const { antwort: r, url: end, frist, abbrechen } = await run(url, o);
   return new Promise((finished, fail) => {
     const parts: Buffer[] = [];
@@ -201,7 +238,11 @@ export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResp
 }
 
 /** Only the head; the body as a limited stream — for files and the image proxy. */
-export async function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
+export function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
+  return measured(url, o, openLimited(url, o));
+}
+
+async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
   const { antwort: r, url: end, frist, abbrechen } = await run(url, o);
   return {
     status: r.statusCode ?? 0,

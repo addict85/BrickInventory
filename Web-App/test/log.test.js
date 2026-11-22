@@ -12,6 +12,8 @@
  *      JSON with time, level, message, request and context”
  *   D  in anfrageKennung() the filter removed (every string taken over)
  *      → red: “X-Request-Id: only harmless identifiers …”
+ *   E  (22.11.2026) oneLine() returns its text unchanged → red: “a line break stays in one
+ *      entry …”; format() left out → red: the same check (placeholders stay)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,6 +54,26 @@ test('a line is JSON with time, level, message, request and context', t => {
   assert.equal(fehler.nachricht, 'kaputt Verbindung weg');
   assert.equal(fehler.kontext.fehler.message, 'Verbindung weg');
   assert.match(fehler.kontext.fehler.stack, /log\.test\.js/);
+});
+
+test('a line break stays in one entry; placeholders take the values', async t => {
+  const { m, output } = transcript();
+  t.after(P.installLog(output));
+  const geschrieben = [];
+  P.logToDatabase({
+    query: async (sql, werte) => {
+      if (sql.startsWith('INSERT')) geschrieben.push(werte);
+    },
+  });
+  // As a request could send it: a forged second entry in the path.
+  console.warn('[route] %s %d:', 'GET /x\n[route] gefälscht\r\n', 404, { ok: 1 });
+  console.log('ohne Platzhalter', 'a\rb');
+  await P.emptyLog();
+  const json = JSON.parse(m.err[0]);
+  assert.equal(json.nachricht, '[route] GET /x ⏎ [route] gefälscht ⏎  404:');
+  assert.deepEqual(json.kontext, { ok: 1 });
+  assert.equal(JSON.parse(m.out[0]).nachricht, 'ohne Platzhalter ab');
+  for (const [, text] of geschrieben) assert.doesNotMatch(text, /[\r\n]/, text);
 });
 
 test('app_logs gets the lines in the previous text format', async t => {

@@ -105,11 +105,7 @@ export async function previewFrom(localPath: string) {
     return thumbWeb;
   } catch (e) {
     // Do NOT fail silently.
-    console.error(
-      `[thumb] Vorschau fehlgeschlagen für ${localPath}: ${errorMessage(e)}`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${errorMessage(e)}`);
     try {
       const rest = fs
         .readdirSync(path.dirname(fsPath))

@@ -16,7 +16,7 @@ const PART_CAT_KEY = 'rb_part_categories_last_sync';
 const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 
 function log(msg: string) {
-  console.log(`[rb-csv-sync] ${msg}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  console.log(`[rb-csv-sync] ${msg}`);
 }
 
 /** The import runs in a process of its own; its entry point is execution and lives in jobs/,

@@ -36,9 +36,7 @@ const BASE = 'https://rebrickable.com/api/v3';
 export type RbSetTeil = z.output<typeof RbSetTeilSchema>;
 const SetPartPage = rbPage(RbSetTeilSchema);
 
-/**
- * The Rebrickable key — from the central settings read.
- */
+/** The Rebrickable key from the central settings. */
 async function getRbKey(kl: Rb): Promise<string | null> {
   return (await kl.zugang.schluessel('rebrickable_api_key')) || null;
 }
@@ -62,18 +60,13 @@ export function parseThrottleWait(body: string) {
   return 5000;
 }
 
-/**
- * A GET against the Rebrickable API with daily quota and throttle. Every
- * failure (no key, quota, network, status) is null: the callers then
- * search further on the next path.
- */
+/** A GET with daily quota and throttle. Every failure (no key, quota, network, status) is
+ * null: the callers then search on the next path. */
 async function rebrickableJson<T extends z.ZodType>(kl: Rb, path: string, schema: T): Promise<z.output<T> | null> {
   const key = await getRbKey(kl);
   if (!key) return null;
   if (!(await dailyQuotaFree(kl))) {
-    console.log(
-      `[rebrickable] Tageslimit erreicht — ${path} übersprungen`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    console.log(`[rebrickable] Tageslimit erreicht — ${path} übersprungen`);
     return null;
   }
   await kl.zugang.drossel.foreground.waitForSlot();
@@ -119,7 +112,7 @@ async function httpsGetRobust(
     }
     if (r.status === 429) {
       const wait = parseThrottleWait(r.koerper.toString('utf-8'));
-      console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`);
       kl.zugang.drossel.foreground.throttle(wait);
       if (attempt < 3) {
         await sleep(wait);
@@ -197,10 +190,8 @@ async function holeSet(kl: Rb, number: string) {
   return rbGet(kl, `/lego/sets/${pathSegment(number)}/`, RbSet);
 }
 
-/**
- * The part list of a set through the API, page by page. `verweigert`: Rebrickable
- * answered 403 (set unknown or no access) — the caller should notice that.
- */
+/** The part list page by page. `verweigert`: Rebrickable answered 403 (set unknown or no
+ * access) — the caller should notice that. */
 async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; verweigert: boolean }> {
   const key = await getRbKey(kl);
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
@@ -210,9 +201,7 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
   while (url && pages++ < 40) {
     if (!(await dailyQuotaFree(kl))) {
       console.error(
-        `[rebrickable] Tageslimit (${(await kl.zugang.quotaStatus('rebrickable')).limit}/Tag) erreicht — ${n} übersprungen`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
+        `[rebrickable] Tageslimit (${(await kl.zugang.quotaStatus('rebrickable')).limit}/Tag) erreicht — ${n} übersprungen`,
       );
       break;
     }
@@ -221,20 +210,16 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
     try {
       ({ status, body } = await httpsGetRobust(kl, url, { Authorization: `key ${key}` }, 60000));
     } catch (e) {
-      console.error(`  Parts page ${pages} failed: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.error(`  Parts page ${pages} failed: ${errorMessage(e)}`);
       break;
     }
     if (status === 403) {
-      console.log(
-        `  Parts HTTP 403 for ${n} — set not found or access denied, skipping`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
       return { teile: allParts, verweigert: true };
     }
     if (status === 404) break;
     if (status !== 200) {
-      console.error(`  Parts HTTP ${status}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.error(`  Parts HTTP ${status}`);
       break;
     }
     let data: z.output<typeof SetPartPage>;
@@ -248,11 +233,7 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
     // Otherwise a foreign `next` would receive the key.
     url = data.next && hostAllowed(String(data.next), ALLOWED_REBRICKABLE_HOSTS) ? data.next : null;
     if (data.next && !url)
-      console.error(
-        `  Parts page ${pages}: next zeigt auf einen fremden Host, ${n} bleibt unvollständig`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.error(`  Parts page ${pages}: next zeigt auf einen fremden Host, ${n} bleibt unvollständig`);
     if (url) await sleep(500);
   }
   return { teile: allParts, verweigert: false };
@@ -282,10 +263,8 @@ async function scrapeInstructions(kl: Rb, setNumber: string) {
   return found;
 }
 
-/**
- * Upper limit per file. A building instruction rarely exceeds 150 MB; without a limit
- * a server that sends endlessly would fill the disk. Aborted within the stream.
- */
+/** Upper limit per file (an instruction rarely exceeds 150 MB): a server that sends endlessly
+ * would otherwise fill the disk. Aborted within the stream. */
 export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
 
 /** `anfang`: what the file must start with (instructions: `%PDF-`), otherwise it does not land in the shared cache. */
@@ -307,7 +286,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
       },
     });
   } catch (e) {
-    console.warn(`[download] ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[download] ${errorMessage(e)}`);
     return false;
   }
   if (reply.status !== 200) {
@@ -317,7 +296,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
   try {
     await pipeline(reply.strom(), fs.createWriteStream(destPath));
   } catch (e) {
-    console.warn(`[download] Abgebrochen: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[download] Abgebrochen: ${errorMessage(e)}`);
     await fs.promises.rm(destPath, { force: true });
     return false;
   }
@@ -326,9 +305,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
     return false;
   }
   if (start && !(await beginsWith(destPath, start))) {
-    console.warn(
-      `[download] Anfang der Datei passt nicht, verworfen: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    console.warn(`[download] Anfang der Datei passt nicht, verworfen: ${url}`);
     await fs.promises.rm(destPath, { force: true });
     return false;
   }
@@ -371,7 +348,7 @@ async function getSetMinifigs(kl: Rb, setNumber: string) {
       image_url: m.set_img_url || null,
     }));
   } catch (e) {
-    console.log(`  Minifigs fetch failed for ${n}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.log(`  Minifigs fetch failed for ${n}: ${errorMessage(e)}`);
     return [];
   }
 }
@@ -411,9 +388,7 @@ async function fetchMinifigParts(
   if (!key) return null;
   if (!(await dailyQuotaFree(kl))) {
     console.error(
-      `[rebrickable] Tageslimit (${(await kl.zugang.quotaStatus('rebrickable')).limit}/Tag) erreicht — Minifig-Teile für ${figNumber} übersprungen`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
+      `[rebrickable] Tageslimit (${(await kl.zugang.quotaStatus('rebrickable')).limit}/Tag) erreicht — Minifig-Teile für ${figNumber} übersprungen`,
     );
     return null;
   }
@@ -481,9 +456,6 @@ async function lookupPart(kl: Rb, partNumber: string, colorId?: number | null) {
 
 // BrickLink → Rebrickable for wanted lists; otherwise the tree goes the other way (external_ids).
 
-/**
- * Does this Rebrickable part carry the BrickLink number we look for?
- */
 /** The first BrickLink number of a part; Rebrickable returns them as a list. */
 function firstBlNumber(ext: Record<string, unknown> | null | undefined): string | null {
   const bl = ext?.BrickLink;
@@ -501,21 +473,14 @@ function carriesBlNumber(teil: unknown, blId: string): boolean {
   return list.some(x => String(x).toLowerCase() === blId.toLowerCase());
 }
 
-/**
- * Map a BrickLink part number to a Rebrickable number.
- *
- * @returns the Rebrickable number, or null if none could be PROVEN.
- */
+/** A BrickLink part number as Rebrickable number; null unless the mapping is proven. */
 async function blPartToRb(kl: Rb, blId: string): Promise<string | null> {
-  // ── Path 1: check the number against itself ─────────────────────────────
-  //
-  // For most parts both services use the same number. Then
-  // /lego/parts/{nr}/ returns the hit, and external_ids confirms it —
-  // a GUESS ("the numbers are probably equal") becomes a mapping.
+  // Path 1: most parts carry the same number in both services; external_ids turns that guess
+  // into a mapping.
   const direct = await rbGet(kl, `/lego/parts/${pathSegment(blId)}/`, RbTeil);
   if (direct && carriesBlNumber(direct, blId)) return String(direct.part_num);
 
-  // ── Path 2: the filter, with a cross-check ──────────────────────────────
+  // Path 2: the filter, with a cross-check.
   if (kl.filterWirkungslos) return null;
   const filtered = await rbGet(kl, '/lego/parts/', rbPage(RbTeil), { bricklink_id: blId, page_size: 20 });
   if (!filtered) return null;

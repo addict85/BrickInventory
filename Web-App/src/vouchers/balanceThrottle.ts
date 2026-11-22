@@ -94,16 +94,12 @@ export async function checkBalanceThrottled(
   } catch (e) {
     if (e instanceof BotProtection) {
       const wartenSek = await lockForBotProtection(k);
-      console.warn(
-        `[guthaben] bot protection — ${BOT_PROTECTION_PAUSE_MIN} minutes pause: ${e.message}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.warn(`[guthaben] bot protection — ${BOT_PROTECTION_PAUSE_MIN} minutes pause: ${e.message}`);
       return { art: 'gesperrt', grund: 'botschutz', wartenSek };
     }
     // An error from the other side is not a server error: whoever asked should read the reason.
     const grund = redact(String((e as Error)?.message || e), number, pin);
-    console.warn(`[guthaben] lookup failed: ${grund}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[guthaben] lookup failed: ${grund}`);
     throw new DomainError('fremddienst', 'guthaben_fehlgeschlagen', { grund });
   }
 }

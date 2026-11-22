@@ -17,7 +17,7 @@ function continueDespiteError(context: string, e: unknown) {
 
 function logWarning(context: string, e: unknown) {
   const raw = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
-  console.warn(`[weiter-trotz-fehler] ${context}: ${String(raw)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  console.warn(`[weiter-trotz-fehler] ${context}: ${String(raw)}`);
 }
 
 /** With a substitute value, where the caller keeps computing. */
@@ -37,9 +37,7 @@ export function checkFallbackInTransaction(context: string, e: unknown): void {
   if (!tx?.verdirbt(e)) return;
   if (isDatabaseError(e)) throw e;
   if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${context}): ${errorMessage(e)}`, { cause: e });
-  console.error(
-    `[ersatz-in-transaktion] ${context}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-  );
+  console.error(`[ersatz-in-transaktion] ${context}: ${errorMessage(e)}`);
 }
 
 /** An error of the server (pg.DatabaseError) carries SQLSTATE and severity. */

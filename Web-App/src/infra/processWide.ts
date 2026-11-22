@@ -23,6 +23,7 @@ export const REASONS = {
   zugangsHoerer: 'offene Ströme dieses Prozesses horchen auf das Ende ihres Zugangs',
   attestationWurzeln: 'Zertifikatswurzeln aus der Konfiguration, gleich für jeden Zugang',
   indexHtml: 'index.html liegt einmal auf der Platte; das Design wird kurz gemerkt, statt je Seite zu fragen',
+  metrics: 'counters and series of this process: every process is scraped on its own (/metrics)',
   platzhalterBild: 'Inhalt einer Datei aus public/, für jeden Zugang derselbe und beim Blättern dutzendfach gebraucht',
 } as const;
 

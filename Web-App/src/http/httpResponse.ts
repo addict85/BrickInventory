@@ -15,7 +15,15 @@ import {
   type ErrorCode,
 } from '../infra/errorTexts';
 import { errorMessage } from '../infra/error';
+import { requestContext } from '../infra/accountContext';
 import { STATUS_THE_KIND, statusOf } from './errorKind';
+
+/** The request's identifier (X-Request-Id) in the body as well: a screenshot of the error
+ * then leads to its log lines. */
+function withRequestId<T extends object>(body: T): T & { request_id?: string } {
+  const rid = requestContext.getStore()?.rid;
+  return rid ? { ...body, request_id: rid } : body;
+}
 
 export interface ErrorTarget {
   headersSent: boolean;
@@ -37,11 +45,9 @@ export function sendError(
   code: ErrorCode,
   vars?: Record<string, string | number>,
 ): void {
-  res.status(STATUS_THE_KIND[art]).json({
-    success: false,
-    error: errorText(code, responseLanguage(req), vars),
-    code,
-  });
+  res
+    .status(STATUS_THE_KIND[art])
+    .json(withRequestId({ success: false, error: errorText(code, responseLanguage(req), vars), code }));
 }
 
 interface Thrown {
@@ -69,18 +75,22 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   // Helpers throw the REASON (code); only here does it become a sentence in the
   // requester's language.
   if (typeof e?.code === 'string' && e.code in ERRORS) {
-    res.status(code).json({
-      ...(e instanceof DomainError ? e.extra : undefined),
-      success: false,
-      code: e.code,
-      error: errorText(e.code as ErrorCode, responseLanguage(req), e.vars),
-    });
+    res.status(code).json(
+      withRequestId({
+        ...(e instanceof DomainError ? e.extra : undefined),
+        success: false,
+        code: e.code,
+        error: errorText(e.code as ErrorCode, responseLanguage(req), e.vars),
+      }),
+    );
     return;
   }
   // A library's text names parsers, paths or bytes; it stays in the log.
   if (!isServerError) {
     const ersatz: ErrorCode = code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
-    res.status(code).json({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) });
+    res
+      .status(code)
+      .json(withRequestId({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) }));
     return;
   }
   // Every error response carries a code so that the apps do not guess from the sentence.
@@ -88,7 +98,7 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   const key: ErrorCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
   const message =
     isServerError && konfig().operation ? errorText('interner_fehler', responseLanguage(req)) : errorMessage(e);
-  res.status(code).json({ success: false, code: key, error: message });
+  res.status(code).json(withRequestId({ success: false, code: key, error: message }));
 }
 
 /** SQLSTATE of the integrity rules → response. The log still names the violated rule. */

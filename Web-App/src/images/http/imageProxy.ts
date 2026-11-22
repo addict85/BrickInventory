@@ -89,11 +89,7 @@ async function fromCdn(
     if (time) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = errorMessage(e);
-    console.error(
-      `[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${errorMessage(e)}`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.error(`[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${errorMessage(e)}`);
     if (await ersatz()) return null;
     if (!res.headersSent) res.status(time ? 504 : 502).end();
     return null;
@@ -109,8 +105,8 @@ async function fromCdn(
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
     // 404 is information, not an error: as `error` it would clog the log.
     const message = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(message.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-    else console.error(message.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    if (r.status === 404) console.info(message);
+    else console.error(message);
     if (await ersatz()) return null;
     void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
     return null;
@@ -162,9 +158,7 @@ function intoCache(
     fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `${grund}: ${url}`;
-    console.error(
-      `[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    console.error(`[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`);
   };
   // The decompressed stream counts: compressed data must not grow arbitrarily either.
   body.on('data', (chunk: Buffer) => {
@@ -187,11 +181,7 @@ function intoCache(
       // Only complete: a truncated one would go out with 200 permanently.
       const st = await fs.promises.stat(tmpFile);
       if (!enc && expected > 0 && st.size !== expected) {
-        console.error(
-          `[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`
-            .replace(/\r?\n/g, ' ⏎ ')
-            .replace(/\n|\r/g, ''),
-        );
+        console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
         await fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
         return;
       }
@@ -226,7 +216,7 @@ function unpacked(raw: Readable, enc: string, res: Response, url: string, expect
     body = raw.pipe(dec);
     // The announced length applies to the compressed body.
     res.removeHeader('Content-Length');
-    console.log(`[img-proxy] entpacke ${enc}: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.log(`[img-proxy] entpacke ${enc}: ${url}`);
   }
   let sentToClient = 0;
   body.on('data', (c: Buffer) => {
@@ -236,11 +226,7 @@ function unpacked(raw: Readable, enc: string, res: Response, url: string, expect
     if (!enc && expected > 0 && sentToClient !== expected) {
       imgProxyFailures.other++;
       imgProxyFailures.lastError = `Länge weicht ab: ${sentToClient}/${expected} — ${url}`;
-      console.error(
-        `[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.error(`[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`);
     }
   });
   return body;
@@ -408,7 +394,7 @@ function forward(
     r.verwerfen();
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `Kein Bild (${mime}) — ${url}`;
-    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`);
     return res.status(415).end();
   }
 
@@ -442,11 +428,7 @@ function forward(
   // Abort while scrolling: the CDN connection must go back to the pool immediately.
   res.on('close', () => {
     if (res.writableFinished || !res.destroyed) return;
-    console.log(
-      `[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.log(`[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`);
     raw.destroy();
   });
 

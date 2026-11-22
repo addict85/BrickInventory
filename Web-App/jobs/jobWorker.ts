@@ -14,6 +14,7 @@ import {
 } from '../src/jobQueue';
 import { errorMessage, logAndContinue, reportError } from '../src/infra/error';
 import { DEFAULT } from '../src/infra/config';
+import { counter, histogram } from '../src/infra/metrics';
 
 export type { Handler as Bearbeiter } from '../src/jobQueue';
 
@@ -98,6 +99,9 @@ function contextFor(
   };
 }
 
+const jobRuns = counter('jobs_runs_total', 'Finished job runs by kind and result.');
+const jobDuration = histogram('job_duration_seconds', 'Duration of a job run by kind and result.');
+
 async function runJobFrom(
   d: JobsServices,
   a: JobRow,
@@ -109,6 +113,8 @@ async function runJobFrom(
   let payload: Payload<JobKind> | undefined;
   const k = contextFor(d, a, ac, deadlineSec, isEnded);
   const release = holdLease(d, a, ac, deadlineSec);
+  const start = process.hrtime.bigint();
+  let result = 'ok';
   try {
     // More attempts than allowed: the earlier ones crashed, another one probably would too.
     if (!b || a.attempts > a.max_attempts)
@@ -118,9 +124,12 @@ async function runJobFrom(
     await d.inNamesOfJob(a, () => b.ausfuehren(checked, k, a));
     if (await d.done(a)) await followUpPlan(d, a);
   } catch (e) {
+    result = e instanceof JobMove ? 'moved' : ac.signal.aborted ? 'interrupted' : 'error';
     await afterError(d, a, b, payload, ac, e);
   } finally {
     release();
+    jobRuns.inc({ type: a.type, result });
+    jobDuration.observe({ type: a.type, result }, Number(process.hrtime.bigint() - start) / 1e9);
   }
 }
 

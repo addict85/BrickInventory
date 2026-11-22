@@ -57,11 +57,7 @@ export async function readableImage(filePath: string) {
     // An empty or truncated file is not an image: otherwise the fallback
     // "unknown format" would let it through.
     if (bytesRead < 10) {
-      console.warn(
-        `[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`);
       return false;
     }
     const dim = imageSize(buf.subarray(0, bytesRead));
@@ -72,9 +68,7 @@ export async function readableImage(filePath: string) {
     const pixels = dim.width * dim.height;
     if (pixels > MAX_PIXELS) {
       console.error(
-        `[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
+        `[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`,
       );
       return false;
     }

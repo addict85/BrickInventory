@@ -75,20 +75,15 @@ function checkStatus(status: number, body: string, label: string) {
   if (status === 429) {
     // Distinguish Cloudflare 1015 from Brickset daily quota
     if (body?.includes('1015')) {
-      console.log(
-        `  Brickset Cloudflare rate limit (1015) for ${label} — retry in 5 min`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.log(`  Brickset Cloudflare rate limit (1015) for ${label} — retry in 5 min`);
       const err = Object.assign(new Error(`Cloudflare rate limit (1015) for ${label}`), { isCloudflare: true });
       throw err;
     }
-    console.log(`  Brickset 429 (rate limit) for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.log(`  Brickset 429 (rate limit) for ${label}`);
     throw new BricksetQuotaError();
   }
   // Every other status goes to the log: otherwise a 502 would look as if the queue did nothing.
-  if (status !== 200)
-    console.log(`  Brickset HTTP ${status} for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  if (status !== 200) console.log(`  Brickset HTTP ${status} for ${label}`);
   return status === 200;
 }
 
@@ -99,18 +94,10 @@ async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: stri
   if (!r.ok) return false;
   const { versuch, vorgemerkt, hoechstens } = r.wert;
   if (!vorgemerkt) {
-    console.log(
-      `[brickset] ${setNumber}: ${hoechstens} quota retries exceeded — removed from queue, using fallback`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.log(`[brickset] ${setNumber}: ${hoechstens} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
-  console.log(
-    `[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${hoechstens}): ${errorMsg || 'Quota exceeded'}`
-      .replace(/\r?\n/g, ' ⏎ ')
-      .replace(/\n|\r/g, ''),
-  );
+  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${hoechstens}): ${errorMsg || 'Quota exceeded'}`);
   return true;
 }
 
@@ -137,11 +124,7 @@ async function fromRetryQueue(kl: ClientsAccess, setNumber: string) {
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(kl: ClientsAccess, setNumber: string) {
   await attempts('brickset:wiedervorlage', fromRetryQueue(kl, setNumber));
-  console.log(
-    `[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`
-      .replace(/\r?\n/g, ' ⏎ ')
-      .replace(/\n|\r/g, ''),
-  );
+  console.log(`[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`);
 }
 
 async function setDetails(kl: ClientsAccess, setNumber: string) {
@@ -179,17 +162,11 @@ async function setDetails(kl: ClientsAccess, setNumber: string) {
       // Timeout / network error is transient (Brickset currently slow/not
       // reachable) → KEEP it in the retry queue instead of giving up for good.
       await enqueueRetry(kl, n, errorMessage(e), true);
-      console.log(
-        `  Brickset setAngaben transient error for ${n}: ${errorMessage(e)} — für Retry heute eingereiht`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.log(`  Brickset setAngaben transient error for ${n}: ${errorMessage(e)} — für Retry heute eingereiht`);
       return null;
     }
     await removeFromQueue(kl, n);
-    console.log(
-      `  Brickset setAngaben failed for ${n}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    console.log(`  Brickset setAngaben failed for ${n}: ${errorMessage(e)}`);
     return null;
   }
 }
@@ -207,11 +184,7 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
     if (status === 429) checkStatus(status, body, n);
     if (status !== 200) {
       const errMsg = `HTTP ${status}: ${excerpt(body, 300)}`;
-      console.log(
-        `  Brickset getInstructions HTTP ${status} for ${n}: ${excerpt(body)}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.log(`  Brickset getInstructions HTTP ${status} for ${n}: ${excerpt(body)}`);
       if (status >= 500) {
         await enqueueRetry(kl, n, errMsg, true);
         return { instructions: [], usesFallback: false };
@@ -240,20 +213,12 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
       // do NOT switch to the fallback sources right away (usesFallback=false)
       // while a retry is pending.
       const requeued = await enqueueRetry(kl, n, errorMessage(e));
-      console.log(
-        `  Brickset getInstructions transient error for ${n}: ${errorMessage(e)} — für Retry eingereiht`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
+      console.log(`  Brickset getInstructions transient error for ${n}: ${errorMessage(e)} — für Retry eingereiht`);
       return { instructions: [], usesFallback: !requeued };
     }
     await removeFromQueue(kl, n);
     const detail = f.detail ? ` | response: ${excerpt(JSON.stringify(f.detail), 300)}` : '';
-    console.log(
-      `  Brickset getInstructions failed for ${n}: ${errorMessage(e)}${detail}`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.log(`  Brickset getInstructions failed for ${n}: ${errorMessage(e)}${detail}`);
     return { instructions: [], usesFallback: true };
   }
 }
@@ -283,14 +248,10 @@ async function findSetByQuery(kl: ClientsAccess, query: string, origin: string) 
   } catch (e) {
     const f = asFetchError(e);
     if (f.isQuota) {
-      console.log(`[brickset] Quota exceeded for ${origin} ${query}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.log(`[brickset] Quota exceeded for ${origin} ${query}`);
       return null;
     }
-    console.log(
-      `[brickset] ${origin}-Suche für ${query} fehlgeschlagen: ${errorMessage(e)}`
-        .replace(/\r?\n/g, ' ⏎ ')
-        .replace(/\n|\r/g, ''),
-    );
+    console.log(`[brickset] ${origin}-Suche für ${query} fehlgeschlagen: ${errorMessage(e)}`);
     return null;
   }
 }

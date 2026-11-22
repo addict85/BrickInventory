@@ -74,6 +74,11 @@ https://{$BRICK_HOST} {
 		}
 	}
 	import anmeldung
+	# Metrics are for a scraper inside the Docker network (METRICS_TOKEN), never from outside.
+	@metrics path /metrics /metrics/*
+	handle @metrics {
+		respond 404
+	}
 	handle {
 		reverse_proxy app:3000 {
 			# Eine eigene Kennung je Anfrage; die des Clients wird ersetzt.

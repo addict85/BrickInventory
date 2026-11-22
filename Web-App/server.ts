@@ -18,6 +18,7 @@ import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
 import { closeAllSse } from './src/http/sseRegistry';
 
 import { closeBufferAndTicks } from './startup/shutdown';
+import { registerCollectors, startMetricsServer } from './startup/metrics';
 import { inSystemContext } from './src/infra/accountContext';
 
 // Only log: a rejected promise is usually a side task without catch;
@@ -149,6 +150,9 @@ async function start(): Promise<void> {
     process.exit(1);
   }
   logToDatabase(access.pool);
+  registerCollectors(access, dienste.jobQueue);
+  // The web process serves /metrics itself (startup/app.ts); the jobs-only one has no HTTP server.
+  if (!web && k.metricsPort) startMetricsServer(k.metricsPort, k.metricsToken);
   // Hints into the log: one that fails holds up neither the start nor the others.
   const hints: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],

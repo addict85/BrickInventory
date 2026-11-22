@@ -178,7 +178,9 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
 
   await t.test('an unknown API path responds in the form of every error response', async () => {
     const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
-    assert.deepEqual([r.status, await r.json()], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
+    const { request_id, ...rumpf } = await r.json();
+    assert.deepEqual([r.status, rumpf], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
+    assert.equal(request_id, r.headers.get('x-request-id'));
   });
 
   await t.test('the session cookie is httpOnly and SameSite=Strict', async () => {

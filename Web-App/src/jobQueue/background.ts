@@ -42,6 +42,16 @@ export async function jobsInOverview(
   };
 }
 
+/** For the metrics: jobs per kind and status, and how old the job process's heartbeat is. */
+export async function queueCounts(k: JobsContext) {
+  const [rows, heartbeat] = await Promise.all([
+    k.jobs.numbersJeKindAndStatus(),
+    k.runState.readState('jobs_lebenszeichen'),
+  ]);
+  const heartbeatAgeSec = heartbeat ? (k.uhr.jetzt() - new Date(heartbeat).getTime()) / 1000 : null;
+  return { counts: rows.map(r => ({ type: r.type, status: r.status, count: r.anzahl })), heartbeatAgeSec };
+}
+
 /** For a scheduled kind the next regular appointment is pending afterwards. */
 export async function auftragAbbrechen(k: JobsContext, key: number) {
   // The response names the identifier as text like the overview (bigint).

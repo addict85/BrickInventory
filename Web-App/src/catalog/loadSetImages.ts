@@ -80,9 +80,7 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
     await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await k.images
-      .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text =>
-        console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-      )
+      .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text => console.warn(`[img-dl] ${p.id}: ${text}`))
       .finally(() => k.cdnDrossel.release());
     if (!ok) return;
   }
