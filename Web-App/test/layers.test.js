@@ -1035,6 +1035,92 @@ test('docs/architecture.md names the order of the areas like LEVELS', () => {
   assert.deepEqual(stufen, LEVELS);
 });
 
+/** Every file below `dir` (relative to ROOT), without products and dependencies. */
+function filesBelow(dir) {
+  const voll = path.join(ROOT, dir);
+  if (!fs.existsSync(voll)) return [];
+  if (fs.statSync(voll).isFile()) return [dir];
+  return fs
+    .readdirSync(voll, { withFileTypes: true })
+    .flatMap(e =>
+      ['node_modules', 'dist', 'data', 'coverage', 'locales'].includes(e.name)
+        ? []
+        : e.isDirectory()
+          ? filesBelow(path.posix.join(dir, e.name))
+          : [path.posix.join(dir, e.name)],
+    );
+}
+
+/** `<bereich>` and `*` stand for one segment; without an extension also .ts/.js. */
+function pathExists(p) {
+  const segment = s => new RegExp(`^${s.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/<[^>]+>|\*/g, '[^/]+')}$`);
+  const from = base => {
+    let kandidaten = [base];
+    for (const teil of p.replace(/\/$/, '').split('/')) {
+      kandidaten = kandidaten.flatMap(k => {
+        if (!fs.existsSync(k) || !fs.statSync(k).isDirectory()) return [];
+        if (!/<|\*/.test(teil)) return fs.existsSync(path.join(k, teil)) ? [path.join(k, teil)] : [];
+        return fs
+          .readdirSync(k)
+          .filter(n => segment(teil).test(n))
+          .map(n => path.join(k, n));
+      });
+    }
+    return kandidaten.length > 0;
+  };
+  return [p, `${p}.ts`, `${p}.js`].some(x => {
+    const vorher = p;
+    p = x;
+    const da = from(ROOT) || from(path.join(ROOT, '..'));
+    p = vorher;
+    return da;
+  });
+}
+
+test('docs/architecture.md names only what exists', () => {
+  // Counter-checks (22.11.2026): `fehlerAntwort` (the German name before round 30) back in the
+  // chapter “Fehler” → red ['fehlerAntwort']; the German name of db/catalogView.ts instead of it
+  // → red; in the chapter “Oberfläche” `state.js` renamed to `00-staat.js` → red (was its own
+  // case in frontend-architektur.test.js).
+  require('./helpers/bundle').placeBundleSafe(); // the chapter “Oberfläche” names the bundle, a product
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8').replace(/```[\s\S]*?```/g, '');
+  const spans = [...doc.matchAll(/`([^`\n]+)`/g)].map(m => m[1]);
+  const dateien = [
+    ...['src', 'db', 'routes', 'startup', 'jobs', 'clients', 'scripts', 'test', 'public', 'biome', 'types'].flatMap(
+      filesBelow,
+    ),
+    ...['frontend-types', 'postgres', 'server.ts', 'package.json', 'Caddyfile', 'compose.yaml'].flatMap(filesBelow),
+  ];
+  // Without comments: a German name that only survives in a comment does not count as code.
+  const code = dateien
+    .filter(d => /\.(ts|js|sql|grit|json|sh|yaml)$|Caddyfile$/.test(d))
+    .map(d => ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8')).replace(/^\s*(--|#).*$/gm, ''))
+    .join('\n');
+  const woerter = new Set(code.match(/[A-Za-z_$][\w$]*/g));
+  const namen = new Set(dateien.map(d => path.posix.basename(d)));
+  const oben = new Set([...fs.readdirSync(ROOT), ...fs.readdirSync(path.join(ROOT, '..'))]);
+  // Spelling conventions, not names; `createX` stands for createVouchers, createRebrickable …
+  const KONVENTIONEN = new Set(['snake_case', 'camelCase']);
+  const gibtEs = w =>
+    woerter.has(w) ||
+    KONVENTIONEN.has(w) ||
+    (/[a-z]X[A-Z]|[a-z]X$/.test(w) && [...woerter].some(v => new RegExp(`^${w.replace('X', '[A-Z]\\w*')}$`).test(v)));
+  const fehlt = [];
+  for (const s of spans) {
+    if (/^\/[\w/:-]*$/.test(s)) {
+      if (![`'${s}`, `/api/v1${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
+    } else if (
+      /^[\w-]+\.(ts|js|json|md|sql|html|grit|sh|yaml|txt)$/.test(s) ||
+      (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (oben.has(s.split('/')[0]) || /^[<*]/.test(s)))
+    ) {
+      if (s.includes('/') ? !pathExists(s) : !namen.has(s)) fehlt.push(s);
+    } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!gibtEs(w)) fehlt.push(w);
+  }
+  assert.ok(spans.length > 300, `nur ${spans.length} Namen in Backticks — greift die Suche noch?`);
+  assert.ok(namen.has('jobWorker.ts') && woerter.has('buildServices'), 'Selbstbeweis: Dateien und Code gefunden');
+  assert.deepEqual([...new Set(fehlt)], [], 'in docs/architecture.md genannt, im Code nicht vorhanden');
+});
+
 test('the queue knows no domain areas and payload shapes, events go via ereignis.ts', () => {
   // Counter-checks (15.11.2026): `import type { CatalogServices } from '../katalog'` in
   // src/jobQueue/service.ts → red (edge src/jobQueue → src/catalog); `const P = z.object({})` in
