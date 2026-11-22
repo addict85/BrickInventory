@@ -80,7 +80,7 @@ test('every frontend module imports what it calls', () => {
   const bekannt = new Map();
   for (const [f, src] of sources) for (const n of declaredTop(src)) bekannt.set(n, f);
 
-  const fehlend = [];
+  const absent = [];
   for (const [f, src] of sources) {
     const local = declared(src);
     const imp = imported(src);
@@ -89,9 +89,9 @@ test('every frontend module imports what it calls', () => {
       // Call of the name, not as a property (obj.name) and not as a
       // string in an action list.
       const call = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
-      if (call.test(src)) fehlend.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
+      if (call.test(src)) absent.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
     }
   }
 
-  assert.deepEqual(fehlend, [], `Aufrufe über Modulgrenzen ohne Import:\n  ${fehlend.join('\n  ')}`);
+  assert.deepEqual(absent, [], `Aufrufe über Modulgrenzen ohne Import:\n  ${absent.join('\n  ')}`);
 });

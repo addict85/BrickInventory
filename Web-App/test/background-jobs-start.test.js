@@ -38,7 +38,7 @@ Module.prototype.require = function (name, ...rest) {
 
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { warte } = require('./helpers/time');
 
 test('starting the job process queues everything as a job', { concurrency: 1 }, async t => {
@@ -57,7 +57,7 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DELETE FROM jobs');

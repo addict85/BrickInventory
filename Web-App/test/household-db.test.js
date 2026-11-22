@@ -27,7 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const { holdsMinifig, holdsSet, holdsPart, quantityOf, catalogSet } = require('./helpers/inventory');
@@ -144,7 +144,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
 test('household against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -710,8 +710,8 @@ test('household against a real database', async t => {
       assert.equal(quer.status, 403, `${f.name}: Unterkonto schrieb ins Geschwisterkonto`);
 
       // 3. Sub-account → main account: forbidden. The direction is ONE.
-      const rueck = await anlegen(U.kindA, f.path, { ...f.koerper, owner_user_id: U.eltern });
-      assert.equal(rueck.status, 403, `${f.name}: Unterkonto schrieb ins Hauptkonto`);
+      const backward = await anlegen(U.kindA, f.path, { ...f.koerper, owner_user_id: U.eltern });
+      assert.equal(backward.status, 403, `${f.name}: Unterkonto schrieb ins Hauptkonto`);
 
       // 4. Account from outside the household: forbidden.
       const fremd = await anlegen(U.fremd, f.path, { ...f.koerper, owner_user_id: U.eltern });

@@ -97,13 +97,13 @@ test('passwords assigned by an admin only apply until the first change', {
     `der Server startet nicht:\n${log.slice(-2000)}`,
   );
 
-  const ruf = (keks, path, o = {}) =>
+  const callFn = (keks, path, o = {}) =>
     fetch(basis + path, {
       ...o,
       headers: { 'content-type': 'application/json', origin: basis, ...(keks ? { cookie: keks } : {}) },
     });
   const anmelden = async (name, passwort, code) => {
-    const r = await ruf(null, '/api/v2/auth/login', {
+    const r = await callFn(null, '/api/v2/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username: name, password: passwort, without_token: true, ...(code ? { code } : {}) }),
     });
@@ -117,21 +117,21 @@ test('passwords assigned by an admin only apply until the first change', {
   async function onlyUntilToSwitch(name, vergeben) {
     const a = await anmelden(name, vergeben);
     assert.equal(a.user.mustChangePassword, true, 'die Anmeldung meldet den Pflichtwechsel');
-    const gesperrt = await ruf(a.keks, '/api/v2/stats');
+    const gesperrt = await callFn(a.keks, '/api/v2/stats');
     assert.equal(gesperrt.status, 403);
     assert.equal((await gesperrt.json()).code, 'password_change_required');
-    const w = await ruf(a.keks, '/api/v2/auth/change-password', {
+    const w = await callFn(a.keks, '/api/v2/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({ current: vergeben, newPassword: `Eigenes-Passwort-${P}-neu` }),
     });
     assert.equal(w.status, 200, await w.clone().text());
     const keks = w.headers.get('set-cookie').split(';')[0];
-    assert.equal((await ruf(keks, '/api/v2/stats')).status, 200);
+    assert.equal((await callFn(keks, '/api/v2/stats')).status, 200);
   }
 
   await t.test('an account created by an admin', async () => {
     const vergeben = 'Vom-Verwalter-vergeben-1';
-    const r = await ruf(chefKeks, '/api/v2/auth/users', {
+    const r = await callFn(chefKeks, '/api/v2/auth/users', {
       method: 'POST',
       body: JSON.stringify({ username: NEU, password: vergeben, admin_password: CHEF_PW, code: codes[1] }),
     });
@@ -141,7 +141,7 @@ test('passwords assigned by an admin only apply until the first change', {
 
   await t.test('a password set by an admin', async () => {
     const vergeben = 'Vom-Verwalter-gesetzt-2';
-    const r = await ruf(chefKeks, `/api/v2/auth/users/${alt}/password`, {
+    const r = await callFn(chefKeks, `/api/v2/auth/users/${alt}/password`, {
       method: 'PUT',
       body: JSON.stringify({ password: vergeben, admin_password: CHEF_PW, code: codes[2] }),
     });

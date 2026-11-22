@@ -21,8 +21,8 @@ const ganz = n => {
   if (b[0] & 0x80) b = Buffer.concat([Buffer.from([0]), b]);
   return tlv([0x02], b);
 };
-const aufz = n => tlv([0x0a], ganz(n).subarray(2));
-const oktette = b => tlv([0x04], Buffer.from(b));
+const recording = n => tlv([0x0a], ganz(n).subarray(2));
+const octets = b => tlv([0x04], Buffer.from(b));
 const nichts = () => Buffer.from([0x05, 0x00]);
 const wahr = b => tlv([0x01], Buffer.from([b ? 0xff : 0x00]));
 const oid = s => {
@@ -48,12 +48,12 @@ const ECDSA_SHA256 = seq(oid('1.2.840.10045.4.3.2'));
 
 /**
  * @param {{ subject: string, aussteller: string, public_key: import('node:crypto').KeyObject,
- *   signierer: import('node:crypto').KeyObject, ca?: boolean, extensions?: Buffer[], von?: Date, bis?: Date }} z
+ *   signer: import('node:crypto').KeyObject, ca?: boolean, extensions?: Buffer[], von?: Date, bis?: Date }} z
  */
-function zertifikat({ subject, aussteller, public_key, signierer, ca = false, extensions = [], von, bis }) {
+function zertifikat({ subject, aussteller, public_key, signer, ca = false, extensions = [], von, bis }) {
   const ext = [...extensions];
   if (ca)
-    ext.push(seq(oid('2.5.29.19'), tlv([0x01], Buffer.from([0xff])), oktette(seq(tlv([0x01], Buffer.from([0xff]))))));
+    ext.push(seq(oid('2.5.29.19'), tlv([0x01], Buffer.from([0xff])), octets(seq(tlv([0x01], Buffer.from([0xff]))))));
   const tbs = seq(
     kontext(0, ganz(2)),
     ganz(Math.floor(Math.random() * 2 ** 40) + 1),
@@ -64,7 +64,7 @@ function zertifikat({ subject, aussteller, public_key, signierer, ca = false, ex
     public_key.export({ format: 'der', type: 'spki' }),
     ...(ext.length ? [kontext(3, seq(...ext))] : []),
   );
-  const sig = sign('sha256', tbs, { key: signierer, dsaEncoding: 'der' });
+  const sig = sign('sha256', tbs, { key: signer, dsaEncoding: 'der' });
   return seq(tbs, ECDSA_SHA256, tlv([0x03], Buffer.concat([Buffer.from([0]), sig])));
 }
 
@@ -76,7 +76,7 @@ const pem = der =>
 
 function newRoot(cn = 'Test-Attestierungswurzel') {
   const k = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const der = zertifikat({ subject: cn, aussteller: cn, public_key: k.publicKey, signierer: k.privateKey, ca: true });
+  const der = zertifikat({ subject: cn, aussteller: cn, public_key: k.publicKey, signer: k.privateKey, ca: true });
   return { ...k, cn, der, pem: pem(der) };
 }
 
@@ -134,24 +134,24 @@ function beschreibung(o) {
           kontext(
             704,
             seq(
-              oktette(Buffer.alloc(32, 9)),
+              octets(Buffer.alloc(32, 9)),
               wahr(!o.openBootloader),
-              aufz(o.bootState ?? 0),
-              oktette(Buffer.alloc(32, 3)),
+              recording(o.bootState ?? 0),
+              octets(Buffer.alloc(32, 3)),
             ),
           ),
         ]),
     kontext(706, ganz(o.patch ?? 202610)),
   ];
-  const app = seq(set(seq(oktette(Buffer.from(o.paket ?? PAKET)), ganz(1))), set(oktette(o.digest ?? DIGEST)));
-  const sw = [kontext(709, oktette(app))];
+  const app = seq(set(seq(octets(Buffer.from(o.paket ?? PAKET)), ganz(1))), set(octets(o.digest ?? DIGEST)));
+  const sw = [kontext(709, octets(app))];
   return seq(
     ganz(300),
-    aufz(o.confidence ?? 1),
+    recording(o.confidence ?? 1),
     ganz(300),
-    aufz(o.confidence ?? 1),
-    oktette(o.challenge),
-    oktette(Buffer.alloc(0)),
+    recording(o.confidence ?? 1),
+    octets(o.challenge),
+    octets(Buffer.alloc(0)),
     seq(...sw),
     seq(...hw),
   );
@@ -169,15 +169,15 @@ function chain(o) {
     subject: 'Test-Zwischenstufe',
     aussteller: w.cn,
     public_key: zwischen.publicKey,
-    signierer: w.privateKey,
+    signer: w.privateKey,
     ca: true,
   });
-  const ext = o.withoutExtension ? [] : [seq(oid('1.3.6.1.4.1.11129.2.1.17'), oktette(beschreibung(o)))];
+  const ext = o.withoutExtension ? [] : [seq(oid('1.3.6.1.4.1.11129.2.1.17'), octets(beschreibung(o)))];
   const bThe = zertifikat({
     subject: 'Android Keystore Key',
     aussteller: 'Test-Zwischenstufe',
     public_key: blatt.publicKey,
-    signierer: zwischen.privateKey,
+    signer: zwischen.privateKey,
     extensions: ext,
     von: new Date(0),
     bis: new Date('2048-01-01T00:00:00Z'),
@@ -193,7 +193,7 @@ module.exports = {
   zertifikat,
   seq,
   oid,
-  oktette,
+  octets,
   tlv,
   WURZEL,
   PAKET,

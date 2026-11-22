@@ -33,14 +33,14 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { catalogSet } = require('./helpers/inventory');
 const { importWorker } = require('./helpers/jobs');
 const { dataOrSkip } = require('./helpers/db');
-const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { routerMounts, testData } = require('./helpers/sources');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 const { contractTo, appRoutes } = require('./helpers/contract');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake, enterMailServer } = require('./helpers/mail-fake');
+mailFake();
 
 const NAME = `kschreib_${process.pid}`,
   PASS = 'VertragsPasswort1!';
@@ -48,8 +48,8 @@ const SET = '99075-1',
   SET2 = '99076-1',
   TEIL = '3001ks',
   FARBE = 5,
-  FARBE2 = 1,
-  FIGUR = 'ks0001';
+  COLOR2 = 1,
+  FIGURE = 'ks0001';
 
 /** Routes that must not or cannot run here — with reason. */
 const OMITTED = new Map([
@@ -141,7 +141,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2]]).catch(() => {});
     await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
+    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGURE]).catch(() => {});
     for (const { key, value } of globalBefore)
       await db.run('UPDATE global_settings SET value = $2 WHERE key = $1', [key, value]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -169,7 +169,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   );
   for (const [f, n] of [
     [FARBE, 'Rot'],
-    [FARBE2, 'Blau'],
+    [COLOR2, 'Blau'],
   ])
     await db.run(
       `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, $3, 'C91A09')
@@ -177,7 +177,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       [TEIL, f, n],
     );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
-    FIGUR,
+    FIGURE,
   ]);
   await db
     .run(`INSERT INTO brickset_queue (set_number, attempts) VALUES ($1, 1) ON CONFLICT DO NOTHING`, [SET2])
@@ -207,7 +207,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
-  for (const r of routerEinhaengungen())
+  for (const r of routerMounts())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
@@ -216,7 +216,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   const routen = appRoutes(_req).filter(r => r.methode !== 'GET');
 
   /** Values for the placeholders in the path; steps add new ones. */
-  const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
+  const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGURE };
   const erst = async (sql, values) => await db.get(sql, values);
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
@@ -453,15 +453,15 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     {
       m: 'PUT',
       p: '/api/v2/parts/{partNumber}/{colorId}/color',
-      body: { color_id: FARBE2, color_name: 'Blau', color_hex: '0055BF' },
+      body: { color_id: COLOR2, color_name: 'Blau', color_hex: '0055BF' },
       danach: () => {
-        w.colorId = String(FARBE2);
+        w.colorId = String(COLOR2);
       },
     },
     { m: 'DELETE', p: '/api/v2/parts/{partNumber}/{colorId}' },
 
     // ── Minifiguren ───────────────────────────────────────────────────────
-    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' } },
+    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' } },
     {
       m: 'PUT',
       p: '/api/v2/minifigs/{figNumber}',
@@ -471,7 +471,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
           (
             await erst(
               `SELECT id FROM minifig_acquisitions WHERE user_id = $1 AND fig_number = $2 ORDER BY id LIMIT 1`,
-              [uid, FIGUR],
+              [uid, FIGURE],
             )
           ).id,
         );
@@ -479,7 +479,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}', body: { unit_price: 5 } },
     { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}' },
-    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGUR, quantity: 1, condition: 'N' } },
+    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGURE, quantity: 1, condition: 'N' } },
     { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/storage', body: { storage: 'Kiste' } },
     { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}' },
 

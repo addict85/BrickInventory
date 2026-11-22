@@ -27,7 +27,7 @@ const { conditionForPrice, setGlobalSetting } = _req('src/settings/settings.js')
 const { setUserSetting } = _req('src/settings/userSetting.js');
 
 test('condition for the market price: input → stock → default', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // Own user per process — the test runs next to others on the same DB.
   const name = `zfp_${process.pid}`;

@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -36,7 +36,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -94,7 +94,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
     }
   }
-  const hol = (path, token) =>
+  const fetchIt = (path, token) =>
     fetch(`${basis}/api/v2/sets/partslist-pdf/${path}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
@@ -102,23 +102,23 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
     await jobPut(jobA, idA);
 
     await t.test('the own job can be fetched', async () => {
-      const s = await hol(`status/${jobA}`, tokA);
+      const s = await fetchIt(`status/${jobA}`, tokA);
       const body = await s.json();
       assert.equal(s.status, 200, JSON.stringify(body));
       assert.equal(body.status, 'done');
     });
 
     await t.test('a foreign job cannot — and with the same 404', async () => {
-      const s = await hol(`status/${jobA}`, tokB);
+      const s = await fetchIt(`status/${jobA}`, tokB);
       assert.equal(s.status, 404, 'fremder Auftragsstatus war lesbar');
 
-      const d = await hol(`download/${jobA}`, tokB);
+      const d = await fetchIt(`download/${jobA}`, tokB);
       assert.equal(d.status, 404, 'fremdes PDF war herunterladbar');
       assert.doesNotMatch(await d.text(), /PDF/, 'die Antwort enthielt PDF-Inhalt');
 
       // Important: the failed attempt must not damage the job — the
       // download deletes the file after delivering it.
-      const s2 = await hol(`status/${jobA}`, tokA);
+      const s2 = await fetchIt(`status/${jobA}`, tokA);
       assert.equal(s2.status, 200, 'der eigene Auftrag ist durch den Fremdzugriff verschwunden');
     });
 
@@ -241,8 +241,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       const ids = new Set(Array.from({ length: 200 }, () => jobs.newJobId(Date.now())));
       assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
       for (const id of ids) assert.ok(jobs.validJobId(id), `eigene Kennung ist ungültig: ${id}`);
-      const zufallsteil = [...ids][0].split('-')[1];
-      assert.match(zufallsteil, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
+      const randomPart = [...ids][0].split('-')[1];
+      assert.match(randomPart, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
     });
   } finally {
     srv.close();

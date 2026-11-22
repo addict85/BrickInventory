@@ -47,13 +47,13 @@ function satz(contexts = undefined) {
 }
 
 /** The clients of the external sources are not a service but its content; they count as one. */
-const GANZ = new Set(['sources', 'drossel']);
+const WHOLE = new Set(['sources', 'drossel']);
 
 /** Every service as `bereich.name` or `bereich.teil.name`. */
 function leaves(x, ago) {
   return Object.entries(/** @type {Record<string, unknown>} */ (x)).flatMap(([n, v]) => {
     if (n === 'over') return [];
-    const teil = v && typeof v === 'object' && !GANZ.has(n) && Object.values(v).some(w => typeof w === 'function');
+    const teil = v && typeof v === 'object' && !WHOLE.has(n) && Object.values(v).some(w => typeof w === 'function');
     return teil ? leaves(v, `${ago}.${n}`) : [`${ago}.${n}`];
   });
 }

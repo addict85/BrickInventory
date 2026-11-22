@@ -27,7 +27,7 @@ process.env.ACQUISITION_TIME_ZONE = 'Europe/Zurich';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('acquisition day in the time zone of the installation', { concurrency: 1 }, async t => {
@@ -35,7 +35,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const { addPurchaseAtTag } = _req('src/inventory/acquisitions.js');

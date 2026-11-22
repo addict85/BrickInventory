@@ -17,12 +17,12 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 // Read the address from server.ts — see einhaengung() in helpers/sources.js.
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const { routerServer } = require('./helpers/server');
 const db = testData();
 
 test('admin rights can also be revoked with "false" as text', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   {
     const c = await db.pool.connect();
     try {
@@ -47,7 +47,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
 
   const { base, srv } = routerServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
-    apiNutzer: { user_id: adminId, is_admin: 1 },
+    apiAccount: { user_id: adminId, is_admin: 1 },
     routen: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api/index.js' },
     t,
   });
@@ -57,7 +57,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
     await db.run(`DELETE FROM admin_takeovers WHERE target_id=$1`, [targetId]);
   };
   /** 0 as soon as the revocation is announced (or carried out). */
-  const istAdmin = async () => {
+  const adminFlag = async () => {
     const announced = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='revoke_role'`, [
       targetId,
     ]);
@@ -72,7 +72,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: wert, admin_password: ADMIN_PW }),
     });
-    return { status: r.status, adminAfterwards: await istAdmin() };
+    return { status: r.status, adminAfterwards: await adminFlag() };
   };
 
   const WEB = `${base}${AUTH}/users/${targetId}/admin`;

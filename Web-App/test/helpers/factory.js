@@ -7,12 +7,12 @@
  */
 const { testServices } = require('./sources');
 
-const PASSWORT = 'Fabrik-Passwort-2026';
+const PASSWORD = 'Fabrik-Passwort-2026';
 
 /** An account via konto.createAccount (without administrator: the log names none).
  * @param {string} name @param {{ verwalter?: boolean }} [o] @returns {Promise<number>} */
 async function konto(name, o = {}) {
-  const id = await testServices().account.addAccount(null, name, PASSWORT, !!o.verwalter);
+  const id = await testServices().account.addAccount(null, name, PASSWORD, !!o.verwalter);
   if (id === null) throw new Error(`Konto „${name}“ gibt es schon`);
   return id;
 }
@@ -42,4 +42,4 @@ async function setRecorded(besitzer, setNumber, o = {}) {
   });
 }
 
-module.exports = { konto, subAccount, setRecorded, PASSWORT };
+module.exports = { konto, subAccount, setRecorded, PASSWORD };

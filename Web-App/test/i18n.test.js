@@ -65,7 +65,7 @@ test('placeholders match between DE and EN', () => {
 test('no text stands untranslated in both languages', () => {
   // Terms, proper names and number formats that are the same in both
   // languages. Every entry is a decision, not leniency.
-  const gewolltGleich = new Set([
+  const intendedEqual = new Set([
     'catalog.sort.name',
     'col.name',
     'col.sets',
@@ -111,7 +111,7 @@ test('no text stands untranslated in both languages', () => {
   assert.ok(Object.keys(en).length > 400, `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
 
   const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
-  const untranslated = gleich.filter(k => !gewolltGleich.has(k)).sort();
+  const untranslated = gleich.filter(k => !intendedEqual.has(k)).sort();
   assert.deepEqual(
     untranslated,
     [],
@@ -121,7 +121,7 @@ test('no text stands untranslated in both languages', () => {
       '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.',
   );
 
-  const veraltet = [...gewolltGleich].filter(k => !gleich.includes(k)).sort();
+  const veraltet = [...intendedEqual].filter(k => !gleich.includes(k)).sort();
   assert.deepEqual(
     veraltet,
     [],

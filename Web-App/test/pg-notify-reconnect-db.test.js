@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // The child process: listens, lets its connection be shot down and reports
@@ -59,7 +59,7 @@ test('a drop of the LISTEN connection does NOT end the process and reconnects', 
   try {
     await db.pool.query('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -99,7 +99,7 @@ test('close() during connection setup leaves no connection open', async t => {
   try {
     await probe.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   } finally {
     await probe.end().catch(() => {});

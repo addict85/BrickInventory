@@ -28,7 +28,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Before loading the route: record import and Rebrickable fetch instead of running them.
-const importe = [];
+const importList = [];
 const fetches = [];
 const replace = (rel, zusatz) => {
   const file = require.resolve(path.join(sources.DIST, rel));
@@ -45,7 +45,7 @@ sources.testSources(null, {
 replace('src/sets/setContentImport.js', {
   importParts: async (_k, sn, uid) => {
     if (sn.startsWith('TIK')) throw new Error('Rebrickable antwortet nicht');
-    importe.push([sn, uid]);
+    importList.push([sn, uid]);
     return 3;
   },
 });
@@ -90,28 +90,28 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const importiere = async (als, sn) => {
+  const importIt = async (als, sn) => {
     sitzung.userId = als;
     const r = await fetch(`${base}/api/v2/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });
     return { status: r.status, body: await r.json() };
   };
 
   await t.test('a foreign set is not imported', async () => {
-    const r = await importiere(H, FREMD);
+    const r = await importIt(H, FREMD);
     assert.equal(r.status, 404, JSON.stringify(r.body));
     assert.equal(r.body.code, 'set_not_found');
-    assert.deepEqual(importe, []);
+    assert.deepEqual(importList, []);
   });
 
   await t.test("the main account imports the sub-account's set for its owner", async () => {
-    const r = await importiere(H, UNTER);
+    const r = await importIt(H, UNTER);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body, { success: true, count: 3 });
-    assert.deepEqual(importe, [[UNTER, U]]);
+    assert.deepEqual(importList, [[UNTER, U]]);
   });
 
   await t.test('a failed import is an error, not an empty list', async () => {
-    const r = await importiere(H, KAPUTT);
+    const r = await importIt(H, KAPUTT);
     assert.equal(r.status, 500, JSON.stringify(r.body));
     assert.equal(r.body.success, false);
     assert.equal(r.body.count, undefined);
@@ -120,12 +120,12 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
 
   await t.test('at most 30 imports per hour per account', async () => {
     const status = [];
-    for (let i = 0; i < 30; i++) status.push((await importiere(U, UNTER)).status);
+    for (let i = 0; i < 30; i++) status.push((await importIt(U, UNTER)).status);
     assert.deepEqual([...new Set(status)], [200], 'bis zur Grenze geht jeder durch');
-    const toMuch = await importiere(U, UNTER);
+    const toMuch = await importIt(U, UNTER);
     assert.equal(toMuch.status, 429);
     assert.equal(toMuch.body.code, 'too_many_requests');
-    assert.equal((await importiere(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
+    assert.equal((await importIt(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
   });
 
   await t.test('an empty response is remembered', async () => {

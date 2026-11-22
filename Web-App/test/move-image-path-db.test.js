@@ -15,10 +15,10 @@ const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
 test('a moved set takes the image paths of all its components along', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const p = String(process.pid).slice(-5);
-  const VON = `mv_von_${p}`,
+  const FROM_VALUE = `mv_von_${p}`,
     NACH = `mv_nach_${p}`;
   const SN = `81${p}-1`,
     PN = `pt${p}`,
@@ -26,9 +26,9 @@ test('a moved set takes the image paths of all its components along', { concurre
   const PATH_PART = `/img/parts/${PN}.png`;
   const PATH_MINIFIG = `/img/minifigs/${FN}.png`;
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [VON, NACH]);
-  const ofId = (await db.get(`SELECT id FROM users WHERE username=$1`, [VON])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [FROM_VALUE, NACH]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [FROM_VALUE, NACH]);
+  const ofId = (await db.get(`SELECT id FROM users WHERE username=$1`, [FROM_VALUE])).id;
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
@@ -113,7 +113,7 @@ test('a moved set takes the image paths of all its components along', { concurre
       await db.run(`DELETE FROM minifigs WHERE user_id=$1`, [uid]).catch(() => {});
       await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
     }
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [FROM_VALUE, NACH]).catch(() => {});
     // The catalog rows hang on no account and would otherwise remain.
     await db.run(`DELETE FROM part_color_catalog WHERE part_number=$1`, [PN]).catch(() => {});
     await db.run(`DELETE FROM minifigs_catalog WHERE fig_number=$1`, [FN]).catch(() => {});

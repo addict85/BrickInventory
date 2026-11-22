@@ -208,16 +208,16 @@ test('response fields are required where the server always delivers them: option
   assert.ok(summe > 1400, `nur ${summe} Antwortfelder — greift die Suche noch?`);
   assert.deepEqual(Object.keys(je).sort(), Object.keys(LIMIT).sort(), 'jede Vertragsdatei hat ihre Schranke');
   const toMuch = [],
-    weniger = [];
+    lessThan = [];
   for (const [datei, z] of Object.entries(je)) {
     const s = LIMIT[datei];
     for (const kind of /** @type {const} */ (['frei', 'nullbar'])) {
       if (z[kind] > s[kind]) toMuch.push(`${datei}: ${z[kind]} ${kind}, erlaubt ${s[kind]}`);
-      if (z[kind] < s[kind]) weniger.push(`${datei} ${kind} ${z[kind]}`);
+      if (z[kind] < s[kind]) lessThan.push(`${datei} ${kind} ${z[kind]}`);
     }
   }
   assert.deepEqual(toMuch, []);
   const frei = Object.values(je).reduce((a, z) => a + z.frei, 0);
   assert.ok(frei / summe < 0.23, `${frei} von ${summe} Antwortfeldern freiwillig`);
-  if (weniger.length) console.log(`  ℹ Antwortfelder ${weniger.join(', ')} — Schranke nachziehen`);
+  if (lessThan.length) console.log(`  ℹ Antwortfelder ${lessThan.join(', ')} — Schranke nachziehen`);
 });

@@ -55,13 +55,13 @@ test('the suite separates the roles as in production, exceptions become fewer', 
     await eigen.pool.end();
   }
 
-  const LIMIT = { superuser: 21, systemrahmen: 129 };
+  const LIMIT = { superuser: 21, systemFrame: 129 };
   const dateien = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'));
   const source = (/** @type {string} */ n) => fs.readFileSync(path.join(__dirname, n), 'utf8');
   /** @type {Record<string, number>} */
   const ist = {
     superuser: dateien.filter(n => asSuperuser(source(n))).length,
-    systemrahmen: dateien.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
+    systemFrame: dateien.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
   };
   assert.ok(dateien.length > 500, `nur ${dateien.length} Testdateien — greift die Suche noch?`);
   for (const [kind, s] of Object.entries(LIMIT)) {

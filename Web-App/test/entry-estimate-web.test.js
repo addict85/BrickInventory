@@ -72,9 +72,9 @@ test('every acquisition in its currency', async () => {
     const text = d.getElementById('man-detail-body').textContent;
     // jsdom formats as “CHF 3.50” without full ICU data, a browser as
     // “3,50 CHF” — what is checked is the currency at the amount, not the notation.
-    const flach = text.replace(/\s+/g, ' ');
-    assert.match(flach, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF fehlt: ${flach.slice(0, 600)}`);
-    assert.match(flach, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'die EUR-Erfassung bleibt in EUR');
+    const flat = text.replace(/\s+/g, ' ');
+    assert.match(flat, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF fehlt: ${flat.slice(0, 600)}`);
+    assert.match(flat, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'die EUR-Erfassung bleibt in EUR');
   } finally {
     w.close();
   }

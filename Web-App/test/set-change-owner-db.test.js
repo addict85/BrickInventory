@@ -81,8 +81,11 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     // 3. And both still stand with the OWNER, not with the caller.
     assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
     assert.equal(s.erf.user_id, subId);
-    const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, mainId]);
-    assert.equal(fremde.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
+    const foreignOnes = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [
+      SET,
+      mainId,
+    ]);
+    assert.equal(foreignOnes.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
 
     // 4. The quantity, on the other hand, deliberately goes to the OWN account: whoever increases gets
     //    an own purchase price entry instead of changing the inventory of another account.
@@ -112,18 +115,18 @@ test("purchase price and condition land in the owner's account", { concurrency: 
 test('the last entry is written in exactly one place', () => {
   // Found, not enumerated.
   const dateien = [];
-  const gehen = d => {
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
+      if (e.isDirectory()) go(abs);
       else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  const stellen = [];
+  const placeList = [];
   for (const f of dateien) {
     const code = fs
       .readFileSync(f, 'utf8')
@@ -135,10 +138,10 @@ test('the last entry is written in exactly one place', () => {
     for (const _ of code.matchAll(
       /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g,
     ))
-      stellen.push(path.relative(ROOT, f));
+      placeList.push(path.relative(ROOT, f));
   }
   assert.deepEqual(
-    stellen,
+    placeList,
     ['src/inventory/repository/purchases.ts'],
     'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
       'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen',

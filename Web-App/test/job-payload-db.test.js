@@ -69,7 +69,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
       [JSON.stringify({ setnummer: '10179-1' })],
     );
     let gelaufen = 0,
-      aufgegeben = 0;
+      abandoned = 0;
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       {
@@ -78,7 +78,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
             gelaufen++;
           },
           givenUp: async () => {
-            aufgegeben++;
+            abandoned++;
           },
         },
       },
@@ -87,7 +87,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
     assert.equal(await w.processOne(), true);
     const z = await db.get('SELECT status, attempts, error_message FROM jobs WHERE id = $1', [id]);
     assert.equal(gelaufen, 0, 'der Bearbeiter lief mit einer ungültigen Nutzlast');
-    assert.equal(aufgegeben, 0);
+    assert.equal(abandoned, 0);
     assert.equal(z.status, 'error');
     assert.equal(z.attempts, 1);
     assert.match(z.error_message, /Nutzlast für brickset ungültig: set_number/);

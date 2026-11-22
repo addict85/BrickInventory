@@ -139,19 +139,19 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.equal(await quantity(a), 5);
   });
 
-  const dienst = _req('src/idempotency/service.js');
-  const abdruck = dienst.fingerprint('PUT', '/x', { y: 1 });
+  const serviceFn = _req('src/idempotency/service.js');
+  const abdruck = serviceFn.fingerprint('PUT', '/x', { y: 1 });
 
   await t.test('a running first request: the repetition waits', async () => {
-    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
-    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'running' });
+    assert.deepEqual(await serviceFn.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
+    assert.deepEqual(await serviceFn.begin(a.id, 'k-lauf', abdruck), { kind: 'running' });
   });
 
   await t.test('a server error releases the key, a 4xx is remembered', async () => {
-    await dienst.end(a.id, 'k-lauf', 500, '{"success":false}');
-    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
-    await dienst.end(a.id, 'k-lauf', 404, '{"success":false}');
-    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), {
+    await serviceFn.end(a.id, 'k-lauf', 500, '{"success":false}');
+    assert.deepEqual(await serviceFn.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
+    await serviceFn.end(a.id, 'k-lauf', 404, '{"success":false}');
+    assert.deepEqual(await serviceFn.begin(a.id, 'k-lauf', abdruck), {
       kind: 'replay',
       status: 404,
       response: '{"success":false}',
@@ -162,9 +162,9 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.run(
       `UPDATE idempotency SET created_at = NOW() - make_interval(hours => $2)
                    WHERE user_id = $1 AND key = 'k-1'`,
-      [a.id, dienst.EXPIRY_HOURS + 1],
+      [a.id, serviceFn.EXPIRY_HOURS + 1],
     );
-    assert.ok((await dienst.cleanupIdempotency()) >= 1);
+    assert.ok((await serviceFn.cleanupIdempotency()) >= 1);
     const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [a.id])).map(r => r.key);
     assert.deepEqual(uebrig, ['k-lauf']);
   });

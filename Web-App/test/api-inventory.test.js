@@ -11,7 +11,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { routerEinhaengungen } = require('./helpers/sources');
+const { routerMounts } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -27,7 +27,7 @@ function inventory() {
   const eps = new Set();
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerEinhaengungen())
+  for (const r of routerMounts())
     for (const [m, p] of scan(r.datei, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))

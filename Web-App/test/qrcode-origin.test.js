@@ -19,13 +19,13 @@ const { DATEIEN } = require('../scripts/copy-qrcode');
 
 const ROOT = path.join(__dirname, '..');
 const paket = require('../package.json');
-const fassung = paket.devDependencies.qrcodejs;
+const variant = paket.devDependencies.qrcodejs;
 const installiert = path.join(ROOT, 'node_modules', 'qrcodejs');
 
 test('exact version in package.json and lockfile', () => {
-  assert.match(String(fassung), /^\d+\.\d+\.\d+$/, `qrcodejs „${fassung}“ ist keine exakte Fassung`);
+  assert.match(String(variant), /^\d+\.\d+\.\d+$/, `qrcodejs „${variant}“ ist keine exakte Fassung`);
   const lock = require('../package-lock.json');
-  assert.equal(lock.packages['node_modules/qrcodejs']?.version, fassung);
+  assert.equal(lock.packages['node_modules/qrcodejs']?.version, variant);
 });
 
 test('the script produces exactly the shipped files', () => {
@@ -35,7 +35,7 @@ test('the script produces exactly the shipped files', () => {
     const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'copy-qrcode.js'), ziel], {
       encoding: 'utf8',
     });
-    assert.match(r.stdout, new RegExp(`qrcodejs ${fassung.replace(/\./g, '\\.')} → public/vendor/qrcode/`));
+    assert.match(r.stdout, new RegExp(`qrcodejs ${variant.replace(/\./g, '\\.')} → public/vendor/qrcode/`));
     const kopie = path.join(ziel, 'public', 'vendor', 'qrcode');
     assert.deepEqual(fs.readdirSync(kopie).sort(), [...DATEIEN].sort());
     // The paths literally: eigenbruecken.test.js no longer lets paths with a variable segment pass.
@@ -43,11 +43,11 @@ test('the script produces exactly the shipped files', () => {
     const gleich = (a, b) => fs.readFileSync(a).equals(fs.readFileSync(b));
     assert.ok(
       gleich(path.join(ROOT, 'public/vendor/qrcode/qrcode.min.js'), path.join(kopie, 'qrcode.min.js')),
-      `qrcode.min.js weicht von qrcodejs ${fassung} ab`,
+      `qrcode.min.js weicht von qrcodejs ${variant} ab`,
     );
     assert.ok(
       gleich(path.join(ROOT, 'public/vendor/qrcode/LICENSE'), path.join(kopie, 'LICENSE')),
-      `LICENSE weicht von qrcodejs ${fassung} ab`,
+      `LICENSE weicht von qrcodejs ${variant} ab`,
     );
   } finally {
     fs.rmSync(ziel, { recursive: true, force: true });

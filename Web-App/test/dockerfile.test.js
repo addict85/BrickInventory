@@ -131,11 +131,11 @@ test('secrets and backups stay out of image and repository', t => {
 test('install scripts only run selectively, for exactly the packages that have one', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   // fsevents only exists under macOS; on Linux it is never installed.
-  const mitSkript = Object.entries(lock.packages)
+  const withScriptTag = Object.entries(lock.packages)
     .filter(([n, p]) => p.hasInstallScript && !/(^|\/)fsevents$/.test(n))
     .map(([n]) => n.replace(/^.*node_modules\//, ''))
     .sort();
-  assert.ok(mitSkript.includes('esbuild'), `Vorbedingung: esbuild hat ein Install-Skript (${mitSkript})`);
+  assert.ok(withScriptTag.includes('esbuild'), `Vorbedingung: esbuild hat ein Install-Skript (${withScriptTag})`);
   const sources = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
     'web-ci.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8'),
@@ -150,7 +150,7 @@ test('install scripts only run selectively, for exactly the packages that have o
     assert.ok(aufrufe.length > 0, `${name}: kein npm ci gefunden`);
     for (const a of aufrufe) assert.match(a, /--ignore-scripts/, `${name}: npm ci ohne --ignore-scripts`);
     const gebaut = [...code.matchAll(/npm rebuild ([^\n&]+)/g)].flatMap(m => m[1].trim().split(/\s+/)).sort();
-    assert.deepEqual(gebaut, mitSkript, `${name} baut nicht genau die Pakete mit Install-Skript`);
+    assert.deepEqual(gebaut, withScriptTag, `${name} baut nicht genau die Pakete mit Install-Skript`);
   }
 });
 

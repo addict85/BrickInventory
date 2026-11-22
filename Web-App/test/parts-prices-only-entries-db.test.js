@@ -13,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
@@ -46,7 +46,7 @@ const dbDa = async t => {
     await db.run('SELECT 1');
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 };
@@ -176,8 +176,8 @@ test('the lists deliver price and condition from the newest acquisition', { conc
                 VALUES ($1,'3003',0,1,NULL,'N')`,
     [uid],
   );
-  const teile2 = await H.manualPartsList([uid], uid);
-  const withoutPrice = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
+  const parts2 = await H.manualPartsList([uid], uid);
+  const withoutPrice = (Array.isArray(parts2) ? parts2 : parts2.parts || []).find(p => p.part_number === '3003');
   assert.ok(withoutPrice, 'Das Teil ohne Preis fehlt in der Antwort');
   assert.equal(
     withoutPrice.unit_price,

@@ -36,7 +36,7 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, async t => {
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
-    ANDERE = `r12x_${process.pid}`;
+    OTHERS = `r12x_${process.pid}`;
   const app = await startApp(t, { name: NAME, holding: patternHousehold });
   if (app.reason) {
     t.skip(app.reason);
@@ -85,11 +85,11 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
   await t.test('delete dialog names the account', async () => {
     await db.run(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
-      [ANDERE, `${ANDERE}@example.org`],
+      [OTHERS, `${OTHERS}@example.org`],
     );
     await geh('einstellungen/benutzer');
     await bis(
-      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`,
+      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(OTHERS)}))`,
       'Benutzerliste',
       100,
     );
@@ -98,16 +98,16 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       ['toggleAdmin', /^„r12x_\d+“ zum Administrator machen\?$/],
       ['toggleActive', /^Konto „r12x_\d+“ deaktivieren\?$/],
     ])) {
-      await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)});
+      await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(OTHERS)});
         z.querySelector('[data-click="${action}"]').click(); return true; })()`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${action}`);
       assert.match(await b.auswerten(text('#cd-title')), titel);
       if (action === 'delUser')
-        assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${ANDERE}“ endgültig löschen`));
+        assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${OTHERS}“ endgültig löschen`));
       await b.auswerten(klick('#cd-cancel'));
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Dialog zu');
     }
-    await db.run('DELETE FROM users WHERE username = $1', [ANDERE]);
+    await db.run('DELETE FROM users WHERE username = $1', [OTHERS]);
   });
 
   await t.test('logo and card names once', async () => {

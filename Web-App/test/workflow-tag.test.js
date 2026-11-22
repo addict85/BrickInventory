@@ -30,7 +30,7 @@ const { spawnSync } = require('node:child_process');
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 
 /** Cut out the run block of the step `id: p` (indentation ten spaces). */
-function pruefScript() {
+function checkScript() {
   const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
   const start = zeilen.indexOf('        run: |');
@@ -61,7 +61,7 @@ esac
 `,
     { mode: 0o755 },
   );
-  const r = spawnSync('bash', ['-e', '-c', pruefScript()], {
+  const r = spawnSync('bash', ['-e', '-c', checkScript()], {
     encoding: 'utf8',
     cwd: __dirname,
     env: {
@@ -129,9 +129,9 @@ test('inputs.tag is only in env', () => {
   const ohneKommentare = YML.split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
-  const stellen = ohneKommentare.match(/.*inputs\.tag.*/g) || [];
+  const placeList = ohneKommentare.match(/.*inputs\.tag.*/g) || [];
   assert.deepEqual(
-    stellen.map(s => s.trim()),
+    placeList.map(s => s.trim()),
     ['TAG_EINGABE: ${{ inputs.tag }}'],
     'inputs.tag steht nur in env',
   );

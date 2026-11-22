@@ -38,12 +38,12 @@ const figur = {
 };
 
 // Like the server: with a search (that hits nothing) the list stays empty.
-const gefiltert = (schluessel, eintrag) => url => ({
+const filtered = (schluessel, entryRow) => url => ({
   success: true,
-  [schluessel]: /[?&]search=/.test(String(url)) ? [] : [eintrag],
+  [schluessel]: /[?&]search=/.test(String(url)) ? [] : [entryRow],
 });
 
-async function oeffne() {
+async function openIt() {
   const o = await openUi({
     '/v2/finance/parts-valuation': { ...ANMELDUNG['/v2/finance/parts-valuation'], parts: [teil], total_value: '1.00' },
     '/v2/finance/minifigs-valuation': {
@@ -51,14 +51,14 @@ async function oeffne() {
       figs: [figur],
       total_value: '3.00',
     },
-    '/v2/parts/manual': gefiltert('parts', teil),
-    '/v2/minifigs/manual': gefiltert('figs', figur),
+    '/v2/parts/manual': filtered('parts', teil),
+    '/v2/minifigs/manual': filtered('figs', figur),
   });
   return o;
 }
 
 /** Click the row (not the row button) and return the dialog title; close it again afterwards. */
-async function klicke(o, kind) {
+async function clickIt(o, kind) {
   const row = o.d.querySelector(`#fin-tbl [data-fin-kind="${kind}"] tbody tr[data-click="openManDetail"]`);
   assert.ok(row, `keine ${kind}-Zeile in der Finanztabelle`);
   const m = o.d.getElementById('man-detail-modal');
@@ -75,7 +75,7 @@ for (const [fall, suche] of [
   ['mit Suche in den Reitern', true],
 ]) {
   test(`finances: part and figure row open the detail (${fall})`, async () => {
-    const o = await oeffne();
+    const o = await openIt();
     try {
       if (suche) {
         o.d.getElementById('parts-search').value = 'Plate';
@@ -87,7 +87,7 @@ for (const [fall, suche] of [
         'Testdaten: je eine Teile- und Figurenzeile',
       );
       await o.ruhig();
-      const titel = { teil: await klicke(o, 'parts'), figur: await klicke(o, 'figs') };
+      const titel = { teil: await clickIt(o, 'parts'), figur: await clickIt(o, 'figs') };
       assert.deepEqual(titel, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'jede Zeile öffnet ihr eigenes Detail');
       const urls = o.aufrufe.map(a => a.url);
       assert.ok(

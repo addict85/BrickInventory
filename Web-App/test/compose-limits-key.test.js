@@ -22,7 +22,7 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
-function dienst(name) {
+function serviceFn(name) {
   const zeilen = compose.split('\n');
   const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
   assert.ok(start >= 0, `Dienst ${name} fehlt`);
@@ -49,7 +49,7 @@ test('every service has limits for memory, processes and CPU', () => {
   assert.ok(SERVICES.length >= 6, `nur ${SERVICES.join(', ')}`);
   const fehlt = [];
   for (const n of SERVICES) {
-    const b = dienst(n);
+    const b = serviceFn(n);
     const mem = b.match(/^\s+mem_limit:\s*(\S+)/m)?.[1],
       pids = b.match(/^\s+pids_limit:\s*(\d+)/m)?.[1];
     const cpus = b.match(/^\s+cpus:\s*(\S+)/m)?.[1];
@@ -62,7 +62,7 @@ test('every service has limits for memory, processes and CPU', () => {
 
 test('app and jobs only see the data key read-only', () => {
   for (const n of ['app', 'jobs']) {
-    const b = dienst(n);
+    const b = serviceFn(n);
     assert.match(b, /^\s+- \.\/schluessel:\/app\/schluessel:ro\s*$/m, `${n}: ./schluessel nur lesend`);
     assert.match(
       b,
@@ -70,7 +70,7 @@ test('app and jobs only see the data key read-only', () => {
       `${n} wartet nicht auf den Schlüssel`,
     );
   }
-  const s = dienst('schluessel');
+  const s = serviceFn('schluessel');
   assert.match(s, /entrypoint: \["sh", "\/app\/create-keys\.sh"\]/);
   assert.match(s, /network_mode: none/);
   const copy = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');

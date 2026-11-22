@@ -31,7 +31,7 @@ const zu = (w, e) => {
   return false;
 };
 
-const GUTSCHEIN = {
+const VOUCHER = {
   id: 3,
   number: '6123456789012',
   pin: '4711',
@@ -42,17 +42,17 @@ const GUTSCHEIN = {
 };
 
 test('vouchers: row and actions', async () => {
-  const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { before: withStyle });
+  const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [VOUCHER] } }, { before: withStyle });
   try {
     await sicht(o.w, 'vouchers');
     await warte(() => o.d.querySelector('.voucher-row'));
     const row = o.d.querySelector('.voucher-row');
     assert.match(row.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
     const loeschen = row.querySelector('[data-click="deleteVoucher"]');
-    const bearbeiten = row.querySelector('[data-click="editVoucher"]');
+    const edit = row.querySelector('[data-click="editVoucher"]');
     // Both labeled (UI check 6, M7), delete marked as danger.
-    assert.equal(loeschen.className, bearbeiten.className + ' v-btn-danger');
-    assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
+    assert.equal(loeschen.className, edit.className + ' v-btn-danger');
+    assert.deepEqual([edit.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
     for (const e of o.d.querySelectorAll('[data-only-with-vouchers]')) assert.equal(zu(o.w, e), false);
   } finally {
     o.w.close();

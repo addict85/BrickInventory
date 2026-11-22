@@ -204,19 +204,19 @@ async function bars(_t, a) {
       `!!document.querySelector('#gallery .sgrid') && !document.querySelector('#gallery table')`,
       'Karten am Telefon',
     );
-    const reihe = {};
+    const rowList = {};
     for (const [hash, tab, bereit] of [
       ['#/sammlung', 'gallery', '#gallery .sc'],
       ['#/teile', 'parts', '#tab-parts .part-card'],
     ]) {
       await geh(a, hash, `!!document.querySelector('${bereit}')`, tab);
-      reihe[tab] =
+      rowList[tab] =
         await b.auswerten(`[...document.querySelector('#tab-${tab} .filter-bar').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
         .sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left).map(e => e.matches('.filter-button') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.search-field') ? 'Suche' : e.className)`);
     }
-    assert.deepEqual(reihe.gallery, ['Filter44', 'Suche']);
+    assert.deepEqual(rowList.gallery, ['Filter44', 'Suche']);
     // Parts additionally have cards/list (UX check 28, N8); filters and search stand the same.
-    assert.deepEqual(reihe.parts, [...reihe.gallery, 'vtgl'], 'Werkzeugleisten uneinheitlich');
+    assert.deepEqual(rowList.parts, [...rowList.gallery, 'vtgl'], 'Werkzeugleisten uneinheitlich');
   } finally {
     await groesse(b, 1280, false);
   }
@@ -259,10 +259,10 @@ async function drossel(_t, a) {
   // A switch to the collection asks list and metrics once each; the catalog the years only the first time.
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
   await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
-  const vorher = b.ereignisse.length;
+  const vorher = b.eventList.length;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
-  const pfade = b.ereignisse
+  const pfade = b.eventList
     .slice(vorher)
     .filter(e => e.method === 'Network.requestWillBeSent' && /\/api\/v2\//.test(e.params.request.url))
     .map(e => e.params.request.url.replace(/^.*\/api/, '').replace(/\?.*/, ''));
@@ -351,13 +351,13 @@ async function startupScaffold(_t, a) {
 async function loeschen(_t, a, name) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
-  const loesche = async (nr, frage = true) => {
+  const removeIt = async (nr, frage = true) => {
     await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc[data-arg="${nr}"]'); k.focus();
       k.querySelector('.delbtn').click(); return true; })()`);
     if (frage) await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage');
     await a.ruhig(3000);
   };
-  await loesche('21318-1');
+  await removeIt('21318-1');
   const frage = await b.auswerten(
     `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-choice label')].map(l => l.textContent.trim()),
       gewaehlt: document.querySelector('#cd-choice input:checked')?.closest('label')?.textContent.trim() })`,
@@ -365,24 +365,24 @@ async function loeschen(_t, a, name) {
   assert.match(frage.text, new RegExp(`${name} \\(ich\\) ×1, ${name}_kind ×1`), 'Konten und Stückzahlen fehlen');
   assert.equal(frage.wahl.length, 3, `keine Auswahl: ${JSON.stringify(frage)}`);
   assert.match(frage.gewaehlt || '', /\(ich\)/, `vorgewählt ist nicht das eigene Exemplar: ${JSON.stringify(frage)}`);
-  const vorher = b.ereignisse.length;
+  const vorher = b.eventList.length;
   await b.auswerten(
     `[...document.querySelectorAll('#cd-choice label')].find(l => l.textContent.includes('_kind')).querySelector('input').click();
     document.getElementById('cd-confirm').click(); true`,
   );
   await bis(`!document.querySelector('#gallery .sc[data-arg="21318-1"] .owner-badge')`, 'nur noch eigenes Exemplar');
   await a.ruhig();
-  const ziel = b.ereignisse
+  const ziel = b.eventList
     .slice(vorher)
     .find(e => e.method === 'Network.requestWillBeSent' && e.params.request.method === 'DELETE')?.params.request.url;
   assert.match(ziel, /\/v2\/sets\/21318-1\?accounts=\d+$/, 'nur das Unterkonto gewählt');
   const active = `(() => { const e = document.activeElement; return e.tagName + ' ' + (e.dataset.arg || e.textContent.trim().slice(0, 20)); })()`;
   assert.equal(await b.auswerten(active), 'DIV 21318-1', 'Fokus nicht auf dem bleibenden Set');
 
-  const reihe = await b.auswerten(`[...document.querySelectorAll('#gallery .sc')].map(k => k.dataset.arg)`);
-  const nr = reihe[1];
+  const rowList = await b.auswerten(`[...document.querySelectorAll('#gallery .sc')].map(k => k.dataset.arg)`);
+  const nr = rowList[1];
   // Only the own copy: restorable, so no question (js/deletion.js), the toast offers undo.
-  await loesche(nr, false);
+  await removeIt(nr, false);
   await bis(`!document.querySelector('#gallery .sc[data-arg="${nr}"]')`, 'Set gelöscht');
   assert.notEqual(
     await b.auswerten(`document.getElementById('confirm-modal').style.display`),
@@ -390,7 +390,7 @@ async function loeschen(_t, a, name) {
     'Rückfrage vor dem eigenen Set',
   );
   await a.ruhig();
-  assert.equal(await b.auswerten(active), `DIV ${reihe[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
+  assert.equal(await b.auswerten(active), `DIV ${rowList[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
   await b.auswerten(
     `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
@@ -399,7 +399,7 @@ async function loeschen(_t, a, name) {
   await bis(`document.activeElement?.dataset?.arg === '${nr}'`, 'Fokus auf der zurückgeholten Karte (Runde 24)');
 }
 
-async function abmelden(_t, a, name) {
+async function signOut(_t, a, name) {
   const { b, bis } = a;
   // State of the admin: users, background, set dialog with purchase prices, catalog, finances.
   await geh(a, '#/einstellungen', `!!document.querySelector('#users-tbl .user-name')`, 'Benutzerverwaltung');
@@ -495,7 +495,7 @@ test('logout, deleting in the household, offline banner, contrast mode', {
     ['Kontrastmodus', kontrast],
     ['Startgerüst', startupScaffold],
     ['Löschen im Haushalt', loeschen],
-    ['Abmelden verwirft das vorige Konto', abmelden],
+    ['Abmelden verwirft das vorige Konto', signOut],
   ];
   for (const [titel, fn] of pruefungen) await t.test(titel, () => fn(t, a, name));
 });

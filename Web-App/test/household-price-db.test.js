@@ -20,7 +20,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the main account sees market price and history of a sub-account set', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // account_links comes from the migrations, not from initSchema
   // (pattern as in test/household-db.test.js).
   const mc = await db.pool.connect();

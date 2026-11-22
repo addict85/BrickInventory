@@ -11,14 +11,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('prices are under the BrickLink number, acquisitions under the Rebrickable number', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

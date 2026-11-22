@@ -138,21 +138,21 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
   });
 
   await t.test('no actions against the own account', async () => {
-    const ANDERE = `r11_andere_${process.pid}`;
+    const OTHERS = `r11_andere_${process.pid}`;
     await db.run(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
-      [ANDERE, `${ANDERE}@example.org`],
+      [OTHERS, `${OTHERS}@example.org`],
     );
-    t.after(() => db.run('DELETE FROM users WHERE username = $1', [ANDERE]).catch(() => {}));
+    t.after(() => db.run('DELETE FROM users WHERE username = $1', [OTHERS]).catch(() => {}));
     await geh('einstellungen/benutzer');
     await bis(
-      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`,
+      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(OTHERS)}))`,
       'Benutzerliste',
       100,
     );
     const z =
       await b.auswerten(`(() => { const zeile = n => [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === n);
-      const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(ANDERE)});
+      const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(OTHERS)});
       return { eigene: eigene.querySelectorAll('button').length, otherDirect: andere.querySelectorAll('.user-actions > button').length,
         otherMore: andere.querySelectorAll('.v-more .more-list button').length }; })()`);
     assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');

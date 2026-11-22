@@ -88,14 +88,14 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     await mouse('mouseMoved', g.y);
     await mouse('mousePressed', g.y);
     await mouse('mouseMoved', g.y + 150);
-    const waehrend = await b.auswerten(
+    const during = await b.auswerten(
       `({ y: scrollY, zieht: document.getElementById('app-scrollbar').classList.contains('dragging') })`,
     );
     await mouse('mouseReleased', g.y + 150);
     const danach = await b.auswerten(`({ zieht: document.getElementById('app-scrollbar').classList.contains('dragging'),
       etikett: getComputedStyle(document.getElementById('app-scrollbar-label')).display })`);
-    assert.ok(waehrend.y > 300, `Seite nur um ${waehrend.y} px gerollt`);
-    assert.equal(waehrend.zieht, true);
+    assert.ok(during.y > 300, `Seite nur um ${during.y} px gerollt`);
+    assert.equal(during.zieht, true);
     assert.equal(danach.zieht, false, 'der Balken bleibt im Ziehzustand');
     assert.equal(danach.etikett, 'none', 'das Etikett bleibt nach dem Loslassen stehen');
   });

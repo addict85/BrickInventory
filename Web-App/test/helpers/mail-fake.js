@@ -9,7 +9,7 @@ const path = require('node:path');
 
 const SCHLUESSEL = ['smtp_host', 'smtp_user'];
 
-function mailAttrappe() {
+function mailFake() {
   const nodemailer = require(path.join(__dirname, '..', '..', 'node_modules', 'nodemailer'));
   const gesendet = [];
   nodemailer.createTransport = () => ({
@@ -38,4 +38,4 @@ async function enterMailServer(db) {
   };
 }
 
-module.exports = { mailAttrappe, enterMailServer };
+module.exports = { mailFake, enterMailServer };

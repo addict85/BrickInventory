@@ -19,7 +19,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const ipThrottle = (...a) =>
   _req('src/account/http/login.js').ipThrottle(require('./helpers/sources').testServices().account, ...a);
@@ -34,7 +34,7 @@ async function dbDa(t) {
     await db.initSchema();
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 }

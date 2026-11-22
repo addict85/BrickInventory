@@ -30,7 +30,7 @@ const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0063
 const SCHEMA = `probe0063_${process.pid}`;
 
 test('run state separate from the configuration', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   {
     const c = await db.pool.connect();
     try {

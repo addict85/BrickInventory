@@ -112,10 +112,10 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
       await r.arrayBuffer();
       assert.equal(r.headers.get('cache-control'), 'no-store', path);
     }
-    const statisch = await holen('/js/app.bundle.js');
-    await statisch.arrayBuffer();
-    assert.equal(statisch.status, 200);
-    assert.doesNotMatch(statisch.headers.get('cache-control'), /no-store/);
+    const staticPart = await holen('/js/app.bundle.js');
+    await staticPart.arrayBuffer();
+    assert.equal(staticPart.status, 200);
+    assert.doesNotMatch(staticPart.headers.get('cache-control'), /no-store/);
   });
 
   await t.test('broken JSON and too large requests: uniform response without parser text', async () => {

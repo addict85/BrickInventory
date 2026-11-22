@@ -63,9 +63,9 @@ test('MAIL_CONSOLE_WITH_TOKEN=1 in production: startup refused', { timeout: 50_0
   assert.equal(r.code, 1, r.log.slice(-400));
   assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
-  const entw = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1', NODE_ENV: 'development' });
-  assert.doesNotMatch(entw.log, /MAIL_CONSOLE_WITH_TOKEN/);
-  assert.match(entw.log, /Database initialisation failed/);
+  const draft = await starte({ ...db, MAIL_CONSOLE_WITH_TOKEN: '1', NODE_ENV: 'development' });
+  assert.doesNotMatch(draft.log, /MAIL_CONSOLE_WITH_TOKEN/);
+  assert.match(draft.log, /Database initialisation failed/);
 });
 
 test('COOKIE_SECURE=0 in production: warning line at startup', { timeout: 50_000 }, async () => {

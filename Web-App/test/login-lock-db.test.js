@@ -41,8 +41,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const { noDb } = require('./helpers/db');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const { proxyTrust } = _req('src/infra/proxyTrust.js');
 const { MAX_ATTEMPTS, waitTimeSeconds } = _req('src/account/loginLimiter.js');
@@ -70,7 +70,7 @@ async function prepare(t) {
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
   const c = await db.pool.connect();
@@ -131,9 +131,9 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
     'fd00::100/120',
   ]);
   // A network above eight addresses only when confirmed, and even then at most /16 or /64.
-  for (const weit of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
-    assert.throws(() => proxyTrust(weit), /PROXY_NETWORK_CONFIRMED=1/, `ohne Bestätigung angenommen: ${weit}`);
-    assert.deepEqual(proxyTrust(weit, true), [weit]);
+  for (const wide of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
+    assert.throws(() => proxyTrust(wide), /PROXY_NETWORK_CONFIRMED=1/, `ohne Bestätigung angenommen: ${wide}`);
+    assert.deepEqual(proxyTrust(wide, true), [wide]);
   }
   for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
     assert.throws(() => proxyTrust(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);

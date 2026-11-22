@@ -12,7 +12,7 @@ if (!port) throw new Error('cdn-umleitung: CDN_UMLEITUNG_PORT fehlt');
 
 for (const kind of /** @type {const} */ (['get', 'request'])) {
   const echt = https[kind];
-  /** @type {any} */ (https)[kind] = function umgeleitet(/** @type {any[]} */ ...args) {
+  /** @type {any} */ (https)[kind] = function redirected(/** @type {any[]} */ ...args) {
     const [address, options, callback] = args;
     const u = typeof address === 'string' ? new URL(address) : address;
     if (u?.hostname !== 'cdn.rebrickable.com') return echt.apply(https, args);

@@ -50,13 +50,13 @@ test('wishlist item prices call BrickLink only for sets in the catalog', { concu
   const KNOWN = '98766-1';
   const MARKED = '98767-1';
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
-  const setze = async (k, v) =>
+  const put = async (k, v) =>
     db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [
       k,
       v,
     ]);
   const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
-  for (const k of zugang) await setze(k, 'test');
+  for (const k of zugang) await put(k, 'test');
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   await db.run('DELETE FROM users WHERE username = $1', ['preise_erfunden']);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('preise_erfunden','x') RETURNING id`))
@@ -77,7 +77,7 @@ test('wishlist item prices call BrickLink only for sets in the catalog', { concu
     await db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[MARKED, KNOWN, INVENTED]]);
     await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [[KNOWN, INVENTED]]);
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterAccess) await setze(z.key, z.value);
+    for (const z of alterAccess) await put(z.key, z.value);
     await db.pool.end().catch(() => {});
   });
   const { pricesForBothConditions } = _req('src/wanted/wanted.js');

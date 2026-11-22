@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 test('import without a price leaves the same as capturing without a price', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   importWorker(t, _req);
 
   const name = `imp_${process.pid}`;

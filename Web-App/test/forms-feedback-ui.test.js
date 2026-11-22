@@ -95,11 +95,11 @@ test('delete alert without question, with undo', async () => {
     assert.ok(await warte(() => loeschen(o, `/sets/${SN}/alert`).length === 1));
     assert.equal(browserConfirm, 0);
     assert.notEqual(o.d.getElementById('confirm-modal').style.display, 'flex', 'Rückfrage vor Wiederherstellbarem');
-    const rueck = await warte(
+    const backward = await warte(
       () => [...o.d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)),
       1500,
     );
-    assert.ok(rueck, 'kein Rückgängig');
+    assert.ok(backward, 'kein Rückgängig');
     [...o.d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
     assert.ok(await warte(() => o.aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/sets/${SN}/alert`))));
     const rumpf = JSON.parse(o.aufrufe.find(a => a.method === 'PUT').body);

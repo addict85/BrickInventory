@@ -10,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
@@ -84,13 +84,13 @@ test('an acquisition changes the account — all three kinds via their route', {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const setze = async (path, koerper) => {
+  const put = async (path, koerper) => {
     const r = await fetch(base + path, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -107,7 +107,7 @@ test('an acquisition changes the account — all three kinds via their route', {
 
   await t.test('set: the acquisition AND the inventory row are with the child afterwards', async () => {
     const id = await entryId('set_acquisitions', 'set_number', SN);
-    const a = await setze(`/api/v2/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
       await besitzer('set_acquisitions', 'set_number', SN),
@@ -127,7 +127,7 @@ test('an acquisition changes the account — all three kinds via their route', {
 
   await t.test('part: the same factory, a different address', async () => {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
     assert.deepEqual(
@@ -142,7 +142,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // contains `manualEntryReassign(tx, 'fig'`. Exactly this kind of assurance
     // passed twice today while the path was broken.
     const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
-    const a = await setze(`/api/v2/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
     assert.deepEqual(
@@ -158,7 +158,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // applies, or a writeTargetOrNull() that allows too much.
     await setup();
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
     assert.equal(
       a.status,
       403,
@@ -185,7 +185,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // `unchanged`. Without this case the route could reject every switch
     // and the 403 case above would still be green.
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body?.unchanged, true, 'Ein Wechsel auf das eigene Konto muss als „unveraendert" antworten');
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);

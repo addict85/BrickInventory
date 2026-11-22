@@ -75,11 +75,11 @@ test("for comparison on the device: SHA-256 of the whole certificate, as in Cadd
 
 test('cookie only over TLS: in production and behind https, can be switched off', () => {
   // Without NODE_ENV the rules of production apply; only development is relaxed.
-  const ent = { NODE_ENV: 'development' };
+  const decrypted = { NODE_ENV: 'development' };
   assert.equal(cookieSafe(loadConfig({})), true);
-  assert.equal(cookieSafe(loadConfig(ent)), false);
-  assert.equal(cookieSafe(loadConfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
-  assert.equal(cookieSafe(loadConfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
+  assert.equal(cookieSafe(loadConfig(decrypted)), false);
+  assert.equal(cookieSafe(loadConfig({ ...decrypted, APP_BASE_URL: 'https://lego.test' })), true);
+  assert.equal(cookieSafe(loadConfig({ ...decrypted, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
   assert.equal(cookieSafe(loadConfig({ NODE_ENV: 'production' })), true);
   assert.equal(cookieSafe(loadConfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
@@ -121,19 +121,19 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
     await db.pool.end();
     fs.rmSync(ordner, { recursive: true, force: true });
   });
-  const ruf = (weg, o = {}) =>
+  const callFn = (weg, o = {}) =>
     fetch(basis + weg, {
       method: o.body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', ...(o.cookie ? { cookie: o.cookie } : {}) },
       ...(o.body ? { body: JSON.stringify(o.body) } : {}),
     });
-  const anmeldung = await ruf('/api/v2/auth/login', {
+  const anmeldung = await callFn('/api/v2/auth/login', {
     body: { username: 'tls_nutzer', password: 'richtigesPasswort1', without_token: true },
   });
   await anmeldung.text(); // the session only stands in the store after the last byte
   const cookie = anmeldung.headers.get('set-cookie').split(';')[0];
   const qr = async () =>
-    (await ruf('/api/v2/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
+    (await callFn('/api/v2/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
   const zert = (proto = 'https') => fetch(basis + '/ca.crt', { headers: { 'x-forwarded-proto': proto } });
   // No file yet (Caddy has not created the CA): no fp, 404.
@@ -151,7 +151,7 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   const klar = await zert('http');
   assert.equal(klar.status, 403, 'über HTTP keine Wurzel');
   assert.doesNotMatch(await klar.text(), /BEGIN CERTIFICATE/);
-  const tls = await (await ruf('/api/v2/settings/tls', { cookie })).json();
+  const tls = await (await callFn('/api/v2/settings/tls', { cookie })).json();
   assert.equal(tls.fp, FP1);
   assert.equal(tls.cert_sha256, tlsStatusFrom(PEM1).cert_sha256);
   assert.equal(tls.https, true);

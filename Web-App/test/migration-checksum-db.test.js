@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { runMigrations } = _req('db/migrate.js');
 
@@ -29,7 +29,7 @@ test('checksums of the migrations', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const c = await db.pool.connect();

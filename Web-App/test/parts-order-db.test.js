@@ -25,7 +25,7 @@ process.env.SESSION_SECRET = 'test';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const H = require('./helpers/sources').handlerModule(_req);
 const PS = _req('src/parts/summary.js');
@@ -37,7 +37,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const aufraeumen = async () => {
@@ -78,7 +78,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     quantity: ['ORD1', 'ORD3', 'ORD2'],
   };
   const abfrage = order => ({ exclude_manual: '1', page: 1, page_size: 50, order });
-  const reihe = r => r.parts.map(p => p.part_number);
+  const rowList = r => r.parts.map(p => p.part_number);
 
   await t.test('the server sorts as chosen on every path', async () => {
     const results = [];
@@ -90,29 +90,29 @@ test('order of the parts list', { concurrency: 1 }, async t => {
       await PS.rebuildNow(U);
       await PS.rebuildNow(U2);
       const zsf = await H.partsQuery(U, abfrage(order));
-      const zsfHousehold = await H.partsQuery([U, U2], abfrage(order));
+      const sumHousehold = await H.partsQuery([U, U2], abfrage(order));
       for (const [weg, r, source] of [
         ['Live', live, 'db'],
         ['Live Haushalt', liveHousehold, 'db'],
         ['Zusammenfassung', zsf, 'summary'],
-        ['Zusammenfassung Haushalt', zsfHousehold, 'summary'],
+        ['Zusammenfassung Haushalt', sumHousehold, 'summary'],
       ])
         results.push({
           order,
           weg,
           source: r.source,
-          reihe: reihe(r),
-          erwartet: { source, reihe: EXPECTED[order] },
+          rowList: rowList(r),
+          erwartet: { source, rowList: EXPECTED[order] },
         });
     }
     assert.deepEqual(
-      results.map(e => `${e.order}/${e.weg}: ${e.source} ${e.reihe}`),
-      results.map(e => `${e.order}/${e.weg}: ${e.erwartet.source} ${e.erwartet.reihe}`),
+      results.map(e => `${e.order}/${e.weg}: ${e.source} ${e.rowList}`),
+      results.map(e => `${e.order}/${e.weg}: ${e.erwartet.source} ${e.erwartet.rowList}`),
     );
   });
 
   await t.test('an unknown value counts as color', async () => {
-    assert.deepEqual(reihe(await H.partsQuery(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
+    assert.deepEqual(rowList(await H.partsQuery(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
   });
 
   await t.test('ungrouped, the UI draws no color tiles', async () => {

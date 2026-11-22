@@ -18,7 +18,7 @@ const { priceHistoryPart } = _req('src/finances/priceHistory.js');
 const { holdsPart } = require('./helpers/inventory');
 
 test('part prices are under ONE number', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // part_price_history only stands in db/migrations/0003.
   const migClient = await db.pool.connect();
   try {
@@ -113,11 +113,11 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
       [RB2, FARBE, CURRENCY],
     );
 
-    const preis2 = await fetchPartPrice(RB2, FARBE, 'N', CURRENCY, 24);
+    const price2 = await fetchPartPrice(RB2, FARBE, 'N', CURRENCY, 24);
     assert.equal(
-      Number(preis2?.avg_price),
+      Number(price2?.avg_price),
       15,
-      `fetchPartPrice lieferte ${JSON.stringify(preis2)} statt 15. Ohne Zuordnung ` +
+      `fetchPartPrice lieferte ${JSON.stringify(price2)} statt 15. Ohne Zuordnung ` +
         'muss die Rebrickable-Nummer selbst der Schlüssel sein — sonst fragt jeder ' +
         'Aufruf BrickLink neu, obwohl der Preis dasteht.',
     );

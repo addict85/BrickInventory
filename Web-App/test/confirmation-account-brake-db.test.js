@@ -40,7 +40,7 @@ const { checkConfirmation } = _req('src/account/passwordConfirmation.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Konto-Bremse-Passwort-1',
-  FALSCH = 'Falsch-geraten-0815';
+  WRONG = 'Falsch-geraten-0815';
 
 test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -53,22 +53,22 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
       [NAME, `${NAME}@example.org`, bcrypt.hashSync(PASS, 4)],
     )
   ).id;
-  const leere = () =>
+  const empty = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key = $3`, [
       `%-bestaetigen|${uid}|%`,
       `%-bestaetigen-konto|${uid}`,
       `bestaetigung-hinweis|konto:${uid}`,
     ]);
-  await leere();
+  await empty();
   const zeilen = [];
   const zurueck = protokoll.installLog({ out: () => {}, err: z => zeilen.push(z), now: () => Date.now() });
   t.after(async () => {
     zurueck();
-    await leere();
+    await empty();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const versuch = async (zugang, pw = FALSCH) =>
+  const versuch = async (zugang, pw = WRONG) =>
     STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.kind] ?? 200;
 
   await t.test('across many accesses at most 20 failed attempts per day', async () => {

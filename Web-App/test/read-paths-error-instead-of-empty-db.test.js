@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { catalogSet: putCatalogSetAn } = require('./helpers/inventory');
+const { catalogSet: putCatalogSetTo } = require('./helpers/inventory');
 
 const FARBE = 990000 + (process.pid % 9000);
 const TEIL = `lpf${process.pid}`;
@@ -48,7 +48,7 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
     `${TEIL}bl`,
   ]);
   await db.run(`INSERT INTO shared_instructions (set_number, url) VALUES ($1, 'https://example.invalid/a.pdf')`, [SET]);
-  await putCatalogSetAn(db, SET, { name: 'Probeset' });
+  await putCatalogSetTo(db, SET, { name: 'Probeset' });
   t.after(async () => {
     await db.run('DELETE FROM rb_colors WHERE id = $1', [FARBE]).catch(() => {});
     await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [TEIL]).catch(() => {});

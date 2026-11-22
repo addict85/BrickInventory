@@ -277,11 +277,11 @@ test('8. the same card twice in the batch yields ONE entry', async () => {
 
 test('9. the verification catches a replacement that hits the card number', async () => {
   // Where this case comes from (counter-check)
-  const numberMit400 = '5045076374400011166';
-  const original = await buildVoucher('400', numberMit400, '5225', null);
+  const numberWith400 = '5045076374400011166';
+  const original = await buildVoucher('400', numberWith400, '5225', null);
   const vorher = valuesFromPdf(original);
-  assert.equal(vorher.number, numberMit400, 'Vorbedingung: die Nummer wird gelesen');
-  assert.ok(numberMit400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
+  assert.equal(vorher.number, numberWith400, 'Vorbedingung: die Nummer wird gelesen');
+  assert.ok(numberWith400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
 
   const r = await replaceAmount(original, 250);
   if (r.data) {

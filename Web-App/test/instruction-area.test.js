@@ -32,10 +32,10 @@ test('range requests to an instruction', async t => {
   const { srv, basis } = starte();
   t.after(() => srv.close());
 
-  const hol = async (path, range) => await fetch(basis + path, range ? { headers: { Range: range } } : undefined);
+  const fetchIt = async (path, range) => await fetch(basis + path, range ? { headers: { Range: range } } : undefined);
 
   await t.test('without a range the whole file comes', async () => {
-    const r = await hol('/data/instructions/BI-3004.pdf');
+    const r = await fetchIt('/data/instructions/BI-3004.pdf');
     assert.equal(r.status, 200);
     assert.equal((await r.arrayBuffer()).byteLength, SIZE);
   });
@@ -43,13 +43,13 @@ test('range requests to an instruction', async t => {
   await t.test('a range in the middle is continued', async () => {
     // That is the NORMAL case after an abort: the app has half and
     // fetches the rest. If this step fails, the resume path itself is broken.
-    const r = await hol('/data/instructions/BI-3004.pdf', 'bytes=2500-');
+    const r = await fetchIt('/data/instructions/BI-3004.pdf', 'bytes=2500-');
     assert.equal(r.status, 206);
     assert.equal(r.headers.get('content-range'), `bytes 2500-${SIZE - 1}/${SIZE}`);
   });
 
   await t.test('a range BEHIND the end of the file is 416, not 404', async () => {
-    const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
+    const r = await fetchIt('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
     assert.equal(
       r.status,
       416,
@@ -64,7 +64,7 @@ test('range requests to an instruction', async t => {
   await t.test('a missing file stays 404', async () => {
     // The opposite direction, so that the rule does not turn green because
     // nothing answers 404 anymore.
-    const r = await hol('/fehlt');
+    const r = await fetchIt('/fehlt');
     assert.equal(r.status, 404);
   });
 });

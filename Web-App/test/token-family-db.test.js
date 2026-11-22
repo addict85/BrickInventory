@@ -70,7 +70,7 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const ruf = async (weg, token, body) => {
+  const callFn = async (weg, token, body) => {
     const r = await fetch(basis + weg, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
@@ -79,15 +79,15 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const anmelden = async label => {
-    const r = await ruf('/login', null, { username: NAME, password: PASS, label, never_expires: true });
+    const r = await callFn('/login', null, { username: NAME, password: PASS, label, never_expires: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.token;
   };
   const gilt = async token => {
     tokenCache.emptyTokenCache();
-    return (await ruf('/me', token)).status === 200;
+    return (await callFn('/me', token)).status === 200;
   };
-  const verbraucht = async () =>
+  const consumed = async () =>
     (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
   // Every login reports its new access (token_neu); here the warning is counted.
   const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.kind !== 'token_neu');
@@ -98,27 +98,27 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
 
   const a = await anmelden('Pixel');
   const anderes = await anmelden('Tablet');
-  const getauscht = await ruf('/rotate-token', a, {});
-  assert.equal(getauscht.status, 200, JSON.stringify(getauscht.body));
-  const b = getauscht.body.token;
+  const swapped = await callFn('/rotate-token', a, {});
+  assert.equal(swapped.status, 200, JSON.stringify(swapped.body));
+  const b = swapped.body.token;
 
   await t.test('the predecessor is marked as used', async () => {
     assert.equal(await gilt(b), true, 'die erste Nutzung des Nachfolgers');
-    assert.deepEqual(await verbraucht(), [auth.tokenDigest(a)]);
+    assert.deepEqual(await consumed(), [auth.tokenDigest(a)]);
     assert.equal(await gilt(a), false, 'der Vorgänger gilt nach der Überlappung nicht mehr');
   });
 
   await t.test('a straggler in the grace period locks nothing', async () => {
-    assert.equal((await ruf('/rotate-token', a, {})).status, 401);
+    assert.equal((await callFn('/rotate-token', a, {})).status, 401);
     assert.equal(await gilt(b), true, 'eine Anfrage, die noch mit dem alten unterwegs war, sperrt das Gerät aus');
     assert.deepEqual(await mails(0), []);
   });
 
   await t.test('the exchange with the used one locks the family', async () => {
     await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
-    assert.equal((await ruf('/rotate-token', a, {})).status, 401);
+    assert.equal((await callFn('/rotate-token', a, {})).status, 401);
     assert.equal(await gilt(b), false, 'der Nachfolger des kopierten Tokens gilt weiter');
-    assert.deepEqual(await verbraucht(), [], 'die Familie ist samt Vermerk weg');
+    assert.deepEqual(await consumed(), [], 'die Familie ist samt Vermerk weg');
   });
 
   await t.test('the other device stays logged in', async () => {
@@ -127,19 +127,19 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
 
   await t.test('the owner gets exactly one mail', async () => {
     assert.deepEqual(await mails(1), [{ an: `${NAME}@example.org`, kind: 'token_wiederverwendet', name: 'Pixel' }]);
-    assert.equal((await ruf('/me', a)).status, 401);
+    assert.equal((await callFn('/me', a)).status, 401);
     await new Promise(r => setTimeout(r, 100));
     assert.equal((await mails(1)).length, 1, 'ein zweiter Versuch schickt keine zweite Mail');
   });
 
   await t.test('orphaned marks are cleared by the background run', async () => {
-    const c2 = await ruf('/rotate-token', anderes, {});
+    const c2 = await callFn('/rotate-token', anderes, {});
     assert.equal(await gilt(c2.body.token), true);
-    assert.equal((await verbraucht()).length, 1, 'Vorbedingung: ein Vermerk der lebenden Familie');
+    assert.equal((await consumed()).length, 1, 'Vorbedingung: ein Vermerk der lebenden Familie');
     await auth.tokensCleanup();
-    assert.equal((await verbraucht()).length, 1, 'der Vermerk einer lebenden Familie bleibt');
+    assert.equal((await consumed()).length, 1, 'der Vermerk einer lebenden Familie bleibt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     await auth.tokensCleanup();
-    assert.deepEqual(await verbraucht(), []);
+    assert.deepEqual(await consumed(), []);
   });
 });

@@ -15,7 +15,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { routes: routen } = _req('src/contract/vouchers.js');
 const anlegen = routen['POST /api/v2/vouchers'].input;
-const aendern = routen['PUT /api/v2/vouchers/:id'].input;
+const changeIt = routen['PUT /api/v2/vouchers/:id'].input;
 
 /** The code with which the contract rejects (as the contract router reads it). */
 function code(schema, rumpf) {
@@ -44,8 +44,8 @@ test("the contract rejects unusable values with the rule's code", () => {
 });
 
 test('when changing the mask may come back, empty means remove', () => {
-  assert.deepEqual(aendern.parse({ number: '…1166', pin: '•••' }), { number: '…1166', pin: '•••' });
-  assert.deepEqual(aendern.parse({ pin: '', currency: '' }), { pin: '', currency: '' });
-  assert.equal(code(aendern, { number: '…11' }), 'number_invalid');
-  assert.equal(code(aendern, { pin: '••' }), 'pin_invalid');
+  assert.deepEqual(changeIt.parse({ number: '…1166', pin: '•••' }), { number: '…1166', pin: '•••' });
+  assert.deepEqual(changeIt.parse({ pin: '', currency: '' }), { pin: '', currency: '' });
+  assert.equal(code(changeIt, { number: '…11' }), 'number_invalid');
+  assert.equal(code(changeIt, { pin: '••' }), 'pin_invalid');
 });

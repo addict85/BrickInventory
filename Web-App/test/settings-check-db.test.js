@@ -26,7 +26,7 @@ const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('settings: validation of the values and export per role', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const NAME = `einst-pruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;

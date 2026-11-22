@@ -85,10 +85,10 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  const ruf = (path, cookie, o = {}) =>
+  const callFn = (path, cookie, o = {}) =>
     fetch(basis + path, { ...o, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } });
   const anmelden = async name => {
-    const r = await ruf('/api/v2/auth/login', null, {
+    const r = await callFn('/api/v2/auth/login', null, {
       method: 'POST',
       body: JSON.stringify({ username: name, password: PW, without_token: true, code: codes[name]?.shift() }),
     });
@@ -105,17 +105,17 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
       'INSERT INTO user_sessions (sid, sess, expire) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess',
       [z.sid, z.sess, z.expire],
     );
-  const angemeldet = async cookie => (await (await ruf('/api/v2/auth/me', cookie)).json()).loggedIn === true;
+  const angemeldet = async cookie => (await (await callFn('/api/v2/auth/me', cookie)).json()).loggedIn === true;
 
   try {
     await t.test('revocation of rights: the written-back administrator session no longer applies', async () => {
       const chef = await anmelden('sv_chef');
       const zweiter = await anmelden('sv_second');
-      assert.equal((await ruf('/api/v2/auth/users', zweiter)).status, 200, 'Vorbedingung: Verwalter');
+      assert.equal((await callFn('/api/v2/auth/users', zweiter)).status, 200, 'Vorbedingung: Verwalter');
       const alt = await row(zweiter);
       assert.ok(alt, 'Vorbedingung: Sitzungszeile liegt');
 
-      const r = await ruf(`/api/v2/auth/users/${id.sv_second}/admin`, chef, {
+      const r = await callFn(`/api/v2/auth/users/${id.sv_second}/admin`, chef, {
         method: 'PUT',
         body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }),
       });
@@ -128,7 +128,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
       assert.equal(await row(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
       await writeBack(alt);
 
-      const danach = await ruf('/api/v2/auth/users', zweiter);
+      const danach = await callFn('/api/v2/auth/users', zweiter);
       assert.equal(danach.status, 401, 'die zurückgeschriebene Verwaltersitzung gilt nicht mehr');
       assert.equal(await angemeldet(zweiter), false);
       assert.equal(await row(zweiter), undefined, 'die alte Zeile ist beim Abweisen wieder entfernt');
@@ -139,7 +139,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
       const a = await anmelden('sv_nutzer');
       const b = await anmelden('sv_nutzer');
       const altB = await row(b);
-      const r = await ruf('/api/v2/settings/sessions/end-others', a, {
+      const r = await callFn('/api/v2/settings/sessions/end-others', a, {
         method: 'POST',
         body: JSON.stringify({ password: PW }),
       });
@@ -147,7 +147,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
       await writeBack(altB);
       assert.equal(await angemeldet(b), false, 'das andere Fenster bleibt draussen');
       assert.equal(await angemeldet(a), true, 'das eigene Fenster bleibt angemeldet');
-      assert.equal((await ruf('/api/v2/settings/tokens', a)).status, 200, 'das eigene Fenster arbeitet weiter');
+      assert.equal((await callFn('/api/v2/settings/tokens', a)).status, 200, 'das eigene Fenster arbeitet weiter');
     });
   } finally {
     srv.close();

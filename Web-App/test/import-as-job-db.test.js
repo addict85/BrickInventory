@@ -51,12 +51,12 @@ test('import as a job', { concurrency: 1 }, async t => {
   });
   // Like the route: in the request's account; it reads its own job under row security.
   const { runImport: asJob } = _req('src/collection/importJobs.js');
-  const importAlsAuftrag = (...a) => asAccount(uid, () => asJob(...a));
+  const importAsTask = (...a) => asAccount(uid, () => asJob(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
 
   await t.test('without a worker the job stays open', async () => {
     await assert.rejects(
-      importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
+      importAsTask(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
       (/** @type {any} */ e) => e.code === 'import_still_running' && e.kind === 'zeitueberschreitung',
     );
     const a = await db.get(
@@ -71,7 +71,7 @@ test('import as a job', { concurrency: 1 }, async t => {
 
   await t.test('with a worker the result comes', async tt => {
     importWorker(tt, _req);
-    const r = await importAlsAuftrag(uid, 'teile_csv', { text: csv('mit1') });
+    const r = await importAsTask(uid, 'teile_csv', { text: csv('mit1') });
     assert.equal(r.success, undefined, 'die Hülle der Antwort setzt die Route, nicht der Dienst');
     assert.equal(r.total, 1);
     assert.equal(r.added + r.updated, 1, JSON.stringify(r));
@@ -87,7 +87,7 @@ test('import as a job', { concurrency: 1 }, async t => {
   await t.test('a domain error arrives with a code', async tt => {
     importWorker(tt, _req);
     await assert.rejects(
-      importAlsAuftrag(uid, 'alarme_csv', { currency: 'CHF', text: 'set_number\n1-1\n' }),
+      importAsTask(uid, 'alarme_csv', { currency: 'CHF', text: 'set_number\n1-1\n' }),
       (/** @type {any} */ e) => e.code === 'alert_threshold_invalid' && e.kind === 'ungueltig',
     );
   });

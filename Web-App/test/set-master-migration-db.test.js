@@ -31,7 +31,7 @@ const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0105
 const SCHEMA = `probe0105_${process.pid}`;
 
 test('migration 0105: set master from rb_sets', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});

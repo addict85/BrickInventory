@@ -31,9 +31,9 @@ test('a run over dist/ yields lcov and areas', async () => {
       { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: v8 }, encoding: 'utf8' },
     );
     assert.equal(r.status, 0, r.stderr);
-    const bereiche = await report(v8, ordner);
-    assert.ok(bereiche.server > 0, JSON.stringify(bereiche));
-    assert.equal(bereiche.ui, 0);
+    const areaList = await report(v8, ordner);
+    assert.ok(areaList.server > 0, JSON.stringify(areaList));
+    assert.equal(areaList.ui, 0);
     const lcov = fs.readFileSync(path.join(ordner, 'lcov.info'), 'utf8');
     assert.match(lcov, /^SF:.*dist\/src\/infra\/errorTexts\.js$/m);
     assert.doesNotMatch(lcov, /node_modules/);

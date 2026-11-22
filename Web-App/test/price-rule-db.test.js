@@ -23,7 +23,7 @@ const db = testData();
 const { hatPrice } = _req('src/catalog/bricklinkPrices.js');
 
 test('the price rule applies the same everywhere', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const SN = `preisregel-${process.pid}-1`;
   const aufraeumen = () => db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});

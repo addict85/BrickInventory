@@ -97,11 +97,11 @@ test('even after 31 days it stays away, another account sees it again', async t 
     erst.w.close();
   }
   await t.test('even after 31 days it stays away', async () => {
-    const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
+    const before31 = Date.now() - 31 * 24 * 3600 * 1000;
     const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
       before: f => {
-        f.localStorage.setItem(schluessel, String(vor31));
-        f.Date.now = () => vor31 + 62 * 24 * 3600 * 1000;
+        f.localStorage.setItem(schluessel, String(before31));
+        f.Date.now = () => before31 + 62 * 24 * 3600 * 1000;
       },
     });
     try {

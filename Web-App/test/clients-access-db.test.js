@@ -83,11 +83,14 @@ test('via the services fetches carry the stored key and count', { concurrency: 1
     await deleteGlobalValues('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
-  const heute = new Date().toISOString().slice(0, 10);
+  const todayDate = new Date().toISOString().slice(0, 10);
   const zaehler = async () =>
     Number(
-      (await db.get("SELECT count FROM api_calls WHERE day = $1 AND api = 'rebrickable' AND account_id = 0", [heute]))
-        ?.count || 0,
+      (
+        await db.get("SELECT count FROM api_calls WHERE day = $1 AND api = 'rebrickable' AND account_id = 0", [
+          todayDate,
+        ])
+      )?.count || 0,
     );
   const vorher = await zaehler();
 

@@ -15,7 +15,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 // READ the address from server.ts, do not copy it: a separate test bench
 // with a fixed address stays green while the router hangs elsewhere long ago.
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -183,7 +183,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
     await t.test('the admin path does not apply to the own account and not to unknown ones', async () => {
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
       const chefId = (await db.get("SELECT id FROM users WHERE username='pw_chef'")).id;
-      const setze = async (cookie, id) => {
+      const put = async (cookie, id) => {
         const r = await fetch(`${basis}${AUTH}/users/${id}/password`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json', cookie },
@@ -191,14 +191,14 @@ test('a password change ends sessions AND tokens — against a real store', { co
         });
         return `${r.status} ${(await r.json()).code ?? ''}`;
       };
-      assert.equal(await setze(chef.cookie, chefId), '400 own_account_password', 'nicht für das eigene Konto');
+      assert.equal(await put(chef.cookie, chefId), '400 own_account_password', 'nicht für das eigene Konto');
       assert.equal(
-        await setze(chef.cookie, 2_000_000_000),
+        await put(chef.cookie, 2_000_000_000),
         '404 user_not_found',
         'ein Unbekannter ist kein stiller Erfolg',
       );
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
-      assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
+      assert.match(await put(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
       assert.ok(
         await _req('src/account/passwordHash.js').passwordFits(
           'nochNeuer1234',

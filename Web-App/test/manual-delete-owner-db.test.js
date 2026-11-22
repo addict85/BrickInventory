@@ -11,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsMinifig, holdsPart, subsetOf } = require('./helpers/inventory');
@@ -33,7 +33,7 @@ after(() => db.pool.end());
 
 test('the trash hits the clicked card, not the own one', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -64,7 +64,7 @@ test('the trash hits the clicked card, not the own one', async t => {
   await holdsMinifig(db, kind, 'sw0001', { quantity: 2 });
 
   const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
-  const ruf = async (path, methode = 'GET') => {
+  const callFn = async (path, methode = 'GET') => {
     const r = await fetch(base + path, { method: methode });
     return { status: r.status, body: await r.json() };
   };
@@ -83,7 +83,7 @@ test('the trash hits the clicked card, not the own one', async t => {
   assert.deepEqual(await parts(), [`${haupt}:5`, `${kind}:9`], 'Vorlage');
 
   // Delete the CHILD's card.
-  const a = await ruf(`/api/v2/parts/3001/4?owner=${kind}`, 'DELETE');
+  const a = await callFn(`/api/v2/parts/3001/4?owner=${kind}`, 'DELETE');
   assert.equal(a.status, 200, JSON.stringify(a.body));
   assert.deepEqual(
     await parts(),
@@ -92,13 +92,13 @@ test('the trash hits the clicked card, not the own one', async t => {
   );
 
   // Then the own one, without parameter (behavior as before).
-  const b = await ruf('/api/v2/parts/3001/4', 'DELETE');
+  const b = await callFn('/api/v2/parts/3001/4', 'DELETE');
   assert.equal(b.status, 200, JSON.stringify(b.body));
   assert.deepEqual(await parts(), [], 'Ohne owner das eigene Konto');
 
   // The same for minifigures.
   assert.deepEqual(await minifigs(), [haupt, kind], 'Vorlage Minifiguren');
-  const c = await ruf(`/api/v2/minifigs/sw0001?owner=${kind}`, 'DELETE');
+  const c = await callFn(`/api/v2/minifigs/sw0001?owner=${kind}`, 'DELETE');
   assert.equal(c.status, 200, JSON.stringify(c.body));
   assert.deepEqual(await minifigs(), [haupt], 'Die Figur des Unterkontos muss weg sein');
 
@@ -111,13 +111,13 @@ test('the trash hits the clicked card, not the own one', async t => {
   // Like teile() above: since migration 0038 the piece count stands in the
   // acquisitions. The quantity control writes exactly there — hence this is
   // also the place where a grab at the wrong row becomes noticeable.
-  const mengen = async () => {
+  const quantities = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
     const raus = [];
     for (const r of zeilen) raus.push(`${r.user_id}:${await subsetOf(db, r.user_id, '3020', r.color_id ?? 0)}`);
     return raus;
   };
-  const setze = async (path, quantity) =>
+  const put = async (path, quantity) =>
     (
       await fetch(base + path, {
         method: 'PUT',
@@ -126,22 +126,22 @@ test('the trash hits the clicked card, not the own one', async t => {
       })
     ).status;
 
-  assert.equal(await setze(`/api/v2/parts/3020/0?owner=${kind}`, 99), 200);
+  assert.equal(await put(`/api/v2/parts/3020/0?owner=${kind}`, 99), 200);
   assert.deepEqual(
-    await mengen(),
+    await quantities(),
     [`${haupt}:5`, `${kind}:99`],
     'Geändert werden muss die Karte des Unterkontos — die eigene bleibt',
   );
   assert.equal(
-    await setze(`/api/v2/parts/3020/0?owner=${fremd}`, 42),
+    await put(`/api/v2/parts/3020/0?owner=${fremd}`, 42),
     403,
     'Ein Konto ausserhalb des Haushalts wird abgelehnt',
   );
-  assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
+  assert.deepEqual(await quantities(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
 
   // An account outside the household does not work — the parameter is a
   // statement of the view, not an access path.
-  const d = await ruf(`/api/v2/minifigs/sw0001?owner=${fremd}`, 'DELETE');
+  const d = await callFn(`/api/v2/minifigs/sw0001?owner=${fremd}`, 'DELETE');
   assert.equal(d.status, 403, 'Fremdes Konto muss abgelehnt werden, nicht stillschweigend ignoriert');
   assert.deepEqual(await minifigs(), [haupt], 'und nichts anfassen');
 });
@@ -151,7 +151,7 @@ test('the trash hits the clicked card, not the own one', async t => {
  */
 test('both valuations carry the owner along', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   // NO second DROP SCHEMA: the first test in this file has already built the schema

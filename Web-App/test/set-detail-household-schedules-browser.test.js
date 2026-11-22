@@ -111,8 +111,8 @@ const CARD_TOP = `(() => { scrollTo(0, 0); const k = document.querySelector('#ga
 
 async function phoneFirstCard(_t, a) {
   const { b, bis, ruhig } = a;
-  const groesse = (w, h, mobil) =>
-    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: mobil });
+  const groesse = (w, h, mobileView) =>
+    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: mobileView });
   try {
     await groesse(390, 844, true);
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
@@ -149,13 +149,13 @@ async function pathTilesAxis(_t, a) {
   // Trash can: without hovering (Chrome headless reports hover: none, like a touch device) it does not stand on
   // the tile. With a mouse it appears on hover; that cannot be emulated here, so it is shown for
   // size and contrast: symbol ≥ 16 px, in the dark ≥ 3:1 to the surface.
-  const korb = `document.querySelector('#gallery [data-arg="21318-1"] .delbtn')`;
+  const basket = `document.querySelector('#gallery [data-arg="21318-1"] .delbtn')`;
   assert.equal(await b.auswerten(`matchMedia('(hover: none)').matches`), true, 'Testaufbau: Überfahren möglich');
-  assert.equal(await b.auswerten(`${korb}.checkVisibility()`), false, 'Papierkorb auf jeder Kachel');
+  assert.equal(await b.auswerten(`${basket}.checkVisibility()`), false, 'Papierkorb auf jeder Kachel');
   // Show and measure in one step: if the gallery redraws in between (job done,
   // status stream), the second access would be a new, hidden again element with 0 px.
   const breite = await b.auswerten(
-    `(() => { const k = ${korb}; const c = k.parentElement; c.style.display = 'block'; c.style.opacity = '1';
+    `(() => { const k = ${basket}; const c = k.parentElement; c.style.display = 'block'; c.style.opacity = '1';
       return k.querySelector('svg').getBoundingClientRect().width; })()`,
   );
   assert.ok(breite >= 16, `Symbol zu klein (${breite} px)`);
@@ -164,9 +164,9 @@ async function pathTilesAxis(_t, a) {
     const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const L = f => 0.2126 * lin(f[0]) + 0.7152 * lin(f[1]) + 0.0722 * lin(f[2]);
     const grund = e => { for (let x = e; x; x = x.parentElement) { const f = getComputedStyle(x).backgroundColor; if (!/rgba\\(.*, 0\\)|transparent/.test(f)) return rgb(f); } return [255, 255, 255]; };
-    const k = ${korb}; const [h, d] = [L(rgb(getComputedStyle(k).color)), L(grund(k))].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); })()`);
+    const k = ${basket}; const [h, d] = [L(rgb(getComputedStyle(k).color)), L(grund(k))].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); })()`);
   await b.auswerten(
-    `document.documentElement.toggleAttribute('data-dark', false); ${korb}.parentElement.removeAttribute('style'); true`,
+    `document.documentElement.toggleAttribute('data-dark', false); ${basket}.parentElement.removeAttribute('style'); true`,
   );
   assert.ok(kontrast >= 3, `Papierkorb im Dunkeln ${kontrast.toFixed(2)}:1`);
 

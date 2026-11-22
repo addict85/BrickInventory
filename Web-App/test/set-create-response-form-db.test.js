@@ -118,7 +118,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       'acquireSet() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
     );
 
-    const ereignisse = roh
+    const eventList = roh
       .split('\n')
       .filter(z => z.startsWith('data:'))
       .map(z => {
@@ -129,7 +129,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
         }
       })
       .filter(Boolean);
-    const fertig = ereignisse.find(e => e.step === 'done');
+    const fertig = eventList.find(e => e.step === 'done');
     assert.ok(fertig, `kein done-Ereignis im Strom: ${roh}`);
 
     // THE assertion. `=== true` and not `.ok()`: a missing field is
@@ -145,7 +145,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.equal(fertig.set_number, NEW_A);
 
     // ── 3. The token route with the same result ───────────────────────────
-    const vorher2 = positionCalled;
+    const before2 = positionCalled;
     const token = await fetch(`${base}/api/v2/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -153,7 +153,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     });
     assert.equal(token.status, 200);
     const tb = await token.json();
-    assert.ok(positionCalled > vorher2, 'acquireSet() wurde auf der Token-Route nicht gerufen');
+    assert.ok(positionCalled > before2, 'acquireSet() wurde auf der Token-Route nicht gerufen');
     assert.equal(tb.success, true);
 
     // ── 4. One response, one form ──────────────────────────────────────────
@@ -174,7 +174,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
 
     // 5. The app demands nothing that the server does not send: the required fields of its
     // model (shared/app-schnittstelle.json, generated from its source text).
-    const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
+    const model = require('./helpers/contract').appInterface().modelle.AddSetResponse;
     assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
     const zeilen = model.felder.map(name => ({
       name,

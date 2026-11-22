@@ -54,7 +54,7 @@ function funde(/** @type {string} */ wurzel, /** @type {string[]} */ pfade) {
     .map(d => ({ datei: d.location.path, row: d.location.start?.line ?? 0 }));
 }
 
-function probebaum() {
+function probeTree() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'tx-rumpf-'));
   fs.copyFileSync(path.join(ROOT, 'biome.json'), path.join(d, 'biome.json'));
   fs.cpSync(path.join(ROOT, 'biome'), path.join(d, 'biome'), { recursive: true });
@@ -67,7 +67,7 @@ function probebaum() {
 }
 
 test('the rule finds every outer access in the body, allows the parameter and does not apply to tests', t => {
-  const d = probebaum();
+  const d = probeTree();
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
   const f = funde(d, ['src', 'test']);
   assert.equal(f.filter(x => x.datei.endsWith('verboten.ts')).length, 5, JSON.stringify(f));

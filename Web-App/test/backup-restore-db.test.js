@@ -33,14 +33,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { ROOT, testData } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb, missingPrecondition } = require('./helpers/db');
+const { noDb, missingPrecondition } = require('./helpers/db');
 const { holdsSet, holdsPart, quantityOf, subsetOf, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 /** Find pg_dump/psql — on the PATH or in a distribution installation. */
-function klient(name) {
-  const direkt = spawnSync('which', [name], { encoding: 'utf8', timeout: CALL_DEADLINE });
-  if (direkt.status === 0) return direkt.stdout.trim();
+function clientApp(name) {
+  const direct = spawnSync('which', [name], { encoding: 'utf8', timeout: CALL_DEADLINE });
+  if (direct.status === 0) return direct.stdout.trim();
   const basis = '/usr/lib/postgresql';
   if (!fs.existsSync(basis)) return null;
   for (const v of fs.readdirSync(basis).sort().reverse()) {
@@ -62,16 +62,16 @@ async function dbReachable() {
 test('backup and restore', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
 
-  const pgDump = klient('pg_dump');
-  const psql = klient('psql');
+  const pgDump = clientApp('pg_dump');
+  const psql = clientApp('psql');
   /**
    * The version of a client — belongs in the error message.
    */
-  const fassung = bin => {
+  const variant = bin => {
     if (!bin) return '—';
     const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe', timeout: CALL_DEADLINE });
     return (r.stdout || r.stderr || '').trim() || '?';
@@ -96,7 +96,7 @@ test('backup and restore', async t => {
     });
   /** Exit code; `grund()` afterwards delivers psql's message for it. */
   let lastRun = null;
-  const einspielen = datei => {
+  const restoreIt = datei => {
     lastRun = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
     return lastRun.status;
   };
@@ -179,10 +179,10 @@ test('backup and restore', async t => {
     );
 
     assert.equal(
-      einspielen(dump),
+      restoreIt(dump),
       0,
       `Das Zurückspielen scheiterte. psql sagt:\n${reason()}\n` +
-        `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`,
+        `pg_dump: ${variant(pgDump)} · psql: ${variant(psql)}`,
     );
 
     const s = await db.get(`SELECT user_id, set_number FROM sets`);
@@ -274,7 +274,7 @@ test('backup and restore', async t => {
         'mehr, ist die Begründung in restore.sh überholt und gehört angepasst',
     );
     assert.notEqual(
-      einspielen(kaputt),
+      restoreIt(kaputt),
       0,
       'MIT ON_ERROR_STOP muss psql mit einem Fehler abbrechen — sonst schützt die Variable nichts',
     );
@@ -448,11 +448,11 @@ test('restore.sh loads as the migration role', { timeout: 240_000 }, async t => 
   try {
     await admin.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
-  if (!su || !klient('pg_dump')) {
+  if (!su || !clientApp('pg_dump')) {
     await admin.end();
     missingPrecondition(t, 'kein Superuser oder pg_dump');
     return;
@@ -568,7 +568,7 @@ esac
       timeout: CALL_DEADLINE,
     });
   const sichern = (db, datei) => {
-    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], {
+    execFileSync(clientApp('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], {
       stdio: 'pipe',
       timeout: CALL_DEADLINE,
     });
@@ -643,7 +643,7 @@ esac
   await t.test('a backslash command in the middle of a line does not run', async () => {
     const geknackt = path.join(tmp, 'geknackt');
     const sql = path.join(tmp, 'fremd.sql');
-    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], {
+    execFileSync(clientApp('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], {
       stdio: 'pipe',
       timeout: CALL_DEADLINE,
     });

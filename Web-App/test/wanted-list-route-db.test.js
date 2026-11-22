@@ -37,7 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
@@ -66,7 +66,7 @@ const XML = liste(
   item('P', '99999', 5, 1), // nothing → open
 );
 
-async function hochladen(base, xml, abfrage = '') {
+async function uploadIt(base, xml, abfrage = '') {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
   const r = await fetch(`${base}/api/v2/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
@@ -112,7 +112,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -121,7 +121,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   await t.test('1. a file without <INVENTORY> is rejected beforehand', async () => {
-    const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
+    const { status, body } = await uploadIt(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
     assert.equal(status, 422, `Erwartet 422, bekam ${status}`);
     assert.match(
       String(body.error || ''),
@@ -132,7 +132,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('2. the preview writes NOTHING', async () => {
-    const { status, body } = await hochladen(srv.base, XML);
+    const { status, body } = await uploadIt(srv.base, XML);
     assert.equal(status, 200, `Erwartet 200, bekam ${status}: ${JSON.stringify(body)}`);
     assert.equal(body.preview, true, 'Ohne schreiben=1 ist das keine Vorschau');
     assert.equal(body.parsed, 3, `${body.parsed} Posten gelesen statt 3`);
@@ -149,7 +149,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('3. the preview names the stages separately and the open items', async () => {
-    const { body } = await hochladen(srv.base, XML);
+    const { body } = await uploadIt(srv.base, XML);
     assert.deepEqual(
       body.levels,
       { gleich_vermerkt: 1, zuordnung: 1 },
@@ -167,7 +167,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('4. with schreiben=1 manual parts are created — with quantity and color', async () => {
-    const { body } = await hochladen(srv.base, XML, '?write=1');
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
     assert.equal(body.preview, false);
     assert.equal(body.created, 2, `${body.created} angelegt statt 2: ${JSON.stringify(body.items)}`);
     assert.equal(body.failed, 0, `${body.failed} Fehler: ${JSON.stringify(body.items)}`);
@@ -222,7 +222,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
   await t.test('6. foreign kinds are in the report', async () => {
     const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
-    const { body } = await hochladen(srv.base, mit);
+    const { body } = await uploadIt(srv.base, mit);
     assert.deepEqual(
       body.foreignTypes,
       { B: 1, G: 1 },
@@ -269,7 +269,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
   await t.test('9. an import leaves a completed job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
-    const { body } = await hochladen(srv.base, XML, '?write=1');
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
     assert.equal(body.success, true);
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
@@ -328,7 +328,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
   await t.test('10. a PREVIEW creates no job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
-    const { body } = await hochladen(srv.base, XML);
+    const { body } = await uploadIt(srv.base, XML);
     assert.equal(body.preview, true, 'Vorbedingung: das ist eine Vorschau');
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.equal(
@@ -351,7 +351,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
       [MAIN],
     );
 
-    const { body } = await hochladen(srv.base, XML, '?write=1');
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
     assert.equal(body.success, true, 'Der Import selbst läuft weiter');
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
@@ -382,9 +382,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
     const datei = liste(item('S', SN, null, 2));
-    const erst = (await hochladen(srv.base, datei, '?write=1')).body;
+    const erst = (await uploadIt(srv.base, datei, '?write=1')).body;
     assert.equal(erst.created, 1, JSON.stringify(erst));
-    const dann = (await hochladen(srv.base, datei, '?write=1')).body;
+    const dann = (await uploadIt(srv.base, datei, '?write=1')).body;
     assert.equal(dann.topped_up, 1, JSON.stringify(dann));
     const quantity = await db.get(
       'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',

@@ -16,7 +16,7 @@ const { ohneKommentare } = require('./helpers/sources');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 /** Field names whose sum would be a business rule. */
-const GELDFELDER =
+const MONEY_FIELDS =
   'display_value|total_value|purchase_price|unit_price|current_price|avg_price|qty_avg_price|market_price|price';
 
 /**
@@ -34,11 +34,11 @@ test('the web app sums no money amounts itself', () => {
   const treffer = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
     const src = ohneKommentare(fs.readFileSync(path.join(dir, f), 'utf8'));
-    const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${GELDFELDER})\b`, 'g');
+    const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${MONEY_FIELDS})\b`, 'g');
     for (const m of src.matchAll(re)) {
       const row = src.slice(0, m.index).split('\n').length;
-      const eintrag = `${f}:${row} summiert .${m[1]}`;
-      if (!ALLOWED.includes(eintrag)) treffer.push(eintrag);
+      const entryRow = `${f}:${row} summiert .${m[1]}`;
+      if (!ALLOWED.includes(entryRow)) treffer.push(entryRow);
     }
   }
   assert.deepEqual(

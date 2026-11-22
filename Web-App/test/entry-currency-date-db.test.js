@@ -79,11 +79,11 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY tag`,
         [uid, SN],
       );
-      const heute = new Date().toISOString().slice(0, 10);
+      const todayDate = new Date().toISOString().slice(0, 10);
       assert.deepEqual(zeilen, [
         { quantity: 1, preis: 100, tag: '2020-05-05' },
         { quantity: 1, preis: 50, tag: '2026-10-01' },
-        { quantity: 1, preis: 100, tag: heute },
+        { quantity: 1, preis: 100, tag: todayDate },
       ]);
     });
   } finally {

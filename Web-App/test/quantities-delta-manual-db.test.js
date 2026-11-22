@@ -25,7 +25,7 @@ const { testServer } = require('./helpers/server');
 
 const NAME = `mdelta_${process.pid}`,
   TEIL = '3001md',
-  FIGUR = 'fig-md01';
+  FIGURE = 'fig-md01';
 
 test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -42,8 +42,8 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
     uid,
     TEIL,
   ]);
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, $2, 'manual')`, [uid, FIGUR]);
-  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity) VALUES ($1, $2, 1)`, [uid, FIGUR]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, $2, 'manual')`, [uid, FIGURE]);
+  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity) VALUES ($1, $2, 1)`, [uid, FIGURE]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -64,7 +64,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       (
         await db.get(
           'SELECT COALESCE(SUM(quantity),0)::int q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
-          [uid, FIGUR],
+          [uid, FIGURE],
         )
       ).q,
     );
@@ -76,8 +76,8 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
     ]);
     assert.equal(await teil(), 4);
     await Promise.all([
-      updateManualMinifig(uid, FIGUR, { quantity_delta: 1 }),
-      updateManualMinifig(uid, FIGUR, { quantity_delta: 1 }),
+      updateManualMinifig(uid, FIGURE, { quantity_delta: 1 }),
+      updateManualMinifig(uid, FIGURE, { quantity_delta: 1 }),
     ]);
     assert.equal(await figur(), 3);
   });
@@ -94,7 +94,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       status: 200,
       body: { success: true, quantity: 3 },
     });
-    assert.deepEqual(await put(`minifigs/${FIGUR}`, { quantity_delta: -2 }), {
+    assert.deepEqual(await put(`minifigs/${FIGURE}`, { quantity_delta: -2 }), {
       status: 200,
       body: { success: true, quantity: 1 },
     });

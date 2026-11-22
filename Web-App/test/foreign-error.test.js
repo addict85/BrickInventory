@@ -13,7 +13,7 @@ const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error
  */
 
 /** Take `fromUs` literally from fehlerfang.js and run it with a provided origin. */
-function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
+function fetchOfUs(originValue = 'https://lego.bigolin.online') {
   const auf = QUELLE.indexOf('function fromUs(');
   assert.ok(auf > 0, 'fromUs() steht nicht mehr in fehlerfang.js — heisst die Regel noch so?');
   const zu = QUELLE.indexOf('\n}', auf) + 2;
@@ -23,7 +23,7 @@ function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
     'fromUs() vergleicht nicht mehr gegen den eigenen Ursprung — greift der Schnitt noch?',
   );
   // eslint-disable-next-line no-new-func
-  return new Function('location', `${text}; return fromUs;`)({ origin: ursprung });
+  return new Function('location', `${text}; return fromUs;`)({ origin: originValue });
 }
 
 const withStack = (message, stapel) => Object.assign(new Error(message), { stack: stapel });

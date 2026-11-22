@@ -45,7 +45,7 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
     currency: 'EUR',
     user_id: 1,
   });
-  let erfassungen = [row(1, 1, '2026-10-01'), row(2, 1, '2026-10-02')];
+  let acqList = [row(1, 1, '2026-10-01'), row(2, 1, '2026-10-02')];
   const { w, d, warte, aufrufe } = await openUi({
     '/v2/parts/manual': {
       success: true,
@@ -56,7 +56,7 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
         { part_number: '3002', part_name: 'Stein 2 x 3', color_id: 5, color_name: 'Red', quantity: 2, user_id: 1 },
       ],
     },
-    '/v2/parts/3002/5/acquisitions': () => ({ success: true, acquisitions: erfassungen }),
+    '/v2/parts/3002/5/acquisitions': () => ({ success: true, acquisitions: acqList }),
     '/v2/parts/3002/5': { success: true, quantity: 1 },
   });
   t.after(() => w.close());
@@ -66,7 +66,7 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
   assert.ok(await warte(() => d.getElementById('man-det-qty')), 'Das Mengenfeld im Detail fehlt');
   const vorher = d.getElementById('man-acq-summary')?.textContent;
 
-  erfassungen = [row(1, 1, '2026-10-01')];
+  acqList = [row(1, 1, '2026-10-01')];
   const ab = aufrufe.length;
   const field = /** @type {HTMLInputElement} */ (d.getElementById('man-det-qty'));
   field.value = '1';
@@ -196,7 +196,7 @@ test('quantities and acquisitions of manual entries against the database', { con
                          ($1, 'ma-datum', 5, 1, 1.5, 'N', NOW() - INTERVAL '5 days')`,
       [uid],
     );
-    const [frueher, heute] = await partRows('ma-datum');
+    const [frueher, todayDate] = await partRows('ma-datum');
     const tag = async id =>
       (
         await db.get(
@@ -205,17 +205,17 @@ test('quantities and acquisitions of manual entries against the database', { con
           [id],
         )
       ).t;
-    const aendere = (id, body) =>
+    const changeOne = (id, body) =>
       fetch(`${base}/api/v2/parts/ma-datum/5/acquisitions/${id}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       });
-    const r = await aendere(frueher.id, { date: await tag(heute.id) });
+    const r = await changeOne(frueher.id, { date: await tag(todayDate.id) });
     assert.equal(r.status, 409, 'Ein Datum, an dem derselbe Kauf schon steht, muss abgelehnt werden');
     assert.equal((await r.json()).code, 'date_taken');
     assert.equal(
-      (await aendere(frueher.id, { date: await tag(heute.id), condition: 'U' })).status,
+      (await changeOne(frueher.id, { date: await tag(todayDate.id), condition: 'U' })).status,
       200,
       'Ein anderer Zustand am selben Tag ist eine eigene Erfassung und erlaubt',
     );
@@ -373,7 +373,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   // The earlier branch only increased the quantity for an acquisition of today. A
   // copy bought today at the current market price thereby vanished into the
   // old unit price — the row showed two pieces at the price of the first.
-  const src = require('./helpers/sources').kompakt(require('./helpers/sources').setCoreSource());
+  const src = require('./helpers/sources').compact(require('./helpers/sources').setCoreSource());
   const fn = src.slice(
     src.indexOf('async function alignEntriesToQuantity'),
     src.indexOf('async function writeInLastEntry'),

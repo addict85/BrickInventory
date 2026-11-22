@@ -20,7 +20,7 @@ const { dataOrSkip } = require('./helpers/db');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('rule violations of the database become 4xx with a code', async t => {
-  const db = await dataOrSkip(t, _req, { migrieren: false });
+  const db = await dataOrSkip(t, _req, { runMigrate: false });
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { errorResponse } = _req('src/http/httpResponse.js');

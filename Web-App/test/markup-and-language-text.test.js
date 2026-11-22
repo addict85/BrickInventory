@@ -28,27 +28,27 @@ function languageTexts() {
 
 test('every fallback text shows what the language text says', () => {
   const texte = languageTexts();
-  const stellen = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
+  const placeList = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Self-proof: MEASURED there are over 200. If the derivation finds nothing,
   // the loop would be silently green.
-  assert.ok(stellen.length > 150, `Nur ${stellen.length} Stellen abgeleitet — greift die Suche noch?`);
+  assert.ok(placeList.length > 150, `Nur ${placeList.length} Stellen abgeleitet — greift die Suche noch?`);
 
-  const abweichend = [];
+  const deviating = [];
   let geprueft = 0;
-  for (const [, tag, schluessel, text] of stellen) {
+  for (const [, tag, schluessel, text] of placeList) {
     if (tag.includes('data-i18n-attr')) continue; // exception 1
     const soll = texte.get(schluessel);
     if (soll === undefined) continue; // i18n.test.js covers missing keys
     if (soll.includes('{')) continue; // exception 2
     geprueft++;
-    if (escHtml(soll) !== text.trim()) abweichend.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
+    if (escHtml(soll) !== text.trim()) deviating.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
   }
   assert.ok(geprueft > 100, `Nur ${geprueft} Stellen wirklich geprüft — greifen die Ausnahmen zu breit?`);
   assert.deepEqual(
-    abweichend,
+    deviating,
     [],
-    `${abweichend.length} Rückfalltexte weichen vom Sprachtext ab:\n  ` +
-      abweichend.join('\n  ') +
+    `${deviating.length} Rückfalltexte weichen vom Sprachtext ab:\n  ` +
+      deviating.join('\n  ') +
       '\n\nSichtbar ist der SPRACHTEXT. Der Text im Markup ist nur der Rückfall ' +
       'für den Augenblick vor dem Übersetzen — laufen sie auseinander, sieht man ' +
       'beim Entwickeln das eine und im Betrieb das andere.',

@@ -21,7 +21,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('a new copy follows the acquisitions, not the stored value', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // The daily rule stands as an index in migration 0047; without it the
   // ON CONFLICT does not apply when capturing.
   const mc = await db.pool.connect();
@@ -98,15 +98,15 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
 test('no source reads purchase price or condition from sets', () => {
   // Found, not enumerated.
   const dateien = [];
-  const gehen = d => {
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
+      if (e.isDirectory()) go(abs);
       else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   // What is searched for are the forms in which the two columns actually
@@ -138,11 +138,11 @@ test('no source reads purchase price or condition from sets', () => {
   // contains them — otherwise the rule would be vacuously true.
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
-  const angeschlagen = verboten.filter(r => r.test(probe)).length;
+  const damaged = verboten.filter(r => r.test(probe)).length;
   assert.equal(
-    angeschlagen,
+    damaged,
     3,
-    `Von den Mustern schlugen ${angeschlagen} auf der Probe an, erwartet 3 ` +
+    `Von den Mustern schlugen ${damaged} auf der Probe an, erwartet 3 ` +
       '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)',
   );
   assert.ok(geprueft >= 40, `Nur ${geprueft} Dateien geprueft — die Suche greift nicht mehr`);

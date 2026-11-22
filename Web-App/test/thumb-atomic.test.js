@@ -91,7 +91,7 @@ test('vorschauErzeugenAus writes via a temporary file', async () => {
 });
 
 test('createProxyPreview writes via a temporary file', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const source = path.join(ordner, 'a'.repeat(40)),
@@ -130,7 +130,7 @@ test('an unusably small preview is discarded, the original is delivered', async 
   };
   const geliefert = [];
   let noted = 0;
-  const beantwortet = await deliverFromCache({
+  const answered = await deliverFromCache({
     res,
     req: { fresh: false },
     cacheFile,
@@ -142,7 +142,7 @@ test('an unusably small preview is discarded, the original is delivered', async 
     },
     streamFileToResponse: (_r, datei) => geliefert.push(datei),
   });
-  assert.equal(beantwortet, true);
+  assert.equal(answered, true);
   assert.deepEqual(geliefert, [cacheFile], 'nicht das Original ausgeliefert');
   assert.equal(kopf['content-length'], '5000');
   assert.equal(fs.existsSync(thumbFile), false, 'die kaputte Vorschau liegt noch da');

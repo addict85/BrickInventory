@@ -50,7 +50,7 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const ruf = async (methode, path, body) => {
+  const callFn = async (methode, path, body) => {
     const r = await fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -60,23 +60,23 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
   };
 
   await t.test("QR access: one-time, without password material, with the server's duration", async () => {
-    const qr = await ruf('POST', '/qr-token', { password: PASS });
+    const qr = await callFn('POST', '/qr-token', { password: PASS });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     assert.equal(qr.body.expires_in, 300, 'Die Oberfläche zählt von dieser Dauer herunter');
     assert.doesNotMatch(JSON.stringify(qr.body), /\$2[aby]\$/, 'Ein bcrypt-Hash im QR-Code ist offline knackbar');
-    const erst = await pairQr((p, body) => ruf('POST', p, body), qr.body);
+    const erst = await pairQr((p, body) => callFn('POST', p, body), qr.body);
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.body.userId, uid);
-    const zweit = await ruf('POST', '/qr-login', { token: qr.body.token });
+    const zweit = await callFn('POST', '/qr-login', { token: qr.body.token });
     assert.equal(zweit.status, 401, 'Derselbe Code öffnet das Konto ein zweites Mal');
   });
 
   await t.test('profile: username by the same rule and regardless of case', async () => {
-    const ungueltig = await ruf('PUT', '/profile', { username: 'a b', password_current: PASS });
+    const ungueltig = await callFn('PUT', '/profile', { username: 'a b', password_current: PASS });
     assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'username_invalid']);
-    const mail = await ruf('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
+    const mail = await callFn('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
     assert.equal(mail.status, 400, 'Eine E-Mail-Adresse als Benutzername — der Login sucht beides');
-    const vergeben = await ruf('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
+    const vergeben = await callFn('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
     assert.deepEqual([vergeben.status, vergeben.body.code], [400, 'username_taken']);
     assert.equal((await db.get('SELECT username FROM users WHERE id = $1', [uid])).username, NAME);
   });
@@ -88,7 +88,7 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
       `CREATE TRIGGER regeln_token_sperre BEFORE INSERT ON api_tokens FOR EACH ROW EXECUTE FUNCTION regeln_token_sperre()`,
     );
     try {
-      const r = await ruf('POST', '/login', { username: NAME, password: PASS });
+      const r = await callFn('POST', '/login', { username: NAME, password: PASS });
       assert.deepEqual([r.status, r.body.code, 'token' in r.body], [500, 'token_not_issued', false]);
     } finally {
       await db.run('DROP TRIGGER regeln_token_sperre ON api_tokens');

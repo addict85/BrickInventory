@@ -84,7 +84,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable stubbed at the wiring (testSources).
@@ -121,7 +121,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -419,9 +419,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // Marco's file has 224 rows. One query per row would be a preview
     // one waits for.
     const echt = db.pool.query.bind(db.pool);
-    let abfragen = 0;
+    let queryList = 0;
     db.pool.query = (...a) => {
-      abfragen++;
+      queryList++;
       return echt(...a);
     };
     try {
@@ -433,11 +433,11 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         ),
       );
       const auf = await resolveLocalOn(parsed.items);
-      abfragen = 0;
+      queryList = 0;
       await describeItem(auf);
       assert.ok(
-        abfragen <= 4,
-        `${abfragen} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
+        queryList <= 4,
+        `${queryList} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
           'Farbbilder, Figuren, Sets). Eine je Posten wären 100.',
       );
     } finally {

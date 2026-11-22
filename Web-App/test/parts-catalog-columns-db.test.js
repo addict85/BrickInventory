@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -55,7 +55,7 @@ const dbDa = async t => {
     await db.run('SELECT 1');
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 };
@@ -216,9 +216,9 @@ test('the parts list delivers description and storage location from the catalogs
   assert.equal(inBox.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
 
   // ── Search via the catalog name ──────────────────────────────────────────
-  const gesucht = await handlers.partsQuery(uid, { exclude_manual: '1', search: 'brick 2x3' });
+  const sought = await handlers.partsQuery(uid, { exclude_manual: '1', search: 'brick 2x3' });
   assert.deepEqual(
-    gesucht.parts.map(p => String(p.part_number)),
+    sought.parts.map(p => String(p.part_number)),
     ['3002'],
     'Die Suche findet den Teilenamen nicht mehr (er steht in part_catalog)',
   );
@@ -255,8 +255,8 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   assert.equal(Number(f.total_quantity), 3, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
 
   // The search runs via the catalog name.
-  const gesucht = await handlers.readMinifigs(uid, { search: 'chewb' });
-  const gFigs = gesucht.minifigs || gesucht.figs || gesucht;
+  const sought = await handlers.readMinifigs(uid, { search: 'chewb' });
+  const gFigs = sought.minifigs || sought.figs || sought;
   assert.equal(
     (Array.isArray(gFigs) ? gFigs : []).length,
     1,

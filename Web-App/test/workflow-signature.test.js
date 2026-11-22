@@ -271,8 +271,8 @@ test('a moved tag aborts', t => {
 // message back to „Secrets and variables -> Actions“ → red „… nennt die Environment-Secrets“.
 test('Docker Hub credentials only in jobs with the docker-hub environment', () => {
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
-  const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
-  const withSecret = bloecke.filter(b => /secrets\.DOCKERHUB_/.test(b));
+  const blockList = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
+  const withSecret = blockList.filter(b => /secrets\.DOCKERHUB_/.test(b));
   assert.ok(withSecret.length >= 2, `zu wenige Jobs mit DOCKERHUB_* gefunden (${withSecret.length})`);
   for (const b of withSecret) {
     const name = b.split(':')[0];

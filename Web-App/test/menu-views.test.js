@@ -19,11 +19,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/ui');
 
-const KONTO = admin => ({
+const ACCOUNT = admin => ({
   '/v2/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v2/auth/me'].user, is_admin: admin } },
 });
 // Every view gets an empty, contract-conforming response (checkResponse adds the required fields).
-const SICHTDATEN = Object.fromEntries(
+const VIEW_DATA = Object.fromEntries(
   [
     '/v2/vouchers',
     '/v2/alerts',
@@ -41,7 +41,7 @@ const SICHTDATEN = Object.fromEntries(
 const entries = d => [...d.querySelectorAll('.umenu-item[data-click="openView"]')];
 
 test('every menu entry opens its area and loads it', async () => {
-  const o = await openUi(SICHTDATEN);
+  const o = await openUi(VIEW_DATA);
   try {
     await o.ruhig();
     const namen = entries(o.d).map(e => e.dataset.arg);
@@ -85,7 +85,7 @@ test('every view without a tab is reachable via the menu', async () => {
 
 test('only an admin sees settings and background jobs', async () => {
   for (const admin of [true, false]) {
-    const o = await openUi(KONTO(admin));
+    const o = await openUi(ACCOUNT(admin));
     try {
       await o.ruhig();
       const sichtbar = el => el.style.display !== 'none';
@@ -103,10 +103,10 @@ test('every menu entry keeps its icon, even after translating', async () => {
   const o = await openUi({}, { language: 'en' });
   try {
     await o.ruhig();
-    const knoepfe = [...o.d.querySelectorAll('#umenu-pop button')];
-    assert.equal(knoepfe.length, 10, `${knoepfe.length} Einträge statt zehn`);
+    const buttonList = [...o.d.querySelectorAll('#umenu-pop button')];
+    assert.equal(buttonList.length, 10, `${buttonList.length} Einträge statt zehn`);
     const falsch = [];
-    for (const k of knoepfe) {
+    for (const k of buttonList) {
       const ziel = k.querySelector('svg.ico use')?.getAttribute('href');
       const text = k.querySelector('[data-i18n]');
       if (!ziel || !o.d.getElementById(ziel.slice(1)))

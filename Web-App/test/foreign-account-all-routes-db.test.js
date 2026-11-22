@@ -29,9 +29,9 @@ const S = require('./helpers/sources');
 const { catalogSet } = require('./helpers/inventory');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { mailAttrappe } = require('./helpers/mail-fake');
+const { mailFake } = require('./helpers/mail-fake');
 const { example } = require('./helpers/contract-example');
-mailAttrappe();
+mailFake();
 const db = S.testData();
 const auth = _req('src/account/deviceToken.js');
 const { CONTRACT } = _req('src/contract/index.js');
@@ -48,8 +48,8 @@ const SET = '99181-1',
   SET3 = '99183-1',
   TEIL = '3001fk',
   FARBE = 5,
-  FIGUR = 'fk0001';
-const GUTSCHEIN = '5045076374450019876';
+  FIGURE = 'fk0001';
+const VOUCHER = '5045076374450019876';
 const BEFORE_THE_LOGIN =
   /^(POST|GET) \/api\/v2\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
 
@@ -94,7 +94,7 @@ test('a foreign account sees and changes no data of another via any route', {
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2, SET3]]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
+    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGURE]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -111,7 +111,7 @@ test('a foreign account sees and changes no data of another via any route', {
     [TEIL, FARBE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
-    FIGUR,
+    FIGURE,
   ]);
 
   // ── Server as in server.ts; the session switches between the accounts ──
@@ -139,7 +139,7 @@ test('a foreign account sees and changes no data of another via any route', {
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
-  for (const r of S.routerEinhaengungen())
+  for (const r of S.routerMounts())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(async () => {
@@ -152,7 +152,7 @@ test('a foreign account sees and changes no data of another via any route', {
   });
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const ruf = async (methode, weg, body, form) => {
+  const callFn = async (methode, weg, body, form) => {
     const init = { method: methode, signal: AbortSignal.timeout(4000) };
     if (form) init.body = form;
     else if (body !== undefined) {
@@ -167,7 +167,7 @@ test('a foreign account sees and changes no data of another via any route', {
     }
   };
   const ok = async (methode, weg, body, form) => {
-    const r = await ruf(methode, weg, body, form);
+    const r = await callFn(methode, weg, body, form);
     assert.equal(r.status, 200, `${methode} ${weg}: ${r.text.slice(0, 300)}`);
     return JSON.parse(r.text);
   };
@@ -196,11 +196,11 @@ test('a foreign account sees and changes no data of another via any route', {
   });
   await ok('PUT', `/api/v2/parts/${TEIL}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
   const teilAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [opfer])).id;
-  await ok('POST', '/api/v2/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
+  await ok('POST', '/api/v2/minifigs', { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' });
   const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [opfer])).id;
   await ok('POST', '/api/v2/wanted', { set_number: SET2, condition: 'N' });
   const gutschein = (
-    await ok('POST', '/api/v2/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
+    await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' })
   ).voucher.id;
   await ok('POST', '/api/v2/sets', { set_number: SET3, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v2/sets/${SET3}`);
@@ -252,7 +252,7 @@ test('a foreign account sees and changes no data of another via any route', {
       sn: SET,
       partNumber: TEIL,
       colorId: FARBE,
-      figNumber: FIGUR,
+      figNumber: FIGURE,
       id: idFor(p),
       acqId: acqFor(p),
       instrId: anleitung,
@@ -281,7 +281,7 @@ test('a foreign account sees and changes no data of another via any route', {
       set_numbers: [SET],
       part_number: TEIL,
       color_id: FARBE,
-      fig_number: FIGUR,
+      fig_number: FIGURE,
       parts: [{ part_number: TEIL, color_id: FARBE }],
       condition: 'N',
       storage: 'Lager des Fremden',
@@ -318,13 +318,13 @@ test('a foreign account sees and changes no data of another via any route', {
       const abfrage = new URLSearchParams(
         felder.map(k => [k, queryValue(k, konto)]).filter(([, v]) => v !== undefined),
       ).toString();
-      const rumpfe =
+      const bodies =
         methode === 'GET' || route.form ? [undefined] : [example(route.input, w, false), example(route.input, w, true)];
-      for (const rumpf of rumpfe)
+      for (const rumpf of bodies)
         for (const q of abfrage ? [abfrage, ''] : ['']) {
-          const r = await ruf(methode, weg + (q ? '?' + q : ''), rumpf);
+          const r = await callFn(methode, weg + (q ? '?' + q : ''), rumpf);
           gerufen.push(`${schluessel} ${r.status}`);
-          for (const geheim of [MARKE, GUTSCHEIN])
+          for (const geheim of [MARKE, VOUCHER])
             if (r.text.includes(geheim))
               leaks.push(`${schluessel}${q ? '?' + q : ''} → ${r.status}: enthält ${geheim}`);
         }

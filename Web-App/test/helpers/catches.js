@@ -61,7 +61,7 @@ function mask(s) {
   return o;
 }
 
-function schliesst(s, i, auf, zu) {
+function closes(s, i, auf, zu) {
   let t = 0;
   for (let j = i; j < s.length; j++) {
     if (s[j] === auf) t++;
@@ -101,19 +101,19 @@ function catches(source) {
     let a, e;
     if (m[0].startsWith('.')) {
       const auf = m.index + m[0].length - 1;
-      const zu = schliesst(s, auf, '(', ')');
+      const zu = closes(s, auf, '(', ')');
       const arg = s.slice(auf + 1, zu);
-      const pfeil = /^\s*(?:async\s*)?(?:\(\s*\w*\s*(?::\s*\w+)?\s*\)|\w+)\s*=>\s*/.exec(arg);
-      if (!pfeil) continue;
-      a = auf + 1 + pfeil[0].length;
+      const arrowIcon = /^\s*(?:async\s*)?(?:\(\s*\w*\s*(?::\s*\w+)?\s*\)|\w+)\s*=>\s*/.exec(arg);
+      if (!arrowIcon) continue;
+      a = auf + 1 + arrowIcon[0].length;
       e = zu;
       if (s[a] === '{') {
-        e = schliesst(s, a, '{', '}');
+        e = closes(s, a, '{', '}');
         a++;
       }
     } else {
       a = m.index + m[0].length;
-      e = schliesst(s, a - 1, '{', '}');
+      e = closes(s, a - 1, '{', '}');
     }
     raus.push({
       row: source.slice(0, m.index).split('\n').length,

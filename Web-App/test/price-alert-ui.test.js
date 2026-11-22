@@ -60,7 +60,7 @@ async function detail(antworten = {}) {
   await o.ruhig();
   return o;
 }
-const schreibend = o => o.aufrufe.filter(a => /\/alert(\?|$)/.test(a.url) && a.method !== 'GET');
+const writing = o => o.aufrufe.filter(a => /\/alert(\?|$)/.test(a.url) && a.method !== 'GET');
 const tap = (o, wert) => {
   const f = o.d.getElementById('m-alert-val');
   f.value = wert;
@@ -76,10 +76,10 @@ test("web app: saved while typing, debounced with the app's idle time", async ()
       await takt(REST / 4);
     }
     await takt((REST * 3) / 4 - 120);
-    assert.deepEqual(schreibend(o), [], 'gespeichert, bevor die Ruhezeit um war');
-    assert.ok(await warte(() => schreibend(o).length > 0, 400), 'nicht in der Ruhezeit der App gespeichert');
+    assert.deepEqual(writing(o), [], 'gespeichert, bevor die Ruhezeit um war');
+    assert.ok(await warte(() => writing(o).length > 0, 400), 'nicht in der Ruhezeit der App gespeichert');
     await takt(REST);
-    const [put, ...mehr] = schreibend(o);
+    const [put, ...mehr] = writing(o);
     assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
     assert.equal(put.method, 'PUT');
     assert.deepEqual(JSON.parse(put.body), { direction: 'below', threshold: 249, condition: 'N' });
@@ -117,14 +117,14 @@ test('web app: an empty field deletes, a condition change only loads', async () 
     condition.value = 'U';
     condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
-    assert.deepEqual(schreibend(o), [], 'ein Zustandswechsel schreibt');
+    assert.deepEqual(writing(o), [], 'ein Zustandswechsel schreibt');
     condition.value = 'N';
     condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
     tap(o, '');
-    assert.ok(await warte(() => schreibend(o).length === 1, REST + 1000), 'nichts gelöscht');
-    assert.equal(schreibend(o)[0].method, 'DELETE');
-    assert.match(schreibend(o)[0].url, /condition=N$/);
+    assert.ok(await warte(() => writing(o).length === 1, REST + 1000), 'nichts gelöscht');
+    assert.equal(writing(o)[0].method, 'DELETE');
+    assert.match(writing(o)[0].url, /condition=N$/);
   } finally {
     o.w.close();
   }

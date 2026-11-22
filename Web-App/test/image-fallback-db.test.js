@@ -24,7 +24,7 @@ const db = testData();
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 test('if the image address is missing on the set, it comes from the shared catalog', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USERNAME = 'img-fallback-test';
   const OHNE = '60445-1'; // image only in the catalog

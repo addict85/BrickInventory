@@ -131,16 +131,16 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#fin-tbl tfoot') && d.getElementById('fin-sum').dataset.loaded);
-    const einstand = betrag(text(d.getElementById('fin-cost-basis')));
+    const entryPrice = betrag(text(d.getElementById('fin-cost-basis')));
     const wert = betrag(text(d.getElementById('fin-value')));
     const guv = betrag(text(d.getElementById('fin-pnl-sub')));
-    const prozent = betrag(text(d.getElementById('fin-total-pnl')));
+    const percentValue = betrag(text(d.getElementById('fin-total-pnl')));
     assert.equal(
-      Math.round((einstand + guv) * 100),
+      Math.round((entryPrice + guv) * 100),
       Math.round(wert * 100),
-      `Einstand + G/V = Marktwert: ${einstand} + ${guv} ≠ ${wert}`,
+      `Einstand + G/V = Marktwert: ${entryPrice} + ${guv} ≠ ${wert}`,
     );
-    assert.equal(prozent, Math.round((guv / einstand) * 1000) / 10, 'Prozent passt nicht zum Betrag');
+    assert.equal(percentValue, Math.round((guv / entryPrice) * 1000) / 10, 'Prozent passt nicht zum Betrag');
     assert.equal(wert, 1863.9);
     const basis = text(d.getElementById('fin-basis'));
     assert.ok(!d.getElementById('fin-basis').hidden, 'Basiszeile fehlt');

@@ -17,7 +17,7 @@ const CSS_BASIS = path.join(TREE, 'Web-App', 'public', 'styles.css');
 const CSS_BRICK = path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css');
 const CSS_MOBILE = path.join(TREE, 'Web-App', 'public', 'mobile.css');
 const INDEX = path.join(TREE, 'Web-App', 'public', 'index.html');
-const DATEN = JSON.parse(fs.readFileSync(SOURCE, 'utf8'));
+const DATA = JSON.parse(fs.readFileSync(SOURCE, 'utf8'));
 
 // The Kotlin products (DesignTokens.kt, DunkelTokens.kt) are checked by the Android run with
 // `node scripts/generate-design-tokens.js --pruefen`.
@@ -25,7 +25,7 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
   // Counter-check (30.10., measured): "txt" set to #e6e9ee by hand there → red.
   assert.equal(
     fs.readFileSync(TARGET_CSS, 'utf8'),
-    buildCss(DATEN),
+    buildCss(DATA),
     'public/tokens.css weicht von shared/design-tokens.json ab. Entweder wurde die Datei von Hand ' +
       'geaendert — dann gehoert der Wert in die JSON —, oder es fehlt ein Lauf von "npm run design:tokens".',
   );
@@ -33,7 +33,7 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
 
 test('no handwritten stylesheet redefines a generated token', () => {
   // An own --b600 in styles.css would win (loaded later); the app would keep following the source.
-  const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t).map(cssToken)));
+  const erzeugt = new Set(Object.values(DATA.designs).flatMap(t => Object.keys(t).map(cssToken)));
   assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
 
   const doppelt = [];
@@ -94,7 +94,7 @@ test('without the Android app the generator only writes the web CSS', () => {
     fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'generate-design-tokens.js'), script);
     const r = spawnSync(process.execPath, [script], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
-    assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), buildCss(DATEN));
+    assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), buildCss(DATA));
     assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'der Erzeuger legt den Android-Ordner an');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

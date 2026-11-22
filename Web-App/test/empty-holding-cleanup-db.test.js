@@ -25,10 +25,10 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
 
   const NUTZER = `lk-${process.pid}`;
   const ROUTE = `80${(process.pid % 900) + 100}-1`; // deletion happens here
-  const BLEIBT = `80${(process.pid % 900) + 101}-1`; // control group
+  const STAYS = `80${(process.pid % 900) + 101}-1`; // control group
 
   const aufraeumen = async () => {
-    for (const sn of [ROUTE, BLEIBT])
+    for (const sn of [ROUTE, STAYS])
       for (const tab of ['sets', 'set_acquisitions', 'parts', 'minifigs', 'price_cache'])
         await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [sn]).catch(() => {});
   };
@@ -43,7 +43,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
   );
   await aufraeumen();
 
-  for (const sn of [ROUTE, BLEIBT]) {
+  for (const sn of [ROUTE, STAYS]) {
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'N','CHF',20,20,3)`,
@@ -80,7 +80,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       const nummern = g.sets.map(s => s.set_number);
       assert.deepEqual(
         nummern,
-        [BLEIBT],
+        [STAYS],
         `Galerie zeigt noch: ${nummern.join(', ')} — ein Set mit Menge 0 ist ein Geistereintrag`,
       );
       assert.equal(g.total, 1, 'die Gesamtzahl zählt es noch mit');
@@ -101,7 +101,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       // deleted set contributed 20 CHF to the portfolio.
       const val = await FC.valueSets(uid, [uid]);
       const nummern = (val.sets || []).map(s => s.set_number);
-      assert.deepEqual(nummern, [BLEIBT], `Bewertung enthält noch: ${nummern.join(', ')}`);
+      assert.deepEqual(nummern, [STAYS], `Bewertung enthält noch: ${nummern.join(', ')}`);
       assert.equal(
         parseFloat(val.totals.avg),
         20,
@@ -126,9 +126,9 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       // an entry took the whole stock along.
       // Two questions, two tables (migration 0036): does the stock row still
       // stand, and how many copies do the entries say? Previously …
-      assert.ok(await haltRow(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
-      assert.equal(await quantityOf(db, uid, BLEIBT), 1, 'das andere Set hat seine Erfassung verloren');
-      assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [BLEIBT])).c, 1);
+      assert.ok(await haltRow(db, uid, STAYS), 'das andere Set wurde mitgelöscht');
+      assert.equal(await quantityOf(db, uid, STAYS), 1, 'das andere Set hat seine Erfassung verloren');
+      assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [STAYS])).c, 1);
     });
 
     await t.test('deleting one of several acquisitions changes nothing about the inventory', async () => {
@@ -138,13 +138,13 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       await db.run(
         `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                     VALUES ($1,$2,9,'U',2, NOW() - INTERVAL '1 day')`,
-        [uid, BLEIBT],
+        [uid, STAYS],
       );
-      const l = await (await fetch(`${base}/api/v2/sets/${BLEIBT}/acquisitions`)).json();
+      const l = await (await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
-      await fetch(`${base}/api/v2/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
-      assert.ok(await haltRow(db, uid, BLEIBT), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
-      const quantity = await quantityOf(db, uid, BLEIBT);
+      await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions/${erste}`, { method: 'DELETE' });
+      assert.ok(await haltRow(db, uid, STAYS), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
+      const quantity = await quantityOf(db, uid, STAYS);
       assert.ok(quantity > 0, `Menge ${quantity}`);
     });
   } finally {

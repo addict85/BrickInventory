@@ -112,7 +112,7 @@ function starte(rolle, port) {
   return withLog;
 }
 
-async function beende(p) {
+async function finish(p) {
   if (p.exitCode === null && p.signalCode === null) p.kill('SIGTERM');
   for (let i = 0; i < 150 && p.exitCode === null && p.signalCode === null; i++) await warte(100);
   if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
@@ -237,8 +237,8 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.notEqual(z.status, 'running', 'Ein Auftrag blieb belegt');
     });
   } finally {
-    await beende(web);
-    if (jobs) await beende(jobs);
+    await finish(web);
+    if (jobs) await finish(jobs);
     await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]).catch(() => {});
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});

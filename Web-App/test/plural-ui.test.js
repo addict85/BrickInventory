@@ -16,7 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-const TEILE = {
+const PARTS = {
   '/v2/parts': {
     success: true,
     total: 3,
@@ -57,7 +57,7 @@ for (const [language, eins, zwei] of [
   ['en', '1 kind', '2 kinds'],
 ]) {
   test(`${language}: groups of the parts`, async () => {
-    const { w, d } = await openUi(TEILE, { language });
+    const { w, d } = await openUi(PARTS, { language });
     try {
       await reiter(w, 'parts');
       await warte(() => d.querySelectorAll('#parts-main .parts-group').length === 2);

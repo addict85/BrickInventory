@@ -26,7 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
@@ -36,7 +36,7 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {

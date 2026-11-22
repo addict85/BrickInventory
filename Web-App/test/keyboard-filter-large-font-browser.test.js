@@ -72,7 +72,7 @@ async function enterFromEachField(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   const anfragen = () =>
-    b.ereignisse.filter(
+    b.eventList.filter(
       e =>
         e.method === 'Network.requestWillBeSent' &&
         e.params.request.method === 'GET' &&
@@ -166,20 +166,20 @@ async function finanzenFehler(_t, a) {
 
 async function filterKnopf(_t, a) {
   const { b, bis } = a;
-  const reihe = sel =>
+  const rowList = sel =>
     b.auswerten(`[...document.querySelector('${sel} .filter-bar').children].filter(e => e.checkVisibility() && e.getBoundingClientRect().width > 2)
       .map(e => e.matches('.filter-button') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.search-field') ? 'Suche' : e.tagName)`);
   try {
     for (const breite of [390, 320]) {
       await groesse(b, breite, true);
       await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-      const muster = await reihe('#tab-gallery');
+      const muster = await rowList('#tab-gallery');
       for (const [hash, tab, bereit] of [
         ['#/katalog', '#tab-catalog', '#catalog-grid .sc'],
         ['#/merkliste', '#tab-wanted', '#mk-list .mk-row'],
       ]) {
         await geh(a, hash, `!!document.querySelector('${bereit}')`, tab);
-        assert.deepEqual(await reihe(tab), muster, `${tab} bei ${breite} px`);
+        assert.deepEqual(await rowList(tab), muster, `${tab} bei ${breite} px`);
         await b.auswerten(`document.querySelector('${tab} .filter-button').click(); true`);
         await bis(
           `document.querySelector('${tab} .filter-bar > select').checkVisibility()`,

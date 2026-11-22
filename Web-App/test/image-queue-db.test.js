@@ -14,7 +14,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Intercept download and downscaling — what counts here is WHEN they are called,
 // not what they do.
 let geladen = 0,
-  verkleinert = 0;
+  shrunk = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -24,18 +24,18 @@ testImageWorker(null, {
     return '/images/sets/test.jpg';
   },
   createPreview: async () => {
-    verkleinert++;
+    shrunk++;
     return true;
   },
 });
-const { dataOrSkip, keineDb } = require('./helpers/db');
+const { dataOrSkip, noDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
 test('the request takes a note, the job stores', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // The queue must be emptied BEFORE use, not only the own
   // prefix — otherwise the batch takes the rows of a predecessor. Rationale
   // and reproduction in helpers/image-queue.js.
@@ -77,7 +77,7 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       );
       assert.ok(n1 < 25, 'Der ganze Rückstau wurde in einem Rutsch gerechnet');
       assert.equal(geladen - vorher, n1, 'es wurden mehr Bilder geholt als abgearbeitet');
-      assert.equal(verkleinert, geladen, 'zu jedem geholten Bild gehört eine Vorschau');
+      assert.equal(shrunk, geladen, 'zu jedem geholten Bild gehört eine Vorschau');
     });
 
     await t.test('at the end no note remains', async () => {
@@ -96,7 +96,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -301,7 +301,7 @@ test('the request no longer computes anything, it only takes notes', () => {
   // gen=0 case the proxy must not trigger a downscale but must leave
   // the note. A test via the route would not distinguish the two —
   // delivery is immediate either way.
-  const px = require('./helpers/sources').kompakt(require('./helpers/sources').proxyThumbSource());
+  const px = require('./helpers/sources').compact(require('./helpers/sources').proxyThumbSource());
   assert.match(px, /const note = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
   assert.match(
     px,

@@ -40,7 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -52,7 +52,7 @@ test('search text and storage location also hit the manually captured lists', { 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

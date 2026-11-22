@@ -89,7 +89,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     routen: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
-  const speichern = body =>
+  const store = body =>
     fetch(`${base}/api/v2/settings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -98,19 +98,19 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   const host = async () => (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_host'"))?.value;
 
   await t.test('without a password the mail server stays', async () => {
-    const r = await speichern({ smtp_host: 'mail.angreifer.example' });
+    const r = await store({ smtp_host: 'mail.angreifer.example' });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'current_password_required');
     assert.equal(await host(), 'mail.alt.example');
   });
 
   await t.test('saving unchanged does not ask', async () => {
-    const r = await speichern({ smtp_host: 'mail.alt.example', language: 'de' });
+    const r = await store({ smtp_host: 'mail.alt.example', language: 'de' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   });
 
   await t.test('with a password it is changed', async () => {
-    const r = await speichern({ smtp_host: 'mail.neu.example', admin_password: PASS });
+    const r = await store({ smtp_host: 'mail.neu.example', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await host(), 'mail.neu.example');
   });
@@ -153,7 +153,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
   await t.test('a first API key needs no password during setup', async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
-    const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
+    const r = await store({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
@@ -161,7 +161,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   await t.test('after setup even a first key only with password', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
-    const r = await speichern({ brickset_api_key: 'erster-fremder' });
+    const r = await store({ brickset_api_key: 'erster-fremder' });
     assert.deepEqual([r.status, r.body.code], [400, 'current_password_required']);
     assert.equal(await wert('brickset_api_key'), undefined);
   });
@@ -171,7 +171,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'",
     );
     for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
-      const r = await speichern(body);
+      const r = await store(body);
       assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], JSON.stringify(body));
     }
     assert.equal(await wert('registration_enabled'), '0');
@@ -180,7 +180,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
 
   await t.test('changed with password, the administrators learn of it', async () => {
     mails.length = 0;
-    const r = await speichern({ registration_enabled: '1', admin_password: PASS });
+    const r = await store({ registration_enabled: '1', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await wert('registration_enabled'), '1');
     for (let i = 0; i < 60 && !mails.some(m => m.an === `${NAME}@example.org`); i++)

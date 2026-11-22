@@ -19,25 +19,27 @@ const db = testData();
 const { changeSet } = areaPage('sets');
 
 test('a failed condition change is an error', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const name = `zsf_${process.pid}`;
   const SET = `91${String(process.pid).slice(-4)}-1`;
-  const FUNKTION = `zustand_sperre_${process.pid}`;
+  const FUNCTION_NAME = `zustand_sperre_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   await holdsSet(db, uid, SET, 1, { condition: 'N' });
   // Only this set: other test files do not share the table, but the template.
   await db.exec(`
-    CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$
+    CREATE FUNCTION ${FUNCTION_NAME}() RETURNS trigger LANGUAGE plpgsql AS $$
     BEGIN
       IF NEW.set_number = '${SET}' AND NEW.condition IS DISTINCT FROM OLD.condition THEN
         RAISE EXCEPTION 'Zustand gesperrt';
       END IF;
       RETURN NEW;
     END $$;
-    CREATE TRIGGER ${FUNKTION} BEFORE UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION ${FUNKTION}();`);
+    CREATE TRIGGER ${FUNCTION_NAME} BEFORE UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION ${FUNCTION_NAME}();`);
   t.after(async () => {
-    await db.exec(`DROP TRIGGER IF EXISTS ${FUNKTION} ON set_acquisitions; DROP FUNCTION IF EXISTS ${FUNKTION}();`);
+    await db.exec(
+      `DROP TRIGGER IF EXISTS ${FUNCTION_NAME} ON set_acquisitions; DROP FUNCTION IF EXISTS ${FUNCTION_NAME}();`,
+    );
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });

@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
-const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'internal_error' };
+const SERVER_ERROR = { $status: 500, success: false, error: 'Interner Fehler', code: 'internal_error' };
 const TWO_SETS = {
   success: true,
   total: 2,
@@ -28,7 +28,7 @@ const TWO_SETS = {
 
 test('collection: a server error on the first load shows the reason and "try again"', async () => {
   /** @type {object} */
-  let response = SERVERFEHLER;
+  let response = SERVER_ERROR;
   const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
     await warte(() => d.querySelector('#gallery .error-state'));
@@ -53,7 +53,7 @@ test('collection: if reloading fails, the old list stays', async () => {
   const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
-    response = SERVERFEHLER;
+    response = SERVER_ERROR;
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#toasts .toast.error'));
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'die alte Liste ist weg');

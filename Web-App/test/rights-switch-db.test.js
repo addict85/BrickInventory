@@ -21,10 +21,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
+const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const AUTH = einhaengung('auth');
+const AUTH = mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -66,7 +66,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  const ruf = async (weg, opt = {}) => {
+  const callFn = async (weg, opt = {}) => {
     const r = await fetch(basis + weg, {
       method: opt.method || 'GET',
       headers: { 'content-type': 'application/json', ...(opt.headers || {}) },
@@ -75,7 +75,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
   const anmelden = async name => {
-    const a = await ruf(AUTH + '/login', {
+    const a = await callFn(AUTH + '/login', {
       method: 'POST',
       body: { username: name, password: PASS, without_token: true },
     });
@@ -105,13 +105,13 @@ test("a change of rights and a deletion end the target's session", { concurrency
     await anmelden(ZIEL);
     assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung: Das Ziel hat genau eine offene Sitzung');
 
-    const ohne = await ruf(AUTH + `/users/${idTarget}/admin`, {
+    const ohne = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false },
     });
     assert.equal(ohne.status, 400, 'Rechte entziehen ohne Verwalterpasswort');
-    const revocation = await ruf(AUTH + `/users/${idTarget}/admin`, {
+    const revocation = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false, admin_password: PASS },
@@ -134,7 +134,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     // if he does it on his own account.
     await anmelden(ZIEL);
     assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer den Nicht-Wechsel');
-    const nochmal = await ruf(AUTH + `/users/${idTarget}/admin`, {
+    const nochmal = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false, admin_password: PASS },
@@ -153,7 +153,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     // on r.changes. Without this assertion its removal would have gone
     // unnoticed — the route would then answer with 200 to an identifier that does
     // not exist.
-    const unbekannt = await ruf(AUTH + '/users/99999999/admin', {
+    const unbekannt = await callFn(AUTH + '/users/99999999/admin', {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: true, admin_password: PASS },
@@ -161,12 +161,12 @@ test("a change of rights and a deletion end the target's session", { concurrency
     assert.equal(unbekannt.status, 404, 'Ein nicht vorhandenes Konto muss 404 ergeben, nicht 200');
 
     // ── 3. And the opposite direction: GRANTING rights ───────────────────────────
-    const vergabe = await ruf(AUTH + `/users/${idTarget}/admin`, {
+    const assignment = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: true, admin_password: PASS },
     });
-    assert.equal(vergabe.status, 200);
+    assert.equal(assignment.status, 200);
     assert.equal(
       await sitzungen(idTarget),
       0,
@@ -177,10 +177,10 @@ test("a change of rights and a deletion end the target's session", { concurrency
     // ── 4. Kontoloeschung ───────────────────────────────────────────────────
     await anmelden(ZIEL);
     assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer die Loeschung');
-    const withoutPw = await ruf(AUTH + `/users/${idTarget}`, { method: 'DELETE', headers: { cookie: chefCookie } });
+    const withoutPw = await callFn(AUTH + `/users/${idTarget}`, { method: 'DELETE', headers: { cookie: chefCookie } });
     assert.equal(withoutPw.status, 400, 'Ein Konto zu löschen verlangt das Verwalterpasswort');
     assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idTarget]), 'ohne Passwort wurde trotzdem gelöscht');
-    const weg = await ruf(AUTH + `/users/${idTarget}`, {
+    const weg = await callFn(AUTH + `/users/${idTarget}`, {
       method: 'DELETE',
       headers: { cookie: chefCookie },
       body: { admin_password: PASS },

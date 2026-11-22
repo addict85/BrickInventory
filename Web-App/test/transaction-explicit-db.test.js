@@ -73,14 +73,14 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const kanal = `tx_explizit_${process.pid}`;
     const listener = await testAccess().ownConnection();
     try {
-      const gehoert = [];
-      listener.on('notification', m => gehoert.push(m.channel));
+      const belongsTo = [];
+      listener.on('notification', m => belongsTo.push(m.channel));
       await listener.query(`LISTEN ${kanal}`);
       await k.transact(async tt => {
         await tt.db.notification.notify(kanal);
       });
-      await bis(() => gehoert.length > 0);
-      assert.deepEqual(gehoert, [kanal]);
+      await bis(() => belongsTo.length > 0);
+      assert.deepEqual(belongsTo, [kanal]);
     } finally {
       await listener.end();
     }
@@ -140,14 +140,14 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
 
   await t.test('a stock lock holds up the second transaction until the first ends', async () => {
     const sperren = [{ konto: uid, schluessel: 'probe' }];
-    const ablauf = [];
+    const expiry = [];
     const erste = await hold(sperren);
-    const zweite = k.transact(async () => ablauf.push('zweite an'), { sperren });
+    const zweite = k.transact(async () => expiry.push('zweite an'), { sperren });
     await bis(() => waitsOn(`${uid}|probe`));
-    ablauf.push('erste aus');
+    expiry.push('erste aus');
     erste.frei();
     await Promise.all([erste.fertig, zweite]);
-    assert.deepEqual(ablauf, ['erste aus', 'zweite an']);
+    assert.deepEqual(expiry, ['erste aus', 'zweite an']);
   });
 
   await t.test('opposite directions do not deadlock: locking is ascending', async () => {

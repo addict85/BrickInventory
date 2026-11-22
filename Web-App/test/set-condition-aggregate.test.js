@@ -224,12 +224,12 @@ test('the parts estimate lands in cache and history', () => {
   // Since the date adoption created_at belongs to the column list.
   // Both paths (new creation and second capture), read without comments.
   const withoutComment = src.replace(/\/\/[^\n]*/g, '');
-  const erfassungen = [
+  const acqList = [
     ...withoutComment.matchAll(
       /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
     ),
   ];
-  assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
+  assert.equal(acqList.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
 });
 
 test('manual minifigures also create a row on every entry', () => {

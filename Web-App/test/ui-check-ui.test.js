@@ -173,12 +173,12 @@ test('price on the tile is labeled, condition and date named (de and en)', async
 });
 
 test('offline: the chart says “not available” with reason and button instead of “Loading…”', async () => {
-  const netzweg = () => {
+  const networkPath = () => {
     throw new TypeError('Failed to fetch');
   };
   const { w, d } = await openUi({
-    '/v2/finance/valuation': netzweg,
-    '/v2/finance/portfolio-history': netzweg,
+    '/v2/finance/valuation': networkPath,
+    '/v2/finance/portfolio-history': networkPath,
   });
   try {
     await reiter(w, 'finance');
@@ -200,13 +200,13 @@ test('offline: the chart says “not available” with reason and button instead
 // period buttons are locked. Counter-check (14.11.2026): `hidden = true` removed in finanzenFehlen() → red
 // (cards visible); the locking of the buttons removed → red (period operable).
 test('offline: the key figure cards of the finances drop, the period buttons are locked', async () => {
-  const netzweg = () => {
+  const networkPath = () => {
     throw new TypeError('Failed to fetch');
   };
   {
     const { w, d } = await openUi({
-      '/v2/finance/valuation': netzweg,
-      '/v2/finance/portfolio-history': netzweg,
+      '/v2/finance/valuation': networkPath,
+      '/v2/finance/portfolio-history': networkPath,
     });
     try {
       await reiter(w, 'finance');

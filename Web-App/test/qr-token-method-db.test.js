@@ -28,9 +28,9 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 // Read the address from server.ts — see einhaengung() in helpers/sources.js.
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -47,7 +47,7 @@ let _srv, _base, _uid;
 test('QR nonce only via POST', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -78,7 +78,7 @@ test('QR nonce only via POST', async t => {
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 
-  const ruf = async methode => {
+  const callFn = async methode => {
     const r = await fetch(`${_base}${AUTH}/qr-token`, {
       method: methode,
       redirect: 'manual',
@@ -93,7 +93,7 @@ test('QR nonce only via POST', async t => {
 
   await t.test('via POST a nonce is created', async () => {
     const vorher = await nonces();
-    const r = await ruf('POST');
+    const r = await callFn('POST');
     assert.equal(r.status, 200, `Erwartet 200, bekam ${r.status}`);
     assert.equal(r.body?.success, true);
     assert.match(String(r.body?.token), /^bim:/, 'Der Token trägt das erwartete Präfix nicht');
@@ -102,7 +102,7 @@ test('QR nonce only via POST', async t => {
 
   await t.test('via GET the route no longer exists', async () => {
     const vorher = await nonces();
-    const r = await ruf('GET');
+    const r = await callFn('GET');
     assert.notEqual(
       r.status,
       200,

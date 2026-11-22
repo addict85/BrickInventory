@@ -29,7 +29,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -39,7 +39,7 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -83,11 +83,11 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   await t.test('without password the account stays, with password it is gone', async () => {
     const id = await konto(NAMEN[0]);
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10294-1')`, [id]);
-    const loesche = als(id);
-    assert.ok((await loesche({})).status >= 400);
-    assert.ok((await loesche({ password: 'falsch-falsch-1' })).status >= 400);
+    const removeIt = als(id);
+    assert.ok((await removeIt({})).status >= 400);
+    assert.ok((await removeIt({ password: 'falsch-falsch-1' })).status >= 400);
     assert.ok(await da(id));
-    const r = await loesche({ password: PASS });
+    const r = await removeIt({ password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await da(id), false);
     assert.equal((await db.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [id])).n, 0);

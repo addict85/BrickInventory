@@ -33,8 +33,8 @@ const ALT = (name, source) => `
   END $$ LANGUAGE plpgsql`;
 
 test('parts counter and account deletion', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  const migriere = async () => {
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
+  const migrateIt = async () => {
     const c = await db.pool.connect();
     try {
       await _req('db/migrate.js').runMigrations(c);
@@ -42,13 +42,13 @@ test('parts counter and account deletion', { concurrency: 1 }, async t => {
       c.release();
     }
   };
-  await migriere();
+  await migrateIt();
 
   // The state of a database before this update.
   await db.run(ALT('bump_parts_version_ins', 'neu'));
   await db.run(ALT('bump_parts_version_del', 'alt'));
   await db.run(`DELETE FROM schema_migrations WHERE name = '0050-teilezaehler-nur-bestehende-konten.sql'`);
-  await migriere();
+  await migrateIt();
 
   const NAME = `zaehler-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);

@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { checkParameter } = require('./helpers/sources');
-const kompakt = require('./helpers/sources').kompakt;
+const compact = require('./helpers/sources').compact;
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -151,7 +151,7 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   // — exactly the state the edit path rejects.
   // ohneKommentare(): the RATIONALES of these rules stand in setMove.ts as a
   // comment, and they QUOTE the statements that must no longer exist …
-  const mv = kompakt(
+  const mv = compact(
     require('./helpers/sources').ohneKommentare(require('./helpers/sources').serviceSource('src/sets/setMove.ts')),
   );
   assert.ok(
@@ -180,10 +180,10 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   // together, not one instead of the other.
   assert.ok(src.includes('sets.moveSet('), 'Die Route ruft den Dienst');
   assert.ok(
-    kompakt(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
+    compact(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
     'Das Verschieben läuft über setEntriesReassign',
   );
-  assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
+  assert.ok(compact(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
   // The whole set and single purchase prices run through THE SAME implementation — the
   // partial case is no special path but the general case with a selection.
   const acq = read('routes/api/acquisitions.ts');
@@ -201,7 +201,7 @@ test('manual parts and minifigures carry the owner', () => {
   // part are two stocks with their own quantity and own purchase price, and every
   // edit path leads to exactly one row. Without a badge the list would look
   // like a duplicate row.
-  const h = kompakt(require('./helpers/sources').handlerQuelle());
+  const h = compact(require('./helpers/sources').handlerQuelle());
   // Checked on the parameters, not on the wording: one day tightening `rows: any[]`
   // to `rows: Row[]` is an improvement and must not appear here as an
   // error (see checkParameter() in the helper).
@@ -221,7 +221,7 @@ test('manual parts and minifigures carry the owner', () => {
     'Ohne user_id in der Abfrage gibt es keinen Besitzer',
   );
 
-  const fc = kompakt(require('./helpers/sources').finanzQuelle());
+  const fc = compact(require('./helpers/sources').finanzQuelle());
   const uses = (fc.match(/await (?:kx?\.household\.)?attachOwners\(uids,/g) || []).length;
   // Since UI review 12 also the sets: every row is the stock of one account.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
@@ -260,7 +260,7 @@ test('the parts summary carries across several accounts too', () => {
 
 test('the UI shows owners and account selection only in the household', () => {
   // In a single account every tile would say “belongs to me" — pure noise.
-  const gal = kompakt(require('./helpers/sources').frontendQuelle());
+  const gal = compact(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
   // A selection with a single option is no selection.
@@ -277,7 +277,7 @@ test('the UI shows owners and account selection only in the household', () => {
     );
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/, 'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
-  const fig = kompakt(require('./helpers/sources').frontendQuelle());
+  const fig = compact(require('./helpers/sources').frontendQuelle());
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
   // And the owner badge on the manual tiles.
@@ -287,7 +287,7 @@ test('the UI shows owners and account selection only in the household', () => {
   // the PURCHASE PRICE, row by row. What is checked now is that the
   // owner column in the purchase price dialog only appears in the household — and
   // in BOTH dialogs (sets and manual entries).
-  const adm = kompakt(require('./helpers/sources').adminSource());
+  const adm = compact(require('./helpers/sources').adminSource());
   assert.doesNotMatch(
     adm,
     /renderMoveBox|moveSetToAccount/,
@@ -345,7 +345,7 @@ test('the account filter applies per view and is sent along everywhere', () => {
 test('the switch only reloads the affected view', () => {
   // Reloading all four at once would touch three views that
   // nobody looks at — and trigger price fetches in doing so.
-  const gal = kompakt(require('./helpers/sources').frontendQuelle());
+  const gal = compact(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
   assert.match(gal, /if \(view === 'finance'\) emit\('financesLoad'\);/);
   // The parts and minifigures tabs have TWO lists — the one from sets and the
@@ -386,7 +386,7 @@ test('moving ONLY goes via the purchase price', async () => {
 test('manual parts and minifigures also move via the purchase price', () => {
   // The same rule for all three kinds. A manually entered part has no
   // contents — only quantity and entry move.
-  const mv = kompakt(read('src/inventory/reassign.ts'));
+  const mv = compact(read('src/inventory/reassign.ts'));
   assert.match(mv, /export async function manualEntryReassign/);
   assert.match(mv, /addPurchaseAtTag\(t, kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
@@ -396,7 +396,7 @@ test('manual parts and minifigures also move via the purchase price', () => {
   // Parts and minifigures go via the same call; the kind comes from the table.
   // Since the layer rebuild the rule stands in the service; the route only calls it.
   const f = 'src/collection/acquisitions.ts';
-  const src = kompakt(read(f));
+  const src = compact(read(f));
   assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,

@@ -47,11 +47,11 @@ test('save buttons look the same', async () => {
   const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
-    const knoepfe = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
+    const buttonList = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
       .map(id => d.getElementById(id))
       .concat([d.querySelector('[data-click="saveVoucher"]')]);
-    assert.equal(knoepfe.filter(Boolean).length, 6, 'Nicht alle sechs Knöpfe gefunden');
-    for (const k of knoepfe) {
+    assert.equal(buttonList.filter(Boolean).length, 6, 'Nicht alle sechs Knöpfe gefunden');
+    for (const k of buttonList) {
       const name = k.id || k.dataset.click;
       assert.equal(k.textContent.trim(), 'Speichern', `${name}: „${k.textContent.trim()}“`);
       assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-save', `${name}: anderes Symbol`);
@@ -72,9 +72,9 @@ test('actions of the user table are named', async () => {
       0,
       'keine Knöpfe gegen das eigene Konto',
     );
-    const knoepfe = [...d.querySelectorAll('#users-tbl .user-actions button')];
-    assert.equal(knoepfe.length, 7, '4 + 3 Knöpfe erwartet (ben hat einen zweiten Faktor; die Rolle steht am Chip)');
-    for (const k of knoepfe) {
+    const buttonList = [...d.querySelectorAll('#users-tbl .user-actions button')];
+    assert.equal(buttonList.length, 7, '4 + 3 Knöpfe erwartet (ben hat einen zweiten Faktor; die Rolle steht am Chip)');
+    for (const k of buttonList) {
       const wort = k.querySelector('span')?.textContent.trim();
       assert.ok(wort, `Knopf ${k.dataset.click} ohne sichtbares Wort`);
       assert.ok(k.getAttribute('title'), `Knopf ${k.dataset.click} ohne Tooltip`);

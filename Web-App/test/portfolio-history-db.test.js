@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 /** The same rule straightforwardly: load daily values, group in JS, carry forward. */
@@ -73,7 +73,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -202,7 +202,7 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
   try {
     await db2.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

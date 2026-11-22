@@ -38,7 +38,7 @@ process.env.APP_ROOT = SANDBOX;
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { pdfText, valuesFromPdf, PdfTooLarge, STREAM_MAX_BYTES, UNPACKED_MAX_BYTES, STREAMS_MAX } =
   _req('src/vouchers/pdfParsing.js');
@@ -184,7 +184,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -201,7 +201,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   const srv = testServer(_req, { sitzung: { userId: uid }, t });
 
   // With typed values: the route then also stores an unreadable PDF.
-  async function hochladen(pdf, number) {
+  async function uploadIt(pdf, number) {
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');
     fd.append('number', number);
@@ -215,7 +215,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   }
 
   await t.test('7. a decompression bomb is rejected even with typed-in values', async () => {
-    const r = await hochladen(BOMBE, '5045076374450099991');
+    const r = await uploadIt(BOMBE, '5045076374450099991');
     assert.equal(r.status, 422, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.code, 'pdf_unreadable');
     assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
@@ -227,11 +227,11 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
       Buffer.alloc(2.5 * 1024 * 1024, 0x41),
       Buffer.from('\n%%EOF\n'),
     ]);
-    const r = await hochladen(gross, '5045076374450099992');
+    const r = await uploadIt(gross, '5045076374450099992');
     assert.ok(r.status >= 400, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.row, undefined, 'Der Gutschein wurde trotzdem angelegt');
 
-    const klein = await hochladen(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
+    const klein = await uploadIt(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
     assert.ok(klein.status < 300, `kleines PDF: ${klein.status} ${JSON.stringify(klein.body)}`);
     assert.ok(klein.row, 'Vorbedingung: Mit getippten Werten wird ein kleines PDF abgelegt');
   });

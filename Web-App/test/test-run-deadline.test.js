@@ -61,7 +61,7 @@ test('braucht erst 8 s, dann 3 s', async () => {
   await new Promise(r => setTimeout(r, erstes ? 8000 : 3000));
 });`,
   );
-  const immerLangsam = datei(
+  const alwaysSlow = datei(
     'immer-langsam.test.js',
     `test('braucht immer 9 s', () => new Promise(r => setTimeout(r, 9000)));`,
   );
@@ -84,7 +84,7 @@ test('braucht erst 8 s, dann 3 s', async () => {
   });
 
   await t.test('still too slow alone: the run is red', () => {
-    const r = runner([immerLangsam]);
+    const r = runner([alwaysSlow]);
     assert.match(r.aus, /Nachlauf ROT/);
     assert.notEqual(r.code, 0);
   });

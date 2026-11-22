@@ -221,8 +221,10 @@ test('value chart: currency, cost basis, axis break, crosshair via keyboard', as
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart svg'));
     const svg = d.querySelector('#portfolio-chart svg');
-    const achse = [...svg.querySelectorAll('text[text-anchor="end"]')].filter(t => +t.getAttribute('x') < 90).map(text);
-    assert.ok(achse.length >= 3 && achse.every(t => /€|EUR/.test(t)), `Achse: ${achse.join(' | ')}`);
+    const axisLine = [...svg.querySelectorAll('text[text-anchor="end"]')]
+      .filter(t => +t.getAttribute('x') < 90)
+      .map(text);
+    assert.ok(axisLine.length >= 3 && axisLine.every(t => /€|EUR/.test(t)), `Achse: ${axisLine.join(' | ')}`);
     assert.match(zahl(text(svg.querySelector('.cost-basis-line'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
     assert.equal(svg.querySelector('.cost-basis-line line').getAttribute('stroke-dasharray'), '6 4');
     assert.ok(svg.querySelector('.axis-break'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');

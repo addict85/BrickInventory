@@ -100,8 +100,8 @@ test('import, storage locations, foreign currency and catalog on the server', {
     ).id;
     await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1', [uid, belegt]);
-    const vorrat = await hole('/storage/locations');
-    assert.deepEqual(vorrat.body.locations.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
+    const stockList = await hole('/storage/locations');
+    assert.deepEqual(stockList.body.locations.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
     const filter = await hole('/storage');
     assert.deepEqual(
       filter.body.locations.map(o => o.location),

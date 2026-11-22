@@ -29,12 +29,12 @@ const BERICHT = { success: true, preview: true, parsed: 1, items: [], created: 0
 /** Opens the UI; requests to the XML import are answered by `antwort(nr)` (promise of a Response). */
 async function withImport(response) {
   const o = await openUi();
-  const importe = [];
+  const importList = [];
   const davor = o.w.fetch;
   o.w.fetch = (url, opt) => {
     if (!String(url).includes('/wanted-list/import/xml')) return davor(url, opt);
-    importe.push(String(url));
-    return response(importe.length);
+    importList.push(String(url));
+    return response(importList.length);
   };
   const choose = name => {
     const field = o.d.getElementById('wanted-xml-part');
@@ -42,14 +42,14 @@ async function withImport(response) {
     field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
   };
   const knopf = id => o.d.getElementById(id);
-  return { ...o, importe, choose, knopf };
+  return { ...o, importList, choose, knopf };
 }
 
 const alsJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
 
 test('a second click starts no second run, a new file is rejected', async () => {
   let freigeben;
-  const { w, d, importe, choose, knopf } = await withImport(
+  const { w, d, importList, choose, knopf } = await withImport(
     () =>
       new Promise(r => {
         freigeben = () => r(alsJson(BERICHT));
@@ -57,7 +57,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
   );
   try {
     choose('liste.xml');
-    assert.ok(await warte(() => importe.length === 1), 'Die Datei startet keinen Lauf');
+    assert.ok(await warte(() => importList.length === 1), 'Die Datei startet keinen Lauf');
     assert.deepEqual(
       [knopf('wanted-xml-new').disabled, knopf('wanted-xml-write').disabled],
       [true, true],
@@ -70,7 +70,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
     knopf('wanted-xml-write').click();
     choose('andere.xml');
     assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
-    assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
+    assert.equal(importList.length, 1, 'Ein zweiter Import addierte die Mengen auf');
     // Back to locked, as updateButtons() would keep it: the release must bring the preview.
     knopf('wanted-xml-new').disabled = true;
     knopf('wanted-xml-write').disabled = true;
@@ -84,7 +84,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
     assert.equal(d.getElementById('wanted-xml-sub').textContent, 'liste.xml', 'Die Datei wurde ausgetauscht');
     // Re-read with the preview showing: writing is locked now too, as long as it runs.
     knopf('wanted-xml-new').click();
-    assert.ok(await warte(() => importe.length === 2));
+    assert.ok(await warte(() => importList.length === 2));
     assert.equal(knopf('wanted-xml-write').disabled, true, 'Schreiben ist während des Neueinlesens bedienbar');
     freigeben();
     assert.ok(await warte(() => !knopf('wanted-xml-write').disabled));
@@ -94,16 +94,16 @@ test('a second click starts no second run, a new file is rejected', async () => 
 });
 
 test('the latch opens again even after an error', async () => {
-  const { w, importe, choose, knopf } = await withImport(async nr => {
+  const { w, importList, choose, knopf } = await withImport(async nr => {
     if (nr === 1) throw new Error('Netz weg');
     return alsJson(BERICHT);
   });
   try {
     choose('liste.xml');
-    assert.ok(await warte(() => importe.length === 1));
+    assert.ok(await warte(() => importList.length === 1));
     assert.ok(await warte(() => !knopf('wanted-xml-new').disabled), 'Nach dem Fehler bleibt der Dialog gesperrt');
     knopf('wanted-xml-new').click();
-    assert.ok(await warte(() => importe.length === 2), 'Neu einlesen startet nach dem Fehler nichts');
+    assert.ok(await warte(() => importList.length === 2), 'Neu einlesen startet nach dem Fehler nichts');
   } finally {
     w.close();
   }
@@ -115,7 +115,7 @@ test('the progress arrives piece by piece and fills the bar', async () => {
     `ue,"parsed":7,"items":[]}\n`,
   ];
   let weiter;
-  const { w, d, importe, choose } = await withImport(async () => ({
+  const { w, d, importList, choose } = await withImport(async () => ({
     ok: true,
     status: 200,
     headers: { get: () => 'application/x-ndjson' },
@@ -144,7 +144,7 @@ test('the progress arrives piece by piece and fills the bar', async () => {
     );
     choose('liste.xml');
     assert.ok(await warte(() => typeof weiter === 'function'));
-    assert.match(importe[0], /[?&]stream=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
+    assert.match(importList[0], /[?&]stream=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
     assert.equal(box.style.display, '');
     assert.equal(wrap.getAttribute('aria-valuenow'), '25');
     assert.match(d.getElementById('wanted-xml-progress-text').textContent, /1.*4/);

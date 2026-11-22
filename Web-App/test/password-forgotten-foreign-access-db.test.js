@@ -28,9 +28,9 @@ environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
+const { mailFake, enterMailServer } = require('./helpers/mail-fake');
 const { bis } = require('./helpers/time');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -38,7 +38,7 @@ test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const gesendet = mailAttrappe();
+  const gesendet = mailFake();
   t.after(await enterMailServer(db));
   const P = process.pid;
   const namen = [`pv_opfer_${P}`, `pv_fremd_${P}`, `pv_kind_${P}`];

@@ -16,8 +16,8 @@ process.env.DATABASE_URL = DB_URL;
 
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
-const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { noDb } = require('./helpers/db');
+const { routerMounts, testData } = require('./helpers/sources');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
 const db = testData();
@@ -155,7 +155,7 @@ function core(body) {
 test('API parity web app ↔ Android', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t, DB_URL);
+    noDb(t, DB_URL);
     return;
   }
   await seed();
@@ -170,7 +170,7 @@ test('API parity web app ↔ Android', async t => {
   // The mount points come from server.ts
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
-  for (const r of routerEinhaengungen())
+  for (const r of routerMounts())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, 'routes/' + r.name + '.js'));
 
   const srv = app.listen(0);

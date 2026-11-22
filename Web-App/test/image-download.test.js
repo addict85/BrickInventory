@@ -61,19 +61,19 @@ test('the building blocks', () => {
   assert.equal(bd.imageExtension(`${CDN}/300121.PNG?x=1`), 'png');
   assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.html'), 'jpg', 'Endung aus der Adresse übernommen');
   assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.svg'), 'jpg');
-  for (const geerbt of ['constructor', 'tostring', '__proto__'])
+  for (const inherited of ['constructor', 'tostring', '__proto__'])
     assert.equal(
-      bd.imageExtension(`https://cdn.rebrickable.com/a/b.${geerbt}`),
+      bd.imageExtension(`https://cdn.rebrickable.com/a/b.${inherited}`),
       'jpg',
-      `${geerbt} als Endung übernommen`,
+      `${inherited} als Endung übernommen`,
     );
   assert.ok(bd.imageTypeAllowed('image/jpeg; charset=binary'));
   for (const typ of ['image/svg+xml', 'text/html', '', undefined])
     assert.equal(bd.imageTypeAllowed(typ), false, `${typ} als Bild erlaubt`);
   for (const gut of ['3001', '973pb0123c01', 'fig-000123', '10294-1', 0, 4])
     assert.equal(bd.filePart(gut), String(gut));
-  for (const schlecht of ['a/../../x', '../x', 'a..b', '.versteckt', 'a\\b', '', 'x'.repeat(65)])
-    assert.equal(bd.filePart(schlecht), null, `${schlecht} als Dateiname erlaubt`);
+  for (const badOne of ['a/../../x', '../x', 'a..b', '.versteckt', 'a\\b', '', 'x'.repeat(65)])
+    assert.equal(bd.filePart(badOne), null, `${badOne} als Dateiname erlaubt`);
   assert.equal(bd.targetInFolder('/a/b', '../c'), null);
   assert.equal(bd.targetInFolder('/a/b', 'c.png'), '/a/b/c.png');
 });

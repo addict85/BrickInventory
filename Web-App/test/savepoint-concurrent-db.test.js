@@ -28,31 +28,31 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { warte } = require('./helpers/time');
 // The built module itself, not the facade from buildAndRequire().
 const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 
-const TABELLE = `sp_gleichzeitig_${process.pid}`;
+const TABLE_NAME = `sp_gleichzeitig_${process.pid}`;
 
 test('savepoints of a transaction', { concurrency: 1 }, async t => {
   const db = modul.createDb(modul.dbConfigFromEnvironment());
   try {
-    await db.run(`CREATE TABLE ${TABELLE} (wert TEXT NOT NULL)`);
+    await db.run(`CREATE TABLE ${TABLE_NAME} (wert TEXT NOT NULL)`);
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   t.after(async () => {
-    await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
+    await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     await db.pool.end();
   });
-  const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABELLE} (wert) VALUES ($1)`, [w]);
-  const values = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
+  const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABLE_NAME} (wert) VALUES ($1)`, [w]);
+  const values = async () => (await db.all(`SELECT wert FROM ${TABLE_NAME} ORDER BY wert`)).map(z => z.wert);
   /** An inner transaction via the access of the outer one (like t.transact). */
   const innen = (tx, fn) => tx.db.transaction(fn);
-  t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
+  t.beforeEach(() => db.run(`DELETE FROM ${TABLE_NAME}`));
 
   await t.test('two concurrent inner transactions: the second is rejected', async () => {
     let results;

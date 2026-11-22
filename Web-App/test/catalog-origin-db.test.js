@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
@@ -51,7 +51,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -75,7 +75,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { catalogPart } = _req('src/catalog/catalogMaintenance.js');
-  const gemeinsam = nr =>
+  const common = nr =>
     db.get(
       `SELECT pc.part_name, pcc.image_url
        FROM (SELECT $1::text AS nr) q
@@ -106,7 +106,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
       { ...(await eigen(A, '3001')) },
       { part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' },
     );
-    assert.deepEqual({ ...(await gemeinsam('3001')) }, { part_name: null, image_url: null });
+    assert.deepEqual({ ...(await common('3001')) }, { part_name: null, image_url: null });
   });
 
   await t.test('another account still asks Rebrickable', async () => {
@@ -114,7 +114,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.deepEqual(fetches, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
     assert.deepEqual(
-      { ...(await gemeinsam('3001')) },
+      { ...(await common('3001')) },
       { part_name: 'Brick 2 x 4', image_url: 'https://cdn.rebrickable.com/media/parts/3001.jpg' },
     );
     assert.equal((await catalogPart('3001', 4, B)).name, 'Brick 2 x 4');
@@ -123,7 +123,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   await t.test('the verified value takes precedence, the own detail is kept', async () => {
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
     assert.equal((await catalogPart('3001', 4, A)).name, 'Brick 2 x 4');
-    assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
+    assert.equal((await common('3001')).part_name, 'Brick 2 x 4');
     assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
 

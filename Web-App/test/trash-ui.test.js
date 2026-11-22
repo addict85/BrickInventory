@@ -24,7 +24,7 @@ const SET = {
   added_at: '2026-11-01T10:00:00Z',
   instructions: [],
 };
-const eintrag = (id, user_id, count) => ({
+const entryRow = (id, user_id, count) => ({
   id,
   type: 'set',
   number: '21318-1',
@@ -37,7 +37,7 @@ const eintrag = (id, user_id, count) => ({
 });
 
 function antworten() {
-  const korb = [eintrag(7, 1, 1), eintrag(8, 2, 2)];
+  const basket = [entryRow(7, 1, 1), entryRow(8, 2, 2)];
   return {
     '/v2/sets/household-members': {
       success: true,
@@ -49,9 +49,9 @@ function antworten() {
     '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
     '/v2/sets/21318-1': (_u, o) =>
       o.method === 'DELETE' ? { success: true, trash: [7] } : { success: true, set: SET },
-    '/v2/trash': () => ({ success: true, entries: korb }),
+    '/v2/trash': () => ({ success: true, entries: basket }),
     '/v2/trash/7/restore': () => {
-      korb.splice(0, 1);
+      basket.splice(0, 1);
       return { success: true, type: 'set', number: '21318-1', user_id: 1 };
     },
   };

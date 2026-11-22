@@ -39,11 +39,11 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `fk-${process.pid}`,
-    ANDERER = `fk-b-${process.pid}`;
+    OTHER = `fk-b-${process.pid}`;
   const SN = `77${process.pid % 1000}-1`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ANDERER]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, OTHER]]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  const andere = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [ANDERER]))
+  const andere = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [OTHER]))
     .id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, andere]]);

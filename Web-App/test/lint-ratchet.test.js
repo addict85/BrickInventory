@@ -24,7 +24,7 @@ const LIMITS = require('../scripts/lint-limits.json');
 
 /** A tree with one lint finding (`==`) and one unformatted file: on the existing code without findings
  *  one could not see whether the script counts at all. */
-function probebaum() {
+function probeTree() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-baum-'));
   fs.copyFileSync(path.join(ROOT, 'biome.json'), path.join(d, 'biome.json'));
   fs.cpSync(path.join(ROOT, 'biome'), path.join(d, 'biome'), { recursive: true });
@@ -36,7 +36,7 @@ function probebaum() {
   return d;
 }
 
-function ratsche(kind, schranken, wurzel) {
+function ratchetFn(kind, schranken, wurzel) {
   const env = { ...process.env };
   if (wurzel) env.LINT_WURZEL = wurzel;
   if (schranken) {
@@ -56,7 +56,7 @@ function ratsche(kind, schranken, wurzel) {
 
 for (const kind of ['lint', 'format']) {
   test(`${kind}: the existing code keeps the limit, and it is tight`, () => {
-    const r = ratsche(kind);
+    const r = ratchetFn(kind);
     assert.equal(r.code, 0, r.aus);
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
     assert.ok(ist >= 0 && ist <= LIMITS[kind], r.aus);
@@ -65,13 +65,13 @@ for (const kind of ['lint', 'format']) {
   });
 
   test(`${kind}: counts the findings of a sample tree`, () => {
-    const r = ratsche(kind, { lint: 1, format: 1 }, probebaum());
+    const r = ratchetFn(kind, { lint: 1, format: 1 }, probeTree());
     assert.equal(r.code, 0, r.aus);
     assert.match(r.aus, new RegExp(`^\\[${kind}\\] 1 .*\\(Schranke 1\\)`, 'm'));
   });
 
   test(`${kind}: a limit that is too low is red`, () => {
-    const r = ratsche(kind, { lint: 0, format: 0 }, probebaum());
+    const r = ratchetFn(kind, { lint: 0, format: 0 }, probeTree());
     assert.equal(r.code, 1, r.aus);
     assert.match(r.aus, /erlaubt sind 0/);
   });

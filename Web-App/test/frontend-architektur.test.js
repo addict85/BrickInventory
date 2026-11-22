@@ -129,8 +129,8 @@ test('core and building blocks (CORE, BUILDING_BLOCKS, i18n.js) import no view',
   const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
   const kern = [...g.keys()].filter(unten);
   assert.equal(kern.length, CORE.length + BUILDING_BLOCKS.length, `nur ${kern.length} Kernmodule gefunden`);
-  const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
-  assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
+  const upward = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
+  assert.deepEqual(upward, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });
 
 test('shared mutable state only in state.js', () => {

@@ -11,7 +11,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** Tables with data the user entered themselves. */
-const NUTZERDATEN = [
+const USER_DATA = [
   'sets',
   'parts',
   'minifigs',
@@ -40,7 +40,7 @@ test('no silent catch on a write operation with user data', () => {
   // Why parentheses are matched here instead of just reading a window
   const call = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillAfterwards = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
-  const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${NUTZERDATEN.join('|')})\\b`, 'i');
+  const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${USER_DATA.join('|')})\\b`, 'i');
 
   const ohneKommentare = src =>
     src

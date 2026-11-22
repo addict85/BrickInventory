@@ -60,7 +60,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
   // The session is one object across all requests; the login writes into it.
   const sitzung = {};
   const basis = routerServer(_req, { sitzung, routen: { '/api/v2/auth': 'routes/auth.js' }, t }).base;
-  const ruf = async (weg, body, kopf = {}) => {
+  const callFn = async (weg, body, kopf = {}) => {
     const r = await fetch(`${basis}/api/v2/auth${weg}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...kopf },
@@ -70,65 +70,65 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
   };
   const anmelden = async (name = NAME) => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
-    const r = await ruf('/login', { username: name, password: PASS, without_token: true });
+    const r = await callFn('/login', { username: name, password: PASS, without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   };
-  const einrichten = (body = {}) => ruf('/second-factor/setup', body);
+  const setUpAccount = (body = {}) => callFn('/second-factor/setup', body);
 
   await t.test('after login without a password', async () => {
     await anmelden();
-    const r = await einrichten();
+    const r = await setUpAccount();
     assert.equal(r.status, 200, `nach der Anmeldung ohne Passwort: ${JSON.stringify(r.body)}`);
     assert.match(r.body.otpauth, /^otpauth:\/\//);
   });
 
   await t.test('only once', async () => {
-    const r = await einrichten();
+    const r = await setUpAccount();
     assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'nur einmal');
-    const mit = await einrichten({ password: PASS });
+    const mit = await setUpAccount({ password: PASS });
     assert.equal(mit.status, 200, 'mit Passwort weiter wie bisher');
   });
 
   await t.test('after the period expires', async () => {
     await anmelden();
     sitzung.passwordConfirmedAt = Date.now() - 6 * 60 * 1000;
-    const r = await einrichten();
+    const r = await setUpAccount();
     assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'nach Ablauf der Frist');
   });
 
   await t.test('after the password change', async () => {
     await anmelden();
     delete sitzung.passwordConfirmedAt;
-    const w = await ruf('/change-password', { current: PASS, newPassword: 'Gnaden-Passwort-2' });
+    const w = await callFn('/change-password', { current: PASS, newPassword: 'Gnaden-Passwort-2' });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [uid, await bcrypt.hash(PASS, 4)]);
-    const r = await einrichten();
+    const r = await setUpAccount();
     assert.equal(r.status, 200, `nach dem Passwortwechsel: ${JSON.stringify(r.body)}`);
   });
 
   await t.test('without a period does not count in the brake', async () => {
-    for (let i = 0; i < 8; i++) assert.equal((await einrichten()).body.code, 'current_password_required');
-    const r = await einrichten({ password: PASS });
+    for (let i = 0; i < 8; i++) assert.equal((await setUpAccount()).body.code, 'current_password_required');
+    const r = await setUpAccount({ password: PASS });
     assert.equal(r.status, 200, `ohne Frist zählt nicht in der Bremse: ${JSON.stringify(r.body)}`);
   });
 
   await t.test('never with a token', async () => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
-    const login = await ruf('/login', { username: NAME, password: PASS });
+    const login = await callFn('/login', { username: NAME, password: PASS });
     assert.ok(login.body.token, JSON.stringify(login.body));
     assert.equal(sitzung.userId, undefined, 'Vorbedingung: keine Sitzung');
-    const r = await ruf('/second-factor/setup', {}, { authorization: `Bearer ${login.body.token}` });
+    const r = await callFn('/second-factor/setup', {}, { authorization: `Bearer ${login.body.token}` });
     assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'mit Token nie');
   });
 
   await t.test('an ordinary account always names the password', async () => {
     await anmelden(NUTZER);
-    const r = await einrichten();
+    const r = await setUpAccount();
     assert.deepEqual(
       [r.status, r.body.code],
       [400, 'current_password_required'],
       'ein gewöhnliches Konto ohne Passwort',
     );
-    assert.equal((await einrichten({ password: PASS })).status, 200, 'mit Passwort');
+    assert.equal((await setUpAccount({ password: PASS })).status, 200, 'mit Passwort');
   });
 });

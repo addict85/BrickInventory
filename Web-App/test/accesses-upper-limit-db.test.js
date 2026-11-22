@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -35,7 +35,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -47,8 +47,8 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     }
   }
   const NAME = `grenze_${process.pid}`,
-    ANDERER = `grenze_b_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ANDERER]]);
+    OTHER = `grenze_b_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, OTHER]]);
   const put = async n =>
     (
       await db.get(
@@ -58,7 +58,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
       )
     ).id;
   const uid = await put(NAME),
-    anderer = await put(ANDERER);
+    anderer = await put(OTHER);
   const sitzungen = id =>
     db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1 ORDER BY sid`, [String(id)]);
   t.after(async () => {

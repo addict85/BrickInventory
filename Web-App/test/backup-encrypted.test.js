@@ -69,12 +69,12 @@ exit 0
   if (hatAge) execFileSync('age-keygen', ['-o', identity], { stdio: 'pipe' });
   const recipient = hatAge ? fs.readFileSync(identity, 'utf8').match(/public key: (age1\w+)/)[1] : 'age1probe';
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` };
-  const skripte = {
+  const scriptList = {
     'backup.sh': path.join(ROOT, 'scripts', 'backup.sh'),
     'restore.sh': path.join(ROOT, 'scripts', 'restore.sh'),
   };
   const lauf = (script, args, mehr = {}, input = '') =>
-    spawnSync('sh', [skripte[script], ...args], {
+    spawnSync('sh', [scriptList[script], ...args], {
       cwd: work,
       encoding: 'utf8',
       input,

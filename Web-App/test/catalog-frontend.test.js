@@ -28,11 +28,11 @@ function stripModuleSyntax(src) {
 }
 
 // The view building blocks go INTO the sandbox, not as a dummy.
-const BAUSTEINE = stripModuleSyntax(
+const BUILDING_BLOCKS = stripModuleSyntax(
   fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'components.js'), 'utf8'),
 );
 const CODE =
-  BAUSTEINE +
+  BUILDING_BLOCKS +
   '\n' +
   stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'load-guard.js'), 'utf8')) +
   '\n' +
@@ -115,12 +115,12 @@ function fakeApi(_method, url) {
   }
   if (url.startsWith('/v2/catalog/year-distribution')) {
     const p = new w.URLSearchParams(url.split('?')[1] || '');
-    const absteigend = p.get('sort') !== 'year_asc';
+    const descending = p.get('sort') !== 'year_asc';
     const counts = {};
     for (const s of DATA) counts[s.year] = (counts[s.year] || 0) + 1;
     const years = Object.entries(counts)
       .map(([y, n]) => ({ year: +y, n }))
-      .sort((a, b) => (absteigend ? b.year - a.year : a.year - b.year));
+      .sort((a, b) => (descending ? b.year - a.year : a.year - b.year));
     return Promise.resolve({ success: true, years });
   }
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
@@ -172,7 +172,7 @@ const check = (name, cond, extra) => {
 };
 const lastSetsReq = () => requests.filter(u => u.includes('/catalog/sets?')).pop();
 const hasYearFilter = u => /[?&]year_(from|to)=/.test(u);
-const bloecke = () => w.document.querySelectorAll('#catalog-grid .cat-page');
+const blockList = () => w.document.querySelectorAll('#catalog-grid .cat-page');
 const realTiles = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
 const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
 /** Push a page into view — as the observer reports it. */
@@ -187,7 +187,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
 
   // ── Layout: one block per page over the WHOLE result ──────────────────
   check('Erste Anfrage OHNE Jahresfilter', !hasYearFilter(lastSetsReq()), lastSetsReq());
-  check('85 Sets, also 2 Seitenblöcke', bloecke().length === 2, bloecke().length);
+  check('85 Sets, also 2 Seitenblöcke', blockList().length === 2, blockList().length);
 
   // jsdom computes NO layout: getBoundingClientRect() returns zeros everywhere,
   // so _loadVisiblePages() considers every block visible and loads everything
@@ -199,10 +199,10 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
 
   // A loaded page must not be fetched a second time — otherwise every
   // scroll step would trigger the same fetch again.
-  const afterSeite2 = requests.length;
+  const afterPage2 = requests.length;
   showPage(2);
   await sleep(60);
-  check('geladene Seite wird nicht erneut geholt', requests.length === afterSeite2, requests.length - afterSeite2);
+  check('geladene Seite wird nicht erneut geholt', requests.length === afterPage2, requests.length - afterPage2);
 
   // ── The year filter via the select fields STAYS ──────────────────────
   w.G('cat-year-from').value = '2027';
@@ -210,7 +210,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   await sleep(80);
   check('Anfrage mit year_from=2027', lastSetsReq().includes('year_from=2027'), lastSetsReq());
   check('nur die 4 Zukunfts-Sets', realTiles() === 4, realTiles());
-  check('ein einziger Block', bloecke().length === 1, bloecke().length);
+  check('ein einziger Block', blockList().length === 1, blockList().length);
   w.G('cat-year-from').value = '';
   fire(w.G('cat-year-from'), 'change');
   await sleep(80);

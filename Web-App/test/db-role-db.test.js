@@ -101,7 +101,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { keineDb, missingPrecondition } = require('./helpers/db');
+const { noDb, missingPrecondition } = require('./helpers/db');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -123,7 +123,7 @@ const SYS = `${praefix}_sys`.toLowerCase();
 const SYSWEB = `${praefix}_sysweb`.toLowerCase();
 const SYS_PW = `sys-${process.pid}-geheim`;
 const READ_PW = `lesen-${process.pid}-geheim`;
-const PASSWORT = `app-${process.pid}-geheim`;
+const PASSWORD = `app-${process.pid}-geheim`;
 const MIG_PW = `mig-${process.pid}-geheim`;
 const id = s => `"${s.replace(/"/g, '""')}"`;
 const url = (db, nutzer, pw) => {
@@ -147,7 +147,7 @@ function setUpRole(db, mehr = {}) {
       PGPASSWORD: decodeURIComponent(BASIS.password),
       PGDATABASE: db,
       DB_APP_USER: ROLE,
-      DB_APP_PASSWORD: PASSWORT,
+      DB_APP_PASSWORD: PASSWORD,
       DB_MIGRATION_USER: MIG,
       DB_MIGRATION_PASSWORD: MIG_PW,
       DB_LESEN_USER: LESEN,
@@ -216,13 +216,13 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   try {
     await admin.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
   const psql = spawnSync('psql', ['--version'], { encoding: 'utf8' });
-  const fassung = Number(psql.stdout?.match(/(\d+)\./)?.[1] ?? 0);
-  if (!su || fassung < 15) {
+  const variant = Number(psql.stdout?.match(/(\d+)\./)?.[1] ?? 0);
+  if (!su || variant < 15) {
     await admin.end();
     missingPrecondition(t, 'kein Superuser oder psql unter 15');
     return;
@@ -306,7 +306,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       await mig.query('ALTER TABLE users DROP COLUMN rollenprobe');
       await assert.rejects(mig.query("COPY (SELECT 1) TO PROGRAM 'true'"), /permission denied|must be superuser/);
     });
-    await als(alt, ROLE, PASSWORT, async app => {
+    await als(alt, ROLE, PASSWORD, async app => {
       await assert.rejects(
         app.query('ALTER TABLE users ADD COLUMN rollenprobe int'),
         /must be owner/,
@@ -322,7 +322,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     assert.equal(m.status, 0, `Schema und Migrationen als Migrationsrolle: ${m.stderr}`);
     assert.equal(setUpRole(alt).status, 0, 'ein zweiter Lauf scheitert');
 
-    const warnung = (dbUrl, env = {}) =>
+    const warning = (dbUrl, env = {}) =>
       spawnSync(
         process.execPath,
         [
@@ -331,28 +331,28 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         ],
         { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } },
       );
-    const ban = warnung(url(alt));
+    const ban = warning(url(alt));
     assert.equal(ban.status, 1, `als Superuser startet die Produktion: ${ban.stdout}`);
     assert.match(ban.stderr, /Superuser — Start verweigert.*DB_SUPERUSER_ALLOWED=1/);
     assert.match(
-      warnung(url(alt), { DB_SUPERUSER_ALLOWED: '1' }).stdout,
+      warning(url(alt), { DB_SUPERUSER_ALLOWED: '1' }).stdout,
       /WARNUNG=true/,
       'mit Ausweg warnt der Start nicht',
     );
-    assert.match(warnung(url(alt, ROLE, PASSWORT)).stdout, /WARNUNG=false/);
-    assert.match(warnung(url(alt, MIG, MIG_PW)).stdout, /WARNUNG=false/);
+    assert.match(warning(url(alt, ROLE, PASSWORD)).stdout, /WARNUNG=false/);
+    assert.match(warning(url(alt, MIG, MIG_PW)).stdout, /WARNUNG=false/);
   });
 
   await t.test('new installation', async () => {
     await admin.query(`CREATE DATABASE ${id(neu)}`);
     const r = setUpRole(neu);
     assert.equal(r.status, 0, r.stderr);
-    const vorher = schemaAsAccount(url(neu, ROLE, PASSWORT));
+    const vorher = schemaAsAccount(url(neu, ROLE, PASSWORD));
     assert.notEqual(vorher.status, 0, 'die Laufzeitrolle startet auf einer leeren Datenbank');
     assert.match(vorher.stderr, /Die Datenbank ist leer\. Diese Rolle darf das Schema nicht ändern/);
     const s = schemaAsAccount(url(neu, MIG, MIG_PW));
     assert.equal(s.status, 0, `das erste Schema als Migrationsrolle: ${s.stderr}`);
-    const app = schemaAsAccount(url(neu, ROLE, PASSWORT));
+    const app = schemaAsAccount(url(neu, ROLE, PASSWORD));
     assert.equal(app.status, 0, `die Laufzeitrolle startet auf dem migrierten Schema: ${app.stderr}`);
     const c = new Client({ connectionString: url(neu) });
     await c.connect();
@@ -409,7 +409,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     assert.deepEqual(spalten, ['first_name', 'last_name'], 'in users schreibt die Laufzeitrolle nur die Namen');
 
     // And the way an injected query tried it:
-    await als(db, ROLE, PASSWORT, async app => {
+    await als(db, ROLE, PASSWORD, async app => {
       for (const sql of [
         'UPDATE users SET is_admin = true WHERE id = $1',
         "UPDATE users SET password_hash = 'x' WHERE id = $1",
@@ -470,7 +470,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const [A, B, C] = (
       await als(db, null, null, c => c.query(`SELECT id FROM users WHERE username LIKE 'kt\\_%' ORDER BY username`))
     ).rows.map(z => z.id);
-    await als(db, ROLE, PASSWORT, async app => {
+    await als(db, ROLE, PASSWORD, async app => {
       for (const sql of [
         'SELECT password_hash FROM users',
         'SELECT * FROM users',
@@ -544,7 +544,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       assert.equal(setUpRole(neu).status, 0);
       await checkAccountTables(neu);
       const kopie = 'SELECT password_hash FROM vor_migration_20261114000000000.users';
-      assert.equal((await als(neu, ROLE, PASSWORT, app => app.query(kopie))).rowCount, 0);
+      assert.equal((await als(neu, ROLE, PASSWORD, app => app.query(kopie))).rowCount, 0);
       assert.equal((await als(neu, SYS, SYS_PW, sys => sys.query(kopie))).rowCount, 1);
     } finally {
       await als(neu, MIG, MIG_PW, mig => mig.query('DROP SCHEMA vor_migration_20261114000000000 CASCADE'));
@@ -556,15 +556,15 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     await app.connect();
     try {
       // Every function creates a superuser role as soon as a superuser executes it.
-      const nutzlast = `IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${BOESE}') THEN
+      const payload = `IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${BOESE}') THEN
         EXECUTE 'CREATE ROLE ${id(BOESE)} SUPERUSER'; END IF;`;
       await app.query(`CREATE SCHEMA boese`);
       await app.query(`CREATE FUNCTION boese.set_config(text, text, boolean) RETURNS text LANGUAGE plpgsql AS
-        $f$ BEGIN ${nutzlast} RETURN pg_catalog.set_config($1, $2, $3); END $f$`);
+        $f$ BEGIN ${payload} RETURN pg_catalog.set_config($1, $2, $3); END $f$`);
       await app.query(`CREATE FUNCTION boese.current_setting(text) RETURNS text LANGUAGE plpgsql AS
-        $f$ BEGIN ${nutzlast} RETURN pg_catalog.current_setting($1); END $f$`);
+        $f$ BEGIN ${payload} RETURN pg_catalog.current_setting($1); END $f$`);
       await app.query(`CREATE FUNCTION boese.gleich(text, name) RETURNS boolean LANGUAGE plpgsql AS
-        $f$ BEGIN ${nutzlast} RETURN $1 OPERATOR(pg_catalog.=) $2; END $f$`);
+        $f$ BEGIN ${payload} RETURN $1 OPERATOR(pg_catalog.=) $2; END $f$`);
       await app.query(`CREATE OPERATOR boese.= (LEFTARG = text, RIGHTARG = name, FUNCTION = boese.gleich)`);
       await app.query(`ALTER DATABASE ${id(neu)} SET search_path = boese, pg_catalog, public`);
       await app.query(`ALTER ROLE ${id(MIG)} IN DATABASE ${id(neu)} SET search_path = boese, pg_catalog`);
@@ -604,7 +604,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   await t.test('runtime and system role may not DROP, ALTER or CREATE, only rows', async () => {
     assert.equal(setUpRole(neu).status, 0);
     for (const [nutzer, pw] of [
-      [ROLE, PASSWORT],
+      [ROLE, PASSWORD],
       [SYS, SYS_PW],
     ])
       await als(neu, nutzer, pw, async app => {
@@ -638,8 +638,8 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   });
 
   await t.test('the catalog import swaps as the runtime role', async () => {
-    const tausch = require(path.join(ROOT, 'dist', 'src', 'catalog', 'repository', 'csvSwap.js'));
-    await als(neu, ROLE, PASSWORT, async app => {
+    const exchange = require(path.join(ROOT, 'dist', 'src', 'catalog', 'repository', 'csvSwap.js'));
+    await als(neu, ROLE, PASSWORD, async app => {
       // The repository takes a transaction handle; here one over the raw connection of the role.
       const tx = {
         run: async (sql, p) => ({ changes: (await app.query(sql, p)).rowCount ?? 0 }),
@@ -648,9 +648,9 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         all: async (sql, p) => (await app.query(sql, p)).rows,
       };
       await app.query('BEGIN');
-      await tausch.lockTable(tx, 'rb_colors');
-      await tausch.createShadow(tx, 'rb_colors', 'rb_colors_import');
-      await tausch.addBlockOne(
+      await exchange.lockTable(tx, 'rb_colors');
+      await exchange.createShadow(tx, 'rb_colors', 'rb_colors_import');
+      await exchange.addBlockOne(
         tx,
         'rb_colors_import',
         ['id', 'name', 'rgb', 'is_trans'],
@@ -660,9 +660,9 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         ],
         ['id'],
       );
-      await tausch.swap(tx, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
+      await exchange.swap(tx, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
       await app.query('COMMIT');
-      assert.equal(await tausch.maintenance(sql => app.query(sql), 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
+      assert.equal(await exchange.maintenance(sql => app.query(sql), 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
       assert.deepEqual((await app.query('SELECT id, name FROM rb_colors ORDER BY id')).rows, [
         { id: 9001, name: 'Probe-Rot' },
         { id: 9002, name: 'Probe-Blau' },
@@ -677,7 +677,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       await mig.query('CREATE SCHEMA vor_migration_20261111000000000');
       await mig.query('CREATE TABLE vor_migration_20261111000000000.users AS SELECT 7 AS id');
     });
-    await als(neu, ROLE, PASSWORT, async app => {
+    await als(neu, ROLE, PASSWORD, async app => {
       assert.deepEqual((await app.query('INSERT INTO spaeter (x) VALUES (1) RETURNING id, x')).rows, [{ id: 1, x: 1 }]);
       assert.equal((await app.query('DELETE FROM vor_migration_20261111000000000.users WHERE id = 7')).rowCount, 1);
       await assert.rejects(app.query('DROP TABLE spaeter'), /must be owner/);
@@ -688,19 +688,19 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
 
     // An expired copy: the runtime role empties it, only the migration role can remove it.
     const { cleanOldBackupsOn } = require(path.join(ROOT, 'dist', 'db', 'migrate.js'));
-    const abfrager = c => ({
+    const querier = c => ({
       all: async (q, p) => (await c.query(q, p)).rows,
       run: async (q, p) => ({ changes: (await c.query(q, p)).rowCount }),
     });
     const ALT = 'vor_migration_20200101000000000';
     await als(neu, MIG, MIG_PW, mig => mig.query(`CREATE SCHEMA ${ALT}; CREATE TABLE ${ALT}.users AS SELECT 7 AS id`));
-    assert.equal(await als(neu, ROLE, PASSWORT, app => cleanOldBackupsOn(abfrager(app))), 1);
+    assert.equal(await als(neu, ROLE, PASSWORD, app => cleanOldBackupsOn(querier(app))), 1);
     assert.deepEqual(
       (await als(neu, null, null, c => c.query(`SELECT count(*)::int AS n FROM ${ALT}.users`))).rows,
       [{ n: 0 }],
       'ein gelöschtes Konto lebt in der abgelaufenen Kopie weiter',
     );
-    assert.equal(await als(neu, MIG, MIG_PW, mig => cleanOldBackupsOn(abfrager(mig))), 1);
+    assert.equal(await als(neu, MIG, MIG_PW, mig => cleanOldBackupsOn(querier(mig))), 1);
     assert.equal(
       (await als(neu, null, null, c => c.query(`SELECT 1 FROM pg_namespace WHERE nspname = '${ALT}'`))).rowCount,
       0,
@@ -714,7 +714,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       mig.query(`UPDATE schema_migrations SET name = name || '.weg' WHERE name = $1`, [letzte]),
     );
     try {
-      const r = schemaAsAccount(url(neu, ROLE, PASSWORT));
+      const r = schemaAsAccount(url(neu, ROLE, PASSWORD));
       assert.notEqual(r.status, 0, 'gestartet trotz offener Migration');
       assert.match(r.stderr, new RegExp(`Migrationen offen: ${letzte.replace(/\./g, '\\.')}\\..*Dienst migration`));
     } finally {
@@ -725,7 +725,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const m = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrate.js')], {
       cwd: ROOT,
       encoding: 'utf8',
-      env: { ...process.env, DATABASE_URL: url(neu, ROLE, PASSWORT) },
+      env: { ...process.env, DATABASE_URL: url(neu, ROLE, PASSWORD) },
     });
     assert.notEqual(m.status, 0, 'der Dienst migration meldet als Laufzeitrolle Erfolg');
     assert.match(m.stderr, /PGUSER muss die Migrationsrolle sein/);
@@ -782,7 +782,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     } finally {
       await l.end();
     }
-    const app = new Client({ connectionString: url(neu, ROLE, PASSWORT) });
+    const app = new Client({ connectionString: url(neu, ROLE, PASSWORD) });
     await app.connect();
     try {
       await app.query('CREATE TEMP TABLE probe (x int)');
@@ -796,7 +796,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       false,
       'ohne PGWEB_DB_PASSWORD meldet sich die Leserolle nicht an',
     );
-    const gleich = setUpRole(neu, { PGWEB_DB_PASSWORD: PASSWORT });
+    const gleich = setUpRole(neu, { PGWEB_DB_PASSWORD: PASSWORD });
     assert.notEqual(gleich.status, 0);
     assert.match(gleich.stderr, /PGWEB_DB_PASSWORD muss sich/);
   });
@@ -868,14 +868,14 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const konto = await als(neu, null, null, c =>
       c.query(`SELECT id FROM users WHERE username = 'leseprobe'`).then(r => r.rows[0].id),
     );
-    await als(neu, ROLE, PASSWORT, async app => {
+    await als(neu, ROLE, PASSWORD, async app => {
       assert.equal(await zaehle(app), 0, 'ohne Konto sieht die Laufzeitrolle keine Zeile');
       await app.query('BEGIN');
       await app.query(`SELECT set_config('app.account', $1::text, true)`, [konto]);
       assert.equal(await zaehle(app), 1, 'mit Konto sieht sie dessen Zeile');
       await app.query('COMMIT');
     });
-    await als(neu, ROLE, PASSWORT, async app => {
+    await als(neu, ROLE, PASSWORD, async app => {
       await app.query('BEGIN');
       await app.query(`SELECT set_config('app.system', 'an', true)`);
       assert.equal(await zaehle(app), 0, 'app.system schaltet den Zeilenschutz nicht mehr ab');
@@ -927,7 +927,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         PGPASSWORD: decodeURIComponent(BASIS.password),
         PGDATABASE: neu,
         DB_APP_USER: ROLE,
-        DB_APP_PASSWORD: PASSWORT,
+        DB_APP_PASSWORD: PASSWORD,
         DB_MIGRATION_USER: MIG,
         DB_MIGRATION_PASSWORD: MIG_PW,
         DB_LESEN_USER: LESEN,
@@ -971,13 +971,13 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       return f;
     };
     const environment = {
-      DB_APP_PASSWORD_FILE: datei('app', PASSWORT),
+      DB_APP_PASSWORD_FILE: datei('app', PASSWORD),
       PGWEB_DB_PASSWORD_FILE: datei('read', READ_PW),
       DB_MIGRATION_PASSWORD_FILE: datei('mig', MIG_PW),
       DB_SYSTEM_PASSWORD_FILE: datei('sys', SYS_PW),
       PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)),
     };
-    const ohneWerte = mehr => {
+    const withoutValues = mehr => {
       const env = {
         ...process.env,
         PGHOST: BASIS.hostname,
@@ -1002,26 +1002,26 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         if (!(k in mehr)) delete env[k];
       return spawnSync('sh', [SCRIPT], { encoding: 'utf8', env });
     };
-    const r = ohneWerte({});
+    const r = withoutValues({});
     assert.equal(r.status, 0, r.stderr);
     const l = new Client({ connectionString: url(neu, LESEN, READ_PW) });
     await l.connect();
     await l.end();
-    const app = new Client({ connectionString: url(neu, ROLE, PASSWORT) });
+    const app = new Client({ connectionString: url(neu, ROLE, PASSWORD) });
     await app.connect();
     await app.end();
     await als(neu, MIG, MIG_PW, () => {});
     await als(neu, SYS, SYS_PW, () => {});
-    const withoutSys = ohneWerte({ DB_SYSTEM_PASSWORD_FILE: '' });
+    const withoutSys = withoutValues({ DB_SYSTEM_PASSWORD_FILE: '' });
     assert.notEqual(withoutSys.status, 0);
     assert.match(withoutSys.stderr, /DB_SYSTEM_PASSWORD fehlt/);
-    const withoutMig = ohneWerte({ DB_MIGRATION_PASSWORD_FILE: '' });
+    const withoutMig = withoutValues({ DB_MIGRATION_PASSWORD_FILE: '' });
     assert.notEqual(withoutMig.status, 0);
     assert.match(withoutMig.stderr, /DB_MIGRATION_PASSWORD fehlt/);
-    const beide = ohneWerte({ DB_APP_PASSWORD: PASSWORT });
-    assert.notEqual(beide.status, 0);
-    assert.match(beide.stderr, /DB_APP_PASSWORD und DB_APP_PASSWORD_FILE sind beide gesetzt/);
-    const fehlt = ohneWerte({ DB_APP_PASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') });
+    const bothOnes = withoutValues({ DB_APP_PASSWORD: PASSWORD });
+    assert.notEqual(bothOnes.status, 0);
+    assert.match(bothOnes.stderr, /DB_APP_PASSWORD und DB_APP_PASSWORD_FILE sind beide gesetzt/);
+    const fehlt = withoutValues({ DB_APP_PASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') });
     assert.notEqual(fehlt.status, 0);
     assert.match(fehlt.stderr, /DB_APP_PASSWORD_FILE=.* ist nicht lesbar/);
   });
@@ -1030,10 +1030,10 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const r = setUpRole(neu, { DB_APP_PASSWORD: decodeURIComponent(BASIS.password) });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden/);
-    const m = setUpRole(neu, { DB_MIGRATION_PASSWORD: PASSWORT });
+    const m = setUpRole(neu, { DB_MIGRATION_PASSWORD: PASSWORD });
     assert.notEqual(m.status, 0);
     assert.match(m.stderr, /DB_MIGRATION_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden/);
-    const sys = setUpRole(neu, { DB_SYSTEM_PASSWORD: PASSWORT });
+    const sys = setUpRole(neu, { DB_SYSTEM_PASSWORD: PASSWORD });
     assert.notEqual(sys.status, 0);
     assert.match(sys.stderr, /DB_SYSTEM_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD/);
   });
@@ -1058,7 +1058,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       fsm.mkdirSync(path.join(location, 'geheimnisse'), { mode: 0o700 });
       for (const [n, w] of [
         ['db_password', decodeURIComponent(BASIS.password)],
-        ['db_app_password', PASSWORT],
+        ['db_app_password', PASSWORD],
         ['session_secret', 'x'.repeat(48)],
         ['pgweb_db_password', READ_PW],
       ])
@@ -1117,7 +1117,7 @@ esac
           .map(z => z.split(' ').slice(1, 4).join(' ')),
         ['up -d postgres', 'run --rm db-rolle', 'run --rm migration', 'exec -T -e', 'up -d'],
       );
-      await als(migration, ROLE, PASSWORT, app =>
+      await als(migration, ROLE, PASSWORD, app =>
         assert.rejects(app.query('ALTER TABLE users ADD COLUMN probe int'), /must be owner/),
       );
       const pw = fsm.readFileSync(path.join(g, 'db_migration_password'), 'utf8');

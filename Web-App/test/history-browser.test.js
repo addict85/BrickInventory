@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
-const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
+const CONDITION = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
   dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
 
 test('address and history', { timeout: 180_000 }, async t => {
@@ -30,7 +30,7 @@ test('address and history', { timeout: 180_000 }, async t => {
   const { b, bis, ruhig } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
-  const condition = () => b.auswerten(ZUSTAND);
+  const condition = () => b.auswerten(CONDITION);
   const zurueck = async () => {
     await b.auswerten('history.back(); true');
     await warte(400);

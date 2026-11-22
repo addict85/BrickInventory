@@ -46,7 +46,7 @@ test.after(async () => {
 });
 
 test('if the preview is missing, the original comes before the CDN', async t => {
-  const db = await dataOrSkip(t, _req, { migrieren: false });
+  const db = await dataOrSkip(t, _req, { runMigrate: false });
   if (!db) return;
   // The CDN address is known: without the fallback the request would go to the image proxy.
   await db.run(

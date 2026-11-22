@@ -54,8 +54,8 @@ function freePort() {
     const s = net
       .createServer()
       .listen(0, '127.0.0.1', () => {
-        const adr = s.address();
-        const port = typeof adr === 'object' && adr ? adr.port : 0;
+        const addr = s.address();
+        const port = typeof addr === 'object' && addr ? addr.port : 0;
         s.close(() => auf(port));
       })
       .on('error', ab);
@@ -110,8 +110,8 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     })
     .listen(0, '127.0.0.1');
   await new Promise(r => cdn.once('listening', r));
-  const adr = cdn.address();
-  const cdnPort = typeof adr === 'object' && adr ? adr.port : 0;
+  const addr = cdn.address();
+  const cdnPort = typeof addr === 'object' && addr ? addr.port : 0;
 
   /** @type {(import('node:child_process').ChildProcess & { log: string })[]} */
   const processes = [];

@@ -84,7 +84,7 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
     '/v2/sets/10295-1': { success: true, set: set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' }) },
   });
   try {
-    const oeffne = async nr => {
+    const openIt = async nr => {
       d.querySelector(`#gallery [data-click="openModal"][data-arg="${nr}"]`).click();
       assert.ok(
         await warte(() => !/set-placeholder/.test(d.getElementById('m-img').getAttribute('src'))),
@@ -93,14 +93,14 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
       return d.getElementById('m-img').getAttribute('src');
     };
     assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
-    assert.equal(await oeffne('10294-1'), proxy(SET_CDN), 'Das Detail lädt direkt beim CDN');
+    assert.equal(await openIt('10294-1'), proxy(SET_CDN), 'Das Detail lädt direkt beim CDN');
     // The zoom opens the same full resolution, likewise via the own server.
     d.getElementById('m-img').click();
     assert.ok(await warte(() => d.getElementById('lightbox-img').getAttribute('src')));
     assert.equal(d.getElementById('lightbox-img').getAttribute('src'), proxy(SET_CDN));
     d.getElementById('set-modal').classList.remove('open');
     assert.equal(
-      await oeffne('10295-1'),
+      await openIt('10295-1'),
       '/images/sets/10295-1.jpg',
       'Das Detail zeigt die Vorschau statt der vollen Auflösung',
     );

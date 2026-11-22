@@ -28,7 +28,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { holdsSet, record, quantityOf } = require('./helpers/inventory');
 
-const kaeufe = (db, uid, sn) =>
+const purchaseList = (db, uid, sn) =>
   db
     .all(`SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE user_id=$1 AND set_number=$2 ORDER BY id`, [uid, sn])
     .then(r => r.map(x => x.z));
@@ -53,7 +53,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
   await t.test('main account reduces the sub-account, undo brings the purchase back', async () => {
     await holdsSet(db, uid, SN, 1, { preis: 199.99, am: '2026-06-01T10:00:00Z' });
     await holdsSet(db, kid, SN, 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
-    const vorher = await kaeufe(db, kid, SN);
+    const vorher = await purchaseList(db, kid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1, owner_user_id: kid });
     assert.equal(await quantityOf(db, [kid], SN), 0);
     assert.equal(await quantityOf(db, [uid], SN), 1, 'das eigene Exemplar blieb nicht');
@@ -64,30 +64,30 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     );
     assert.ok(r.trash, 'kein Papierkorb-Eintrag');
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
-    assert.deepEqual(await kaeufe(db, kid, SN), vorher);
+    assert.deepEqual(await purchaseList(db, kid, SN), vorher);
   });
 
   await t.test('older purchase stays, newer one comes back', async () => {
     await record(db, uid, SN, 1, { preis: 250, am: '2026-09-13T10:00:00Z' });
-    const vorher = await kaeufe(db, uid, SN);
+    const vorher = await purchaseList(db, uid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     assert.deepEqual(
       r.dropped.map(e => [e.purchase_price, e.date]),
       [[250, '2026-09-13']],
     );
     assert.deepEqual(
-      (await kaeufe(db, uid, SN)).map(z => Number(z.purchase_price)),
+      (await purchaseList(db, uid, SN)).map(z => Number(z.purchase_price)),
       [199.99],
     );
     assert.ok(r.trash, 'kein Papierkorb-Eintrag');
     assert.equal((await pk.listTrash([uid])).find(e => e.id === r.trash)?.count, 1);
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
-    assert.deepEqual(await kaeufe(db, uid, SN), vorher);
+    assert.deepEqual(await purchaseList(db, uid, SN), vorher);
   });
 
   await t.test('shortened purchase: the same row grows again, even with a price changed in the meantime', async () => {
     await record(db, uid, SN, 3, { preis: 80, am: '2026-10-01T10:00:00Z' });
-    const vorher = await kaeufe(db, uid, SN);
+    const vorher = await purchaseList(db, uid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     assert.deepEqual(
       r.dropped.map(e => [e.quantity, e.purchase_price]),
@@ -98,7 +98,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     await db.run('UPDATE set_acquisitions SET purchase_price = 85 WHERE id = $1', [id]);
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
     assert.deepEqual(
-      await kaeufe(db, uid, SN),
+      await purchaseList(db, uid, SN),
       vorher.map(z => (z.id === id ? { ...z, purchase_price: 85 } : z)),
     );
   });
@@ -108,7 +108,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     await record(db, uid, SN, 1, { preis: 60, am: '2026-10-05T12:00:00Z' });
     assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
-    const am5 = (await kaeufe(db, uid, SN)).filter(z => Number(z.purchase_price) === 60);
+    const am5 = (await purchaseList(db, uid, SN)).filter(z => Number(z.purchase_price) === 60);
     assert.deepEqual(
       am5.map(z => z.quantity),
       [2],

@@ -43,7 +43,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
@@ -67,7 +67,7 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

@@ -119,7 +119,7 @@ test.after(async () => {
 });
 
 test('an image exactly at the limit goes out and into the cache', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
   const r = await hole(address('grenze'));
@@ -133,7 +133,7 @@ test('an image exactly at the limit goes out and into the cache', async t => {
 });
 
 test('an image above the limit is discarded, counted and reported', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
   const beforeCache = imCache().length;
   // With Content-Length the fetch already refuses; without it the stream counts along and aborts.
@@ -179,7 +179,7 @@ test('the local download discards the same image and reports it', async () => {
 });
 
 test('the preview arises from the completely written cache', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   cdnBody = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
     .jpeg()
     .toBuffer();

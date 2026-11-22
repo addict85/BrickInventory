@@ -13,9 +13,9 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, placeBundleSafe } = require('./helpers/bundle');
+const { BUNDLE_FILE, placeBundleSafe } = require('./helpers/bundle');
 placeBundleSafe();
-const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
+const BUNDLE = fs.readFileSync(BUNDLE_FILE, 'utf8');
 
 async function fenster() {
   const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });

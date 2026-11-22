@@ -56,7 +56,7 @@ testSources(null, {
 });
 
 test('catalog reconciliation without network', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
   const condition = _req('src/jobQueue/startState.js');

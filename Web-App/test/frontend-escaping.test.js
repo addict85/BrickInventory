@@ -39,7 +39,7 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
     ' /pfad ',
   ])
     assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
-  for (const schlecht of [
+  for (const badOne of [
     '//evil.example/x',
     '/\\evil.example/x',
     '/\\\\evil.example',
@@ -53,7 +53,7 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
     null,
     undefined,
   ])
-    assert.equal(safeUrl(schlecht), '', `„${schlecht}“ kam durch`);
+    assert.equal(safeUrl(badOne), '', `„${badOne}“ kam durch`);
 });
 
 test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
@@ -176,13 +176,13 @@ test('server-side error messages go through esc() in the HTML context', () => {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
     let ab = 0;
     src.split('\n').forEach((line, i) => {
-      const rowAb = ab;
+      const rowFrom = ab;
       ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
       if (!/<\w/.test(line)) return; // no HTML context
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
         // In html`` the template itself escapes — unless the value goes through rawHtml().
-        const ago = src.lastIndexOf('`', rowAb + (m.index ?? 0));
+        const ago = src.lastIndexOf('`', rowFrom + (m.index ?? 0));
         if (src.slice(ago - 4, ago) === 'html' && !/rawHtml\(/.test(m[1])) continue;
         // Remove string literals so that translation keys
         // ('…error') do not count as a data field.

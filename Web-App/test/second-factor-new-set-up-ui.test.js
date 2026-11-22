@@ -17,7 +17,7 @@ const { openUi, sicht, warte, ANMELDUNG } = require('./helpers/ui');
 
 const OTPAUTH = 'otpauth://totp/BrickInventory:anna?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory';
 
-function oeffne(verwalter, kopiert) {
+function openIt(verwalter, copied) {
   return openUi(
     {
       '/v2/auth/me': {
@@ -33,8 +33,7 @@ function oeffne(verwalter, kopiert) {
       '/v2/auth/second-factor/setup': { success: true, secret: 'JBSWY3DPEHPK3PXP', otpauth: OTPAUTH },
     },
     {
-      before: w =>
-        Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async t => kopiert.push(t) } }),
+      before: w => Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async t => copied.push(t) } }),
     },
   );
 }
@@ -48,8 +47,8 @@ const dialog = d => ({
 });
 
 test('administrator: set up again in one dialog, then key and link', async () => {
-  const kopiert = [];
-  const { w, d, aufrufe } = await oeffne(true, kopiert);
+  const copied = [];
+  const { w, d, aufrufe } = await openIt(true, copied);
   try {
     await sicht(w, 'profile');
     await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
@@ -76,15 +75,15 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     assert.equal(link.hidden, false, 'Link verborgen');
     assert.equal(link.getAttribute('href'), OTPAUTH);
     d.querySelector('[data-click="copySecondFactorKey"]').click();
-    assert.ok(await warte(() => kopiert.length === 1));
-    assert.equal(kopiert[0], 'JBSWY3DPEHPK3PXP');
+    assert.ok(await warte(() => copied.length === 1));
+    assert.equal(copied[0], 'JBSWY3DPEHPK3PXP');
   } finally {
     w.close();
   }
 });
 
 test('account without admin rights: switching off as announced, without setup', async () => {
-  const { w, d, aufrufe } = await oeffne(false, []);
+  const { w, d, aufrufe } = await openIt(false, []);
   try {
     await sicht(w, 'profile');
     await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));

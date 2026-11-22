@@ -21,16 +21,16 @@ const { openUi, takt } = require('./helpers/ui');
 test('offline: writing buttons locked', async t => {
   const { w, d } = await openUi();
   try {
-    const hinzu = d.querySelector('#tab-gallery button[data-click="openCapture"]');
+    const add = d.querySelector('#tab-gallery button[data-click="openCapture"]');
     const filter = d.querySelector('#tab-gallery .filter-button');
-    assert.ok(hinzu && filter);
+    assert.ok(add && filter);
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
     w.dispatchEvent(new w.Event('offline'));
     await takt(10);
     await t.test('offline: adding locked', () => {
       assert.equal(d.getElementById('offline-band').hidden, false);
-      assert.equal(hinzu.disabled, true);
-      assert.match(hinzu.getAttribute('aria-describedby') || '', /offline-band/);
+      assert.equal(add.disabled, true);
+      assert.match(add.getAttribute('aria-describedby') || '', /offline-band/);
       assert.equal(filter.disabled, false, 'Lesen bleibt möglich');
       assert.match(d.getElementById('offline-band').textContent, /gesperrt/);
     });
@@ -70,8 +70,8 @@ test('offline: writing buttons locked', async t => {
       Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
       w.dispatchEvent(new w.Event('online'));
       await takt(10);
-      assert.equal(hinzu.disabled, false);
-      assert.equal(hinzu.hasAttribute('aria-describedby'), false);
+      assert.equal(add.disabled, false);
+      assert.equal(add.hasAttribute('aria-describedby'), false);
       assert.equal(d.querySelector('#tab-gallery .import-menu > summary').hasAttribute('aria-disabled'), false);
       assert.equal(d.getElementById('offline-band').hidden, true);
     });

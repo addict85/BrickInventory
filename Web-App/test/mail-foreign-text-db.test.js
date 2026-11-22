@@ -51,15 +51,15 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
 
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const setze = async (k, v) =>
+  const put = async (k, v) =>
     db.run(
       `INSERT INTO global_settings (key, value) VALUES ($1, $2)
     ON CONFLICT (key) DO UPDATE SET value = $2`,
       [k, v],
     );
-  await setze('registration_enabled', '1');
-  await setze('smtp_host', '192.0.2.25'); // an address: a name would have to resolve (src/infra/targetAddress.ts)
-  await setze('smtp_user', 'versand');
+  await put('registration_enabled', '1');
+  await put('smtp_host', '192.0.2.25'); // an address: a name would have to resolve (src/infra/targetAddress.ts)
+  await put('smtp_user', 'versand');
   const emptyCounter = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
   await emptyCounter();
   t.after(async () => {
@@ -72,14 +72,14 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const rufe = (methode, path, body) =>
+  const callIt = (methode, path, body) =>
     fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
   const register = (u, email, extra = {}) =>
-    rufe('POST', '/register', { username: u, email, password: 'Langes-Passwort-42', ...extra });
+    callIt('POST', '/register', { username: u, email, password: 'Langes-Passwort-42', ...extra });
   const waitOnMail = async an => {
     for (let i = 0; i < 50; i++) {
       const m = gesendet.find(x => x.to === an);
@@ -112,12 +112,12 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
         [`profil_${P}`, hash],
       )
     ).id;
-    const p = await rufe('PUT', '/profile', { first_name: 'Anna\u0007' });
+    const p = await callIt('PUT', '/profile', { first_name: 'Anna\u0007' });
     assert.equal(p.status, 400, JSON.stringify(p.body));
     assert.equal(p.body.code, 'name_invalid');
     assert.equal(
       (
-        await rufe('PUT', '/profile', {
+        await callIt('PUT', '/profile', {
           first_name: 'Anna-Lena',
           last_name: "O'Brien",
           password_current: 'Profil-Passwort-1',
@@ -193,7 +193,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     );
     const gesetzt = [];
     for (let i = 0; i < 4; i++) {
-      const r = await rufe('POST', '/forgot-password', { email: an });
+      const r = await callIt('POST', '/forgot-password', { email: an });
       assert.equal(r.status, 200);
       const z = await db.get('SELECT reset_token FROM users WHERE email = $1', [an]);
       gesetzt.push(!!z.reset_token);

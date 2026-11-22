@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -53,7 +53,7 @@ const dbDa = async t => {
     await db.run('SELECT 1');
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 };
@@ -113,9 +113,9 @@ test('nobody writes the item count of a set anymore', () => {
   // exist, every remaining read place is a hard error — and exactly
   // for that reason the read paths below run against a migrated database.
   const dateien = [];
-  const lauf = verz => {
-    for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
-      const p = path.join(verz, e.name);
+  const lauf = dir => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
       if (e.isDirectory()) {
         lauf(p);
         continue;
@@ -152,7 +152,7 @@ test('nobody writes the item count of a set anymore', () => {
   // single one of the rules above.
   const legtAn = /ALTER\s+TABLE\s+sets\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i;
 
-  const stellen = [];
+  const placeList = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
@@ -163,16 +163,16 @@ test('nobody writes the item count of a set anymore', () => {
         ['bei Konflikt', onConflict],
         ['legt an', legtAn],
       ])) {
-        if (muster.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
+        if (muster.test(z)) placeList.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
     }
   }
 
   assert.deepEqual(
-    stellen,
+    placeList,
     [],
     'Diese Stellen schreiben die Stückzahl eines Sets:\n  ' +
-      stellen.join('\n  ') +
+      placeList.join('\n  ') +
       '\nSie steht seit Migration 0036 ausschliesslich in set_acquisitions. Genau die ' +
       'zweite Schreibrichtung ist auseinandergelaufen: sets.quantity = 10 bei drei ' +
       'Erfassungen mit Summe 7.',
@@ -184,7 +184,7 @@ test('nobody writes the item count of a set anymore', () => {
   // say yet that they COULD find anything at all. So proven once on
   // invented lines, in exactly the form that stood in the tree before
   // (the examples stand like this in src/sets/service.ts, version before 0036).
-  const proben = [
+  const probeList = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
     [
@@ -194,7 +194,7 @@ test('nobody writes the item count of a set anymore', () => {
     ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
-  for (const [row, muster] of /** @type {[string, RegExp][]} */ (proben)) {
+  for (const [row, muster] of /** @type {[string, RegExp][]} */ (probeList)) {
     assert.ok(muster.test(row), `Das Muster greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
   }
   // And the opposite direction: what is allowed must NOT trigger.
@@ -257,8 +257,8 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   );
 
   // ── Household ─────────────────────────────────────────────────────────────
-  const beide = await H.readSets([haupt.id, kind.id], { page_size: 60 });
-  const zusammen = beide.sets.find(s => s.set_number === SN);
+  const bothOnes = await H.readSets([haupt.id, kind.id], { page_size: 60 });
+  const zusammen = bothOnes.sets.find(s => s.set_number === SN);
   assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
   assert.equal(Number(zusammen.quantity), 6, `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
   assert.deepEqual(
@@ -305,11 +305,11 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   // zero pieces.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
   const leer = await H.readSets([haupt.id], { page_size: 60 });
-  const nullStueck = leer.sets.find(s => s.set_number === SN);
+  const zeroPieces = leer.sets.find(s => s.set_number === SN);
   assert.ok(
-    nullStueck,
+    zeroPieces,
     'Ohne Erfassung ist das Set aus der Liste gefallen — der JOIN muss ein LEFT JOIN ' +
       'sein, sonst verschwinden genau die Zeilen, denen etwas fehlt',
   );
-  assert.equal(Number(nullStueck.quantity), 0, `Ohne Erfassung muss die Menge 0 sein, nicht ${nullStueck.quantity}`);
+  assert.equal(Number(zeroPieces.quantity), 0, `Ohne Erfassung muss die Menge 0 sein, nicht ${zeroPieces.quantity}`);
 });

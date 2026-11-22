@@ -143,13 +143,13 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     assert.deepEqual([none.exists, none.set_number], [false, NEU], 'exists: false, set_number');
     // The own account wins if both have the same set.
     await anlegen(subId, OWN);
-    const beide = await (await fetch(`${base}/api/v2/sets/exists/${OWN}`)).json();
+    const bothOnes = await (await fetch(`${base}/api/v2/sets/exists/${OWN}`)).json();
     assert.equal(
-      beide.owner_user_id,
+      bothOnes.owner_user_id,
       mainId,
       'bei zwei Besitzern muss die eigene Zeile gewinnen — die Detailansicht soll die eigene zeigen',
     );
-    assert.equal(beide.is_self, true);
+    assert.equal(bothOnes.is_self, true);
 
     // 4. EXCEPTION: the CSV import tops up (ifPresent: 'aufstocken').
     const { acquireSet } = require('./helpers/sources').areaPage('sets');

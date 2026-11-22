@@ -32,7 +32,7 @@ function serverSources() {
  * commas in the middle of the fourth argument. A mere split(',') would look for the
  * progress reporter in the wrong place.
  */
-function argumente(text) {
+function argList(text) {
   const parts = [];
   let depth = 0,
     act = '',
@@ -113,7 +113,7 @@ function reachableSteps() {
       const name = m[1];
       const params = bracketContent(src, m.index + m[0].length - 1);
       if (params === null || !/\bsendProgress\b/.test(params)) continue;
-      const idx = argumente(params).findIndex(a => /^sendProgress\b/.test(a));
+      const idx = argList(params).findIndex(a => /^sendProgress\b/.test(a));
       assert.notEqual(idx, -1, `${datei}: sendProgress-Parameter von ${name} nicht gefunden`);
 
       // Does this function report steps at all?
@@ -128,7 +128,7 @@ function reachableSteps() {
           if (/function\s*$/.test(s2.slice(0, c.index))) continue; // the declaration itself
           const args = bracketContent(s2, c.index + c[0].length - 1);
           if (args === null) continue;
-          const a = argumente(args)[idx];
+          const a = argList(args)[idx];
           if (a !== undefined && a !== 'null') {
             lebt = true;
             break;
@@ -170,8 +170,8 @@ test('every addressed ps identifier also exists in the dialog', () => {
   for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
   assert.ok(ids.size >= 2, `nur ${ids.size} ps-Kennungen gefunden — Anker stimmt nicht mehr`);
 
-  const fehlend = [...ids].filter(id => !html.includes(`id="${id}"`));
-  assert.deepEqual(fehlend, [], `Frontend spricht Elemente an, die es in index.html nicht gibt: ${fehlend.join(', ')}`);
+  const absent = [...ids].filter(id => !html.includes(`id="${id}"`));
+  assert.deepEqual(absent, [], `Frontend spricht Elemente an, die es in index.html nicht gibt: ${absent.join(', ')}`);
 });
 
 test('no language key for the removed steps remains', () => {
@@ -191,7 +191,7 @@ test('after the last event no item hangs on “active”', () => {
   // ── Sending order, as the capture stream produces it ───────────────
   // The route reports before and after supplementing itself; in between fetchCatalog() reports.
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-  const route = require('./helpers/sources').kompakt(lies('routes/api/setsImport.ts'));
+  const route = require('./helpers/sources').compact(lies('routes/api/setsImport.ts'));
   // The route and its helper supplementInStream (before the router factory).
   const stream =
     route.slice(
@@ -216,17 +216,17 @@ test('after the last event no item hangs on “active”', () => {
   // ── Switching logic, as handleSseEvent() executes it ───────────────────────
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
-  const wirkung = {};
+  const effect = {};
   for (const branch of rumpf.split(/(?=\bcase\s+')/)) {
     const c = branch.match(/^case\s+'([^']+)'\s*:/);
     if (!c) continue;
-    wirkung[c[1]] = [...branch.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
+    effect[c[1]] = [...branch.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
   }
 
   // ── Playing through ─────────────────────────────────────────────────────────
   const condition = {};
   for (const ereignis of sequence) {
-    for (const [punkt, wert] of wirkung[ereignis] || []) condition[punkt] = wert;
+    for (const [punkt, wert] of effect[ereignis] || []) condition[punkt] = wert;
   }
 
   const haengt = Object.entries(condition)

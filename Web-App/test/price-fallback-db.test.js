@@ -51,7 +51,7 @@ require.cache[blPath].exports = Object.assign({}, echt, {
 });
 
 /** Runs the job that the valuation queued for missing prices. */
-async function nachladen() {
+async function reload() {
   const a = await db.get(
     `SELECT id, payload FROM jobs WHERE type = 'price_refresh' AND status = 'pending' ORDER BY id DESC LIMIT 1`,
   );
@@ -108,7 +108,7 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
   const vorher = await valueSets(uid, [uid]);
   assert.deepEqual(fetches, [], 'die Bewertung ruft selbst BrickLink ab');
   assert.equal(vorher.prices_pending, 1, 'der fehlende Preis steht nicht als Auftrag an');
-  assert.ok(await nachladen());
+  assert.ok(await reload());
   const row = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(row, 'Set fehlt in der Bewertung');
   assert.equal(
@@ -120,7 +120,7 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
 
   // Now both are fresh — the next call gets by without BrickLink.
   fetches = [];
-  assert.equal(await nachladen(), false, 'ein frischer Preis stellt keinen Auftrag ein');
+  assert.equal(await reload(), false, 'ein frischer Preis stellt keinen Auftrag ein');
   const zweite = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(zweite.avg_price, 111);
   assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
@@ -131,9 +131,9 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
     [SET],
   );
   fetches = [];
-  const dritte = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
-  assert.equal(await nachladen(), false, 'beide frisch ohne Preis: kein Auftrag');
-  assert.equal(dritte.avg_price, 0);
+  const thirdItem = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  assert.equal(await reload(), false, 'beide frisch ohne Preis: kein Auftrag');
+  assert.equal(thirdItem.avg_price, 0);
   assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
 });
 
@@ -168,7 +168,7 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
   fetches = [];
   await value();
   assert.ok(
-    (await nachladen()) && fetches.length > 0,
+    (await reload()) && fetches.length > 0,
     'alte Markierung verhindert den Abruf — das Set bliebe für immer ohne Preis',
   );
   const alt = await value();

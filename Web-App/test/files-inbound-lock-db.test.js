@@ -50,10 +50,10 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
         )
       ).id,
     );
-  const [normal, wechsel, chef, chef2fa] = ids;
+  const [normal, wechsel, chef, boss2fa] = ids;
   await db.run('UPDATE users SET must_change_password = TRUE WHERE id = $1', [wechsel]);
-  await db.run('UPDATE users SET is_admin = TRUE WHERE id = ANY($1)', [[chef, chef2fa]]);
-  await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', TRUE)`, [chef2fa]);
+  await db.run('UPDATE users SET is_admin = TRUE WHERE id = ANY($1)', [[chef, boss2fa]]);
+  await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', TRUE)`, [boss2fa]);
   for (const id of ids) {
     fs.mkdirSync(path.join(WURZEL, 'data', 'uploads', String(id)), { recursive: true });
     fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', String(id), 'a.pdf'), `pdf von ${id}`);
@@ -77,7 +77,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.text() };
   };
   const image = 'url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg';
-  const wege = uid => [
+  const pathList = uid => [
     `/data/uploads/${uid}/a.pdf`,
     `/data/instructions/${SN}_1.pdf`,
     `/api/v1/img-proxy?${image}`,
@@ -92,7 +92,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
   });
 
   await t.test('password change required locks files and image proxy', async () => {
-    for (const weg of wege(wechsel)) {
+    for (const weg of pathList(wechsel)) {
       const r = await hole(wechsel, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
       assert.match(r.body, /password_change_required/, weg);
@@ -100,7 +100,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
   });
 
   await t.test('an admin without a second factor is locked', async () => {
-    for (const weg of wege(chef)) {
+    for (const weg of pathList(chef)) {
       const r = await hole(chef, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
       assert.match(r.body, /second_factor_mandatory/, weg);
@@ -111,8 +111,8 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     assert.equal((await hole(normal, `/data/uploads/${normal}/a.pdf`)).status, 200);
     assert.equal((await hole(normal, `/data/instructions/${SN}_1.pdf`)).status, 200);
     assert.equal((await hole(normal, '/images/parts/probe.png')).status, 200);
-    assert.equal((await hole(chef2fa, `/data/uploads/${chef2fa}/a.pdf`)).status, 200);
+    assert.equal((await hole(boss2fa, `/data/uploads/${boss2fa}/a.pdf`)).status, 200);
     // 400 only comes from the proxy itself: the lock let the administrator through.
-    assert.equal((await hole(chef2fa, '/api/v1/img-proxy?url=http%3A%2F%2Fnein')).status, 400);
+    assert.equal((await hole(boss2fa, '/api/v1/img-proxy?url=http%3A%2F%2Fnein')).status, 400);
   });
 });

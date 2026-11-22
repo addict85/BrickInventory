@@ -39,7 +39,7 @@ process.env.APP_ROOT = SANDBOX;
 
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const gr = {
@@ -78,7 +78,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -101,7 +101,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
 
   const haupt = testServer(_req, { sitzung: { userId: MAIN }, t });
   const fremd = testServer(_req, { sitzung: { userId: FREMD }, t });
-  const ruf = async (srv, methode, weg, body) => {
+  const callFn = async (srv, methode, weg, body) => {
     const r = await fetch(`${srv.base}/api/v2${weg}`, {
       method: methode,
       ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
@@ -110,14 +110,14 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   };
   /** Number and PIN via the confirmed path; the list only shows the mask. */
   const klartext = async (srv, id) => {
-    const k = await ruf(srv, 'POST', `/vouchers/${id}/plaintext`, { password: PASS });
+    const k = await callFn(srv, 'POST', `/vouchers/${id}/plaintext`, { password: PASS });
     assert.equal(k.status, 200, JSON.stringify(k.body));
     return [k.body.number, k.body.pin];
   };
   let id1;
 
   await t.test('after creation the number is in no column in plain text', async () => {
-    const r = await ruf(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
+    const r = await callFn(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'nach aussen nur das Ende');
     id1 = r.body.voucher.id;
@@ -130,32 +130,32 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   });
 
   await t.test('read and change', async () => {
-    const liste = await ruf(haupt, 'GET', '/vouchers');
+    const liste = await callFn(haupt, 'GET', '/vouchers');
     assert.deepEqual(
       liste.body.vouchers.map(v => [v.id, v.number, v.pin]),
       [[id1, '…' + NR1.slice(-4), '•••']],
     );
     const suche = (await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search;
-    const r = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
+    const r = await callFn(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await klartext(haupt, id1))[0], NR2);
     const row = await rowAsText(id1);
     assert.ok(!row.includes(NR2) && !row.includes(NR1), row);
     assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, suche);
     // Only the amount: the number comes decrypted from the row and goes back encrypted.
-    const b = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
+    const b = await callFn(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
     assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
     assert.ok(!(await rowAsText(id1)).includes(NR2));
   });
 
   await t.test('duplicates are detected, per account', async () => {
-    const doppelt = await ruf(haupt, 'POST', '/vouchers', { number: NR2, amount: 10 });
+    const doppelt = await callFn(haupt, 'POST', '/vouchers', { number: NR2, amount: 10 });
     assert.deepEqual([doppelt.status, doppelt.body.code], [409, 'voucher_exists']);
-    const zweiter = await ruf(haupt, 'POST', '/vouchers', { number: NR3, amount: 10 });
+    const zweiter = await callFn(haupt, 'POST', '/vouchers', { number: NR3, amount: 10 });
     assert.equal(zweiter.status, 200);
-    const umbenannt = await ruf(haupt, 'PUT', `/vouchers/${zweiter.body.voucher.id}`, { number: NR2 });
-    assert.deepEqual([umbenannt.status, umbenannt.body.code], [409, 'voucher_exists']);
-    const otherAccount = await ruf(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
+    const renamedOne = await callFn(haupt, 'PUT', `/vouchers/${zweiter.body.voucher.id}`, { number: NR2 });
+    assert.deepEqual([renamedOne.status, renamedOne.body.code], [409, 'voucher_exists']);
+    const otherAccount = await callFn(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
     assert.equal(otherAccount.status, 200, 'dieselbe Karte in einem anderen Konto ist erlaubt');
     const searchValues = await db.all('SELECT DISTINCT number_search FROM vouchers WHERE id = ANY($1)', [
       [id1, otherAccount.body.voucher.id],
@@ -171,7 +171,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.deepEqual([(await klartext(haupt, b.voucher.id))[0], b.voucher.has_pdf], [NR1, true]);
     assert.ok(!(await rowAsText(b.voucher.id)).includes(NR1));
-    const ticket = async weg => (await ruf(haupt, 'POST', weg, { password: PASS })).body.ticket;
+    const ticket = async weg => (await callFn(haupt, 'POST', weg, { password: PASS })).body.ticket;
     const datei = await fetch(
       `${haupt.base}/api/v2/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-grant`)}`,
     );
@@ -195,7 +195,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     im.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
     const imp = await (await fetch(`${haupt.base}/api/v2/vouchers/pdf`, { method: 'POST', body: im })).json();
     assert.deepEqual([imp.multiple.added, imp.multiple.errors], [3, 0], JSON.stringify(imp));
-    const liste = await ruf(haupt, 'GET', '/vouchers');
+    const liste = await callFn(haupt, 'GET', '/vouchers');
     const nummern = [];
     for (const v of liste.body.vouchers) nummern.push((await klartext(haupt, v.id))[0]);
     assert.deepEqual(nummern.sort(), [NR1, NR2, NR3].sort());
@@ -257,7 +257,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
       assert.ok(!(await rowAsText(z.id)).includes(NR1.slice(-6)) && !(await rowAsText(z.id)).includes(NR3.slice(-6)));
     }
     assert.notEqual(zeilen[0].number_search, zeilen[1].number_search);
-    const liste = await ruf(haupt, 'GET', '/vouchers');
+    const liste = await callFn(haupt, 'GET', '/vouchers');
     const values = [];
     for (const v of liste.body.vouchers) values.push(await klartext(haupt, v.id));
     assert.deepEqual(
@@ -268,7 +268,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
       ].sort(),
     );
     assert.equal(
-      (await ruf(haupt, 'POST', '/vouchers', { number: NR1, amount: 5 })).status,
+      (await callFn(haupt, 'POST', '/vouchers', { number: NR1, amount: 5 })).status,
       409,
       'eine umgeschlüsselte Nummer zählt für die Doppelprüfung',
     );

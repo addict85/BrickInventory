@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
@@ -117,7 +117,7 @@ function move(base, sn, acqIds, limitMs = 10000) {
   return condition;
 }
 
-async function erfassungsIds(userId, sn) {
+async function acquisitionIds(userId, sn) {
   const z = await db.all('SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY id', [
     userId,
     sn,
@@ -150,7 +150,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -187,15 +187,15 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   }
 
   await t.test('A. lock on (source account, set) — the move waits', async () => {
-    const acq = await erfassungsIds(MAIN, SN_A);
+    const acq = await acquisitionIds(MAIN, SN_A);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_A}`);
 
     await withLock(MAIN, SN_A, async freigeben => {
       const v = move(srv.base, SN_A, acq);
-      const befund = await findingWarter(MAIN, SN_A, () => v.fertig);
+      const finding = await findingWarter(MAIN, SN_A, () => v.fertig);
 
       assert.equal(
-        befund,
+        finding,
         'wartet',
         {
           fertig:
@@ -207,7 +207,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
             `Es erschien kein Warter auf (${MAIN}, ${SN_A}), und fertig wurde die ` +
             'Verschiebung auch nicht. Sie hängt also an etwas anderem — nicht an der ' +
             'Sperre, um die es hier geht.',
-        }[befund],
+        }[finding],
       );
 
       // ── And the opposite direction: after releasing it must go through ────
@@ -238,7 +238,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     // this move waits along, and only this case turns red — A stays green.
     // Without B all moves of an account would queue up one after another, even
     // the completely uninvolved ones, and nothing would say so.
-    const acq = await erfassungsIds(MAIN, SN_B);
+    const acq = await acquisitionIds(MAIN, SN_B);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_B}`);
 
     await withLock(MAIN, SN_A, async () => {
@@ -264,7 +264,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     // account from which something goes AWAY — there it is read, calculated and
     // deleted. MEASURED: if `toId` stands in the route, A AND this case turn
     // red. And on its own this case catches a lock on BOTH accounts: also …
-    const acq = await erfassungsIds(MAIN, SN_C);
+    const acq = await acquisitionIds(MAIN, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 
     await withLock(KIND, SN_C, async () => {

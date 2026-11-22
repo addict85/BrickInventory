@@ -16,7 +16,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
@@ -32,7 +32,7 @@ async function erreichbar() {
 
 test('delete everything does not touch the linked accounts', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -88,8 +88,8 @@ test('delete everything does not touch the linked accounts', async t => {
   assert.equal(r.success, true, JSON.stringify(r));
   assert.deepEqual([r.sets, r.parts, r.minifigs], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
 
-  const meine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [haupt]);
-  assert.deepEqual(meine, [], 'Die eigenen Sets müssen weg sein');
+  const mine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [haupt]);
+  assert.deepEqual(mine, [], 'Die eigenen Sets müssen weg sein');
 
   const seine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1 ORDER BY set_number`, [kind]);
   assert.deepEqual(
@@ -109,16 +109,16 @@ test('accounts can only narrow the delete scope, never widen it', () => {
   // A view parameter that can OPEN something would be an access path instead of
   // a safeguard. The service therefore intersects with schreibbereich(); the
   // route only passes the view on (behavior: scope-services-db.test.js).
-  const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api/sets.ts'), 'utf8'));
+  const src = require('./helpers/sources').compact(fs.readFileSync(path.join(ROOT, 'routes/api/sets.ts'), 'utf8'));
   const i = src.indexOf("router.endpoint('DELETE /api/v2/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /deleteSetFor\(viewOf\(req\)/, 'Die Route löscht nicht über den Dienst');
-  const dienst = require('./helpers/sources').functionBody(
+  const serviceFn = require('./helpers/sources').functionBody(
     fs.readFileSync(path.join(ROOT, 'src/sets/delete.ts'), 'utf8'),
     'deleteSetFor',
   );
   assert.match(
-    dienst,
+    serviceFn,
     /(?:schreibbar|writable)\.includes\(/,
     'Die gewählte Menge muss gegen schreibbereich() geschnitten werden',
   );

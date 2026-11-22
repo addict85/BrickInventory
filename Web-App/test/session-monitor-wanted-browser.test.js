@@ -250,7 +250,7 @@ async function createUser(_t, a) {
   await reiter(b, 'settings');
   await b.auswerten(`document.querySelector('.settings-link[data-arg="usermgmt"]').click(); true`);
   await bis(`document.getElementById('btn-cu')?.checkVisibility()`, 'Benutzerverwaltung');
-  const setze = (id, wert) =>
+  const put = (id, wert) =>
     b.auswerten(`(() => { const f = document.getElementById('${id}'); f.value = ${JSON.stringify(wert)};
       f.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   const state = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
@@ -261,8 +261,8 @@ async function createUser(_t, a) {
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), hook: (r('nu-a').top + r('nu-a').bottom) / 2,
       field: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
       breiten: ['nu-p', 'nu-a'].map(id => document.getElementById(id).closest('.fg').getBoundingClientRect().width) }; })()`;
-  await setze('nu-n', '');
-  await setze('nu-p', '');
+  await put('nu-n', '');
+  await put('nu-p', '');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
   await bis(`!!document.getElementById('nu-p-error')?.checkVisibility()`, 'Meldungen');
   let s = await b.auswerten(state);
@@ -271,8 +271,8 @@ async function createUser(_t, a) {
   assert.deepEqual([s.nameRule, s.pwRule], [false, false], 'Regel und Meldung zugleich');
   assert.equal(await b.auswerten('document.activeElement.id'), 'nu-n', 'Fokus beim ersten Fehler');
   // Only the name wrong: next to the message stands the password rule, the fields stay at one height.
-  await setze('nu-p', 'Ziegel-Turm-Fenster-42');
-  await setze('nu-n', 'a b');
+  await put('nu-p', 'Ziegel-Turm-Fenster-42');
+  await put('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
   await bis(`!!document.getElementById('nu-n-error')?.checkVisibility()`, 'Meldung am Namen');
   s = await b.auswerten(state);
@@ -286,8 +286,8 @@ async function createUser(_t, a) {
     s = await b.auswerten(state);
     for (const w of s.breiten) assert.ok(w >= s.zeile - 1, `${w} px von ${s.zeile} px`);
   } finally {
-    await setze('nu-n', '');
-    await setze('nu-p', '');
+    await put('nu-n', '');
+    await put('nu-p', '');
     await groesse(b, 1280);
   }
 }

@@ -13,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet } = require('./helpers/inventory');
 
@@ -22,7 +22,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -180,12 +180,12 @@ test('all capture paths use the same check', () => {
   const sets = ohneKommentare(require('./helpers/sources').setCoreSource());
   // Only the body of setErfassen(), the single path for adding: up to the next function.
   const start = sets.indexOf('async function acquireSet(');
-  const naechste = sets.slice(start + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
-  const kern = sets.slice(start, start + 10 + naechste);
+  const nextOne = sets.slice(start + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
+  const kern = sets.slice(start, start + 10 + nextOne);
   const sperre = kern.indexOf('repo.addLockSet(');
-  const stellen = [...kern.matchAll(/bookEntry\(/g)].map(m => m.index);
-  assert.ok(stellen.length >= 2, `nur ${stellen.length} Erfassungs-Schreibstellen gefunden`);
-  assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
+  const placeList = [...kern.matchAll(/bookEntry\(/g)].map(m => m.index);
+  assert.ok(placeList.length >= 2, `nur ${placeList.length} Erfassungs-Schreibstellen gefunden`);
+  assert.ok(sperre > 0 && placeList.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });
 
 test('a broken CSV entry does not topple the whole file', () => {
@@ -221,7 +221,7 @@ test('all three import paths report skipped rows', () => {
   // The set import reads itself and responds itself; parts and minifigures
   // go via csvRowsFromRequest() and csvImportReport() in
   // src/infra/csvExport.ts. Per path, route, service and job count together.
-  for (const [rel, dienst] of [
+  for (const [rel, serviceFn] of [
     ['routes/api/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api/parts.ts', 'src/parts/manualParts.ts'],
     ['routes/api/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
@@ -229,7 +229,7 @@ test('all three import paths report skipped rows', () => {
     const src = ohneKommentare(
       fs.readFileSync(path.join(ROOT, rel), 'utf8') +
         '\n' +
-        fs.readFileSync(path.join(ROOT, dienst), 'utf8') +
+        fs.readFileSync(path.join(ROOT, serviceFn), 'utf8') +
         '\n' +
         fs.readFileSync(path.join(ROOT, 'src/collection/importJobs.ts'), 'utf8'),
     );

@@ -12,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const db = testData();
 const { usingSets } = _req('src/inventory/shared.js');
@@ -30,7 +30,7 @@ after(() => db.pool.end());
 
 test('the list of using sets follows the viewport', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');

@@ -34,7 +34,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-const TABELLE = `tx_wiederholung_${process.pid}`;
+const TABLE_NAME = `tx_wiederholung_${process.pid}`;
 const MIT = { repeatAtConflict: true };
 
 /** An error as reported by PostgreSQL: only the code counts. */
@@ -42,10 +42,10 @@ const pgError = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
 test('transaction: retry on deadlock and serialization failure', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  await db.run(`CREATE TABLE ${TABELLE} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
-  await db.run(`INSERT INTO ${TABELLE} (id) VALUES (1), (2)`);
+  await db.run(`CREATE TABLE ${TABLE_NAME} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
+  await db.run(`INSERT INTO ${TABLE_NAME} (id) VALUES (1), (2)`);
   t.after(async () => {
-    await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
+    await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -55,38 +55,38 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     let versuche = 0;
     /** @type {() => void} */
     let weiter = () => {};
-    const beide = new Promise(frei => {
+    const bothOnes = new Promise(frei => {
       weiter = () => frei(undefined);
     });
     const lauf = async (erste, zweite) => {
       await db.transaction(async tx => {
         const versuch = ++versuche;
-        await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = $1`, [erste]);
+        await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = $1`, [erste]);
         // Only the first two attempts wait for each other; the retry runs freely.
         if (versuch <= 2) {
           if (++angekommen === 2) weiter();
-          await beide;
+          await bothOnes;
         }
-        await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = $1`, [zweite]);
+        await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = $1`, [zweite]);
       }, o);
     };
     return { lauf, versuche: () => versuche };
   };
 
   await t.test('a real deadlock is retried with the option', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     const k = cross(MIT);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
     assert.equal(k.versuche(), 3, 'genau ein Gegenspieler wurde abgebrochen und lief neu');
     // Every transaction has increased both rows once; the aborted attempt does not count.
     assert.deepEqual(
-      (await db.all(`SELECT n FROM ${TABELLE} ORDER BY id`)).map(z => z.n),
+      (await db.all(`SELECT n FROM ${TABLE_NAME} ORDER BY id`)).map(z => z.n),
       [2, 2],
     );
   });
 
   await t.test('without the option the deadlock stays an error', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     const k = cross({});
     const r = await Promise.allSettled([k.lauf(1, 2), k.lauf(2, 1)]);
     const abgelehnt = r.filter(e => e.status === 'rejected');
@@ -136,13 +136,13 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
   });
 
   await t.test('the aborted attempt leaves nothing behind', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     let n = 0;
     await db.transaction(async tx => {
-      await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = 1`);
+      await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = 1`);
       if (++n === 1) throw pgError('40001');
     }, MIT);
-    assert.equal((await db.get(`SELECT n FROM ${TABELLE} WHERE id = 1`)).n, 1);
+    assert.equal((await db.get(`SELECT n FROM ${TABLE_NAME} WHERE id = 1`)).n, 1);
   });
 
   // The callers: a trigger throws a deadlock (40P01) on the first call, which the

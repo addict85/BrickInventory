@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const limiter = _req('src/account/loginLimiter.js');
 
@@ -27,7 +27,7 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const name = `bk_${process.pid}`;
@@ -49,9 +49,9 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
     const zeilen = await db.all(
       `SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`,
     );
-    const meine = zeilen.filter(z => z.key.endsWith(`|konto:${uid}`));
-    assert.equal(meine.length, 4, 'je Adresse eine Bekannt- und eine Erfolgszeile');
-    for (const { key } of meine) {
+    const mine = zeilen.filter(z => z.key.endsWith(`|konto:${uid}`));
+    assert.equal(mine.length, 4, 'je Adresse eine Bekannt- und eine Erfolgszeile');
+    for (const { key } of mine) {
       assert.ok(!key.includes('203.0.113') && !key.includes('2001:db8'), `Klartext in ${key}`);
     }
   });

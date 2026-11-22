@@ -18,7 +18,7 @@ const { priceHistoryMinifig } = _req('src/finances/priceHistory.js');
 const { holdsMinifig } = require('./helpers/inventory');
 
 test('the figure price history finds the prices under the BrickLink number', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // minifig_price_history deliberately stands ONLY in db/migrations/0003.
   // initSchema() does not create it; without
   // this step the test would run against a schema that does not exist in

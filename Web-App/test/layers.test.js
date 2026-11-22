@@ -58,7 +58,7 @@ function sourceText(rel) {
 }
 
 /** All targets of import/require of a file (relative to ROOT), raw. */
-function importe(rel) {
+function importList(rel) {
   const src = sourceText(rel);
   return [...src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
 }
@@ -66,7 +66,7 @@ function importe(rel) {
 /** Imports and require() from routes/, per file. */
 function afterOuter(rel) {
   const treffer = new Set();
-  for (const ziel of importe(rel).filter(z => /routes\//.test(z)))
+  for (const ziel of importList(rel).filter(z => /routes\//.test(z)))
     treffer.add(ziel.replace(/^.*?(routes\/)/, '$1').replace(/\.js$/, ''));
   return [...treffer];
 }
@@ -101,7 +101,7 @@ test('a v1 route imports no other route file', () => {
   assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
   const treffer = [];
   for (const f of dateien)
-    for (const ziel of importe(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
+    for (const ziel of importList(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
       treffer.push(`api/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
@@ -123,7 +123,7 @@ test('no route imports another route file', () => {
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
   for (const d of dateien.filter(d => d !== 'routes/api/index.ts'))
-    for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
+    for (const ziel of importList(d).filter(z => z.startsWith('.'))) {
       const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
       if (
         voll.startsWith('routes/') &&
@@ -169,7 +169,7 @@ test('src/ and clients/ import nothing from jobs/', () => {
   // Counter-check (28.10.2026): require('../jobs/imageQueue') in wanted.ts → red.
   const treffer = [];
   for (const d of innerFiles().filter(f => /^(src|clients)\//.test(f)))
-    for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importList(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -180,7 +180,7 @@ test('db/, clients/ and jobs/ know no HTTP response', () => {
   // in db/migrate.ts → rot.
   const treffer = [];
   for (const d of innerFiles().filter(f => /^(db|clients|jobs)\//.test(f)))
-    for (const ziel of importe(d).filter(z => /httpAntwort|^express$/.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importList(d).filter(z => /httpAntwort|^express$/.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -202,7 +202,7 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
   assert.ok(dateien.includes(KERN) && dateien.includes('jobs/startJobs.ts'), 'Worker oder Bearbeitertabelle fehlt');
   assert.deepEqual(
     dateien.flatMap(d =>
-      importe(d)
+      importList(d)
         .filter(z => /(?:^|\/)db\//.test(z))
         .map(z => `${d} -> ${z}`),
     ),
@@ -227,7 +227,7 @@ test('db/ imports nothing from jobs/', () => {
   // setUpImageDemand back in db/database.ts → red.
   const treffer = [];
   for (const d of innerFiles().filter(f => f.startsWith('db/')))
-    for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importList(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -257,7 +257,7 @@ test('no route executes SQL or imports from db/', () => {
   for (const d of dateien) {
     for (const m of sourceText(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g))
       treffer.push(`${d}: ${m[0]}`);
-    for (const ziel of importe(d).filter(z => /(?:^|\/)db\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importList(d).filter(z => /(?:^|\/)db\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   }
   assert.deepEqual(treffer, []);
 });
@@ -270,7 +270,7 @@ test('no route imports from jobs/ or clients/', () => {
   // api/sets.ts → red, both hits.
   const treffer = [];
   for (const d of routesFiles())
-    for (const ziel of importe(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importList(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -298,7 +298,8 @@ test('startup/ and routes/ know each other in only one direction, router factori
   // `buildCatalogRouter(d: Dienste)` in the same place → red with “buildCatalogRouter” (14.11.2026).
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
-    for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
+    for (const ziel of importList(`startup/${f}`).filter(z => /routes\//.test(z)))
+      treffer.push(`startup/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 
   const dateien = [];
@@ -312,7 +313,7 @@ test('startup/ and routes/ know each other in only one direction, router factori
   ['routes', 'jobs'].forEach(lauf);
   assert.ok(dateien.length > 20, `nur ${dateien.length} Dateien in routes/ und jobs/ — greift die Suche noch?`);
   const zuStartup = dateien.flatMap(d =>
-    importe(d)
+    importList(d)
       .filter(z => /(^|\/)startup\//.test(z))
       .map(z => `${d} -> ${z}`),
   );
@@ -455,7 +456,7 @@ function tsBelow(...ordner) {
 /** SQL in code: a statement as a string or a call on a connection. */
 const SQL_TEXT =
   /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|DELETE\s+FROM|WITH\s+(?:RECURSIVE\s+)?\w+|CREATE\s+(?:TABLE|INDEX|UNIQUE)|ALTER\s+TABLE|DROP\s|TRUNCATE|LISTEN|NOTIFY|UNLISTEN|SET\s+LOCAL|LOCK\s+TABLE|ANALYZE|VACUUM)\b/;
-const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
+const SQL_CALL = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
 /** Also a fragment in the middle of a string, e.g. `EXISTS (SELECT 1 FROM …)`. */
 const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
 /** A piece of a statement in a string: sorting, condition, upsert, join. */
@@ -463,7 +464,7 @@ const SQL_CLAUSE =
   /[`'"][^`'"\n]*\b(?:ILIKE|COALESCE\(|ON CONFLICT|EXCLUDED\.|NULLS (?:LAST|FIRST)|ORDER BY|GROUP BY|(?:LEFT |INNER )?JOIN \w+ \w+ ON|RETURNING|WHERE \w)/;
 const hatSql = rel => {
   const s = sourceText(rel);
-  return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s) || SQL_CLAUSE.test(s);
+  return SQL_TEXT.test(s) || SQL_CALL.test(s) || SQL_FRAGMENT.test(s) || SQL_CLAUSE.test(s);
 };
 
 test('SQL only lives in repositories and in db/', () => {
@@ -890,7 +891,7 @@ test("routes catch no errors — the router's error path answers", () => {
   // translates a refusal”; likewise `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
   // fachfehler(…)` in routes/auth.ts → rot.
   const ist = new Map();
-  const senden = new Map();
+  const sendIt = new Map();
   const conversions = [];
   const rejections = [];
   for (const d of tsBelow('routes')) {
@@ -906,14 +907,14 @@ test("routes catch no errors — the router's error path answers", () => {
     const n = (q.match(/\btry\s*\{/g) || []).length;
     if (n) ist.set(d, n);
     const s = (q.match(/\bsendError\(/g) || []).length;
-    if (s) senden.set(d, s);
+    if (s) sendIt.set(d, s);
     for (const m of q.matchAll(
       /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:eingabe|abfrage|pfad)\b/g,
     ))
       conversions.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
-  assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in Routen');
+  assert.deepEqual(Object.fromEntries(sendIt), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in Routen');
   // The contract delivers the domain format (z.transform); a route does not convert afterwards.
   assert.deepEqual(conversions, [], 'Umwandlungen geprüfter Eingaben in Routen');
   assert.deepEqual(rejections, [], 'Route übersetzt eine Absage des Dienstes');
@@ -1101,7 +1102,7 @@ test('docs/architecture.md names only what exists', () => {
   const oben = new Set([...fs.readdirSync(ROOT), ...fs.readdirSync(path.join(ROOT, '..'))]);
   // Spelling conventions, not names; `createX` stands for createVouchers, createRebrickable …
   const KONVENTIONEN = new Set(['snake_case', 'camelCase']);
-  const gibtEs = w =>
+  const present = w =>
     woerter.has(w) ||
     KONVENTIONEN.has(w) ||
     (/[a-z]X[A-Z]|[a-z]X$/.test(w) && [...woerter].some(v => new RegExp(`^${w.replace('X', '[A-Z]\\w*')}$`).test(v)));
@@ -1114,7 +1115,7 @@ test('docs/architecture.md names only what exists', () => {
       (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (oben.has(s.split('/')[0]) || /^[<*]/.test(s)))
     ) {
       if (s.includes('/') ? !pathExists(s) : !namen.has(s)) fehlt.push(s);
-    } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!gibtEs(w)) fehlt.push(w);
+    } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!present(w)) fehlt.push(w);
   }
   assert.ok(spans.length > 300, `nur ${spans.length} Namen in Backticks — greift die Suche noch?`);
   assert.ok(namen.has('jobWorker.ts') && woerter.has('buildServices'), 'Selbstbeweis: Dateien und Code gefunden');
@@ -1140,10 +1141,10 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
     .flatMap(d => [...sourceText(d).matchAll(/interface JobPayloads \{([^}]*)\}/g)])
     .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
   assert.ok(arten.length > 15, `nur ${arten.length} angemeldete Arten gefunden — greift die Suche noch?`);
-  const literale = dateien.flatMap(d =>
+  const literals = dateien.flatMap(d =>
     [...sourceText(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
   );
-  assert.deepEqual(literale, [], 'src/jobQueue nennt eine Auftragsart');
+  assert.deepEqual(literals, [], 'src/jobQueue nennt eine Auftragsart');
 
   // Events go via src/infra/event.ts, not via own listeners.
   // Counter-checks (15.11.2026): in src/settings/userSetting.ts again

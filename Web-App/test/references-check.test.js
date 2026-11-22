@@ -20,7 +20,7 @@ const { spawnSync } = require('node:child_process');
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-references.js');
 
 /** Repo/Web-App with src/, docs/ and README.md; dead references only stand in comments and docs. */
-function probebaum() {
+function probeTree() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'verweise-'));
   const web = path.join(repo, 'Web-App');
   for (const d of ['src', 'docs', 'scripts']) fs.mkdirSync(path.join(web, d), { recursive: true });
@@ -43,7 +43,7 @@ function probebaum() {
 const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
 
 test('in the sample tree the script reports exactly the dead references in comments and docs', t => {
-  const { repo, web } = probebaum();
+  const { repo, web } = probeTree();
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
   const r = lauf(web);
   assert.equal(r.status, 1, r.stderr);

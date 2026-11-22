@@ -45,9 +45,9 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
     KIND = `einweg-k-${P}`;
   const SN = `${60000 + (P % 9000)}-1`,
     FREMD = `${50000 + (P % 9000)}-1`;
-  const FUNKTION = `einweg_sperre_${P}`;
+  const FUNCTION_NAME = `einweg_sperre_${P}`;
   const weg = async () => {
-    await db.exec(`DROP TRIGGER IF EXISTS ${FUNKTION} ON jobs; DROP FUNCTION IF EXISTS ${FUNKTION}();`);
+    await db.exec(`DROP TRIGGER IF EXISTS ${FUNCTION_NAME} ON jobs; DROP FUNCTION IF EXISTS ${FUNCTION_NAME}();`);
     for (const sn of [SN, FREMD]) {
       await db.run("DELETE FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [sn]);
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
@@ -129,12 +129,12 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
 
   await t.test('if the follow-up work fails, nothing is booked', async () => {
     await db.exec(`
-      CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$
+      CREATE FUNCTION ${FUNCTION_NAME}() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
         IF NEW.type = 'rework' AND NEW.payload->>'set_number' = '${SN}' THEN RAISE EXCEPTION 'Auftrag abgelehnt'; END IF;
         RETURN NEW;
       END $$;
-      CREATE TRIGGER ${FUNKTION} BEFORE INSERT ON jobs FOR EACH ROW EXECUTE FUNCTION ${FUNKTION}();`);
+      CREATE TRIGGER ${FUNCTION_NAME} BEFORE INSERT ON jobs FOR EACH ROW EXECUTE FUNCTION ${FUNCTION_NAME}();`);
     await db.run("DELETE FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [SN]);
     await assert.rejects(record(h, { setNumber: SN, quantity: 1, ifPresent: 'aufstocken' }), /Auftrag abgelehnt/);
     assert.equal(await quantity(h, SN), 3);

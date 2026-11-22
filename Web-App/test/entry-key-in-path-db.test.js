@@ -79,7 +79,7 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
   const figRow = id => db.get('SELECT user_id, quantity FROM minifig_acquisitions WHERE id=$1', [id]);
 
   const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
-  const ruf = async (methode, path, koerper) => {
+  const callFn = async (methode, path, koerper) => {
     const r = await fetch(base + path, {
       method: methode,
       headers: { 'content-type': 'application/json' },
@@ -92,22 +92,22 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
   const otherColor = await teilId('3001', 5);
 
   await t.test('part, different key: change', async () => {
-    assert.equal(await ruf('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { quantity: 99 }), 404);
+    assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { quantity: 99 }), 404);
     assert.equal((await partRow(b)).quantity, 4, 'Zeile von Teil B wurde geändert');
   });
 
   await t.test('part, same number, different color: change', async () => {
-    assert.equal(await ruf('PUT', `/api/v2/parts/3001/4/acquisitions/${otherColor}`, { quantity: 99 }), 404);
+    assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${otherColor}`, { quantity: 99 }), 404);
     assert.equal((await partRow(otherColor)).quantity, 4);
   });
 
   await t.test('part, different key: delete', async () => {
-    assert.equal(await ruf('DELETE', `/api/v2/parts/3001/4/acquisitions/${b}`), 404);
+    assert.equal(await callFn('DELETE', `/api/v2/parts/3001/4/acquisitions/${b}`), 404);
     assert.ok(await partRow(b), 'Erfassung von Teil B wurde gelöscht');
   });
 
   await t.test('moving under a foreign key: part', async () => {
-    assert.equal(await ruf('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { owner_user_id: kind }), 404);
+    assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { owner_user_id: kind }), 404);
     assert.equal(Number((await partRow(b)).user_id), haupt, 'Erfassung von Teil B ist beim Ziel gelandet');
     const onKind = await db.all('SELECT part_number FROM parts WHERE user_id=$1', [kind]);
     assert.deepEqual(onKind, [], 'beim Ziel entstand eine Teilezeile unter dem Schlüssel der Anfrage');
@@ -115,20 +115,20 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
 
   await t.test('figure: change, delete, move under a foreign key', async () => {
     const f2 = await figId('sk0002');
-    assert.equal(await ruf('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { quantity: 99 }), 404);
+    assert.equal(await callFn('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { quantity: 99 }), 404);
     assert.equal((await figRow(f2)).quantity, 3, 'Zeile von Figur B wurde geändert');
-    assert.equal(await ruf('DELETE', `/api/v2/minifigs/sk0001/acquisitions/${f2}`), 404);
+    assert.equal(await callFn('DELETE', `/api/v2/minifigs/sk0001/acquisitions/${f2}`), 404);
     assert.ok(await figRow(f2), 'Erfassung von Figur B wurde gelöscht');
-    assert.equal(await ruf('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { owner_user_id: kind }), 404);
+    assert.equal(await callFn('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { owner_user_id: kind }), 404);
     assert.equal(Number((await figRow(f2)).user_id), haupt);
     assert.deepEqual(await db.all('SELECT fig_number FROM minifigs WHERE user_id=$1', [kind]), []);
   });
 
   await t.test('correct key: changing and moving still work', async () => {
     const a = await teilId('3001', 4);
-    assert.equal(await ruf('PUT', `/api/v2/parts/3001/4/acquisitions/${a}`, { quantity: 7 }), 200);
+    assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${a}`, { quantity: 7 }), 200);
     assert.equal((await partRow(a)).quantity, 7);
-    assert.equal(await ruf('PUT', `/api/v2/parts/3001/4/acquisitions/${a}`, { owner_user_id: kind }), 200);
+    assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${a}`, { owner_user_id: kind }), 200);
     assert.equal(
       (
         await db.get("SELECT quantity FROM part_acquisitions WHERE user_id=$1 AND part_number='3001' AND color_id=4", [
@@ -138,7 +138,7 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
       7,
     );
     const f1 = await figId('sk0001');
-    assert.equal(await ruf('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f1}`, { owner_user_id: kind }), 200);
+    assert.equal(await callFn('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f1}`, { owner_user_id: kind }), 200);
     assert.equal(
       (await db.get("SELECT quantity FROM minifig_acquisitions WHERE user_id=$1 AND fig_number='sk0001'", [kind]))
         .quantity,

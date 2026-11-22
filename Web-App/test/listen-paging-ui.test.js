@@ -132,7 +132,7 @@ test('parts list: pages with page_size, images as preview via the proxy', async 
 });
 
 test('parts list: a color group runs across the page boundary', async () => {
-  const seite1 = [...Array.from({ length: 99 }, (_, i) => teil(`a${i}`, `Blau ${i}`, 'Blue')), teil('r1', 'Rot 1')];
+  const page1 = [...Array.from({ length: 99 }, (_, i) => teil(`a${i}`, `Blau ${i}`, 'Blue')), teil('r1', 'Rot 1')];
   const { w, d, warte } = await openUi({
     '/v2/parts': url =>
       abfrage(url).get('page') === '2'
@@ -143,7 +143,7 @@ test('parts list: a color group runs across the page boundary', async () => {
             page: 2,
             page_size: 100,
           }
-        : { success: true, parts: seite1, total: 102, page: 1, page_size: 100 },
+        : { success: true, parts: page1, total: 102, page: 1, page_size: 100 },
   });
   try {
     await reiter(w, 'parts');

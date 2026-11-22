@@ -37,7 +37,7 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
   });
   await holdsSet(db, uid, SN, 2);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const setze = async quantity =>
+  const put = async quantity =>
     (
       await fetch(`${base}/api/v2/sets/${SN}`, {
         method: 'PUT',
@@ -45,8 +45,8 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
         body: JSON.stringify({ quantity }),
       })
     ).json();
-  assert.equal((await setze(3)).quantity, 3, 'die Route liefert die Menge');
-  assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
+  assert.equal((await put(3)).quantity, 3, 'die Route liefert die Menge');
+  assert.equal((await put(1)).quantity, 1, 'auch nach dem Verringern');
 });
 
 test('the web app takes the quantity from the response', async () => {

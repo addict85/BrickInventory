@@ -48,7 +48,7 @@ test('a cleared purchase price is filled from the market price — web app AND a
   const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
   // Starting point: set of the SUB-ACCOUNT with two entries (used + new).
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await holdsSet(db, subId, SN, 0); // Quantity 0: the entry behind it carries it
@@ -92,7 +92,7 @@ test('a cleared purchase price is filled from the market price — web app AND a
       ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
-      const id = await aufbauen();
+      const id = await setUp();
       const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },

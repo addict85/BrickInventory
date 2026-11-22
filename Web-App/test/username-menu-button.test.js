@@ -42,7 +42,7 @@ const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
 /** Since 27.10. the lines are a symbol of the symbol family instead of „☰“. */
-const striche = knopf => knopf.querySelector('.ubadge-stripes use[href="#i-menu"]');
+const dashes = knopf => knopf.querySelector('.ubadge-stripes use[href="#i-menu"]');
 
 function kopfleiste() {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -66,10 +66,7 @@ test('the lines sit in the button, not next to it', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
-  assert.ok(
-    striche(knopf),
-    'Die drei Striche stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?',
-  );
+  assert.ok(dashes(knopf), 'Die drei Striche stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?');
 
   // And the name stands in the SAME button. Exactly that is „integrating": not
   // two elements that lie side by side, but one.
@@ -88,7 +85,7 @@ test('the lines survive the username', () => {
   name.textContent = 'marco';
 
   assert.ok(
-    striche(knopf),
+    dashes(knopf),
     'Die drei Striche sind nach dem Setzen des Namens verschwunden — ' +
       'liegt `id="ubadge"` am Knopf statt am inneren Feld?',
   );
@@ -156,11 +153,11 @@ test('the signature carries the administrator hint, the tile is gone', () => {
   );
 
   // The name button is the LAST element of the row.
-  const reihe = document.querySelector('.umenu');
-  assert.ok(reihe, 'Keine .umenu in der Kopfleiste');
-  const letztes = [...reihe.children].at(-1);
+  const rowList = document.querySelector('.umenu');
+  assert.ok(rowList, 'Keine .umenu in der Kopfleiste');
+  const lastOne = [...rowList.children].at(-1);
   assert.ok(
-    letztes.contains(document.getElementById('btn-umenu')),
+    lastOne.contains(document.getElementById('btn-umenu')),
     'Nach dem Menüknopf steht noch etwas in der Reihe — dann ist er nicht ganz rechts.',
   );
 });

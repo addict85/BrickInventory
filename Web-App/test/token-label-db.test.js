@@ -19,10 +19,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
+const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const AUTH = einhaengung('auth');
+const AUTH = mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));

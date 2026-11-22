@@ -38,14 +38,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('two concurrent imports of the same table do not collide', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -60,10 +60,10 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
   // Big enough that the two runs overlap in time — with a
   // handful of lines the first would be done before the second begins, and the
   // test would be green even without a lock.
-  const ZEILEN = 30000;
+  const ROWS = 30000;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const csv = ['id,name,rgb,is_trans'];
-  for (let i = 1; i <= ZEILEN; i++) csv.push(`${i},farbe-${i},AABBCC,f`);
+  for (let i = 1; i <= ROWS; i++) csv.push(`${i},farbe-${i},AABBCC,f`);
   fs.writeFileSync(path.join(DATA_DIR, 'colors.csv.tmp'), csv.join('\n') + '\n', 'utf8');
 
   try {
@@ -77,12 +77,12 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
     );
 
     for (const r of results) {
-      assert.equal(r.status === 'fulfilled' && r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');
+      assert.equal(r.status === 'fulfilled' && r.value, ROWS, 'jeder Lauf muss alle Zeilen gelesen haben');
     }
 
     // The final stock corresponds to exactly ONE run — no mixture, nothing missing.
     const n = (await db.get('SELECT count(*)::int AS n FROM rb_colors')).n;
-    assert.equal(n, ZEILEN, `Endbestand unvollständig: ${n} statt ${ZEILEN} Zeilen`);
+    assert.equal(n, ROWS, `Endbestand unvollständig: ${n} statt ${ROWS} Zeilen`);
   } finally {
     await db.run(`DROP TABLE IF EXISTS rb_colors_import`).catch(() => {});
     await db.run(`DELETE FROM rb_colors`).catch(() => {});

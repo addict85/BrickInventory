@@ -20,7 +20,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const DIST = path.join(__dirname, '..', 'dist');
 const modul = require(path.join(DIST, 'db', 'database.js'));
 const { buildServices } = require(path.join(DIST, 'startup', 'wiring.js'));
@@ -34,7 +34,7 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   t.after(() => db.pool.end());

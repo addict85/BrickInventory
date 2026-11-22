@@ -13,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
@@ -126,7 +126,7 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -233,7 +233,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The same scaffolding as above — the case runs on its own.

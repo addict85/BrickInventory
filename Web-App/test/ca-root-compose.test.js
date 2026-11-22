@@ -23,7 +23,7 @@ const ROOT = path.join(__dirname, '..');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
 /** The lines of a service without comments (like test/compose-haertung.test.js). */
-function dienst(name) {
+function serviceFn(name) {
   const zeilen = compose.split('\n');
   const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
   const block = [];
@@ -35,15 +35,15 @@ function dienst(name) {
   }
   return block;
 }
-const einhaengungen = name =>
-  dienst(name)
+const mountings = name =>
+  serviceFn(name)
     .map(l => l.match(/^\s+-\s+([^\s:]+):(\/\S*)\s*$/))
     .filter(Boolean)
     .map(m => ({ source: m[1], ziel: m[2].replace(/:ro$/, ''), readOnly: m[2].endsWith(':ro') }));
 
 /** The script behind Caddy's `command: [sh, -c, |]`, as Compose passes it ($$ → $). */
 function caddyScript() {
-  const z = dienst('caddy');
+  const z = serviceFn('caddy');
   const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
   const rumpf = [];
   for (const l of z.slice(i + 1)) {
@@ -59,15 +59,15 @@ test("no service except Caddy mounts Caddy's data, the app only the certificate"
   // caddy-rechte hands Caddy its folders and has no network (compose-haertung).
   for (const n of namen.filter(n => n !== 'caddy' && n !== 'caddy-rechte')) {
     assert.deepEqual(
-      einhaengungen(n).filter(e => e.source.startsWith('./caddy')),
+      mountings(n).filter(e => e.source.startsWith('./caddy')),
       [],
       `${n} sieht Caddys Daten`,
     );
   }
-  const ca = einhaengungen('app').find(e => e.source === 'ca-wurzel');
+  const ca = mountings('app').find(e => e.source === 'ca-wurzel');
   assert.deepEqual(ca, { source: 'ca-wurzel', ziel: '/caddy-ca', readOnly: true });
-  assert.ok(dienst('app').some(l => /^\s+CA_CERTIFICATE:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
-  assert.ok(einhaengungen('caddy').some(e => e.source === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.readOnly));
+  assert.ok(serviceFn('app').some(l => /^\s+CA_CERTIFICATE:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
+  assert.ok(mountings('caddy').some(e => e.source === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.readOnly));
   assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
 });
 

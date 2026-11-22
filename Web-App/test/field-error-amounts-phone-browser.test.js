@@ -35,12 +35,12 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 const NETWORK = { latency: 0, downloadThroughput: -1, uploadThroughput: -1 };
 
 async function groesse(b, breite, hoehe = 900) {
-  const mobil = breite <= 640;
+  const mobileView = breite <= 640;
   await b.tab('Emulation.setDeviceMetricsOverride', {
     width: breite,
     height: hoehe,
     deviceScaleFactor: 1,
-    mobile: mobil,
+    mobile: mobileView,
   });
 }
 
@@ -94,10 +94,10 @@ async function purchasePriceDialog(_t, a) {
   assert.deepEqual(gekuerzt, [], 'Auswahl gekürzt');
 
   const field = `document.querySelector('.acq-table tbody tr:first-child .acq-price')`;
-  const eingeben = wert =>
+  const enter = wert =>
     b.auswerten(`(() => { const f = ${field}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
-  await eingeben('-5');
+  await enter('-5');
   await bis(`!!document.querySelector('.acq-table .field-error:not([hidden])')`, 'Meldung am Preis');
   const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-table'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
@@ -112,12 +112,12 @@ async function purchasePriceDialog(_t, a) {
   assert.equal(m.rollt, false, 'Tabelle rollt seitlich');
   assert.deepEqual(m.headers, [], 'Spalten rutschen aus dem Bild');
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
-  await eingeben('12,x');
+  await enter('12,x');
   await bis(
     `/„12,x“ ist kein Betrag/.test(${text('.acq-table .field-error')})`,
     'Unlesbares heisst weiter „kein Betrag“',
   );
-  await eingeben('199,99');
+  await enter('199,99');
   await bis(`document.querySelector('.field-error-row')?.hidden === true`, 'Meldungszeile verschwindet');
   await b.auswerten(CLOSE);
 }
@@ -155,15 +155,15 @@ async function financesPhone(_t, a) {
   }
 }
 
-async function setnummerFields(_t, a) {
+async function setNumberFields(_t, a) {
   const { b } = a;
   const felder =
     await b.auswerten(`['add-num', 'mk-num', 'pl-setnr', 'alert-new-set'].map(id => { const f = document.getElementById(id);
     return [id, f.inputMode || '', f.getAttribute('autocapitalize'), f.getAttribute('autocorrect'), f.spellcheck]; })`);
-  for (const [id, modus, gross, korrektur, spelling] of felder) {
+  for (const [id, modus, gross, correction, spelling] of felder) {
     assert.notEqual(modus, 'numeric', `${id}: Zifferntastatur ohne Bindestrich und Buchstaben`);
     assert.equal(gross, 'off', `${id}: Grossschreibung`);
-    assert.equal(korrektur, 'off', `${id}: Autokorrektur`);
+    assert.equal(correction, 'off', `${id}: Autokorrektur`);
     assert.equal(spelling, false, `${id}: Rechtschreibprüfung`);
   }
 }
@@ -286,7 +286,7 @@ test('field errors, amounts, finances on the phone', { concurrency: 1, timeout: 
     ['Finanzen ohne Verbindung', financesOffline],
     ['Kaufpreis-Dialog', purchasePriceDialog],
     ['Finanzen am Telefon', financesPhone],
-    ['Setnummer-Felder', setnummerFields],
+    ['Setnummer-Felder', setNumberFields],
     ['Kachel mit mehreren Käufen', tilePurchases],
     ['Zeitpunkte mit Tag', momentsWithTag],
     ['Legende hält zusammen', legendTogether],

@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -70,7 +70,7 @@ const dbDa = async t => {
     await db.run('SELECT 1');
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 };
@@ -163,9 +163,9 @@ test('nobody writes the piece count of a part or a figure any more', () => {
   // exactly for that reason the read paths in the next case run against a migrated
   // database instead of against a pattern here.
   const dateien = [];
-  const lauf = verz => {
-    for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
-      const p = path.join(verz, e.name);
+  const lauf = dir => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
       if (e.isDirectory()) {
         lauf(p);
         continue;
@@ -206,28 +206,28 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     ['legt minifigs an', /ALTER\s+TABLE\s+minifigs\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i],
   ];
 
-  const stellen = [];
+  const placeList = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
     for (const z of codeRows(txt)) {
       for (const [was, m] of muster) {
-        if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
+        if (m.test(z)) placeList.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
     }
   }
   assert.deepEqual(
-    stellen,
+    placeList,
     [],
     'Diese Stellen schreiben die Stueckzahl eines Teils oder einer Figur:\n  ' +
-      stellen.join('\n  ') +
+      placeList.join('\n  ') +
       '\nSie steht seit Migration 0038 im Set-Katalog (fuer source=set) bzw. in den ' +
       'Erfassungen (fuer source=manual). Eine Abschrift daneben laeuft auseinander — ' +
       'genau das war bei sets.quantity gemessen worden: 10 bei drei Erfassungen mit Summe 7.',
   );
 
   // Selbstbeweis
-  const proben = [
+  const probeList = [
     ['UPDATE parts SET quantity = $1 WHERE user_id=$2', 'setzt parts'],
     ['UPDATE minifigs SET quantity = $2 WHERE user_id=$1', 'setzt minifigs'],
     [
@@ -243,7 +243,7 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     ['ALTER TABLE parts ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1', 'legt parts an'],
     ['ALTER TABLE minifigs ADD COLUMN quantity INTEGER DEFAULT 1', 'legt minifigs an'],
   ];
-  for (const [row, name] of proben) {
+  for (const [row, name] of probeList) {
     const m = muster.find(([was]) => was === name)[1];
     assert.ok(m.test(row), `Das Muster „${name}" greift nicht mehr auf seine eigene Probe: ${row.slice(0, 60)}`);
   }
@@ -478,19 +478,19 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
 
   // valuation and CSV
   const B = _req('src/finances/calculation/valuation.js');
-  const bewP = await B.valueParts(haupt, [haupt]);
-  const bewRow = (bewP.parts || []).find(x => x.part_number === '3070b');
-  assert.ok(bewRow, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);
-  assert.equal(Number(bewRow.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${bewRow.quantity}`);
+  const valP = await B.valueParts(haupt, [haupt]);
+  const valRow = (valP.parts || []).find(x => x.part_number === '3070b');
+  assert.ok(valRow, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(valP).slice(0, 200)}`);
+  assert.equal(Number(valRow.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${valRow.quantity}`);
   assert.ok(
-    !(bewP.parts || []).some(x => x.part_number === '3001'),
+    !(valP.parts || []).some(x => x.part_number === '3001'),
     'Das Set-Teil steht in der Teile-Bewertung — dann wird es zweimal bewertet, ' +
       'einmal hier und einmal ueber sein Set',
   );
-  const bewM = await B.valueMinifigs(haupt, [haupt]);
-  const bewFig = (bewM.figs || []).find(x => x.fig_number === 'fig-m');
-  assert.ok(bewFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(bewM).slice(0, 200)}`);
-  assert.equal(Number(bewFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
+  const valM = await B.valueMinifigs(haupt, [haupt]);
+  const valFig = (valM.figs || []).find(x => x.fig_number === 'fig-m');
+  assert.ok(valFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(valM).slice(0, 200)}`);
+  assert.equal(Number(valFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${valFig.quantity}`);
 
   const csvP = await _req('src/inventory/inventoryExport.js').partsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');

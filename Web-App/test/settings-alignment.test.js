@@ -30,15 +30,15 @@ function withoutModule(src) {
  * other modules along (gallery, parts, minifigures), and rebuilding them here
  * would mean starting the application to check a grid.
  */
-function runFrom(funktionsName, environment) {
-  const start = QUELLE.indexOf(`function ${funktionsName}(`);
-  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
+function runFrom(functionName, environment) {
+  const start = QUELLE.indexOf(`function ${functionName}(`);
+  assert.ok(start > 0, `${functionName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
   // Up to the bracket in column 0 — that is how these files are written.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = withoutModule(QUELLE.slice(start, ende));
   const sandbox = { ...environment };
   vm.createContext(sandbox);
-  vm.runInContext(code + `\n${funktionsName}(ARG);`, sandbox);
+  vm.runInContext(code + `\n${functionName}(ARG);`, sandbox);
   return sandbox;
 }
 
@@ -76,8 +76,8 @@ test('the linked accounts are in two columns, not new per row', () => {
       '<div id="household-state"></div><div id="household-invite-box"></div>' +
       '<div id="household-redeem-box"></div></body></html>',
   );
-  const umg = rack(dom);
-  umg.ARG = {
+  const env = rack(dom);
+  env.ARG = {
     is_sub: false,
     currency: 'CHF',
     sub_accounts: [
@@ -86,7 +86,7 @@ test('the linked accounts are in two columns, not new per row', () => {
       { id: 3, username: 'eliano.bigolin' },
     ],
   };
-  runFrom('renderHousehold', umg);
+  runFrom('renderHousehold', env);
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');

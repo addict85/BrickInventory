@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 const T = `bq${process.pid}`;
@@ -61,7 +61,7 @@ test('image sources come from the catalog, not from the client', { concurrency: 
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {

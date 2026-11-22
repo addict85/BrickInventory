@@ -8,7 +8,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -17,7 +17,7 @@ test('move set', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

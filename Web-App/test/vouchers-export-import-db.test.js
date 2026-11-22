@@ -27,7 +27,7 @@ const DATA_DIR = path.join(SANDBOX, 'data');
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
@@ -41,8 +41,8 @@ let MAIN = 0,
   FREMD = 0;
 
 const CARDS = [
-  { nr: '5045076374450011166', pin: '5225', gedruckt: '400', app: 250 },
-  { nr: '5045076374450022277', pin: '1234', gedruckt: '150', app: 150 },
+  { nr: '5045076374450011166', pin: '5225', printedOut: '400', app: 250 },
+  { nr: '5045076374450022277', pin: '1234', printedOut: '150', app: 150 },
 ];
 
 function buildVoucher(amountText, number, pin) {
@@ -81,7 +81,7 @@ async function setup() {
     const z = await createVoucher(MAIN, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
     await _req('src/vouchers/voucherFiles.js').writeVoucherPdf(
       path.join(dir, `${z.id}.pdf`),
-      await buildVoucher(k.gedruckt, k.nr, k.pin),
+      await buildVoucher(k.printedOut, k.nr, k.pin),
     );
     await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${MAIN}/${z.id}.pdf`, z.id]);
   }
@@ -95,7 +95,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -111,11 +111,11 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ password: PASS }),
     });
-  const exportiere = async () =>
+  const exportIt = async () =>
     fetch(`${srv.base}/api/v2/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
 
   await t.test('1. the export delivers ONE PDF with all own vouchers', async () => {
-    const r = await exportiere();
+    const r = await exportIt();
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     assert.equal(r.headers.get('content-type'), 'application/pdf');
     pdf = Buffer.from(await r.arrayBuffer());
@@ -174,7 +174,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
       assert.equal(
         w.amount,
         k.app,
-        `${k.nr}: ${w.amount} statt ${k.app}. Auf der Karte steht ${k.gedruckt} — ` +
+        `${k.nr}: ${w.amount} statt ${k.app}. Auf der Karte steht ${k.printedOut} — ` +
           'der Export soll den Stand der App zeigen, das war Marcos Vorgabe.',
       );
     }

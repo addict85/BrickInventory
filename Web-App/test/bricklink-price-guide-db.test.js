@@ -38,7 +38,7 @@ const { fetchPartPrice, fetchMinifigPrice } = _req('src/finances/calculation/pri
 const N = `${process.pid}`;
 const SET = `91${N}-1`,
   TEIL = `pf${N}`,
-  FIGUR = `pf-fig-${N}`;
+  FIGURE = `pf-fig-${N}`;
 
 test('BrickLink price guide', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
@@ -46,8 +46,8 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
   t.after(async () => {
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM part_price_history WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]).catch(() => {});
-    await db.run('DELETE FROM minifig_price_history WHERE fig_number = $1', [FIGUR]).catch(() => {});
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGURE]).catch(() => {});
+    await db.run('DELETE FROM minifig_price_history WHERE fig_number = $1', [FIGURE]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -85,7 +85,7 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
     assert.match(fetches[0].path, new RegExp(`/items/part/${TEIL}/price`));
 
     fetches.length = 0;
-    const figur = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
+    const figur = await fetchMinifigPrice(FIGURE, 'N', 'EUR', 24);
     assert.equal(figur.avg_price, 80, JSON.stringify(figur));
     assert.deepEqual(
       fetches.slice(0, 2).map(a => a.guide_type),

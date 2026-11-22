@@ -43,7 +43,7 @@ const CODE = /^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){3}$/;
 test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, async t => {
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
-    ANDERE = `r13x_${process.pid}`;
+    OTHERS = `r13x_${process.pid}`;
   const app = await startApp(t, { name: NAME, holding: patternHousehold });
   if (app.reason) {
     t.skip(app.reason);
@@ -65,7 +65,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   const andere = (
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true) RETURNING id`,
-      [ANDERE, `${ANDERE}@example.org`],
+      [OTHERS, `${OTHERS}@example.org`],
     )
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [andere]).catch(() => {}));
@@ -89,10 +89,10 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     await b.auswerten(`document.getElementById('household-redeem-code').value = ${JSON.stringify(code.replace(/-/g, '').toLowerCase())};
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
     await bis(open, 'Bestätigung');
-    assert.equal(await b.auswerten(text('#cd-title')), `Einladung von „${ANDERE}“ annehmen?`);
+    assert.equal(await b.auswerten(text('#cd-title')), `Einladung von „${OTHERS}“ annehmen?`);
     assert.match(
       await b.auswerten(text('#cd-msg')),
-      new RegExp(`„${ANDERE}“ kann danach deine Sets, Teile und Minifiguren sehen und ändern`),
+      new RegExp(`„${OTHERS}“ kann danach deine Sets, Teile und Minifiguren sehen und ändern`),
     );
     await zu();
     // A wrong code opens no dialog, and without login the route reveals nothing.
@@ -109,7 +109,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       body: JSON.stringify({ code }),
     });
     assert.equal(fremd.status, 401);
-    assert.doesNotMatch(await fremd.text(), new RegExp(ANDERE));
+    assert.doesNotMatch(await fremd.text(), new RegExp(OTHERS));
   });
 
   await t.test('email change: title and new address', async () => {

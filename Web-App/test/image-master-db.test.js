@@ -69,8 +69,8 @@ test('image address via the file name stem', { concurrency: 1 }, async t => {
         assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
       // Not only scanned but searched via the stem: without a search key
       // the planner would read the partial index fully with Seq Scan switched off.
-      const gesucht = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
-      assert.equal(gesucht.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
+      const sought = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
+      assert.equal(sought.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
     });
   } finally {
     await db.run('DELETE FROM part_color_catalog WHERE part_number=$1', [P]);

@@ -355,11 +355,11 @@ test('zoom in the PDF viewer', async t => {
 
   await t.test('Ctrl + wheel zooms, the wheel alone does not', async () => {
     const b = await werkbank();
-    const rad = strg =>
+    const rad = ctrl =>
       b.container.dispatchEvent(
         new b.w.WheelEvent('wheel', {
           deltaY: -120,
-          ctrlKey: strg,
+          ctrlKey: ctrl,
           clientX: 300,
           clientY: 200,
           bubbles: true,

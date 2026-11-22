@@ -20,7 +20,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
 /** Columns and operator classes as normal arrays (int2vector starts at 0). */
-const INDIZES = `
+const INDEXES = `
   SELECT i.indexrelid, i.indrelid, c.relname AS name, t.relname AS tabelle,
          i.indisunique AS eindeutig, i.indpred IS NOT NULL AS teil, i.indexprs IS NOT NULL AS ausdruck,
          pg_get_expr(i.indpred, i.indrelid) AS bedingung,
@@ -38,10 +38,10 @@ test('indexes', { concurrency: 1 }, async t => {
 
   try {
     await t.test('no index is the start of another', async () => {
-      const alle = await db.all(`WITH ix AS (${INDIZES}) SELECT COUNT(*)::int AS n FROM ix`);
+      const alle = await db.all(`WITH ix AS (${INDEXES}) SELECT COUNT(*)::int AS n FROM ix`);
       assert.ok(alle[0].n > 100, `nur ${alle[0].n} Indizes gefunden — greift die Abfrage?`);
       const double = await db.all(`
-        WITH ix AS (${INDIZES})
+        WITH ix AS (${INDEXES})
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d
           FROM ix a JOIN ix b ON a.indrelid = b.indrelid AND a.indexrelid <> b.indexrelid
          WHERE NOT a.eindeutig AND NOT a.teil AND NOT a.ausdruck AND NOT b.teil
@@ -58,7 +58,7 @@ test('indexes', { concurrency: 1 }, async t => {
 
     await t.test('every foreign key has an index', async () => {
       const ohne = await db.all(`
-        WITH ix AS (${INDIZES})
+        WITH ix AS (${INDEXES})
         SELECT c.conname || ' (' || c.conrelid::regclass || ')' AS d
           FROM pg_constraint c
          WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace

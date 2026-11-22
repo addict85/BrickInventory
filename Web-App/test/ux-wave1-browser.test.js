@@ -82,14 +82,14 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     b.auswerten(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-dialog-close]')?.click());
       document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); return true; })()`);
-  const oeffneSet = async () => {
+  const openSet = async () => {
     await b.auswerten(klick(`#gallery .sc[data-arg="${SN}"]`));
     await bis(`document.querySelectorAll('#m-instr .ii').length === 3`, 'drei Anleitungen im Set-Detail');
     await ruhig();
   };
 
   await t.test('instructions: kinds as text, tap targets, contrast, new-tab hint', async () => {
-    for (const [breite, hoehe, mobil, min] of [
+    for (const [breite, hoehe, mobileView, min] of [
       [1280, 900, false, 24],
       [390, 844, true, 44],
     ]) {
@@ -97,9 +97,9 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
         width: breite,
         height: hoehe,
         deviceScaleFactor: 1,
-        mobile: mobil,
+        mobile: mobileView,
       });
-      await oeffneSet();
+      await openSet();
       const m = await b.auswerten(`(() => {
         const rows = [...document.querySelectorAll('#m-instr .ii')];
         const box = e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; };
@@ -123,7 +123,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
         await ruhig();
         const k = await b.auswerten(CONTRAST('#m-instr .ii-remove'));
         assert.ok(k >= 4.5, `${breite} px ${dunkel ? 'dark' : 'hell'}: Löschknopf ${k.toFixed(2)}:1`);
-        const funde = [...(await b.auswerten(LAYOUT(mobil))), ...(await b.auswerten(AXE_LAUF))].filter(f =>
+        const funde = [...(await b.auswerten(LAYOUT(mobileView))), ...(await b.auswerten(AXE_LAUF))].filter(f =>
           /\.ii|m-instr|new-tab/.test(f),
         );
         assert.deepEqual(funde, [], `${breite} px ${dunkel ? 'dark' : 'hell'}`);
@@ -139,14 +139,14 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
       mobile: false,
     });
     // Static links into a new tab carry the same hint.
-    const statisch = await b.auswerten(
+    const staticPart = await b.auswerten(
       `[...document.querySelectorAll('a[target=_blank]')].filter(a => !a.querySelector('.new-tab .vh')?.textContent).map(a => a.href)`,
     );
-    assert.deepEqual(statisch, []);
+    assert.deepEqual(staticPart, []);
   });
 
   await t.test('themes style the dialogs', async () => {
-    await oeffneSet();
+    await openSet();
     // Per theme: rules of its own stylesheet that hit the open dialog panel (before: none, the class did not exist).
     const treffer = await b.auswerten(`(() => { const m = document.querySelector('#set-modal .modal'); const r = {};
       const regeln = l => [...l].flatMap(x => x.cssRules ? [...(x.selectorText ? [x] : []), ...regeln(x.cssRules)] : []);
@@ -189,7 +189,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
     // A purchase is gone for good: that asks.
     await b.auswerten(klick('.ntab[data-tab="gallery"]'));
     await bis(`!!document.querySelector('#gallery .sc[data-arg="${SN}"]')`, 'Sammlung');
-    await oeffneSet();
+    await openSet();
     await b.auswerten(klick('#set-modal [data-click="openAcqModal"]'));
     await bis(`!!document.querySelector('#acq-modal [data-click="acqDelete"]')`, 'Kaufpreise');
     await b.auswerten(klick('#acq-modal [data-click="acqDelete"]'));
@@ -203,7 +203,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
   });
 
   await t.test('inert background and live regions', async () => {
-    await oeffneSet();
+    await openSet();
     const open = await b.auswerten(
       `({ app: document.getElementById('app').inert, dialog: document.getElementById('set-modal').inert, toasts: document.getElementById('toasts').inert })`,
     );
@@ -231,7 +231,7 @@ test('UX findings 36–42', { concurrency: 1, timeout: 280_000 }, async t => {
   });
 
   await t.test('offline locks autosave fields', async () => {
-    await oeffneSet();
+    await openSet();
     await b.auswerten(`window.dispatchEvent(new Event('offline')); true`);
     await bis(`document.getElementById('m-qty').disabled`, 'Mengenfeld gesperrt');
     await b.auswerten(`window.dispatchEvent(new Event('online')); true`);

@@ -158,8 +158,8 @@ async function logWindow(_t, a) {
 
 async function masse(_t, a) {
   const { b, bis, ruhig } = a;
-  const groesse = (w, h, mobil) =>
-    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
+  const groesse = (w, h, mobileView) =>
+    b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobileView });
   try {
     await groesse(1440, 900, false);
     await b.auswerten(

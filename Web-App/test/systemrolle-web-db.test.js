@@ -35,7 +35,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const sources = require('./helpers/sources');
 const _req = sources.buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const db = sources.testData();
@@ -59,7 +59,7 @@ const WITH_ALL_RIGHT = [
   ...['rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_minifigs', 'set_parts', 'shared_instructions'],
   ...['subsets_cache', 'exchange_rates'],
 ];
-const SOLL = {
+const EXPECTED = {
   ...Object.fromEntries(WITH_ALL_RIGHT.map(t => [t, FULL])),
   admin_log: 'SELECT, INSERT',
   parts_version_user: 'SELECT, INSERT, UPDATE',
@@ -82,11 +82,11 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   if (!WEB) {
-    keineDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
+    noDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
     return;
   }
   const zugang = sources.testAccess();
@@ -108,7 +108,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     );
     assert.ok(zeilen.length > 70, `nur ${zeilen.length} Tabellen`);
     const ist = Object.fromEntries(zeilen.filter(z => z.r !== null).map(z => [z.t, z.r]));
-    assert.deepEqual(ist, SOLL);
+    assert.deepEqual(ist, EXPECTED);
     const fn = await db.get(
       `SELECT has_function_privilege($1, 'delete_account_from_backups(integer)', 'EXECUTE') AS kopien,
               has_function_privilege($1, 'accounts_with_set(text)', 'EXECUTE') AS zahl,

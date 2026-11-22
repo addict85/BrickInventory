@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { routerEinhaengungen } = require('./helpers/sources');
+const { routerMounts } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const { appRoutes, appAddresses } = require('./helpers/contract');
@@ -30,7 +30,7 @@ function allRoutes() {
   const out = [];
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerEinhaengungen()) out.push(...routesFrom(r.datei, r.mount));
+  for (const r of routerMounts()) out.push(...routesFrom(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;

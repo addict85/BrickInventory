@@ -12,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -29,7 +29,7 @@ after(() => db.pool.end());
 
 test('every list with a badge in the client carries it in the response too', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -112,7 +112,7 @@ test('every list with a badge in the client carries it in the response too', asy
 
 test('in a single account there is no badge', async t => {
   if (!(await erreichbar())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   // No second DROP SCHEMA — own account names suffice (see

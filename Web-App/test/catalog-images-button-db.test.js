@@ -13,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 // Intercept download and downscaling — what counts here is WHAT is called.
 let geladen = 0;
-const verkleinert = [];
+const shrunk = [];
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -23,11 +23,11 @@ testImageWorker(null, {
     return `/images/sets/${sn}.jpg`;
   },
   createPreview: async p => {
-    verkleinert.push(p);
+    shrunk.push(p);
     return true;
   },
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
@@ -37,7 +37,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -126,8 +126,8 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       await db.run(`DELETE FROM image_wanted`);
       const extra = [];
       for (let i = 1; i <= 10; i++) {
-        for (const suf of ['.jpg', '_thumb.jpg']) {
-          const f = path.join(SET_IMAGES_DIR, `${P}_${i}${suf}`);
+        for (const suffix of ['.jpg', '_thumb.jpg']) {
+          const f = path.join(SET_IMAGES_DIR, `${P}_${i}${suffix}`);
           try {
             fs.writeFileSync(f, 'x', { flag: 'wx' });
             extra.push(f);
@@ -167,17 +167,13 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
     await t.test('missing previews are caught up, existing ones are not', async () => {
       // Marco's second question. For images stored before the background job,
       // the preview may be missing.
-      assert.ok(verkleinert.includes(`/images/sets/${P}_1.jpg`), 'Das vorhandene Bild ohne Vorschau bekommt keine');
+      assert.ok(shrunk.includes(`/images/sets/${P}_1.jpg`), 'Das vorhandene Bild ohne Vorschau bekommt keine');
       assert.ok(
-        !verkleinert.includes(`/images/sets/${P}_2.jpg`),
+        !shrunk.includes(`/images/sets/${P}_2.jpg`),
         'Für ein Bild mit vorhandener Vorschau wird erneut gerechnet',
       );
       // And every freshly fetched image gets one.
-      assert.equal(
-        verkleinert.length,
-        geladen + 1,
-        `${verkleinert.length} Vorschauen bei ${geladen} Downloads + 1 nachgeholter`,
-      );
+      assert.equal(shrunk.length, geladen + 1, `${shrunk.length} Vorschauen bei ${geladen} Downloads + 1 nachgeholter`);
     });
 
     // ── LAST, because this substep changes the stage ───────────────

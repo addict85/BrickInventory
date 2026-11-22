@@ -45,7 +45,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   const { lockUntilToEnd } = _req('db/txLock.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   /** @type {() => void} */
-  let loslassen = () => {};
+  let letGo = () => {};
   /** Holds the lock of acquireSet() for `sn` until loslassen(); returns the end of the transaction. */
   const hold = async (/** @type {string} */ sn) => {
     /** @type {Promise<unknown>} */
@@ -55,7 +55,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
         ende = db.transaction(async (/** @type {any} */ tx) => {
           await lockUntilToEnd(tx, LOCKS.SET_ADD, sn);
           await new Promise(r => {
-            loslassen = () => r(undefined);
+            letGo = () => r(undefined);
             gehalten(undefined);
           });
         });
@@ -80,7 +80,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
     taktMs: 50,
   });
 
-  const importiere = async zeilen => {
+  const importIt = async zeilen => {
     const fd = new FormData();
     fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
     const r = await fetch(`${base}/api/v2/sets/import/csv`, { method: 'POST', body: fd });
@@ -99,9 +99,9 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   try {
     await t.test('no second attempt after a timeout', async () => {
       const { ende } = await hold('70001-1');
-      await importiere(['70001-1']);
+      await importIt(['70001-1']);
       const a = await untilDone();
-      loslassen();
+      letGo();
       await ende;
       await warte(300);
       assert.deepEqual(await booked('70001'), ['70001-1'], 'genau eine Buchung, kein zweiter Versuch');
@@ -110,11 +110,11 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
 
     await t.test('a superseded run stops', async () => {
       const { ende: lockEnd } = await hold('71002-1');
-      await importiere(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
+      await importIt(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
       assert.ok(await bis(async () => (await booked('71')).length > 0), 'der erste Lauf bucht schon');
-      await importiere(['72001-1']);
+      await importIt(['72001-1']);
       const a = await untilDone();
-      loslassen();
+      letGo();
       await lockEnd;
       await warte(700);
       const alte = await booked('71');

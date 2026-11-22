@@ -31,7 +31,7 @@ environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 // Read the address from server.ts — see einhaengung() in helpers/sources.js.
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -41,7 +41,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot-password finds the email regardless of case', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
@@ -110,7 +110,7 @@ test('forgot-password finds the email regardless of case', { concurrency: 1 }, a
 test('reset link only with APP_BASE_URL, never from the Host header — even outside production', {
   concurrency: 1,
 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});

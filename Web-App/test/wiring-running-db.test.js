@@ -10,12 +10,12 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake, enterMailServer } = require('./helpers/mail-fake');
+mailFake();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -53,7 +53,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
@@ -147,14 +147,14 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     // acquisition to a day on which the same position already has
     // one gets 409. Without the check it would run into the unique
     // index (since 0047 idx_set_acq_tag_merkmale) and come back as 500. …
-    const heute = new Date().toISOString().slice(0, 10);
-    const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-    await holdsSet(db, MAIN, SN, 1, { preis: 100, am: gestern });
+    await holdsSet(db, MAIN, SN, 1, { preis: 100, am: yesterday });
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,100,'N',$3::timestamptz)`,
-      [MAIN, SN, heute],
+      [MAIN, SN, todayDate],
     );
     const zeilen = await db.all(
       `SELECT id, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
@@ -167,7 +167,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     const r = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ date: heute }),
+      body: JSON.stringify({ date: todayDate }),
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(

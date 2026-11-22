@@ -27,7 +27,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the changed purchase price reaches the tile — web app AND app', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USER = `spiegel-${process.pid}`;
   const SN = `31142-${process.pid}`;
@@ -38,7 +38,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Recreate the starting point fresh every time — including the entries.
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await holdsSet(db, uid, SN, 0); // Quantity 0: the entry behind it carries it
@@ -59,7 +59,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
       ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
-      const id = await aufbauen();
+      const id = await setUp();
       const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
@@ -80,7 +80,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     }
 
     // Opposite direction — and here lies the difference to before.
-    const alt = await aufbauen();
+    const alt = await setUp();
     // Another DAY, not merely an hour later: the index
     // idx_set_acq_tag_zustand allows only ONE entry per day and set. With
     // “+1 hour" the test depended on the time of the run — in the evening the

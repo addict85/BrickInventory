@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, routerEinhaengungen, pathForm, leseLiteral } = require('./helpers/sources');
+const { ohneKommentare, routerMounts, pathForm, readLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -39,7 +39,7 @@ function serverRoutes() {
   };
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerEinhaengungen()) collect(r.datei, r.mount);
+  for (const r of routerMounts()) collect(r.datei, r.mount);
   const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
@@ -61,12 +61,12 @@ function webCalls() {
     const rowOf = i => src.slice(0, i).split('\n').length;
 
     for (const m of src.matchAll(/\bapi(?:Roh|Raw)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
-      const lit = leseLiteral(src, m.index + m[0].length);
+      const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/')) continue;
       out.push({ datei, row: rowOf(m.index), verb: m[1], path: pathFormV1('/api' + lit.text) });
     }
     for (const m of src.matchAll(/fetch\(\s*/g)) {
-      const lit = leseLiteral(src, m.index + m[0].length);
+      const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/api/')) continue;
       // The method is in the second argument; without it, it is GET.
       const rest = src.slice(lit.ende, lit.ende + 300);
@@ -86,17 +86,17 @@ test('every address of the web app exists on the server', () => {
   assert.ok(server.size >= 120, `Nur ${server.size} Server-Routen gefunden — Muster veraltet?`);
   assert.ok(aufrufe.length >= 100, `Nur ${aufrufe.length} Webapp-Aufrufe gefunden — Muster veraltet?`);
 
-  const fehlend = [
+  const absent = [
     ...new Set(
       aufrufe.filter(a => !server.has(`${a.verb} ${a.path}`)).map(a => `${a.datei}:${a.row}  ${a.verb} ${a.path}`),
     ),
   ].sort();
 
   assert.deepEqual(
-    fehlend,
+    absent,
     [],
     'Diese Adressen ruft die Webapp auf, der Server hat sie nicht:\n  ' +
-      fehlend.join('\n  ') +
+      absent.join('\n  ') +
       '\nIm Browser scheitert das erst zur Laufzeit — und wo der Aufruf auf ' +
       '.catch(() => null) endet, fehlt danach still ein Teil der Anzeige.',
   );

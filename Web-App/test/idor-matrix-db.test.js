@@ -34,23 +34,23 @@ const { example } = require('./helpers/contract-example');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { mailAttrappe } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake } = require('./helpers/mail-fake');
+mailFake();
 const db = S.testData();
 const bcrypt = require('bcryptjs');
 const auth = _req('src/account/deviceToken.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
 const MARKE = `IDOR${process.pid}`;
-const OPFER = `idor_opfer_${process.pid}`,
+const VICTIM = `idor_opfer_${process.pid}`,
   FREMD = `idor_fremd_${process.pid}`,
   PASS = 'Idor-Passwort-1!';
 const SET = '99281-1',
   SET2 = '99282-1',
   TEIL = '3001ik',
   FARBE = 5,
-  FIGUR = 'ik0001';
-const GUTSCHEIN = '5045076374450029876';
+  FIGURE = 'ik0001';
+const VOUCHER = '5045076374450029876';
 /** Parameters that name a row (or a file) of an account. */
 const ROW_IDS = /^(id|acqId|instrId|tokenId|jobId)$/;
 
@@ -72,7 +72,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   timeout: 300_000,
 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[OPFER, FREMD]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[VICTIM, FREMD]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async n =>
     (
@@ -82,7 +82,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
         [n, hash],
       )
     ).id;
-  const opfer = await anlegen(OPFER),
+  const opfer = await anlegen(VICTIM),
     fremd = await anlegen(FREMD);
   for (const k of [opfer, fremd])
     await db.run(
@@ -95,7 +95,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[SET, SET2]]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
+    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGURE]).catch(() => {});
     await db.pool.end().catch(() => {});
     fs.rmSync(WURZEL, { recursive: true, force: true });
   });
@@ -107,16 +107,16 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     [TEIL, FARBE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Figur') ON CONFLICT DO NOTHING`, [
-    FIGUR,
+    FIGURE,
   ]);
 
   const sitzung = {};
   const als = uid => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
-    Object.assign(sitzung, { userId: uid, username: uid === opfer ? OPFER : FREMD, isAdmin: false });
+    Object.assign(sitzung, { userId: uid, username: uid === opfer ? VICTIM : FREMD, isAdmin: false });
   };
   const { app, base } = testServer(_req, { sitzung, t });
-  const ruf = async (methode, weg, body) => {
+  const callFn = async (methode, weg, body) => {
     const r = await fetch(base + weg, {
       method: methode,
       headers: body === undefined ? {} : { 'content-type': 'application/json' },
@@ -126,7 +126,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     return { status: r.status, text: await r.text() };
   };
   const ok = async (methode, weg, body) => {
-    const r = await ruf(methode, weg, body);
+    const r = await callFn(methode, weg, body);
     assert.equal(r.status, 200, `${methode} ${weg}: ${r.text.slice(0, 300)}`);
     return JSON.parse(r.text);
   };
@@ -142,9 +142,9 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     quantity: 3,
     condition: 'N',
   });
-  await ok('POST', '/api/v2/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
+  await ok('POST', '/api/v2/minifigs', { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' });
   const gutschein = (
-    await ok('POST', '/api/v2/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
+    await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' })
   ).voucher.id;
   const id1 = sql => db.get(sql, [opfer]).then(z => z.id);
   const setAcq = await id1('SELECT id FROM set_acquisitions WHERE user_id = $1');
@@ -176,9 +176,9 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SET}_1.pdf`), `Anleitung ${MARKE}`);
 
   // The victim reaches its own rows with the same identifiers: the matrix hits real rows.
-  assert.equal((await ruf('GET', `/api/v2/auth/qr-pairing/${qr}`)).status, 200);
-  assert.equal((await ruf('GET', `/data/uploads/${opfer}/rechnung.pdf`)).status, 200);
-  assert.equal((await ruf('GET', `/data/instructions/${SET}_1.pdf`)).status, 200);
+  assert.equal((await callFn('GET', `/api/v2/auth/qr-pairing/${qr}`)).status, 200);
+  assert.equal((await callFn('GET', `/data/uploads/${opfer}/rechnung.pdf`)).status, 200);
+  assert.equal((await callFn('GET', `/data/instructions/${SET}_1.pdf`)).status, 200);
 
   const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
@@ -205,7 +205,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     sn: SET,
     partNumber: TEIL,
     colorId: FARBE,
-    figNumber: FIGUR,
+    figNumber: FIGURE,
     condition: 'N',
     kind: 'x',
   };
@@ -213,7 +213,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     ([, p]) => p.startsWith('/data/') || [...p.matchAll(/:(\w+)/g)].some(m => ROW_IDS.test(m[1])),
   );
   const geprueft = new Set();
-  const abweichend = [],
+  const deviating = [],
     leaks = [],
     erreicht = new Set();
   /** What a request with this route but an identifier nobody has gets: foreign must look the same. */
@@ -232,27 +232,27 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   for (const [methode, muster] of routen) {
     const vertrag = CONTRACT[`${methode} ${muster}`];
     const param = [...muster.matchAll(/:(\w+)/g)].map(m => m[1]).find(n => ROW_IDS.test(n));
-    const wege = muster.startsWith('/data/')
+    const pathList = muster.startsWith('/data/')
       ? [muster.includes('instructions') ? `/data/instructions/${SET}_1.pdf` : `/data/uploads/${opfer}/rechnung.pdf`]
       : (ids[param] ?? []).map(v =>
           muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(n === param ? v : (fest[n] ?? 'x')))),
         );
     if (param) geprueft.add(param);
     // Without, then with the optional fields: one of the two should get past the input check.
-    const rumpfe =
+    const bodies =
       methode === 'GET' || vertrag?.formular
         ? [undefined]
         : [example(vertrag?.input, wert), example(vertrag?.input, wert, true)];
-    for (const rumpf of rumpfe) {
-      const leer = muster.startsWith('/data/') ? null : await ruf(methode, keiner(muster), rumpf);
-      for (const weg of wege) {
-        const r = await ruf(methode, weg, rumpf);
+    for (const rumpf of bodies) {
+      const leer = muster.startsWith('/data/') ? null : await callFn(methode, keiner(muster), rumpf);
+      for (const weg of pathList) {
+        const r = await callFn(methode, weg, rumpf);
         if (r.status !== 400) erreicht.add(`${methode} ${muster}`);
-        for (const geheim of [MARKE, GUTSCHEIN]) if (r.text.includes(geheim)) leaks.push(`${methode} ${weg}`);
+        for (const geheim of [MARKE, VOUCHER]) if (r.text.includes(geheim)) leaks.push(`${methode} ${weg}`);
         if (r.status === 403 || r.status === 404) continue;
         // A DELETE that answers `deleted: 0` for a missing row may say the same for a foreign one.
         if (r.status === 200 && leer?.status === 200 && r.text === leer.text) continue;
-        if (r.status !== 400) abweichend.push(`${methode} ${weg} → ${r.status} ${r.text.slice(0, 120)}`);
+        if (r.status !== 400) deviating.push(`${methode} ${weg} → ${r.status} ${r.text.slice(0, 120)}`);
       }
     }
   }
@@ -260,8 +260,8 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
 
   await t.test('the input check lets the requests through to the ownership', () => {
     // A 400 says nothing about ownership; per route at least one body must get past it.
-    const nieErreicht = routen.map(([m, p]) => `${m} ${p}`).filter(r => !erreicht.has(r));
-    assert.deepEqual(nieErreicht, []);
+    const neverReached = routen.map(([m, p]) => `${m} ${p}`).filter(r => !erreicht.has(r));
+    assert.deepEqual(neverReached, []);
   });
   await t.test('all kinds of identifiers are covered', () => {
     assert.deepEqual([...geprueft].sort(), ['acqId', 'id', 'instrId', 'jobId', 'tokenId']);
@@ -271,7 +271,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
       'die Dateien ausserhalb des Vertrags fehlen',
     );
   });
-  await t.test('never a 2xx, always 403 or 404', () => assert.deepEqual(abweichend, []));
+  await t.test('never a 2xx, always 403 or 404', () => assert.deepEqual(deviating, []));
   await t.test("no response carries the victim's data", () => assert.deepEqual(leaks, []));
   await t.test("none of the victim's rows changes", async () => {
     const nachher = await holding();

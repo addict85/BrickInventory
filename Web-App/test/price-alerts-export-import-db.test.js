@@ -40,7 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const { importWorker } = require('./helpers/jobs');
 const db = testData();
@@ -102,11 +102,11 @@ async function setup(accountCurrency = 'CHF') {
   // both conditions. Two acquisitions for the same set on the same DAY violate
   // idx_set_acq_tag_zustand (migration 0008) — exactly on that the first run of this
   // test failed. Hence the stock row only once per number.
-  const gelegt = new Set();
+  const placed = new Set();
   for (const a of ALERTS) {
     await catalogSet(db, a.sn, { name: a.sn });
-    if (a.owns && !gelegt.has(a.sn)) {
-      gelegt.add(a.sn);
+    if (a.owns && !placed.has(a.sn)) {
+      placed.add(a.sn);
       await db.run(
         `INSERT INTO sets (user_id,set_number) VALUES ($1,$2)
                     ON CONFLICT (user_id,set_number) DO NOTHING`,
@@ -162,7 +162,7 @@ function csvFromAlerts(currency) {
   );
 }
 
-async function hochladen(base, text, name = 'preisalarme.csv') {
+async function uploadIt(base, text, name = 'preisalarme.csv') {
   const fd = new FormData();
   fd.append('file', new Blob([text], { type: 'text/csv' }), name);
   const r = await fetch(`${base}/api/v2/alerts/import/csv`, { method: 'POST', body: fd });
@@ -173,7 +173,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup('CHF');
@@ -256,7 +256,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       'Vorbedingung: keine eigenen Alarme',
     );
 
-    const { status, body } = await hochladen(srv.base, csvText);
+    const { status, body } = await uploadIt(srv.base, csvText);
     assert.equal(status, 200, `Der Import antwortete mit ${status}: ${JSON.stringify(body)}`);
     assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
     assert.equal(body.errors, 0, `${body.errors} Fehler: ${JSON.stringify(body.results)}`);
@@ -284,7 +284,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     // The rule of the tree (PUT /sets/:setNumber/alert): the currency comes from
     // the settings, not from the request. A file is a request.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
-    const { body } = await hochladen(srv.base, csvFromAlerts('EUR'));
+    const { body } = await uploadIt(srv.base, csvFromAlerts('EUR'));
 
     assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
     const z = await db.get(
@@ -330,7 +330,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       '10179-1,N,unter,0,CHF\n' + // threshold must be > 0
       '31203-1,X,unter,50,CHF\n' + // condition does not exist — only the check catches that
       '21309-1,U,ueber,24.9,CHF\n'; // the good row
-    const { body } = await hochladen(srv.base, kaputt);
+    const { body } = await uploadIt(srv.base, kaputt);
     assert.equal(body.errors, 3, `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
     assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
     // The condition „X" must NOT stand in the table. The database would have
@@ -380,7 +380,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       'Vorbedingung: der Merker steht',
     );
 
-    await hochladen(srv.base, csvFromAlerts());
+    await uploadIt(srv.base, csvFromAlerts());
     assert.equal(
       (
         await db.get(

@@ -45,6 +45,6 @@ test('both versions attach the same', { concurrency: 1 }, async t => {
     [alle],
   );
   assert.equal(zeilen.length, alle.length);
-  const abweichend = zeilen.filter(z => z.aus !== withVersion(z.ein)).map(z => `${z.ein}: SQL ${z.aus}`);
-  assert.deepEqual(abweichend, []);
+  const deviating = zeilen.filter(z => z.aus !== withVersion(z.ein)).map(z => `${z.ein}: SQL ${z.aus}`);
+  assert.deepEqual(deviating, []);
 });

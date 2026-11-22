@@ -38,7 +38,7 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
-  const hol = async p => (await fetch(base + p)).json();
+  const fetchIt = async p => (await fetch(base + p)).json();
   // rb_sets is a GLOBAL table — other tests create their own rows there.
   // Without this restriction the distribution would count foreign sets, and the
   // test would be green run alone and red in the full run. The search via
@@ -46,26 +46,26 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
   const NUR = '&q=JV';
 
   /** The same computation as in the browser: share → running number → year. */
-  const etikett = (verteilung, total, anteil) => {
+  const etikett = (spread, total, anteil) => {
     let number = Math.round(anteil * (total - 1));
-    for (const e of verteilung) {
+    for (const e of spread) {
       if (number < e.n) return e.year;
       number -= e.n;
     }
-    return verteilung[verteilung.length - 1].year;
+    return spread[spread.length - 1].year;
   };
   /** What really stands at this place — from the real list. */
   const thereStands = async (total, anteil, filter = '') => {
     const nr = Math.round(anteil * (total - 1));
     const seite = Math.floor(nr / 60) + 1;
-    const d = await hol(`/api/v2/catalog/sets?limit=60&page=${seite}${NUR}${filter}`);
+    const d = await fetchIt(`/api/v2/catalog/sets?limit=60&page=${seite}${NUR}${filter}`);
     return d.sets[nr - (seite - 1) * 60].year;
   };
 
   try {
     for (const sort of ['year_desc', 'year_asc']) {
       await t.test(`sorting ${sort}`, async () => {
-        const v = (await hol(`/api/v2/catalog/year-distribution?sort=${sort}${NUR}`)).years.filter(x => x.year);
+        const v = (await fetchIt(`/api/v2/catalog/year-distribution?sort=${sort}${NUR}`)).years.filter(x => x.year);
         const total = v.reduce((s, e) => s + e.n, 0);
         assert.ok(total > 1000, `zu wenige Sets: ${total}`);
         for (const anteil of [0, 0.25, 0.5, 0.75, 0.9, 1]) {
@@ -83,7 +83,7 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
       // The distribution MUST know the filters. One over the whole catalog
       // would be just as far off with a set theme as the linear estimate —
       // theme 2 contains only the 2010s.
-      const v = (await hol(`/api/v2/catalog/year-distribution?sort=year_desc&theme_id=2${NUR}`)).years.filter(
+      const v = (await fetchIt(`/api/v2/catalog/year-distribution?sort=year_desc&theme_id=2${NUR}`)).years.filter(
         x => x.year,
       );
       const total = v.reduce((s, e) => s + e.n, 0);
@@ -102,7 +102,7 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
       // Counter-check in the test itself: without it someone could replace the distribution
       // with a straight line again and the test would stay green if the stage
       // happened to be evenly distributed.
-      const v = (await hol(`/api/v2/catalog/year-distribution?sort=year_desc${NUR}`)).years.filter(x => x.year);
+      const v = (await fetchIt(`/api/v2/catalog/year-distribution?sort=year_desc${NUR}`)).years.filter(x => x.year);
       const total = v.reduce((s, e) => s + e.n, 0);
       const min = Math.min(...v.map(x => x.year)),
         max = Math.max(...v.map(x => x.year));

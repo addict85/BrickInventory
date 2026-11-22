@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
@@ -43,7 +43,7 @@ async function pdfWith(seiten) {
   return Buffer.from(await d.save());
 }
 
-async function hochladen(base, daten) {
+async function uploadIt(base, daten) {
   const fd = new FormData();
   fd.append('file', new Blob([daten], { type: 'application/pdf' }), 'g.pdf');
   const r = await fetch(`${base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
@@ -78,7 +78,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.initSchema();
@@ -108,7 +108,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     b = server(B);
 
   await t.test('250 pages: 422 with an understandable message', async () => {
-    const r = await hochladen(a.base, await pdfWith(250));
+    const r = await uploadIt(a.base, await pdfWith(250));
     assert.equal(r.status, 422, JSON.stringify(r.body));
     assert.equal(r.body.code, 'pdf_too_many_pages');
     assert.match(r.body.error, /250 Seiten, höchstens 200/);
@@ -139,10 +139,10 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     const erster = hangingUpload(a.base);
     try {
       await new Promise(r => setTimeout(r, 200));
-      const zweiter = await hochladen(a.base, await pdfWith(1));
+      const zweiter = await uploadIt(a.base, await pdfWith(1));
       assert.equal(zweiter.status, 429, JSON.stringify(zweiter.body));
       assert.equal(zweiter.body.code, 'upload_running');
-      const fremd = await hochladen(b.base, await pdfWith(1));
+      const fremd = await uploadIt(b.base, await pdfWith(1));
       assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
     } finally {
       erster.ende(); // otherwise closing the server waits for it
@@ -151,7 +151,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
   });
 
   await t.test('… after the end it works again', async () => {
-    const r = await hochladen(a.base, await pdfWith(1));
+    const r = await uploadIt(a.base, await pdfWith(1));
     assert.notEqual(r.status, 429, JSON.stringify(r.body));
   });
 
@@ -167,9 +167,9 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
         req.on('error', () => fertig(0));
       });
     try {
-      const stati = [];
-      for (let i = 0; i < 7; i++) stati.push(await stream());
-      assert.deepEqual(stati, [200, 200, 200, 200, 200, 200, 429]);
+      const statuses = [];
+      for (let i = 0; i < 7; i++) statuses.push(await stream());
+      assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of open) r.destroy();
       assert.ok(await bis(async () => (await stream()) === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
     } finally {

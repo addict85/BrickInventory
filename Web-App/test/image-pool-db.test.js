@@ -13,11 +13,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dataOrSkip, keineDb } = require('./helpers/db');
+const { dataOrSkip, noDb } = require('./helpers/db');
 const db = testData();
 
 test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const IM = _req('src/images/imageMisses.js');
   const IQ = _req('src/images/imageDemandRun.js');
@@ -31,36 +31,36 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
   await weg();
 
   // Count queries along — that is the quantity that matters.
-  let abfragen = 0;
+  let queryList = 0;
   const realQuery = db.pool.query.bind(db.pool);
   db.pool.query = (...a) => {
-    abfragen++;
+    queryList++;
     return realQuery(...a);
   };
 
   try {
     await t.test('60 tiles trigger 0 queries', async () => {
-      const vorher = abfragen;
+      const vorher = queryList;
       for (let i = 1; i <= 60; i++) {
         IM.isKnownMissing(`${PREFIX}_k${i}`);
         IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_${i}.jpg`, `${PREFIX}_${i}`);
       }
       assert.equal(
-        abfragen - vorher,
+        queryList - vorher,
         0,
-        `${abfragen - vorher} Abfragen für 60 Kacheln. Bildanfragen sind der ` +
+        `${queryList - vorher} Abfragen für 60 Kacheln. Bildanfragen sind der ` +
           'häufigste Vorgang der Anwendung — eine Abfrage je Bild leert den ' +
           'Verbindungspool, und ANDERE Routen laufen in den Zeitfehler.',
       );
     });
 
     await t.test('writing away is batched', async () => {
-      const vorher = abfragen;
+      const vorher = queryList;
       await IQ._writeBuffer();
       // One statement for all notes; plus the processor job and its NOTIFY.
       assert.ok(
-        abfragen - vorher <= 3,
-        `${abfragen - vorher} Abfragen zum Wegschreiben von 60 Notizen — das muss ` +
+        queryList - vorher <= 3,
+        `${queryList - vorher} Abfragen zum Wegschreiben von 60 Notizen — das muss ` +
           'ein Statement sein, sonst ist nur die Stelle verschoben',
       );
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
@@ -69,9 +69,9 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
 
     await t.test('negative results likewise', async () => {
       for (let i = 1; i <= 40; i++) IM.rememberMissing(`${PREFIX}_m${i}`);
-      const vorher = abfragen;
+      const vorher = queryList;
       await IM._writeBuffer();
-      assert.ok(abfragen - vorher <= 2, `${abfragen - vorher} Abfragen für 40 Fehlanzeigen`);
+      assert.ok(queryList - vorher <= 2, `${queryList - vorher} Abfragen für 40 Fehlanzeigen`);
     });
 
     await t.test('after a restart the knowledge is still there', async () => {
@@ -138,7 +138,7 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const vorher = db.getPoolStats();
@@ -146,11 +146,11 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
   try {
     const r = await c.query('SELECT pg_try_advisory_lock(918273645) AS ok');
     assert.equal(r.rows[0].ok, true, 'Die Sperre liess sich nicht nehmen');
-    const waehrend = db.getPoolStats();
+    const during = db.getPoolStats();
     assert.equal(
-      waehrend.active,
+      during.active,
       vorher.active,
-      `Der Pool hat ${waehrend.active} statt ${vorher.active} aktive Verbindungen — ` +
+      `Der Pool hat ${during.active} statt ${vorher.active} aktive Verbindungen — ` +
         'eine über Sekunden gehaltene Sperre darf keine davon belegen',
     );
     await c.query('SELECT pg_advisory_unlock(918273645)');

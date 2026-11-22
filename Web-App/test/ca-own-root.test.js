@@ -55,7 +55,7 @@ const SCRIPT = path.join(ROOT, 'scripts', 'setup-ca.sh');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 const ossl = (...args) => spawnSync('openssl', args, { encoding: 'utf8' });
 
-function einrichten(ordner, host, mehr = {}) {
+function setUpAccount(ordner, host, mehr = {}) {
   return spawnSync('sh', [SCRIPT, host], {
     encoding: 'utf8',
     cwd: path.dirname(ordner),
@@ -118,7 +118,7 @@ test('a root for a name: only this name, no IP addresses', async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eigene-ca-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
-  const r = einrichten(ordner, 'nas.example.lan');
+  const r = setUpAccount(ordner, 'nas.example.lan');
   assert.equal(r.status, 0, r.stderr);
   // The same value the device shows on installation and Caddy in the log.
   const fp = new crypto.X509Certificate(fs.readFileSync(path.join(ordner, 'root.crt'))).fingerprint256;
@@ -156,11 +156,11 @@ test('a root for a name: only this name, no IP addresses', async t => {
 
   await t.test('an existing CA stays without NEU=1, the root key only on request', () => {
     const vorher = fs.readFileSync(path.join(ordner, 'root.crt'), 'utf8');
-    const nochmal = einrichten(ordner, 'nas.example.lan');
+    const nochmal = setUpAccount(ordner, 'nas.example.lan');
     assert.notEqual(nochmal.status, 0);
     assert.equal(fs.readFileSync(path.join(ordner, 'root.crt'), 'utf8'), vorher);
     const ablage = path.join(tmp, 'wurzel.key');
-    const neu = einrichten(ordner, 'nas.example.lan', { NEU: '1', WURZEL_SCHLUESSEL: ablage });
+    const neu = setUpAccount(ordner, 'nas.example.lan', { NEU: '1', WURZEL_SCHLUESSEL: ablage });
     assert.equal(neu.status, 0, neu.stderr);
     assert.equal(
       public_key(crypto.createPrivateKey(fs.readFileSync(ablage))),
@@ -205,7 +205,7 @@ test('a root for an IP address: only this address', t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eigene-ca-ip-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
-  const r = einrichten(ordner, '192.168.7.20');
+  const r = setUpAccount(ordner, '192.168.7.20');
   assert.equal(r.status, 0, r.stderr);
   assert.equal(blattGilt(ordner, 'IP:192.168.7.20'), true);
   assert.equal(blattGilt(ordner, 'IP:192.168.7.21'), false);
@@ -339,7 +339,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-echt-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
-  assert.equal(einrichten(ordner, 'nas.example.lan').status, 0);
+  assert.equal(setUpAccount(ordner, 'nas.example.lan').status, 0);
   const port = await freePort(),
     port80 = await freePort();
   const datei = fs

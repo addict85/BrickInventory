@@ -87,7 +87,7 @@ const PFLICHT = [
 ];
 /** Before login there is nothing to confirm. */
 const PUBLIC = ['POST /api/v2/auth/login', 'POST /api/v2/auth/register', 'POST /api/v2/auth/reset-password'];
-const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];
+const PASSWORD_FIELDS = ['password', 'admin_password', 'current', 'password_current'];
 
 async function konto(name, admin) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
@@ -138,7 +138,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
   const codes = await withFactor(chef);
   await withFactor(ziel);
   const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
-  const ruf = async (b, schluessel, body) => {
+  const callFn = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
     const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), {
       method: methode,
@@ -161,7 +161,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
           !PUBLIC.includes(k) &&
           !r.confirmation &&
           r.input?.shape &&
-          PASSWORTFELDER.some(f => r.input.shape[f]?.safeParse('x').success),
+          PASSWORD_FIELDS.some(f => r.input.shape[f]?.safeParse('x').success),
       )
       .map(([k]) => k);
     assert.deepEqual(withoutBrand, []);
@@ -176,13 +176,13 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       ]);
       const { password: passwort, code } = route.confirmation;
       const rumpf = { ...EXTRA[schluessel], [passwort]: PASS };
-      const withoutCode = await ruf(basis, schluessel, rumpf);
+      const withoutCode = await callFn(basis, schluessel, rumpf);
       assert.deepEqual(
         [withoutCode.status, withoutCode.body.code],
         [400, 'second_factor_required'],
         `${schluessel} ohne Code`,
       );
-      const falsch = await ruf(basis, schluessel, { ...rumpf, [code]: '000000' });
+      const falsch = await callFn(basis, schluessel, { ...rumpf, [code]: '000000' });
       assert.deepEqual(
         [falsch.status, falsch.body.code],
         [400, 'second_factor_wrong'],
@@ -193,7 +193,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
   assert.ok(markiert.length >= PFLICHT.length, `nur ${markiert.length} markierte Routen`);
 
   await t.test('with code it works, without a factor as before', async () => {
-    const r = await ruf(basis, 'DELETE /api/v2/auth/users/:id/second-factor', {
+    const r = await callFn(basis, 'DELETE /api/v2/auth/users/:id/second-factor', {
       admin_password: PASS,
       code: codes[0],
     });
@@ -202,7 +202,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     assert.equal(await require('./helpers/admin').takeoverNow(_req, db, ziel), 1);
     assert.equal(await zf.isActive(ziel), false);
     const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
-    const tok = await ruf(withoutFactor, 'POST /api/v2/auth/token-create', { password: PASS });
+    const tok = await callFn(withoutFactor, 'POST /api/v2/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });
 
@@ -235,7 +235,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     const marke = route.confirmation;
     delete route.confirmation;
     try {
-      const r = await ruf(basis, 'DELETE /api/v2/inventory', { password: PASS, code: codes[1] });
+      const r = await callFn(basis, 'DELETE /api/v2/inventory', { password: PASS, code: codes[1] });
       assert.equal(r.status, 500, `ohne Marke keine Bestätigung: ${JSON.stringify(r.body)}`);
     } finally {
       route.confirmation = marke;

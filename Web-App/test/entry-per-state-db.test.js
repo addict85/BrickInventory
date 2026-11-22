@@ -44,7 +44,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { addPurchaseAtTag, purchaseAtSameTag } = _req('src/inventory/acquisitions.js');
 
@@ -56,7 +56,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

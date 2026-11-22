@@ -80,7 +80,7 @@ test('the app attaches the error path, once behind all routers', () => {
   durch(app.router, '');
   assert.ok(oben.length > 30, `nur ${oben.length} Schichten — greift die Suche noch?`);
   assert.deepEqual(inRouters, [], 'den Fehlerweg hängt die App an, kein Router');
-  const fehlerwege = oben.filter((/** @type {any} */ l) => l.handle === errorResponse);
-  assert.equal(fehlerwege.length, 1);
+  const errorPaths = oben.filter((/** @type {any} */ l) => l.handle === errorResponse);
+  assert.equal(errorPaths.length, 1);
   assert.equal(oben.at(-1)?.handle, errorResponse, 'der Fehlerweg steht hinter allen Routern');
 });

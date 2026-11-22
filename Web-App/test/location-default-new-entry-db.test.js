@@ -37,7 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Set up Rebrickable (testSources): without a name in the body addManualPart/addManualMinifig asks
@@ -56,7 +56,7 @@ test('the storage location default applies to every new capture', { concurrency:
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

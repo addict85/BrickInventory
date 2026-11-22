@@ -62,11 +62,11 @@ test('named exports instead of module.exports', () => {
   // src/sets/afterAdd.ts import by name (`import { fetchPriceForSet }`).
   // csvImportWorker is the entry point of its own process
   // (process.on('message')) and deliberately exports nothing.
-  const ENTRYPOINTS = new Set(['csvImportWorker.ts']);
+  const ENTRY_POINTS = new Set(['csvImportWorker.ts']);
   for (const f of fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'))) {
     const src = fs.readFileSync(path.join(JOBS, f), 'utf8');
     assert.doesNotMatch(src, /^module\.exports = /m, `${f}: noch module.exports`);
-    if (!ENTRYPOINTS.has(f)) assert.match(src, /^export \{/m, `${f}: kein benannter Export`);
+    if (!ENTRY_POINTS.has(f)) assert.match(src, /^export \{/m, `${f}: kein benannter Export`);
   }
 });
 

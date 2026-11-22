@@ -28,7 +28,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Two entries; the parent row carries the value of the NEWEST.
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     // Only the stock row, without numbers: quantity, price and condition are in
@@ -47,7 +47,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
       [uid, SN],
     );
   };
-  const neueste = async () =>
+  const latest = async () =>
     (
       await db.get(
         `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
@@ -79,7 +79,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
     // 0. Before deleting: two entries, 7.41 and 9.48, one copy each.
     //    The old column would have carried 9.48 (price of the newest entry).
     //    The response must show the quantity-weighted mean.
-    await aufbauen();
+    await setUp();
     const vorher = await eltern();
     assert.equal(
       Number(vorher.purchase_price),
@@ -90,8 +90,8 @@ test('deleting an acquisition redetermines price and condition of the parent row
     assert.equal(vorher.condition, 'U', 'Eine gebrauchte Erfassung macht das Set gebraucht');
 
     // 1. Marco's case: delete the newest entry.
-    await aufbauen();
-    let r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
+    await setUp();
+    let r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${await latest()}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     let e = await eltern();
     assert.equal(
@@ -106,7 +106,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
 
     // 2. Opposite direction: deleting an OLDER entry must not change
     //    anything in the price — the newest one stays after all.
-    await aufbauen();
+    await setUp();
     const alte = (
       await db.all(
         `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
@@ -125,7 +125,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
 
     // 3. Delete the last entry: none is left — and since then
     //  no parent row either.
-    await aufbauen();
+    await setUp();
     for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
       await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
     }

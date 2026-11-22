@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ORDNER = path.join(__dirname, '..', 'src/finances/calculation');
+const FOLDER = path.join(__dirname, '..', 'src/finances/calculation');
 
 /**
  * The finance layers stack on each other — in ONE direction.
@@ -16,7 +16,7 @@ const ORDNER = path.join(__dirname, '..', 'src/finances/calculation');
 const SCHICHTEN = ['condition', 'queries', 'prices', 'valuation', 'profitLoss'];
 
 function importsOf(name) {
-  const s = fs.readFileSync(path.join(ORDNER, `${name}.ts`), 'utf8');
+  const s = fs.readFileSync(path.join(FOLDER, `${name}.ts`), 'utf8');
   // Only siblings in the same layer family: './x'
   return [...s.matchAll(/(?:import|from)\s+['"]\.\/(\w+)['"]/g)].map(m => m[1]);
 }
@@ -24,7 +24,7 @@ function importsOf(name) {
 test('the layers are complete', () => {
   // Self-proof: if a file is missing, the loop below would check thin air.
   const da = fs
-    .readdirSync(ORDNER)
+    .readdirSync(FOLDER)
     .filter(n => n.endsWith('.ts'))
     .map(n => path.basename(n, '.ts'))
     .sort();

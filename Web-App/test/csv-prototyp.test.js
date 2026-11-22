@@ -10,11 +10,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { csvReadIn } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
-const einlesen = (/** @type {string} */ csv) => csvReadIn(csv).records;
+const readIn = (/** @type {string} */ csv) => csvReadIn(csv).records;
 
 test('a column __proto__ does not end up in the prototype chain', () => {
   const vorher = /** @type {any} */ (Object.prototype).polluted;
-  const records = einlesen('set_number,__proto__\n10497-1,{"polluted":true}\n');
+  const records = readIn('set_number,__proto__\n10497-1,{"polluted":true}\n');
   assert.equal(records.length, 1);
   assert.equal(records[0].set_number, '10497-1', 'Die echte Spalte geht verloren — der Filter greift zu weit');
   assert.equal(
@@ -27,7 +27,7 @@ test('a column __proto__ does not end up in the prototype chain', () => {
 
 test('constructor and prototype are discarded too', () => {
   for (const name of ['constructor', 'prototype']) {
-    const r = einlesen(`set_number,${name}\n10497-1,x\n`);
+    const r = readIn(`set_number,${name}\n10497-1,x\n`);
     assert.equal(r[0].set_number, '10497-1');
     assert.ok(!Object.hasOwn(r[0], name), `Die Spalte "${name}" ist im Datensatz gelandet`);
   }
@@ -35,7 +35,7 @@ test('constructor and prototype are discarded too', () => {
 
 test('ordinary columns stay untouched', () => {
   // A filter that discards EVERYTHING would also pass the two rules above.
-  const r = einlesen('set_number,quantity,note\n10497-1,2,Geschenk\n');
+  const r = readIn('set_number,quantity,note\n10497-1,2,Geschenk\n');
   assert.deepEqual(
     r.map(z => ({ ...z })),
     [{ set_number: '10497-1', quantity: '2', note: 'Geschenk' }],

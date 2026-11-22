@@ -22,7 +22,7 @@ const errorAt = (d, id) => {
   return e && !e.hidden ? e.textContent : '';
 };
 
-async function setErfassen(o, { qty, datum = null }) {
+async function setAcquire(o, { qty, datum = null }) {
   const { d, aufrufe } = o;
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(10);
@@ -44,7 +44,7 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const roh of ['0', '', '1.5', '-3', '99999', '10001', 'abc']) {
-      const r = await setErfassen(o, { qty: roh });
+      const r = await setAcquire(o, { qty: roh });
       assert.equal(r.gesendet, null, `„${roh}“ ging an den Server`);
       assert.match(r.qtyError, /ganze Zahl von 1 bis 10\.000/, `„${roh}“: kein Hinweis am Feld`);
       assert.equal(o.d.getElementById('add-qty').getAttribute('aria-invalid'), 'true');
@@ -54,7 +54,7 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
       ['7', 7],
       ['10000', 10000],
     ]) {
-      const r = await setErfassen(o, { qty: roh });
+      const r = await setAcquire(o, { qty: roh });
       assert.equal(r.qtyError, '', `„${roh}“ gemeldet`);
       assert.equal(r.gesendet?.quantity, soll);
     }
@@ -66,7 +66,7 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
 test('add set: hint in English', async () => {
   const o = await openUi({}, { language: 'en', browserLanguage: 'en-GB' });
   try {
-    const r = await setErfassen(o, { qty: '0' });
+    const r = await setAcquire(o, { qty: '0' });
     assert.equal(r.qtyError, 'The quantity must be a whole number from 1 to 10,000.');
   } finally {
     o.w.close();
@@ -76,13 +76,13 @@ test('add set: hint in English', async () => {
 test('add set: "bought on" not in the future', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    const r = await setErfassen(o, { qty: '1', datum: '2099-01-01' });
+    const r = await setAcquire(o, { qty: '1', datum: '2099-01-01' });
     assert.equal(r.gesendet, null, 'Zukunftsdatum ging an den Server');
     assert.match(r.dateError, /Zukunft/);
-    const heute = new Date();
-    const iso = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, '0')}-${String(heute.getDate()).padStart(2, '0')}`;
+    const todayDate = new Date();
+    const iso = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
     assert.equal(o.d.getElementById('add-date').max, iso, 'max steht nicht auf heute');
-    const ok = await setErfassen(o, { qty: '1', datum: iso });
+    const ok = await setAcquire(o, { qty: '1', datum: iso });
     assert.equal(ok.dateError, '');
     assert.equal(ok.gesendet?.date, iso);
   } finally {

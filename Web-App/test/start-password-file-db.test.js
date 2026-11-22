@@ -26,13 +26,13 @@ process.env.APP_ROOT = wurzel;
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('initial password in a file instead of the log', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   t.after(async () => {

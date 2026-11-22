@@ -28,7 +28,7 @@ const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0062
 const SCHEMA = `probe0062_${process.pid}`;
 
 test('migration 0062: slim set list', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});

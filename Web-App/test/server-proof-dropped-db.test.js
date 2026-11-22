@@ -24,7 +24,7 @@ const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('POST /api/v2/auth/serverbeweis no longer exists', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
   app.use(express.json());

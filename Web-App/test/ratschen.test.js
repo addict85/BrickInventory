@@ -195,7 +195,7 @@ function silentCatchesTheUi() {
 }
 
 /** The factory (createDb, dbConfigFromEnvironment) and types are no process access. */
-const PROZESSZUGANG = new Set([
+const PROCESS_ACCESS = new Set([
   'pool',
   'all',
   'get',
@@ -224,7 +224,7 @@ function takesProcessAccess(f) {
         .slice(1, -1)
         .split(',')
         .map(n => n.trim().split(/\s+as\s+/)[0])
-        .some(n => PROZESSZUGANG.has(n)),
+        .some(n => PROCESS_ACCESS.has(n)),
   );
 }
 
@@ -253,9 +253,9 @@ test('the compatibility path to the database and module-wide state become fewer,
   // src/vouchers/balanceLookup.ts → red (3 of 2). Limit 1: the transaction guard
   // travels with the transaction in the call frame; left are the savepoints in db/.
   const STATE_LIMIT = 1;
-  const ZUSTAND =
+  const CONDITION =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
-  const countState = s => (s.match(ZUSTAND) || []).length;
+  const countState = s => (s.match(CONDITION) || []).length;
   // Self-proof: empty-created collections and let count, constants with content do not.
   assert.equal(
     countState(
@@ -285,19 +285,19 @@ function routesMatchContexts() {
   // src/collection/deletion.ts (with `export const readSets = …` in src/sets/index.ts) → red (1 facade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
-  const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
-  const holer = sources().filter(f => HOLER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
+  const FETCHER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
+  const fetcher = sources().filter(f => FETCHER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
   assert.deepEqual(
-    holer.map(f => path.relative(WEB, f)),
+    fetcher.map(f => path.relative(WEB, f)),
     [],
     'Dienste kommen über den Kontext oder als Parameter, nicht vom Prozess',
   );
   const factoryFile = b => ['bereich.ts', 'area.ts'].map(f => path.join(src, b, f)).find(p => fs.existsSync(p));
-  const bereiche = fs.readdirSync(src).filter(b => factoryFile(b));
-  assert.ok(bereiche.length >= 15, `nur ${bereiche.length} Bereiche gefunden — greift die Suche noch?`);
+  const areaList = fs.readdirSync(src).filter(b => factoryFile(b));
+  assert.ok(areaList.length >= 15, `nur ${areaList.length} Bereiche gefunden — greift die Suche noch?`);
   // What an area binds as a service no index.ts may additionally export as a value.
   const dienste = new Map(
-    bereiche.map(b => {
+    areaList.map(b => {
       const s = fs.readFileSync(factoryFile(b), 'utf8');
       const n = new Set();
       for (const m of s.matchAll(/^ {4,8}(\w+): /gm)) n.add(m[1]);
@@ -330,16 +330,16 @@ function configOnlyAtStart() {
   const EXCEPTION = ['src/account/bcryptLimit.ts'];
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
-  const lesend = sources()
+  const readsOnly = sources()
     .map(rel)
     .filter(r => !/^(startup\/|server\.ts$|src\/infra\/config\.ts$)/.test(r))
     .filter(r => /\bconfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
-  assert.ok(lesend.length > 0, 'keine Leser von config() gefunden — greift die Suche noch?');
-  const fach = lesend.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !EXCEPTION.includes(r));
-  assert.deepEqual(fach, [], 'Fachbereiche, Routen und Jobs nehmen k.config oder einen Parameter');
-  assert.ok(lesend.length <= LIMIT, `${lesend.length} Dateien lesen config(), erlaubt sind ${LIMIT}`);
-  if (lesend.length < LIMIT)
-    console.log(`  ℹ config()-Leser: ${lesend.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  assert.ok(readsOnly.length > 0, 'keine Leser von config() gefunden — greift die Suche noch?');
+  const domainArea = readsOnly.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !EXCEPTION.includes(r));
+  assert.deepEqual(domainArea, [], 'Fachbereiche, Routen und Jobs nehmen k.config oder einen Parameter');
+  assert.ok(readsOnly.length <= LIMIT, `${readsOnly.length} Dateien lesen config(), erlaubt sind ${LIMIT}`);
+  if (readsOnly.length < LIMIT)
+    console.log(`  ℹ config()-Leser: ${readsOnly.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
 /** Areas bind without names and proxy; AsyncLocalStorage only in the call frame. */
@@ -454,9 +454,9 @@ test('direct clock calls in domain areas become fewer, never more', () => {
   const LIMIT = 20;
   const CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(CLOCK)?.length, 2, 'Selbstbeweis');
-  const fach = (/** @type {string} */ f) =>
+  const domainArea = (/** @type {string} */ f) =>
     /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
-  const ist = zaehle([CLOCK], fach);
+  const ist = zaehle([CLOCK], domainArea);
   assert.ok(ist <= LIMIT, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -675,7 +675,7 @@ function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boo
   const fuehrt = new Set(),
     liest = new Set();
   /** @type {{ names: string[], text: string }[]} */
-  const dekl = [];
+  const decl = [];
   for (const a of instructions(s)) {
     const names = declaredNames(a);
     if (!names.length) continue;
@@ -688,16 +688,16 @@ function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boo
         else if (help[1] === 'sources') liest.add(n);
       continue;
     }
-    dekl.push({ names, text });
+    decl.push({ names, text });
   }
-  const nennt = (/** @type {string} */ t, /** @type {Set<string>} */ m) =>
+  const mentions = (/** @type {string} */ t, /** @type {Set<string>} */ m) =>
     [...m].some(n => new RegExp(`\\b${n}\\b`).test(t));
   for (let neu = true; neu; ) {
     neu = false;
-    for (const { names, text } of dekl)
+    for (const { names, text } of decl)
       for (const n of names) {
-        if (!fuehrt.has(n) && (FALL_LEADS_FROM.test(text) || nennt(text, fuehrt))) neu = !!fuehrt.add(n);
-        if (!liest.has(n) && (FALL_READS.test(text) || nennt(text, liest))) neu = !!liest.add(n);
+        if (!fuehrt.has(n) && (FALL_LEADS_FROM.test(text) || mentions(text, fuehrt))) neu = !!fuehrt.add(n);
+        if (!liest.has(n) && (FALL_READS.test(text) || mentions(text, liest))) neu = !!liest.add(n);
       }
   }
   const z = s.split('\n');
@@ -715,8 +715,8 @@ function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boo
     const fall = z.slice(i, j).join('\n');
     alle++;
     const helpers = [...fall.matchAll(new RegExp(HELP.source, 'g'))].map(m => m[1]);
-    const ausf = FALL_LEADS_FROM.test(fall) || nennt(fall, fuehrt) || helpers.some(h => helper.get(h));
-    if (!ausf && (FALL_READS.test(fall) || nennt(fall, liest))) {
+    const ausf = FALL_LEADS_FROM.test(fall) || mentions(fall, fuehrt) || helpers.some(h => helper.get(h));
+    if (!ausf && (FALL_READS.test(fall) || mentions(fall, liest))) {
       n++;
       faelle.push(z[i].trim());
     }
@@ -881,10 +881,10 @@ test('web tests do not read Android source code', () => {
     ...fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n)),
   ];
   assert.ok(dateien.length > 500, `nur ${dateien.length} Dateien — greift die Suche noch?`);
-  const lesend = dateien.filter(n => READS_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
+  const readsOnly = dateien.filter(n => READS_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
   assert.ok(
-    lesend.length <= LIMIT,
-    `${lesend.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${LIMIT}: ${lesend.join(', ')}. ` +
+    readsOnly.length <= LIMIT,
+    `${readsOnly.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${LIMIT}: ${readsOnly.join(', ')}. ` +
       'Den Server gegen shared/app-schnittstelle.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
   );
 });
@@ -897,7 +897,7 @@ test('web tests do not read Android source code', () => {
 function fixedWaitTimes(/** @type {string} */ text) {
   const q = require('./helpers/sources');
   const s = q
-    .kompakt(q.ohneKommentare(text))
+    .compact(q.ohneKommentare(text))
     .replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`/g, m => m[0] + '_'.repeat(m.length - 2) + m[0]);
   /** Opening bracket for the closing one at `zu`. */
   const auf = (/** @type {number} */ zu) => {
@@ -906,11 +906,11 @@ function fixedWaitTimes(/** @type {string} */ text) {
       else if (s[j] === '(' && --t === 0) return j;
     return 0;
   };
-  const schleifenkopf = (/** @type {string} */ ago) =>
+  const loopHead = (/** @type {string} */ ago) =>
     ago.endsWith(')') && /\b(for|while)\s*$/.test(s.slice(0, auf(ago.length - 1)));
   /** Does `i` stand in a bracket, a loop body or behind a loop head? */
   const inLoop = (/** @type {number} */ i) => {
-    if (schleifenkopf(s.slice(0, i).trimEnd())) return true;
+    if (loopHead(s.slice(0, i).trimEnd())) return true;
     for (let j = i - 1, depth = 0; j >= 0; j--) {
       const c = s[j];
       if (c === ')' || c === ']' || c === '}') depth++;
@@ -923,7 +923,7 @@ function fixedWaitTimes(/** @type {string} */ text) {
           continue;
         }
         const ago = s.slice(0, j).trimEnd();
-        if (/\bdo$/.test(ago) || schleifenkopf(ago)) return true;
+        if (/\bdo$/.test(ago) || loopHead(ago)) return true;
         if (/=>$/.test(ago) || /\bfunction\b[^;{}]*\)$/.test(ago)) return false;
       }
     }
@@ -996,14 +996,14 @@ test('no reference to “Nachtrag N” under Web-App/', () => {
   // docs/, CHANGELOG* and db/ (applied migrations must not change).
   // Counter-checks: an addendum number in src/account/deviceToken.ts → red; the same in
   // test/tab-layout.test.js and in public/index.html → red (05.11.2026).
-  const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
+  const OUT = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];
   let dateien = 0;
   (function lauf(d) {
     for (const n of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, n.name);
       if (n.isDirectory()) {
-        if (!RAUS.has(n.name)) lauf(p);
+        if (!OUT.has(n.name)) lauf(p);
         continue;
       }
       if (
@@ -1071,7 +1071,7 @@ function oberflaeche() {
 
 // Type annotations in JSDoc (@param, @type …) and pure delimiters (/**, */) are
 // code for tsc, not narration; they count neither as a comment nor as a line.
-const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
+const TYPE_LINE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('the comment share of the UI sinks, never rises', () => {
   // Counted without type lines, in Biome format.
@@ -1082,7 +1082,7 @@ test('the comment share of the UI sinks, never rises', () => {
   for (const f of oberflaeche()) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
       const t = z.trim();
-      if (!t || TYPZEILE.test(t)) continue;
+      if (!t || TYPE_LINE.test(t)) continue;
       zeilen++;
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) comment++;
     }
@@ -1112,7 +1112,7 @@ test('no UI comment has more than five lines of prose', () => {
   // (@param, @returns …) do not count.
   // Counter-check: a // block with six lines in dom.js → red with location.
   const lang = [];
-  let bloecke = 0;
+  let blockList = 0;
   for (const f of oberflaeche()) {
     const z = fs.readFileSync(f, 'utf8').split('\n');
     for (let i = 0; i < z.length; i++) {
@@ -1129,12 +1129,12 @@ test('no UI comment has more than five lines of prose', () => {
         prose = k < 0 ? innen : innen.slice(0, k);
       }
       if (!prose) continue;
-      bloecke++;
+      blockList++;
       if (prose.filter(l => l.trim()).length > 5) lang.push(`${path.relative(WEB, f)}:${i + 1}`);
       i = j;
     }
   }
-  assert.ok(bloecke > 300, `nur ${bloecke} Kommentarblöcke gefunden — greift die Suche noch?`);
+  assert.ok(blockList > 300, `nur ${blockList} Kommentarblöcke gefunden — greift die Suche noch?`);
   assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
 });
 
@@ -1167,21 +1167,21 @@ test('UI functions over 100 and over 80 lines become fewer, never more', () => {
   ];
   const alle = functionLengths();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
-  const ueber100 = alle.filter(x => x.zeilen > 100).map(x => x.location.replace(/:\d+ /, ' '));
+  const over100 = alle.filter(x => x.zeilen > 100).map(x => x.location.replace(/:\d+ /, ' '));
   assert.deepEqual(
-    ueber100.filter(x => !KNOWN_100.includes(x)),
+    over100.filter(x => !KNOWN_100.includes(x)),
     [],
     'Eine Funktion über 100 Zeilen: in benannte Teile zerlegen',
   );
-  if (ueber100.length < KNOWN_100.length)
-    console.log(`  ℹ Funktionen über 100 Zeilen: ${ueber100.join(', ')} — KNOWN_100 nachziehen`);
-  const ueber80 = alle.filter(x => x.zeilen > 80);
+  if (over100.length < KNOWN_100.length)
+    console.log(`  ℹ Funktionen über 100 Zeilen: ${over100.join(', ')} — KNOWN_100 nachziehen`);
+  const over80 = alle.filter(x => x.zeilen > 80);
   assert.ok(
-    ueber80.length <= LIMIT_80,
-    `${ueber80.length} Funktionen über 80 Zeilen, erlaubt sind ${LIMIT_80}:\n${ueber80.map(x => x.location).join('\n')}`,
+    over80.length <= LIMIT_80,
+    `${over80.length} Funktionen über 80 Zeilen, erlaubt sind ${LIMIT_80}:\n${over80.map(x => x.location).join('\n')}`,
   );
-  if (ueber80.length < LIMIT_80)
-    console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${LIMIT_80}) — Schranke nachziehen`);
+  if (over80.length < LIMIT_80)
+    console.log(`  ℹ Funktionen über 80 Zeilen: ${over80.length} (Schranke ${LIMIT_80}) — Schranke nachziehen`);
 });
 
 /** Code lines of the UI modules (public/js/NN-*.js) without comment lines, with location. */
@@ -1240,7 +1240,7 @@ test('rawHtml() becomes fewer, never more; no template with ${…} and no .join(
     'Selbstbeweis',
   );
   const js = path.join(WEB, 'public', 'js');
-  const argumente = fs
+  const argList = fs
     .readdirSync(js)
     .filter(n => isAppModule(n))
     .flatMap(f =>
@@ -1248,17 +1248,17 @@ test('rawHtml() becomes fewer, never more; no template with ${…} and no .join(
         a => ({ f, a }),
       ),
     );
-  const ist = argumente.length;
+  const ist = argList.length;
   assert.ok(ist > 0, 'kein rawHtml() gefunden — greift die Suche noch?');
-  const vorlage = argumente.filter(x => /^\s*`[^`]*\$\{/.test(x.a));
+  const vorlage = argList.filter(x => /^\s*`[^`]*\$\{/.test(x.a));
   assert.deepEqual(
     vorlage.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
     [],
     'rawHtml() mit Template und ${…}: html`` nehmen',
   );
-  const verbunden = argumente.filter(x => /\.join\(/.test(x.a));
+  const connected = argList.filter(x => /\.join\(/.test(x.a));
   assert.deepEqual(
-    verbunden.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
+    connected.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
     [],
     'rawHtml(… .join()): joinHtml() nehmen',
   );
@@ -1276,14 +1276,14 @@ test('no UI file over 1000 lines, the big ones become smaller', () => {
     n: fs.readFileSync(f, 'utf8').split('\n').length,
   }));
   assert.ok(lengths.length > 40, `nur ${lengths.length} Dateien gefunden — greift die Suche noch?`);
-  const ueber1000 = lengths.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
-  assert.deepEqual(ueber1000, [], 'Eine Datei über 1000 Zeilen: nach Themen teilen');
+  const over1000 = lengths.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
+  assert.deepEqual(over1000, [], 'Eine Datei über 1000 Zeilen: nach Themen teilen');
   const largest = Math.max(...lengths.map(x => x.n));
-  const ueber600 = lengths.filter(x => x.n > 600).length;
+  const over600 = lengths.filter(x => x.n > 600).length;
   assert.ok(largest <= LIMIT_LARGEST, `grösste Datei ${largest} Zeilen, erlaubt sind ${LIMIT_LARGEST}`);
-  assert.ok(ueber600 <= LIMIT_VIA_600, `${ueber600} Dateien über 600 Zeilen, erlaubt sind ${LIMIT_VIA_600}`);
-  if (largest < LIMIT_LARGEST || ueber600 < LIMIT_VIA_600)
-    console.log(`  ℹ Dateigrösse Oberfläche: grösste ${largest}, über 600: ${ueber600} — Schranke nachziehen`);
+  assert.ok(over600 <= LIMIT_VIA_600, `${over600} Dateien über 600 Zeilen, erlaubt sind ${LIMIT_VIA_600}`);
+  if (largest < LIMIT_LARGEST || over600 < LIMIT_VIA_600)
+    console.log(`  ℹ Dateigrösse Oberfläche: grösste ${largest}, über 600: ${over600} — Schranke nachziehen`);
 });
 
 /** Top-level functions including arrow functions on const; it ends before the next line
@@ -1327,13 +1327,13 @@ test('server functions over 80/150 lines become fewer, never more', () => {
   const noFactory = x => !/ build\w*Router$/.test(x.location);
   const oben = topLevelLengths(dateien).filter(noFactory);
   assert.ok(oben.length > 1500, `nur ${oben.length} Top-Level-Funktionen gefunden — greift die Suche noch?`);
-  const ab100 = oben.filter(x => x.zeilen >= 100).map(x => x.location);
+  const from100 = oben.filter(x => x.zeilen >= 100).map(x => x.location);
   assert.deepEqual(
-    ab100.filter(x => !KNOWN_100.includes(x)),
+    from100.filter(x => !KNOWN_100.includes(x)),
     [],
     'ab 100 Zeilen: in benannte Teile zerlegen',
   );
-  if (ab100.length < KNOWN_100.length) console.log(`  ℹ ab 100 Zeilen: ${ab100.join(', ')} — KNOWN_100 nachziehen`);
+  if (from100.length < KNOWN_100.length) console.log(`  ℹ ab 100 Zeilen: ${from100.join(', ')} — KNOWN_100 nachziehen`);
   const alle = functionLengths(dateien).filter(noFactory);
   assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber = n => alle.filter(x => x.zeilen > n);
@@ -1653,7 +1653,7 @@ test('German identifiers become fewer, never more (server and tests separately; 
     test: files(__dirname),
   };
   // Distinct names per area; the goal for "server" is 0.
-  const LIMITS = { server: 530, test: 1331 };
+  const LIMITS = { server: 530, test: 980 };
   for (const [area, list] of Object.entries(AREAS)) {
     const found = new Set();
     for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);

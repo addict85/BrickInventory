@@ -23,12 +23,12 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
+const { contractRouter: contractRouterFn } = _req('src/http/contractRouter.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
 test('checked input and query', { concurrency: 1 }, async t => {
   let aufrufe = 0;
-  const router = vertragsRouter('/api/v2');
+  const router = contractRouterFn('/api/v2');
   // Past res.json: the response check (test mode) applies to the real body.
   const zeige = (req, res) => {
     aufrufe++;
@@ -86,12 +86,12 @@ test('checked input and query', { concurrency: 1 }, async t => {
 
 test('every input and query is closed', () => {
   // Exceptions: key-value lists whose keys the route checks itself.
-  const OFFEN = ['PUT /api/v2/settings'];
+  const OPEN = ['PUT /api/v2/settings'];
   const open = [];
   for (const [k, r] of Object.entries(CONTRACT)) {
     for (const s of [r.input, r.query].filter(Boolean)) {
       const def = s._zod.def;
-      if (def.type === 'object' ? def.catchall?._zod.def.type !== 'never' : !OFFEN.includes(k)) open.push(k);
+      if (def.type === 'object' ? def.catchall?._zod.def.type !== 'never' : !OPEN.includes(k)) open.push(k);
     }
   }
   assert.deepEqual(open, []);

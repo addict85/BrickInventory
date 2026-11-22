@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { idempotency } = _req('src/idempotency/http/middleware.js');
-const dienst = _req('src/idempotency/service.js');
+const serviceFn = _req('src/idempotency/service.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
 
@@ -85,7 +85,7 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
     db.run(
       `UPDATE idempotency SET created_at = NOW() - make_interval(secs => $3)
                                   WHERE user_id = $1 AND key = $2`,
-      [uid, k, dienst.ORPHANED_AFTER_S + 1],
+      [uid, k, serviceFn.ORPHANED_AFTER_S + 1],
     );
   const fertig = async k => {
     for (let i = 0; i < 50; i++) {

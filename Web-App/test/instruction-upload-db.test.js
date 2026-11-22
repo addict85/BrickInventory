@@ -68,7 +68,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const hochladen = async (inhalt, typ, name, set = SET) => {
+  const uploadIt = async (inhalt, typ, name, set = SET) => {
     const form = new FormData();
     form.append('file', new Blob([inhalt], { type: typ }), name);
     const r = await fetch(`${base}/api/v2/sets/${set}/instructions/upload`, { method: 'POST', body: form });
@@ -77,14 +77,14 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner) : []);
 
   await t.test('a real PDF', async () => {
-    const r = await hochladen(PDF, 'application/pdf', 'anleitung.pdf');
+    const r = await uploadIt(PDF, 'application/pdf', 'anleitung.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(dateien().length, 1);
   });
 
   await t.test('readable only by the service, even in an older folder', async () => {
     for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
-    const r = await hochladen(PDF, 'application/pdf', 'zweite.pdf');
+    const r = await uploadIt(PDF, 'application/pdf', 'zweite.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const rechte = p => (fs.statSync(p).mode & 0o777).toString(8);
     const datei = path.join(ordner, path.basename(r.body.instruction.url));
@@ -93,7 +93,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   await t.test('a text as a PDF', async () => {
-    const r = await hochladen(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
+    const r = await uploadIt(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
     assert.equal(r.status, 400, JSON.stringify(r.body));
     assert.equal(r.body.code, 'file_content_wrong');
     assert.equal(dateien().length, 1, 'die abgewiesene Datei liegt noch im Ordner');
@@ -101,15 +101,15 @@ test('upload an instruction', { concurrency: 1 }, async t => {
 
   await t.test('a PNG with a JPEG type', async () => {
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
-    assert.equal((await hochladen(png, 'image/jpeg', 'bild.jpg')).status, 400);
-    assert.equal((await hochladen(png, 'image/png', 'bild.png')).status, 200);
+    assert.equal((await uploadIt(png, 'image/jpeg', 'bild.jpg')).status, 400);
+    assert.equal((await uploadIt(png, 'image/png', 'bild.png')).status, 200);
   });
 
   await t.test('above the quota', async () => {
     environment({ UPLOAD_QUOTA_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
-    const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
+    const r = await uploadIt(gross, 'application/pdf', 'gross.pdf');
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_quota_full');
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
@@ -119,7 +119,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     environment({ UPLOAD_QUOTA_MB: '1000', UPLOAD_TOTAL_MB: String(1 / 1024) }); // together 1 KB
     st.after(() => environment({ UPLOAD_TOTAL_MB: undefined }));
     const vorher = dateien().length;
-    const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
+    const r = await uploadIt(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
     assert.deepEqual([r.status, r.body.code], [507, 'upload_total_full'], JSON.stringify(r.body));
     assert.match(r.body.error, /alle Konten|all accounts/);
     assert.equal(dateien().length, vorher);
@@ -148,7 +148,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     assert.equal(upfront, 507);
     // Without a limit (default 20 GB) the same passes.
     environment({ UPLOAD_TOTAL_MB: undefined });
-    assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
+    assert.equal((await uploadIt(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
   await t.test('rejected before the content arrives', async () => {
@@ -182,7 +182,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   await t.test('for a set the account does not have', async () => {
     environment({ UPLOAD_QUOTA_MB: undefined });
     const vorher = dateien().length;
-    const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
+    const r = await uploadIt(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));
     assert.equal(dateien().length, vorher, 'die Datei zum fremden Set liegt noch im Ordner');
   });

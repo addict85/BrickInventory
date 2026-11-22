@@ -78,13 +78,13 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     });
     const { proxyHintStatus } = _req('src/http/proxyHint.js');
     assert.equal(proxyHintStatus(echt), null);
-    const leise = console.warn;
+    const quiet = console.warn;
     console.warn = () => {};
     try {
       const req = { socket: { remoteAddress: '172.28.73.30' }, headers: { 'x-forwarded-for': '198.51.100.4' } };
       echt.locals.proxyHint(req, {}, () => {});
     } finally {
-      console.warn = leise;
+      console.warn = quiet;
     }
     assert.deepEqual(proxyHintStatus(echt), { kind: 'docker_network', vars: { ip: '172.28.73.30' } });
   });

@@ -11,8 +11,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
-const { buildTestbuendel } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestbuendel(
+const { buildTestBundle } = require('./helpers/bundle');
+process.env.TEST_BUENDEL = buildTestBundle(
   'geldformat',
   "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
 );

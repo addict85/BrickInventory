@@ -9,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet, quantityOf, haltRow, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -51,7 +51,7 @@ async function dbReachable() {
 test('wishlist against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -116,8 +116,8 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // in the key just the same.
     const b = await W.addWantedItem(U.grandparent, '75192-1', 'U');
     assert.equal(b.was_new, true, 'Der gebrauchte Merkposten hat den neuen überschrieben');
-    const beide = (await W.wantedItemsOf([U.grandparent], '75192-1')).map(w => w.condition).sort();
-    assert.deepEqual(beide, ['N', 'U']);
+    const bothOnes = (await W.wantedItemsOf([U.grandparent], '75192-1')).map(w => w.condition).sort();
+    assert.deepEqual(bothOnes, ['N', 'U']);
   });
 
   await t.test('adding the same wishlist item twice is not a second entry', async () => {
@@ -307,18 +307,18 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     const fs = require('node:fs');
     const path = require('node:path');
     const IQ = _req('src/images/imageDemandRun.js');
-    const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
+    const FOLDER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
     // TWO set numbers, and that is no coincidence: imageIfPresent() remembers
     // a „does not exist" for ten minutes (src/images/images.ts). Checking the same number
     // first without and then with a file would check the cache instead of the rule.
     const withoutFile = `wlimg${process.pid}a-1`;
     const withFile = `wlimg${process.pid}b-1`;
-    const datei = path.join(ORDNER, `${withFile}.jpg`);
+    const datei = path.join(FOLDER, `${withFile}.jpg`);
     // The file BEFORE creating the wishlist item: addWantedItem() reads the list
     // itself once more, and this look would hold on to the „does not exist" for the
     // next ten minutes.
-    fs.mkdirSync(ORDNER, { recursive: true });
+    fs.mkdirSync(FOLDER, { recursive: true });
     fs.writeFileSync(datei, 'x');
     for (const sn of [withoutFile, withFile]) {
       await db.run(

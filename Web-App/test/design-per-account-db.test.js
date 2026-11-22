@@ -53,7 +53,7 @@ test('theme per account', { concurrency: 1 }, async t => {
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
   const hole = async (path, o = {}) => (await fetch(base + '/api/v2/settings' + path, o)).json();
-  const setze = theme =>
+  const put = theme =>
     hole('/user/theme', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,7 +71,7 @@ test('theme per account', { concurrency: 1 }, async t => {
 
   await t.test('account with its own theme, the other follows the default', async () => {
     als(ids[0]);
-    const r = await setze('werkbank');
+    const r = await put('werkbank');
     assert.equal(r.success, true, JSON.stringify(r));
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'werkbank', preset: 'noppe', own: 'werkbank' });
     assert.equal(
@@ -94,7 +94,7 @@ test('theme per account', { concurrency: 1 }, async t => {
 
   await t.test('unknown theme rejected', async () => {
     als(ids[0]);
-    const r = await setze('<b>');
+    const r = await put('<b>');
     assert.equal(r.success, false);
     assert.equal((await hole('/theme')).theme, 'werkbank');
   });
@@ -109,7 +109,7 @@ test('theme per account', { concurrency: 1 }, async t => {
 
   await t.test('empty means default — even after a change by the admin', async () => {
     als(ids[0]);
-    assert.equal((await setze('')).success, true);
+    assert.equal((await put('')).success, true);
     await setGlobalSetting('app_theme', 'brick');
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'brick', preset: 'brick', own: null });
     assert.equal((await hole('/raw')).settings.app_theme, 'brick');

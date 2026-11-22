@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -99,7 +99,7 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -306,7 +306,7 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 

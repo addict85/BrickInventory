@@ -103,8 +103,8 @@ test('server limits: slow requests, error texts, foreign hosts', {
     ).id;
   const alice = await put(namen[0], true),
     bob = await put(namen[1], true);
-  const MAILTOKEN = crypto.randomBytes(32).toString('hex');
-  const unconfirmed = await put(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
+  const MAIL_TOKEN = crypto.randomBytes(32).toString('hex');
+  const unconfirmed = await put(namen[2], false, crypto.createHash('sha256').update(MAIL_TOKEN).digest('hex'));
   // Like POST /register since round 13: address and link only pending.
   await db.run(
     `UPDATE users SET new_email = email, new_email_token = verification_token, new_email_until = token_expires,
@@ -200,9 +200,9 @@ test('server limits: slow requests, error texts, foreign hosts', {
   });
 
   await t.test('4xx name no library text, own sentences stay', async () => {
-    const prozent = await fetch(`${basis}/%`);
-    const p = await prozent.json();
-    assert.equal(prozent.status, 400);
+    const percentValue = await fetch(`${basis}/%`);
+    const p = await percentValue.json();
+    assert.equal(percentValue.status, 400);
     assert.equal(p.code, 'request_invalid', `GET /% → ${JSON.stringify(p)}`);
     const gzip = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
@@ -230,7 +230,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
         [alice],
       )
     ).id;
-    const umhaengen = async id => {
+    const reassign = async id => {
       const r = await als(keksB)(`/api/v2/sets/10294-1/acquisitions/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ owner_user_id: bob }),
@@ -239,8 +239,8 @@ test('server limits: slow requests, error texts, foreign hosts', {
       const { request_id: _rid, ...body } = await r.json();
       return [r.status, body];
     };
-    const fremd = await umhaengen(acq),
-      fehlt = await umhaengen(2_000_000_000);
+    const fremd = await reassign(acq),
+      fehlt = await reassign(2_000_000_000);
     assert.deepEqual(fremd, fehlt);
     assert.equal(fremd[0], 404);
     assert.equal(fremd[1].code, 'purchase_price_not_found');
@@ -277,9 +277,9 @@ test('server limits: slow requests, error texts, foreign hosts', {
   await t.test('the link alone confirms nothing, only the POST', async () => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
     // A link from an older mail (?token=) becomes a fragment before the page loads.
-    const alt = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });
+    const alt = await fetch(`${basis}/verify?token=${MAIL_TOKEN}`, { redirect: 'manual' });
     assert.equal(alt.status, 303, 'ein alter Link mit ?token= wird umgeleitet');
-    assert.equal(alt.headers.get('location'), `/verify#token=${MAILTOKEN}`);
+    assert.equal(alt.headers.get('location'), `/verify#token=${MAIL_TOKEN}`);
     assert.equal(alt.headers.get('cache-control'), 'no-store');
     const seite = await fetch(`${basis}/verify`, { redirect: 'manual' });
     assert.equal(seite.status, 200);
@@ -296,8 +296,8 @@ test('server limits: slow requests, error texts, foreign hosts', {
         body: JSON.stringify({ token }),
       }).then(async r => [r.status, await r.json()]);
     assert.deepEqual((await confirm('falsch'))[1].code, 'confirmation_link_invalid');
-    assert.deepEqual(await confirm(MAILTOKEN), [200, { success: true }]);
+    assert.deepEqual(await confirm(MAIL_TOKEN), [200, { success: true }]);
     assert.equal(await state(), true);
-    assert.equal((await confirm(MAILTOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
+    assert.equal((await confirm(MAIL_TOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
   });
 });

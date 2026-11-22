@@ -25,10 +25,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
+const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const AUTH = einhaengung('auth');
+const AUTH = mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -57,7 +57,7 @@ test('create account', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEU]]);
     await db.pool.end().catch(() => {});
   });
-  const ruf = async (weg, body, cookie) => {
+  const callFn = async (weg, body, cookie) => {
     const r = await fetch(basis + weg, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
@@ -65,19 +65,19 @@ test('create account', { concurrency: 1 }, async t => {
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, without_token: true });
+  const a = await callFn(AUTH + '/login', { username: CHEF, password: PASS, without_token: true });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const cookie = a.cookie.split(';')[0];
   const konto = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
 
   await t.test('no account without admin password', async () => {
-    const r = await ruf(AUTH + '/users', { username: NEU[0], password: 'einPasswort123' }, cookie);
+    const r = await callFn(AUTH + '/users', { username: NEU[0], password: 'einPasswort123' }, cookie);
     assert.notEqual(r.status, 200);
     assert.equal(await konto(NEU[0]), undefined);
   });
 
   await t.test('"false" creates no admin', async () => {
-    const r = await ruf(
+    const r = await callFn(
       AUTH + '/users',
       { username: NEU[1], password: 'einPasswort123', isAdmin: 'false', admin_password: PASS },
       cookie,
@@ -87,7 +87,7 @@ test('create account', { concurrency: 1 }, async t => {
   });
 
   await t.test('the web UI creates an admin with is_admin, and the log records both', async () => {
-    const r = await ruf(
+    const r = await callFn(
       AUTH + '/users',
       { username: NEU[2], password: 'einPasswort123', is_admin: true, admin_password: PASS },
       cookie,
@@ -102,7 +102,7 @@ test('create account', { concurrency: 1 }, async t => {
   });
 
   await t.test('a name in a different spelling is taken', async () => {
-    const r = await ruf(
+    const r = await callFn(
       AUTH + '/users',
       { username: NEU[1].toUpperCase(), password: 'einPasswort123', admin_password: PASS },
       cookie,
@@ -141,20 +141,20 @@ test('create account', { concurrency: 1 }, async t => {
   });
 
   await t.test('if a name matches two accounts, nobody logs in', async st => {
-    const altname = `alt_${process.pid}@example.org`;
-    await db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]);
-    st.after(() => db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]));
+    const oldName = `alt_${process.pid}@example.org`;
+    await db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [oldName]);
+    st.after(() => db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [oldName]));
     const h = await bcrypt.hash(PASS, 4);
     // Legacy stock: a name with @ (forbidden today) equal to the address of another account.
     await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)', [
-      altname,
+      oldName,
       h,
     ]);
     await db.run(
       'INSERT INTO users (username,email,password_hash,is_active,email_verified) VALUES ($1,$2,$3,true,true)',
-      [`alt2_${process.pid}`, altname, h],
+      [`alt2_${process.pid}`, oldName, h],
     );
-    const r = await ruf(AUTH + '/login', { username: altname, password: PASS });
+    const r = await callFn(AUTH + '/login', { username: oldName, password: PASS });
     assert.equal(r.status, 401, JSON.stringify(r.body));
   });
 });

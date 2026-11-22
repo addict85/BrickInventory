@@ -11,14 +11,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet } = require('./helpers/inventory');
 
 /**
  * All columns that carry money.
  */
-const GELDSPALTEN = `
+const MONEY_COLUMNS = `
   SELECT table_name || '.' || column_name AS spalte, data_type
     FROM information_schema.columns
    WHERE table_schema = 'public'
@@ -31,7 +31,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -46,7 +46,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
   }
 
   await t.test('a new installation has no money column as REAL', async () => {
-    const spalten = await db.all(GELDSPALTEN);
+    const spalten = await db.all(MONEY_COLUMNS);
     assert.ok(spalten.length > 15, `nur ${spalten.length} Geldspalten gefunden — die Prüfung liefe ins Leere`);
     const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
     assert.deepEqual(
