@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.collection
 
 import ch.brickinventoryapp.contract.AddSetResponse
-import ch.brickinventoryapp.contract.LagerortRequest
-import ch.brickinventoryapp.contract.MengeGeaendert
 import ch.brickinventoryapp.contract.MoveSetRequest
+import ch.brickinventoryapp.contract.QuantityChanged
+import ch.brickinventoryapp.contract.StorageRequest
 import ch.brickinventoryapp.contract.UpdateQuantityRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
@@ -65,7 +65,7 @@ internal class SetsRepositoryImpl @Inject constructor(
 
     /** Change the quantity by [step]; the server computes under the stock lock. */
     override suspend fun changeQuantityBy(setNumber: String, step: Int): Outcome<Int?> =
-        store.write(Editing.SetQuantity(setNumber, step), { MengeGeaendert(success = true) }) { key ->
+        store.write(Editing.SetQuantity(setNumber, step), { QuantityChanged(success = true) }) { key ->
             safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = step), key) }
         }.promised({ it.success }) { it.quantity }
 
@@ -91,6 +91,6 @@ internal class SetsRepositoryImpl @Inject constructor(
 
     override suspend fun setSetStorage(setNumber: String, location: String): Outcome<Unit> =
         store.caughtUp({ r -> FollowUp.SetLocation(setNumber, r.storage).takeIf { r.success } }) {
-            safeCall { api.setSetStorage(setNumber, LagerortRequest(storage = location)) }
+            safeCall { api.setSetStorage(setNumber, StorageRequest(storage = location)) }
         }.promised({ it.success }) { }
 }

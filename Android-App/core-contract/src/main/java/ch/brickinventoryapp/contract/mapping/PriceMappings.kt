@@ -3,7 +3,6 @@ package ch.brickinventoryapp.contract.mapping
 import ch.brickinventoryapp.contract.ConditionValuation
 import ch.brickinventoryapp.contract.CurrentByCondition
 import ch.brickinventoryapp.contract.CurrentPrice
-import ch.brickinventoryapp.contract.MerkpostenPreiseResponse
 import ch.brickinventoryapp.contract.PriceByCondition
 import ch.brickinventoryapp.contract.PriceChartData
 import ch.brickinventoryapp.contract.PriceChartPoint
@@ -11,6 +10,7 @@ import ch.brickinventoryapp.contract.PriceChartSeries
 import ch.brickinventoryapp.contract.PriceHistoryPoint
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetPriceResponse
+import ch.brickinventoryapp.contract.WantedItemPricesResponse
 import ch.brickinventoryapp.model.domain.CurrentPerStateView
 import ch.brickinventoryapp.model.domain.CurrentPriceView
 import ch.brickinventoryapp.model.domain.PriceChartView
@@ -59,7 +59,7 @@ fun PriceHistoryResponse.asView() = PriceHistoryView(
     byCondition = byCondition.asView(),
     chart = chart.asView(),
     pnlPct = pnlPct,
-    pnlPercent = pnlProzent,
+    pnlPercent = pnlPercent,
     purchasePrice = purchasePrice.asMoney(),
 )
 
@@ -86,7 +86,7 @@ fun CurrentByCondition.asView() = CurrentPerStateView(
     used = used?.asView(),
 )
 
-fun MerkpostenPreiseResponse.asView() = WantedItemPricesView(
+fun WantedItemPricesResponse.asView() = WantedItemPricesView(
     currency = currency,
     current = current.asView(),
 )

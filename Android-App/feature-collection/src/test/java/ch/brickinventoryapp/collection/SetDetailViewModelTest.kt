@@ -73,12 +73,12 @@ class SetDetailViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
         paths = PathServer(
-            "/api/v1/sets/75192-1" to """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":2}}""",
-            "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1"}""",
-            "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1"}""",
-            "/api/v1/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":1,"quantity":2}]}""",
-            "/api/v1/alerts" to """{"success":true,"alerts":[]}""",
-            "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"unter","threshold":450.0}}""",
+            "/api/v2/sets/75192-1" to """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":2}}""",
+            "/api/v2/sets/75192-1/price" to """{"success":true,"set_number":"75192-1"}""",
+            "/api/v2/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1"}""",
+            "/api/v2/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":1,"quantity":2}]}""",
+            "/api/v2/alerts" to """{"success":true,"alerts":[]}""",
+            "/api/v2/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"below","threshold":450.0}}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -95,7 +95,7 @@ class SetDetailViewModelTest {
      * number, otherwise it overwrites the 3 before the test sees it.
      */
     private fun serverHasThreeAfterwards() {
-        paths.responses["/api/v1/sets/75192-1"] =
+        paths.responses["/api/v2/sets/75192-1"] =
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":3}}"""
     }
 
@@ -107,7 +107,7 @@ class SetDetailViewModelTest {
         assertEquals("75192-1", vm.setNumber)
         loaded(vm)
         // The alerts arrive in the store via the account overview, not per set.
-        assertTrue("all five fetches", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> paths.requests.any { p.removeSuffix("?") in it } })
+        assertTrue("all five fetches", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v2/alerts").all { p -> paths.requests.any { p.removeSuffix("?") in it } })
         assertEquals("Falke", vm.setDetailState.value.setDetail?.name)
     }
 
@@ -123,7 +123,7 @@ class SetDetailViewModelTest {
         assertTrue("quantity there", vm.setDetailState.value.setDetail?.quantity == 3)
         val stored = runBlocking { t.sets().observeSets().first().list.single() }
         assertEquals("the gallery reads the same number from the store", 3, stored.quantity)
-        assertTrue(paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty())
+        assertTrue(paths.requestsTo("PUT /api/v2/sets/75192-1").isNotEmpty())
     }
 
     @Test
@@ -132,8 +132,8 @@ class SetDetailViewModelTest {
         loaded(vm)
         serverHasThreeAfterwards()
         vm.changeQuantityBy("75192-1", -1)
-        assertTrue("PUT sent", paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty())
-        val i = paths.requests.indexOfFirst { "PUT /api/v1/sets/75192-1" in it }
+        assertTrue("PUT sent", paths.requestsTo("PUT /api/v2/sets/75192-1").isNotEmpty())
+        val i = paths.requests.indexOfFirst { "PUT /api/v2/sets/75192-1" in it }
         val body = paths.bodyBytes[i]
         assertTrue(body, "\"quantity_delta\":-1" in body)
         assertTrue(body, "\"quantity\":" !in body)
@@ -145,16 +145,16 @@ class SetDetailViewModelTest {
         runBlocking { t.store.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1")).map { it.asView() }) }
         val vm = vm()
         loaded(vm)
-        val before = paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size
+        val before = paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size
 
         // This is how HouseholdRepository writes the server's summary into the store.
         runBlocking { t.store.applyChange(FollowUp.SetSummary(SetTotals(setNumber = "10294-1", condition = Condition.USED, states = listOf(Condition.USED), used = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
-        assertEquals(before, paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size)
+        assertEquals(before, paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size)
 
         runBlocking { t.store.applyChange(FollowUp.SetSummary(SetTotals(setNumber = "75192-1", condition = Condition.USED, states = listOf(Condition.USED), used = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
-        assertTrue("reloaded", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size > before)
     }
 
     @Test
@@ -162,21 +162,21 @@ class SetDetailViewModelTest {
         val vm = vm()
         loaded(vm)
         assertTrue(vm.setDetailState.value.priceAlarms.isEmpty())
-        val before = paths.requestsTo("GET /api/v1/alerts").size
+        val before = paths.requestsTo("GET /api/v2/alerts").size
         vm.setPriceAlert("75192-1", AlarmDirection.BELOW, "450", Condition.NEW)
-        paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","direction":"unter","threshold":450.0}]}"""
+        paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","direction":"below","threshold":450.0}]}"""
         clock.advanceTimeBy(900)
-        assertEquals(1, paths.requestsTo("PUT /api/v1/sets/75192-1/alert").size)
+        assertEquals(1, paths.requestsTo("PUT /api/v2/sets/75192-1/alert").size)
         // The state reads the store only when loading: without a reload it would stay empty.
-        assertTrue("reloaded", paths.requestsTo("GET /api/v1/alerts").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v2/alerts").size > before)
         assertEquals(listOf(Money.from(450.0)), vm.setDetailState.value.priceAlarms.map { it.threshold })
     }
 
-    private fun priceFetches() = paths.requests.count { Regex("""^GET /api/v1/sets/75192-1/price(\?|$)""").containsMatchIn(it) }
+    private fun priceFetches() = paths.requests.count { Regex("""^GET /api/v2/sets/75192-1/price(\?|$)""").containsMatchIn(it) }
 
     @Test
     fun `a new fetch cancels the running one of the same section`() {
-        paths.missing += "/api/v1/sets/75192-1/price"
+        paths.missing += "/api/v2/sets/75192-1/price"
         val vm = vm()
         vm.refresh()
         paths.release()
@@ -188,8 +188,8 @@ class SetDetailViewModelTest {
 
     @Test
     fun `if price and history fail, the error is in the state until a new fetch succeeds`() {
-        paths.codes["/api/v1/sets/75192-1/price"] = 500
-        paths.codes["/api/v1/sets/75192-1/price-history"] = 500
+        paths.codes["/api/v2/sets/75192-1/price"] = 500
+        paths.codes["/api/v2/sets/75192-1/price-history"] = 500
         val vm = vm()
         loaded(vm)
         assertTrue(vm.setDetailState.value.priceFetch is Load.Failure)

@@ -69,7 +69,7 @@ class InstructionLoaderTest {
 
     @Test
     fun `an instruction is downloaded into the cache`() {
-        val network = load("https://brick.example/api/v1/instructions/42/file")
+        val network = load("https://brick.example/api/v2/instructions/42/file")
         assertEquals(listOf("file"), network.calls)
         assertEquals(ctx.cacheDir, network.targets.single().parentFile)
     }

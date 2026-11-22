@@ -8,7 +8,7 @@ import java.math.RoundingMode
 
 /**
  * Amount and P&L of a set for the gallery tile. [source] is the server's
- * kachel_quelle ("markt"/"kauf"): without a market price it delivers the purchase price as the amount.
+ * tile_source ("market"/"purchase"): without a market price it delivers the purchase price as the amount.
  */
 data class TilePrice(val amount: Money?, val pnlPct: Double?, val source: String? = null)
 
@@ -56,12 +56,12 @@ internal fun tileAmount(set: SetView, price: TilePrice?): Money? =
 
 /**
  * Where [tileAmount] comes from. A server amount is a market price unless it
- * says "kauf"; older servers without kachel_quelle only delivered market prices. Without
+ * says "purchase"; older servers without tile_source only delivered market prices. Without
  * it, one's own purchase price stands there, without both, nothing.
  */
 internal fun tileSource(set: SetView, price: TilePrice?): TileSource? {
     val amount = price?.amount
     if (price != null && amount != null && amount.positive)
-        return if (price.source == "kauf") TileSource.PURCHASE else TileSource.MARKET
+        return if (price.source == "purchase") TileSource.PURCHASE else TileSource.MARKET
     return if (set.avgPurchasePrice != null || set.maxPurchasePrice != null) TileSource.PURCHASE else null
 }

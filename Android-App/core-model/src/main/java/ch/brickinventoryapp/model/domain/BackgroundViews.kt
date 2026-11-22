@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.model.domain
 
-/** State of a job; whatever the server newly introduces lands at UNBEKANNT instead of breaking. */
+/** State of a job; whatever the server newly introduces lands at UNKNOWN instead of breaking. */
 
 enum class JobStatus {
     OPEN, RUNNING, ERROR, CANCELLED, DONE, UNKNOWN;
 
     companion object {
         fun from(s: String) = when (s) {
-            "offen" -> OPEN; "laeuft" -> RUNNING; "fehler" -> ERROR
-            "abgebrochen" -> CANCELLED; "erledigt" -> DONE; else -> UNKNOWN
+            "pending" -> OPEN; "running" -> RUNNING; "error" -> ERROR
+            "cancelled" -> CANCELLED; "done" -> DONE; else -> UNKNOWN
         }
     }
 }

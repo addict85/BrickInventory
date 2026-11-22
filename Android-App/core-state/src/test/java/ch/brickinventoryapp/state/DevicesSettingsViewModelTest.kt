@@ -70,7 +70,7 @@ class DevicesSettingsViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        preview.write("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
+        preview.write("https://brick.example/api/v2/proxy?u=x&thumb=1", ByteArray(500) { 1 })
         vm = DevicesSettingsViewModel(store, planner, channel, preview)
         collector = CoroutineScope(Dispatchers.Main).launch {
             launch { vm.alarmMessagesEnabled.collect {} }

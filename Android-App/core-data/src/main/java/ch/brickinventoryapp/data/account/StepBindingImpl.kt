@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.account
 
-import ch.brickinventoryapp.contract.GeraeteSchluesselAnfrage
-import ch.brickinventoryapp.contract.SchrittChallengeAnfrage
-import ch.brickinventoryapp.contract.SchrittFreigabeAnfrage
+import ch.brickinventoryapp.contract.DeviceKeyRequest
+import ch.brickinventoryapp.contract.StepApprovalRequest
+import ch.brickinventoryapp.contract.StepChallengeRequest
 import ch.brickinventoryapp.data.api.DeviceApi
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.safeCall
@@ -27,14 +27,14 @@ internal class StepBindingImpl @Inject constructor(
 
     override suspend fun challenge(action: StepAction): StepResponse {
         val identifier = action.identifier ?: return StepResponse.NotBound
-        return when (val r = safeCall { api.stepChallenge(SchrittChallengeAnfrage(identifier)) }) {
-            is Outcome.Success -> StepResponse.Challenge(r.data.challenge, r.data.nachricht)
+        return when (val r = safeCall { api.stepChallenge(StepChallengeRequest(identifier)) }) {
+            is Outcome.Success -> StepResponse.Challenge(r.data.challenge, r.data.message)
             is Outcome.Failure -> StepResponse.Rejected(r.message.ifBlank { null })
         }
     }
 
     override suspend fun release(challenge: String, signature: ByteArray): StepResponse {
-        val request = SchrittFreigabeAnfrage(challenge, Base64.getEncoder().encodeToString(signature))
+        val request = StepApprovalRequest(challenge, Base64.getEncoder().encodeToString(signature))
         return when (val r = safeCall { api.stepRelease(request) }) {
             is Outcome.Success -> StepResponse.Free
             is Outcome.Failure -> StepResponse.Rejected(r.message.ifBlank { null })
@@ -48,7 +48,7 @@ internal class StepBindingImpl @Inject constructor(
 
     /** The server's sentence only on its refusal: a network error after the sign-in is not worth a message. */
     override suspend fun depositChain(chain: List<ByteArray>): StepResponse {
-        val request = GeraeteSchluesselAnfrage(kette = chain.map { Base64.getEncoder().encodeToString(it) })
+        val request = DeviceKeyRequest(chain = chain.map { Base64.getEncoder().encodeToString(it) })
         return when (val r = safeCall { api.depositChain(request) }) {
             is Outcome.Success -> StepResponse.Free
             is Outcome.Failure -> StepResponse.Rejected(if (r is Outcome.Failure.Server) r.message.ifBlank { null } else null)

@@ -25,6 +25,6 @@ internal class SetCatalogRepositoryImpl @Inject constructor(private val api: Set
         .promised({ it.success }, { it.error }) { r -> r.figs.map { it.asView() } }
 
     override suspend fun resolveBarcode(barcode: String) = safeCall { api.getBarcodeSet(barcode) }.mapData {
-        BarcodeView(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.unsicher)
+        BarcodeView(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.uncertain)
     }
 }

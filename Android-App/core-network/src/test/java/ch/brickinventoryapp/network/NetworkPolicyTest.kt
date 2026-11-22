@@ -27,8 +27,8 @@ class NetworkPolicyTest {
     @Test
     fun `same origin is recognized`() {
         val base = "https://brick.example.com"
-        assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/api/v1/sets".toHttpUrl(), base))
-        assertTrue(NetworkPolicy.isSameOrigin("https://BRICK.example.com/api/v1/sets".toHttpUrl(), base))
+        assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/api/v2/sets".toHttpUrl(), base))
+        assertTrue(NetworkPolicy.isSameOrigin("https://BRICK.example.com/api/v2/sets".toHttpUrl(), base))
         // A trailing slash in the stored URL must not change anything
         assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/x".toHttpUrl(), "$base/"))
     }
@@ -38,7 +38,7 @@ class NetworkPolicyTest {
         val base = "https://brick.example.com"
         assertFalse(
             "prefix comparison gap: attacker domain with the server URL as a prefix",
-            NetworkPolicy.isSameOrigin("https://brick.example.com.angreifer.tld/api/v1/sets".toHttpUrl(), base)
+            NetworkPolicy.isSameOrigin("https://brick.example.com.angreifer.tld/api/v2/sets".toHttpUrl(), base)
         )
         assertFalse(NetworkPolicy.isSameOrigin("https://evil.tld/brick.example.com".toHttpUrl(), base))
     }

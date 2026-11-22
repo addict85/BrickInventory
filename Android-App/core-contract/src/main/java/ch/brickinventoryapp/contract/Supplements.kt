@@ -2,7 +2,7 @@ package ch.brickinventoryapp.contract
 
 import ch.brickinventoryapp.model.domain.Condition
 
-// Identifiers and derived values for the generated types (Vertrag.kt): the generator
+// Identifiers and derived values for the generated types (Contract.kt): the generator
 // only writes fields; what the app reads from them stands once here instead of per caller.
 
 /** Only the conditions for which the server delivered a row. */
@@ -12,7 +12,7 @@ fun PriceByCondition.present(): List<Pair<Condition, ConditionValuation>> = buil
 }
 
 /** All parent accounts; an older server sends only `linked_to`. */
-val HouseholdStatusResponse.parentAccounts: List<KontoName>
+val HouseholdStatusResponse.parentAccounts: List<AccountName>
     get() = parents.ifEmpty { listOfNotNull(linkedTo) }
 
 /** Sets carry the price as `purchase_price`, parts and figures as `unit_price`. */
@@ -22,7 +22,7 @@ val Acquisition.effectivePrice: Double? get() = purchasePrice ?: unitPrice
 val SetItem.displayPurchasePrice: Double? get() = avgPurchasePrice
 
 /** Neu angelegte Zeilen eines CSV-Imports. */
-val CsvImportErgebnis.newCreated: Int get() = added
+val CsvImportResult.newCreated: Int get() = added
 
 /**
  * The server reads the price under the name of its column: `purchase_price` for sets,
@@ -50,4 +50,4 @@ fun changeForPiece(
 )
 
 /** A location in the supply as the store keeps it: [default] is the star the server sends next to the list. */
-data class StockLocation(val location: LagerortEintrag, val default: Boolean)
+data class StockLocation(val location: StorageEntry, val default: Boolean)

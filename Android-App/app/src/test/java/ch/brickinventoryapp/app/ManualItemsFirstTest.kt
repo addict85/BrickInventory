@@ -100,7 +100,7 @@ class ManualItemsFirstTest {
 
     @Test
     fun `parts - the manually added ones come before those from sets`() {
-        world.paths.responses["/api/v1/parts/manual"] =
+        world.paths.responses["/api/v2/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
         val vm = world.parts().also { it.loadParts() }
         wait("parts") { vm.partsState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
@@ -114,7 +114,7 @@ class ManualItemsFirstTest {
 
     @Test
     fun `figures - the manually added ones come before those from sets`() {
-        world.paths.responses["/api/v1/minifigs/manual"] =
+        world.paths.responses["/api/v2/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
         wait("figures") { vm.minifigsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }

@@ -305,8 +305,8 @@ class LargeFontAndTabletTest {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.World(ContextTexts())
         try {
-            world.paths.responses["/api/v1/parts/3001/5/sets"] = """{"success":true,
-                "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","total_quantity":12},
+            world.paths.responses["/api/v2/parts/3001/5/sets"] = """{"success":true,
+                "item":{"number":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","total_quantity":12},
                 "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"owner_user_id":1}]}"""
             val vm = world.parts().also { it.loadParts() }
             val images = coil3.ImageLoader.Builder(ctx).build()

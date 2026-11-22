@@ -376,13 +376,13 @@ was sie liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 `src/contract/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run contract:openapi`), die Typen der Oberfläche
-(`frontend-types/contract.d.ts`) und die Kotlin-Antworttypen der App. Der
+(`frontend-types/contract.d.ts`) und die Kotlin-Antworttypen der App (aus `docs/openapi-v2.json`). Der
 Vertrag ist die einzige Eingabeprüfung und liefert das Fachformat: Was eine
 Route liest, hat der Vertrag schon umgeformt (`z.transform`); eine Route wandelt
 ihre geprüfte Eingabe nicht nach (`test/layers.test.js`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
-Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und
+Modelle), steht in `shared/app-interface.json`. Der Android-Lauf erzeugt und
 prüft die Datei aus dem Kotlin-Quelltext (`Android-App/tools/contract/`), die
 Web-Suite prüft den Server gegen sie (`test/app-interface.test.js`,
 `test/contract-read-db.test.js`, `test/contract-write-db.test.js`).

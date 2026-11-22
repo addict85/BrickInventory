@@ -1,24 +1,24 @@
 /**
  * The app's routes against the server's contract (src/contract/, as JSON schema as in
- * docs/openapi.json). The Kotlin types themselves are generated from the contract
+ * docs/openapi-v2.json). The Kotlin types themselves are generated from the contract
  * (contract-kotlin-dtos.test.js checks that the file is up to date); what remains here is that every
  * route of the app reads and sends exactly the generated type of its schema.
  *
  * Counter-checks (measured 14.11.2026):
- *   A  in the contract the route GET /api/v1/parts/stats renamed → red: “every route of the app
+ *   A  in the contract the route GET /api/v2/parts/stats renamed → red: “every route of the app
  *      has a contract”
  *   B  in SetsApi.kt getSetDetail with Response<SetsResponse> instead of SetResponse → red:
  *      “the app reads every response with the generated type of its schema”
- *   C  in KontoApi.kt login with @Body QrLoginRequest → red: “every body of the app is the
+ *   C  in AccountApi.kt login with @Body QrLoginRequest → red: “every body of the app is the
  *      generated body of its route”
  *   D  in contract-kotlin-mapping.js ANFRAGEN an invented route added → red: “every
  *      body of the app is the generated body of its route” (dead body)
- *   E  (05.11.2026) in the contract the query of GET /api/v1/sets without `page_size` → red:
+ *   E  (05.11.2026) in the contract the query of GET /api/v2/sets without `page_size` → red:
  *      “every query parameter of the app is in the contract”
- *   F  in ErrorCode.kt BARCODE_KEIN_SET("barcode_kein_satz") → red: “every error code
- *      of the app is in the contract” names barcode_kein_satz
- *   G  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" with an appended x →
- *      red: “shared/app-schnittstelle.json is up to date” (and “every route of the app …”)
+ *   F  in ErrorCode.kt BARCODE_NO_SET("barcode_no_set") → red: “every error code
+ *      of the app is in the contract” names barcode_no_set
+ *   G  (14.11.2026) in AccountApi.kt "api/v2/settings/default-condition" with an appended x →
+ *      red: “shared/app-interface.json is up to date” (and “every route of the app …”)
  */
 // Runs in the Android run (android.yml, job vertrag); the web suite reads no Kotlin source.
 const test = require('node:test');
@@ -32,8 +32,8 @@ const { ANDROID, API } = require('./app-interface.js');
 const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
 const { className: klassenname, ZIEL } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
 const Z = require(path.join(SKRIPTE, 'contract-kotlin-mapping.js'));
-// The contract as the server publishes it (npm run vertrag:openapi).
-const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi.json'), 'utf8'));
+// The contract as the server publishes it (npm run contract:openapi).
+const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi-v2.json'), 'utf8'));
 const routen = [
   ...apiRouten(API).map(r => ({
     methode: 'GET',
@@ -82,7 +82,7 @@ test('the app reads every response with the generated type of its schema', () =>
     geprueft++;
     const soll = kotlinName(ref);
     if (r.typ !== soll) falsch.push(`${r.methode} ${r.pfad}: Kotlin ${r.typ}, erzeugt ${soll}`);
-    if (!erzeugt.has(soll)) falsch.push(`${r.methode} ${r.pfad}: ${soll} fehlt in Vertrag.kt`);
+    if (!erzeugt.has(soll)) falsch.push(`${r.methode} ${r.pfad}: ${soll} fehlt in Contract.kt`);
   }
   assert.deepEqual(falsch, []);
   assert.ok(geprueft >= 140, `nur ${geprueft} Antworttypen verglichen`);
@@ -142,7 +142,7 @@ test('every error code of the app is in the contract', () => {
   );
   const kennungen = kotlinFehlercodes(datei);
   assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in ErrorCode.kt gelesen`);
-  const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);
+  const imVertrag = new Set(dok.components.schemas.ErrorCode?.enum ?? []);
   assert.deepEqual(
     kennungen.filter(k => !imVertrag.has(k)),
     [],
@@ -150,9 +150,9 @@ test('every error code of the app is in the contract', () => {
 });
 
 // The web suite reads the app only via this file; it must say what the source says.
-test('shared/app-schnittstelle.json is up to date', () => {
-  const { schnittstelle } = require('./app-interface.js');
-  const datei = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
-  assert.ok(datei.routen.length > 100, `nur ${datei.routen.length} Routen in der Datei`);
-  assert.deepEqual(datei, schnittstelle(), 'node Android-App/tools/contract/app-interface.js');
+test('shared/app-interface.json is up to date', () => {
+  const { appInterface, TARGET } = require('./app-interface.js');
+  const file = JSON.parse(fs.readFileSync(TARGET, 'utf8'));
+  assert.ok(file.routes.length > 100, `nur ${file.routes.length} Routen in der Datei`);
+  assert.deepEqual(file, appInterface(), 'node Android-App/tools/contract/app-interface.js');
 });

@@ -8,13 +8,13 @@ import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogSetsResponse
-import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
-import ch.brickinventoryapp.contract.JahrAnzahl
-import ch.brickinventoryapp.contract.MerklisteResponse
-import ch.brickinventoryapp.contract.Merkposten
-import ch.brickinventoryapp.contract.MerkpostenAntwort
-import ch.brickinventoryapp.contract.PreisalarmRequest
-import ch.brickinventoryapp.contract.PreisalarmResponse
+import ch.brickinventoryapp.contract.CatalogYearDistributionResponse
+import ch.brickinventoryapp.contract.PriceAlertRequest
+import ch.brickinventoryapp.contract.PriceAlertResponse
+import ch.brickinventoryapp.contract.WantedItem
+import ch.brickinventoryapp.contract.WantedItemReply
+import ch.brickinventoryapp.contract.WantedListResponse
+import ch.brickinventoryapp.contract.YearCount
 import ch.brickinventoryapp.data.testing.FakeApi
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.text
@@ -194,8 +194,8 @@ class CatalogViewModelTest {
     @Test
     fun `the year distribution comes from the server, with the list's filters`() = withVm { vm ->
         fake.responses["getCatalogSets"] = page("10294-1")
-        fake.responses["getCatalogYearDistribution"] = CatalogYearVerteilungResponse(
-            success = true, years = listOf(JahrAnzahl(year = 1999, n = 4), JahrAnzahl(year = null, n = 2), JahrAnzahl(year = 2024, n = 7)))
+        fake.responses["getCatalogYearDistribution"] = CatalogYearDistributionResponse(
+            success = true, years = listOf(YearCount(year = 1999, n = 4), YearCount(year = null, n = 2), YearCount(year = 2024, n = 7)))
         vm.setCatalogSort(CatalogSort.YEAR_DESCENDING)
         vm.setCatalogTheme(158)
         advanceUntilIdle()
@@ -207,20 +207,20 @@ class CatalogViewModelTest {
 
     @Test
     fun `remembering creates the item, sets the alert in the chosen direction and reports`() = withVm { vm ->
-        fake.responses["createWantedItem"] = MerkpostenAntwort(success = true, warNeu = true,
-            merkposten = Merkposten(setNumber = "10305-1", condition = Condition.USED))
-        fake.responses["setPriceAlarm"] = PreisalarmResponse(success = true)
+        fake.responses["createWantedItem"] = WantedItemReply(success = true, wasNew = true,
+            item = WantedItem(setNumber = "10305-1", condition = Condition.USED))
+        fake.responses["setPriceAlarm"] = PriceAlertResponse(success = true)
         vm.track(WantedRequest("10305-1", Condition.USED, AlarmDirection.OVER, "120", account = null))
         advanceUntilIdle()
         val alarm = synchronized(fake.arguments) { fake.arguments.single { it.first == "setPriceAlarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest(direction = AlarmDirection.OVER, threshold = 120.0, condition = Condition.USED), alarm[1])
+        assertEquals(PriceAlertRequest(direction = AlarmDirection.OVER, threshold = 120.0, condition = Condition.USED), alarm[1])
         assertEquals(Message.Resource(R.string.wanted_added), t.messages.message.value)
     }
 
     @Test
     fun `remembering without a threshold sets no alert`() = withVm { vm ->
-        fake.responses["createWantedItem"] = MerkpostenAntwort(success = true, warNeu = false)
+        fake.responses["createWantedItem"] = WantedItemReply(success = true, wasNew = false)
         vm.track(WantedRequest("10305-1", Condition.NEW, AlarmDirection.BELOW, "", account = null))
         advanceUntilIdle()
         assertEquals(0, fake.callsOf("setPriceAlarm"))
@@ -229,8 +229,8 @@ class CatalogViewModelTest {
 
     @Test
     fun `the detail knows the wishlist item from the store, another set does not`() = withVm { vm ->
-        fake.responses["getWantedList"] = MerklisteResponse(success = true,
-            merkposten = listOf(Merkposten(setNumber = "10305-1", condition = Condition.NEW)))
+        fake.responses["getWantedList"] = WantedListResponse(success = true,
+            item = listOf(WantedItem(setNumber = "10305-1", condition = Condition.NEW)))
         fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()

@@ -82,7 +82,7 @@ class Redeemer(
     /** [origin]: where the token belongs; a job for a different server sends nothing. */
     fun redeem(serverUrl: String, token: String, pin: String? = null,
                  origin: String? = NetworkPolicy.origin(serverUrl)): RedemptionOutcome {
-        val target = ownAddress(serverUrl, "api/v1/auth/logout")
+        val target = ownAddress(serverUrl, "api/v2/auth/logout")
         if (token.isBlank() || target == null) return RedemptionOutcome.GIVE_UP
         if (origin == null || origin != NetworkPolicy.origin(serverUrl)) return RedemptionOutcome.GIVE_UP
         val situation = object : AccessState {

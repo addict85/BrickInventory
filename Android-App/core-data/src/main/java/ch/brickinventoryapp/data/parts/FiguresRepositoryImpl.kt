@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data.parts
 
 import ch.brickinventoryapp.contract.AddMinifigResponse
 import ch.brickinventoryapp.contract.GenericResponse
-import ch.brickinventoryapp.contract.LagerortRequest
+import ch.brickinventoryapp.contract.StorageRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.MinifigsApi
@@ -68,7 +68,7 @@ internal class FiguresRepositoryImpl @Inject constructor(
     /** The same for a minifigure — it has no color (migration 0024). */
     override suspend fun setFigStorage(figNumber: String, location: String): Outcome<String?> =
         store.caughtUp({ r -> FollowUp.MinifigLocation(figNumber, r.storage).takeIf { r.success } }) {
-            safeCall { api.setFigStorage(figNumber, LagerortRequest(storage = location)) }
+            safeCall { api.setFigStorage(figNumber, StorageRequest(storage = location)) }
         }.promised({ it.success }) { it.storage }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,

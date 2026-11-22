@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.contract.mapping
 
-import ch.brickinventoryapp.contract.BestandteilKopf
+import ch.brickinventoryapp.contract.ComponentHeader
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.Minifig
 import ch.brickinventoryapp.contract.MinifigStats
@@ -10,9 +10,9 @@ import ch.brickinventoryapp.contract.PartsCategory
 import ch.brickinventoryapp.contract.PartsFilterColor
 import ch.brickinventoryapp.contract.PartsStats
 import ch.brickinventoryapp.contract.StockLocation
+import ch.brickinventoryapp.contract.UsingSet
+import ch.brickinventoryapp.contract.UsingSetsResponse
 import ch.brickinventoryapp.contract.ValuationAcquisition
-import ch.brickinventoryapp.contract.VerwendendeSetsResponse
-import ch.brickinventoryapp.contract.VerwendendesSet
 import ch.brickinventoryapp.model.domain.CategoryView
 import ch.brickinventoryapp.model.domain.ComponentHeaderView
 import ch.brickinventoryapp.model.domain.FigureView
@@ -93,8 +93,8 @@ fun PartsCategory.asView() = CategoryView(
     totalQuantity = totalQuantity,
 )
 
-fun BestandteilKopf.asView() = ComponentHeaderView(
-    number = nummer,
+fun ComponentHeader.asView() = ComponentHeaderView(
+    number = number,
     name = name,
     colorId = colorId,
     colorName = colorName,
@@ -108,7 +108,7 @@ fun BestandteilKopf.asView() = ComponentHeaderView(
     totalQuantity = totalQuantity,
 )
 
-fun VerwendendesSet.asView() = UsingSetView(
+fun UsingSet.asView() = UsingSetView(
     setNumber = setNumber,
     setName = setName,
     quantity = quantity,
@@ -134,9 +134,9 @@ fun PartValuationItem.asView() = ManualPartView(
     qtyAvgPrice = qtyAvgPrice.asMoney(),
     avgPrice = avgPrice.asMoney(),
     pnlPct = pnlPct,
-    pnlPercent = pnlProzent,
+    pnlPercent = pnlPercent,
     displayValue = displayValue,
-    valueTotal = wertGesamt.asMoney(),
+    valueTotal = valueTotal.asMoney(),
     condition = condition,
     conditions = conditions,
     userId = userId,
@@ -159,9 +159,9 @@ fun FigValuationItem.asView() = ManualMinifigView(
     qtyAvgPrice = qtyAvgPrice.asMoney(),
     avgPrice = avgPrice.asMoney(),
     pnlPct = pnlPct,
-    pnlPercent = pnlProzent,
+    pnlPercent = pnlPercent,
     displayValue = displayValue,
-    valueTotal = wertGesamt.asMoney(),
+    valueTotal = valueTotal.asMoney(),
     condition = condition,
     conditions = conditions,
     userId = userId,
@@ -177,12 +177,12 @@ fun ValuationAcquisition.asView() = ValuationPurchaseView(
     purchasePrice = purchasePrice.asMoney(),
     avgPrice = avgPrice.asMoney(),
     totalAvg = totalAvg,
-    valueTotal = wertGesamt.asMoney(),
+    valueTotal = valueTotal.asMoney(),
     pnlPct = pnlPct,
-    pnlPercent = pnlProzent,
+    pnlPercent = pnlPercent,
     createdAt = parseInstant(createdAt),
 )
 
-fun VerwendendeSetsResponse.asView() = UsageView(header = item?.asView(), sets = sets.map { it.asView() })
+fun UsingSetsResponse.asView() = UsageView(header = item?.asView(), sets = sets.map { it.asView() })
 
 fun StockLocation.asView() = StockLocationView(location = location.asView(), default = default)

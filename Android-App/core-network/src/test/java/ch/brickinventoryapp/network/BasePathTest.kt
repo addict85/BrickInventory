@@ -60,9 +60,9 @@ class BasePathTest {
     @Test
     fun `an API request goes under the path and with a token`() {
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/sets"))
+        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v2/sets"))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/brick/api/v1/sets", a.path)
+        assertEquals("/brick/api/v2/sets", a.path)
         assertEquals("Bearer geheim", a.getHeader("Authorization"))
     }
 
@@ -83,19 +83,19 @@ class BasePathTest {
     fun `a redirect out of the path is not followed`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/andere-app/x"))
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v1/h"))
+        assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v2/h"))
         server.takeRequest()
         assertEquals("only one request, none to /andere-app", 1, server.requestCount)
     }
 
     @Test
     fun `a redirect under the path is followed with the token`() {
-        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/api/v1/h2"))
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/api/v2/h2"))
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/h"))
+        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v2/h"))
         server.takeRequest()
         val second = server.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/brick/api/v1/h2", second.path)
+        assertEquals("/brick/api/v2/h2", second.path)
         assertEquals("Bearer geheim", second.getHeader("Authorization"))
     }
 
@@ -106,7 +106,7 @@ class BasePathTest {
         assertNull(ownAddress(s, "//fremd.example/x"))
         assertNull(ownAddress(s, "../andere-app/x"))
         assertNull(ownAddress(s, "%2e%2e/andere-app/x"))
-        assertTrue(pdfInViewer("https://s.example/brick/api/v1/vouchers/7/pdf", s))
+        assertTrue(pdfInViewer("https://s.example/brick/api/v2/vouchers/7/pdf", s))
         assertFalse(pdfInViewer("https://s.example/andere-app/a.pdf", s))
     }
 

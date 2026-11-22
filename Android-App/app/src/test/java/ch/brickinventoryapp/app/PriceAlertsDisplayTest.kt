@@ -84,10 +84,10 @@ class PriceAlertsDisplayTest {
     }
 
     private val alerts = """{"success":true,"alerts":[
-        {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF",
-         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","besitzt":true,"triggered":false},
-        {"set_number":"10179-1","condition":"N","direction":"unter","threshold":900.0,"currency_code":"CHF",
-         "name":"Ultimate Falcon","besitzt":false,"triggered":true}]}"""
+        {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF",
+         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","owns":true,"triggered":false},
+        {"set_number":"10179-1","condition":"N","direction":"below","threshold":900.0,"currency_code":"CHF",
+         "name":"Ultimate Falcon","owns":false,"triggered":true}]}"""
 
     private fun settings() = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
@@ -102,8 +102,8 @@ class PriceAlertsDisplayTest {
         images: ImageLoader = ImageLoader.Builder(ctx).build(),
         server: String = "",
     ): SettingsViewModel {
-        world.paths.responses["/api/v1/alerts"] = alerts
-        world.paths.responses["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
+        world.paths.responses["/api/v2/alerts"] = alerts
+        world.paths.responses["/api/v2/sets/75192-1/alert"] = """{"success":true}"""
         val vm = settings()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
@@ -128,11 +128,11 @@ class PriceAlertsDisplayTest {
     @Test
     fun `the overview fetches its alerts, changes and deletes via the set, deletes only after confirmation`() {
         show()
-        assertEquals(listOf("GET /api/v1/alerts"), requests("GET").filter { "alerts" in it })
+        assertEquals(listOf("GET /api/v2/alerts"), requests("GET").filter { "alerts" in it })
 
         compose.onAllNodesWithText(ctx.getString(R.string.detail_alert_chip_above))[0].performClick()
         wait("direction") { requests("PUT").isNotEmpty() }
-        assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v1/sets/75192-1/alert"))
+        assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v2/sets/75192-1/alert"))
 
         compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
         compose.waitForIdle()
@@ -140,7 +140,7 @@ class PriceAlertsDisplayTest {
         compose.onNode(hasText(ctx.getString(R.string.common_delete)) and hasClickAction() and hasAnyAncestor(isDialog()))
             .performClick()
         wait("delete") { requests("DELETE").isNotEmpty() }
-        assertTrue(requests("DELETE").single().startsWith("DELETE /api/v1/sets/75192-1/alert"))
+        assertTrue(requests("DELETE").single().startsWith("DELETE /api/v2/sets/75192-1/alert"))
     }
 
     @Test

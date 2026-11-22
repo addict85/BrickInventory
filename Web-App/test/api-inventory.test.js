@@ -405,13 +405,13 @@ test('no orphaned classification entries', () => {
   assert.deepEqual(stale, [], `Classified endpoints no longer exist:\n  ${stale.join('\n  ')}`);
 });
 
-/** Every address the Android app calls (shared/app-schnittstelle.json). */
+/** Every address the Android app calls (shared/app-interface.json). */
 function androidAddresses() {
   const { appRoutes, appAddresses } = require('./helpers/contract');
   const _req = require('./helpers/sources').buildAndRequire();
   const routen = appRoutes(_req);
-  const adressen = appAddresses(_req);
-  const found = new Set(routen.map(r => `${r.methode} ${comparable(r.path)}`));
+  const adressen = appAddresses();
+  const found = new Set(routen.map(r => `${r.method} ${comparable(r.path)}`));
   // Built by hand: the method is not given, so under all verbs. That can relieve
   // one address too many, but wrongly accuse none.
   for (const a of adressen)

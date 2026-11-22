@@ -151,7 +151,7 @@ data class UsageView(
 data class PartialKey(val number: String, val color: Int)
 
 /** How many pieces there are; [lose] counts only what is in no set. */
-data class PartInventory(val total: Int = 0, val lose: Int = 0)
+data class PartInventory(val total: Int = 0, val loose: Int = 0)
 
 data class ValuationPurchaseView(
     val id: Int = 0,

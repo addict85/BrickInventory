@@ -3,7 +3,7 @@
  *
  * The rule itself stands in scripts/check-response-fields.js — there because it
  * should also be callable by hand. What the app reads it takes from
- * shared/app-schnittstelle.json. This test runs it in the normal run;
+ * shared/app-interface.json. This test runs it in the normal run;
  * without it it would be a script nobody starts.
  *
  * Counter-checks (carried out):
@@ -15,7 +15,7 @@
  *   e) (11.11.2026) Since services answer without `success` (the route spreads
  *      its result), the check also reads their return: `feld_ohne_leser`
  *      in the return of cacheStats() → red.
- *   f) (14.11.2026) in shared/app-schnittstelle.json `"is_main"` deleted from the response fields
+ *   f) (14.11.2026) in shared/app-interface.json `"is_main"` deleted from the response fields
  *      → red: OHNE VERBRAUCHER is_main.
  *   d) the path to the consumers bent → red with its own message (without
  *      consumers EVERY field would count as unread).

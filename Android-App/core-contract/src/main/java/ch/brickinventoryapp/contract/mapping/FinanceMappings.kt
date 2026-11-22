@@ -4,7 +4,7 @@ import ch.brickinventoryapp.contract.DashboardStats
 import ch.brickinventoryapp.contract.FigsValuationResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
-import ch.brickinventoryapp.contract.PnlSetZeile
+import ch.brickinventoryapp.contract.PnlSetRow
 import ch.brickinventoryapp.contract.PnlTotals
 import ch.brickinventoryapp.contract.PortfolioHistoryResponse
 import ch.brickinventoryapp.contract.Totals
@@ -38,14 +38,14 @@ fun PartsValuationResponse.asView() = PartsValuationView(
     currency = currency,
     parts = parts.map { it.asView() },
     totalValue = totalValue,
-    purchasePricesForeignCurrency = kaufpreiseFremdeWaehrung,
+    purchasePricesForeignCurrency = foreignCurrencyPurchases,
 )
 
 fun FigsValuationResponse.asView() = FiguresValuationView(
     currency = currency,
     figs = figs.map { it.asView() },
     totalValue = totalValue,
-    purchasePricesForeignCurrency = kaufpreiseFremdeWaehrung,
+    purchasePricesForeignCurrency = foreignCurrencyPurchases,
 )
 
 fun PnlResponse.asView() = ProfitView(
@@ -54,44 +54,44 @@ fun PnlResponse.asView() = ProfitView(
     sets = sets.map { it.asView() },
 )
 
-fun PnlSetZeile.asView() = GainRowView(
+fun PnlSetRow.asView() = GainRowView(
     setNumber = setNumber,
     quantity = quantity,
     currentPrice = currentPrice.asMoney(),
     baselinePrice = baselinePrice.asMoney(),
     pnlPct = pnlPct,
     baselinePnlPct = baselinePnlPct,
-    pnlAmount = pnlBetrag.asMoney(),
-    pnlPercent = pnlProzent,
-    baselinePnlPercent = baselinePnlProzent,
-    tilePrice = kachelPreis.asMoney(),
-    tilePnlPct = kachelPnlPct,
-    tileSource = kachelQuelle,
+    pnlAmount = pnlAmount.asMoney(),
+    pnlPercent = pnlPercent,
+    baselinePnlPercent = baselinePnlPercent,
+    tilePrice = tilePrice.asMoney(),
+    tilePnlPct = tilePnlPct,
+    tileSource = tileSource,
 )
 
 fun PnlTotals.asView() = GainSumsView(
     purchase = purchase,
     current = current,
     pnlPct = pnlPct,
-    pnlPercent = pnlProzent,
-    purchasePricesForeignCurrency = kaufpreiseFremdeWaehrung,
+    pnlPercent = pnlPercent,
+    purchasePricesForeignCurrency = foreignCurrencyPurchases,
     grandTotal = grandTotal,
-    positions = positionen,
-    positionsValued = positionenBewertet,
-    positionsWithoutMarketPrice = positionenOhneMarktpreis,
-    positionsWithoutPurchasePrice = positionenOhneKaufpreis,
-    basisCostBasis = basisEinstand,
-    basisMarketValue = basisMarktwert,
-    basisPnlAmount = basisGuvBetrag,
-    withoutMarketPriceCostBasis = ohneMarktpreisEinstand,
-    withoutPurchasePriceMarketValue = ohneKaufpreisMarktwert,
+    positions = positions,
+    positionsValued = positionsValued,
+    positionsWithoutMarketPrice = positionsWithoutMarketPrice,
+    positionsWithoutPurchasePrice = positionsWithoutPurchasePrice,
+    basisCostBasis = baselineCost,
+    basisMarketValue = baselineMarketValue,
+    basisPnlAmount = baselinePnlAmount,
+    withoutMarketPriceCostBasis = costWithoutMarketPrice,
+    withoutPurchasePriceMarketValue = marketValueWithoutPurchasePrice,
 )
 
 fun ValuationResponse.asView() = ValuationView(
     currency = currency,
     condition = condition,
-    cacheTtlHours = ttlStunden,
-    purchasePricesForeignCurrency = kaufpreiseFremdeWaehrung,
+    cacheTtlHours = cacheTtlHours,
+    purchasePricesForeignCurrency = foreignCurrencyPurchases,
     sets = sets.map { it.asView() },
     totals = totals.asView(),
 )
@@ -108,8 +108,8 @@ fun ValuationSet.asView() = ValuationSetView(
     qtyAvgPrice = qtyAvgPrice.asMoney(),
     totalQtyAvg = totalQtyAvg,
     totalAvg = totalAvg,
-    valueTotal = wertGesamt.asMoney(),
-    pnlPercent = pnlProzent,
+    valueTotal = valueTotal.asMoney(),
+    pnlPercent = pnlPercent,
     purchasePrice = purchasePrice.asMoney(),
     noPrice = noPrice,
     acquisitions = acquisitions.map { it.asView() },

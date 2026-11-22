@@ -1,6 +1,6 @@
 /**
  * “Can I build this?" in the web app, in jsdom (real bundle). The app calls the same
- * endpoint (shared/app-schnittstelle.json, test/app-interface.test.js).
+ * endpoint (shared/app-interface.json, test/app-interface.test.js).
  *
  * Counter-checks (measured 10.11.2026, each alone, reverted, bundle rebuilt):
  *   A  plFuelleBestand() sends the BrickLink number 3001b for 3001 → red: “web app: …”

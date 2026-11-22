@@ -173,17 +173,12 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     );
 
     // 5. The app demands nothing that the server does not send: the required fields of its
-    // model (shared/app-schnittstelle.json, generated from its source text).
-    const model = require('./helpers/contract').appInterface().modelle.AddSetResponse;
-    assert.ok(model && model.felder.length >= 5, 'model AddSetResponse not found — renamed?');
-    const zeilen = model.felder.map(name => ({
-      name,
-      required: model[require('./helpers/contract').APP_KEYS.required].includes(name),
-    }));
+    // model (shared/app-interface.json, generated from its source text).
+    const model = require('./helpers/contract').appInterface().models.AddSetResponse;
+    assert.ok(model && model.fields.length >= 5, 'model AddSetResponse not found — renamed?');
+    const zeilen = model.fields.map(name => ({ name, required: model.required.includes(name) }));
 
-    // The app reads API v1: what arrives counts under its v1 name.
-    const { v1Field } = _req('src/contract/v1.js');
-    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)].map(k => v1Field(undefined, k)));
+    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
     const requiredAndMissing = zeilen.filter(f => f.required && !geliefert.has(f.name)).map(f => f.name);
     assert.deepEqual(
       requiredAndMissing,

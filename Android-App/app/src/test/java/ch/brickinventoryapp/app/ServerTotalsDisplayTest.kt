@@ -59,7 +59,7 @@ class ServerTotalsDisplayTest {
 
     @Test
     fun `the purchases' total row shows the server's total and no amount where none was recorded`() {
-        world.paths.responses["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+        world.paths.responses["/api/v2/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"},
             {"id":2,"quantity":2,"condition":"N","currency":"CHF","created_at":"2026-04-14T10:00:00Z"}],
             "totals":{"quantity":7,"amount":null,"priced_rows":0}}"""
@@ -72,7 +72,7 @@ class ServerTotalsDisplayTest {
 
     @Test
     fun `the figure tiles show the server's numbers, not the list's`() {
-        world.paths.responses["/api/v1/minifigs/stats"] = """{"success":true,"stats":{"types":11,"total_quantity":40,"manual":5}}"""
+        world.paths.responses["/api/v2/minifigs/stats"] = """{"success":true,"stats":{"types":11,"total_quantity":40,"manual":5}}"""
         val vm = world.figures().also { it.loadMinifigs() }
         show { MinifigsRoute(vm = vm, imageLoader = TestApp.noImages(ctx)) }
         for ((id, n) in listOf(R.plurals.minifigs_stat_types to 11, R.plurals.minifigs_stat_total to 40, R.plurals.minifigs_stat_manual to 5)) {

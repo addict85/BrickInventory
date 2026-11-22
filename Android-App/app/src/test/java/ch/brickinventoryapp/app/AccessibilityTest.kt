@@ -185,13 +185,13 @@ class AccessibilityTest {
 
     @Test
     fun `checkboxes of the build list carry names and toggle via the row`() {
-        var lose: Boolean? = null
+        var loose: Boolean? = null
         var below: Boolean? = null
         val part = PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
             quantity = 4, imageUrl = null)
         show {
             PartsListScreen(PartListUiState(parts = listOf(part), generated = true), serverUrl = "",
-                imageLoader = images, onScanBarcode = {}, onOnlyLose = { lose = it }, onWithSubAccounts = { below = it },
+                imageLoader = images, onScanBarcode = {}, onOnlyLose = { loose = it }, onWithSubAccounts = { below = it },
                 hasSubAccounts = true)
         }
         val onlyLose = ctx.getString(R.string.partslist_only_loose)
@@ -201,7 +201,7 @@ class AccessibilityTest {
         compose.onNode(hasText(onlyLose) and isToggleable()).performClick()
         compose.onNode(hasText(withBelow) and isToggleable()).performClick()
         compose.waitForIdle()
-        assertEquals("a tap on the row toggles “loose only”", true, lose)
+        assertEquals("a tap on the row toggles “loose only”", true, loose)
         assertEquals("a tap on the row toggles “with sub-accounts”", true, below)
     }
 

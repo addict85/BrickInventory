@@ -25,13 +25,13 @@ import java.util.Locale
  * empty list showed nothing.
  *
  * Counter-check: in [Examples.RESPONSES] the path
- * "/api/v1/wanted" mistyped → red “every main screen gets content“.
+ * "/api/v2/wanted" mistyped → red “every main screen gets content“.
  * Counter-checks: in the detail price avg_price 799 instead of 812.5 →
  * red “the samples are consistent“; „chart“ removed from the value development →
  * red as well (the server's Swiss axis texts stayed).
  * Counter-checks: for the figures again "name" instead of
  * "fig_name" → red “parts and figures carry real names“; the path
- * /api/v1/minifigs/stats removed → red as well (no key figures).
+ * /api/v2/minifigs/stats removed → red as well (no key figures).
  * Counter-checks: for the Falcon every "wert_gesamt" removed → red
  * “every finance row carries …” (value=null); in the FinanceViewModel the points again
  * translated with Locale.getDefault() when loading → red “the finance axis is formatted

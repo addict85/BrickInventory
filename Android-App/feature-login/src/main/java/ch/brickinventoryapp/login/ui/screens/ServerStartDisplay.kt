@@ -26,7 +26,7 @@ import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * „Der Server startet gerade“ — with progress instead of an error message, like the
- * web app via /v1/startup-status. A fresh install's first start fetches the
+ * web app via /v2/startup-status. A fresh install's first start fetches the
  * Rebrickable catalog and takes many minutes; a generic network message would
  * make the app or server look broken, even though everything is running correctly.
  */

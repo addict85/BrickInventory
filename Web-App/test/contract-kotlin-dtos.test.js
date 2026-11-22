@@ -1,12 +1,12 @@
 /**
- * The app's Kotlin types (core-contract, package vertrag) are generated from docs/openapi.json
+ * The app's Kotlin types (core-contract, package contract) are generated from docs/openapi-v2.json
  * and checked in — responses and bodies, one set, no hand-written types beside them.
  * If the file deviates from the contract, this test is red until `npm run contract:kotlin`
  * rewrites it.
  *
  * Counter-checks (measured 14.11.2026):
- *   A  in Vertrag.kt the field year_min deleted from CatalogMetaResponse → red:
- *      “the checked-in Kotlin types are generated from openapi.json”
+ *   A  in Contract.kt the field year_min deleted from CatalogMetaResponse → red:
+ *      “the checked-in Kotlin types are generated from openapi-v2.json”
  *   B  in the generator leerwert() without a branch for lists (always `null`) → red: “lists,
  *      references …”, “a domain type replaces …” and A
  *   C  in the generator anyOf with null no longer nullable → red: “a field with a null branch …”
@@ -26,7 +26,7 @@ const { spawnSync } = require('node:child_process');
 
 const { create } = require('../scripts/contract-kotlin-dtos.js');
 
-test('the checked-in Kotlin types are generated from openapi.json', () => {
+test('the checked-in Kotlin types are generated from openapi-v2.json', () => {
   const r = spawnSync(
     process.execPath,
     [path.join(__dirname, '..', 'scripts', 'contract-kotlin-dtos.js'), '--pruefen'],

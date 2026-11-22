@@ -41,8 +41,8 @@ import org.junit.Test
 class DesignPerAccountTest {
 
     private val paths = PathServer(
-        "/api/v1/settings/theme" to """{"success":true,"theme":"brick","vorgabe":"classic","eigenes":"brick"}""",
-        "/api/v1/settings/user/theme" to """{"success":true,"theme":"noppe","vorgabe":"classic","eigenes":"noppe"}""",
+        "/api/v2/settings/theme" to """{"success":true,"theme":"brick","preset":"classic","own":"brick"}""",
+        "/api/v2/settings/user/theme" to """{"success":true,"theme":"noppe","preset":"classic","own":"noppe"}""",
     )
     private val t = TestServices(paths.onTick(), io = Dispatchers.Main)
 
@@ -64,7 +64,7 @@ class DesignPerAccountTest {
         vm.loadDesign()
         assertTrue("Design", vm.accountState.value.design != null)
         assertEquals(DesignChoice(Design.BRICK, Design.CLASSIC, Design.BRICK), vm.accountState.value.design)
-        assertEquals(listOf("GET /api/v1/settings/theme"), paths.requests.toList())
+        assertEquals(listOf("GET /api/v2/settings/theme"), paths.requests.toList())
     }
 
     @Test
@@ -72,13 +72,13 @@ class DesignPerAccountTest {
         val vm = vm()
         vm.chooseDesign(Design.STUD)
         assertTrue("chosen", vm.accountState.value.design != null)
-        assertEquals(listOf("POST /api/v1/settings/user/theme"), paths.requests.toList())
+        assertEquals(listOf("POST /api/v2/settings/user/theme"), paths.requests.toList())
         assertEquals("""{"theme":"noppe"}""", paths.bodyBytes.single())
         assertEquals(DesignChoice(Design.STUD, Design.CLASSIC, Design.STUD), vm.accountState.value.design)
         assertEquals(Design.STUD, t.session.state.value.appTheme)
 
         // Back to the default: empty value, the response names the effective design.
-        paths.responses["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
+        paths.responses["/api/v2/settings/user/theme"] = """{"success":true,"theme":"classic","preset":"classic","own":null}"""
         vm.chooseDesign(null)
         assertTrue("default", vm.accountState.value.design?.own == null)
         assertEquals("""{"theme":""}""", paths.bodyBytes.last())
@@ -87,17 +87,17 @@ class DesignPerAccountTest {
 
     @Test
     fun `an older server without a default shows no selection`() {
-        paths.responses["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
+        paths.responses["/api/v2/settings/theme"] = """{"success":true,"theme":"brick"}"""
         val vm = vm()
         vm.loadDesign()
         assertTrue("Response", paths.requests.isNotEmpty())
         assertNull(vm.accountState.value.design)
     }
 
-    /** /settings names the admin's default in app_theme (`routes/api_v1/settings.ts`), not the account's. */
+    /** /settings names the admin's default in app_theme (`routes/api/settings.ts`), not the account's. */
     @Test
     fun `the settings do not overwrite the account's design`() {
-        paths.responses["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
+        paths.responses["/api/v2/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
         t.session.setDesign(Design.STUD)
         runBlocking { t.session.loadSettings(testAccountRepository(t.api)) }
         assertEquals(CurrencyCode.CHF, t.session.state.value.currency)

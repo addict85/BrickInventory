@@ -36,11 +36,8 @@ names the former code term; user-facing texts stay German in `values-de/strings.
 | counter-check | Gegenprobe | Patch that breaks code on purpose; directory `counter-checks/`. |
 | screenshot | Bildschirmfoto | Reference image of a screen; directory `app/src/test/screenshots/`. |
 
-## Exception until API v2
+## Generated contract
 
-`core-contract/Vertrag.kt` is generated from the API (Web-App/scripts/contract-kotlin-dtos.js)
-and keeps its German class and property names; `@SerialName` holds the wire names. The domain
-types it references are bridged by `ContractNames.kt` (typealiases `Zustand`, `Waehrung`,
-`Laufstatus`, `Alarmrichtung`, `DesignOderNichts`, the constant `KEINE_FARBE`) and by bridge
-values in the companions of `Condition`, `CurrencyCode`, `RunStatus` and `AlarmDirection`.
-`EnglishSourceTest` allows exactly these names.
+`core-contract/Contract.kt` is generated from API v2 (`Web-App/docs/openapi-v2.json`,
+Web-App/scripts/contract-kotlin-dtos.js) and is English like the rest of the source;
+`@SerialName` holds the wire names. `SourceRatchetTest` allows no German name, not even there.

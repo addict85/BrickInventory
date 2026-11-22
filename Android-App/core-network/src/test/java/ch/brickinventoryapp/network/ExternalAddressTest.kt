@@ -35,7 +35,7 @@ class ExternalAddressTest {
 
     @Test
     fun `the PDF viewer loads only from the own server`() {
-        assertTrue(pdfInViewer("https://nas:8443/brick/api/v1/vouchers/7/pdf", "https://nas:8443/brick"))
+        assertTrue(pdfInViewer("https://nas:8443/brick/api/v2/vouchers/7/pdf", "https://nas:8443/brick"))
         assertTrue(pdfInViewer("https://NAS:8443/uploads/a.pdf", "https://nas:8443/"))
         for (foreign in listOf("https://www.lego.com/cdn/a.pdf", "http://nas:8443/a.pdf", "https://nas:9443/a.pdf",
                              "https://nas.example.evil:8443/a.pdf", "content://x/a.pdf", "")) {

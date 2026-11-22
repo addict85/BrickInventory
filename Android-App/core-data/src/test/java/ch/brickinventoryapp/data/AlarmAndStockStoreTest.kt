@@ -32,15 +32,15 @@ class AlarmAndStockStoreTest {
     @Volatile private var area: String? = "a"
     private val store = OfflineStore(StorageInventory(), OutboxStorage(), { area })
     private val paths = PathServer(
-        "/api/v1/alerts" to """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Falcon"},
-            {"set_number":"10294-1","condition":"U","direction":"ueber","threshold":440.0,"currency_code":"CHF","name":"Titanic"}]}""",
-        "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"ueber","threshold":800.0}}""",
-        "/api/v1/sets/10294-1/alert" to """{"success":true,"removed":1}""",
-        "/api/v1/storage/locations" to """{"success":true,"orte":[{"id":1,"user_id":9,"name":"Keller"},{"id":2,"user_id":9,"name":"Regal"}],
-            "vorgabe":{"id":2,"user_id":9,"name":"Regal"}}""",
-        "/api/v1/storage/locations/1" to """{"success":true,"ort":{"id":1,"user_id":9,"name":"Estrich"}}""",
-        "/api/v1/storage/default" to """{"success":true,"vorgabe":{"id":1,"user_id":9,"name":"Estrich"}}""",
+        "/api/v2/alerts" to """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF","name":"Falcon"},
+            {"set_number":"10294-1","condition":"U","direction":"above","threshold":440.0,"currency_code":"CHF","name":"Titanic"}]}""",
+        "/api/v2/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"above","threshold":800.0}}""",
+        "/api/v2/sets/10294-1/alert" to """{"success":true,"removed":1}""",
+        "/api/v2/storage/locations" to """{"success":true,"locations":[{"id":1,"user_id":9,"name":"Keller"},{"id":2,"user_id":9,"name":"Regal"}],
+            "preset":{"id":2,"user_id":9,"name":"Regal"}}""",
+        "/api/v2/storage/locations/1" to """{"success":true,"location":{"id":1,"user_id":9,"name":"Estrich"}}""",
+        "/api/v2/storage/default" to """{"success":true,"preset":{"id":1,"user_id":9,"name":"Estrich"}}""",
     )
     private val api = paths.onTick()
     private val alerts = AlarmRepositoryImpl(api, store, RetryPolicy.ONCE)

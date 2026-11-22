@@ -31,9 +31,9 @@ class PartsSlotValuesTest {
     @Volatile private var area: String? = "a"
     private val store = OfflineStore(StorageInventory(), OutboxStorage(), { area })
     private val paths = PathServer(
-        "/api/v1/storage/locations" to """{"success":false}""",
-        "/api/v1/parts/owned" to """{"success":true,"bestand":{"3001|5":{"gesamt":7,"lose":2}}}""",
-        "/api/v1/minifigs" to """{"success":true,"action":"added","fig_number":"sw0001","price_from_condition":"U"}""",
+        "/api/v2/storage/locations" to """{"success":false}""",
+        "/api/v2/parts/owned" to """{"success":true,"holding":{"3001|5":{"total":7,"loose":2}}}""",
+        "/api/v2/minifigs" to """{"success":true,"action":"added","fig_number":"sw0001","price_from_condition":"U"}""",
     )
     private val api = paths.onTick()
     private val parts = PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
@@ -50,7 +50,7 @@ class PartsSlotValuesTest {
     @Test
     fun `the stock is listed per requested part, what is missing has no entry`() = runBlocking {
         val r = parts.getOwnedParts(listOf(PartialKey("3001", 5), PartialKey("3002", 1)))
-        assertEquals(Outcome.Success(mapOf(PartialKey("3001", 5) to PartInventory(total = 7, lose = 2))), r)
+        assertEquals(Outcome.Success(mapOf(PartialKey("3001", 5) to PartInventory(total = 7, loose = 2))), r)
     }
 
     @Test

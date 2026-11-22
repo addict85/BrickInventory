@@ -58,7 +58,7 @@ class PreviewDeviceTest {
     @Test
     fun `the store lies under filesDir, where Android does not clean up`() {
         val key = StoreKey(File(ctx.noBackupFilesDir, "vorschau-test.schluessel"), PlainVault)
-        PreviewMemory(ctx, key).write("https://brick.example/api/v1/images/set/1-1?thumb=1", "bild".toByteArray())
+        PreviewMemory(ctx, key).write("https://brick.example/api/v2/images/set/1-1?thumb=1", "bild".toByteArray())
         assertTrue("Nothing lies under filesDir", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
         assertFalse("The store lies (also) under cacheDir", ctx.cacheDir.walkTopDown().any { it.isFile })
     }

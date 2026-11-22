@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.collection
 
-import ch.brickinventoryapp.contract.PdfAuftragAnfrage
-import ch.brickinventoryapp.contract.PdfAuftragSet
-import ch.brickinventoryapp.contract.PdfAuftragStand
-import ch.brickinventoryapp.contract.PdfAuftragTeil
+import ch.brickinventoryapp.contract.PdfJobPart
+import ch.brickinventoryapp.contract.PdfJobRequest
+import ch.brickinventoryapp.contract.PdfJobSet
+import ch.brickinventoryapp.contract.PdfJobState
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.repository.Outcome
@@ -70,15 +70,15 @@ internal class SetFilesRepositoryImpl @Inject constructor(private val api: SetsA
         safeCall { api.deleteInstructionNow(setNumber, instrId) }.done()
 }
 
-internal fun PartListJob.asRequest() = PdfAuftragAnfrage(
-    sets = sets.map { PdfAuftragSet(setNumber = it.number, name = it.name) },
+internal fun PartListJob.asRequest() = PdfJobRequest(
+    sets = sets.map { PdfJobSet(setNumber = it.number, name = it.name) },
     parts = rows.map { z ->
-        PdfAuftragTeil(partNumber = z.number, blPartNumber = z.blNumber, partName = z.name, colorName = z.colorName,
+        PdfJobPart(partNumber = z.number, blPartNumber = z.blNumber, partName = z.name, colorName = z.colorName,
             colorHex = z.colorHex, colorId = z.colorId, quantity = z.quantity, isFig = z.figure, imageUrl = z.image, imageLocal = z.imageLocal)
     },
 )
 
-internal fun PdfAuftragStand.asStatus() = PdfJobStatus(status = status, error = error, restSeconds = etaSeconds)
+internal fun PdfJobState.asStatus() = PdfJobStatus(status = status, error = error, restSeconds = etaSeconds)
 
 /** Smaller is in practice an error page instead of a PDF. */
 private const val PDF_MIN_SIZE = 100

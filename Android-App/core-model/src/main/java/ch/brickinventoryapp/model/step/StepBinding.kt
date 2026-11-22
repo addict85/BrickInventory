@@ -3,9 +3,9 @@ package ch.brickinventoryapp.model.step
 /** [identifier] is the server's action; without it the check stays on the device (before sign-in). */
 
 enum class StepAction(val identifier: String?) {
-    VOUCHER("gutschein"),
-    ADMIN("verwaltung"),
-    SECOND_FACTOR("zweiter_faktor"),
+    VOUCHER("voucher"),
+    ADMIN("admin"),
+    SECOND_FACTOR("second_factor"),
     LOCAL(null),
 }
 

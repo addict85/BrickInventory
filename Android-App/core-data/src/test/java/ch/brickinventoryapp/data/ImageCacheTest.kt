@@ -66,7 +66,7 @@ class ImageCacheTest {
         val image = "SAMMLUNG-10179".toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(image)).setHeader("Cache-Control", "max-age=0"))
         server.start()
-        val address = server.url("/api/v1/images/set/10179-1?thumb=1")
+        val address = server.url("/api/v2/images/set/10179-1?thumb=1")
         val cache = Cache(jittered, folder.toOkioPath(), 4L * 1024 * 1024)
         val c = OkHttpClient.Builder().cache(cache).build()
         c.newCall(Request.Builder().url(address).build()).execute().use { assertArrayEquals(image, it.body.bytes()) }
@@ -92,7 +92,7 @@ class ImageCacheTest {
         val image = ("SAMMLUNG-75192-" + "x".repeat(200_000)).toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(image)).setHeader("Cache-Control", "max-age=0").setHeader("ETag", "\"1\""))
         server.start()
-        val address = server.url("/api/v1/images/set/75192-1?thumb=1")
+        val address = server.url("/api/v2/images/set/75192-1?thumb=1")
 
         val first = client()
         first.newCall(Request.Builder().url(address).build()).execute().use { assertArrayEquals(image, it.body.bytes()) }

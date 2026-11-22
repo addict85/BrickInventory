@@ -1,5 +1,5 @@
 /**
- * Every WRITING route of the app (shared/app-schnittstelle.json) against its
+ * Every WRITING route of the app (shared/app-interface.json) against its
  * contract (src/contract/): response and, where the contract names one, the input.
  *
  * Counter-checks (measured on 27.10.):
@@ -213,7 +213,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = appRoutes(_req).filter(r => r.methode !== 'GET');
+  const routen = appRoutes(_req).filter(r => r.method !== 'GET');
 
   /** Values for the placeholders in the path; steps add new ones. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGURE };
@@ -735,12 +735,12 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   await t.test('every step answers with 200', () => assert.deepEqual(status, []));
   await t.test('matches the contract', () => assert.deepEqual(deviations, []));
   await t.test('every writing route is checked or omitted with a reason', () => {
-    const open = routen.map(r => `${r.methode} ${r.path}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
+    const open = routen.map(r => `${r.method} ${r.path}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
     assert.deepEqual(open, []);
   });
   await t.test('a unit price with decimal places is kept when changing', () => assert.equal(w.partPrice, 0.25));
   await t.test('no dead exception', () => {
-    const bekannt = new Set(routen.map(r => `${r.methode} ${r.path}`));
+    const bekannt = new Set(routen.map(r => `${r.method} ${r.path}`));
     assert.deepEqual(
       [...OMITTED.keys()].filter(k => !bekannt.has(k)),
       [],

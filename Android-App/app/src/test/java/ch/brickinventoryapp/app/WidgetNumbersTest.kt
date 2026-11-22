@@ -41,7 +41,7 @@ import org.junit.Test
 class WidgetNumbersTest {
 
     private val pnl = BrickJson.decodeFromString(PnlResponse.serializer(),
-        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""").asView()
+        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_percent":25.05}}""").asView()
     private val history = BrickJson.decodeFromString(PortfolioHistoryResponse.serializer(),
         """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""").asView()
 
@@ -105,10 +105,10 @@ class WidgetNumbersTest {
     @Test
     fun `with a basis value and P&L stand as in the finance card`() {
         val basis = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
-            "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
-            "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
-            "basis_marktwert":"1712.40","basis_guv_betrag":"212.40","ohne_marktpreis_einstand":"180.00",
-            "ohne_kaufpreis_marktwert":"0.00"}}""").asView()
+            "purchase":"1680.00","current":"1712.40","pnl_percent":14.2,"positions":3,"positions_valued":2,
+            "positions_without_market_price":1,"positions_without_purchase_price":0,"baseline_cost":"1500.00",
+            "baseline_market_value":"1712.40","baseline_pnl_amount":"212.40","cost_without_market_price":"180.00",
+            "market_value_without_purchase_price":"0.00"}}""").asView()
         val z = widgetNumbers(basis, history, now = 7)!!
         assertEquals(1712.4, z.value!!, 1e-9)
         assertEquals(212.4, z.total!!, 1e-9)

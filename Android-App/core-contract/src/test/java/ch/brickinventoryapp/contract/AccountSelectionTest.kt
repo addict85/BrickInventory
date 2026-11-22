@@ -38,11 +38,11 @@ class AccountSelectionTest {
     @Test
     fun `the direction reads and writes the server's words`() {
         val json = Json { ignoreUnknownKeys = true }
-        val alarm = json.decodeFromString(Preisalarm.serializer(), """{"set_number":"1-1","direction":"ueber","threshold":5.0}""")
+        val alarm = json.decodeFromString(PriceAlert.serializer(), """{"set_number":"1-1","direction":"above","threshold":5.0}""")
         assertEquals(AlarmDirection.OVER, alarm.direction)
-        assertEquals("""{"direction":"ueber","threshold":5.0,"condition":"U"}""",
-            Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(direction = AlarmDirection.OVER, threshold = 5.0, condition = Condition.USED)))
+        assertEquals("""{"direction":"above","threshold":5.0,"condition":"U"}""",
+            Json.encodeToString(PriceAlertRequest.serializer(), PriceAlertRequest(direction = AlarmDirection.OVER, threshold = 5.0, condition = Condition.USED)))
         // Unknown as at the server: „unter“, instead of discarding the list.
-        assertEquals(AlarmDirection.BELOW, json.decodeFromString(Preisalarm.serializer(), """{"direction":"seitwaerts"}""").direction)
+        assertEquals(AlarmDirection.BELOW, json.decodeFromString(PriceAlert.serializer(), """{"direction":"seitwaerts"}""").direction)
     }
 }

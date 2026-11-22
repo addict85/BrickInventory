@@ -2,8 +2,8 @@
 'use strict';
 
 /**
- * Writes docs/openapi-v2.json (API v2) and docs/openapi.json (the v1 alias, unchanged for the
- * app) from the contract in src/contract/. Both are checked in; test/contract-openapi.test.js
+ * Writes docs/openapi-v2.json (API v2) and docs/openapi.json (the v1 alias, kept for app
+ * versions before the move to v2) from the contract in src/contract/. Both are checked in; test/contract-openapi.test.js
  * checks that they match the code. Call: npm run contract:openapi
  */
 const fs = require('node:fs');
@@ -22,7 +22,7 @@ if (require.main === module) {
     stdio: 'inherit',
   });
   const { openapi } = require(path.join(ROOT, 'dist', 'src', 'contract', 'openapi.js'));
-  /** Only a changed file is written: the Android tree is someone else's and stays on v1. */
+  /** Only a changed file is written: an unchanged run leaves the tree untouched. */
   const write = (/** @type {string} */ file, /** @type {string} */ text) => {
     if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === text) return;
     fs.writeFileSync(file, text);
@@ -33,9 +33,9 @@ if (require.main === module) {
   // The UI speaks v2; its types follow in the same step.
   const typen = require('./contract-frontend-types.js');
   write(typen.ZIEL, typen.create(JSON.parse(fs.readFileSync(DATEI_V2, 'utf8'))));
-  // The app stays on v1 until it moves itself (UPGRADE.md).
+  // The app speaks v2 as well; the v1 document stays for older app versions until the sunset.
   const kotlin = require('./contract-kotlin-dtos.js');
-  write(kotlin.ZIEL, kotlin.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
+  write(kotlin.ZIEL, kotlin.create(JSON.parse(fs.readFileSync(DATEI_V2, 'utf8'))));
 }
 
 module.exports = { DATEI, DATEI_V2, alsText };

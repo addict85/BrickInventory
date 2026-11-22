@@ -21,18 +21,18 @@ class BrickJsonTest {
     @Test
     fun `null in a field with a default value is an error`() {
         assertThrows(SerializationException::class.java) {
-            BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":null}""")
+            BrickJson.decodeFromString<StorageDefaultResponse>("""{"success":null}""")
         }
     }
 
     @Test
     fun `unknown fields stay allowed`() {
-        val r = BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":true,"neu_vom_server":1}""")
+        val r = BrickJson.decodeFromString<StorageDefaultResponse>("""{"success":true,"neu_vom_server":1}""")
         assertEquals(true, r.success)
     }
 
     @Test
     fun `defaults are written along`() {
-        assertEquals("""{"success":false,"vorgabe":null}""", BrickJson.encodeToString(LagerortVorgabeResponse()))
+        assertEquals("""{"success":false,"preset":null}""", BrickJson.encodeToString(StorageDefaultResponse()))
     }
 }

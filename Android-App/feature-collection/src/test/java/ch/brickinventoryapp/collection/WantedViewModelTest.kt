@@ -70,10 +70,10 @@ class WantedViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
         paths = PathServer(
-            "/api/v1/wanted" to """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}""",
-            "/api/v1/wanted/10294-1/N/uebernehmen" to """{"success":true,"action":"added","set_number":"10294-1"}""",
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":500.0}]}""",
-            "/api/v1/sets/10294-1/alert" to """{"success":true,"alert":{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}}""",
+            "/api/v2/wanted" to """{"success":true,"item":[{"set_number":"10294-1","condition":"N","user_id":1}]}""",
+            "/api/v2/wanted/10294-1/N/take-over" to """{"success":true,"action":"added","set_number":"10294-1"}""",
+            "/api/v2/alerts" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"below","threshold":500.0}]}""",
+            "/api/v2/sets/10294-1/alert" to """{"success":true,"alert":{"set_number":"10294-1","condition":"N","direction":"below","threshold":450.0}}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -87,23 +87,23 @@ class WantedViewModelTest {
 
     @Test
     fun `a deleted wishlist item can be restored, deleting happens only afterwards`() {
-        paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[
+        paths.responses["/api/v2/wanted"] = """{"success":true,"item":[
             {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"},
             {"set_number":"10305-1","condition":"N","user_id":1,"name":"Lion Knights' Castle"}]}"""
-        paths.responses["/api/v1/wanted/10294-1/N"] = """{"success":true}"""
+        paths.responses["/api/v2/wanted/10294-1/N"] = """{"success":true}"""
         val vm = vm()
         vm.loadWanted()
         assertEquals(2, vm.wantedState.value.wantedItem.size)
         vm.deleteWantedItem("10294-1", Condition.NEW, 1)
         assertTrue("out of the list", vm.wantedState.value.wantedItem.none { it.setNumber == "10294-1" })
         assertEquals("Titanic", vm.marked.value?.name)
-        assertTrue("no DELETE yet", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
+        assertTrue("no DELETE yet", paths.requestsTo("DELETE /api/v2/wanted/10294-1").isEmpty())
         vm.wantedItemUndo()
         assertTrue("back again", vm.wantedState.value.wantedItem.any { it.setNumber == "10294-1" })
-        assertTrue("no DELETE after undo", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
+        assertTrue("no DELETE after undo", paths.requestsTo("DELETE /api/v2/wanted/10294-1").isEmpty())
         vm.deleteWantedItem("10294-1", Condition.NEW, 1)
         vm.executeWantedItemDelete()
-        assertTrue("DELETE sent", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isNotEmpty())
+        assertTrue("DELETE sent", paths.requestsTo("DELETE /api/v2/wanted/10294-1").isNotEmpty())
         assertEquals(null, vm.marked.value)
     }
 
@@ -116,7 +116,7 @@ class WantedViewModelTest {
         first.setWantedSorting(WantedSort.PRICE_DESCENDING)
 
         paths.newProcess(io = Dispatchers.Main) { paths, t ->
-            paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[
+            paths.responses["/api/v2/wanted"] = """{"success":true,"item":[
                 {"set_number":"10294-1","condition":"U","user_id":1,"name":"Titanic"},
                 {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"}]}"""
             val newValue = vm(wanted, t)
@@ -125,24 +125,24 @@ class WantedViewModelTest {
             newValue.loadWanted()
             // The filters apply to the store; the fetch fills it completely.
             assertEquals(listOf(Condition.USED), newValue.wantedState.value.wantedItem.map { it.condition })
-            val request = paths.requestsTo("GET /api/v1/wanted").single()
+            val request = paths.requestsTo("GET /api/v2/wanted").single()
             assertTrue(request, "search=" !in request && "condition=" !in request)
         }
     }
 
     @Test
     fun `the search waits for the pause and filters the store with the last text`() {
-        paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[
+        paths.responses["/api/v2/wanted"] = """{"success":true,"item":[
             {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"},
             {"set_number":"21330-1","condition":"N","user_id":1,"name":"Tilt"}]}"""
         val vm = vm()
         vm.setWantedSearch("Ti")
         vm.setWantedSearch("Tita")
         clock.advanceTimeBy(300)
-        assertEquals("nothing may go out before the pause", 0, paths.requestsTo("GET /api/v1/wanted").size)
+        assertEquals("nothing may go out before the pause", 0, paths.requestsTo("GET /api/v2/wanted").size)
         clock.advanceTimeBy(100)
         assertEquals(listOf("10294-1"), vm.wantedState.value.wantedItem.map { it.setNumber })
-        assertEquals(1, paths.requestsTo("GET /api/v1/wanted").size)
+        assertEquals(1, paths.requestsTo("GET /api/v2/wanted").size)
     }
 
     @Test
@@ -154,21 +154,21 @@ class WantedViewModelTest {
         assertTrue("out of the watchlist", vm.wantedState.value.wantedItem.isEmpty())
         val gallery = runBlocking { t.sets().observeSets().first().list }
         assertEquals("in the gallery", listOf("10294-1"), gallery.map { it.setNumber })
-        val takeover = paths.requestsTo("/uebernehmen").single()
+        val takeover = paths.requestsTo("/take-over").single()
         assertTrue(takeover, takeover.startsWith("POST"))
     }
 
     @Test
     fun `list and detail load as soon as someone shows them`() {
         val vm = vm()
-        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v1/wanted").isEmpty())
+        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v2/wanted").isEmpty())
         val list = CoroutineScope(Dispatchers.Main).launch { vm.wantedState.collect {} }
         assertEquals(listOf("10294-1"), vm.wantedState.value.wantedItem.map { it.setNumber })
         list.cancel()
         val detail = vm.wantedItemDetailOf("10294-1")
         val page = CoroutineScope(Dispatchers.Main).launch { detail.collect {} }
         assertEquals("10294-1", detail.value.setNumber)
-        assertTrue("alerts of the item fetched", paths.requestsTo("GET /api/v1/alerts").isNotEmpty())
+        assertTrue("alerts of the item fetched", paths.requestsTo("GET /api/v2/alerts").isNotEmpty())
         page.cancel()
     }
 
@@ -178,16 +178,16 @@ class WantedViewModelTest {
         vm.loadWantedItemDetail("10294-1")
         assertTrue("detail loaded", !vm.wantedItemDetailState.value.fetch.loading)
         assertEquals(Money.from(500.0), vm.wantedItemDetailState.value.priceAlarms.single().threshold)
-        val before = paths.requestsTo("GET /api/v1/alerts").size
+        val before = paths.requestsTo("GET /api/v2/alerts").size
 
         vm.setPriceAlert("10294-1", AlarmDirection.BELOW, "4", Condition.NEW)
         vm.setPriceAlert("10294-1", AlarmDirection.BELOW, "450", Condition.NEW)
         // Saved, the server holds 450; the state reads the store only when loading,
         // without a reload it would stay at 500.
-        paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}]}"""
+        paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"below","threshold":450.0}]}"""
         clock.advanceTimeBy(900)
-        assertEquals("only the last input is saved", 1, paths.requestsTo("PUT /api/v1/sets/10294-1/alert").size)
-        assertTrue("nachgeladen", paths.requestsTo("GET /api/v1/alerts").size > before)
+        assertEquals("only the last input is saved", 1, paths.requestsTo("PUT /api/v2/sets/10294-1/alert").size)
+        assertTrue("nachgeladen", paths.requestsTo("GET /api/v2/alerts").size > before)
         assertEquals("saved and reloaded", Money.from(450.0), vm.wantedItemDetailState.value.priceAlarms.single().threshold)
         val stored = runBlocking { t.alerts().observeAlerts("10294-1").first().list }
         assertEquals("in the store", listOf(Money.from(450.0)), stored.map { it.threshold })
@@ -199,11 +199,11 @@ class WantedViewModelTest {
         val vm = vm()
         vm.loadWanted()
         assertTrue("List loaded", vm.wantedState.value.wantedItem.isNotEmpty())
-        val fetches = paths.requestsTo("GET /api/v1/wanted").size
+        val fetches = paths.requestsTo("GET /api/v2/wanted").size
 
         runBlocking { store.applyChange(Editing.DeleteWantedItem("10294-1", Condition.NEW, 1)) }
         assertTrue("deleted offline", vm.wantedState.value.wantedItem.isEmpty())
-        assertEquals("without a new fetch", fetches, paths.requestsTo("GET /api/v1/wanted").size)
+        assertEquals("without a new fetch", fetches, paths.requestsTo("GET /api/v2/wanted").size)
 
         vm.setWantedSearch("10294")
         clock.advanceTimeBy(400)

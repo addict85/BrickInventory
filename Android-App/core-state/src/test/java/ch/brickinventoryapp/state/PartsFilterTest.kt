@@ -47,7 +47,7 @@ class PartsFilterTest {
             parts.getPartsFilterColors(accounts = AccountSelection.Own)
             parts.getPartsCategories(accounts = AccountSelection.Own)
         }
-        assertEquals(listOf("GET /api/v1/parts/colors?accounts=own", "GET /api/v1/parts/categories?accounts=own"),
+        assertEquals(listOf("GET /api/v2/parts/colors?accounts=own", "GET /api/v2/parts/categories?accounts=own"),
             paths.requests.toList())
     }
 }
@@ -60,6 +60,6 @@ class CsvAbortTest {
     @Test
     fun `the app calls the abort address`() = withServer { paths ->
         runBlocking { testSetFilesRepository(TestApi.forTarget(paths.server)).cancelCsvImport() }
-        assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), paths.requests.toList())
+        assertEquals(listOf("POST /api/v2/sets/import/csv/cancel"), paths.requests.toList())
     }
 }

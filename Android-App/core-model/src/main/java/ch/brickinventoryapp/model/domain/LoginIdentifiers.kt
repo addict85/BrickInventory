@@ -8,5 +8,5 @@ const val TOKEN_SCOPE_APP = "app"
 const val TOKEN_SCOPE_FULL = "voll"
 
 /** Purpose of a passkey query (`routes/auth.ts`). */
-const val PASSKEY_SIGN_IN = "anmelden"
-const val PASSKEY_SECOND_FACTOR = "zweiter_faktor"
+const val PASSKEY_SIGN_IN = "login"
+const val PASSKEY_SECOND_FACTOR = "second_factor"

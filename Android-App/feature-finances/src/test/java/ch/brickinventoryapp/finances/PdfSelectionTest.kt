@@ -18,7 +18,7 @@ class PdfSelectionTest {
     @Test
     fun `address and title come back unchanged, a foreign key gives nothing`() {
         val addresses = listOf(
-            "https://srv/api/v1/anleitungen/Mein%20Plan%2B1.pdf",
+            "https://srv/api/v2/anleitungen/Mein%20Plan%2B1.pdf",
             "https://cdn.example/6/1/123456.pdf?ticket=a%2Fb+c&x=%25",
             "https://srv/Bauanleitung Teil 2.pdf",
         )

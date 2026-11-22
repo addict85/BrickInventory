@@ -75,13 +75,13 @@ class SseStreamTest {
 
     @Test
     fun `an error response delivers code and body before the response is closed`() {
-        server.enqueue(response("{\"error\":\"zu viele\",\"code\":\"zu_viele_verbindungen\"}", code = 429))
+        server.enqueue(response("{\"error\":\"zu viele\",\"code\":\"too_many_connections\"}", code = 429))
 
         val events = collect(sseStream(client, request()) { status(it) })
 
         val error = events.single() as SseEvent.StreamFailed
         assertEquals(429, error.code)
-        assertTrue("Body missing: ${error.body}", error.body!!.contains("zu_viele_verbindungen"))
+        assertTrue("Body missing: ${error.body}", error.body!!.contains("too_many_connections"))
     }
 
     @Test

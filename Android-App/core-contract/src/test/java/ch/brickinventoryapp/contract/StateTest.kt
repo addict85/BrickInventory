@@ -29,7 +29,7 @@ class StateTest {
         assertTrue(text, text.contains("\"condition\":\"U\""))
         val without = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1"))
         assertTrue(without, without.contains("\"condition\":null"))
-        val remember = json.encodeToString(Merkposten.serializer(), Merkposten(setNumber = "10294-1"))
+        val remember = json.encodeToString(WantedItem.serializer(), WantedItem(setNumber = "10294-1"))
         assertTrue(remember, remember.contains("\"condition\":\"N\""))
     }
 

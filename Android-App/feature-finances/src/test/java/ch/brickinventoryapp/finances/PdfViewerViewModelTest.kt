@@ -224,6 +224,6 @@ class PdfViewerViewModelTest {
 
     private companion object {
         const val SERVER = "https://brick.example"
-        const val INSTRUCTION = "https://brick.example/api/v1/instructions/42/file"
+        const val INSTRUCTION = "https://brick.example/api/v2/instructions/42/file"
     }
 }

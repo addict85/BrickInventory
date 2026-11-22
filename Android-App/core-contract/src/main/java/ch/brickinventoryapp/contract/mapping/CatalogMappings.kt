@@ -3,7 +3,7 @@ package ch.brickinventoryapp.contract.mapping
 import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogTheme
-import ch.brickinventoryapp.contract.JahrAnzahl
+import ch.brickinventoryapp.contract.YearCount
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogThemeView
@@ -35,10 +35,10 @@ fun CatalogSetDetail.asView() = CatalogDetailView(
     owned = owned,
     ownedQuantity = ownedQuantity,
     bricklink = bricklink?.asView(),
-    priceComparisonUrl = preisvergleichUrl,
+    priceComparisonUrl = priceComparisonUrl,
 )
 
-fun JahrAnzahl.asView() = YearCountView(
+fun YearCount.asView() = YearCountView(
     year = year,
     n = n,
 )

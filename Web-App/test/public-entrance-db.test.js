@@ -1,8 +1,8 @@
 /**
  * Open without login at the entrance (PUBLIC_ROUTES, routes/api/middleware.ts) is exactly
- * what the app calls before it has a token (`ohne_token` in shared/app-schnittstelle.json),
+ * what the app calls before it has a token (`without_token` in shared/app-interface.json),
  * plus named exceptions; Caddy buffers each open POST as a sign-in path. The app's "No" on
- * the QR screen (POST /auth/qr-login/verwerfen) comes without session and token.
+ * the QR screen (POST /auth/qr-login/discard) comes without session and token.
  *
  * Counter-checks (measured 22.11.2026, each on its own):
  *   A  'POST /auth/qr-login/discard' removed from PUBLIC_ROUTES → red: “the app's No
@@ -32,19 +32,12 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const WEB = path.join(__dirname, '..');
 const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api/middleware.js');
 /** What the app needs from the server, generated from its source (Android-App/tools/contract). */
-const APP = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
+const APP = require('./helpers/contract').appInterface();
 const withoutPrefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');
 
 /** What the sign-in screen calls before there is a token (the generator follows
- * AnmeldungViewModel → KontoRepositoryImpl → AccountApi). */
-const { v2PathOf } = _req('src/http/apiV1Alias.js');
-/** The app calls /api/v1: its routes under their v2 address. */
-const v2Of = (/** @type {string} */ r) => {
-  const [m, p] = r.split(' ');
-  return `${m} ${v2PathOf(m, p).path}`;
-};
-const signInScreenRoutes = () =>
-  new Set((APP[require('./helpers/contract').APP_KEYS.withoutToken] ?? []).map(r => withoutPrefix(v2Of(r))));
+ * LoginViewModel → AccountRepositoryImpl → AccountApi). */
+const signInScreenRoutes = () => new Set(APP.without_token.map(withoutPrefix));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {
@@ -78,9 +71,7 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   );
   // The exceptions marked `app` are routes the app really calls.
   const app = new Set(
-    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) =>
-      withoutPrefix(v2Of(`${r.methode} ${r.pfad}`)),
-    ),
+    APP.routes.map((/** @type {{ method: string, path: string }} */ r) => withoutPrefix(`${r.method} ${r.path}`)),
   );
   for (const [r, wer] of Object.entries(EXCEPTIONS))
     if (wer === 'app') assert.ok(app.has(r), `the app does not call ${r}`);
@@ -91,7 +82,7 @@ test('Caddy buffers every open POST as a sign-in path', () => {
   const block = caddy.match(/@anmeldung \{([\s\S]*?)\n\t\}/)?.[1] ?? '';
   const pfade = (block.match(/^\s*path (.+)$/m)?.[1] ?? '').trim().split(/\s+/);
   assert.ok(/method POST/.test(block) && pfade.length > 5, 'block @anmeldung not found');
-  // The app still posts to the v1 alias, so Caddy buffers both addresses.
+  // App versions before v2 still post to the v1 alias until the sunset, so Caddy buffers both.
   const { v1Key } = _req('src/contract/v1Routes.js');
   const open = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).flatMap(r => [
     `/api/v2${r.slice(5)}`,

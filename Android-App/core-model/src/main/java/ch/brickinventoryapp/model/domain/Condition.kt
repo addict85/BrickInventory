@@ -23,9 +23,6 @@ enum class Condition(val identifier: String) {
     USED("U");
 
     companion object {
-        /** Contract bridge until API v2: Vertrag.kt still names this value `NEU`. */
-        val NEU get() = NEW
-
         /** null for empty or unknown — the caller decides what applies then. */
         fun from(identifier: String?): Condition? = entries.firstOrNull { it.identifier.equals(identifier?.trim(), ignoreCase = true) }
     }

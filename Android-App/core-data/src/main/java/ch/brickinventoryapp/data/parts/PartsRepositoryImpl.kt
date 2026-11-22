@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.parts
 
 import ch.brickinventoryapp.contract.AddPartResponse
-import ch.brickinventoryapp.contract.BestandRequest
-import ch.brickinventoryapp.contract.BestandTeil
 import ch.brickinventoryapp.contract.GenericResponse
-import ch.brickinventoryapp.contract.LagerortNameRequest
-import ch.brickinventoryapp.contract.LagerortRequest
-import ch.brickinventoryapp.contract.LagerortVorgabeRequest
-import ch.brickinventoryapp.contract.TeilFarbeRequest
+import ch.brickinventoryapp.contract.HoldingPart
+import ch.brickinventoryapp.contract.HoldingRequest
+import ch.brickinventoryapp.contract.PartColorRequest
+import ch.brickinventoryapp.contract.StorageDefaultRequest
+import ch.brickinventoryapp.contract.StorageNameRequest
+import ch.brickinventoryapp.contract.StorageRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.PartsApi
@@ -109,15 +109,15 @@ internal class PartsRepositoryImpl @Inject constructor(
      */
     override suspend fun getOwnedParts(parts: List<PartialKey>,
                               accounts: AccountSelection?): Outcome<Map<PartialKey, PartInventory>> =
-        safeCall { api.getOwnedParts(BestandRequest(teile = parts.map { BestandTeil(it.number, it.color) }), accounts?.request) }
+        safeCall { api.getOwnedParts(HoldingRequest(parts = parts.map { HoldingPart(it.number, it.color) }), accounts?.request) }
             .promised({ it.success }) { r ->
-                parts.mapNotNull { t -> r.bestand["${t.number}|${t.color}"]?.let { t to PartInventory(it.gesamt, it.lose) } }.toMap()
+                parts.mapNotNull { t -> r.holding["${t.number}|${t.color}"]?.let { t to PartInventory(it.total, it.loose) } }.toMap()
             }
 
     /** Set a part's storage location; an empty text deletes it. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, location: String): Outcome<String?> =
         store.caughtUp({ r -> FollowUp.PartLocation(partNumber, colorId, r.storage).takeIf { r.success } }) {
-            safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(storage = location)) }
+            safeCall { api.setPartStorage(partNumber, colorId, StorageRequest(storage = location)) }
         }.promised({ it.success }) { it.storage }
 
     /**
@@ -126,7 +126,7 @@ internal class PartsRepositoryImpl @Inject constructor(
      * from the suggestion.
      */
     override suspend fun getLocations(accounts: AccountSelection?): Outcome<List<LocationView>> =
-        safeCall { api.getLocations(accounts?.request) }.promised({ it.success }) { r -> r.orte.map { it.asView() } }
+        safeCall { api.getLocations(accounts?.request) }.promised({ it.success }) { r -> r.locations.map { it.asView() } }
 
     // ── The supply of storage locations ──
     //
@@ -140,21 +140,21 @@ internal class PartsRepositoryImpl @Inject constructor(
 
     /** The default comes next to the list; in the store the location itself carries it. */
     override suspend fun refreshLocationStock(): Outcome<Unit> =
-        store.refreshPaged(Slots.STORAGE_LOCATIONS, { r -> r.orte.map { StockLocationView(location = it.asView(), default = it.id == r.vorgabe?.id) } },
-            { it.orte.size }, retry) { _ -> safeCall { api.getLocationStock(null) } }
+        store.refreshPaged(Slots.STORAGE_LOCATIONS, { r -> r.locations.map { StockLocationView(location = it.asView(), default = it.id == r.preset?.id) } },
+            { it.locations.size }, retry) { _ -> safeCall { api.getLocationStock(null) } }
 
     override suspend fun getLocationStock(owner: List<Int>): Outcome<List<LocationEntryView>> =
         safeCall { api.getLocationStock(owner.takeIf { it.isNotEmpty() }?.joinToString(",")) }
-            .promised({ it.success }) { r -> r.orte.map { it.asView() } }
+            .promised({ it.success }) { r -> r.locations.map { it.asView() } }
 
     override suspend fun createLocation(name: String): Outcome<Unit> =
-        store.caughtUp({ r -> r.ort?.takeIf { r.success }?.let { FollowUp.LocationCreated(it.asView()) } }) {
-            safeCall { api.createLocation(LagerortNameRequest(name = name)) }
+        store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { FollowUp.LocationCreated(it.asView()) } }) {
+            safeCall { api.createLocation(StorageNameRequest(name = name)) }
         }.promised({ it.success }) { }
 
     override suspend fun renameLocation(id: Int, old: String, name: String): Outcome<Unit> =
-        store.caughtUp({ r -> r.ort?.takeIf { r.success }?.let { FollowUp.LocationRenamed(old, it.asView()) } }) {
-            safeCall { api.renameLocation(id, LagerortNameRequest(name = name)) }
+        store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { FollowUp.LocationRenamed(old, it.asView()) } }) {
+            safeCall { api.renameLocation(id, StorageNameRequest(name = name)) }
         }.promised({ it.success }) { }
 
     override suspend fun deleteLocation(id: Int): Outcome<Unit> =
@@ -163,8 +163,8 @@ internal class PartsRepositoryImpl @Inject constructor(
 
     /** The preselected storage location (star) — `null` switches the default off; what the server reports applies. */
     override suspend fun setLocationDefault(id: Int?): Outcome<Unit> =
-        store.caughtUp({ r -> FollowUp.LocationDefault(r.vorgabe?.id).takeIf { r.success } }) {
-            safeCall { api.setLocationDefault(LagerortVorgabeRequest(id = id)) }
+        store.caughtUp({ r -> FollowUp.LocationDefault(r.preset?.id).takeIf { r.success } }) {
+            safeCall { api.setLocationDefault(StorageDefaultRequest(id = id)) }
         }.promised({ it.success }) { }
 
     // ── In which sets is this part / this figure? ──
@@ -230,7 +230,7 @@ internal class PartsRepositoryImpl @Inject constructor(
         val name = colorName.takeUnless { newColor == NO_COLOR }
         val hex = colorHex.takeUnless { newColor == NO_COLOR }
         return store.caughtUp({ r -> FollowUp.PartColor(partNumber, colorId, newColor, name, hex, owner).takeIf { r.success } }) {
-            safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(colorId = newColor, colorName = name, colorHex = hex), owner) }
+            safeCall { api.setPartColor(partNumber, colorId, PartColorRequest(colorId = newColor, colorName = name, colorHex = hex), owner) }
         }.promised({ it.success }) { }
     }
 }

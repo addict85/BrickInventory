@@ -2,8 +2,8 @@
 'use strict';
 
 /**
- * Writes the app's Kotlin types (core-contract, package vertrag) from
- * docs/openapi.json, without network and without Gradle: responses from the schemas,
+ * Writes the app's Kotlin types (core-contract, package contract) from
+ * docs/openapi-v2.json, without network and without Gradle: responses from the schemas,
  * bodies from the requests of the routes the app sends. Names and domain types
  * are in contract-kotlin-mapping.js. Checked in; with --pruefen only
  * compare (return 1 on a deviation). Call: npm run contract:kotlin
@@ -16,7 +16,7 @@ const STANDARD = require('./contract-kotlin-mapping.js');
 let Z = STANDARD;
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = path.join(ROOT, 'docs', 'openapi.json');
+const QUELLE = path.join(ROOT, 'docs', 'openapi-v2.json');
 const ZIEL = path.join(
   ROOT,
   '..',
@@ -28,7 +28,7 @@ const ZIEL = path.join(
   'ch',
   'brickinventoryapp',
   'contract',
-  'Vertrag.kt',
+  'Contract.kt',
 );
 
 const KEYWORDS = new Set([
@@ -84,7 +84,7 @@ const constant = w => {
     .replace(/[^A-Za-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toUpperCase();
-  return /^[0-9]/.test(k) ? `W_${k}` : k || 'LEER';
+  return /^[0-9]/.test(k) ? `V_${k}` : k || 'EMPTY';
 };
 
 /**
@@ -100,7 +100,7 @@ const grund = (name, nullbar = false) => ({ art: 'grund', name, nullbar });
 
 /**
  * The type of a schema; nested objects are collected as a shape of their own [neben],
- * under the raw name `<Parent><Field>` or `…Eintrag`.
+ * under the raw name `<Parent><Field>` or `…Entry`.
  * @param {any} s @param {string} suggestion @param {(name: string, s: any) => void} beside @returns {Typ}
  */
 function type(s, suggestion, beside) {
@@ -133,7 +133,7 @@ function type(s, suggestion, beside) {
   if (s.type === 'array')
     return {
       art: 'liste',
-      element: type(s.items, `${suggestion}Eintrag`, beside),
+      element: type(s.items, `${suggestion}Entry`, beside),
       nullbar: false,
     };
   if (s.type === 'object') {
@@ -143,7 +143,7 @@ function type(s, suggestion, beside) {
     }
     const wert = s.additionalProperties;
     if (wert && typeof wert === 'object' && Object.keys(wert).length) {
-      const w = type(wert, `${suggestion}Wert`, beside);
+      const w = type(wert, `${suggestion}Value`, beside);
       if (!(w.art === 'grund' && w.name === 'JsonElement')) return { art: 'karte', wert: w, nullbar: false };
     }
     return grund('JsonObject');
@@ -413,8 +413,8 @@ function file(doc) {
   for (const [n, pkg] of Object.entries(Z.CONSTANTS)) if (new RegExp(`= ${n}\\b`).test(body)) imports.push(pkg);
   const optIn = /@EncodeDefault/.test(body) ? '@file:OptIn(ExperimentalSerializationApi::class)\n' : '';
   return (
-    '// Generated from Web-App/docs/openapi.json by Web-App/scripts/contract-kotlin-dtos.js.\n' +
-    '// Do not edit by hand: npm run vertrag:kotlin (in the Web-App folder).\n' +
+    '// Generated from Web-App/docs/openapi-v2.json by Web-App/scripts/contract-kotlin-dtos.js.\n' +
+    '// Do not edit by hand: npm run contract:kotlin (in the Web-App folder).\n' +
     '@file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")\n' +
     optIn +
     '\npackage ch.brickinventoryapp.contract\n\n' +

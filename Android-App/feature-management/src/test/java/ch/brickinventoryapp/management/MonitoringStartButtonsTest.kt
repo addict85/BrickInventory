@@ -41,8 +41,8 @@ import org.junit.Test
 class MonitoringStartButtonsTest {
 
     private val paths = PathServer(
-        "/api/v1/admin/trigger-price-job" to """{"success":true}""",
-        "/api/v1/admin/reimport-instructions" to """{"success":true,"enqueued":3}""",
+        "/api/v2/admin/trigger-price-job" to """{"success":true}""",
+        "/api/v2/admin/reimport-instructions" to """{"success":true,"enqueued":3}""",
     )
     private val channel = MessageChannel()
 
@@ -82,7 +82,7 @@ class MonitoringStartButtonsTest {
 
     @Test
     fun `a failed start reports and releases the button`() = runTest {
-        paths.codes["/api/v1/admin/catalog-images"] = 500
+        paths.codes["/api/v2/admin/catalog-images"] = 500
         val vm = vm()
         vm.launch(Jobstart.CATALOG_IMAGES)
         runCurrent()
@@ -92,8 +92,8 @@ class MonitoringStartButtonsTest {
 
     @Test
     fun `a failed removal names the set and the cause`() = runTest {
-        paths.responses["/api/v1/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
-        paths.codes["/api/v1/admin/brickset-queue/75192"] = 500
+        paths.responses["/api/v2/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
+        paths.codes["/api/v2/admin/brickset-queue/75192"] = 500
         val vm = vm()
         vm.remove("75192")
         runCurrent()
@@ -105,7 +105,7 @@ class MonitoringStartButtonsTest {
 
     @Test
     fun `a failed save names the cause instead of staying silent`() = runTest {
-        paths.codes["/api/v1/admin/cache-ttl"] = 500
+        paths.codes["/api/v2/admin/cache-ttl"] = 500
         val vm = vm()
         vm.saveCacheDuration(12)
         runCurrent()
@@ -121,7 +121,7 @@ class MonitoringStartButtonsTest {
 
     @Test
     fun `a failed queue shows the error instead of an empty list`() = runTest {
-        paths.codes["/api/v1/admin/brickset-queue"] = 500
+        paths.codes["/api/v2/admin/brickset-queue"] = 500
         val vm = vm()
         vm.showQueue()
         runCurrent()
@@ -130,8 +130,8 @@ class MonitoringStartButtonsTest {
 
     @Test
     fun `retrying reports the set number`() = runTest {
-        paths.responses["/api/v1/admin/brickset-queue/75192/retry"] = """{"success":true}"""
-        paths.responses["/api/v1/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
+        paths.responses["/api/v2/admin/brickset-queue/75192/retry"] = """{"success":true}"""
+        paths.responses["/api/v2/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
         val vm = vm()
         vm.retry("75192")
         runCurrent()

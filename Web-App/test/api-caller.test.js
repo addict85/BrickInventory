@@ -39,7 +39,7 @@ function allRoutes() {
   return out;
 }
 
-/** Browser code and templates; the app's calls are in shared/app-schnittstelle.json. */
+/** Browser code and templates; the app's calls are in shared/app-interface.json. */
 function clientSources() {
   const dateien = [];
   const collect = (dir, extensions) => {
@@ -116,9 +116,9 @@ test('every route has a caller or a registered reason', () => {
   assert.ok(sources.length >= 20, `Only ${sources.length} client files found — paths outdated?`);
   const text = [
     ...sources.map(p => fs.readFileSync(p, 'utf8')),
-    // The app still calls /api/v1 (the alias): its paths count under their v2 name.
+    // The app's routes and hand-built addresses (shared/app-interface.json).
     ...appRoutes(_req).map(r => r.path),
-    ...appAddresses(_req),
+    ...appAddresses(),
   ].join('\n');
 
   assert.ok(routen.length >= 120, `Only ${routen.length} routes found — pattern outdated?`);

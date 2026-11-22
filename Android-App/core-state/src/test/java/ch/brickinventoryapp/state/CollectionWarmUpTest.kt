@@ -53,11 +53,11 @@ import java.io.File
 class CollectionWarmUpTest {
 
     private val responses = arrayOf(
-        "/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke","image_local":"/b/set_thumb.jpg"}]}""",
-        "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"part_name":"Brick","color_name":"Red","image_local":"/b/teil_thumb.jpg","total_quantity":2}]}""",
-        "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001","fig_name":"Luke","image_local":"/b/figur_thumb.jpg","quantity":1}]}""",
-        "/api/v1/parts/manual" to """{"success":true,"parts":[{"id":9,"part_number":"3002","part_name":"Brick 2x3","color_id":5,"color_name":"Red","quantity":1,"image_local":"/b/mteil_thumb.jpg"}]}""",
-        "/api/v1/minifigs/manual" to """{"success":true,"figs":[{"id":3,"fig_number":"sw0002","fig_name":"Han","quantity":1,"image_local":"/b/mfigur_thumb.jpg"}]}""",
+        "/api/v2/sets" to """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke","image_local":"/b/set_thumb.jpg"}]}""",
+        "/api/v2/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"part_name":"Brick","color_name":"Red","image_local":"/b/teil_thumb.jpg","total_quantity":2}]}""",
+        "/api/v2/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001","fig_name":"Luke","image_local":"/b/figur_thumb.jpg","quantity":1}]}""",
+        "/api/v2/parts/manual" to """{"success":true,"parts":[{"id":9,"part_number":"3002","part_name":"Brick 2x3","color_id":5,"color_name":"Red","quantity":1,"image_local":"/b/mteil_thumb.jpg"}]}""",
+        "/api/v2/minifigs/manual" to """{"success":true,"figs":[{"id":3,"fig_number":"sw0002","fig_name":"Han","quantity":1,"image_local":"/b/mfigur_thumb.jpg"}]}""",
     )
 
     @Test
@@ -76,7 +76,7 @@ class CollectionWarmUpTest {
             assertEquals(listOf("set", "teil", "figur", "mteil", "mfigur").map { "https://brick.example/b/${it}_thumb.jpg" },
                 addresses)
             val asked = paths.requests.toList()
-            assertEquals(setOf("/api/v1/sets", "/api/v1/parts", "/api/v1/minifigs", "/api/v1/parts/manual", "/api/v1/minifigs/manual"),
+            assertEquals(setOf("/api/v2/sets", "/api/v2/parts", "/api/v2/minifigs", "/api/v2/parts/manual", "/api/v2/minifigs/manual"),
                 asked.map { it.substringAfter(' ').substringBefore('?') }.toSet())
             assertTrue("without account filter: $asked", asked.all { "accounts=own" in it })
             assertTrue("read-only: $asked", asked.all { it.startsWith("GET ") })

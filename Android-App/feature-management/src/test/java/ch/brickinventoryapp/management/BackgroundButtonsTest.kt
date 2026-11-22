@@ -58,8 +58,8 @@ class BackgroundButtonsTest {
 
     private fun show() {
         val view = BackgroundView(
-            jobs = listOf(job("17", "bilder", JobStatus.RUNNING, "75192-1"),
-                               job("18", "preise", JobStatus.ERROR, null)),
+            jobs = listOf(job("17", "images", JobStatus.RUNNING, "75192-1"),
+                               job("18", "prices", JobStatus.ERROR, null)),
             pauses = emptyList(), imageDemand = 0, jobProcessRunning = true)
         compose.setContent {
             BrickInventoryManagerTheme {
@@ -92,7 +92,7 @@ class BackgroundButtonsTest {
         compose.waitForIdle()
         inDialog(text(R.string.background_clear)).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("bilder"), emptied)
+        assertEquals(listOf("images"), emptied)
     }
 
     @Test

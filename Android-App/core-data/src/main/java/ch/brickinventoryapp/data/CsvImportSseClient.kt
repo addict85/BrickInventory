@@ -54,7 +54,7 @@ class CsvImportSseClient @Inject constructor(
         // Address and token are set by the client's guard as for every fetch; without
         // sign-in the server answers 401, and the caller asks again later.
         val request = Request.Builder()
-            .url("${PLACEHOLDER_BASE}api/v1/sets/import/csv/stream")
+            .url("${PLACEHOLDER_BASE}api/v2/sets/import/csv/stream")
             .header("Accept", "text/event-stream")
             .build()
 

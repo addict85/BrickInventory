@@ -131,9 +131,9 @@ internal class AdminRepositoryImpl @Inject constructor(
 
     override suspend fun repeatJob(id: String): Outcome<Unit> = safeCall { api.repeatJob(id) }.withoutContent()
 
-    override suspend fun startJobKind(kind: String): Outcome<Boolean> = safeCall { api.startJobKind(kind) }.mapData { it.gestartet }
+    override suspend fun startJobKind(kind: String): Outcome<Boolean> = safeCall { api.startJobKind(kind) }.mapData { it.started }
 
-    override suspend fun emptyJobKind(kind: String): Outcome<Int> = safeCall { api.emptyJobKind(kind) }.mapData { it.entfernt }
+    override suspend fun emptyJobKind(kind: String): Outcome<Int> = safeCall { api.emptyJobKind(kind) }.mapData { it.removed }
 
     override suspend fun triggerCsvSync(): Outcome<Unit> = safeCall { api.triggerCsvSync() }.managed { }
 

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.contract.CatalogMetaResponse
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetsResponse
-import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.contract.CatalogYearDistributionResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -15,10 +15,10 @@ import retrofit2.http.Query
 interface CatalogApi {
 
     // ── Katalog ──────────────────────────────────────────────────────────────
-    @GET("api/v1/catalog/meta")
+    @GET("api/v2/catalog/meta")
     suspend fun getCatalogMeta(): Response<CatalogMetaResponse>
 
-    @GET("api/v1/catalog/sets")
+    @GET("api/v2/catalog/sets")
     suspend fun getCatalogSets(
         @Query("q") q: String? = null,
         @Query("theme_id") themeId: Int? = null,
@@ -29,13 +29,13 @@ interface CatalogApi {
         @Query("page_size") limit: Int = 60
     ): Response<CatalogSetsResponse>
 
-    @GET("api/v1/catalog/sets/{setNumber}")
+    @GET("api/v2/catalog/sets/{setNumber}")
     suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
 
-    @GET("api/v1/catalog/year-verteilung")
+    @GET("api/v2/catalog/year-distribution")
     suspend fun getCatalogYearDistribution(
         @Query("q") q: String? = null,
         @Query("theme_id") themeId: Int? = null,
         @Query("sort") sort: String? = null
-    ): Response<CatalogYearVerteilungResponse>
+    ): Response<CatalogYearDistributionResponse>
 }

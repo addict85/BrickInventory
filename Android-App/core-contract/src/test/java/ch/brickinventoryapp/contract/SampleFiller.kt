@@ -124,7 +124,7 @@ object SampleFiller {
         it.parameterCount == 0 && !Modifier.isStatic(it.modifiers) && it.returnType != Void.TYPE
     }
 
-    /** The contract keeps German property names until API v2; the view carries the English one. */
+    /** Where the view names a value differently from the contract (contract-property-names.txt). */
     private val contractNames: Map<String, String> = File("src/test/resources/contract-property-names.txt").readLines()
         .filter { it.isNotBlank() && !it.startsWith("#") }.associate { it.substringBefore(' ') to it.substringAfter(' ') }
 

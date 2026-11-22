@@ -111,10 +111,10 @@ class ServerGuardTest {
 
     @Test
     fun `a token without binding goes to no server`() {
-        codes["/api/v1/sets"] = 401
+        codes["/api/v2/sets"] = 401
         val c = client(State(basis(), bound = false))
-        assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
-        c.newCall(Request.Builder().url(basis() + "/api/v1/pdf").header("Authorization", "Bearer $TOKEN").build())
+        assertEquals(401, fetch(c, "http://localhost:3000/api/v2/sets"))
+        c.newCall(Request.Builder().url(basis() + "/api/v2/pdf").header("Authorization", "Bearer $TOKEN").build())
             .execute().close()
         assertEquals("an unbound token went out", listOf<String?>(null, null),
             synchronized(requests) { requests.map { it.second } })
@@ -123,10 +123,10 @@ class ServerGuardTest {
 
     @Test
     fun `a 401 on the token reports the expired session`() {
-        codes["/api/v1/sets"] = 401
+        codes["/api/v2/sets"] = 401
         val c = client(State(basis()))
-        assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
-        assertEquals("Bearer $TOKEN", requestsTo("/api/v1/sets").single().second)
+        assertEquals(401, fetch(c, "http://localhost:3000/api/v2/sets"))
+        assertEquals("Bearer $TOKEN", requestsTo("/api/v2/sets").single().second)
         assertEquals(1, expired.get())
     }
 
@@ -141,57 +141,57 @@ class ServerGuardTest {
     /** Without a token the server returned the default instead of this account's theme. */
     @Test
     fun `the account's design is fetched with the token`() {
-        fetch(client(State(basis())), "http://localhost:3000/api/v1/settings/theme")
-        assertEquals("Bearer $TOKEN", requestsTo("/api/v1/settings/theme").single().second)
+        fetch(client(State(basis())), "http://localhost:3000/api/v2/settings/theme")
+        assertEquals("Bearer $TOKEN", requestsTo("/api/v2/settings/theme").single().second)
     }
 
     @Test
     fun `the placeholder is rewritten to the server including path`() {
-        fetch(client(State(basis() + "/brick")), "http://localhost:3000/api/v1/sets?seite=2")
-        assertEquals("/brick/api/v1/sets?seite=2", requestsTo("/api/v1/sets").single().first)
+        fetch(client(State(basis() + "/brick")), "http://localhost:3000/api/v2/sets?seite=2")
+        assertEquals("/brick/api/v2/sets?seite=2", requestsTo("/api/v2/sets").single().first)
     }
 
     @Test
     fun `the token goes only to the server that issued it`() {
-        codes["/api/v1/sets"] = 401
+        codes["/api/v2/sets"] = 401
         val situation = State(basis(), origin = "http://anderer.example:3000")
-        assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v1/sets"))
-        assertNull("the old token went to the new server", requestsTo("/api/v1/sets").single().second)
+        assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v2/sets"))
+        assertNull("the old token went to the new server", requestsTo("/api/v2/sets").single().second)
         assertEquals("without a token a 401 is no expiry", 0, expired.get())
     }
 
     @Test
     fun `a self-set header with the token is dropped for a foreign origin`() {
         val situation = State(basis(), origin = "http://anderer.example:3000")
-        client(situation).newCall(Request.Builder().url(basis() + "/api/v1/csv")
+        client(situation).newCall(Request.Builder().url(basis() + "/api/v2/csv")
             .header("Authorization", "Bearer $TOKEN").build()).execute().close()
-        assertNull(requestsTo("/api/v1/csv").single().second)
+        assertNull(requestsTo("/api/v2/csv").single().second)
     }
 
     /** A swap that outlives the server change carries the old server's token. */
     @Test
     fun `a self-set header with an older token is dropped for a foreign origin`() {
         val situation = State(basis(), origin = "http://anderer.example:3000")
-        client(situation).newCall(Request.Builder().url("http://localhost:3000/api/v1/auth/token-rotieren")
+        client(situation).newCall(Request.Builder().url("http://localhost:3000/api/v2/auth/rotate-token")
             .header("Authorization", "Bearer vom-alten-server").build()).execute().close()
-        assertNull(requestsTo("/token-rotieren").single().second)
+        assertNull(requestsTo("/rotate-token").single().second)
     }
 
     @Test
     fun `after sign-out no self-set header goes out, one bound to the own origin does`() {
-        client(State(basis(), tokens = ArrayDeque(listOf("")))).newCall(Request.Builder().url(basis() + "/api/v1/csv")
+        client(State(basis(), tokens = ArrayDeque(listOf("")))).newCall(Request.Builder().url(basis() + "/api/v2/csv")
             .header("Authorization", "Bearer alt").build()).execute().close()
-        assertNull("signed out: no token", requestsTo("/api/v1/csv").single().second)
+        assertNull("signed out: no token", requestsTo("/api/v2/csv").single().second)
 
         val own = NetworkPolicy.origin(basis())
-        client(State(basis(), origin = own)).newCall(Request.Builder().url(basis() + "/api/v1/pdf")
+        client(State(basis(), origin = own)).newCall(Request.Builder().url(basis() + "/api/v2/pdf")
             .header("Authorization", "Bearer alt").build()).execute().close()
-        assertEquals("Bearer alt", requestsTo("/api/v1/pdf").single().second)
+        assertEquals("Bearer alt", requestsTo("/api/v2/pdf").single().second)
     }
 
     @Test
     fun `the own server gets language and version`() {
-        fetch(client(State(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
+        fetch(client(State(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v2/stats")
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
         assertEquals(APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
@@ -204,15 +204,15 @@ class ServerGuardTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(426)
                 .setHeader("X-Api-Version", newer).setHeader("X-Api-Min-App", newer)
-                .setBody("""{"success":false,"error":"App zu alt","code":"app_zu_alt"}""")
+                .setBody("""{"success":false,"error":"App zu alt","code":"app_too_old"}""")
         }
         val hints = Collections.synchronizedList(mutableListOf<VersionsHint>())
         val c = OkHttpClient.Builder()
             .addInterceptor(ServerGuard(State(basis(), tokens = ArrayDeque(listOf(""))), true, true,
                 sessionExpired = { expired.incrementAndGet() }, versionsMessage = { hints += it }))
             .readTimeout(2, TimeUnit.SECONDS).build()
-        assertEquals(426, fetch(c, basis() + "/api/v1/auth/profile"))
-        assertEquals(426, fetch(c, basis() + "/api/v1/sets"))
+        assertEquals(426, fetch(c, basis() + "/api/v2/auth/profile"))
+        assertEquals(426, fetch(c, basis() + "/api/v2/sets"))
         assertEquals("reported once, not per request", listOf(VersionsHint.APP_TOO_OLD), hints.toList())
         assertEquals(0, expired.get())
     }
@@ -231,19 +231,19 @@ class ServerGuardTest {
     @Test
     fun `a request without a token reaches for the new one`() {
         // The first read doesn't yet return a token, the second returns the freshly stored one.
-        codes["/api/v1/sets"] = 401
+        codes["/api/v2/sets"] = 401
         val situation = State(basis(), tokens = ArrayDeque(listOf("", TOKEN)))
-        fetch(client(situation), "http://localhost:3000/api/v1/sets")
-        val an = requestsTo("/api/v1/sets")
+        fetch(client(situation), "http://localhost:3000/api/v2/sets")
+        val an = requestsTo("/api/v2/sets")
         assertEquals(listOf(null, "Bearer $TOKEN"), an.map { it.second })
         assertEquals("after following up the 401 is genuine", 1, expired.get())
     }
 
     @Test
     fun `a 401 without a token does not sign out`() {
-        codes["/api/v1/auth/login"] = 401
+        codes["/api/v2/auth/login"] = 401
         val situation = State(basis(), tokens = ArrayDeque(listOf("")))
-        assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v1/auth/login"))
+        assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v2/auth/login"))
         assertEquals(0, expired.get())
     }
 
@@ -251,7 +251,7 @@ class ServerGuardTest {
     @Test
     fun `in the release build no http request reaches the server, not even localhost`() {
         val c = client(State(basis()), development = false)
-        for (url in listOf("http://localhost:3000/api/v1/sets", basis() + "/images/sets/1.jpg")) {
+        for (url in listOf("http://localhost:3000/api/v2/sets", basis() + "/images/sets/1.jpg")) {
             try {
                 fetch(c, url)
                 fail("$url must not go out")
@@ -268,7 +268,7 @@ class ServerGuardTest {
     fun `the debug build also sends http only to the device and the emulator host`() {
         for (address in listOf("http://nas:3000", "http://192.168.1.50:3000", "http://brick.example.org")) {
             try {
-                fetch(client(State(address)), "http://localhost:3000/api/v1/sets")
+                fetch(client(State(address)), "http://localhost:3000/api/v2/sets")
                 fail("$address must not be reached in plain text")
             } catch (_: PlaintextRejected) { }
         }
@@ -277,62 +277,62 @@ class ServerGuardTest {
 
     @Test
     fun `a 403 only_admins on a token reports the revocation of rights, another 403 does not`() {
-        codes["/api/v1/admin/jobs"] = 403
-        bodies["/api/v1/admin/jobs"] = """{"success":false,"code":"nur_admins","error":"Nur für Admins"}"""
-        codes["/api/v1/auth/passkey/registrieren/optionen"] = 403
-        bodies["/api/v1/auth/passkey/registrieren/optionen"] = """{"success":false,"code":"nur_mit_sitzung"}"""
+        codes["/api/v2/admin/jobs"] = 403
+        bodies["/api/v2/admin/jobs"] = """{"success":false,"code":"admins_only","error":"Nur für Admins"}"""
+        codes["/api/v2/auth/passkey/register/options"] = 403
+        bodies["/api/v2/auth/passkey/register/options"] = """{"success":false,"code":"session_only"}"""
         val c = client(State(basis()))
-        assertEquals(403, fetch(c, "http://localhost:3000/api/v1/admin/jobs"))
-        assertEquals(403, fetch(c, "http://localhost:3000/api/v1/auth/passkey/registrieren/optionen"))
+        assertEquals(403, fetch(c, "http://localhost:3000/api/v2/admin/jobs"))
+        assertEquals(403, fetch(c, "http://localhost:3000/api/v2/auth/passkey/register/options"))
         assertEquals(1, revoked.get())
         assertEquals("a 403 is no expired session", 0, expired.get())
 
-        fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/admin/jobs")
+        fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v2/admin/jobs")
         assertEquals("without a token a 403 says nothing about this account", 1, revoked.get())
     }
 
     @Test
     fun `a 403 password_switch_needed requires the new password without signing out`() {
-        codes["/api/v1/sets"] = 403
-        bodies["/api/v1/sets"] = """{"success":false,"code":"passwort_wechsel_noetig","error":"Bitte zuerst das Startpasswort ändern."}"""
-        codes["/api/v1/admin/jobs"] = 403
-        bodies["/api/v1/admin/jobs"] = """{"success":false,"code":"nur_admins"}"""
+        codes["/api/v2/sets"] = 403
+        bodies["/api/v2/sets"] = """{"success":false,"code":"password_change_required","error":"Bitte zuerst das Startpasswort ändern."}"""
+        codes["/api/v2/admin/jobs"] = 403
+        bodies["/api/v2/admin/jobs"] = """{"success":false,"code":"admins_only"}"""
         val c = client(State(basis()))
-        assertEquals(403, fetch(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(403, fetch(c, "http://localhost:3000/api/v2/sets"))
         assertEquals(1, switch.get())
-        fetch(c, "http://localhost:3000/api/v1/admin/jobs")
+        fetch(c, "http://localhost:3000/api/v2/admin/jobs")
         assertEquals("another 403 requires no switch", 1, switch.get())
         assertEquals("no sign-out", 0, expired.get())
     }
 
     @Test
     fun `a 403 second_factor_required requires the setup without signing out`() {
-        codes["/api/v1/sets"] = 403
-        bodies["/api/v1/sets"] = """{"success":false,"code":"zweiter_faktor_pflicht","error":"Bitte zuerst einen Code-Generator einrichten."}"""
-        codes["/api/v1/admin/jobs"] = 403
-        bodies["/api/v1/admin/jobs"] = """{"success":false,"code":"passwort_wechsel_noetig"}"""
+        codes["/api/v2/sets"] = 403
+        bodies["/api/v2/sets"] = """{"success":false,"code":"second_factor_mandatory","error":"Bitte zuerst einen Code-Generator einrichten."}"""
+        codes["/api/v2/admin/jobs"] = 403
+        bodies["/api/v2/admin/jobs"] = """{"success":false,"code":"password_change_required"}"""
         val c = client(State(basis()))
-        assertEquals(403, fetch(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(403, fetch(c, "http://localhost:3000/api/v2/sets"))
         assertEquals(1, factor.get())
-        fetch(c, "http://localhost:3000/api/v1/admin/jobs")
+        fetch(c, "http://localhost:3000/api/v2/admin/jobs")
         assertEquals("another 403 requires no second factor", 1, factor.get())
         assertEquals("no sign-out", 0, expired.get())
         assertEquals("no withdrawn right", 0, revoked.get())
 
-        fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/sets")
+        fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v2/sets")
         assertEquals("without a token a 403 says nothing about this account", 1, factor.get())
     }
 
     @Test
     fun `a wrong password confirmation does not sign out, an invalid token does`() {
-        codes["/api/v1/auth/zweiter-faktor/abschalten"] = 401
-        bodies["/api/v1/auth/zweiter-faktor/abschalten"] = """{"success":false,"code":"aktuelles_passwort_falsch"}"""
-        codes["/api/v1/sets"] = 401
-        bodies["/api/v1/sets"] = """{"success":false,"code":"token_ungueltig"}"""
+        codes["/api/v2/auth/second-factor/disable"] = 401
+        bodies["/api/v2/auth/second-factor/disable"] = """{"success":false,"code":"current_password_wrong"}"""
+        codes["/api/v2/sets"] = 401
+        bodies["/api/v2/sets"] = """{"success":false,"code":"token_invalid"}"""
         val c = client(State(basis()))
-        assertEquals(401, fetch(c, "http://localhost:3000/api/v1/auth/zweiter-faktor/abschalten"))
+        assertEquals(401, fetch(c, "http://localhost:3000/api/v2/auth/second-factor/disable"))
         assertEquals("the confirmation asks again instead of signing out", 0, expired.get())
-        assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(401, fetch(c, "http://localhost:3000/api/v2/sets"))
         assertEquals(1, expired.get())
     }
 

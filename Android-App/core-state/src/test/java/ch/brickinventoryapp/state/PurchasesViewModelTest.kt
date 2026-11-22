@@ -68,13 +68,13 @@ class PurchasesViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
         paths = PathServer(
-            "/api/v1/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":7,"quantity":1}]}""",
-            "/api/v1/sets/75192-1/acquisitions/7" to """{"success":true,"set":{"set_number":"75192-1","used_count":1},
+            "/api/v2/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":7,"quantity":1}]}""",
+            "/api/v2/sets/75192-1/acquisitions/7" to """{"success":true,"set":{"set_number":"75192-1","used_count":1},
                 "parts":12,"minifigs":2}""",
-            "/api/v1/parts/3001/5/acquisitions" to """{"success":true,"acquisitions":[{"id":9,"quantity":4}]}""",
-            "/api/v1/parts/3001/5/price-history" to """{"success":true,"set_number":"3001"}""",
-            "/api/v1/minifigs/sw0001/price-history" to """{"success":true,"set_number":"sw0001"}""",
-            "/api/v1/parts/3002/5/acquisitions" to """{"success":true,"acquisitions":[]}""",
+            "/api/v2/parts/3001/5/acquisitions" to """{"success":true,"acquisitions":[{"id":9,"quantity":4}]}""",
+            "/api/v2/parts/3001/5/price-history" to """{"success":true,"set_number":"3001"}""",
+            "/api/v2/minifigs/sw0001/price-history" to """{"success":true,"set_number":"sw0001"}""",
+            "/api/v2/parts/3002/5/acquisitions" to """{"success":true,"acquisitions":[]}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -92,36 +92,36 @@ class PurchasesViewModelTest {
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("List loaded", vm.manDetailState.value.acquisitions.isNotEmpty())
-        val before = paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size
+        val before = paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size
         vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
-        assertTrue("reloaded", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size > before)
         val tile = runBlocking { t.sets().observeSets().first().list.single() }
         assertEquals("the gallery tile reads the summary", 1, tile.usedCount)
-        assertTrue("without fetching the whole stock again", paths.requestsTo("GET /api/v1/sets?").isEmpty())
+        assertTrue("without fetching the whole stock again", paths.requestsTo("GET /api/v2/sets?").isEmpty())
     }
 
     @Test
     fun `the purchases of an entry load as soon as its page shows them`() {
         val vm = vm()
         val condition = vm.purchasesOf(ItemKind.PART, "3001", 5)
-        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
+        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v2/parts/3001/5/acquisitions").isEmpty())
         val page = CoroutineScope(Dispatchers.Main).launch { condition.collect {} }
         assertEquals(listOf(9), condition.value.acquisitions.map { it.id })
         page.cancel()
         val set = CoroutineScope(Dispatchers.Main).launch { vm.purchasesOf(ItemKind.SET, "75192-1", 0).collect {} }
-        assertTrue("a set asks for its purchases", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").isNotEmpty())
+        assertTrue("a set asks for its purchases", paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").isNotEmpty())
         set.cancel()
     }
 
     @Test
     fun `a rejected date change reloads the list`() {
-        paths.codes["/api/v1/parts/3001/5/acquisitions/9"] = 409
+        paths.codes["/api/v2/parts/3001/5/acquisitions/9"] = 409
         val vm = vm()
         vm.loadManualAcquisitions(ItemKind.PART, "3001", 5)
         assertTrue("List loaded", vm.manDetailState.value.acquisitions.isNotEmpty())
-        val before = paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").size
+        val before = paths.requestsTo("GET /api/v2/parts/3001/5/acquisitions").size
         vm.updateManualAcquisition(ItemKind.PART, "3001", 5, 9, date = "2020-01-01")
-        assertTrue("reloaded", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v2/parts/3001/5/acquisitions").size > before)
         assertEquals("fehler", t.messages.text)
     }
 
@@ -135,10 +135,10 @@ class PurchasesViewModelTest {
         assertTrue("Response", outcome != null)
         assertEquals(Triple(null, 12, 2), outcome)
         // Moved along: the store fetches the state of all three lists from the server.
-        for (path in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
+        for (path in listOf("GET /api/v2/sets?", "GET /api/v2/parts?", "GET /api/v2/minifigs?")) {
             assertTrue(path, paths.requestsTo(path).isNotEmpty())
         }
-        assertTrue(paths.requestsTo("PUT /api/v1/sets/75192-1/acquisitions/7").isNotEmpty())
+        assertTrue(paths.requestsTo("PUT /api/v2/sets/75192-1/acquisitions/7").isNotEmpty())
     }
 
     /** The body of the first request, whose row contains [request]. */
@@ -157,15 +157,15 @@ class PurchasesViewModelTest {
         // the wrong name, it leaves the price silently unchanged.
         val vm = vm()
         vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
-        val set = body("PUT /api/v1/sets/75192-1/acquisitions/7")
+        val set = body("PUT /api/v2/sets/75192-1/acquisitions/7")
         assertTrue("Set: $set", "\"purchase_price\":499.0" in set && !set("unit_price", set))
 
         vm.updateManualAcquisition(ItemKind.PART, "3001", 5, 9, unitPrice = 0.25)
-        val part = body("PUT /api/v1/parts/3001/5/acquisitions/9")
+        val part = body("PUT /api/v2/parts/3001/5/acquisitions/9")
         assertTrue("part: $part", "\"unit_price\":0.25" in part && !set("purchase_price", part))
 
         vm.updateManualAcquisition(ItemKind.FIG, "sw0001", 0, 3, unitPrice = 12.0)
-        val figure = body("PUT /api/v1/minifigs/sw0001/acquisitions/3")
+        val figure = body("PUT /api/v2/minifigs/sw0001/acquisitions/3")
         assertTrue("figure: $figure", "\"unit_price\":12.0" in figure && !set("purchase_price", figure))
     }
 
@@ -188,7 +188,7 @@ class PurchasesViewModelTest {
         assertTrue("figure without history", vm.manDetailState.value.priceHistory != null)
         vm.loadManualPriceHistory(ItemKind.PART, "3001", 5)
         assertTrue("part without history", vm.manDetailState.value.priceHistory != null)
-        assertEquals(1, paths.requestsTo("/api/v1/minifigs/sw0001/price-history").size)
-        assertEquals(1, paths.requestsTo("/api/v1/parts/3001/5/price-history").size)
+        assertEquals(1, paths.requestsTo("/api/v2/minifigs/sw0001/price-history").size)
+        assertEquals(1, paths.requestsTo("/api/v2/parts/3001/5/price-history").size)
     }
 }

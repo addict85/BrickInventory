@@ -77,19 +77,19 @@ class GalleryViewModelTest {
         t.accountView, testFinancesRepository(t.api), wanted))
 
     private fun fetches(paths: PathServer = this.paths) =
-        paths.requestsTo("GET /api/v1/sets?") + paths.requestsTo("GET /api/v1/sets ")
+        paths.requestsTo("GET /api/v2/sets?") + paths.requestsTo("GET /api/v2/sets ")
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
         paths = PathServer(
-            "/api/v1/sets" to """{"success":true,"total":2,"sets":[
+            "/api/v2/sets" to """{"success":true,"total":2,"sets":[
                 {"set_number":"75192-1","name":"Falke","used_count":0},{"set_number":"10294-1","name":"Titanic"}]}""",
-            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2,"total_quantity":2,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""",
-            "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00"},"sets":[
+            "/api/v2/stats" to """{"success":true,"stats":{"total_sets":2,"total_quantity":2,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""",
+            "/api/v2/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00"},"sets":[
                 {"set_number":"75192-1","quantity":1,"current_price":800,"baseline_price":700,"pnl_pct":"14.3","baseline_pnl_pct":"14.3",
-                 "kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
-            "/api/v1/sets/10294-1" to """{"success":true}""",
+                 "tile_price":812.5,"tile_pnl_pct":16.1}]}""",
+            "/api/v2/sets/10294-1" to """{"success":true}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -135,7 +135,7 @@ class GalleryViewModelTest {
         vm.setScope(ScopeFilter.View.GALLERY, "own")
         assertTrue("list and figures", vm.galleryState.value.sets.isNotEmpty() && vm.galleryState.value.stats != null)
         assertTrue("accounts=own" in fetches().last())
-        assertTrue("accounts=own" in paths.requestsTo("GET /api/v1/stats").last())
+        assertTrue("accounts=own" in paths.requestsTo("GET /api/v2/stats").last())
 
         vm.setStorageFilter(ScopeFilter.View.GALLERY, "Regal")
         assertTrue("reloaded", fetches().size >= 2)
@@ -148,12 +148,12 @@ class GalleryViewModelTest {
         vm.loadSets()
         assertTrue("List loaded", vm.galleryState.value.sets.size == 2)
         val list = fetches().size
-        val numbers = paths.requestsTo("GET /api/v1/stats").size
+        val numbers = paths.requestsTo("GET /api/v2/stats").size
         vm.deleteSet("10294-1")
-        assertTrue(paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        assertTrue(paths.requestsTo("DELETE /api/v2/sets/10294-1").isNotEmpty())
         assertTrue("list without the set", vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
         assertEquals("the list comes from the store, not anew from the server", list, fetches().size)
-        assertTrue("figures anew", paths.requestsTo("GET /api/v1/stats").size > numbers)
+        assertTrue("figures anew", paths.requestsTo("GET /api/v2/stats").size > numbers)
     }
 
     @Test
@@ -164,18 +164,18 @@ class GalleryViewModelTest {
         vm.markForDeletion("10294-1", "Titanic")
         assertTrue(vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
         assertEquals("Titanic", vm.marked.value?.name)
-        assertTrue("no DELETE yet", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertTrue("no DELETE yet", paths.requestsTo("DELETE /api/v2/sets/10294-1").isEmpty())
         vm.executeDelete()
-        assertTrue("DELETE sent", paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        assertTrue("DELETE sent", paths.requestsTo("DELETE /api/v2/sets/10294-1").isNotEmpty())
         assertEquals(null, vm.marked.value)
     }
 
     @Test
     fun `the key figures do not count the pending set and count it again after undo`() {
-        paths.responses["/api/v1/sets"] = """{"success":true,"total":2,"sets":[
+        paths.responses["/api/v2/sets"] = """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falke","pieces":7541,"minifigs":7,"quantity":1},
             {"set_number":"10294-1","name":"Titanic","pieces":9090,"minifigs":0,"quantity":2}]}"""
-        paths.responses["/api/v1/stats"] = """{"success":true,"stats":{"total_sets":2,"total_quantity":3,"total_pieces":25721,
+        paths.responses["/api/v2/stats"] = """{"success":true,"stats":{"total_sets":2,"total_quantity":3,"total_pieces":25721,
             "total_instructions":0,"total_parts":25721,"total_minifigs":7}}"""
         val vm = vm()
         vm.loadSets(); vm.loadStats()
@@ -199,9 +199,9 @@ class GalleryViewModelTest {
         vm.markForDeletion("10294-1", "Titanic")
         vm.undo()
         assertTrue("set back again", vm.galleryState.value.sets.any { it.setNumber == "10294-1" })
-        assertTrue("no DELETE", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertTrue("no DELETE", paths.requestsTo("DELETE /api/v2/sets/10294-1").isEmpty())
         vm.executeDelete()
-        assertTrue("after undo there is nothing left to run", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertTrue("after undo there is nothing left to run", paths.requestsTo("DELETE /api/v2/sets/10294-1").isEmpty())
     }
 
     @Test
@@ -212,16 +212,16 @@ class GalleryViewModelTest {
         val first = vm.marked.value
         // A second deletion carries out the first and marks the second as pending.
         vm.markForDeletion("75192-1", "Falke")
-        assertTrue("first deleted", paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        assertTrue("first deleted", paths.requestsTo("DELETE /api/v2/sets/10294-1").isNotEmpty())
         val second = vm.marked.value
         // The first one's snackbar only ends now (superseded) — it must not touch the second.
         vm.executeDelete(first)
         vm.undo(first)
         assertEquals("Falke", vm.marked.value?.name)
-        assertTrue("second not deleted yet", paths.requestsTo("DELETE /api/v1/sets/75192-1").isEmpty())
+        assertTrue("second not deleted yet", paths.requestsTo("DELETE /api/v2/sets/75192-1").isEmpty())
         vm.undo(second)
         assertEquals(null, vm.marked.value)
-        assertTrue("second never deleted", paths.requestsTo("DELETE /api/v1/sets/75192-1").isEmpty())
+        assertTrue("second never deleted", paths.requestsTo("DELETE /api/v2/sets/75192-1").isEmpty())
     }
 
     @Test
@@ -244,7 +244,7 @@ class GalleryViewModelTest {
         t.session.loginChanged(paths.server.url("/").toString(), loggedIn = true)
         vm.loadIfEmpty()
         assertEquals("empty: loaded once", 1, fetches().size)
-        assertTrue("figures along", paths.requestsTo("GET /api/v1/stats").isNotEmpty())
+        assertTrue("figures along", paths.requestsTo("GET /api/v2/stats").isNotEmpty())
         vm.loadIfEmpty()
         assertEquals("already there: not once more", 1, fetches().size)
     }
@@ -256,12 +256,12 @@ class GalleryViewModelTest {
         assertTrue("List loaded", vm.galleryState.value.sets.size == 2)
         val before = fetches().size
         // Counted from here: the first load already fetches the key figures itself.
-        val numbersBefore = paths.requestsTo("GET /api/v1/stats").size
+        val numbersBefore = paths.requestsTo("GET /api/v2/stats").size
 
         // This is how HouseholdRepository writes the server's answer into the store.
         runBlocking { t.store.applyChange(FollowUp.SetSummary(SetTotals(setNumber = "75192-1", condition = Condition.USED, states = listOf(Condition.USED), used = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
-        assertTrue("figures anew", paths.requestsTo("GET /api/v1/stats").size > numbersBefore)
+        assertTrue("figures anew", paths.requestsTo("GET /api/v2/stats").size > numbersBefore)
         assertTrue("tile changed", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("the list must not be fetched again", before, fetches().size)
     }
@@ -274,11 +274,11 @@ class GalleryViewModelTest {
         vm.loadSets()
         assertTrue("List loaded", vm.galleryState.value.sets.size == 2)
         val listBefore = fetches().size
-        val numbersBefore = paths.requestsTo("GET /api/v1/stats").size
+        val numbersBefore = paths.requestsTo("GET /api/v2/stats").size
 
         // This is how PartsRepository applies an added part in the store.
         runBlocking { t.store.applyChange(Editing.RecordPart(PartEntry(number = "3001", colorId = 5, quantity = 2))) }
-        assertEquals("figures after parts", numbersBefore + 1, paths.requestsTo("GET /api/v1/stats").size)
+        assertEquals("figures after parts", numbersBefore + 1, paths.requestsTo("GET /api/v2/stats").size)
         assertEquals("a part does not change the set list", listBefore, fetches().size)
     }
 
