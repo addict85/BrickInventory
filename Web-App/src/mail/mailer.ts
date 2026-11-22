@@ -320,7 +320,7 @@ type NoticeDetails = {
   adresse?: string | undefined;
 };
 
-/** What an administrator wants to change on an administrator account, and from when (UTC, without the server's locale). */
+/** What an administrator wants to change on another account, and from when (UTC, without the server's locale). */
 function takeover(o: NoticeDetails, en: boolean): { was: string; bis: string } {
   const kinds = (o.was ?? '').split(', ');
   const sentence: Record<string, [string, string]> = {
@@ -360,11 +360,11 @@ function takeoverSentences(o: NoticeDetails, en: boolean) {
   const u = takeover(o, en);
   return {
     uebernahme_angekuendigt: en
-      ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped.`
-      : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung.`,
+      ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped. If you asked for it yourself, you need not do anything.`
+      : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung. Hast du selbst darum gebeten, musst du nichts tun.`,
     verwaltung_uebernahme_angekuendigt: en
-      ? `“${o.durch ?? ''}” wants to ${u.was} for the administrator account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
-      : `„${o.durch ?? ''}“ will für das Administratorkonto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
+      ? `“${o.durch ?? ''}” wants to ${u.was} for the account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
+      : `„${o.durch ?? ''}“ will für das Konto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
     verwaltung_uebernahme_abgebrochen: en
       ? `“${o.konto ?? ''}” signed in or cancelled by the link in the email; the announced change (${u.was}) is dropped.`
       : `„${o.konto ?? ''}“ hat sich angemeldet oder über den Link in der Mail abgebrochen; die angekündigte Änderung (${u.was}) entfällt.`,

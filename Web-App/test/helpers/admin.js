@@ -18,4 +18,19 @@ async function adminWithFactor(_req, uid) {
   });
 }
 
-module.exports = { adminWithFactor };
+/**
+ * Password and second factor of another account only apply after the deadline
+ * (src/account/adminActions.ts). Tests that need the effect now move the deadline
+ * into the past and run the cleanup run, as the hourly job would.
+ *
+ * @param {(pfad: string) => any} _req
+ * @param {{ run: (sql: string, werte?: unknown[]) => Promise<unknown> }} db
+ * @param {number} ziel
+ * @returns {Promise<number>} how many announcements took effect
+ */
+async function takeoverNow(_req, db, ziel) {
+  await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [ziel]);
+  return _req('src/account/adminActions.js').runDueTakeoversFrom();
+}
+
+module.exports = { adminWithFactor, takeoverNow };

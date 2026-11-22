@@ -2,9 +2,9 @@
  * transaction. A missing entry would conceal the change, an entry without a
  * change would claim one that never happened. */
 import crypto from 'node:crypto';
-import { accountDisplayName, setzeAktiv, setForeignPassword, setzeVerwalterRolle, endAccesses } from './accounts';
+import { accountDisplayName, setzeAktiv, setzeVerwalterRolle, endAccesses } from './accounts';
 import { withAccessEnd, accessTransaction } from './accessEnd';
-import { duplicateAs, fachfehler } from '../infra/errorTexts';
+import { duplicateAs, fachfehler, notFound } from '../infra/errorTexts';
 import { rememberAdminAction } from './adminLog';
 import { hintInBackground, adminHintInBackground } from './accountNotice';
 import { hashePassword } from './passwordHash';
@@ -63,45 +63,31 @@ export async function unlockRegistration(k: AccountContext, durch: number, ziel:
   if (r !== 'ok') fachfehler('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
 }
 
-/** Whoever lost the factor may not have been the one who had it removed: sessions and tokens end too. */
-export function removeSecondFactor(k: AccountContext, durch: number, ziel: number): Promise<void> {
-  return withAccessEnd(k, ziel, async t => {
-    await t.factors.disable(ziel);
-    await endAccesses(t, ziel);
-    await rememberAdminAction(t, durch, ziel, 'zweiter_faktor_entfernt');
-  });
-}
-
-/** A captured administrator session must not immediately take over or remove another administrator account: only
- * after TAKEOVER_HOURS; a login of the target or the link from its mail cancels the change. */
+/** A captured administrator session must not immediately take over another account
+ * (password, second factor) or remove an administrator account: only after TAKEOVER_HOURS, with a
+ * mail and a cancel link to the target; a login of the target or the link cancels the change. */
 export const TAKEOVER_HOURS = 24;
 type Verwalterweg = { effectiveAb: Date | null };
 export type Teardown = Extract<TakeoverKind, 'deaktivieren' | 'rolle_entziehen' | 'loeschen'>;
 const isTakeover = (a: TakeoverKind) => a === 'passwort' || a === 'zweiter_faktor';
 
+/** For every account, not only administrators: with the new password the account is someone
+ * else's, whatever rights it carries. null: the account does not exist. */
 export async function passwordByAdmin(
   k: AccountContext,
   durch: number,
   ziel: number,
   passwort: string,
 ): Promise<Verwalterweg | null> {
-  if (await k.uebernahmen.adminOrJustBeen(ziel, TAKEOVER_HOURS)) {
-    const password_hash = await hashePassword(passwort);
-    return {
-      effectiveAb: await announce(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }),
-    };
-  }
-  if (!(await setForeignPassword(k, ziel, passwort, durch))) return null;
-  await afterTheTakeover(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash: null });
-  return { effectiveAb: null };
+  if (!(await k.konten.accountExists(ziel))) return null;
+  const password_hash = await hashePassword(passwort);
+  return { effectiveAb: await announce(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }) };
 }
 
 export async function factorByAdmin(k: AccountContext, durch: number, ziel: number): Promise<Verwalterweg> {
+  if (!(await k.konten.accountExists(ziel))) notFound('benutzer_nicht_gefunden');
   const u: Uebernahme = { target_id: ziel, type: 'zweiter_faktor', initiated_by: durch, password_hash: null };
-  if (await k.uebernahmen.adminOrJustBeen(ziel, TAKEOVER_HOURS)) return { effectiveAb: await announce(k, u) };
-  await removeSecondFactor(k, durch, ziel);
-  await afterTheTakeover(k, u);
-  return { effectiveAb: null };
+  return { effectiveAb: await announce(k, u) };
 }
 
 /** Announce deactivating, revoking the role or deleting an administrator (or one who just was).

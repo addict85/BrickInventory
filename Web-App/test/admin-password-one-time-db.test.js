@@ -27,7 +27,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { adminWithFactor } = require('./helpers/admin');
+const { adminWithFactor, takeoverNow } = require('./helpers/admin');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/time');
@@ -146,6 +146,8 @@ test('passwords assigned by an admin only apply until the first change', {
       body: JSON.stringify({ password: vergeben, admin_password: CHEF_PW, code: codes[2] }),
     });
     assert.equal(r.status, 200, await r.clone().text());
+    // Announced like every takeover; here only what applies after the deadline counts.
+    assert.equal(await takeoverNow(_req, db, alt), 1);
     await onlyUntilToSwitch(ALT, vergeben);
   });
 });

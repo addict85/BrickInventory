@@ -9,6 +9,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
+const { takeoverNow } = require('./helpers/admin');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -87,6 +88,8 @@ test('a password change ends sessions AND tokens — against a real store', { co
         body: JSON.stringify({ password: 'neuesPasswort1', admin_password: 'altesPasswort1' }),
       });
       assert.equal(r.status, 200, await r.text());
+      // Announced (src/account/adminActions.ts); what counts here is what follows on taking effect.
+      assert.equal(await takeoverNow(_req, db, victimId), 1);
 
       // THE point of the file: the session is really gone, not just “the DELETE
       // is in the code".
@@ -144,6 +147,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
         body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
+      assert.equal(await takeoverNow(_req, db, victimId), 1);
       assert.equal(
         await nutzerZumToken(tok),
         null,
