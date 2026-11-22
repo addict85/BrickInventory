@@ -53,20 +53,16 @@ test('if the image address is missing on the set, it comes from the shared catal
     const ohne = r.sets.find(s => s.set_number === OHNE);
     const mit = r.sets.find(s => s.set_number === MIT);
 
-    assert.ok(ohne, 'das Set ohne eigene Bildadresse muss in der Liste sein');
-    assert.equal(ohne.image_local, null, 'Vorbedingung: keine lokale Datei');
+    assert.ok(ohne, 'the set without its own image address must be in the list');
+    assert.equal(ohne.image_local, null, 'Precondition: no local file');
     assert.equal(
       ohne.image_url,
       CDN,
-      'ohne eigene Adresse muss die CDN-Adresse aus dem gemeinsamen Katalog kommen — ' +
-        'sonst haben beide Clients nichts anzuzeigen',
+      'without its own address the CDN address must come from the shared catalog — ' +
+        'otherwise both clients have nothing to show',
     );
 
-    assert.equal(
-      mit.image_url,
-      OWN,
-      'eine vorhandene eigene Adresse hat Vorrang und wird NICHT vom Katalog überschrieben',
-    );
+    assert.equal(mit.image_url, OWN, 'an existing own address has priority and is NOT overwritten by the catalog');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]).catch(() => {});

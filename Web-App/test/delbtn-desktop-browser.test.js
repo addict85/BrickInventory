@@ -47,7 +47,7 @@ document.getElementById('e').textContent='ERGEBNIS'+Math.round(r.width)+'x'+Math
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(\d+)x(\d+)ENDE/.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const [b, h] = [Number(m[1]), Number(m[2])];
-  assert.ok(b >= 32 && h >= 32, `Löschknopf misst ${b}×${h}`);
+  assert.ok(b >= 32 && h >= 32, `Delete button measures ${b}×${h}`);
 });

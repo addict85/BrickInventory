@@ -1669,12 +1669,12 @@ test('German identifiers become fewer, never more (server and tests separately; 
 
 test('German assertion messages become fewer, never more', () => {
   // Tests speak English (CLAUDE.md), as on Android; texts users read stay German and count only outside „…“.
-  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (5568 of 5567).
+  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (62 of 61).
   const { messages, isGermanMessage, germanMessages } = require('./helpers/assert-messages');
   assert.ok(messages(`assert${'.'}ok(x, 'Die Liste fehlt')`).some(isGermanMessage), 'self-proof: a German message');
   assert.ok(!isGermanMessage("'the list is missing'"), 'self-proof: an English message');
   assert.deepEqual(messages("assert.equal(title, 'Galerie')"), [], 'an expected value is no message');
-  const LIMIT = 5567;
+  const LIMIT = 61;
   const found = germanMessages(__dirname);
   assert.ok(found.length <= LIMIT, `${found.length} German assertion messages, allowed are ${LIMIT}`);
   if (found.length < LIMIT)

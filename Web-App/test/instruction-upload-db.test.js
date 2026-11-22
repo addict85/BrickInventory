@@ -96,7 +96,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     const r = await uploadIt(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
     assert.equal(r.status, 400, JSON.stringify(r.body));
     assert.equal(r.body.code, 'file_content_wrong');
-    assert.equal(dateien().length, 1, 'die abgewiesene Datei liegt noch im Ordner');
+    assert.equal(dateien().length, 1, 'the rejected file is still in the folder');
   });
 
   await t.test('a PNG with a JPEG type', async () => {
@@ -112,7 +112,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     const r = await uploadIt(gross, 'application/pdf', 'gross.pdf');
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_quota_full');
-    assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
+    assert.equal(dateien().length, vorher, 'the file above the quota is still in the folder');
   });
 
   await t.test('above the limit of all accounts together: 507, nothing stored', async st => {
@@ -142,7 +142,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
       a.write('--x\r\n');
       setTimeout(() => {
         a.destroy();
-        fehl(new Error('keine Antwort, solange der Inhalt fehlt'));
+        fehl(new Error('no response as long as the content is missing'));
       }, 3000);
     });
     assert.equal(upfront, 507);
@@ -173,7 +173,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
       anfrage.write('--x\r\n');
       setTimeout(() => {
         anfrage.destroy();
-        fehl(new Error('keine Antwort, solange der Inhalt fehlt'));
+        fehl(new Error('no response as long as the content is missing'));
       }, 3000);
     });
     assert.equal(status, 413);
@@ -184,6 +184,6 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     const vorher = dateien().length;
     const r = await uploadIt(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));
-    assert.equal(dateien().length, vorher, 'die Datei zum fremden Set liegt noch im Ordner');
+    assert.equal(dateien().length, vorher, 'the file for the foreign set is still in the folder');
   });
 });

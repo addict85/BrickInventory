@@ -62,12 +62,12 @@ test('every handler from markup and templates is registered', async () => {
   const { w } = await openUi();
   try {
     const namen = namesInMarkup();
-    assert.ok(namen.length > 100, `nur ${namen.length} Namen gefunden — greift die Suche noch?`);
+    assert.ok(namen.length > 100, `only ${namen.length} names found — does the search still match?`);
     const angemeldet = new Set(w.__registry.actionNames());
     assert.deepEqual(
       namen.filter(n => !angemeldet.has(n)),
       [],
-      'Nicht angemeldet — diese Knöpfe täten beim Klick nichts',
+      'Not signed in — these buttons would do nothing on click',
     );
   } finally {
     w.close();
@@ -95,14 +95,14 @@ test('a click passes arguments, field value and this through', async () => {
     w.console.warn = (...a) => warnings.push(a.join(' '));
     d.getElementById('p3').click();
     assert.equal(gesehen.length, 2);
-    assert.equal(gesehen[0].dies, d.getElementById('p1'), 'this ist das auslösende Element');
+    assert.equal(gesehen[0].dies, d.getElementById('p1'), 'this is the triggering element');
     // data-arg always arrives as a string; the event comes last.
     assert.deepEqual(gesehen[0].args.slice(0, 3), ['1', 'b', 'c']);
     assert.equal(gesehen[0].args[3]?.type, 'click');
-    assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" reicht den Feldwert');
+    assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" passes the field value');
     assert.ok(
       warnings.some(t => t.includes('unknown handler') && t.includes('gibtEsNicht')),
-      'Ein Tippfehler im Handlernamen muss auffallen',
+      'A typo in the handler name must be noticed',
     );
   } finally {
     w.close();
@@ -131,10 +131,10 @@ test('an image error is retried once before the fallback applies', async () => {
       },
     });
     failure(w, img);
-    assert.equal(img.dataset.retried, '1', 'Kein zweiter Versuch vorgemerkt');
-    assert.ok(img.getAttribute('src'), 'Das Bild ist nach dem ersten Fehler schon weg');
+    assert.equal(img.dataset.retried, '1', 'No second attempt scheduled');
+    assert.ok(img.getAttribute('src'), 'The image is already gone after the first error');
     // After one second the same address again, via a freshly set attribute.
-    assert.ok(await warte(() => gesetzt.length > 0, 3000), 'Der zweite Versuch kommt nicht');
+    assert.ok(await warte(() => gesetzt.length > 0, 3000), 'The second attempt does not come');
     assert.equal(gesetzt[0], 'http://localhost/images/sets/1-1.jpg');
     // Only the second error resorts to the fallback: the full resolution from data-orig.
     failure(w, img);
@@ -155,11 +155,11 @@ test('the zoom keeps its address if the image does not load', async () => {
     w.console.warn = (...a) => warnings.push(a.join(' '));
     failure(w, img);
     failure(w, img);
-    assert.equal(img.getAttribute('src'), '/images/sets/2-1.jpg', 'Der Zoom zeigt sonst ein leeres Overlay');
+    assert.equal(img.getAttribute('src'), '/images/sets/2-1.jpg', 'Otherwise the zoom shows an empty overlay');
     assert.equal(img.dataset.fallbackDone, undefined);
     assert.ok(
       warnings.some(t => t.includes('[img]') && t.includes('/images/sets/2-1.jpg')),
-      'Die Konsole nennt die Adresse',
+      'The console names the address',
     );
   } finally {
     w.close();
@@ -181,23 +181,23 @@ test('the log window loads its script as a file', async () => {
     });
     d.querySelector('[data-click="openLogViewer"]').click();
     await takt(0);
-    assert.ok(geschrieben.length > 500, 'Das Fenster bekommt kein Markup');
+    assert.ok(geschrieben.length > 500, 'The window gets no markup');
     const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
     const fenster = new JSDOM(geschrieben).window.document;
     const scriptList = [...fenster.querySelectorAll('script')];
     assert.deepEqual(
       scriptList.filter(s => !s.src).map(s => s.textContent.slice(0, 40)),
       [],
-      'Inline-<script> blockiert die CSP, die das Fenster vom Öffner erbt',
+      'Inline <script> is blocked by the CSP the window inherits from its opener',
     );
     assert.ok(
       scriptList.some(s => /\/js\/logviewer\.js/.test(s.src)),
-      'logviewer.js fehlt',
+      'logviewer.js is missing',
     );
     // The data is in the attribute, escaped: the JSON with its quotes arrives intact.
     assert.equal(fenster.body.dataset.base, 'http://localhost');
     assert.equal(typeof JSON.parse(fenster.body.dataset.i18n)['log.entries'], 'string');
-    assert.equal(fenster.body.hasAttribute('data-auth'), false, 'Die Sitzung meldet das Fenster an, kein Token');
+    assert.equal(fenster.body.hasAttribute('data-auth'), false, 'The session signs the window in, not a token');
   } finally {
     w.close();
   }

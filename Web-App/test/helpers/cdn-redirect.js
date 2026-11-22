@@ -8,7 +8,7 @@ const https = require('node:https');
 const http = require('node:http');
 
 const port = Number(process.env.CDN_UMLEITUNG_PORT);
-if (!port) throw new Error('cdn-umleitung: CDN_UMLEITUNG_PORT fehlt');
+if (!port) throw new Error('cdn-umleitung: CDN_UMLEITUNG_PORT is missing');
 
 for (const kind of /** @type {const} */ (['get', 'request'])) {
   const echt = https[kind];

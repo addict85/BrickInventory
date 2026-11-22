@@ -44,7 +44,7 @@ function sources() {
 
 test('every class name styles something or is a handle', () => {
   const dateien = sources();
-  assert.ok(dateien.length >= 20, `Nur ${dateien.length} Quelldateien gefunden`);
+  assert.ok(dateien.length >= 20, `Only ${dateien.length} source files found`);
 
   // Defined: everything that stands as a selector in a stylesheet — AND what the
   // script itself assembles as style. The log page (monitor.js) builds
@@ -58,7 +58,7 @@ test('every class name styles something or is a handle', () => {
       for (const m of (/<style id="start-style">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
         definiert.add(m[1]);
   // MEASURED there are 600.
-  assert.ok(definiert.size >= 300, `Nur ${definiert.size} Klassennamen in den Stylesheets — Muster veraltet?`);
+  assert.ok(definiert.size >= 300, `Only ${definiert.size} class names in the stylesheets — pattern outdated?`);
 
   // Handles: names by which JavaScript finds or toggles elements.
   const griffe = new Set();
@@ -71,7 +71,7 @@ test('every class name styles something or is a handle', () => {
       for (const t of m[1].matchAll(CLASS)) griffe.add(t[1]);
     for (const m of s.matchAll(/getElementsByClassName\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
   }
-  assert.ok(griffe.size >= 20, `Nur ${griffe.size} Griffe gefunden — Muster veraltet?`);
+  assert.ok(griffe.size >= 20, `Only ${griffe.size} hooks found — pattern outdated?`);
 
   const benutzt = new Map();
   for (const [rel, s] of dateien) {
@@ -82,7 +82,7 @@ test('every class name styles something or is a handle', () => {
     for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
   }
   // MEASURED there are 161.
-  assert.ok(benutzt.size >= 100, `Nur ${benutzt.size} benutzte Klassennamen gefunden — Muster veraltet?`);
+  assert.ok(benutzt.size >= 100, `Only ${benutzt.size} used class names found — pattern outdated?`);
 
   const ineffective = [...benutzt]
     .filter(([k]) => !definiert.has(k) && !griffe.has(k))
@@ -91,9 +91,9 @@ test('every class name styles something or is a handle', () => {
   assert.deepEqual(
     ineffective,
     [],
-    'Diese Klassennamen kennt kein Stylesheet, und kein Skript sucht danach:\n  ' +
+    'No stylesheet knows these class names, and no script looks for them:\n  ' +
       ineffective.join('\n  ') +
-      '\nEntweder fehlt die Regel — dann sieht die Stelle anders aus als gemeint —, ' +
-      'oder der Name ist übrig geblieben und gehört weg.',
+      '\nEither the rule is missing — then the place looks different than intended — ' +
+      'or the name is left over and should go.',
   );
 });

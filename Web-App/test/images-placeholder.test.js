@@ -85,10 +85,10 @@ test('alt on every image and the placeholder path on every template image', asyn
     const gesehen = [];
     const pruefe = (name, sel) => {
       const liste = bilder(d, sel);
-      assert.ok(liste.length > 0, `${name}: keine Bilder gezeichnet — prüft nichts`);
+      assert.ok(liste.length > 0, `${name}: no images drawn — checks nothing`);
       for (const img of liste) {
-        assert.ok(img.hasAttribute('alt'), `${name}: <img src="${img.getAttribute('src')}"> ohne alt`);
-        assert.equal(img.dataset.onerror, 'placeholder', `${name}: ${img.getAttribute('src')} ohne Platzhalter`);
+        assert.ok(img.hasAttribute('alt'), `${name}: <img src="${img.getAttribute('src')}"> without alt`);
+        assert.equal(img.dataset.onerror, 'placeholder', `${name}: ${img.getAttribute('src')} without a placeholder`);
       }
       gesehen.push(name);
     };
@@ -98,9 +98,9 @@ test('alt on every image and the placeholder path on every template image', asyn
     assert.equal(
       d.querySelector('#gallery .sc img').getAttribute('alt'),
       '',
-      'Bild in der Kachel ohne doppelten Namen',
+      'Image in the tile without a duplicate name',
     );
-    assert.match(d.querySelector('#gallery .sc').textContent, /Titanic/, 'Die Kachel nennt das Set nicht');
+    assert.match(d.querySelector('#gallery .sc').textContent, /Titanic/, 'The tile does not name the set');
     d.getElementById('vl').click();
     await takt(30);
     pruefe('Galerie-Tabelle', '#gallery');
@@ -133,15 +133,15 @@ test('gallery: a broken image becomes a placeholder', async () => {
     error(); // 3rd attempt: placeholder
     await takt(10);
     const sci = d.querySelector('#gallery .sc .sci');
-    assert.equal(sci.querySelector('img[data-onerror]'), null, 'Das kaputte Bild steht noch da');
+    assert.equal(sci.querySelector('img[data-onerror]'), null, 'The broken image is still there');
     const ph = sci.querySelector('.image-ph');
-    assert.ok(ph, 'Kein Platzhalter an seiner Stelle');
+    assert.ok(ph, 'No placeholder in its place');
     // Without alt (the tile names the set in text) the placeholder is decoration.
     assert.equal(ph.getAttribute('aria-hidden'), 'true');
     assert.equal(
       ph.querySelector('img')?.getAttribute('src'),
       '/assets/set-placeholder.svg',
-      'Nicht derselbe Platzhalter wie für ein Set ohne Bild',
+      'Not the same placeholder as for a set without an image',
     );
   } finally {
     w.close();

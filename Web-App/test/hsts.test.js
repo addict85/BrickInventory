@@ -69,7 +69,7 @@ async function startServer(t, env) {
   });
   const basis = `http://127.0.0.1:${port}`;
   const bereit = await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000);
-  assert.ok(bereit, `der Server startet nicht:\n${log.slice(-2000)}`);
+  assert.ok(bereit, `the server does not start:\n${log.slice(-2000)}`);
   /** @param {Record<string, string>} [kopf] */
   return async (kopf = {}) => {
     const r = await fetch(`${basis}/api/v2/health/live`, { headers: kopf });

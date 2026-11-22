@@ -119,15 +119,15 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
 
     const r = await toggle(nutzer, false);
     assert.deepEqual([r.status, r.body], [200, { success: true, is_active: false }]);
-    assert.equal((await callIt('GET', '/profile', { token: a.body.token })).status, 401, 'Token gilt weiter');
-    assert.equal((await callIt('GET', '/profile', { cookie: a.cookie })).status, 401, 'Sitzung gilt weiter');
+    assert.equal((await callIt('GET', '/profile', { token: a.body.token })).status, 401, 'Token still valid');
+    assert.equal((await callIt('GET', '/profile', { cookie: a.cookie })).status, 401, 'Session still valid');
     assert.equal((await db.get('SELECT count(*)::int n FROM api_tokens WHERE user_id = $1', [nutzer])).n, 0);
   });
 
   await t.test('login is blocked, the list shows it, the log names it', async () => {
     const a = await anmelden(NUTZER);
     const falsch = await callIt('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
-    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'gesperrt antwortet wie ein falsches Passwort');
+    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'locked answers like a wrong password');
     assert.equal(a.body.code, 'credentials_invalid');
     const liste = (await callIt('GET', '/users', { cookie: chefKeks })).body.users;
     assert.equal(liste.find(u => u.id === nutzer).is_active, false);
@@ -163,30 +163,26 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     ]);
     const a = await anmelden(NUTZER);
     const falsch = await callIt('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
-    assert.deepEqual(
-      [a.status, a.body],
-      [falsch.status, falsch.body],
-      'unbestätigt antwortet wie ein falsches Passwort',
-    );
+    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'unconfirmed answers like a wrong password');
     const erneut = email => callIt('POST', '/resend-confirmation', { body: { email } });
     const unbekannt = await erneut(`niemand_${process.pid}@example.org`);
     const bekannt = await erneut(address.toUpperCase());
     assert.deepEqual(
       [bekannt.status, bekannt.body],
       [unbekannt.status, unbekannt.body],
-      'die Antwort verrät das Konto',
+      'the response reveals the account',
     );
     assert.equal(bekannt.status, 200);
     const z = await db.get(
       "SELECT new_email_token, new_email_until > NOW() + interval '23 hours' AS frisch FROM users WHERE id = $1",
       [nutzer],
     );
-    assert.ok(z.new_email_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
+    assert.ok(z.new_email_token && z.frisch, 'no new link for the unconfirmed account');
     await erneut(address);
     assert.equal(
       (await db.get('SELECT new_email_token FROM users WHERE id = $1', [nutzer])).new_email_token,
       z.new_email_token,
-      'ein zweiter Link sofort danach',
+      'a second link right afterwards',
     );
     await db.run(
       `UPDATE users SET email_verified = true, registration_pending = false, new_email = NULL, new_email_token = NULL,

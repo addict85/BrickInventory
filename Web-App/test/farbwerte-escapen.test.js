@@ -29,13 +29,10 @@ test('color values only get into the markup via escHex', () => {
   }
   // Self-proof: without locations an empty list says nothing — the rule
   // would also be green if nobody displayed colors anymore.
-  assert.ok(checked >= 5, `nur ${checked} interpolierte Farbwerte gefunden — Feldname geändert?`);
+  assert.ok(checked >= 5, `only ${checked} interpolated color values found — field name changed?`);
   assert.deepEqual(
     treffer,
     [],
-    'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' +
-      treffer.join('\n  ') +
-      '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
-      'Rückfall — siehe den Hinweis in escaping.js.',
+    `These places write a color value raw into the markup:\n  ${treffer.join('\n  ')}\nescHex(value, fallback) checks for six hex digits and otherwise returns the fallback — see the note in escaping.js.`,
   );
 });

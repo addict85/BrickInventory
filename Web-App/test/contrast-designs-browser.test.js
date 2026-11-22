@@ -119,9 +119,9 @@ test('contrast in all themes, light and dark', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const values = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(values.length, 11 * 33, `${values.length} Messungen — fehlt ein Design oder ein Baustein?`);
+  assert.equal(values.length, 11 * 33, `${values.length} measurements — is a design or a building block missing?`);
   assert.deepEqual(
     values.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],

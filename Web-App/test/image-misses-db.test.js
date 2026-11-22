@@ -58,7 +58,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
     // src/images/imageDemandRun.ts — what is checked is therefore the MARKER itself, no longer
     // the list.
     await visit();
-    assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
+    assert.equal(versuche, 0, `${versuche} downloads from the list — it must not trigger any more`);
 
     await t.test('another process knows about it', async () => {
       // The core of the matter: the server runs in a cluster. A marker in
@@ -68,12 +68,13 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
       IM.rememberMissing('set:' + PREFIX + '_probe');
       await IM._writeBuffer();
       IM._emptyForeground();
-      assert.equal(IM.isKnownMissing('set:' + PREFIX + '_probe'), false, 'Vorbedingung: der Arbeitsspeicher ist leer');
+      assert.equal(IM.isKnownMissing('set:' + PREFIX + '_probe'), false, 'Precondition: the memory is empty');
       await IM._refresh();
       assert.equal(
         IM.isKnownMissing('set:' + PREFIX + '_probe'),
         true,
-        'Ohne die Tabelle ist das Wissen nach einem Neustart weg — dann sucht ' + 'jeder Arbeitsprozess von vorn',
+        'Without the table the knowledge is gone after a restart — then ' +
+          'every worker process searches from scratch',
       );
     });
 
@@ -83,7 +84,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
       assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), true);
       testClock().ago(7 * 24 * 60 * 60 * 1000 + 1);
       try {
-        assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), false, 'die Frist ist abgelaufen');
+        assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), false, 'the deadline has expired');
       } finally {
         testClock().back();
       }

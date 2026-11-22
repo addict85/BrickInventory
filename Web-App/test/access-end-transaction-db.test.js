@@ -72,14 +72,10 @@ test('accesses end completely or not at all', { concurrency: 1 }, async t => {
   await t.test('reset: password and token stay', async () => {
     const vorher = await state();
     await withBrake(() => assert.rejects(K.setPasswordBack(link, 'ein-neues-langes-Passwort'), /erzwungen/));
-    assert.deepEqual(
-      await state(),
-      vorher,
-      'Passwort oder Sitzungsversion geändert, obwohl der letzte Schritt scheiterte',
-    );
+    assert.deepEqual(await state(), vorher, 'Password or session version changed although the last step failed');
     assert.deepEqual(await tokens(), ['t1', 't2']);
     const z = await db.get('SELECT reset_token FROM users WHERE id=$1', [uid]);
-    assert.equal(z.reset_token, link, 'der Link ist verbraucht, obwohl nichts galt');
+    assert.equal(z.reset_token, link, 'the link is used up although nothing took effect');
   });
 
   await t.test('other accesses: the token stays', async () => {

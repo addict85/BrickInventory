@@ -76,47 +76,47 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     // ── 1. Via the SESSION (web app) ────────────────────────────────────────
     const perSession = await callFn(SETTINGS + '/tokens', { headers: { cookie } });
     assert.equal(perSession.status, 200, JSON.stringify(perSession.body));
-    assert.equal(perSession.body.tokens.length, 3, 'Alle drei Anmeldungen müssen auftauchen');
+    assert.equal(perSession.body.tokens.length, 3, 'All three sign-ins must show up');
     // The session ALONE says nothing about which row belongs to it —
     // the client must send its token along. Exactly that is checked by the next
     // block; so nothing may be marked here yet.
     assert.equal(
       perSession.body.tokens.filter(x => x.current).length,
       0,
-      'Ohne mitgeschickten Token ist keine Zeile als „dieses Gerät" erkennbar',
+      'Without a token sent along no row is recognizable as „dieses Gerät“',
     );
 
     const withOwn = await callFn(SETTINGS + '/tokens', {
       headers: { cookie, authorization: `Bearer ${browser.body.token}` },
     });
     const markiert = withOwn.body.tokens.filter(x => x.current);
-    assert.equal(markiert.length, 1, 'Genau eine Zeile ist „dieses Gerät"');
+    assert.equal(markiert.length, 1, 'Exactly one row is „dieses Gerät“');
     assert.equal(markiert[0].label, 'webapp-session');
     // The token itself must NOT come out — only a piece of its hash.
     assert.ok(
       !JSON.stringify(withOwn.body).includes(browser.body.token),
-      'Der Klartext-Token darf in der Übersicht nicht auftauchen',
+      'The plain-text token must not appear in the overview',
     );
 
     // ── 2. Via the TOKEN (app) ──────────────────────────────────────────────
     // Previously that was not possible at all: the route hung on the session, and the
     // app has none.
     const perToken = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
-    assert.equal(perToken.status, 200, 'Die App muss ihre Zugänge sehen können');
+    assert.equal(perToken.status, 200, 'The app must be able to see its accesses');
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.current)?.label, 'Pixel 8');
     // And the lifetimes are in there correctly — the display depends on that.
     for (const label of ['Pixel 8', 'webapp-session']) {
       const row = perToken.body.tokens.find(x => x.label === label);
-      assert.equal(row.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
-      assert.ok(row.expires_at, `${label}: ohne Datum hat die Anzeige nichts zu zeigen`);
+      assert.equal(row.never_expires, false, `${label}: no token expires „nie“ anymore`);
+      assert.ok(row.expires_at, `${label}: without a date the display has nothing to show`);
     }
     // The phone's runs longer than the browser's — otherwise the
     // sliding period would be no relief but a tightening.
     assert.ok(
       new Date(perToken.body.tokens.find(x => x.label === 'Pixel 8').expires_at) >
         new Date(perToken.body.tokens.find(x => x.label === 'webapp-session').expires_at),
-      'Der App-Token muss laenger laufen als die sieben Tage des Browsers',
+      'The app token must run longer than the seven days of the browser',
     );
 
     // 3. Lock out a foreign device
@@ -124,7 +124,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     assert.equal(
       warmUp.body.loggedIn,
       true,
-      'Vorbedingung: Der Token des Tablets muss VOR dem Löschen gelten und damit im Cache liegen',
+      'Precondition: the tablet token must be valid BEFORE the deletion and thus be in the cache',
     );
 
     const deleteTo = perToken.body.tokens.find(x => x.label === 'Tablet');
@@ -132,7 +132,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
     });
-    assert.equal(ohne.status, 400, 'ohne Passwort sperrt ein Gerät kein anderes aus');
+    assert.equal(ohne.status, 400, 'without a password one device does not lock out another');
     const weg = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
@@ -148,7 +148,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     assert.equal(
       tabletTried.status,
       401,
-      'Der ausgesperrte Zugang gilt weiter — dann nützt die ganze Verwaltung nichts',
+      'The locked-out access is still valid — then the whole management is useless',
     );
 
     // The other two stay.
@@ -171,14 +171,14 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     assert.deepEqual(
       fremdSicht.body.tokens.map(x => x.label),
       ['Fremd'],
-      'Ein fremdes Konto darf die eigenen Zugänge nicht sehen',
+      'A foreign account must not see the own accesses',
     );
     const foreignAttempt = await callFn(SETTINGS + '/tokens/' + danach.body.tokens[0].token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${fremd.body.token}` },
       body: { password: PASS },
     });
-    assert.equal(foreignAttempt.body.deleted, 0, 'Ein fremdes Konto darf keinen Zugang entwerten');
+    assert.equal(foreignAttempt.body.deleted, 0, 'A foreign account must not invalidate any access');
 
     // ── 5. The % case: only the full identifier (16 hex characters) applies ──
     const alles = await callFn(SETTINGS + '/tokens/' + encodeURIComponent('%'), {
@@ -186,7 +186,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
       headers: { authorization: `Bearer ${telefon.body.token}` },
     });
     // Since 05.11.2026 the contract (PATH) already rejects the identifier.
-    assert.equal(alles.status, 400, 'Ein "%" als Token-Kennung darf nicht alle Zugänge auf einmal löschen');
+    assert.equal(alles.status, 400, 'A "%" as token ID must not delete all accesses at once');
   } finally {
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE username IN ($1, $2)', [NAME, NAME + '_fremd']).catch(() => {});

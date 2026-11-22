@@ -57,7 +57,7 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
   assert.deepEqual(s.state(), { laufend: 2, wartend: 1 });
   open.shift()('a');
   assert.equal(await a, 'a');
-  assert.equal(await c, 'c', 'der Wartende bekommt den frei gewordenen Platz');
+  assert.equal(await c, 'c', 'the waiting one gets the freed slot');
   open.shift()('b');
   await b;
   assert.deepEqual(s.state(), { laufend: 0, wartend: 0 });
@@ -168,7 +168,7 @@ test('with a full limit, login and password confirmation answer 503', { concurre
     const fremd = await post('/login', { username: `${NAME}_x`, password: PASS });
     assert.deepEqual([fremd.status, fremd.body.code], [503, 'server_busy']);
     for (let i = 0; i < 200 && bcryptGate.state().wartend <= kerne * 8; i++) await new Promise(r => setTimeout(r, 10));
-    assert.equal(bcryptGate.state().wartend, kerne * 8 + 1, 'die bekannte Anmeldung wartet nicht');
+    assert.equal(bcryptGate.state().wartend, kerne * 8 + 1, 'the known sign-in does not wait');
     open.shift()();
     const r = await bekannt;
     assert.equal(r.status, 200, JSON.stringify(r.body));

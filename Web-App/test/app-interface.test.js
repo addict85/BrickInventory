@@ -28,9 +28,9 @@ function operation(methode, pfad) {
 }
 
 test('every route of the app is in the contract', () => {
-  assert.ok(app.routen.length > 100, `nur ${app.routen.length} Routen — ist die Datei erzeugt?`);
+  assert.ok(app.routen.length > 100, `only ${app.routen.length} routes — has the file been generated?`);
   const ohne = app.routen.filter(r => !operation(r.methode, r.pfad)).map(r => `${r.methode} ${r.pfad}`);
-  assert.deepEqual(ohne, [], 'Diese Adressen ruft die App, der Server hat sie nicht');
+  assert.deepEqual(ohne, [], 'The app calls these addresses, the server does not have them');
 });
 
 test('every query parameter of the app is in the contract', () => {
@@ -70,6 +70,6 @@ test('every body field of the app is in the contract', () => {
     for (const f of r.rumpffelder)
       if (!jeType.get(r.rumpf ?? '')?.has(f)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f}`);
   }
-  assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
+  assert.ok(geprueft >= 35, `only ${geprueft} bodies compared`);
   assert.deepEqual(fehlt, []);
 });

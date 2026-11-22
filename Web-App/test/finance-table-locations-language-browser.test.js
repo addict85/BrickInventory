@@ -93,7 +93,7 @@ test('finance table, storage locations, number format, screen reader', {
     await b.auswerten(
       `(() => { const s = document.getElementById('lang-select'); s.value = '${l}'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
-    await bis(`document.documentElement.lang === '${l}'`, `Sprache ${l}`);
+    await bis(`document.documentElement.lang === '${l}'`, `Language ${l}`);
     await ruhig();
   };
 
@@ -130,7 +130,7 @@ test('finance table, storage locations, number format, screen reader', {
     assert.equal(
       await b.auswerten(`navigator.language.startsWith('de-')`),
       false,
-      'Vorbedingung: Browser ohne deutsche Region',
+      'Precondition: browser without a German region',
     );
   });
 
@@ -151,20 +151,20 @@ test('finance table, storage locations, number format, screen reader', {
     await geh('lagerorte');
     await bis(
       `!!document.getElementById('storage-new') && !!document.querySelector('#storage-list .location-input')`,
-      'Lagerorte',
+      'Storage locations',
     );
     await b.auswerten(
       `document.getElementById('storage-new').value = 'Dachboden Kiste 3'; ${klick('[data-click="createLocation"]')}`,
     );
     await bis(
       `[...document.querySelectorAll('#storage-list .location-input')].some(e => e.value === 'Dachboden Kiste 3')`,
-      'neuer Ort in der Liste',
+      'new location in the list',
     );
     // Without opening the dialog: opening it loads the stock itself and would hide what the page fills before.
     await geh('sammlung');
     await bis(
       `[...document.querySelectorAll('#add-storage-sel option')].some(o => o.value === 'Dachboden Kiste 3')`,
-      'neuer Ort in der Auswahl',
+      'new location in the selection',
     );
     const z =
       await b.auswerten(`({ auswahl: [...document.querySelectorAll('#add-storage-sel option')].map(o => o.value).filter(Boolean),
@@ -234,7 +234,7 @@ test('finance table, storage locations, number format, screen reader', {
 
   await t.test('wishlist item dialog: button texts fit into their buttons', async () => {
     await geh('merkliste');
-    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
+    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Wishlist');
     await b.auswerten(klick('#mk-list .mk-row'));
     await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Dialog');
     // The BrickLink button only appears with a catalog response; it is measured even without one.

@@ -45,10 +45,7 @@ test('email verification only lives in one place', async t => {
     assert.deepEqual(
       treffer,
       ['src/account/repository/accounts.ts'],
-      'Die Abfrage nach email_neu_token gehört ausschliesslich in ' +
-        'adoptEmailNew(). Gefunden in: ' +
-        treffer.join(', ') +
-        ' — damit ist die Doppelung aus einer früheren Runde zurück.',
+      `The query for email_neu_token belongs exclusively in adoptEmailNew(). Found in: ${treffer.join(', ')} — so the duplication from an earlier round is back.`,
     );
   });
 
@@ -57,7 +54,7 @@ test('email verification only lives in one place', async t => {
     assert.deepEqual(
       treffer,
       ['src/account/repository/accounts.ts'],
-      'Auch das Setzen von email_verified gehört nur an eine Stelle. ' + 'Gefunden in: ' + treffer.join(', '),
+      `Setting email_verified also belongs in one place only. Found in: ${treffer.join(', ')}`,
     );
   });
 

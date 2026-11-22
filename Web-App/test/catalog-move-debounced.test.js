@@ -42,8 +42,8 @@ async function measureMove(debounced) {
     assert.notEqual(
       code,
       vorher,
-      'Die Gegenprobe hat die Entprellung nicht gefunden. Entweder heisst sie ' +
-        'anders — dann diese Datei nachziehen — oder es gibt sie nicht mehr.',
+      'The counter-check did not find the debouncing. Either it has ' +
+        'a different name — then update this file — or it no longer exists.',
     );
   }
 
@@ -158,31 +158,31 @@ test('catalog: a drag across the bar loads the target, not the way there', async
 
   // The test bench must do something at all: on setup the first page is
   // fetched. If that did not happen, “few fetches" would be meaningless.
-  assert.ok(mit.setup >= 1, `Der Aufbau holte keine Seite (${mit.setup}) — der Pruefstand laeuft leer`);
+  assert.ok(mit.setup >= 1, `The setup fetched no page (${mit.setup}) — the test bench runs empty`);
 
   // The counter-check proves that the drag leads across many pages at all.
   // Without it the bar might only sweep across a few blocks.
   assert.ok(
     ohne.seiten.length >= 25,
-    `Ohne die Ruhe wurden nur ${ohne.seiten.length} Seiten geholt. Dann fuehrt ` +
-      `der Zug gar nicht ueber den ganzen Katalog und diese Messung sagt nichts aus.`,
+    `Without the pause only ${ohne.seiten.length} pages were fetched. Then ` +
+      `the drag does not cover the whole catalog and this measurement says nothing.`,
   );
 
   // And the actual assurance: WITH the rest period it stays at a handful.
   assert.ok(
     mit.count <= 10,
-    `Ein Zug ueber die Leiste loeste ${mit.count} Seitenabrufe aus (Seiten ` +
-      `${JSON.stringify(mit.seiten)}). Erwartet ist das Ziel samt Nachbarn. ` +
-      `Geladen wird offenbar wieder unterwegs — genau Marcos „dauert einige Sekunden".`,
+    `One drag over the bar triggered ${mit.count} page fetches (pages ` +
+      `${JSON.stringify(mit.seiten)}). Expected is the target with its neighbors. ` +
+      `Apparently it loads on the way again — exactly Marco’s „dauert einige Sekunden“.`,
   );
 
   // The gap is the most robust statement: both runs are in the same
   // process under the same conditions, a delay hits both.
   assert.ok(
     ohne.count >= mit.count * 5,
-    `Mit Ruhe ${mit.count} Abrufe, ohne ${ohne.count} — die Ruhe macht keinen ` +
-      `Unterschied mehr. Entweder laedt der Zug am Timer vorbei, oder die ` +
-      `Gegenprobe trifft die falsche Stelle.`,
+    `With pause ${mit.count} fetches, without ${ohne.count} — the pause makes no ` +
+      `difference anymore. Either the drag loads past the timer, or the ` +
+      `counter-check hits the wrong place.`,
   );
 
   // The target must really arrive: loading less is only right
@@ -190,7 +190,7 @@ test('catalog: a drag across the bar loads the target, not the way there', async
   const letzte = SEITEN;
   assert.ok(
     mit.seiten.includes(letzte),
-    `Die Zielseite ${letzte} wurde nie geholt (${JSON.stringify(mit.seiten)}) — ` +
-      `dann spart die Entprellung Abrufe, indem sie den Sprung ins Leere laufen laesst.`,
+    `The target page ${letzte} was never fetched (${JSON.stringify(mit.seiten)}) — ` +
+      `then the debouncing saves fetches by letting the jump run into nothing.`,
   );
 });

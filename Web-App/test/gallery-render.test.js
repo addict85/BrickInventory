@@ -91,15 +91,15 @@ test('prices go into the existing tile; an empty container is hidden', async () 
     const image = d.querySelector('#gallery img');
     const titanic = d.querySelector('#gallery [data-price-for="10294-1"]');
     const treehouse = d.querySelector('#gallery [data-price-for="21318-1"]');
-    assert.equal(titanic.hidden, true, 'vor dem Preis verborgen');
-    assert.equal(w.getComputedStyle(titanic).display, 'none', '.price-badge[hidden] muss display:none setzen');
+    assert.equal(titanic.hidden, true, 'hidden before the price');
+    assert.equal(w.getComputedStyle(titanic).display, 'none', '.price-badge[hidden] must set display:none');
     priceLos();
     assert.ok(await warte(() => /679/.test(d.querySelector('#gallery [data-price-for="10294-1"]')?.textContent || '')));
     await ruhig();
-    assert.equal(d.querySelector('#gallery img'), image, 'die Kachelwand wurde neu gebaut');
+    assert.equal(d.querySelector('#gallery img'), image, 'the tile wall was rebuilt');
     assert.equal(d.querySelector('#gallery [data-price-for="10294-1"]'), titanic);
     assert.equal(titanic.hidden, false);
-    assert.equal(treehouse.hidden, true, 'ohne Preis bleibt der Container verborgen');
+    assert.equal(treehouse.hidden, true, 'without a price the container stays hidden');
   } finally {
     w.close();
   }

@@ -94,7 +94,7 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
 
   await t.test('main account reads sub-account', async () => {
     const r = await hole(H, `/data/uploads/${U}/a.pdf`);
-    assert.equal(r.status, 200, 'Das Hauptkonto sieht die Anleitung des Unterkontos und muss sie öffnen können');
+    assert.equal(r.status, 200, 'The main account sees the instruction of the sub-account and must be able to open it');
   });
 
   await t.test('sub-account does not read main account', async () => {
@@ -130,7 +130,7 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
     assert.equal(
       (await hole(F, `/data/uploads/${H}/a.pdf`, true)).status,
       404,
-      'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an',
+      'Invoices and vouchers of others are none of the account management’s business',
     );
   });
 

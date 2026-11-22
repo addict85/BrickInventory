@@ -147,8 +147,8 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     for (const weg of [image(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
       const r = await fetch(`http://127.0.0.1:${port}${weg}`, { redirect: 'manual' });
       const text = await r.text();
-      assert.ok([401, 403].includes(r.status), `${weg} ohne Anmeldung: ${r.status}`);
-      assert.doesNotMatch(text, /^Inhalt /, `${weg} lieferte die Datei ohne Anmeldung aus`);
+      assert.ok([401, 403].includes(r.status), `${weg} without sign-in: ${r.status}`);
+      assert.doesNotMatch(text, /^Inhalt /, `${weg} delivered the file without sign-in`);
     }
     const r = await fetch(`http://127.0.0.1:${port}${image(SN.unter)}`, {
       headers: { Authorization: `Bearer ${token.unter}` },
@@ -157,7 +157,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     assert.match(
       String(r.headers.get('cache-control')),
       /^private\b/,
-      'Bilder hinter Anmeldung dürfen nicht public zwischengespeichert werden',
+      'Images behind a sign-in must not be cached as public',
     );
   });
 
@@ -178,7 +178,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
       assert.deepEqual(r, { status: 200, text: `Inhalt ${sn}.jpg` }, `${wer} → ${sn}`);
     }
     assert.equal((await hole('fremd', image(SN.unter, '_thumb'))).status, 200);
-    assert.equal((await hole('haupt', image(SN.none))).status, 404, 'eine fehlende Datei bleibt 404');
+    assert.equal((await hole('haupt', image(SN.none))).status, 404, 'a missing file stays 404');
   });
 
   await t.test('part images are catalog', async () => {
@@ -194,7 +194,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(
       (await hole('haupt', `/data/instructions/${SN.gemerkt}_bdp.pdf`)).status,
       404,
-      'gemerkt ist nicht besessen',
+      'remembered is not owned',
     );
   });
 
@@ -208,7 +208,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(
       (await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status,
       200,
-      'vorher: im Zwischenspeicher als Treffer',
+      'before: in the cache as a hit',
     );
     const r = await fetch(`http://127.0.0.1:${port}/api/v2/settings/household/unlink`, {
       method: 'POST',
@@ -217,6 +217,6 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     });
     assert.equal(r.status, 200, await r.text());
     assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 404);
-    assert.equal((await hole('haupt', image(SN.unter))).status, 200, 'das Set-Bild bleibt Katalog');
+    assert.equal((await hole('haupt', image(SN.unter))).status, 200, 'the set image stays catalog');
   });
 });

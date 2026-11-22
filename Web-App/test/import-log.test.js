@@ -26,27 +26,27 @@ test('only ONE version builds the line for the import log', () => {
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js')
     .map(n => ['public/js/' + n, ohneKommentare(lies('public/js/' + n))]);
   // Self-proof: if the search found hardly any files, the rule would be vacuously true.
-  assert.ok(sources.length >= 20, `Nur ${sources.length} Oberflächen-Dateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(sources.length >= 20, `Only ${sources.length} UI files found — the search no longer matches`);
 
   const definiert = sources.filter(([, js]) => /function logRow\s*\(/.test(js));
   assert.deepEqual(
     definiert.map(([n]) => n),
     [PROGRESS],
-    'logRow() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
-      'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
-      'der Fall, als dieselben drei Zeilen hier und in sammlung.js standen.',
+    'logRow() belongs in the tree exactly once. Two versions mean ' +
+      'two places where the next barrier is missing — and that was exactly ' +
+      'the case when the same three lines were here and in „sammlung.js“.',
   );
 });
 
 test('the progress text does not talk about sets', () => {
   // The same bar carries sets, parts and minifigures; checked on the loaded dictionaries.
   const { de, en } = require('./helpers/sources').loadTranslations();
-  assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');
+  assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'the old key is back');
   for (const [language, text] of [
     ['de', de['csv.items_progress']],
     ['en', en['csv.items_progress']],
   ]) {
-    assert.ok(text, `csv.items_progress fehlt (${language})`);
-    assert.doesNotMatch(text, /sets?\b/i, `${language}: „${text}“ nennt Sets`);
+    assert.ok(text, `csv.items_progress is missing (${language})`);
+    assert.doesNotMatch(text, /sets?\b/i, `${language}: „${text}“ names sets`);
   }
 });

@@ -67,7 +67,7 @@ const ziel = name => path.join(ordner, name);
 test('only https', async t => {
   const abgerufen = intercept(t, () => ({ status: 200, parts: [Buffer.alloc(500, 1)] }));
   assert.equal(await downloadFile('http://cdn.rebrickable.com/media/x.pdf', ziel('a.pdf')), false);
-  assert.deepEqual(abgerufen, [], 'eine http-Adresse wird abgerufen');
+  assert.deepEqual(abgerufen, [], 'an http address is fetched');
   assert.equal(fs.existsSync(ziel('a.pdf')), false);
 });
 
@@ -85,7 +85,7 @@ test('above the limit: aborted in the stream, nothing stored', async t => {
   intercept(t, () => ({ status: 200, parts: Array.from({ length: 50 }, () => Buffer.alloc(1000, 2)) }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/gross.pdf', ziel('c.pdf'), 10_000), false);
   await new Promise(r => setTimeout(r, 50));
-  assert.equal(fs.existsSync(ziel('c.pdf')), false, 'die zu grosse Datei liegt auf der Platte');
+  assert.equal(fs.existsSync(ziel('c.pdf')), false, 'the oversized file is on disk');
 });
 
 test('Content-Length above the limit: not even written', async t => {

@@ -34,7 +34,7 @@ test('no function without a single caller', () => {
     .map(f => ohneKommentare(fs.readFileSync(f, 'utf8')))
     .join('\n');
 
-  assert.ok(sources.length > 20, `nur ${sources.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
+  assert.ok(sources.length > 20, `only ${sources.length} source files found — the check would run into nothing`);
 
   const tot = [];
   let geprueft = 0;
@@ -49,8 +49,8 @@ test('no function without a single caller', () => {
     }
   }
 
-  assert.ok(geprueft > 100, `nur ${geprueft} Funktionen geprüft — das Muster greift nicht mehr`);
-  assert.deepEqual(tot, [], `Funktionen ohne Aufrufer:\n  ${tot.join('\n  ')}`);
+  assert.ok(geprueft > 100, `only ${geprueft} functions checked — the pattern no longer matches`);
+  assert.deepEqual(tot, [], `Functions without a caller:\n  ${tot.join('\n  ')}`);
 });
 
 /**
@@ -61,7 +61,7 @@ test('no exported value without a single caller', () => {
     .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
   const withTests = sources.concat(dateien('test', '.js'));
-  assert.ok(sources.length > 20, `nur ${sources.length} Quelldateien — die Pruefung liefe ins Leere`);
+  assert.ok(sources.length > 20, `only ${sources.length} source files — the check would run into nothing`);
 
   const inhalt = new Map(withTests.map(f => [f, ohneKommentare(fs.readFileSync(f, 'utf8'))]));
 
@@ -124,20 +124,20 @@ test('no exported value without a single caller', () => {
   // of one summand — exactly the kind of error it is built against.
   assert.ok(
     found.inline > 70,
-    `Nur ${found.inline} Exporte in der Form \`export function x\` gefunden ` +
-      '(GEMESSEN: 139) — dieses Muster ist veraltet.',
+    `Only ${found.inline} exports of the form \`export function x\` found ` +
+      '(MEASURED: 139) — this pattern is outdated.',
   );
   assert.ok(
     found.liste > 125,
-    `Nur ${found.liste} Exporte in der Form \`export { x }\` gefunden ` +
-      '(GEMESSEN: 252) — dieses Muster ist veraltet. Genau dieses fand upsert().',
+    `Only ${found.liste} exports of the form \`export { x }\` found ` +
+      '(MEASURED: 252) — this pattern is outdated. Exactly this one found upsert().',
   );
 
   assert.deepEqual(
     tot,
     [],
-    'Diese Namen werden exportiert und NIRGENDS aufgerufen — auch nicht in ihrer ' +
-      'eigenen Datei. Entweder fehlt der Anschluss, oder die Fassung ist ueberholt; ' +
-      'beides altert unbemerkt mit.',
+    'These names are exported and called NOWHERE — not even in their ' +
+      'own file. Either the connection is missing, or the version is outdated; ' +
+      'both age unnoticed.',
   );
 });

@@ -44,10 +44,7 @@ test('the web app sums no money amounts itself', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Die Oberfläche bildet eine Geldsumme selbst:\n  ' +
-      treffer.join('\n  ') +
-      '\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). ' +
-      'Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert.',
+    `The UI computes a money total itself:\n  ${treffer.join('\n  ')}\nThe server delivers such totals ready-made (total_value, totals.grand_total). Two ways of computing mean two results as soon as the rule changes.`,
   );
 });
 

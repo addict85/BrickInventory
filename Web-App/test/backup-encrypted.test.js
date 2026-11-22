@@ -86,7 +86,7 @@ exit 0
 
 test('no plaintext next to the encrypted backup', t => {
   if (!hatAge) {
-    if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
+    if (process.env.CI) assert.fail('age is missing in the CI run');
     t.skip('age not installed');
     return;
   }
@@ -97,19 +97,19 @@ test('no plaintext next to the encrypted backup', t => {
   assert.deepEqual(
     dateien.map(n => n.replace(/_\d{4}-\d\d-\d\d_\d{4}/, '')),
     ['data.tar.gz.age', 'db.sql.gz.age'],
-    `kein Klartext neben der verschlüsselten Sicherung: ${dateien}`,
+    `no plain text next to the encrypted backup: ${dateien}`,
   );
   for (const n of dateien) {
     const roh = fs.readFileSync(path.join(a.ziel, n));
     assert.match(roh.subarray(0, 40).toString('latin1'), /^age-encryption\.org\/v1/);
-    assert.ok(!roh.includes('geheim') && !roh.includes('PostgreSQL database dump'), `${n} enthält Klartext`);
+    assert.ok(!roh.includes('geheim') && !roh.includes('PostgreSQL database dump'), `${n} contains plain text`);
     assert.equal(fs.statSync(path.join(a.ziel, n)).mode & 0o077, 0);
   }
 });
 
 test('restore.sh loads the encrypted backup', t => {
   if (!hatAge) {
-    if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
+    if (process.env.CI) assert.fail('age is missing in the CI run');
     t.skip('age not installed');
     return;
   }
@@ -121,7 +121,7 @@ test('restore.sh loads the encrypted backup', t => {
     .map(n => path.join(a.ziel, n));
   fs.rmSync(path.join(a.work, 'data'), { recursive: true });
   const ohne = a.lauf('restore.sh', [dump, daten], {}, 'ja\n');
-  assert.notEqual(ohne.status, 0, 'ohne privaten Schlüssel eingespielt');
+  assert.notEqual(ohne.status, 0, 'restored without a private key');
   assert.match(ohne.stderr, /BACKUP_AGE_IDENTITAET/);
   const r = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identity }, 'ja\n');
   assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -135,14 +135,14 @@ test('without age no plaintext', t => {
     BACKUP_AGE_EMPFAENGER: 'age1probe',
     AGE: path.join(a.tmp, 'gibt-es-nicht'),
   });
-  assert.notEqual(r.status, 0, 'ohne age kein Klartext');
+  assert.notEqual(r.status, 0, 'no plain text without age');
   assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], []);
 });
 
 test('without recipients no backup', t => {
   const a = setup(t);
   const r = a.lauf('backup.sh', [a.ziel]);
-  assert.notEqual(r.status, 0, 'ohne Empfänger gesichert');
+  assert.notEqual(r.status, 0, 'backed up without a recipient');
   assert.match(r.stderr, /kein Empfänger.*nichts gesichert/s);
   assert.match(r.stderr, /backup-empfaenger\.txt/);
   assert.match(r.stderr, /BACKUP_KLARTEXT=ja/);
@@ -151,7 +151,7 @@ test('without recipients no backup', t => {
 
 test('the recipients from backup-empfaenger.txt apply without further information', t => {
   if (!hatAge) {
-    if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
+    if (process.env.CI) assert.fail('age is missing in the CI run');
     t.skip('age not installed');
     return;
   }
@@ -176,7 +176,7 @@ test('the recipients from backup-empfaenger.txt apply without further informatio
 test('unencrypted only with BACKUP_KLARTEXT=ja', t => {
   const a = setup(t);
   const nein = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: '1' });
-  assert.notEqual(nein.status, 0, 'BACKUP_KLARTEXT=1 genügt nicht, nur „ja"');
+  assert.notEqual(nein.status, 0, 'BACKUP_KLARTEXT=1 is not enough, only „ja“');
   const r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /WARNUNG: unverschlüsselt/);
@@ -191,7 +191,7 @@ test('unencrypted only with BACKUP_KLARTEXT=ja', t => {
 
 test('there is never plaintext at the target, not even during the backup', t => {
   if (!hatAge) {
-    if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
+    if (process.env.CI) assert.fail('age is missing in the CI run');
     t.skip('age not installed');
     return;
   }
@@ -219,18 +219,18 @@ printf -- '-- PostgreSQL database dump complete\\n'
   const gesehen = fs.readFileSync(probe, 'utf8').split('\n').filter(Boolean);
   assert.ok(
     gesehen.some(n => /^db_.*\.sql\.gz\.age$/.test(n)),
-    `Vorbedingung: nach tar angesehen: ${gesehen}`,
+    `Precondition: looked at by tar: ${gesehen}`,
   );
   assert.deepEqual(
     gesehen.filter(n => !/\.age(\.teil)?$/.test(n)),
     [],
-    'Klartext am Ziel',
+    'Plain text at the destination',
   );
 });
 
 test('a dump without an end marker leaves nothing at the target', t => {
   if (!hatAge) {
-    if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
+    if (process.env.CI) assert.fail('age is missing in the CI run');
     t.skip('age not installed');
     return;
   }
@@ -239,9 +239,9 @@ test('a dump without an end marker leaves nothing at the target', t => {
     mode: 0o755,
   });
   const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.recipient });
-  assert.notEqual(r.status, 0, 'ein Torso gilt als Sicherung');
+  assert.notEqual(r.status, 0, 'a torso counts as a backup');
   assert.match(r.stderr, /Endmarke fehlt/);
-  assert.deepEqual(fs.readdirSync(a.ziel), [], 'eine halbe Datei bleibt am Ziel');
+  assert.deepEqual(fs.readdirSync(a.ziel), [], 'a half file stays at the destination');
 });
 
 test('restore.sh rejects psql commands in the dump', t => {
@@ -255,9 +255,9 @@ test('restore.sh rejects psql commands in the dump', t => {
     );
     execFileSync('gzip', ['-f', dump]);
     const r = a.lauf('restore.sh', [`${dump}.gz`], {}, 'ja\n');
-    assert.notEqual(r.status, 0, `eingespielt: ${row}`);
+    assert.notEqual(r.status, 0, `restored: ${row}`);
     assert.match(r.stderr, /psql-Befehle/);
-    assert.ok(!fs.existsSync(path.join(a.tmp, 'eingespielt.sql')), 'psql bekam den Dump');
+    assert.ok(!fs.existsSync(path.join(a.tmp, 'eingespielt.sql')), 'psql got the dump');
   }
   assert.ok(!fs.existsSync(geknackt));
 });
@@ -270,12 +270,12 @@ test('a tar error aborts and leaves no archive', t => {
     { mode: 0o755 },
   );
   const r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
-  assert.notEqual(r.status, 0, 'ein tar-Fehler bricht ab …');
+  assert.notEqual(r.status, 0, 'a tar error aborts …');
   assert.match(r.stderr, /tar endete mit Status 2/);
   assert.deepEqual(
     fs.readdirSync(a.ziel).filter(n => n.startsWith('data_')),
     [],
-    'ein halbes Archiv liegt am Ziel',
+    'a half archive lies at the destination',
   );
 });
 
@@ -317,8 +317,8 @@ test('an unreadable file under data/ aborts before the dump', t => {
     });
     r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
   }
-  assert.notEqual(r.status, 0, 'eine unlesbare Datei unter data/ …');
+  assert.notEqual(r.status, 0, 'an unreadable file under data/ …');
   assert.match(r.stderr, /nicht vollständig lesbar \(data\/uploads\/fremd\.pdf\)/, r.stderr);
   assert.match(r.stderr, /root oder mit der UID des Dienstes/);
-  assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], [], 'vor dem Dump abbrechen');
+  assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], [], 'abort before the dump');
 });

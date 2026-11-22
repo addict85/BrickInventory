@@ -42,7 +42,7 @@ test('open household invitations are limited', { concurrency: 1 }, async t => {
 
   await t.test('five work, the sixth does not, a redeemed one makes room', async () => {
     for (let i = 0; i < 5; i++) assert.deepEqual(await lade(), [200, 'string'], `Einladung ${i + 1}`);
-    assert.deepEqual(await lade(), [409, 'too_many_invites'], 'die sechste');
+    assert.deepEqual(await lade(), [409, 'too_many_invites'], 'the sixth');
     await db.run(
       `UPDATE account_link_invites SET used_at = NOW()
       WHERE ctid = (SELECT ctid FROM account_link_invites WHERE main_user_id = $1 LIMIT 1)`,

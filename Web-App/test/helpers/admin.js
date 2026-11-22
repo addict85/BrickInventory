@@ -13,7 +13,7 @@ async function adminWithFactor(_req, uid) {
   // As in production in the account itself: row security would otherwise hide the rows.
   return _req('src/infra/accountContext.js').asRequest({ apiUser: { user_id: uid } }, async () => {
     const secret = await zf.beginSetup(uid);
-    if (!secret) throw new Error(`Konto ${uid} hat schon einen zweiten Faktor`);
+    if (!secret) throw new Error(`Account ${uid} already has a second factor`);
     return zf.confirmSetup(uid, zf.hotp(zf.fromBase32(secret), zf.timeStep()));
   });
 }

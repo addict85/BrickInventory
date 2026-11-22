@@ -56,24 +56,21 @@ async function pdfViewer(_t, a) {
   );
   await bis(`!!document.getElementById('instr-file')`, 'Set-Detail');
   await b.auswerten(datei('#instr-file', 'anleitung.pdf', 'application/pdf', PDF));
-  await bis(`!!document.querySelector('#set-modal [data-click="openPdfViewerLink"]')`, 'Anleitung hochgeladen');
+  await bis(`!!document.querySelector('#set-modal [data-click="openPdfViewerLink"]')`, 'Instruction uploaded');
   await b.auswerten(`document.querySelector('#set-modal [data-click="openPdfViewerLink"]').click(); true`);
-  await bis(`document.querySelectorAll('#pdf-viewer-pages [role="img"]').length === 2`, 'zwei Seiten');
-  await bis(`document.activeElement?.id === 'pdf-viewer-pages'`, 'Fokus in den Seiten').catch(() => {});
+  await bis(`document.querySelectorAll('#pdf-viewer-pages [role="img"]').length === 2`, 'two pages');
+  await bis(`document.activeElement?.id === 'pdf-viewer-pages'`, 'Focus in the pages').catch(() => {});
   const namen = await b.auswerten(
     `[...document.querySelectorAll('#pdf-viewer-pages [role="img"]')].map(s => s.getAttribute('aria-label'))`,
   );
   assert.deepEqual(namen, ['Seite 1 von 2', 'Seite 2 von 2']);
-  assert.ok(await b.auswerten(`document.activeElement?.id === 'pdf-viewer-pages'`), 'Fokus nicht in den Seiten');
+  assert.ok(await b.auswerten(`document.activeElement?.id === 'pdf-viewer-pages'`), 'Focus not in the pages');
   await taste(b, { key: 'PageDown', code: 'PageDown', windowsVirtualKeyCode: 34 });
   // Under load the scrolling arrives later; the wait is up to 3 s.
   await bis(`document.getElementById('pdf-viewer-pages').scrollTop > 0`, 'Bildlauf', 30).catch(() => {});
   assert.ok(
     await b.auswerten(`document.getElementById('pdf-viewer-pages').scrollTop > 0`),
-    'PageDown rollt nicht: ' +
-      (await b.auswerten(
-        `(() => { const p = document.getElementById('pdf-viewer-pages'); return [p.scrollHeight, p.clientHeight, document.activeElement?.id].join(' '); })()`,
-      )),
+    `PageDown does not scroll: ${await b.auswerten(`(() => { const p = document.getElementById('pdf-viewer-pages'); return [p.scrollHeight, p.clientHeight, document.activeElement?.id].join(' '); })()`)}`,
   );
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
@@ -86,24 +83,25 @@ async function csvProgress(_t, a) {
   await b.auswerten(`new Promise(r => { const t0 = Date.now(); (function w() { const c = document.getElementById('confirm-modal');
       if (c && c.style.display === 'flex') { document.getElementById('cd-confirm').click(); r(true); }
       else if (document.getElementById('progress-overlay').classList.contains('open') || Date.now() - t0 > 5000) r(true); else setTimeout(w, 100); })(); })`);
-  await bis(`document.getElementById('progress-overlay').classList.contains('open')`, 'Overlay offen');
-  await bis(`document.getElementById('progress-overlay').contains(document.activeElement)`, 'Fokus im Overlay').catch(
-    () => {},
-  );
+  await bis(`document.getElementById('progress-overlay').classList.contains('open')`, 'Overlay open');
+  await bis(
+    `document.getElementById('progress-overlay').contains(document.activeElement)`,
+    'Focus in the overlay',
+  ).catch(() => {});
   assert.ok(
     await b.auswerten(`document.getElementById('progress-overlay').contains(document.activeElement)`),
-    `Fokus auf ${await b.auswerten('document.activeElement?.outerHTML?.slice(0, 80)')}`,
+    `Focus on ${await b.auswerten('document.activeElement?.outerHTML?.slice(0, 80)')}`,
   );
   for (let i = 0; i < 10; i++) {
     await taste(b, TAB);
     assert.ok(
       await b.auswerten(`document.getElementById('progress-overlay').contains(document.activeElement)`),
-      `Tab ${i + 1} verlässt das Overlay: Fokus auf ${await b.auswerten('document.activeElement?.outerHTML?.slice(0, 120)')}, Overlay ${await b.auswerten(`document.getElementById('progress-overlay').className`)}`,
+      `Tab ${i + 1} leaves the overlay: focus on ${await b.auswerten('document.activeElement?.outerHTML?.slice(0, 120)')}, overlay ${await b.auswerten(`document.getElementById('progress-overlay').className`)}`,
     );
   }
   assert.ok(
     await b.auswerten(`!!document.getElementById('prog-footer').closest('[role="status"],[aria-live]')`),
-    'Fortschritt nicht angesagt',
+    'Progress not announced',
   );
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
@@ -122,11 +120,11 @@ async function logWindow(_t, a) {
     `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${ausdruck}); })()`;
   await bis(im(`!!document.getElementById('log-wrap') && !!document.getElementById('btn-info')`), 'Protokollfenster');
   // logviewer.js loads afterwards; only its first list shows that the buttons are wired.
-  await bis(im(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`), 'Protokoll geladen');
+  await bis(im(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`), 'Log loaded');
   // axe in its own world of the frame: there the frame's CSP does not apply to eval.
   const { frameTree } = await b.tab('Page.getFrameTree');
   const rahmen = (frameTree.childFrames || []).at(-1)?.frame;
-  assert.ok(rahmen, 'kein Rahmen für das Protokollfenster');
+  assert.ok(rahmen, 'no frame for the log window');
   const { executionContextId } = await b.tab('Page.createIsolatedWorld', { frameId: rahmen.id, worldName: 'axe' });
   await b.tab('Runtime.evaluate', { contextId: executionContextId, expression: `${AXE};0` });
   const { result } = await b.tab('Runtime.evaluate', {
@@ -143,14 +141,14 @@ async function logWindow(_t, a) {
       `[...document.querySelectorAll('.lvbtn')].map(k => [k.id, k.classList.contains('active'), k.getAttribute('aria-pressed')])`,
     ),
   );
-  assert.ok(levels.length >= 3, `nur ${levels.length} Stufenknöpfe`);
+  assert.ok(levels.length >= 3, `only ${levels.length} level buttons`);
   for (const [id, active, gedrueckt] of levels) assert.equal(gedrueckt, String(active), id);
   const vorher = await b.auswerten(im(`document.getElementById('btn-info').getAttribute('aria-pressed')`));
   await b.auswerten(im(`document.getElementById('btn-info').click() ?? true`));
   assert.equal(
     await b.auswerten(im(`document.getElementById('btn-info').getAttribute('aria-pressed')`)),
     String(vorher !== 'true'),
-    'der Info-Knopf meldet seinen Zustand nicht',
+    'the info button does not report its state',
   );
   assert.equal(await b.auswerten(im(`document.getElementById('status').getAttribute('role')`)), 'status');
   await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);
@@ -169,9 +167,9 @@ async function masse(_t, a) {
     const nummern =
       await b.auswerten(`[...document.querySelectorAll('#gallery table tbody tr')].map(z => z.cells[1]).filter(Boolean)
       .map(c => { const lh = parseFloat(getComputedStyle(c).lineHeight) || 20; return [c.innerText.trim(), c.querySelector('*')?.getBoundingClientRect().height ?? c.getBoundingClientRect().height, lh]; })`);
-    assert.ok(nummern.length >= 3, `nur ${nummern.length} Zeilen`);
+    assert.ok(nummern.length >= 3, `only ${nummern.length} rows`);
     for (const [text, hoehe, lh] of nummern)
-      assert.ok(!text.includes('\n') && hoehe <= 1.5 * lh + 24, `Nummer „${text}“ ${hoehe}px`);
+      assert.ok(!text.includes('\n') && hoehe <= 1.5 * lh + 24, `Number „${text}“ ${hoehe}px`);
 
     await groesse(720, 450, false);
     await b.auswerten(
@@ -182,7 +180,7 @@ async function masse(_t, a) {
       'Set-Detail',
     );
     const oben = await b.auswerten(`document.getElementById('m-market-rows').getBoundingClientRect().top`);
-    assert.ok(oben < 450 - 40, `Wertkasten erst bei ${oben}px`);
+    assert.ok(oben < 450 - 40, `Value box only at ${oben}px`);
     await b.auswerten(CLOSE);
 
     await groesse(360, 740, true);
@@ -195,7 +193,7 @@ async function masse(_t, a) {
     const breite = await b.auswerten(
       `document.querySelector('#tab-gallery .button-floating').getBoundingClientRect().width`,
     );
-    assert.ok(breite <= 56.5, `schwebender Knopf ${breite}px breit`);
+    assert.ok(breite <= 56.5, `floating button ${breite}px wide`);
   } finally {
     await groesse(1280, 900, false);
     await b.auswerten(`window.scrollTo(0, 0); true`);

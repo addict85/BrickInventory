@@ -38,7 +38,7 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
     'data:image/png;base64,AAAA',
     ' /pfad ',
   ])
-    assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
+    assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ wrongly rejected`);
   for (const badOne of [
     '//evil.example/x',
     '/\\evil.example/x',
@@ -53,7 +53,7 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
     null,
     undefined,
   ])
-    assert.equal(safeUrl(badOne), '', `„${badOne}“ kam durch`);
+    assert.equal(safeUrl(badOne), '', `„${badOne}“ got through`);
 });
 
 test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
@@ -62,7 +62,7 @@ test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
   const payload = "');alert(1);//";
   const out = escJs(payload);
   assert.ok(!/(^|[^\\])'/.test(out), `Apostroph nicht escaped: ${out}`);
-  assert.ok(!out.includes('<'), 'Winkelklammer nicht escaped');
+  assert.ok(!out.includes('<'), 'Angle bracket not escaped');
   // A backslash must be doubled, otherwise it neutralizes the following \'
   assert.equal(escJs('a\\'), 'a\\\\');
 });
@@ -73,7 +73,7 @@ test('escUrl() only lets relative paths and http(s) through', async () => {
   assert.equal(escUrl('/data/part_images/x.jpg'), '/data/part_images/x.jpg');
   assert.equal(escUrl('javascript:alert(1)'), '');
   assert.equal(escUrl('  JaVaScRiPt:alert(1)'), '');
-  assert.equal(escUrl('//evil.tld/x.jpg'), '', 'protokollrelative URL muss raus');
+  assert.equal(escUrl('//evil.tld/x.jpg'), '', 'a protocol-relative URL must go');
   assert.equal(escUrl(''), '');
   // Attribute breakout via a quote in the URL
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
@@ -106,7 +106,7 @@ test('no src/href/data-orig with an unchecked URL', () => {
       }
     }
   }
-  assert.deepEqual(bad, [], 'URL-Attribute müssen durch escUrl()');
+  assert.deepEqual(bad, [], 'URL attributes must go through escUrl()');
 });
 
 test('no onXxx handler with an unchecked data field', () => {
@@ -119,7 +119,7 @@ test('no onXxx handler with an unchecked data field', () => {
       }
     }
   }
-  assert.deepEqual(bad, [], 'Werte in Inline-Handlern müssen durch escJs()');
+  assert.deepEqual(bad, [], 'Values in inline handlers must go through escJs()');
 });
 
 test('esc/escJs/escUrl/escHex are defined exactly once', () => {
@@ -133,10 +133,10 @@ test('esc/escJs/escUrl/escHex are defined exactly once', () => {
     assert.deepEqual(
       defs,
       [datei],
-      `${name}() muss genau einmal deklariert sein (in ${datei}) — sonst haengt ` +
-        'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
-        'auseinander. Genau das hat test/wish-list-xml.test.js schon einmal ' +
-        'gemeldet: Die App maskierte, die Webapp nicht.',
+      `${name}() must be declared exactly once (in ${datei}) — otherwise ` +
+        'escaping depends on the load order, and two versions drift ' +
+        'apart. Exactly that was reported by test/wish-list-xml.test.js ' +
+        'once before: the app escaped, the web app did not.',
     );
   }
 });
@@ -164,7 +164,7 @@ test('translations for plain text go via tRaw(), not via t()', () => {
   assert.deepEqual(
     offenders,
     [],
-    `t() statt tRaw() an einem Textziel — die Maskierung würde sichtbar: ${offenders.join(', ')}`,
+    `t() instead of tRaw() at a text target — the escaping would become visible: ${offenders.join(', ')}`,
   );
 });
 
@@ -200,6 +200,6 @@ test('server-side error messages go through esc() in the HTML context', () => {
   assert.deepEqual(
     bad,
     [],
-    `Fehlermeldungen im HTML-Kontext müssen durch esc() — sie können Text fremder Dienste enthalten: ${bad.join(', ')}`,
+    `Error messages in an HTML context must go through esc() — they can contain text from foreign services: ${bad.join(', ')}`,
   );
 });

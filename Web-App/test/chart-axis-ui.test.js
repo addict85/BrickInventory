@@ -52,8 +52,8 @@ test('axis from the first market price, purchase at the edge', async () => {
     const svg = d.querySelector('#set-modal svg.chart-price');
     const links = Number(svg.querySelector('line').getAttribute('x1'));
     const erster = Number(svg.querySelector('polyline').getAttribute('points').trim().split(/\s+/)[0].split(',')[0]);
-    assert.equal(erster, links, 'Achse ab erstem Marktpreis');
-    assert.equal(Number(svg.querySelector('.purchase-dot').getAttribute('cx')), links, 'Kauf am linken Rand');
+    assert.equal(erster, links, 'Axis from the first market price');
+    assert.equal(Number(svg.querySelector('.purchase-dot').getAttribute('cx')), links, 'Purchase at the left edge');
   } finally {
     w.close();
   }
@@ -113,7 +113,7 @@ test('cost basis label moves aside', async () => {
     const g = d.querySelector('#portfolio-chart .cost-basis-line');
     const lineY = Number(g.querySelector('line').getAttribute('y1'));
     const textY = Number(g.querySelector('text').getAttribute('y'));
-    assert.ok(textY > lineY, `Einstand-Beschriftung weicht aus: Text ${textY}, Linie ${lineY}`);
+    assert.ok(textY > lineY, `Cost-basis label moves away: text ${textY}, line ${lineY}`);
   } finally {
     w.close();
   }

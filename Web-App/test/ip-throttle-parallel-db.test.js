@@ -72,7 +72,7 @@ test('1. 25 concurrent requests: exactly 5 get through, in every round', async t
       }),
     );
     const status = await parallel(25, () => fetch(`${base}/probe`, { method: 'POST' }).then(r => r.status));
-    assert.equal(durch, 5, `Runde ${runde}: ${durch} von 25 durchgelassen, erlaubt sind 5`);
+    assert.equal(durch, 5, `Round ${runde}: ${durch} of 25 let through, 5 are allowed`);
     assert.equal(status.filter(s => s === 429).length, 20);
   }
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'parallel-probe|%'`);
@@ -90,6 +90,6 @@ test('2. the same at the real route /forgot-password', async t => {
       body: JSON.stringify({ email: 'niemand.parallel@example.ch' }),
     }).then(r => r.status),
   );
-  assert.equal(status.filter(s => s === 200).length, 5, `Antworten: ${status.join(',')}`);
+  assert.equal(status.filter(s => s === 200).length, 5, `Responses: ${status.join(',')}`);
   assert.equal(status.filter(s => s === 429).length, 20);
 });

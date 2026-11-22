@@ -68,7 +68,7 @@ test('catalog with its own access', { concurrency: 1 }, async t => {
     assert.equal(await katalog.newestInventory(SN), INVENTORY);
     assert.ok(
       sql.some(s => /FROM rb_inventories/.test(s)),
-      `gezählt: ${sql.join(' | ').slice(0, 300)}`,
+      `counted: ${sql.join(' | ').slice(0, 300)}`,
     );
   });
 
@@ -81,7 +81,7 @@ test('catalog with its own access', { concurrency: 1 }, async t => {
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_calls/.test(s)),
-      `gezählt: ${sql.join(' | ').slice(0, 300)}`,
+      `counted: ${sql.join(' | ').slice(0, 300)}`,
     );
   });
 });

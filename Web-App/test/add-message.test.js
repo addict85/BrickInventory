@@ -39,7 +39,7 @@ test('without catalog data: saved, the rest follows', async () => {
   try {
     const t = d.querySelector('#toasts .toast');
     assert.match(t.textContent, /99071-1 gespeichert — Name und Bild kommen nach/);
-    assert.ok(t.classList.contains('info'), 'als Erfolg gemeldet');
+    assert.ok(t.classList.contains('info'), 'reported as success');
   } finally {
     w.close();
   }

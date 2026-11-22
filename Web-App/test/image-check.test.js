@@ -102,7 +102,7 @@ test('checking happens against docker-publish.yml on main, the digest ends up in
     `BRICK_HOST=nas.lan\nBRICK_TAG=sha-1a2b3c4\nBRICK_IMAGE=addict85/brickinventory@${D1}\n` +
       `CADDY_IMAGE=addict85/brickinventory-caddy@${D2}\n`,
   );
-  assert.equal(r.rechte, 0o600, '.env behält ihre Rechte');
+  assert.equal(r.rechte, 0o600, '.env keeps its permissions');
   assert.match(r.docker, /^docker compose pull schluessel daten-rechte migration app jobs caddy-rechte caddy$/m);
 });
 
@@ -112,7 +112,7 @@ test('if the check of the Caddy image fails, BRICK_IMAGE does not change either'
   assert.equal(r.code, 1);
   assert.match(r.log, /Signaturprüfung für addict85\/brickinventory-caddy:latest fehlgeschlagen — nichts geändert/);
   assert.equal(r.env, vorher);
-  assert.equal(r.docker, '', 'kein pull');
+  assert.equal(r.docker, '', 'no pull');
 });
 
 test('a failed check changes nothing', t => {
@@ -121,7 +121,7 @@ test('a failed check changes nothing', t => {
   assert.equal(r.code, 1);
   assert.match(r.log, /Signaturprüfung für addict85\/brickinventory:latest fehlgeschlagen — nichts geändert/);
   assert.equal(r.env, vorher);
-  assert.equal(r.docker, '', 'kein pull');
+  assert.equal(r.docker, '', 'no pull');
 });
 
 test('two different digests or none: abort', t => {
@@ -164,7 +164,7 @@ test('without BRICK_IMAGE and CADDY_IMAGE compose does not start, with digest ev
     });
   const probe = call({ BRICK_IMAGE: 'x', CADDY_IMAGE: 'y' });
   if (probe.error || (probe.status !== 0 && !/_IMAGE/.test(probe.stderr))) {
-    if (process.env.CI) assert.fail(`docker compose im CI-Lauf: ${probe.error?.message || probe.stderr}`);
+    if (process.env.CI) assert.fail(`docker compose in the CI run: ${probe.error?.message || probe.stderr}`);
     t.skip('no docker compose');
     return;
   }
@@ -200,10 +200,10 @@ test('an update creates the new secret of the system role, the others stay', t =
   const r = lauf(t, { cosignResponse: signature(D1), geheim: alt });
   assert.equal(r.code, 0, r.log);
   assert.match(r.geheim('db_system_password'), /^[0-9a-f]{48}$/);
-  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} changed`);
   const ohne = lauf(t, { cosignResponse: signature(D1) });
   assert.equal(ohne.code, 0, ohne.log);
-  assert.equal(ohne.hatSecrets, false, 'ohne ./geheimnisse legt das Update keine an');
+  assert.equal(ohne.hatSecrets, false, 'without „./geheimnisse“ the update creates none');
 });
 
 test('… also that of the web system role, if only it is missing', t => {
@@ -217,5 +217,5 @@ test('… also that of the web system role, if only it is missing', t => {
   const r = lauf(t, { cosignResponse: signature(D1), geheim: alt });
   assert.equal(r.code, 0, r.log);
   assert.match(r.geheim('db_system_web_password'), /^[0-9a-f]{48}$/);
-  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} changed`);
 });

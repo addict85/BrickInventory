@@ -156,10 +156,6 @@ test('every market price fetch gets a condition', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Marktpreis ohne Zustand geholt:\n  ' +
-      treffer.join('\n  ') +
-      '\nMarktpreise gelten JE ZUSTAND. Ohne Angabe wird einer aus den ' +
-      'vorhandenen Erfassungen abgeleitet — und der stimmt nicht, sobald ein ' +
-      'Eintrag in beiden Zuständen vorliegt.',
+    `Market price fetched without condition:\n  ${treffer.join('\n  ')}\nMarket prices apply PER CONDITION. Without one, it is derived from the existing acquisitions — and that is wrong as soon as an entry exists in both conditions.`,
   );
 });

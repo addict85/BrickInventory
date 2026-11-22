@@ -67,16 +67,16 @@ test('two accesses, two transactions', async t => {
   await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
   await a.transaction(async tx => {
     assert.equal(a.inTransaction(), true);
-    assert.equal(b.inTransaction(), false, 'die Transaktion von a gilt nicht für b');
+    assert.equal(b.inTransaction(), false, 'the transaction of a does not apply to b');
     await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SETTING_KEY, 'x']);
-    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'a sieht die eigene Zeile');
+    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'a sees its own row');
     assert.equal(
       await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]),
       undefined,
-      'b sieht nichts Unfertiges',
+      'b sees nothing unfinished',
     );
   });
-  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'nach COMMIT sieht b sie');
+  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'after COMMIT b sees it');
   await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
 });
 
@@ -97,5 +97,5 @@ test('db/database keeps no access of the process', () => {
     'getPoolStats',
   ].filter(n => n in modul);
   assert.deepEqual(prozess, []);
-  assert.equal(typeof modul.createDb, 'function', 'die Fabrik bleibt');
+  assert.equal(typeof modul.createDb, 'function', 'the factory stays');
 });

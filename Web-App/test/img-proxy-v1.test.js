@@ -36,7 +36,7 @@ test('built addresses take the new form, the old one is still recognized', () =>
   const { proxyImageUrl, isProxyPath } = _req('src/images/images.js');
   const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
   assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
-  assert.equal(isProxyPath(`${ALT}?url=x`), true, 'gespeicherte alte Adressen gelten nicht mehr als Proxy');
+  assert.equal(isProxyPath(`${ALT}?url=x`), true, 'stored old addresses no longer count as proxy');
   assert.equal(isProxyPath(`${NEU}?url=x`), true);
 });
 
@@ -58,8 +58,8 @@ test('the server serves both addresses', async t => {
   // Both answer like the proxy (rejected without a valid account), an unknown address with 404.
   const [neu, alt, fremd] = [await status(NEU), await status(ALT), await status('/api/v2/img-proxy')];
   assert.equal(fremd, 404);
-  assert.notEqual(neu, 404, 'die neue Adresse ist nicht angemeldet');
-  assert.equal(alt, neu, 'die alte Adresse antwortet anders als die neue');
+  assert.notEqual(neu, 404, 'the new address is not registered');
+  assert.equal(alt, neu, 'the old address answers differently than the new one');
 });
 
 test('only the new address is built', () => {
@@ -80,7 +80,7 @@ test('only the new address is built', () => {
   for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
   lauf(path.join(ROOT, 'public', 'js'), '.js');
   dateien.push(['server.ts', ohneKommentare(lies(ROOT, 'server.ts'))]);
-  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Quelldateien gefunden`);
+  assert.ok(dateien.length >= 30, `Only ${dateien.length} source files found`);
 
   const gebaut = [];
   for (const [rel, src] of dateien)
@@ -93,10 +93,7 @@ test('only the new address is built', () => {
   assert.deepEqual(
     gebaut.sort(),
     [],
-    'Diese Stellen bauen noch die alte Proxy-Adresse:\n  ' +
-      gebaut.join('\n  ') +
-      `\nGebaut wird ${NEU}; die alte wird nur noch ERKANNT (isProxyPath) und ` +
-      'vom Server weiterhin bedient.',
+    `These places still build the old proxy address:\n  ${gebaut.join('\n  ')}\n${NEU} is built; the old one is only RECOGNIZED (isProxyPath) and still served by the server.`,
   );
 });
 
@@ -104,11 +101,11 @@ test('only the new address is built', () => {
 test('the app builds the new address and nowhere the old one', () => {
   // Addresses built by hand by the app (shared/app-schnittstelle.json, generated from its source text).
   const { adressen } = require('./helpers/contract').appInterface();
-  assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
+  assert.ok(adressen.includes(NEU), `The app does not build ${NEU} (found: ${adressen.join(', ')})`);
   assert.deepEqual(
     adressen.filter(a => a === ALT || a.startsWith(`${ALT}?`)),
     [],
-    `Gebaut wird ${NEU}; eine installierte ältere Fassung bedient der Server weiterhin.`,
+    `${NEU} is built; the server still serves an installed older version.`,
   );
 });
 
@@ -127,7 +124,7 @@ test('the migration covers EVERY table with image_url', () => {
     'minifigs',
   ];
   // MEASURED there are seven.
-  assert.ok(tabellen.length >= 5, `Nur ${tabellen.length} Tabellen mit image_url gefunden — Muster veraltet?`);
+  assert.ok(tabellen.length >= 5, `Only ${tabellen.length} tables with image_url found — pattern outdated?`);
 
   // Without comments: the explanatory text of this migration NAMES the pattern
   // `LIKE '%…%'` it decides against — and the check below
@@ -137,14 +134,14 @@ test('the migration covers EVERY table with image_url', () => {
   assert.deepEqual(
     absent,
     [],
-    'Diese Tabellen tragen image_url, die Migration fasst sie nicht an:\n  ' +
+    'These tables carry image_url, the migration does not touch them:\n  ' +
       absent.join('\n  ') +
-      '\nSonst bleiben dort Adressen in der alten Form stehen.',
+      '\nOtherwise addresses in the old form remain there.',
   );
 
   // Tables that did not exist yet at migration 0014
   const rewritten = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
-  assert.ok(rewritten.length >= 5, `Nur ${rewritten.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
+  assert.ok(rewritten.length >= 5, `Only ${rewritten.length} UPDATE targets found in 0014 — pattern outdated?`);
 
   const migDir = path.join(ROOT, 'db/migrations');
   const spaeter = fs
@@ -160,8 +157,8 @@ test('the migration covers EVERY table with image_url', () => {
   }
   assert.ok(
     stragglers.length >= 2,
-    `Nur ${stragglers.length} spaetere Tabellen mit image_url gefunden ` +
-      '(gemessen sind es zwei: part_color_catalog und minifigs_catalog) — Muster veraltet?',
+    `Only ${stragglers.length} later tables with image_url found ` +
+      '(two were measured: part_color_catalog and minifigs_catalog) — pattern outdated?',
   );
 
   // A valid source is also a later table that itself reads from such a one.
@@ -193,11 +190,11 @@ test('the migration covers EVERY table with image_url', () => {
   assert.deepEqual(
     withoutOrigin,
     [],
-    'Diese Tabellen tragen image_url, entstehen NACH Migration 0014 und ' +
-      'bekommen ihre Adressen nicht aus einer Tabelle, die 0014 umschreibt:\n  ' +
+    'These tables carry image_url, are created AFTER migration 0014 and ' +
+      'do not get their addresses from a table that 0014 rewrites:\n  ' +
       withoutOrigin.join('\n  ') +
-      '\nDann koennen dort Adressen in der alten Form landen, und 0014 kommt ' +
-      'nie wieder vorbei.',
+      '\nThen addresses in the old form can end up there, and 0014 never ' +
+      'comes by again.',
   );
 
   // And the comparison stays a PREFIX comparison. A `LIKE '%…%'` would also hit
@@ -206,7 +203,7 @@ test('the migration covers EVERY table with image_url', () => {
   assert.match(
     mig,
     /LEFT\(image_url, 15\) = '\/api\/img-proxy\?'/,
-    'Die Migration vergleicht nicht mehr über den Anfang des Wertes',
+    'The migration no longer compares via the start of the value',
   );
   assert.doesNotMatch(
     mig,

@@ -41,15 +41,15 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
   await t.test('invalid limit values yield 400 and change nothing', async () => {
     const r0 = await send('PUT', '/api/v2/admin/api-limits', { bricklink: 4000 });
     assert.equal(r0.status, 200);
-    assert.equal(await wert('api_limit_bricklink'), '4000', 'das Limit steht nach der Antwort in der Tabelle');
+    assert.equal(await wert('api_limit_bricklink'), '4000', 'the limit is in the table after the response');
     for (const falsch of ['abc', -7, '-7', 0, 100001, '12abc', 1.5]) {
       const r = await send('PUT', '/api/v2/admin/api-limits', { bricklink: falsch });
-      assert.equal(r.status, 400, `${JSON.stringify(falsch)} als BrickLink-Limit wurde angenommen`);
+      assert.equal(r.status, 400, `${JSON.stringify(falsch)} was accepted as BrickLink limit`);
       assert.equal((await r.json()).code, 'daily_limit_area');
     }
-    assert.equal(await wert('api_limit_bricklink'), '4000', 'die Tabelle bleibt unverändert');
+    assert.equal(await wert('api_limit_bricklink'), '4000', 'the table stays unchanged');
     const ttl = await send('POST', '/api/v2/admin/cache-ttl', { ttl: '7' });
-    assert.equal(ttl.status, 400, 'eine TTL ausserhalb der Auswahl');
+    assert.equal(ttl.status, 400, 'a TTL outside the selection');
   });
 
   await t.test('an import with an invalid limit changes nothing', async () => {
@@ -60,14 +60,14 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
       'k.json',
     );
     const r = await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: form });
-    assert.equal(r.status, 400, 'ein Import mit ungültigem Limit …');
+    assert.equal(r.status, 400, 'an import with an invalid limit …');
     assert.equal(await wert('api_limit_bricklink'), '4000');
     const kaputt = new FormData();
     kaputt.append('file', new Blob([JSON.stringify({ global: 'kein Objekt' })]), 'k.json');
     assert.equal(
       (await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: kaputt })).status,
       400,
-      'eine Importdatei ausserhalb des Schemas',
+      'an import file outside the schema',
     );
   });
 

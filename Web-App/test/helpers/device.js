@@ -40,18 +40,17 @@ async function releaseDevice(callFn, token, action, schluessel) {
   if (!s) {
     const h = await deposit(callFn, token);
     const r = h.response;
-    if (r.status !== 200 || !h.schluessel)
-      throw new Error(`Schlüssel nicht hinterlegt: ${r.status} ${JSON.stringify(r.body)}`);
+    if (r.status !== 200 || !h.schluessel) throw new Error(`Key not stored: ${r.status} ${JSON.stringify(r.body)}`);
     s = h.schluessel;
   }
   const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action } });
-  if (c.status !== 200) throw new Error(`keine Challenge: ${c.status} ${JSON.stringify(c.body)}`);
+  if (c.status !== 200) throw new Error(`no challenge: ${c.status} ${JSON.stringify(c.body)}`);
   const f = await callFn('/device/step/approval', {
     method: 'POST',
     token,
     body: { challenge: c.body.challenge, signature: signIt(s.privateKey, c.body.message) },
   });
-  if (f.status !== 200) throw new Error(`keine Freigabe: ${f.status} ${JSON.stringify(f.body)}`);
+  if (f.status !== 200) throw new Error(`no approval: ${f.status} ${JSON.stringify(f.body)}`);
   return s;
 }
 

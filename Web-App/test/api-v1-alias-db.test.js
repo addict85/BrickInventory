@@ -33,7 +33,7 @@ const db = testData();
 function fits(schema, body, label) {
   const r = schema.safeParse(body);
   assert.ok(r.success, `${label}: ${r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))}`);
-  assert.deepEqual(unknownFields(schema, body), [], `${label}: Felder ausserhalb des Vertrags`);
+  assert.deepEqual(unknownFields(schema, body), [], `${label}: fields outside the contract`);
 }
 
 test('API v1 as alias of v2', { concurrency: 1 }, async t => {

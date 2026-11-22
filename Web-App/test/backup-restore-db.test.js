@@ -154,18 +154,18 @@ test('backup and restore', async t => {
     .filter(Boolean);
 
   await t.test('pg_dump creates a complete dump', () => {
-    assert.ok(options.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${options})`);
+    assert.ok(options.includes('--clean'), `backup.sh: DUMP_OPTIONEN not found (${options})`);
     execFileSync(pgDump, [...options, '-f', dump, url], { stdio: 'pipe', timeout: CALL_DEADLINE });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(
       inhalt.slice(-500),
       /PostgreSQL database dump complete/,
-      'Die Endmarke fehlt — genau daran erkennen backup.sh und restore.sh einen Torso',
+      'The end marker is missing — that is exactly how backup.sh and restore.sh recognize a torso',
     );
     assert.match(
       inhalt,
       /DROP TABLE IF EXISTS public\.sets/,
-      '--clean --if-exists fehlt: Der Dump liesse sich nicht in eine bestehende DB einspielen',
+      '--clean --if-exists is missing: the dump could not be restored into an existing DB',
     );
   });
 
@@ -181,8 +181,7 @@ test('backup and restore', async t => {
     assert.equal(
       restoreIt(dump),
       0,
-      `Das Zurückspielen scheiterte. psql sagt:\n${reason()}\n` +
-        `pg_dump: ${variant(pgDump)} · psql: ${variant(psql)}`,
+      `Restoring failed. psql says:\n${reason()}\n` + `pg_dump: ${variant(pgDump)} · psql: ${variant(psql)}`,
     );
 
     const s = await db.get(`SELECT user_id, set_number FROM sets`);
@@ -194,7 +193,7 @@ test('backup and restore', async t => {
     assert.equal(
       await quantityOf(db, s.user_id, '10214-1'),
       2,
-      'Die Stückzahl ist nicht zurückgekommen — set_acquisitions fehlt im Dump',
+      'The piece count did not come back — set_acquisitions is missing in the dump',
     );
     // Name and year from the catalog — a DIFFERENT table than the quantity
     // above. Exactly this is where an incomplete backup shows: a
@@ -208,14 +207,14 @@ test('backup and restore', async t => {
     assert.equal(k?.name, 'Tower Bridge');
     assert.equal(Number(k?.year), 2010);
     const a = await db.get(`SELECT purchase_price, condition FROM set_acquisitions`);
-    assert.equal(a?.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
-    assert.equal(Number(a?.purchase_price), 44.5, 'Der Kaufpreis ging beim Wiederherstellen verloren');
+    assert.equal(a?.condition, 'U', 'The condition got lost during the restore');
+    assert.equal(Number(a?.purchase_price), 44.5, 'The purchase price got lost during the restore');
     const p2 = await db.get(`SELECT user_id, part_number, color_id FROM parts`);
     assert.equal(p2.part_number, '3001');
     assert.equal(
       await subsetOf(db, p2.user_id, '3001', p2.color_id),
       17,
-      'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump',
+      'The piece count did not come back — part_acquisitions is missing in the dump',
     );
   });
 
@@ -223,13 +222,9 @@ test('backup and restore', async t => {
     for (const tabelle of ['user_sessions', 'rate_limit_attempts', 'app_logs']) {
       assert.ok(
         (await db.get('SELECT to_regclass($1) AS t', [`public.${tabelle}`])).t,
-        `${tabelle} fehlt nach dem Zurückspielen`,
+        `${tabelle} is missing after restoring`,
       );
-      assert.equal(
-        (await db.get(`SELECT count(*)::int n FROM ${tabelle}`)).n,
-        0,
-        `${tabelle} steht mit Zeilen in der Sicherung`,
-      );
+      assert.equal((await db.get(`SELECT count(*)::int n FROM ${tabelle}`)).n, 0, `${tabelle} has rows in the backup`);
     }
     // As at server start: check the schema and apply migrations, without errors.
     await db.initSchema();
@@ -251,7 +246,7 @@ test('backup and restore', async t => {
     assert.doesNotMatch(
       fs.readFileSync(torso, 'utf8').slice(-500),
       /PostgreSQL database dump complete/,
-      'Ein halber Dump darf die Endmarke nicht tragen',
+      'A half dump must not carry the end marker',
     );
   });
 
@@ -270,13 +265,13 @@ test('backup and restore', async t => {
     assert.equal(
       applyWithoutStop(kaputt),
       0,
-      'Ohne ON_ERROR_STOP müsste psql den Fehler verschlucken — tut es das nicht ' +
-        'mehr, ist die Begründung in restore.sh überholt und gehört angepasst',
+      'Without ON_ERROR_STOP psql should swallow the error — if it no longer ' +
+        'does, the reasoning in restore.sh is outdated and needs adjusting',
     );
     assert.notEqual(
       restoreIt(kaputt),
       0,
-      'MIT ON_ERROR_STOP muss psql mit einem Fehler abbrechen — sonst schützt die Variable nichts',
+      'WITH ON_ERROR_STOP psql must abort with an error — otherwise the variable protects nothing',
     );
   });
 
@@ -303,18 +298,18 @@ test('backup and restore', async t => {
     assert.match(
       bCode,
       /grep -q 'PostgreSQL database dump complete'/,
-      'backup.sh prüft die Endmarke nicht mehr — ein Torso ginge als Sicherung durch',
+      'backup.sh no longer checks the end marker — a torso would pass as a backup',
     );
     assert.match(
       rCode,
       /grep -q 'PostgreSQL database dump complete'/,
-      'restore.sh prüft die Endmarke nicht, BEVOR es etwas überschreibt',
+      'restore.sh does not check the end marker BEFORE it overwrites anything',
     );
-    assert.match(rCode, /ON_ERROR_STOP=1/, 'Ohne ON_ERROR_STOP meldet ein halber Restore Erfolg');
+    assert.match(rCode, /ON_ERROR_STOP=1/, 'Without ON_ERROR_STOP a half restore reports success');
     assert.match(
       bCode,
       /^umask 077$/m,
-      'Die Sicherung enthält Klartext-Schlüssel — sie darf nur für den Besitzer lesbar entstehen',
+      'The backup contains plain-text keys — it must be created readable only by the owner',
     );
   });
 
@@ -368,9 +363,9 @@ test('backup.sh: the data key does not go into the archive', t => {
     encoding: 'utf8',
     timeout: CALL_DEADLINE,
   });
-  assert.match(inhalt, /data\/uploads\/anleitung\.pdf/, 'Vorbedingung: data/ ist im Archiv');
-  assert.doesNotMatch(inhalt, /datenschluessel/, 'der Schlüssel liegt im Archiv');
-  assert.match(ohne.stderr, /NICHT in der Sicherung/, 'ohne getrennten Ort muss das Skript es sagen');
+  assert.match(inhalt, /data\/uploads\/anleitung\.pdf/, 'Precondition: data/ is in the archive');
+  assert.doesNotMatch(inhalt, /datenschluessel/, 'the key is in the archive');
+  assert.match(ohne.stderr, /NICHT in der Sicherung/, 'without a separate location the script must say so');
 
   const tresor = path.join(tmp, 'tresor');
   const mit = sichern({ BACKUP_SCHLUESSEL_ZIEL: tresor });
@@ -379,9 +374,9 @@ test('backup.sh: the data key does not go into the archive', t => {
   assert.equal(
     fs.existsSync(kopie) && fs.readFileSync(kopie, 'utf8'),
     schluessel,
-    'der Schlüssel fehlt am getrennten Ort',
+    'the key is missing at the separate location',
   );
-  assert.equal(fs.statSync(kopie).mode & 0o077, 0, 'der Schlüssel ist für andere lesbar');
+  assert.equal(fs.statSync(kopie).mode & 0o077, 0, 'the key is readable by others');
   assert.doesNotMatch(mit.stderr, /NICHT in der Sicherung/);
 });
 
@@ -419,7 +414,7 @@ test('backup.sh: schluessel/datenschluessel only goes to the separate location',
   assert.equal(
     fs.readFileSync(path.join(tresor, 'datenschluessel'), 'utf8'),
     schluessel,
-    'schluessel/datenschluessel fehlt am getrennten Ort',
+    '„schluessel/datenschluessel“ is missing at the separate location',
   );
   assert.doesNotMatch(r.stderr, /Datenordner|keine Schlüsseldatei/);
 });
@@ -581,7 +576,7 @@ esac
     assert.deepEqual(
       (await admin.query('SELECT rolname FROM pg_roles WHERE rolname = $1', [BOESE])).rows,
       [],
-      'Code der Migrationsrolle lief als Superuser',
+      'Code of the migration role ran as superuser',
     );
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const c = new Client({ connectionString: dbUrl(ziel) });
@@ -604,7 +599,7 @@ esac
           )
         ).rows[0].ok,
         true,
-        'die Laufzeitrolle hat nach dem Restore andere Rechte',
+        'the runtime role has different rights after the restore',
       );
     } finally {
       await c.end();
@@ -652,8 +647,8 @@ esac
     fs.writeFileSync(sql, `${inhalt.slice(0, ende)}SELECT 1; \\! touch '${geknackt}'\n${inhalt.slice(ende)}`);
     execFileSync('gzip', ['-f', sql]);
     const r = zurueck(`${sql}.gz`);
-    assert.ok(!fs.existsSync(geknackt), 'ein Backslash-Befehl mitten in einer Zeile lief');
-    assert.notEqual(r.status, 0, 'der fremde Dump galt als eingespielt');
+    assert.ok(!fs.existsSync(geknackt), 'a backslash command in the middle of a line ran');
+    assert.notEqual(r.status, 0, 'the foreign dump counted as restored');
     assert.match(r.stderr, /restricted/);
   });
 });

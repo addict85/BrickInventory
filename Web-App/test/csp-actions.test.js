@@ -40,7 +40,7 @@ test('no more inline handlers anywhere — neither in index.html nor in the temp
   ]) {
     for (const m of strip(src).matchAll(RE)) found.push(`${name}: ${m[0]}`);
   }
-  assert.deepEqual(found, [], `Noch ${found.length} Inline-Handler — mit denen wäre die geschlossene CSP ein Ausfall`);
+  assert.deepEqual(found, [], `Still ${found.length} inline handlers — with them the closed CSP would be an outage`);
 });
 
 test('no style attribute and no <style> in the markup — except the start skeleton, which the CSP allows by hash', () => {
@@ -78,7 +78,7 @@ test('the dispatcher gets by without eval', () => {
   // The typeof check moved with the registry to js/registry.js
   // (resolveAction) — the dispatcher only calls it now.
   const REG = fs.readFileSync(path.join(PUB, 'js', 'registry.js'), 'utf8');
-  assert.match(REG, /typeof fn === 'function'/, 'Der Name muss aufgelöst und geprüft werden');
+  assert.match(REG, /typeof fn === 'function'/, 'The name must be resolved and checked');
   assert.match(
     ACT,
     /console\.warn\('\[actions\] unknown handler:'/,
@@ -88,19 +88,15 @@ test('the dispatcher gets by without eval', () => {
 
 test('hover effects live in the stylesheet', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  assert.match(
-    css,
-    /\.hover-row:hover/,
-    'Die früheren onmouseenter/onmouseleave-Attribute brauchen eine CSS-Entsprechung',
-  );
+  assert.match(css, /\.hover-row:hover/, 'The former onmouseenter/onmouseleave attributes need a CSS equivalent');
 });
 
 test('delete buttons on tiles carry a trash can, no ✕', () => {
   const core = require('./helpers/sources').coreSource();
-  assert.match(core, /const TRASH_ICON_SVG/, 'Symbol fehlt');
+  assert.match(core, /const TRASH_ICON_SVG/, 'Icon is missing');
   // currentColor: the same path serves white on red background (.delbtn) and red
   // on light background (.bd) — no second version needed.
-  assert.match(core, /stroke="currentColor"/, 'Das Symbol muss die Farbe erben');
+  assert.match(core, /stroke="currentColor"/, 'The icon must inherit the color');
 
   // The rule instead of the count
   const EXCEPTION = new Set(['delInstr']);
@@ -125,26 +121,26 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
       assert.match(
         k,
         /\$\{TRASH_ICON_SVG\}/,
-        `${file}: ein Löschknopf ohne Papierkorb-Symbol — ` +
-          `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`,
+        `${file}: a delete button without a trash icon — ` +
+          `the same action should look the same everywhere:\n${k.slice(0, 160)}`,
       );
     }
     exceptionsSeen += found;
   }
-  assert.ok(buttonsTotal >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
+  assert.ok(buttonsTotal >= 1, 'Not a single delete button found — pattern outdated?');
 
   // A line that nobody needs anymore is a permission that nobody
   // checks — the same rule as in the other guards of this tree.
   assert.equal(
     exceptionsSeen,
     EXCEPTION.size,
-    `${exceptionsSeen} von ${EXCEPTION.size} Ausnahmen gefunden — eine davon ` +
-      'beschreibt keinen Knopf mehr und gehoert gestrichen.',
+    `${exceptionsSeen} of ${EXCEPTION.size} exceptions found — one of them ` +
+      'no longer describes a button and should be removed.',
   );
 
   // The affected buttons may no longer contain ✕
   const gallery = fs.readFileSync(path.join(PUB, 'js', 'collection.js'), 'utf8');
-  assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
+  assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set tile still shows ✕');
 
   // The trash on the tile is a mouse path and hidden from assistive
   // technology (otherwise there would be a button inside a button); deleting via keyboard goes
@@ -152,13 +148,13 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   assert.match(
     gallery,
     /<span class="delbtn" data-click="delSetStop"(?:\$\{genuine\(\)\})? aria-hidden="true"[^>]*title=/,
-    'Set-Kachel: Papierkorb nicht verborgen',
+    'Set tile: trash icon not hidden',
   );
   const figs = fs.readFileSync(path.join(PUB, 'js', 'minifigs.js'), 'utf8');
   assert.match(
     figs,
     /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{genuine\(\)\})? aria-hidden="true"[^>]*title=/,
-    'Minifiguren-Kachel: Papierkorb nicht verborgen',
+    'Minifig tile: trash icon not hidden',
   );
 
   // Uniform pattern across all three tables: .ca as hover container with
@@ -171,7 +167,7 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   ])) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
-    assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);
+    assert.equal(n, expected, `${file}: ${n} instead of ${expected} tile delete buttons in the .ca/.delbtn pattern`);
   }
 
   // The hover applies to set AND manual tiles, and without a pointing device
@@ -187,12 +183,12 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   assert.match(
     css,
     /@media \(hover: none\)\{ \.ca\{opacity:1\} \}/,
-    'Ohne Zeigegerät bliebe der Löschknopf unerreichbar',
+    'Without a pointing device the delete button would stay unreachable',
   );
 
   const i18n = require('./helpers/sources').i18nAll();
-  assert.match(i18n, /'figs\.delete':\s*'Minifigur löschen'/, 'DE-Beschriftung fehlt');
-  assert.match(i18n, /'figs\.delete':\s*'Delete minifigure'/, 'EN-Beschriftung fehlt');
+  assert.match(i18n, /'figs\.delete':\s*'Minifigur löschen'/, 'DE label is missing');
+  assert.match(i18n, /'figs\.delete':\s*'Delete minifigure'/, 'EN label is missing');
 });
 
 test('the delete button has its own version per theme', () => {
@@ -203,7 +199,7 @@ test('the delete button has its own version per theme', () => {
   const del = css.slice(css.indexOf('.delbtn{'), css.indexOf('.delbtn svg'));
 
   // 1) own version per design
-  assert.ok(del.length > 0, 'styles.css hat keine .delbtn-Regel');
+  assert.ok(del.length > 0, 'styles.css has no .delbtn rule');
   assert.match(
     brick,
     /\[data-theme="brick"\] \.sc \.delbtn\{/,
@@ -223,8 +219,8 @@ test('the delete button has its own version per theme', () => {
     ['styles.css', del],
     ['brick.css', brick],
   ]) {
-    assert.doesNotMatch(src, /#ef4444/, `${name}: --r500 benutzen statt Literal`);
-    assert.doesNotMatch(src, /rgba\(239,\s*68,\s*68/, `${name}: --r500 benutzen statt Literal`);
+    assert.doesNotMatch(src, /#ef4444/, `${name}: use --r500 instead of a literal`);
+    assert.doesNotMatch(src, /rgba\(239,\s*68,\s*68/, `${name}: use --r500 instead of a literal`);
   }
 });
 
@@ -235,13 +231,13 @@ test('the font files really are in the tree', () => {
   const dir = path.join(__dirname, '..', 'public', 'vendor', 'fonts');
   const css = fs.readFileSync(path.join(dir, 'fonts.css'), 'utf8');
   const refs = [...css.matchAll(/url\(\.\/([^)]+)\)/g)].map(m => m[1]);
-  assert.ok(refs.length >= 2, 'fonts.css verweist auf keine Dateien');
+  assert.ok(refs.length >= 2, 'fonts.css refers to no files');
   for (const rel of refs) {
-    assert.ok(fs.existsSync(path.join(dir, rel)), `Schriftdatei fehlt: ${rel}`);
+    assert.ok(fs.existsSync(path.join(dir, rel)), `Font file is missing: ${rel}`);
   }
   // The license texts belong to it (SIL OFL) — as with vendor/qrcode.
   const licenses = fs.readdirSync(dir).filter(f => f.startsWith('LICENSE'));
-  assert.ok(licenses.length >= 2, 'Die Schriftlizenzen fehlen neben den Dateien');
+  assert.ok(licenses.length >= 2, 'The font licenses are missing next to the files');
 });
 
 test('external links open without access to the opener window', () => {
@@ -253,5 +249,5 @@ test('external links open without access to the opener window', () => {
   const ohne = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
     .map(m => m[0])
     .filter(tag => !/rel="[^"]*noopener/.test(tag));
-  assert.deepEqual(ohne, [], `target="_blank" ohne rel="noopener": ${ohne.join(' | ')}`);
+  assert.deepEqual(ohne, [], `target="_blank" without rel="noopener": ${ohne.join(' | ')}`);
 });

@@ -20,7 +20,7 @@ test('exactly what is declared is registered', () => {
     .jobQueue.signedInKinds()
     .map(a => a.kind)
     .sort();
-  assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet — greift die Verdrahtung noch?`);
+  assert.ok(angemeldet.length > 15, `only ${angemeldet.length} kinds registered — does the wiring still work?`);
   assert.deepEqual(angemeldet, Object.keys(DECLARED_KINDS).sort());
 });
 
@@ -28,7 +28,7 @@ test('the Brickset resubmission registers its kind with payload, the run is prov
   const brickset = testServices()
     .jobQueue.signedInKinds()
     .find(a => a.kind === 'brickset');
-  assert.ok(brickset?.exklusiv, 'brickset ist exklusiv angemeldet');
+  assert.ok(brickset?.exklusiv, 'brickset is registered as exclusive');
   assert.equal(brickset.payload.safeParse({ set_number: '10001-1', versuch: 2 }).success, true);
   assert.equal(brickset.payload.safeParse({ set_number: '' }).success, false);
   assert.equal(typeof brickset.ausfuehren, 'function');

@@ -30,8 +30,8 @@ test('every part is in the index and vice versa', () => {
   const tabelle = fromTable().sort();
   const disk = onDisk();
 
-  assert.ok(disk.length >= 5, `Nur ${disk.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
-  assert.deepEqual(tabelle, disk, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
+  assert.ok(disk.length >= 5, `Only ${disk.length} parts found — is the history still in CHANGELOG/?`);
+  assert.deepEqual(tabelle, disk, 'Table in CHANGELOG-fixes.md and folder CHANGELOG/ drift apart');
 });
 
 test('no addendum is in two parts', () => {
@@ -45,12 +45,12 @@ test('no addendum is in two parts', () => {
       else gesehen.set(n, f);
     }
   }
-  assert.deepEqual(doppelt, [], `Nachtrag mehrfach abgelegt:\n  ${doppelt.join('\n  ')}`);
+  assert.deepEqual(doppelt, [], `Addendum filed several times:\n  ${doppelt.join('\n  ')}`);
 
   // Lower bound for the same reason as in require-exports.test.js: if the
   // search pattern breaks (say because headings are named differently), this rule would
   // silently check nothing anymore and stay green.
-  assert.ok(gesehen.size > 100, `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
+  assert.ok(gesehen.size > 100, `Only ${gesehen.size} numbered addenda found — does the pattern still match?`);
 });
 
 test('the file name matches the content', () => {
@@ -72,9 +72,7 @@ test('the file name matches the content', () => {
   assert.deepEqual(
     daneben,
     [],
-    'Eintrag in der falschen Datei — beim Überschreiten einer Fünfundzwanziger-' +
-      'Grenze gehört eine neue Datei angelegt:\n  ' +
-      daneben.join('\n  '),
+    `Entry in the wrong file — when crossing a boundary of twenty-five a new file must be created:\n  ${daneben.join('\n  ')}`,
   );
 });
 
@@ -82,7 +80,7 @@ test('every part names at the start where it belongs', () => {
   const ohne = onDisk().filter(
     f => !fs.readFileSync(path.join(DIR, f), 'utf8').slice(0, 400).includes('CHANGELOG-fixes.md'),
   );
-  assert.deepEqual(ohne, [], 'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));
+  assert.deepEqual(ohne, [], `These parts do not link back to the index: ${ohne.join(', ')}`);
 });
 
 test('the index itself stays short', () => {
@@ -91,7 +89,7 @@ test('the index itself stays short', () => {
   const kb = fs.statSync(INDEX).size / 1024;
   assert.ok(
     kb < 20,
-    `CHANGELOG-fixes.md ist wieder auf ${kb.toFixed(0)} KB gewachsen — ` +
-      'gehören die neuen Einträge in einen Teil unter CHANGELOG/?',
+    `CHANGELOG-fixes.md has grown to ${kb.toFixed(0)} KB again — ` +
+      'do the new entries belong in a part under CHANGELOG/?',
   );
 });

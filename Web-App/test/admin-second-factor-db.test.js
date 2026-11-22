@@ -111,7 +111,7 @@ test('second factor for admins', { concurrency: 1 }, async t => {
     assert.equal(voll.status, 200, JSON.stringify(voll.body));
     assert.equal(voll.body.user.secondFactorRequired, true);
     const app = await anonym('POST', '/auth/login', { username: NAMEN[0], password: PASS });
-    assert.equal(app.body.user.secondFactorRequired, false, 'ein App-Token trägt keine Verwalterrechte');
+    assert.equal(app.body.user.secondFactorRequired, false, 'an app token carries no admin rights');
     assert.equal((await alsChef('GET', '/auth/me')).body.user.secondFactorRequired, true);
   });
 

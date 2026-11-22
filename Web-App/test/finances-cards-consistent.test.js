@@ -138,15 +138,15 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
     assert.equal(
       Math.round((entryPrice + guv) * 100),
       Math.round(wert * 100),
-      `Einstand + G/V = Marktwert: ${entryPrice} + ${guv} ≠ ${wert}`,
+      `Cost basis + P/L = market value: ${entryPrice} + ${guv} ≠ ${wert}`,
     );
-    assert.equal(percentValue, Math.round((guv / entryPrice) * 1000) / 10, 'Prozent passt nicht zum Betrag');
+    assert.equal(percentValue, Math.round((guv / entryPrice) * 1000) / 10, 'Percent does not match the amount');
     assert.equal(wert, 1863.9);
     const basis = text(d.getElementById('fin-basis'));
-    assert.ok(!d.getElementById('fin-basis').hidden, 'Basiszeile fehlt');
+    assert.ok(!d.getElementById('fin-basis').hidden, 'Base row is missing');
     assert.match(basis, /4 von 11 Positionen/);
     assert.match(basis, /6 Positionen ohne Marktpreis nicht gerechnet \(Kaufpreis [^)]*438[.,]96/);
-    assert.match(basis, /1 Position ohne Kaufpreis nicht gerechnet/, 'Zeile nennt die Position ohne Kaufpreis');
+    assert.match(basis, /1 Position ohne Kaufpreis nicht gerechnet/, 'Row names the position without a purchase price');
     await warte(() => text(d.getElementById('portfolio-current')) !== '—');
     assert.equal(betrag(text(d.getElementById('portfolio-current'))), wert, 'Diagrammkopf = Marktwert-Karte');
   } finally {

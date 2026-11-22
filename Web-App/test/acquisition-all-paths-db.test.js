@@ -135,7 +135,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
       assert.equal(
         r.status,
         200,
-        `${name}: darf nicht in 404 enden — die Zeile gehört dem Unterkonto, ` + 'das Hauptkonto darf sie verwalten',
+        `${name}: must not end in 404 — the row belongs to the sub-account, ` + 'the main account may manage it',
       );
     }
 
@@ -146,7 +146,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
     await fetch(`${base}/api/v2/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
     const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
-    assert.equal(rest.c, 0, 'die Erfassung muss nach dem Löschen wirklich weg sein');
+    assert.equal(rest.c, 0, 'the acquisition must really be gone after deletion');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     for (const [tab, sp, wert] of [

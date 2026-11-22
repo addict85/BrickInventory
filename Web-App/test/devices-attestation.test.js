@@ -93,7 +93,7 @@ test('a foreign package or a foreign signature is rejected', () => {
   assert.equal(
     reason(T.chain({ challenge: NONCE }), expectation({ digests: [] })),
     'fremde_signatur',
-    'Ohne konfigurierten Fingerabdruck nimmt der Server keine App an',
+    'Without a configured fingerprint the server accepts no app',
   );
 });
 
@@ -182,7 +182,7 @@ test("Google's list is read; a list in a different shape throws instead of half 
   const nummern = W.readRevocationList(roh);
   assert.equal(nummern.length, 5);
   assert.ok(nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));
-  assert.ok(nummern.includes('17471682139930361099'), 'auch SOFTWARE_FLAW zählt');
+  assert.ok(nummern.includes('17471682139930361099'), 'SOFTWARE_FLAW counts too');
   for (const kaputt of [
     '',
     '[]',
@@ -200,7 +200,7 @@ test('a stored list that is too old, missing or damaged does not apply', () => {
     JSON.stringify({ state: new Date(now.getTime() - tage * 86_400_000).toISOString(), nummern: ['ab'] });
   assert.deepEqual([...W.applicableList(wert(6.9), 7, now)], ['ab']);
   assert.equal(W.applicableList(wert(7.1), 7, now), null);
-  assert.equal(W.applicableList(wert(-1), 7, now), null, 'aus der Zukunft');
+  assert.equal(W.applicableList(wert(-1), 7, now), null, 'from the future');
   assert.equal(W.applicableList(null, 7, now), null);
   assert.equal(W.applicableList('{kaputt', 7, now), null);
   assert.equal(W.applicableList(JSON.stringify({ state: now.toISOString() }), 7, now), null);

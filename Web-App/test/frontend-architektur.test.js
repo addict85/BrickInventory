@@ -112,14 +112,14 @@ function circles(/** @type {Map<string, string[]>} */ g) {
 test('the frontend bundle has no import cycle', () => {
   const g = graph();
   const module = [...g.keys()].filter(k => k.startsWith('js/'));
-  assert.ok(module.length >= 30, `nur ${module.length} Module im Graphen — greift die Auswertung noch?`);
-  assert.ok([...g.values()].flat().length >= 150, 'kaum Kanten im Graphen — greift die Auswertung noch?');
-  assert.ok(g.has('i18n.js'), 'i18n.js fehlt im Graphen — es ist Teil des Bündels');
+  assert.ok(module.length >= 30, `only ${module.length} modules in the graph — does the analysis still work?`);
+  assert.ok([...g.values()].flat().length >= 150, 'hardly any edges in the graph — does the analysis still work?');
+  assert.ok(g.has('i18n.js'), 'i18n.js is missing in the graph — it is part of the bundle');
   assert.deepEqual(
     circles(g),
     [],
-    'Importkreis im Frontend. Rückwege nach oben über events.js (emit/subscribe) ' +
-      'oder targets.js (jumpTo), geteilter Zustand in state.js.',
+    'Import cycle in the frontend. Ways back up go via events.js (emit/subscribe) ' +
+      'or targets.js (jumpTo), shared state in state.js.',
   );
 });
 
@@ -128,9 +128,9 @@ test('core and building blocks (CORE, BUILDING_BLOCKS, i18n.js) import no view',
   const layer = new Set([...CORE, ...BUILDING_BLOCKS].map(f => `js/${f}`));
   const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
   const kern = [...g.keys()].filter(unten);
-  assert.equal(kern.length, CORE.length + BUILDING_BLOCKS.length, `nur ${kern.length} Kernmodule gefunden`);
+  assert.equal(kern.length, CORE.length + BUILDING_BLOCKS.length, `only ${kern.length} core modules found`);
   const upward = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
-  assert.deepEqual(upward, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
+  assert.deepEqual(upward, [], 'The core calls views via events or jump targets, not via import');
 });
 
 test('shared mutable state only in state.js', () => {
@@ -145,7 +145,7 @@ test('shared mutable state only in state.js', () => {
         if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
       });
   }
-  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'state.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
+  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'state.js'), 'utf8')), 'State module without state?');
   assert.deepEqual(treffer, []);
 });
 
@@ -171,6 +171,6 @@ test('no fetch and no EventSource bypassing the API wrapper', () => {
       treffer.push(`${path.relative(ROOT, f)}:${i + 1}: ${z.trim()}`);
     });
   }
-  assert.ok(gesehen >= 2, 'Nicht einmal die Aufrufe in apiRaw() und strom() gefunden — greift die Suche noch?');
-  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRaw() oder strom() (js/api.js)');
+  assert.ok(gesehen >= 2, 'Not even the calls in apiRaw() and „strom()“ found — does the search still match?');
+  assert.deepEqual(treffer, [], 'Calls of the own API go via api(), apiRaw() or „strom()“ (js/api.js)');
 });

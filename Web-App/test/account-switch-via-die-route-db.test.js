@@ -112,16 +112,16 @@ test('an acquisition changes the account — all three kinds via their route', {
     assert.deepEqual(
       await besitzer('set_acquisitions', 'set_number', SN),
       [KIND],
-      'Die Erfassung ist nicht beim Kind gelandet',
+      'The acquisition did not end up at the child',
     );
     assert.ok(
       (await besitzer('sets', 'set_number', SN)).includes(KIND),
-      'Das Kind hat keine Bestandszeile bekommen — die Erfassung haengt dann in der Luft',
+      'The child got no holding row — the acquisition then hangs in the air',
     );
     // And the sender no longer holds it: it was its only entry.
     assert.ok(
       !(await besitzer('sets', 'set_number', SN)).includes(MAIN),
-      'Beim Absender ist die leere Set-Zeile stehengeblieben',
+      'The empty set row stayed behind at the sender',
     );
   });
 
@@ -130,11 +130,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
-    assert.deepEqual(
-      await besitzer('parts', 'part_number', '3001'),
-      [KIND],
-      'Die Bestandszeile ist nicht mitgewandert',
-    );
+    assert.deepEqual(await besitzer('parts', 'part_number', '3001'), [KIND], 'The holding row did not move along');
   });
 
   await t.test('figure: the third branch, and it is not executed anywhere else', async () => {
@@ -148,7 +144,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     assert.deepEqual(
       await besitzer('minifigs', 'fig_number', 'sw0001'),
       [KIND],
-      'Die Bestandszeile der Figur ist nicht mitgewandert',
+      'The holding row of the minifig did not move along',
     );
   });
 
@@ -162,22 +158,18 @@ test('an acquisition changes the account — all three kinds via their route', {
     assert.equal(
       a.status,
       403,
-      `Erwartet 403, bekam ${a.status}: ${JSON.stringify(a.body)}. Ein Konto ausserhalb ` +
-        'des Haushalts darf nichts bekommen — und schon gar nicht stillschweigend das ' +
-        'eigene Konto behalten.',
+      `Expected 403, got ${a.status}: ${JSON.stringify(a.body)}. An account outside ` +
+        'the household must get nothing — and certainly not silently keep its ' +
+        'own account.',
     );
     // And NOTHING is touched. Without this half the case would also be green
     // if the route first moved and then answered 403.
     assert.deepEqual(
       await besitzer('part_acquisitions', 'part_number', '3001'),
       [MAIN],
-      'Trotz 403 ist die Erfassung gewandert',
+      'The acquisition moved despite 403',
     );
-    assert.deepEqual(
-      await besitzer('parts', 'part_number', '3001'),
-      [MAIN],
-      'Trotz 403 ist die Bestandszeile gewandert',
-    );
+    assert.deepEqual(await besitzer('parts', 'part_number', '3001'), [MAIN], 'The holding row moved despite 403');
   });
 
   await t.test('the same account means "nothing to do", not "error"', async () => {
@@ -187,7 +179,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body?.unchanged, true, 'Ein Wechsel auf das eigene Konto muss als „unveraendert" antworten');
+    assert.equal(a.body?.unchanged, true, 'A switch to the own account must answer with „unveraendert“');
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);
   });
 });

@@ -53,7 +53,7 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   P.logToDatabase(db.pool);
   await B.setUpImageDemand();
   await F.setUpImageGaps();
-  assert.ok(open.size >= 4, `Aufbau: ${open.size} Takte, erwartet mindestens vier`);
+  assert.ok(open.size >= 4, `Setup: ${open.size} ticks, expected at least four`);
 
   B.rememberUsed(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);
   F.rememberMissing(`fehlt:${kennung}`, '404');
@@ -75,11 +75,11 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
 
   await t.test('the last line is in app_logs', async () => {
     const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%letzte Zeile ${kennung}%`]);
-    assert.ok(z, 'die Zeile fehlt');
+    assert.ok(z, 'the row is missing');
   });
 
   await t.test('every tick is ended', () => {
-    assert.equal(open.size, 0, `${open.size} Takt(e) laufen weiter`);
+    assert.equal(open.size, 0, `${open.size} tick(s) keep running`);
   });
 
   await t.test('afterwards the log no longer writes to the database', async () => {

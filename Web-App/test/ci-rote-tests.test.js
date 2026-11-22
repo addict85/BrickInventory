@@ -37,7 +37,7 @@ function annotationList(protokoll) {
 test('annotations for red tests', async t => {
   assert.ok(
     fs.existsSync(AWK),
-    `${AWK} fehlt — dann hat der Workflow nichts zum Auslesen und dieser Test ` + `prueft nichts.`,
+    `${AWK} is missing — then the workflow has nothing to read and this test ` + `checks nothing.`,
   );
 
   await t.test('the reasoning is in the annotation, not only the name', () => {
@@ -63,23 +63,23 @@ test('annotations for red tests', async t => {
     ].join('\n');
 
     const a = annotationList(log);
-    assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
+    assert.equal(a.length, 1, `expected one annotation, got ${a.length}:\n${a.join('\n')}`);
     const m = a[0];
     assert.match(m, /^::error title=Roter Test::/);
-    assert.match(m, /Sitzung: gelesen wird immer/, 'der Name fehlt');
+    assert.match(m, /Sitzung: gelesen wird immer/, 'the name is missing');
     assert.match(
       m,
       /2 Schreibvorgaenge bei 20 Anfragen/,
-      'die BEGRUENDUNG fehlt — genau das war der Befund, aus dem dieser Test entstand.',
+      'the REASON is missing — that was exactly the finding this test came from.',
     );
-    assert.match(m, /expected: 1/, 'die Erwartung fehlt');
-    assert.match(m, /actual: 2/, 'der Istwert fehlt');
-    assert.match(m, /session-touch-db\.test\.js:78/, 'die Fundstelle fehlt');
+    assert.match(m, /expected: 1/, 'the expectation is missing');
+    assert.match(m, /actual: 2/, 'the actual value is missing');
+    assert.match(m, /session-touch-db\.test\.js:78/, 'the location is missing');
     // The stack trace stays out: long, and the location is already there.
-    assert.doesNotMatch(m, /TestContext/, 'der Stapelabzug gehoert nicht in die Annotation');
+    assert.doesNotMatch(m, /TestContext/, 'the stack trace does not belong in the annotation');
     // An annotation is ONE line; line breaks are in it as %0A.
-    assert.ok(!m.includes('\n'), 'die Annotation geht ueber mehrere Zeilen und wird abgeschnitten');
-    assert.ok(m.includes('%0A'), 'es gibt keine kodierten Umbrueche — alles klebt zusammen');
+    assert.ok(!m.includes('\n'), 'the annotation spans several lines and gets cut off');
+    assert.ok(m.includes('%0A'), 'there are no encoded line breaks — everything sticks together');
   });
 
   await t.test('eleven red tests yield nine plus a summary message', () => {
@@ -99,15 +99,15 @@ test('annotations for red tests', async t => {
     assert.equal(
       a.length,
       10,
-      `GitHub zeigt je Stufe und Schritt hoechstens zehn Annotationen; es sind ${a.length}. ` +
-        `Mit mehr waere die Sammelmeldung die unsichtbare.`,
+      `GitHub shows at most ten annotations per job and step; there are ${a.length}. ` +
+        `With more the summary message would be the invisible one.`,
     );
     const einzeln = a.filter(z => z.startsWith('::error title=Roter Test::'));
     assert.equal(einzeln.length, 9);
     assert.match(
       a[9],
       /^::error title=Weitere rote Tests::2 weitere/,
-      `die Sammelmeldung fehlt oder zaehlt falsch: ${a[9]}`,
+      `the summary message is missing or counts wrongly: ${a[9]}`,
     );
     // And they must not all say the same.
     assert.match(einzeln[0], /Begruendung 1/);
@@ -116,9 +116,9 @@ test('annotations for red tests', async t => {
 
   await t.test('the heading of the spec reporter is skipped', () => {
     const a = annotationList('✖ failing tests:\n\n✖ Test A (1.2ms)\n  error: etwas\n  stack: x\n');
-    assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
+    assert.equal(a.length, 1, `expected one annotation, got ${a.length}:\n${a.join('\n')}`);
     assert.match(a[0], /Test A/);
-    assert.doesNotMatch(a[0], /failing tests/, '„failing tests:" ist die Ueberschrift der Liste, kein Testname.');
+    assert.doesNotMatch(a[0], /failing tests/, '„failing tests:“ is the heading of the list, not a test name.');
   });
 
   await t.test('a run without a red test yields no annotation', () => {
@@ -132,6 +132,6 @@ test('annotations for red tests', async t => {
     // would otherwise be read as an encoding and swallow the rest.
     const a = annotationList('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');
     assert.equal(a.length, 1);
-    assert.match(a[0], /nur 95 %25 erreicht/, `das Prozentzeichen ist nicht maskiert: ${a[0]}`);
+    assert.match(a[0], /nur 95 %25 erreicht/, `the percent sign is not escaped: ${a[0]}`);
   });
 });

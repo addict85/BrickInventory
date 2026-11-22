@@ -60,7 +60,7 @@ test('without a key it is created under schluessel/, readable only by the owner'
   assert.equal(fs.readFileSync(datei, 'utf8'), r.schluessel);
   assert.equal(fs.statSync(datei).mode & 0o077, 0);
   assert.deepEqual(fs.readdirSync(path.join(wurzel, 'data')), []);
-  assert.equal(lade(wurzel).schluessel, r.schluessel, 'der zweite Start nimmt denselben');
+  assert.equal(lade(wurzel).schluessel, r.schluessel, 'the second start takes the same one');
 });
 
 test('an old installation with data/.datenschluessel keeps running and is warned', t => {
@@ -71,7 +71,7 @@ test('an old installation with data/.datenschluessel keeps running and is warned
   const r = lade(wurzel, { DATA_KEY_FILE: neu });
   assert.equal(r.schluessel, alt, r.error);
   assert.match(r.error, /liegt im Datenordner .*verschieben.*UPGRADE\.md/s);
-  assert.equal(fs.existsSync(neu), false, 'ein zweiter Schlüssel ist entstanden');
+  assert.equal(fs.existsSync(neu), false, 'a second key was created');
   // After the move: no more warning.
   fs.mkdirSync(path.dirname(neu));
   fs.renameSync(path.join(wurzel, 'data', '.datenschluessel'), neu);

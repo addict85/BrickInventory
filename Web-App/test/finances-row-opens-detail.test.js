@@ -60,7 +60,7 @@ async function openIt() {
 /** Click the row (not the row button) and return the dialog title; close it again afterwards. */
 async function clickIt(o, kind) {
   const row = o.d.querySelector(`#fin-tbl [data-fin-kind="${kind}"] tbody tr[data-click="openManDetail"]`);
-  assert.ok(row, `keine ${kind}-Zeile in der Finanztabelle`);
+  assert.ok(row, `no ${kind} row in the finance table`);
   const m = o.d.getElementById('man-detail-modal');
   row.querySelector('td.fin-value').click();
   const open = await warte(() => m.classList.contains('open'), 2000);
@@ -84,19 +84,19 @@ for (const [fall, suche] of [
       await reiter(o.w, 'finance');
       assert.ok(
         await warte(() => o.d.querySelectorAll('#fin-tbl tr[data-click="openManDetail"]').length === 2, 3000),
-        'Testdaten: je eine Teile- und Figurenzeile',
+        'Test data: one part row and one minifig row each',
       );
       await o.ruhig();
       const titel = { teil: await clickIt(o, 'parts'), figur: await clickIt(o, 'figs') };
-      assert.deepEqual(titel, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'jede Zeile öffnet ihr eigenes Detail');
+      assert.deepEqual(titel, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'every row opens its own detail');
       const urls = o.aufrufe.map(a => a.url);
       assert.ok(
         urls.some(u => u.includes('/v2/parts/3001/4/acquisitions')),
-        'Kaufpreise des Teils geladen',
+        'Purchase prices of the part loaded',
       );
       assert.ok(
         urls.some(u => u.includes('/v2/minifigs/fig-000002/acquisitions')),
-        'Kaufpreise der Figur geladen',
+        'Purchase prices of the minifig loaded',
       );
       assert.deepEqual(o.error, []);
     } finally {

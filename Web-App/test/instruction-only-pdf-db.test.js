@@ -79,12 +79,12 @@ test('instructions only with a PDF start', async t => {
   const onDisk = rel => fs.existsSync(path.join(WURZEL, rel));
 
   await t.test('a real PDF is stored and registered', () => {
-    assert.ok(localPath(URLS[0]), 'der Pfad steht in der Tabelle');
-    assert.ok(onDisk(localPath(URLS[0])), 'die Datei liegt auf der Platte');
+    assert.ok(localPath(URLS[0]), 'the path is in the table');
+    assert.ok(onDisk(localPath(URLS[0])), 'the file is on disk');
   });
 
   await t.test('a file without %PDF- is not stored', () => {
-    assert.equal(localPath(URLS[1]), null, 'ohne Datei kein Pfad in der Tabelle');
+    assert.equal(localPath(URLS[1]), null, 'no path in the table without a file');
     assert.deepEqual(fs.readdirSync(path.join(WURZEL, 'data', 'instructions')).sort(), [
       path.basename(localPath(URLS[0])),
     ]);

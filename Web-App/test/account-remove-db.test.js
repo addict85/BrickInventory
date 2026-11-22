@@ -92,7 +92,7 @@ test('remove account', { concurrency: 1 }, async t => {
     assert.deepEqual(await state(ziel), { konto: false, sitzungen: 0, protokoll: 1 });
     const NICHT = { code: 'user_not_found_or_own' };
     await assert.rejects(removeAccount(ziel, verw), NICHT);
-    await assert.rejects(removeAccount(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
+    await assert.rejects(removeAccount(verw, verw), NICHT, 'not the own account via the admin path');
   });
 
   await t.test('if the files are locked, a job takes over', async () => {
@@ -110,8 +110,8 @@ test('remove account', { concurrency: 1 }, async t => {
     const a = await db.get("SELECT payload, dedupe_key FROM jobs WHERE type = 'account_files' AND dedupe_key = $1", [
       'account_files:987654',
     ]);
-    assert.ok(a, 'kein Auftrag zum Wiederholen');
+    assert.ok(a, 'no job to retry');
     assert.equal(a.payload.user_id, 987654);
-    assert.equal(await removeAccountFiles(987654), 'entfernt', 'ohne Störung geht es gleich');
+    assert.equal(await removeAccountFiles(987654), 'entfernt', 'without a failure it works right away');
   });
 });

@@ -87,10 +87,10 @@ test('join household', { concurrency: 1 }, async t => {
       }).then(async r => ({ status: r.status, body: await r.json() }));
     const erste = await pruefe();
     assert.deepEqual([erste.status, erste.body.inviter?.username], [200, MAIN], JSON.stringify(erste.body));
-    for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Prüfung ${i + 1}`);
+    for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Check ${i + 1}`);
     const r = await pruefe();
     assert.deepEqual([r.status, r.body.code], [429, 'too_many_requests'], JSON.stringify(r.body));
-    assert.equal(r.body.inviter, undefined, 'gebremst nennt die Antwort niemanden');
+    assert.equal(r.body.inviter, undefined, 'when throttled the response names nobody');
     await checkCounter();
   });
 
@@ -125,10 +125,10 @@ test('join household', { concurrency: 1 }, async t => {
       zeilen.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)),
       zeilen.join('\n'),
     );
-    assert.ok(!zeilen.some(z => z.includes(`${KIND}@`)), 'die volle Adresse steht im Protokoll');
+    assert.ok(!zeilen.some(z => z.includes(`${KIND}@`)), 'the full address is in the log');
     assert.ok(
       zeilen.some(z => /Haushalt/.test(z)),
-      'Betreff fehlt',
+      'Subject is missing',
     );
   });
 

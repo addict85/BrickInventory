@@ -23,10 +23,10 @@ test('no silent catch on an acquisition', () => {
   };
   for (const o of ordner) {
     const p = path.join(ROOT, o);
-    assert.ok(fs.existsSync(p), `${o}/ gibt es nicht — ohne den Ordner prüft dieser Test nichts`);
+    assert.ok(fs.existsSync(p), `${o}/ does not exist — without the folder this test checks nothing`);
     collect(p);
   }
-  assert.ok(dateien.length >= 30, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
+  assert.ok(dateien.length >= 30, `only ${dateien.length} files found — the path is wrong`);
 
   const violations = [];
   let aufrufe = 0;
@@ -49,14 +49,14 @@ test('no silent catch on an acquisition', () => {
 
   // Self-proof: if the pattern finds no calls, an empty result says
   // nothing. There are clearly more than five of them.
-  assert.ok(aufrufe >= 5, `nur ${aufrufe} Aufruf(e) von addPurchaseAtTag gefunden — Muster veraltet?`);
+  assert.ok(aufrufe >= 5, `only ${aufrufe} call(s) of addPurchaseAtTag found — pattern outdated?`);
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Erfassungen verschwinden bei einem Fehler ohne Spur:\n  ' +
+    'These acquisitions disappear without a trace on an error:\n  ' +
       violations.join('\n  ') +
-      '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
-      'logAndContinue(kontext) protokollieren.',
+      '\nEither pass the error on (no catch at all) or log it with ' +
+      'logAndContinue(context).',
   );
 });

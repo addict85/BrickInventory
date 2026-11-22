@@ -107,14 +107,14 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     // The table holds the hash of the id (src/account/sessionStore.ts).
     const sid = _req('src/account/sessionStore.js').sessionDigest(klar);
     const rest = (await sitzungen(uid)).map(z => z.sid);
-    assert.equal(rest.length, 50, 'höchstens 50 Sitzungen …');
-    assert.ok(rest.includes(sid), 'die neue Sitzung bleibt');
+    assert.equal(rest.length, 50, 'at most 50 sessions …');
+    assert.ok(rest.includes(sid), 'the new session stays');
     assert.deepEqual(
       rest.filter(s => s !== sid),
       Array.from({ length: 49 }, (_, i) => `${uid}_alt_${i + 11}`),
-      'höchstens 50 Sitzungen … (es fallen die am längsten unbenutzten)',
+      'at most 50 sessions … (the longest unused ones are dropped)',
     );
-    assert.equal((await sitzungen(anderer)).length, 3, 'fremde Sitzungen bleiben');
+    assert.equal((await sitzungen(anderer)).length, 3, 'foreign sessions stay');
   });
 
   await t.test('at most 50 tokens per account, a swapped one does not count', async () => {
@@ -135,27 +135,24 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
     );
-    assert.ok(rest.includes(neu), 'der neue Token bleibt');
-    assert.ok(
-      rest.includes(`grenze_${uid}_00`),
-      'höchstens 50 Tokens … (der getauschte bleibt bis zum Ende der Überlappung)',
-    );
+    assert.ok(rest.includes(neu), 'the new token stays');
+    assert.ok(rest.includes(`grenze_${uid}_00`), 'at most 50 tokens … (the rotated one stays until the overlap ends)');
     assert.deepEqual(
       rest.filter(x => x !== neu && x !== `grenze_${uid}_00`),
       Array.from({ length: 49 }, (_, i) => `grenze_${uid}_${String(i + 6).padStart(2, '0')}`),
-      'höchstens 50 Tokens …',
+      'at most 50 tokens …',
     );
   });
 
   await t.test('after 30 logins per address and account only without priority', async () => {
     const L = _req('src/account/loginLimiter.js');
     const ip = '203.0.113.77';
-    assert.equal(await L.knownLogin(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');
+    assert.equal(await L.knownLogin(ip, NAME), false, 'an unknown device has no priority');
     for (let i = 0; i < L.SUCCESSES_WITH_PRIORITY - 1; i++) await L.loginSucceeded(ip, NAME);
     assert.equal(await L.knownLogin(ip, NAME), true);
     await L.loginSucceeded(ip, NAME);
-    assert.equal(await L.knownLogin(ip, NAME), false, 'nach 30 Anmeldungen …');
-    assert.equal(await L.loginAllowed(ip, NAME), null, 'die weiche Grenze sperrt nicht');
+    assert.equal(await L.knownLogin(ip, NAME), false, 'after 30 sign-ins …');
+    assert.equal(await L.loginAllowed(ip, NAME), null, 'the soft limit does not lock');
     await L.giveLoginSpaceFree(ip, NAME);
   });
 });

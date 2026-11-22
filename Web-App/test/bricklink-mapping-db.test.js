@@ -37,7 +37,7 @@ test.after(async () => {
       c.release();
     }
   } catch (e) {
-    console.error('[bricklink-zuordnung] Aufraeumen fehlgeschlagen:', e.message);
+    console.error('[bricklink-zuordnung] cleanup failed:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
@@ -78,19 +78,19 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   // ── Afterwards: the copies are gone ─────────────────────────────────────
   assert.ok(
     !(await columnsOf('parts')).includes('bl_part_number'),
-    'parts.bl_part_number ist nach allen Migrationen noch da',
+    'parts.bl_part_number is still there after all migrations',
   );
   assert.ok(
     !(await columnsOf('set_parts_catalog')).includes('bl_part_number'),
-    'set_parts_catalog.bl_part_number ist nach allen Migrationen noch da',
+    'set_parts_catalog.bl_part_number is still there after all migrations',
   );
   assert.ok(
     !(await columnsOf('minifigs')).includes('bl_fig_number'),
-    'minifigs.bl_fig_number ist nach allen Migrationen noch da',
+    'minifigs.bl_fig_number is still there after all migrations',
   );
   assert.ok(
     !(await tableDa('rb_bl_mapping')),
-    'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_mapping',
+    'rb_bl_mapping still exists — its content is in bl_mapping as kind part',
   );
 
   // ── And the mapping stands ──────────────────────────────────────────────
@@ -98,7 +98,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   assert.deepEqual(
     z,
     ['bl_id', 'fetched_at', 'rb_id', 'type'],
-    `bl_mapping hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
+    `bl_mapping does not have the intended columns: ${z.join(', ')}`,
   );
 
   // The kind is constrained — a typo should not pass as a fourth kind
@@ -106,7 +106,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   await assert.rejects(
     () => db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ('teil','x')`),
     /bl_mapping_type|check constraint/,
-    'Eine erfundene Art wird angenommen — dann liegen Zeilen da, die keine ' + 'Leseabfrage je findet',
+    'An invented kind is accepted — then there are rows that no ' + 'read query will ever find',
   );
   for (const type of ['part', 'fig', 'set']) {
     await db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ($1,'x') ` + `ON CONFLICT DO NOTHING`, [type]);
@@ -114,13 +114,13 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   assert.equal(
     (await db.get(`SELECT COUNT(*)::int AS c FROM bl_mapping WHERE rb_id='x'`)).c,
     3,
-    'Nicht alle drei Arten sind erlaubt — Marcos Vorgabe nennt Minifiguren, ' + 'Parts UND Sets',
+    'Not all three kinds are allowed — Marco’s requirement names minifigs, ' + 'parts AND sets',
   );
   await db.run(`DELETE FROM bl_mapping WHERE rb_id='x'`);
 
   // The index for the uniqueness check of the latch.
   const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_mapping'`)).map(r => r.indexname);
-  assert.ok(idx.includes('idx_bl_mapping_bl'), `idx_bl_mapping_bl fehlt — gefunden: ${idx.join(', ')}`);
+  assert.ok(idx.includes('idx_bl_mapping_bl'), `idx_bl_mapping_bl is missing — found: ${idx.join(', ')}`);
 });
 
 test('the read paths deliver the BrickLink number from the mapping', { concurrency: 1 }, async t => {
@@ -159,17 +159,18 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
 
   const parts = await H.manualPartsList([uid], uid);
   const teil = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3070b');
-  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(parts).slice(0, 300)}`);
+  assert.ok(teil, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
   assert.equal(
     teil.bl_part_number,
     '3070',
-    `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_mapping',
+    `bl_part_number came as ${teil.bl_part_number} instead of 3070 — the list does not read the ` +
+      'number from bl_mapping',
   );
 
   const figs = await M.readManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-9');
-  assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
-  assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
+  assert.ok(fig, `The minifig is missing in the response: ${JSON.stringify(figs).slice(0, 300)}`);
+  assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number came as ${fig.bl_fig_number} instead of sw9999`);
 
   // ── COUNTER-CHECK: change the mapping ────────────────────────────────────
   //
@@ -184,7 +185,7 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   assert.equal(
     part2.bl_part_number,
     '3070neu',
-    `Die Teileliste folgt der Zuordnung nicht: ${part2.bl_part_number} statt 3070neu`,
+    `The parts list does not follow the mapping: ${part2.bl_part_number} instead of 3070neu`,
   );
 
   const figs2 = await M.readManualMinifigs([uid], uid);
@@ -192,7 +193,7 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   assert.equal(
     fig2.bl_fig_number,
     'sw0000',
-    `Die Figurenliste folgt der Zuordnung nicht: ${fig2.bl_fig_number} statt sw0000`,
+    `The minifig list does not follow the mapping: ${fig2.bl_fig_number} instead of sw0000`,
   );
 
   // ── And WITHOUT a mapping the Rebrickable number applies ─────────────────
@@ -207,7 +208,7 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   assert.equal(
     part3.bl_part_number,
     '3070b',
-    `Ohne Zuordnung muss die Rebrickable-Nummer herauskommen, nicht ${part3.bl_part_number}`,
+    `Without a mapping the Rebrickable number must come out, not ${part3.bl_part_number}`,
   );
 });
 
@@ -232,7 +233,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
     if (fs.existsSync(v)) lauf(v);
   }
   dateien.push(path.join(ROOT, 'server.ts'));
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} source files found`);
 
   const codeRows = txt =>
     txt.split('\n').filter(z => {
@@ -267,10 +268,10 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   assert.deepEqual(
     placeList,
     [],
-    'Diese Stellen schreiben eine BrickLink-Nummer an eine Bestandszeile oder ' +
-      'benutzen die alte Tabelle:\n  ' +
+    'These places write a BrickLink number to a holding row or ' +
+      'use the old table:\n  ' +
       placeList.join('\n  ') +
-      '\nSie steht seit Migration 0037 in bl_mapping, einmal je Gegenstand.',
+      '\nSince migration 0037 it lives in bl_mapping, once per item.',
   );
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
@@ -289,7 +290,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   for (const row of probeList) {
     assert.ok(
       muster.some(([, m]) => m.test(row)),
-      `Kein Muster greift auf seine eigene Probe: ${row.slice(0, 60)}`,
+      `No pattern matches its own sample: ${row.slice(0, 60)}`,
     );
   }
   // And the opposite direction: what is allowed must NOT match.
@@ -299,7 +300,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
     'UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2',
   ]) {
     for (const [was, m] of muster) {
-      assert.ok(!m.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.slice(0, 70)}`);
+      assert.ok(!m.test(row), `The pattern „${was}“ reports an allowed line: ${row.slice(0, 70)}`);
     }
   }
 });

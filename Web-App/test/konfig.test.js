@@ -130,12 +130,12 @@ test('invalid values: all at once, with names', () => {
   });
   assert.equal(k.port, 8080);
   assert.equal(k.rolle, 'jobs');
-  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
-  assert.equal(loadConfig({}).rolle, 'both', 'ohne Angabe ein Prozess für alles');
+  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS no longer has an effect, the startup names it');
+  assert.equal(loadConfig({}).rolle, 'both', 'without a setting one process for everything');
   assert.throws(() => loadConfig({ ROLE: 'primary' }), /ROLE="primary" ist weder web noch jobs noch both/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
-  assert.equal(loadConfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
+  assert.equal(loadConfig({}).sitzungLeerlaufMin, 240, 'without a setting the default');
 });
 
 test('own attestation roots only in development and test; the cutoff date is a date', () => {

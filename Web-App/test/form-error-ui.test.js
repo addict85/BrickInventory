@@ -43,7 +43,7 @@ test('login: errors at the field', async t => {
       lp.value = 'new';
       lp.dispatchEvent(new w.Event('input', { bubbles: true }));
       assert.equal(lp.hasAttribute('aria-invalid'), false);
-      assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'das andere Feld bleibt markiert');
+      assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'the other field stays marked');
     });
   } finally {
     w.close();

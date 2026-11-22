@@ -54,6 +54,6 @@ test('UI: strict is switched on, no part of it switched off', () => {
       'useUnknownInCatchVariables',
       'alwaysStrict',
     ])
-      assert.notEqual(o[teil], false, `${config}: ${teil} abgeschaltet`);
+      assert.notEqual(o[teil], false, `${config}: ${teil} switched off`);
   }
 });

@@ -103,8 +103,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.equal(
       z.length,
       2,
-      `${z.length} Zeile(n) statt 2: ${JSON.stringify(z)}. Vorher wurde der ` +
-        'gebrauchte Kauf in den neuen gefaltet — Marcos Befund',
+      `${z.length} row(s) instead of 2: ${JSON.stringify(z)}. Previously the ` +
+        'used purchase was folded into the new one — Marco’s finding',
     );
   });
 
@@ -115,7 +115,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         { quantity: 3, preis: 1.5, condition: 'N' },
         { quantity: 2, preis: 0.5, condition: 'U' },
       ],
-      'Der Mischpreis 1.10 wäre die alte Rechnung über zwei verschiedene Käufe',
+      'The blended price 1.10 would be the old calculation over two different purchases',
     );
   });
 
@@ -146,7 +146,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         { quantity: 3, preis: 2, condition: 'N' },
         { quantity: 2, preis: 4, condition: 'N' },
       ],
-      'Die Einzelkäufe müssen rekonstruierbar bleiben — kein Mischpreis 3',
+      'The single purchases must remain reconstructible — no blended price 3',
     );
   });
 
@@ -161,7 +161,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.deepEqual(
       z,
       [{ quantity: 12, preis: 1, condition: 'N' }],
-      `Statt 12 sind ${z.reduce((s, r) => s + r.quantity, 0)} angekommen: ${JSON.stringify(z)}`,
+      `Instead of 12, ${z.reduce((s, r) => s + r.quantity, 0)} arrived: ${JSON.stringify(z)}`,
     );
   });
 
@@ -190,7 +190,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         [1, false],
         [1, true],
       ],
-      'Ein geschätzter und ein bezahlter Preis gleicher Höhe dürfen nicht verschmelzen',
+      'An estimated and a paid price of the same amount must not merge',
     );
   });
 
@@ -210,7 +210,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.deepEqual(
       z.map(r => r.currency),
       ['CHF', 'EUR'],
-      'Nach dem Wechsel darf der alte CHF-Preis nicht zum EUR-Preis werden',
+      'After the switch the old CHF price must not become the EUR price',
     );
   });
 
@@ -235,8 +235,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     await assert.rejects(
       doppelt,
       /duplicate key|unique/i,
-      'Eine DRITTE Zeile mit einem schon belegten Zustand muss die Datenbank ' +
-        'abweisen — sonst ist der Index zu weit geraten',
+      'The database must reject a THIRD row with an already used condition ' +
+        '— otherwise the index has become too wide',
     );
   });
 
@@ -248,22 +248,22 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
          AND condition='N'`,
       [UID],
     );
-    assert.ok(n, 'Vorbedingung: die N-Zeile von oben');
+    assert.ok(n, 'Precondition: the N row from above');
     assert.equal(
       await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
       null,
-      'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht',
+      'Against the OWN condition the day is free — the own row does not count',
     );
     const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
     assert.ok(
       clash,
-      'Gegen den ANDEREN Zustand mit gleichem Preis liegt dort eine Zeile. Wer sie ' +
-        'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab',
+      'Against the OTHER condition with the same price there is a row. Whoever ' +
+        'overlooks it lets a duplicate arise — and the index rejects it',
     );
     assert.equal(
       await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
       null,
-      'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision',
+      'With a different price it has been a separate row since migration 0047, not a collision',
     );
   });
 });

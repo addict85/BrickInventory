@@ -59,18 +59,18 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('finances: one purchase per row, with account', async () => {
     await geh('finanzen');
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen geladen', 200);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances loaded', 200);
     const zeilen = await b.auswerten(`[...document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody tr')]
       .filter(r => r.textContent.includes('Tree House')).map(r => [...r.querySelectorAll('.owner-badge')].map(x => x.textContent.replace('Konto: ', '')))`);
     assert.deepEqual(
       zeilen.map(z => z.join()).sort(),
       [KIND, `${NAME} (ich)`].sort(),
-      'je Kauf eine Zeile mit ihrem Konto',
+      'one row per purchase with its account',
     );
     assert.match(
       await b.auswerten(text('#fin-tbl .fin-legend')),
       /Kaufpreis dieser Zeile/,
-      'die Legende erklärt die Prozente',
+      'the legend explains the percentages',
     );
   });
 
@@ -112,26 +112,26 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('logo and card names once', async () => {
     await geh('sammlung');
-    await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
+    await bis(`!!document.querySelector('#gallery .sc')`, 'Collection');
     await b.tab('Accessibility.enable');
     const { nodes } = await b.tab('Accessibility.getFullAXTree');
     const namen = nodes.filter(n => !n.ignored && n.name?.value).map(n => `${n.role?.value}: ${n.name.value}`);
     assert.deepEqual(
       namen.filter(n => /BIM|6\+/.test(n)),
       [],
-      'das Logo wird nicht vorgelesen',
+      'the logo is not read aloud',
     );
     // Since UI review 22 only number and name; the rest is description.
     const karte = namen.find(n => n === 'button: 10294-1 Titanic');
-    assert.ok(karte, 'Kachel Titanic als Knopf');
-    assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
+    assert.ok(karte, 'Tile Titanic as a button');
+    assert.equal(karte.match(/Titanic/g).length, 1, `Name once: ${karte}`);
   });
 
   await t.test('color name in German', async () => {
     await geh('teile');
     await bis(
       `!!document.querySelector('.part-card[data-click="openSetItemDetail"][data-arg3="0"]')`,
-      'Teile aus Sets',
+      'Parts from sets',
     );
     await b.auswerten(klick('.part-card[data-click="openSetItemDetail"][data-arg3="0"]'));
     await bis(
@@ -153,11 +153,11 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('wishlist: list before the form', async () => {
     await geh('merkliste');
-    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
+    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Wishlist');
     const z = await b.auswerten(`({ offen: document.getElementById('mk-box').open,
       oben: document.querySelector('#mk-list .mk-row').getBoundingClientRect().top, hoehe: innerHeight })`);
-    assert.equal(z.offen, false, 'Formular am Telefon zugeklappt');
-    assert.ok(z.oben < z.hoehe * 0.6, `erster Merkposten im ersten Bild: ${JSON.stringify(z)}`);
+    assert.equal(z.offen, false, 'Form collapsed on the phone');
+    assert.ok(z.oben < z.hoehe * 0.6, `first watch item in the first view: ${JSON.stringify(z)}`);
   });
 
   await t.test('toast does not cover the title', async () => {
@@ -184,11 +184,11 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       uploadThroughput: -1,
     });
     try {
-      await bis(`document.querySelector('.button-floating')?.disabled === true`, 'Knopf gesperrt');
+      await bis(`document.querySelector('.button-floating')?.disabled === true`, 'Button disabled');
       const z = await b.auswerten(`(() => { const s = getComputedStyle(document.querySelector('.button-floating'));
         return { deckend: s.opacity, grund: s.backgroundColor }; })()`);
-      assert.equal(z.deckend, '1', 'der gesperrte Knopf ist deckend');
-      assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.grund}`);
+      assert.equal(z.deckend, '1', 'the disabled button is opaque');
+      assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `with an opaque background: ${z.grund}`);
     } finally {
       await b.tab('Network.emulateNetworkConditions', {
         offline: false,
@@ -198,7 +198,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       });
       await b.auswerten(`dispatchEvent(new Event('online')); true`);
     }
-    await bis(`document.querySelector('.button-floating')?.disabled === false`, 'wieder frei', 100);
+    await bis(`document.querySelector('.button-floating')?.disabled === false`, 'free again', 100);
   });
 
   await t.test('user card starts with the name', async () => {
@@ -207,19 +207,19 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     const z = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('#users-tbl tbody tr')];
       return { erste: zeilen.map(r => [...r.cells].find(c => c.checkVisibility()).textContent.trim()), namen: zeilen.map(r => r.querySelector('strong').textContent),
         ids: [...document.querySelectorAll('#users-tbl .user-id')].filter(c => c.checkVisibility()).length }; })()`);
-    assert.ok(z.namen.includes(NAME), 'Testdaten: das eigene Konto steht in der Liste');
-    assert.deepEqual(z.erste, z.namen, 'jede Karte beginnt mit dem Namen');
-    assert.equal(z.ids, 0, 'die ID steht am Telefon nicht');
+    assert.ok(z.namen.includes(NAME), 'Test data: the own account is in the list');
+    assert.deepEqual(z.erste, z.namen, 'every card starts with the name');
+    assert.equal(z.ids, 0, 'the ID is not shown on the phone');
   });
 
   await t.test('voucher: one button size', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="vouchers"]'));
-    await bis(`!!document.querySelector('.voucher-row')`, 'Gutscheine');
+    await bis(`!!document.querySelector('.voucher-row')`, 'Vouchers');
     const sizes = await b.auswerten(
       `[...document.querySelectorAll('.voucher-row :is(.v-btn, .btn)')].filter(k => k.checkVisibility()).map(k => getComputedStyle(k).fontSize)`,
     );
-    assert.ok(sizes.length >= 4, `nur ${sizes.length} Knöpfe`);
-    assert.equal(new Set(sizes).size, 1, `Schriftgrössen ${sizes}`);
+    assert.ok(sizes.length >= 4, `only ${sizes.length} buttons`);
+    assert.equal(new Set(sizes).size, 1, `Font sizes ${sizes}`);
   });
 
   await t.test('200 %: axis short, header gives way', async () => {
@@ -234,7 +234,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
         await b.auswerten(
           `[...document.querySelectorAll('#portfolio-chart svg text')].some(x => /Tsd\\./.test(x.textContent))`,
         ),
-        'Tausender kurz',
+        'Thousands short',
       );
       await b.auswerten(`scrollTo(0, 0); true`);
       await warte(200);
@@ -243,8 +243,8 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       const z = await b.auswerten(
         `({ kopf: getComputedStyle(document.querySelector('header')).transform, leiste: getComputedStyle(document.querySelector('nav:not(.settings-nav)')).transform })`,
       );
-      assert.notEqual(z.kopf, 'none', 'der Kopf weicht beim Rollen');
-      assert.notEqual(z.leiste, 'none', 'die Leiste weicht beim Rollen');
+      assert.notEqual(z.kopf, 'none', 'the header moves away when scrolling');
+      assert.notEqual(z.leiste, 'none', 'the bar moves away when scrolling');
     } finally {
       await b.auswerten(`document.documentElement.style.fontSize = ''; scrollTo(0, 0); true`);
     }
@@ -257,7 +257,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     await geh('merkliste');
     await bis(
       `getComputedStyle(document.getElementById('login-screen')).display !== 'none' && !document.getElementById('login-hint').hidden`,
-      'Anmeldung mit Hinweis',
+      'Sign-in with a hint',
     );
     assert.match(await b.auswerten(text('#login-hint')), /Sitzung abgelaufen/);
   });

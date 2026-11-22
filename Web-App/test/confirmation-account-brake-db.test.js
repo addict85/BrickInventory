@@ -76,8 +76,8 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
     // Five accesses with four attempts each: none reaches its own limit (5).
     for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) ist.push(await versuch(`t:${z}`));
     assert.deepEqual([...new Set(ist)], [400]);
-    assert.equal(await versuch('t:0'), 429, 'der 21. Versuch aus einem ratenden Zugang');
-    assert.equal(await versuch('t:4', PASS), 429, 'auch mit dem richtigen Passwort, ohne Prüfung');
+    assert.equal(await versuch('t:0'), 429, 'the 21st attempt from a guessing access');
+    assert.equal(await versuch('t:4', PASS), 429, 'even with the correct password, without a check');
   });
 
   await t.test("the owner's clean access keeps confirming", async () => {

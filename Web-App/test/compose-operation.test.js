@@ -48,7 +48,7 @@ function config() {
 function withConfig(t) {
   const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${error}`);
+    if (process.env.CI) assert.fail(`docker compose config in the CI run: ${error}`);
     t.skip(`no docker compose: ${error}`);
   }
   return j;
@@ -87,7 +87,7 @@ test('every tmpfs is without exec, without setuid and limited in size', t => {
   assert.deepEqual(falsch, []);
   assert.ok(
     Object.values(j.services).filter(d => d.tmpfs?.length).length >= 4,
-    'die Liste der tmpfs ist leer — greift die Prüfung?',
+    'the list of tmpfs is empty — does the check still match?',
   );
 });
 
@@ -96,22 +96,19 @@ test('the database hangs only in internal networks and only writes to data and s
   if (!j) return;
   const pg = j.services.postgres;
   const networkList = Object.keys(pg.networks ?? {});
-  assert.ok(networkList.length >= 1, 'postgres hängt in keinem Netz');
+  assert.ok(networkList.length >= 1, 'postgres is in no network');
   for (const n of networkList)
-    assert.equal(j.networks[n]?.internal, true, `postgres hängt im Netz ${n} mit Weg nach draussen`);
+    assert.equal(j.networks[n]?.internal, true, `postgres is in network ${n} with a way out`);
   for (const d of ['app', 'jobs', 'db-rolle'])
     assert.ok(
       networkList.some(n => Object.keys(j.services[d].networks ?? {}).includes(n)),
-      `${d} erreicht postgres nicht`,
+      `${d} does not reach postgres`,
     );
-  assert.ok(
-    !networkList.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)),
-    'caddy erreicht postgres',
-  );
-  assert.equal(pg.read_only, true, 'postgres: read_only fehlt');
+  assert.ok(!networkList.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)), 'caddy reaches postgres');
+  assert.equal(pg.read_only, true, 'postgres: read_only is missing');
   assert.ok(
     (pg.tmpfs ?? []).some(e => e.startsWith('/var/run/postgresql:')),
-    'postgres: Socket-Ordner nicht als tmpfs',
+    'postgres: socket folder not a tmpfs',
   );
 });
 
@@ -128,7 +125,7 @@ test('Caddy comes as a signed image by digest, built itself from base images by 
   const j = withConfig(t);
   if (!j) return;
   const c = j.services.caddy;
-  assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');
+  assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy does not pull CADDY_IMAGE');
   assert.equal(c.pull_policy, 'missing');
   assert.equal(j.services['caddy-rechte'].image, c.image, 'caddy-rechte nimmt dasselbe signierte Image');
   // `up -d --build` with own CADDY_IMAGE still builds from Dockerfile.caddy.

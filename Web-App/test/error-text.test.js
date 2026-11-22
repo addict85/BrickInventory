@@ -13,11 +13,11 @@ test('fehlertext never returns "undefined"', () => {
   assert.equal(errorMessage(new Error('kaputt')), 'kaputt');
 
   // ── The four cases that used to yield “undefined" ────────────────────────
-  assert.equal(errorMessage('kaputt'), 'kaputt', 'eine geworfene Zeichenkette ist die Meldung');
+  assert.equal(errorMessage('kaputt'), 'kaputt', 'a thrown string is the message');
   assert.equal(
     errorMessage({ message: 'aus einem Fremdmodul' }),
     'aus einem Fremdmodul',
-    'Error-artige Objekte ohne Error-Prototyp zaehlen auch — so kommen sie ueber Prozessgrenzen',
+    'Error-like objects without the Error prototype count too — that is how they cross process boundaries',
   );
   assert.equal(errorMessage(undefined), 'Unbekannter Fehler');
   assert.equal(errorMessage(null), 'Unbekannter Fehler');
@@ -34,7 +34,7 @@ test('fehlertext never returns "undefined"', () => {
   for (const wert of [0, false, {}, [], new Error(), Symbol('x')]) {
     const t = errorMessage(wert);
     assert.equal(typeof t, 'string', `${String(wert)} ergibt keinen String`);
-    assert.ok(t.length > 0, `${String(wert)} ergibt einen leeren Text`);
+    assert.ok(t.length > 0, `${String(wert)} results in an empty text`);
   }
 });
 
@@ -48,8 +48,8 @@ test('fehlertext does NOT give away the whole object', () => {
   });
   const t = errorMessage(dbError);
   assert.equal(t, 'duplicate key');
-  assert.ok(!t.includes('geheim'), 'Parameter duerfen nicht in der Meldung stehen');
-  assert.ok(!t.includes('INSERT'), 'die Abfrage darf nicht in der Meldung stehen');
+  assert.ok(!t.includes('geheim'), 'Parameters must not appear in the message');
+  assert.ok(!t.includes('INSERT'), 'the query must not appear in the message');
 });
 
 test('errorCode reads Node and Postgres codes', () => {
@@ -58,7 +58,7 @@ test('errorCode reads Node and Postgres codes', () => {
   assert.equal(
     errorCode(Object.assign(new Error('x'), { code: 23505 })),
     '23505',
-    'ein numerischer Code wird zur Zeichenkette — sonst schluege jeder Vergleich fehl',
+    'a numeric code becomes a string — otherwise every comparison would fail',
   );
   // Without a code undefined is the right answer: every comparison with it
   // fails cleanly instead of hitting by chance.

@@ -58,7 +58,7 @@ for (const file of JS_FILES) {
     const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
-    assert.deepEqual(missing, [], `Fehlende IDs: ${missing.join(', ')}`);
+    assert.deepEqual(missing, [], `Missing IDs: ${missing.join(', ')}`);
   });
 }
 
@@ -69,5 +69,5 @@ test('every module file hangs in the bundle graph', () => {
   const imported = new Set([...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)].map(m => m[1] || m[2]));
   const actual = fs.readdirSync(path.join(PUB, 'js')).filter(f => f.endsWith('.js'));
   const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
-  assert.deepEqual(orphans, [], `Nicht im Modulgraphen und damit nie ausgeliefert: ${orphans.join(', ')}`);
+  assert.deepEqual(orphans, [], `Not in the module graph and thus never shipped: ${orphans.join(', ')}`);
 });

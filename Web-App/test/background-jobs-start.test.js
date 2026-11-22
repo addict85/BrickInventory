@@ -72,15 +72,15 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
       .testServices()
       .jobQueue.signedInKinds()
       .filter(a => a.zeitplan))
-      assert.ok(plan(kind), `kein Termin für ${kind}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
+      assert.ok(plan(kind), `no schedule for ${kind}; present are: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.onStart,
-      'der Katalog wird beim Start sofort geprüft',
+      'the catalog is checked right at startup',
     );
-    assert.ok(plan('prices').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
+    assert.ok(plan('prices').in_sek <= 30, 'the price job runs 30 s after startup');
     assert.ok(
       zeilen.some(z => z.type === 'exchange_rates'),
-      'kein Wechselkurs-Auftrag',
+      'no exchange-rate job',
     );
   });
 
@@ -89,12 +89,12 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
     for (const schritt of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
         zeilen.some(z => z.dedupe_key === `followup:${schritt}`),
-        `Nachlauf ${schritt} fehlt`,
+        `Follow-up ${schritt} is missing`,
       );
     runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
     const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'pending'
                                     GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
-    assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
+    assert.equal(doppelt, undefined, 'a second start creates schedules twice');
   });
 
   await t.test('the worker starts', () => {
@@ -105,10 +105,10 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
     const jp = _req('startup/jobsProcess.js');
     const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
     for (let i = 0; i < 50 && !(await readState(jp.HEARTBEAT_KEY)); i++) await warte(20);
-    assert.ok(await readState(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
+    assert.ok(await readState(jp.HEARTBEAT_KEY), 'the heartbeat is missing after startup');
     for (const lauf of runs) await jp.stopJobs(require('./helpers/sources').testServices(), lauf);
     await deleteState(jp.HEARTBEAT_KEY);
     await jp.renewHeartbeat(require('./helpers/sources').testServices(), runs[0].worker);
-    assert.equal(await readState(jp.HEARTBEAT_KEY), null, 'ohne Worker kein Lebenszeichen');
+    assert.equal(await readState(jp.HEARTBEAT_KEY), null, 'no heartbeat without a worker');
   });
 });

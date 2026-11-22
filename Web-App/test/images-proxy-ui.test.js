@@ -93,7 +93,7 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
       return d.getElementById('m-img').getAttribute('src');
     };
     assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
-    assert.equal(await openIt('10294-1'), proxy(SET_CDN), 'Das Detail lädt direkt beim CDN');
+    assert.equal(await openIt('10294-1'), proxy(SET_CDN), 'The detail loads directly from the CDN');
     // The zoom opens the same full resolution, likewise via the own server.
     d.getElementById('m-img').click();
     assert.ok(await warte(() => d.getElementById('lightbox-img').getAttribute('src')));
@@ -102,7 +102,7 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
     assert.equal(
       await openIt('10295-1'),
       '/images/sets/10295-1.jpg',
-      'Das Detail zeigt die Vorschau statt der vollen Auflösung',
+      'The detail shows the preview instead of the full resolution',
     );
   } finally {
     w.close();
@@ -126,7 +126,7 @@ test("minifigure: the tile's data-orig goes via the proxy", async () => {
       assert.notEqual(
         img.dataset.orig,
         img.getAttribute('src'),
-        'Der Rückfall holte sonst dieselbe Adresse noch einmal',
+        'Otherwise the fallback would fetch the same address once more',
       );
     }
   } finally {

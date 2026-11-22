@@ -54,13 +54,13 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     // As with API tokens: whoever reads the database should not be able to redeem an invitation.
     // Like a request of the account: invitations stand under its row security.
     const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
-    assert.ok(code, 'kein Code erzeugt');
+    assert.ok(code, 'no code created');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);
-    assert.notEqual(zeilen[0].token_hash, code, 'Der Code steht im Klartext in der Datenbank');
+    assert.notEqual(zeilen[0].token_hash, code, 'The code is stored in plain text in the database');
     const roh = code.replace(/[\s-]/g, '').toUpperCase();
-    assert.ok(!zeilen[0].token_hash.toUpperCase().includes(roh), 'Der Code steht (umformatiert) in der Datenbank');
-    assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'Gespeichert wird ein SHA-256-Hash');
+    assert.ok(!zeilen[0].token_hash.toUpperCase().includes(roh), 'The code is stored (reformatted) in the database');
+    assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'A SHA-256 hash is stored');
   });
 
   await t.test('write rights never come from memory', async () => {
@@ -73,7 +73,7 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
-      'Vorbedingung: das Unterkonto ist gemerkt',
+      'Precondition: the sub-account is remembered',
     );
     assert.equal(await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])), true);
     // Unlinked from outside without this process hearing of it.
@@ -81,19 +81,19 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
-      'Vorbedingung: das Gedächtnis ist noch alt',
+      'Precondition: the memory is still old',
     );
     assert.equal(
       await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])),
       false,
-      'mayWriteFor entscheidet nach dem gemerkten Blickfeld',
+      'mayWriteFor decides by the remembered view',
     );
     assert.deepEqual(
       await als(ids[0], () => hh.writeScope(ids[0])),
       [ids[0]],
-      'schreibbereich entscheidet nach dem gemerkten Blickfeld',
+      '„schreibbereich“ decides by the remembered view',
     );
-    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Eigene Daten immer');
+    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Own data always');
   });
 });
 
@@ -104,7 +104,7 @@ test('web app and app get the same endpoints', () => {
   // that both offer everything — the weaker version of the same statement.
   const src = read('routes/api/settings.ts');
   for (const fn of ['householdStatus', 'createInvitation', 'joinHousehold', 'unlinkAccounts']) {
-    assert.ok(src.includes(fn), `routes/api/settings.ts: ${fn} fehlt`);
+    assert.ok(src.includes(fn), `routes/api/settings.ts: ${fn} is missing`);
   }
   // And the second version must not come back: every household route exactly once.
   for (const path of [
@@ -113,9 +113,9 @@ test('web app and app get the same endpoints', () => {
     "/api/v2/settings/household/redeem'",
     "/api/v2/settings/household/unlink'",
   ])
-    assert.equal(src.split(path).length - 1, 1, `${path} steht nicht genau einmal in routes/api/settings.ts`);
+    assert.equal(src.split(path).length - 1, 1, `${path} is not in routes/api/settings.ts exactly once`);
   // No own rule in the route — they are in src/household/household.ts.
-  assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
+  assert.doesNotMatch(src, /account_links/, 'Routes must not query account_links themselves');
 });
 
 test('the web app offers inviting and redeeming to every account', () => {
@@ -139,11 +139,10 @@ test("the household's portfolio curve is retroactive", () => {
   assert.doesNotMatch(
     p,
     /__portfolio__/,
-    'Der Schnappschuss-Weg ist zurück — er kann weder rückwirkend rechnen ' +
-      'noch den heutigen Bestand über die Zeit zeigen',
+    'The snapshot path is back — it can neither compute retroactively ' + 'nor show today’s stock over time',
   );
-  assert.match(p, /GROUP BY s\.set_number/, 'Dasselbe Set in zwei Konten darf nicht doppelt in die Summe');
-  assert.match(p, /FROM price_history ph/, 'Die Kurve muss aus dem Preisverlauf je Set entstehen');
+  assert.match(p, /GROUP BY s\.set_number/, 'The same set in two accounts must not count twice in the total');
+  assert.match(p, /FROM price_history ph/, 'The curve must come from the price history per set');
 });
 
 test('moving goes via the daily rule, not via UPDATE user_id', () => {
@@ -154,11 +153,8 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   const mv = compact(
     require('./helpers/sources').ohneKommentare(require('./helpers/sources').serviceSource('src/sets/setMove.ts')),
   );
-  assert.ok(
-    mv.includes("bookDailyEntry('set', toId, [sn]"),
-    'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern',
-  );
-  assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/, 'Kein direktes Umhängen der Erfassungen');
+  assert.ok(mv.includes("bookDailyEntry('set', toId, [sn]"), 'Acquisitions must move one by one via the shared helper');
+  assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/, 'No direct re-hanging of the acquisitions');
   // If the target account already owns the set, the quantities add up because
   // the ENTRIES move — here stood for that
   // `UPDATE sets SET quantity = quantity + $1`. With migration 0036 the
@@ -178,12 +174,12 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   // target account or a fixed key — runs in
   // test/lock-on-move-db.test.js via the real address; both
   // together, not one instead of the other.
-  assert.ok(src.includes('sets.moveSet('), 'Die Route ruft den Dienst');
+  assert.ok(src.includes('sets.moveSet('), 'The route calls the service');
   assert.ok(
     compact(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
-    'Das Verschieben läuft über setEntriesReassign',
+    'Moving goes via setEntriesReassign',
   );
-  assert.ok(compact(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
+  assert.ok(compact(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialized via the source account');
   // The whole set and single purchase prices run through THE SAME implementation — the
   // partial case is no special path but the general case with a selection.
   const acq = read('routes/api/acquisitions.ts');
@@ -191,8 +187,8 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
     (mv.match(/setEntriesReassign\(t, sn/g) || []).length + (acq.match(/setEntriesReassign\(t, sn/g) || []).length;
   assert.ok(
     calls >= 1,
-    'Der Eigentümerwechsel muss über setEntriesReassign laufen — in routes/sets.ts ' +
-      '(ganzes Set) oder in der gemeinsamen Fabrik (einzelne Kaufpreise)',
+    'The owner change must go via setEntriesReassign — in routes/sets.ts ' +
+      '(whole set) or in the shared factory (single purchase prices)',
   );
 });
 
@@ -209,7 +205,7 @@ test('manual parts and minifigures carry the owner', () => {
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
-    'Im Einzelkonto darf keine Plakette erscheinen',
+    'No badge may appear in a single account',
   );
   // The table name before it is allowed since migration 0031: the query
   // joins the stock to resolve the storage location name and must therefore
@@ -224,7 +220,7 @@ test('manual parts and minifigures carry the owner', () => {
   const fc = compact(require('./helpers/sources').finanzQuelle());
   const uses = (fc.match(/await (?:kx?\.household\.)?attachOwners\(uids,/g) || []).length;
   // Since UI review 12 also the sets: every row is the stock of one account.
-  assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
+  assert.equal(uses, 3, 'Set, part and minifig valuation need the owner');
 });
 
 test('the parts summary carries across several accounts too', () => {
@@ -236,7 +232,7 @@ test('the parts summary carries across several accounts too', () => {
   assert.match(
     h,
     /const groupSql = multi \? ' GROUP BY part_key, color_id' : '';/,
-    'Ohne Gruppierung erschiene dasselbe Teil je Konto einmal',
+    'Without grouping the same part would appear once per account',
   );
   assert.match(
     h,
@@ -246,9 +242,9 @@ test('the parts summary carries across several accounts too', () => {
   assert.match(
     h,
     /COUNT\(DISTINCT ps\.part_key\)::int AS unique_parts/,
-    'COUNT(*) zählte im Haushalt Konten statt Teile — und ::int muss bleiben, ' +
-      'sonst hängt der JSON-Typ am Zweig (früher: SUM(BIGINT) käme als Zahl, ' +
-      'SUM(INTEGER) als Text)',
+    'COUNT(*) counted accounts instead of parts in the household — and ::int must stay, ' +
+      'otherwise the JSON type depends on the branch (previously: SUM(BIGINT) would come as a number, ' +
+      'SUM(INTEGER) as text)',
   );
 
   // The view is only fresh if it is for EVERY account — “two of three
@@ -272,8 +268,8 @@ test('the UI shows owners and account selection only in the household', () => {
   for (const field of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
     assert.ok(
       gal.includes(`'${field}'`),
-      `Die Kontoauswahl fehlt im Erfassungsweg ${field} — dort landet dann alles ` +
-        'stillschweigend beim eigenen Konto',
+      `The account selection is missing in the capture path ${field} — then everything ends up ` +
+        'silently at the own account',
     );
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/, 'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
@@ -288,16 +284,12 @@ test('the UI shows owners and account selection only in the household', () => {
   // owner column in the purchase price dialog only appears in the household — and
   // in BOTH dialogs (sets and manual entries).
   const adm = compact(require('./helpers/sources').adminSource());
-  assert.doesNotMatch(
-    adm,
-    /renderMoveBox|moveSetToAccount/,
-    'Das ganze Set darf nicht mehr auf einmal verschoben werden',
-  );
+  assert.doesNotMatch(adm, /renderMoveBox|moveSetToAccount/, 'The whole set must no longer be moved at once');
   const ownerCols = (
     adm.match(/acquisition\.members\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) ||
     []
   ).length;
-  assert.equal(ownerCols, 2, 'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
+  assert.equal(ownerCols, 2, 'Owner column is missing in one of the two purchase price dialogs');
 });
 
 test('the account filter applies per view and is sent along everywhere', () => {
@@ -309,7 +301,7 @@ test('the account filter applies per view and is sent along everywhere', () => {
   // always understood `accounts=` on /v2/wanted — only the
   // choice in the UIs was missing.
   assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'wanted'\];/);
-  assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/, 'Die Wahl soll einen Neuladen überleben');
+  assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/, 'The choice should survive a reload');
   // 'all' is the server's default and is omitted.
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
@@ -332,7 +324,7 @@ test('the account filter applies per view and is sent along everywhere', () => {
   ]) {
     assert.ok(
       fin.includes(`'${ep}'+scopeQuery('finance')`) || fin.includes(`\`${ep}\${scopeQuery('finance')}\``),
-      `${ep} ohne Kontofilter`,
+      `${ep} without an account filter`,
     );
   }
   assert.match(
@@ -372,7 +364,7 @@ test('moving ONLY goes via the purchase price', async () => {
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
     (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'purchase_prices_required',
-    'move ohne acquisition_ids muss abgelehnt werden',
+    'move without acquisition_ids must be rejected',
   );
 
   // And the UI does not even offer it.
@@ -397,11 +389,11 @@ test('manual parts and minifigures also move via the purchase price', () => {
   // Since the layer rebuild the rule stands in the service; the route only calls it.
   const f = 'src/collection/acquisitions.ts';
   const src = compact(read(f));
-  assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: switch is missing`);
   assert.match(
     src,
     /if \(to === null\) failDomain\('verboten', 'no_write_access'\)/,
-    `${f}: ohne Schreibrecht muss 403 kommen`,
+    `${f}: without write permission 403 must come`,
   );
 });
 
@@ -412,11 +404,11 @@ test('the app routes know the owner change', () => {
   // and answered success:true: the switch in the app was a
   // silent no-op, without error message and without movement.
   const v1 = read('src/collection/acquisitions.ts');
-  assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
+  assert.match(v1, /body\.owner_user_id/, 'The capture service must evaluate owner_user_id');
   assert.match(
     v1,
     /t\.sets\.setEntriesReassign\(String\(keys\[0\]\), from, to, \[id\]\)/,
-    'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
+    'Sets move via the same implementation as when moving',
   );
   assert.match(v1, /t\.inventory\.manualEntryReassign\(kind, keys, id, from, to\)/);
 });

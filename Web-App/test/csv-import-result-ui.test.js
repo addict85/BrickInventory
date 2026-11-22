@@ -73,11 +73,14 @@ test('existing sets: ask first, cancel starts nothing', async () => {
   });
   try {
     chooseFile(w, d);
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage erscheint');
+    assert.ok(
+      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      'Confirmation prompt appears',
+    );
     assert.match(d.getElementById('cd-msg').textContent, /2 Sets .* schon in der Sammlung \(10305-1, 10200-1\)/);
     d.getElementById('cd-cancel').click();
     await ruhig();
-    assert.deepEqual(posts, ['1'], 'nur die Prüfung lief');
+    assert.deepEqual(posts, ['1'], 'only the check ran');
     assert.ok(!d.getElementById('progress-overlay').classList.contains('open'));
   } finally {
     w.close();
@@ -104,17 +107,17 @@ test('result list with rows, colors and read rows', async () => {
   try {
     chooseFile(w, d);
     const ovl = d.getElementById('progress-overlay');
-    assert.ok(await warte(() => ovl.classList.contains('open')), 'Fortschritt offen');
+    assert.ok(await warte(() => ovl.classList.contains('open')), 'Progress open');
     assert.equal(ovl.getAttribute('role'), 'dialog');
     assert.equal(ovl.getAttribute('aria-modal'), 'true');
     await takt(20);
-    assert.ok(ovl.contains(d.activeElement), `Fokus liegt auf ${d.activeElement?.outerHTML?.slice(0, 60)}`);
+    assert.ok(ovl.contains(d.activeElement), `Focus is on ${d.activeElement?.outerHTML?.slice(0, 60)}`);
     assert.equal(d.getElementById('prog-footer').getAttribute('role'), 'status');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('role'), 'progressbar');
     assert.equal(ovl.querySelector('[data-click="hideProgress"]').getAttribute('aria-label'), 'Minimieren');
     assert.ok(await warte(() => /Wartet/.test(d.getElementById('prog-set-name').textContent), 2500), 'Wartetext');
 
-    assert.ok(await warte(() => d.querySelectorAll('#csv-log .csv-log-line').length >= 5, 5000), 'Ergebnis da');
+    assert.ok(await warte(() => d.querySelectorAll('#csv-log .csv-log-line').length >= 5, 5000), 'Result there');
     const zeilen = [...d.querySelectorAll('#csv-log .csv-log-line')].map(
       z => `${z.className.replace('csv-log-line ', '')}|${z.textContent}`,
     );
@@ -128,8 +131,8 @@ test('result list with rows, colors and read rows', async () => {
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
     assert.equal(d.querySelector('#toasts .toast .toast-text')?.textContent, 'Import: 1 ok, 1 Warnung, 3 Fehler');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
-    assert.equal(ovl.querySelector('.prog-minimize').hidden, true, 'nach Abschluss noch „Minimieren“');
-    assert.notEqual(d.getElementById('btn-close-import').style.display, 'none', 'kein „Schliessen“');
+    assert.equal(ovl.querySelector('.prog-minimize').hidden, true, 'still „Minimieren“ after completion');
+    assert.notEqual(d.getElementById('btn-close-import').style.display, 'none', 'no „Schliessen“');
   } finally {
     w.close();
   }
@@ -139,11 +142,11 @@ test('after reloading: the last import in the menu', async () => {
   const { w, d } = await openUi({ '/v2/sets/import/csv/status': DONE });
   try {
     const knopf = d.getElementById('last-import');
-    assert.ok(await warte(() => !knopf.hidden), 'Eintrag sichtbar');
+    assert.ok(await warte(() => !knopf.hidden), 'Entry visible');
     assert.match(knopf.textContent, /Letzter Import: 1 ok, 1 Warnung, 3 Fehler – ansehen/);
     knopf.click();
     assert.ok(await warte(() => d.getElementById('progress-overlay').classList.contains('open')));
-    assert.ok(d.getElementById('csv-log').textContent.includes('abc'), 'Ergebnisliste enthält abc');
+    assert.ok(d.getElementById('csv-log').textContent.includes('abc'), 'Result list contains abc');
   } finally {
     w.close();
   }

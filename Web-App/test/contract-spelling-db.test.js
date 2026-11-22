@@ -111,8 +111,8 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
       [uid, key],
     );
 
-  assert.ok(ROUTES.length > 150, `nur ${ROUTES.length} Vertragsrouten — greift die Suche noch?`);
-  assert.ok((await callIt('GET', '/api/v2/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
+  assert.ok(ROUTES.length > 150, `only ${ROUTES.length} contract routes — does the search still match?`);
+  assert.ok((await callIt('GET', '/api/v2/settings')).status === 200, `the token is not valid: ${log.slice(-400)}`);
 
   await t.test('upper case is a different route', async () => {
     const falsch = [],
@@ -127,7 +127,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
       }
     }
     assert.deepEqual(falsch, []);
-    assert.deepEqual(await gespeichert(key), [], 'eine anders geschriebene Route hat in idempotency geschrieben');
+    assert.deepEqual(await gespeichert(key), [], 'a differently spelled route wrote to idempotency');
   });
 
   await t.test('routeForRequest assigns a trailing slash to the same route', () => {
@@ -159,7 +159,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
 
   await t.test('… and a %2F at the end gets no secret or confirmed response', async () => {
     const geheim = ROUTES.filter(({ m, url }) => WRITING.has(m) && answerIsSecret(m, url));
-    assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
+    assert.ok(geheim.length > 20, `only ${geheim.length} secret or confirmed routes`);
     const succeeded = [];
     for (const { m, url } of geheim) {
       const r = await callIt(m, url + '%2F');

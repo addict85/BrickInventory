@@ -113,7 +113,7 @@ const WITHOUT_CALLER = new Map([
 test('every route has a caller or a registered reason', () => {
   const routen = allRoutes();
   const sources = clientSources();
-  assert.ok(sources.length >= 20, `Nur ${sources.length} Client-Dateien gefunden — Pfade veraltet?`);
+  assert.ok(sources.length >= 20, `Only ${sources.length} client files found — paths outdated?`);
   const text = [
     ...sources.map(p => fs.readFileSync(p, 'utf8')),
     // The app still calls /api/v1 (the alias): its paths count under their v2 name.
@@ -121,7 +121,7 @@ test('every route has a caller or a registered reason', () => {
     ...appAddresses(_req),
   ].join('\n');
 
-  assert.ok(routen.length >= 120, `Nur ${routen.length} Routen gefunden — Muster veraltet?`);
+  assert.ok(routen.length >= 120, `Only ${routen.length} routes found — pattern outdated?`);
 
   const ohne = [];
   let withCaller = 0;
@@ -141,22 +141,22 @@ test('every route has a caller or a registered reason', () => {
   // and the test red — the reverse case is more dangerous: if every
   // path matched anything, `ohne` would be empty and the test green without
   // having checked anything. Hence pin down both sides.
-  assert.ok(withCaller >= 100, `Nur ${withCaller} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
+  assert.ok(withCaller >= 100, `Only ${withCaller} routes with a caller — does the search still find what it should?`);
   assert.ok(
     ohne.length > 0,
-    'Keine einzige Route ohne Aufrufer — das waere schoen, ist aber ' +
-      'verdaechtig: Die Suche trifft dann vermutlich auf alles.',
+    'Not a single route without a caller — that would be nice, but it is ' +
+      'suspicious: the search then probably matches everything.',
   );
 
   const unexplained = ohne.filter(r => !WITHOUT_CALLER.has(r)).sort();
   assert.deepEqual(
     unexplained,
     [],
-    'Diese Routen ruft kein Client, und es steht kein Grund dabei:\n  ' +
+    'No client calls these routes, and no reason is given:\n  ' +
       unexplained.join('\n  ') +
-      '\nEntweder sie wird nicht mehr gebraucht (dann entfernen), oder es gibt ' +
-      'einen Grund (E-Mail-Link, Diagnosewerkzeug, geplante Oberflaeche) — dann ' +
-      'in WITHOUT_CALLER eintragen, damit der Naechste ihn nicht neu herleiten muss.',
+      '\nEither it is no longer needed (then remove it), or there is ' +
+      'a reason (e-mail link, diagnostic tool, planned UI) — then ' +
+      'add it to WITHOUT_CALLER so the next person does not have to derive it again.',
   );
 
   // A line that nobody needs anymore is a permission that nobody
@@ -165,8 +165,6 @@ test('every route has a caller or a registered reason', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege beschreiben keine aufruferlose Route mehr — entweder ist ' +
-      'sie geloescht worden oder sie hat jetzt einen Aufrufer. Zeile streichen:\n  ' +
-      veraltet.join('\n  '),
+    `These entries no longer describe a route without a caller — either it was deleted or it now has a caller. Remove the line:\n  ${veraltet.join('\n  ')}`,
   );
 });

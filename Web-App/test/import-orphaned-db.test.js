@@ -48,7 +48,7 @@ test('orphaned imports', { concurrency: 1 }, async t => {
   await t.test('a running job stays', async () => {
     await auftrag(1);
     assert.equal((await jobGet(uid)).status, 'running');
-    assert.equal(await startJob(uid, { total: 5 }), false, 'Ein zweiter Auftrag verdrängt den laufenden');
+    assert.equal(await startJob(uid, { total: 5 }), false, 'A second job displaces the running one');
   });
 
   await t.test('an orphaned job', async () => {
@@ -57,6 +57,6 @@ test('orphaned imports', { concurrency: 1 }, async t => {
     assert.equal(state.status, 'error');
     assert.match(state.error, /unterbrochen/);
     assert.equal(state.current, null);
-    assert.equal(await startJob(uid, { total: 5 }), true, 'Der verwaiste Auftrag sperrt weiter');
+    assert.equal(await startJob(uid, { total: 5 }), true, 'The orphaned job keeps locking');
   });
 });

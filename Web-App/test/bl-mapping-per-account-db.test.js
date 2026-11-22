@@ -109,7 +109,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     ]);
     assert.equal(status, 200, JSON.stringify(body));
     assert.equal(body.corrections?.applied, 2, JSON.stringify(body.corrections));
-    assert.deepEqual(await common(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
+    assert.deepEqual(await common(), vorher, 'the shared mapping has changed');
     const eigen = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
     assert.deepEqual(
       eigen.map(z => `${z.user_id}|${z.type}|${z.rb_id}|${z.bl_id}`),
@@ -123,7 +123,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await t.test('price fetch: Anna asks BrickLink for 3001, Bruno for 3003', async () => {
     assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
     assert.equal(await asAccount(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
-    assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
+    assert.equal(await resolveBlPartNumber('3003'), '3003', 'without an account the shared mapping applies');
     // The fetch itself reads the price under the translated number.
     await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, fetched_at)
                   VALUES ('3001',5,'N','EUR',7,NOW()), ('3003',5,'N','EUR',2,NOW())`);
@@ -174,7 +174,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     assert.deepEqual(
       await common(),
       ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],
-      'ein vorhandener Wert bleibt, ein leerer wird gefüllt, ein neuer angelegt',
+      'an existing value stays, an empty one is filled, a new one is created',
     );
   });
 });

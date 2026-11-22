@@ -17,17 +17,17 @@ placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('the bundle is built', () => {
-  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz placeBundleSafe()');
+  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js is missing despite placeBundleSafe()');
 });
 
 test('index.html loads the bundle and the language file in the right order', () => {
   const iLocale = HTML.indexOf('/locales/');
   const iBundle = HTML.indexOf('app.bundle.js');
-  assert.ok(iLocale > 0, 'Sprachdatei fehlt');
-  assert.ok(iBundle > 0, 'Bündel fehlt');
+  assert.ok(iLocale > 0, 'Language file is missing');
+  assert.ok(iBundle > 0, 'Bundle is missing');
   assert.ok(
     iLocale < iBundle,
-    'Die Sprachdatei muss VOR dem Bündel stehen — i18n.js liest window.I18N_DE beim Auswerten',
+    'The language file must come BEFORE the bundle — i18n.js reads window.I18N_DE on evaluation',
   );
 });
 
@@ -49,9 +49,9 @@ test('the bundle can be evaluated without throwing', async () => {
   try {
     window.eval(fs.readFileSync(BUNDLE, 'utf8'));
   } catch (e) {
-    assert.fail(`Bündel wirft beim Auswerten: ${e.message}`);
+    assert.fail(`Bundle throws on evaluation: ${e.message}`);
   }
-  assert.deepEqual(errors, [], `Fehler beim Auswerten: ${errors.join('; ')}`);
+  assert.deepEqual(errors, [], `Errors on evaluation: ${errors.join('; ')}`);
 
   // Close the window, otherwise the app keeps the process open: startApp() sets up
   // intervals for status queries, and jsdom timers keep running as real
@@ -108,18 +108,18 @@ test('api() delivers an object on every failure instead of throwing', async () =
     const core = await import(`file://${path.join(ROOT, 'public', 'js', 'api.js')}`);
 
     const ok = await core.api('GET', '/ok');
-    assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');
+    assert.equal(ok.success, true, 'The normal case must pass through unchanged');
     assert.equal(ok.wert, 42);
 
     // The case that used to throw: error status with an HTML body.
     const html = await core.api('GET', '/html502');
-    assert.equal(html.success, false, 'Eine HTML-Fehlerseite muss als Fehlschlag ankommen');
+    assert.equal(html.success, false, 'An HTML error page must arrive as a failure');
     assert.equal(html.status, 502);
-    assert.ok(html.error, 'Ohne Text hätte der Aufrufer nichts anzuzeigen');
+    assert.ok(html.error, 'Without a text the caller would have nothing to show');
 
     // Server error WITH its own message: it must be passed through.
     const json = await core.api('GET', '/json500');
-    assert.equal(json.error, 'kaputt', 'Die Servermeldung darf nicht überschrieben werden');
+    assert.equal(json.error, 'kaputt', 'The server message must not be overwritten');
 
     // JSON without success/error (e.g. from an intermediate layer) is completed.
     const bare = await core.api('GET', '/bare500');
@@ -130,7 +130,7 @@ test('api() delivers an object on every failure instead of throwing', async () =
     globalThis.fetch = () => Promise.reject(new Error('offline'));
     const netz = await core.api('GET', '/x');
     assert.equal(netz.success, false);
-    assert.equal(netz.networkError, true, 'Offline soll unterscheidbar bleiben');
+    assert.equal(netz.networkError, true, 'Offline should remain distinguishable');
   } finally {
     srv.close();
     dom.window.close();
@@ -159,26 +159,26 @@ test('a 401 leads back to the login, not into a dead UI', () => {
   assert.match(
     core,
     /if \(res\.status === 401\) emit\('sessionEnded', path\);/,
-    'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen',
+    'The 401 must be handled centrally, not at 88 call sites',
   );
   const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
   const von = sitzung.indexOf("subscribe('sessionEnded'");
-  assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
+  assert.ok(von > 0, 'Nobody reacts to the end of the session');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
-  assert.match(fn, /if \(!loggedInAccount\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
-  assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
-  assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
+  assert.match(fn, /if \(!loggedInAccount\) return;/, 'Without a signed-in state there is no session to end');
+  assert.match(fn, /\/auth\/me/, '/auth/me answers with 401 only „nicht angemeldet“');
+  assert.match(fn, /\/auth\/login/, 'A wrong password is not the end of a session');
   assert.match(fn, /showLogin\(\{ expired: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
   // The message appears once in the login card (showLogin), not as a toast.
   assert.match(
     core,
     /o\.expired \? (o\.hint \|\| )?tRaw\('auth\.session_expired'\)/,
-    'Ohne Meldung wüsste niemand, warum',
+    'Without a message nobody would know why',
   );
 
   // The text must exist in both languages — otherwise the key is shown.
   for (const lang of ['de', 'en']) {
     const dict = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
-    assert.ok(dict.includes("'auth.session_expired'"), `${lang}.js: Text fehlt`);
+    assert.ok(dict.includes("'auth.session_expired'"), `${lang}.js: text is missing`);
   }
 });

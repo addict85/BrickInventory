@@ -22,14 +22,14 @@ test('collection: search without hits', async () => {
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
     await warte(() => d.querySelector('#gallery [data-click="resetFilter"]'));
     const knopf = d.querySelector('#gallery [data-click="resetFilter"]');
-    assert.ok(knopf, 'Kein Knopf „Filter zurücksetzen“');
+    assert.ok(knopf, 'No button „Filter zurücksetzen“');
     assert.equal(knopf.textContent.trim(), 'Filter zurücksetzen');
     const vorher = aufrufe.length;
     knopf.click();
     await takt(30);
     assert.equal(d.getElementById('gs').value, '');
     const neu = aufrufe.slice(vorher).find(a => a.url.includes('/v2/sets?'));
-    assert.ok(neu, 'Die Sammlung wurde nicht neu geladen');
+    assert.ok(neu, 'The collection was not reloaded');
     assert.doesNotMatch(neu.url, /search=/);
   } finally {
     w.close();
@@ -64,7 +64,7 @@ test('wishlist: search without hits', async () => {
     assert.equal(
       d.querySelector('#mk-list [data-click="resetFilter"]'),
       null,
-      'Nach dem Zurücksetzen steht weiter „nichts gefunden“',
+      'After resetting it still says „nichts gefunden“',
     );
   } finally {
     w.close();

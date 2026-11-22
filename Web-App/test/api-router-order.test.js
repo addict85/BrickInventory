@@ -38,8 +38,8 @@ const beispiel = p => p.replace(/:\w+/g, 'x1');
 
 test('the routers under /api/v1 do not hit each other', () => {
   const router = holding();
-  assert.ok(router.length >= 15, `nur ${router.length} Router — greift die Suche noch?`);
-  assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'keine Middleware mit Pfad gefunden');
+  assert.ok(router.length >= 15, `only ${router.length} routers — does the search still match?`);
+  assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'no middleware with a path found');
   const muster = [];
   const middleware = [];
   router.forEach((r, i) => {
@@ -52,8 +52,8 @@ test('the routers under /api/v1 do not hit each other', () => {
           if (v.match(beispiel(ziel.path))) middleware.push(`${v.name} vor ${ziel.m} ${ziel.path}`);
       }
   });
-  assert.deepEqual(muster, [], 'kein Muster trifft eine Route eines anderen Routers');
-  assert.deepEqual(middleware, [], 'keine Middleware mit Pfad trifft eine Route eines anderen Routers');
+  assert.deepEqual(muster, [], 'no pattern matches a route of another router');
+  assert.deepEqual(middleware, [], 'no middleware with a path matches a route of another router');
 });
 
 test('the app attaches the error path, once behind all routers', () => {
@@ -78,9 +78,9 @@ test('the app attaches the error path, once behind all routers', () => {
   };
   const oben = app.router.stack;
   durch(app.router, '');
-  assert.ok(oben.length > 30, `nur ${oben.length} Schichten — greift die Suche noch?`);
-  assert.deepEqual(inRouters, [], 'den Fehlerweg hängt die App an, kein Router');
+  assert.ok(oben.length > 30, `only ${oben.length} layers — does the search still match?`);
+  assert.deepEqual(inRouters, [], 'the app attaches the error path, not a router');
   const errorPaths = oben.filter((/** @type {any} */ l) => l.handle === errorResponse);
   assert.equal(errorPaths.length, 1);
-  assert.equal(oben.at(-1)?.handle, errorResponse, 'der Fehlerweg steht hinter allen Routern');
+  assert.equal(oben.at(-1)?.handle, errorResponse, 'the error path comes after all routers');
 });

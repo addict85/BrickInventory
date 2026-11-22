@@ -54,25 +54,25 @@ test('the image diagnostics describe every situation in plain text', { concurren
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
     const r = await fetch(`${base}/api/v2/admin/image-diag/${sn}`);
-    assert.equal(r.status, 200, 'die Diagnose muss antworten');
+    assert.equal(r.status, 200, 'the diagnosis must answer');
     return r.json();
   };
 
   try {
     // A) Exactly Marco's situation: original present, preview missing.
     let d = await frag(MIT);
-    assert.equal(d.local.original.existing, true, 'das Original muss gefunden werden');
+    assert.equal(d.local.original.existing, true, 'the original must be found');
     assert.equal(d.local.preview.existing, false);
     assert.ok(
       d.hints.some(h => /Vorschau fehlt/.test(h)),
-      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hints.join(' | ')}`,
+      `the diagnosis must name the missing preview, got: ${d.hints.join(' | ')}`,
     );
 
     // B) Nothing known — neither file nor address.
     d = await frag(OHNE);
     assert.ok(
       d.hints.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
-      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hints.join(' | ')}`,
+      `the diagnosis must name „nichts anzeigbar“, got: ${d.hints.join(' | ')}`,
     );
 
     // C) After generation everything is together — and the sizes are right.
@@ -80,18 +80,15 @@ test('the image diagnostics describe every situation in plain text', { concurren
     d = await frag(MIT);
     assert.ok(
       d.hints.some(h => /Alles vorhanden/.test(h)),
-      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hints.join(' | ')}`,
+      `after the generation nothing may be flagged anymore, got: ${d.hints.join(' | ')}`,
     );
-    assert.ok(
-      d.local.preview.bytes < d.local.original.bytes,
-      'die gemeldete Vorschau muss kleiner sein als das Original',
-    );
+    assert.ok(d.local.preview.bytes < d.local.original.bytes, 'the reported preview must be smaller than the original');
 
     // The diagnosis must repair NOTHING — otherwise the tool changes the
     // state it is supposed to describe.
     fs.rmSync(preview, { force: true });
     await frag(MIT);
-    assert.equal(fs.existsSync(preview), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
+    assert.equal(fs.existsSync(preview), false, 'the diagnosis created the preview — it should only observe');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]).catch(() => {});
@@ -117,7 +114,7 @@ test('the set image download reports every failure', () => {
   const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
   assert.ok(
     meldungen >= 4,
-    `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
-      'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
+    `downloadSetImage reports only ${meldungen} error paths — status code, network error, ` +
+      'too small response and the enclosing catch must all leave a trace',
   );
 });

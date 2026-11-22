@@ -38,7 +38,7 @@ test('finances on the computer: controls at least 32 px', { concurrency: 1, time
   const { b, bis, ruhig } = app;
   await ruhig();
   await b.auswerten(`location.hash = '#/finanzen'; true`);
-  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
+  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in the finance table');
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await ruhig();
 
@@ -47,7 +47,7 @@ test('finances on the computer: controls at least 32 px', { concurrency: 1, time
     const m =
       await b.auswerten(`({ sort: document.querySelectorAll('.sort-button').length, zeile: document.querySelectorAll('.row-open').length,
       kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
-    assert.ok(m.sort >= 3 && m.zeile >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
-    assert.equal(m.kopf, 58, 'Kopfleiste ist nicht mehr 58 px hoch');
+    assert.ok(m.sort >= 3 && m.zeile >= 1, `too little measured: ${JSON.stringify(m)}`);
+    assert.equal(m.kopf, 58, 'Header bar is no longer 58 px high');
   });
 });

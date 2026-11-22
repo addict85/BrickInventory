@@ -43,7 +43,7 @@ test('lock namespaces against a real database', async t => {
     const { rows } = await c.query('SELECT pg_try_advisory_lock($1, $2) AS ok', [ns, zweiter]);
     if (!rows[0].ok) {
       await c.end();
-      throw new Error(`Namensraum ${ns} war schon belegt`);
+      throw new Error(`Namespace ${ns} was already taken`);
     }
     return () => c.end();
   }
@@ -62,25 +62,21 @@ test('lock namespaces against a real database', async t => {
 
   await t.test('all namespaces are pairwise different', () => {
     const entries = Object.entries(LOCKS);
-    assert.ok(
-      entries.length >= 8,
-      `Nur ${entries.length} Namensräume gefunden — ist LOCKS noch die vollständige Liste?`,
-    );
+    assert.ok(entries.length >= 8, `Only ${entries.length} namespaces found — is LOCKS still the complete list?`);
 
     const gesehen = new Map();
     for (const [name, zahl] of entries) {
-      assert.equal(typeof zahl, 'number', `${name} ist keine Zahl`);
+      assert.equal(typeof zahl, 'number', `${name} is not a number`);
       // Advisory locks are 64-bit; the single-value form takes bigint, the
       // two-value one two int4. All entries here are used with two values OR
       // one value — int4 is the narrower limit and therefore applies.
       assert.ok(
         Number.isInteger(zahl) && zahl > 0 && zahl <= 2147483647,
-        `${name} = ${zahl} passt nicht in einen int4-Namensraum`,
+        `${name} = ${zahl} does not fit into an int4 namespace`,
       );
       if (gesehen.has(zahl)) {
         assert.fail(
-          `${name} und ${gesehen.get(zahl)} teilen sich den Namensraum ${zahl} — ` +
-            'die beiden Vorgänge sperren sich gegenseitig aus',
+          `${name} and ${gesehen.get(zahl)} share the namespace ${zahl} — ` + 'the two operations lock each other out',
         );
       }
       gesehen.set(zahl, name);
@@ -96,7 +92,7 @@ test('lock namespaces against a real database', async t => {
         try {
           freigeben.push(await halten(zahl));
         } catch (e) {
-          assert.fail(`${name} (${zahl}) liess sich nicht belegen: ${e.message}`);
+          assert.fail(`${name} (${zahl}) could not be claimed: ${e.message}`);
         }
       }
       assert.equal(freigeben.length, Object.keys(LOCKS).length);
@@ -113,12 +109,12 @@ test('lock namespaces against a real database', async t => {
       assert.equal(
         await stillFree(LOCKS.PRICE_JOB),
         false,
-        'Eine zweite Verbindung bekam dieselbe Sperre — dann schützt sie nichts',
+        'A second connection got the same lock — then it protects nothing',
       );
     } finally {
       await frei();
     }
-    assert.equal(await stillFree(LOCKS.PRICE_JOB), true, 'Nach dem Freigeben muss die Sperre wieder zu haben sein');
+    assert.equal(await stillFree(LOCKS.PRICE_JOB), true, 'After releasing, the lock must be available again');
   });
 
   await t.test('the second value subdivides the namespace', async () => {
@@ -130,12 +126,12 @@ test('lock namespaces against a real database', async t => {
       assert.equal(
         await stillFree(LOCKS.IMAGE_DOWNLOAD, 222),
         true,
-        'Zwei verschiedene Sets müssen parallel laden dürfen',
+        'Two different sets must be allowed to load in parallel',
       );
       assert.equal(
         await stillFree(LOCKS.IMAGE_DOWNLOAD, 111),
         false,
-        'Dasselbe Set darf NICHT zweimal gleichzeitig laden',
+        'The same set must NOT load twice at the same time',
       );
     } finally {
       await frei();
@@ -159,11 +155,11 @@ test('lock namespaces against a real database', async t => {
       },
       { sperren: [{ konto: LOCKS.IMAGE_DOWNLOAD, schluessel: SET }] },
     );
-    assert.equal(frei.image, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
+    assert.equal(frei.image, true, 'The stock lock of account 42 holds up the image download of the set');
     assert.equal(
       frei.selbst,
       false,
-      'Die Bestandssperre liegt nicht unter LOCKS.INVENTORY — dann prüft der Fall oben nichts',
+      'The stock lock is not under LOCKS.INVENTORY — then the case above checks nothing',
     );
   });
 
@@ -199,11 +195,11 @@ test('lock namespaces against a real database', async t => {
         }
       }
     }
-    assert.ok(geprueft >= 10, `Nur ${geprueft} Sperr-Aufrufe gefunden — greift das Suchmuster noch?`);
+    assert.ok(geprueft >= 10, `Only ${geprueft} lock calls found — does the search pattern still match?`);
     assert.deepEqual(
       treffer,
       [],
-      'Sperr-Namensraum als eingetippte Zahl statt aus src/infra/lockNamespaces.ts:\n  ' + treffer.join('\n  '),
+      `Lock namespace as a typed-in number instead of from src/infra/lockNamespaces.ts:\n  ${treffer.join('\n  ')}`,
     );
   });
 

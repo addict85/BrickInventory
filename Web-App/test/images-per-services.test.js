@@ -39,6 +39,6 @@ test('every set remembers by itself what it reserved', () => {
   a.d.images.imageOnceReserve(url, '99902-1');
   a.d.images.imageOnceReserve(url, '99902-1');
   b.d.images.imageOnceReserve(url, '99902-1');
-  assert.deepEqual(a.vorgemerkt, [[url, '99902-1']], 'innerhalb der Frist nur einmal');
-  assert.deepEqual(b.vorgemerkt, [[url, '99902-1']], 'der zweite Satz kennt die Vormerkung des ersten nicht');
+  assert.deepEqual(a.vorgemerkt, [[url, '99902-1']], 'only once within the deadline');
+  assert.deepEqual(b.vorgemerkt, [[url, '99902-1']], 'the second set does not know the reservation of the first');
 });

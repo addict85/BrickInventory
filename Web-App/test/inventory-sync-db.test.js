@@ -104,7 +104,7 @@ test('inventory reconciliation against a real database', async t => {
     // set one owns, but one would have to take apart another set for it.
     const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '3002', color_id: 4 }]);
     assert.equal(b['3002|4'].total, 10);
-    assert.equal(b['3002|4'].loose, 0, 'Ein Set-Teil darf nicht als lose gelten');
+    assert.equal(b['3002|4'].loose, 0, 'A set part must not count as loose');
   });
 
   await t.test('what is not there is missing in the response', async () => {
@@ -123,9 +123,9 @@ test('inventory reconciliation against a real database', async t => {
       { part_number: '3001', color_id: 4 },
     ]);
     assert.equal(nurIch['3001|4'].total, 8);
-    assert.equal(withKind['3001|4'].total, 9, 'Das Unterkonto muss mitzählen');
+    assert.equal(withKind['3001|4'].total, 9, 'The sub-account must count too');
     // 99 pieces lie with 'fremd' — they must not appear anywhere.
-    assert.ok(withKind['3001|4'].total < 99, 'Ein fremder Bestand ist durchgeschlagen');
+    assert.ok(withKind['3001|4'].total < 99, 'A foreign stock leaked through');
   });
 
   await t.test('duplicate requests and empty inputs do not run into nothing', async () => {
@@ -138,7 +138,7 @@ test('inventory reconciliation against a real database', async t => {
         { part_number: '3001' }, // without color → 0
       ],
     );
-    assert.equal(b['3001|4'].total, 8, 'Eine doppelte Anfrage darf nicht doppelt zählen');
+    assert.equal(b['3001|4'].total, 8, 'A duplicate request must not count twice');
     assert.deepEqual(await ownedQuantitiesQuery([U.ich], []), {});
   });
 
@@ -149,7 +149,7 @@ test('inventory reconciliation against a real database', async t => {
     const viele = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
     viele.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
     const b = await ownedQuantitiesQuery([U.ich], viele);
-    assert.deepEqual(b, {}, 'Alles hinter dem Deckel muss wegfallen — auch Vorhandenes');
+    assert.deepEqual(b, {}, 'Everything beyond the cap must drop out — existing items too');
   });
 
   await db.pool.end().catch(() => {});

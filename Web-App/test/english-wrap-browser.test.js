@@ -20,7 +20,7 @@ async function english(e) {
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 760, deviceScaleFactor: 1, mobile: true });
   await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
-  await bis(`document.querySelector('.ptitle[data-tab-title="monitor"]')?.checkVisibility()`, 'Titel');
+  await bis(`document.querySelector('.ptitle[data-tab-title="monitor"]')?.checkVisibility()`, 'Title');
   await ruhig();
   const breaks =
     await b.auswerten(`(() => { const h = document.querySelector('.ptitle[data-tab-title="monitor"] span:not(.ptitle-icon)');
@@ -29,8 +29,8 @@ async function english(e) {
       if (!q || q.width === 0) continue;
       if (oben !== null && q.top > oben + 2) out.push(n.data.slice(0, i)); oben = q.top; }
     return { text: n.data, out }; })()`);
-  assert.ok(breaks.out.length > 0, `Testaufbau: „${breaks.text}“ bricht nicht um`);
-  for (const ago of breaks.out) assert.ok(/[ \u00ad]$/.test(ago), `Bruch nach „${ago}“ ohne Trennstrich`);
+  assert.ok(breaks.out.length > 0, `Test setup: „${breaks.text}“ does not wrap`);
+  for (const ago of breaks.out) assert.ok(/[ \u00ad]$/.test(ago), `Break after „${ago}“ without a hyphen`);
   const american = await b.auswerten(`[...document.querySelectorAll('[data-i18n]')].map(e => e.textContent)
     .concat([...document.querySelectorAll('[aria-label], [title]')].map(e => e.getAttribute('aria-label') + ' ' + e.getAttribute('title')))
     .filter(t => /\\bcolors?\\b|\\bcolorful\\b/i.test(t))`);

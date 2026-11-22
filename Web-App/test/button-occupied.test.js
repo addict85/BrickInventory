@@ -43,12 +43,12 @@ function gruppe(t, auf) {
     }
     i++;
   }
-  throw new Error('keine passende Klammer');
+  throw new Error('no matching bracket');
 }
 
 test('buttonBusy(): the second argument is a label, not a callback', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
+  assert.ok(dateien.length >= 10, `Only ${dateien.length} scripts — does the search still match?`);
 
   const falsch = [],
     unused = [];
@@ -81,18 +81,17 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
         unused.push(`${name}:${row}`);
     }
   }
-  assert.ok(found >= 5, `Nur ${found} Aufrufe gefunden — greift die Suche noch?`);
+  assert.ok(found >= 5, `Only ${found} calls found — does the search still match?`);
   assert.deepEqual(
     falsch,
     [],
-    'Hier wird eine FUNKTION als Beschriftung übergeben. Sie landet als Text ' +
-      'auf dem Knopf, und ihr Rumpf läuft nie — genau der Fehler aus Marcos Bild.',
+    'A FUNCTION is passed as the label here. It ends up as text ' +
+      'on the button, and its body never runs — exactly the bug from Marco’s screenshot.',
   );
   assert.deepEqual(
     unused,
     [],
-    'Hier wird die Freigabe weggeworfen. Der Knopf bleibt dann dauerhaft ' +
-      'deaktiviert und trägt weiter „…" als Beschriftung.',
+    'The release is thrown away here. The button then stays permanently ' + 'disabled and keeps „…“ as its label.',
   );
 });
 
@@ -109,7 +108,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   // Take the real function from the source text — not rebuilt.
   const src = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const auf = src.indexOf('export function buttonBusy');
-  assert.ok(auf > 0, 'buttonBusy() nicht gefunden — umbenannt?');
+  assert.ok(auf > 0, 'buttonBusy() not found — renamed?');
   const start = src.indexOf('{', src.indexOf(')', auf));
   let depth = 0,
     ende = start;
@@ -139,11 +138,11 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(
     btn.textContent,
     LABEL,
-    'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' + 'sieht ganz kurz Punkt".',
+    'The label must not go away — that is exactly what Marco meant with „man ' + 'sieht ganz kurz Punkt“.',
   );
   assert.ok(
     btn.classList.contains('occupied'),
-    'Ohne diese Klasse fehlt jedes Zeichen, dass der Knopf arbeitet — ' + 'die Regel dazu steht in styles.css.',
+    'Without this class there is no sign that the button is working — ' + 'the rule for it is in styles.css.',
   );
   assert.equal(btn.disabled, true);
 
@@ -152,7 +151,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(btn.textContent, LABEL);
   assert.equal(btn.classList.contains('occupied'), false);
   assert.equal(btn.disabled, false);
-  assert.equal(btn.style.minWidth, '', 'Die Vorgabe war leer, also muss sie leer zurückkommen.');
+  assert.equal(btn.style.minWidth, '', 'The default was empty, so it must come back empty.');
 
   // 3. A button with its OWN minimum width keeps it.
   btn.style.minWidth = '300px';
@@ -160,14 +159,14 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(
     btn.style.minWidth,
     '300px',
-    'Die Freigabe darf nicht blind leeren, sonst verliert der Knopf seine eigene Vorgabe.',
+    'The release must not clear blindly, otherwise the button loses its own default.',
   );
   btn.style.minWidth = '';
 
   // 4. An invisible button (offsetWidth 0) gets nothing imposed.
   breite(0);
   buttonOccupied(btn);
-  assert.equal(btn.style.minWidth, '', 'Bei Breite 0 gibt es nichts einzufrieren.');
+  assert.equal(btn.style.minWidth, '', 'At width 0 there is nothing to freeze.');
   btn.disabled = false;
   btn.classList.remove('occupied');
 
@@ -179,10 +178,10 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(
     btn.style.minWidth,
     '235px',
-    'Wechselt die Beschriftung doch, schrumpft der Knopf — dann muss die ' + 'Breite stehen bleiben.',
+    'If the label changes after all, the button shrinks — then the ' + 'width must stay.',
   );
   freePdf();
-  assert.equal(btn.textContent, LABEL, 'Danach kommt die ursprüngliche Beschriftung zurück.');
+  assert.equal(btn.textContent, LABEL, 'Afterwards the original label comes back.');
 
   // 6. The release may set a DIFFERENT label (QR: “Neu generieren").
   buttonOccupied(btn)('Neu generieren');

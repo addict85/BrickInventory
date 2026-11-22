@@ -94,7 +94,7 @@ test('passwords assigned by an admin only apply until the first change', {
   const basis = `http://127.0.0.1:${port}`;
   assert.ok(
     await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000),
-    `der Server startet nicht:\n${log.slice(-2000)}`,
+    `the server does not start:\n${log.slice(-2000)}`,
   );
 
   const callFn = (keks, path, o = {}) =>
@@ -116,7 +116,7 @@ test('passwords assigned by an admin only apply until the first change', {
   /** Log in, locked until the change, open after the change. */
   async function onlyUntilToSwitch(name, vergeben) {
     const a = await anmelden(name, vergeben);
-    assert.equal(a.user.mustChangePassword, true, 'die Anmeldung meldet den Pflichtwechsel');
+    assert.equal(a.user.mustChangePassword, true, 'the sign-in reports the mandatory change');
     const gesperrt = await callFn(a.keks, '/api/v2/stats');
     assert.equal(gesperrt.status, 403);
     assert.equal((await gesperrt.json()).code, 'password_change_required');
