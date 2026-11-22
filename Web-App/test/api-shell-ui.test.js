@@ -12,6 +12,8 @@
  *      removed → red: “401 on upload”
  *   C  in uploadCsv (bausteine.js) `d.skipped_hint` taken out of the message
  *      → red: “skipped lines”
+ *   D  (22.11.2026) in startSetCsvImport the toast for startData.skipped_hint removed
+ *      → red: “the set CSV import names skipped rows”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -90,6 +92,30 @@ test('the CSV import reports skipped rows and additional hints in one message', 
     const text = d.getElementById('toasts').textContent;
     assert.match(text, /Währung CHF/, 'Der Zusatzhinweis des Alarm-Imports fehlt');
     assert.equal(w.document.getElementById('alerts-csv-file').value, '', 'Das Dateifeld wird nicht geleert');
+  } finally {
+    w.close();
+  }
+});
+
+test('the set CSV import names skipped rows', async () => {
+  const start = {
+    success: true,
+    total: 1,
+    started: true,
+    existing: 0,
+    skipped: 1,
+    skipped_hint: 'eine Zeile übersprungen',
+  };
+  const { w, d } = await openUi({ '/v2/sets/import/csv': start });
+  try {
+    const field = d.getElementById('csv-file');
+    const datei = new w.File(['set_number,quantity\n10294-1,1\n,\n'], 'sets.csv', { type: 'text/csv' });
+    Object.defineProperty(field, 'files', { value: [datei], configurable: true });
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(
+      await warte(() => /eine Zeile übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
+      'the hint on skipped rows is missing',
+    );
   } finally {
     w.close();
   }

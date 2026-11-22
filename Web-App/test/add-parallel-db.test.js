@@ -212,51 +212,6 @@ test('a broken CSV entry does not topple the whole file', () => {
   assert.equal(skippedHint([]), null, 'ohne Übersprungene kein Hinweis');
 });
 
-test('all three import paths report skipped rows', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ROOT, ohneKommentare } = require('./helpers/sources');
-  // ── Two paths to the same goal ───────────────────────────
-  //
-  // The set import reads itself and responds itself; parts and minifigures
-  // go via csvRowsFromRequest() and csvImportReport() in
-  // src/infra/csvExport.ts. Per path, route, service and job count together.
-  for (const [rel, serviceFn] of [
-    ['routes/api/setsImport.ts', 'src/sets/csvImport.ts'],
-    ['routes/api/parts.ts', 'src/parts/manualParts.ts'],
-    ['routes/api/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
-  ]) {
-    const src = ohneKommentare(
-      fs.readFileSync(path.join(ROOT, rel), 'utf8') +
-        '\n' +
-        fs.readFileSync(path.join(ROOT, serviceFn), 'utf8') +
-        '\n' +
-        fs.readFileSync(path.join(ROOT, 'src/collection/importJobs.ts'), 'utf8'),
-    );
-    assert.match(src, /csvReadIn\(|csvRowsFromRequest\(/, `${rel}: liest noch selbst`);
-    assert.match(src, /skipped_hint|csvImportReport\(/, `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
-  }
-  // And the shared version really does both — otherwise the mere name
-  // above would suffice.
-  const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
-  assert.match(
-    geteilt,
-    /function csvRowsFromRequest[\s\S]*?csvReadIn\(/,
-    'csvRowsFromRequest() liest die Datei nicht mehr ein',
-  );
-  assert.match(
-    geteilt,
-    /function csvImportReport[\s\S]*?skipped_hint/,
-    'csvImportReport() meldet die übersprungenen Zeilen nicht mehr',
-  );
-  // And the UI shows the hint too.
-  // Sets in the gallery, parts/minifigures/wishlist/alerts via uploadCsv().
-  for (const rel of ['public/js/set-csv-import.js', 'public/js/components.js']) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-    assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
-  }
-});
-
 test('the parts list delivers what it reports', () => {
   const fs = require('node:fs');
   const path = require('node:path');
