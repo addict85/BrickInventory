@@ -1,0 +1,26 @@
+{
+  "count": 2,
+  "next": null,
+  "results": [
+    {
+      "part_num": "x1",
+      "name": "falsch",
+      "external_ids": {
+        "BrickLink": [
+          "999"
+        ]
+      }
+    },
+    {
+      "part_num": "970c00",
+      "name": "Hips",
+      "external_ids": {
+        "BrickLink": {
+          "ext_ids": [
+            "970"
+          ]
+        }
+      }
+    }
+  ]
+}

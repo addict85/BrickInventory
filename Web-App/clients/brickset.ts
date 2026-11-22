@@ -203,8 +203,9 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
     const { status, body } = await httpsGet(
       `${BASE}/getInstructions2?apiKey=${encodeURIComponent(key)}&setNumber=${encodeURIComponent(n)}`,
     );
+    // 429 (quota, Cloudflare 1015) throws in checkStatus; 5xx is the remote side's error, not quota.
+    if (status === 429) checkStatus(status, body, n);
     if (status !== 200) {
-      // 5xx is an error of the remote side, not a quota problem.
       const errMsg = `HTTP ${status}: ${excerpt(body, 300)}`;
       console.log(
         `  Brickset getInstructions HTTP ${status} for ${n}: ${excerpt(body)}`

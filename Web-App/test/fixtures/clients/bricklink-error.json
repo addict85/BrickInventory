@@ -1,0 +1,8 @@
+{
+  "meta": {
+    "description": "INVALID_URI",
+    "message": "PARAMETER_MISSING_OR_INVALID",
+    "code": 400
+  },
+  "data": {}
+}
