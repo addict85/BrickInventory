@@ -1,80 +1,20 @@
 /**
- * Precomputed parts summary (src/parts/summary.ts).
+ * Precomputed parts summary (src/parts/summary.ts). Which path the list takes (filters,
+ * metrics, household, triggers): parts-summary-paths-db.test.js.
+ *
+ * Counter-checks (22.11.2026, each alone):
+ *   A  partsQuery without `if (summary) return summary` → red “summary matches …” (source db)
+ *   B  summaryFresh rebuilds in the request instead of rebuildInBackground → red the same test (no stale state)
+ *   C  summaryFresh `return true` instead of `state !== null` → red the same test (first read not live)
  */
 require('./helpers/system-frame');
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { noDb } = require('./helpers/db');
 
-const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-
-// ── Static checks (always) ────────────────────────────────────────────
-test('the invalidation hangs on a trigger, not on calls', () => {
-  // Since 0052 the triggers stand in a migration, no longer in the code.
-  const src = fs.readFileSync(path.join(ROOT, 'db/migrations/0052-teilezusammenfassung-stand.sql'), 'utf8');
-  assert.match(src, /FOR EACH STATEMENT/, 'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
-  for (const tbl of ['parts', 'sets']) {
-    assert.match(src, new RegExp(`'${tbl}'`), `kein Trigger auf ${tbl}`);
-  }
-  assert.match(src, /bump_parts_version/, 'Versionszähler fehlt');
-
-  // The counter hangs PER ACCOUNT — see the test further down. A global
-  // counter (one row, id=1) invalidated the summary of all accounts
-  // as soon as anybody wrote anything.
-  assert.match(src, /parts_version_user/, 'Der Zähler muss je Konto geführt werden');
-  assert.doesNotMatch(
-    src,
-    /UPDATE parts_version SET v = v \+ 1 WHERE id = 1/,
-    'Der globale Zähler entwertet fremde Zusammenfassungen mit',
-  );
-  // All three operations need their own transition table.
-  for (const [op, ref] of [
-    ['INSERT', 'NEW TABLE AS neu'],
-    ['DELETE', 'OLD TABLE AS alt'],
-    ['UPDATE', 'OLD TABLE AS alt NEW TABLE AS neu'],
-  ]) {
-    assert.ok(src.includes(ref), `${op}: Übergangstabelle fehlt (${ref})`);
-  }
-  // On UPDATE BOTH sides count: if a row moves within the household between
-  // accounts, the summaries of sender AND target are outdated.
-  assert.match(
-    src,
-    /SELECT user_id FROM alt UNION SELECT user_id FROM neu/,
-    'Ein Kontowechsel muss beide Zusammenfassungen entwerten',
-  );
-});
-
-test('the live query stays as a fallback', () => {
-  const h = require('./helpers/sources').handlerQuelle();
-  assert.match(
-    h,
-    /if \(summary\) return summary;/,
-    'Ohne Rückfall wäre ein Fehler beim Aufbau ein Totalausfall der Ansicht',
-  );
-  const src = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
-  assert.match(src, /return false;/, 'summaryFresh muss Misserfolg melden können');
-});
-
-test('set_number and storage deliberately bypass the summary', () => {
-  // Two filters, one reason: the summary is condensed by part and color
-  // and cannot filter by anything that differs WITHIN a
-  // group.
-  const h = require('./helpers/sources').handlerQuelle();
-  const row = /if \(filter\.withoutManual && ([^)]*)\)/.exec(h)?.[1] || '';
-  assert.ok(
-    row.includes('!filter.set_number'),
-    'Die Teile EINES Sets sind ein anderer Anwendungsfall — dort ist die Live-Abfrage passend und schnell genug',
-  );
-  assert.ok(
-    row.includes('!filter.storage'),
-    'Der Lagerort steht in der Zusammenfassung nur verdichtet — ein Filter darauf träfe die Gruppe falsch',
-  );
-});
 
 // ── Integration test (only with DB) ──────────────────────────────────────────
 let db,
@@ -239,66 +179,6 @@ test('summary matches the live query and does not go stale', { skip: skip || und
 
   await clean();
   await db.run('DELETE FROM users WHERE id=$1', [U]);
-});
-
-test('the rebuild does not block the request', () => {
-  // Core of the most recently reported error: summaryFresh() rebuilt SYNCHRONOUSLY
-  // on an outdated version. Because the trigger raises the version on every
-  // change to parts (CSV import, adding a set,
-  // catalog enrichment), the next call of the parts tab paid the …
-  const src = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
-  const fn = src.slice(
-    src.indexOf('export async function summaryFresh'),
-    src.indexOf('export async function rebuildNow'),
-  );
-  assert.ok(fn.length > 0, 'summaryFresh nicht gefunden');
-  assert.doesNotMatch(
-    fn,
-    /await rebuild\(/,
-    'summaryFresh darf nicht im Request aufbauen — genau das waren die drei Sekunden',
-  );
-  assert.match(
-    fn,
-    /rebuildInBackground\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
-    'Der Aufbau muss in den Hintergrund',
-  );
-  assert.match(
-    fn,
-    /return state !== null/,
-    'Veralteter Stand wird ausgeliefert; ohne jeden Stand übernimmt die Live-Abfrage',
-  );
-
-  assert.match(src, /neuaufbau: new Map/, 'Ohne Sperre starten parallele Anfragen denselben Aufbau mehrfach');
-  assert.match(
-    src,
-    /export async function rebuildNow/,
-    'Für Stellen, die garantiert aktuelle Zahlen brauchen, muss es einen blockierenden Weg geben',
-  );
-});
-
-test('metrics use no outdated state', () => {
-  // Web app and Android query the same statistics via two endpoints.
-  // During a background rebuild one read from the summary
-  // and the other live — the parity check thereby failed reproducibly.
-  // With strict both fall back to the live query together.
-  const ps = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
-  assert.match(ps, /opts\?: \{ strict\?: boolean \}/, 'strict-Variante fehlt');
-  assert.match(ps, /if \(opts\?\.strict\) return false;/, 'Ein veralteter Stand muss unter strict abgelehnt werden');
-
-  const h = require('./helpers/sources').handlerQuelle();
-  // Since the household view the helper gets a LIST of accounts (uids)
-  // and checks each one individually; strict applies unchanged.
-  assert.match(
-    h,
-    /await summaryFresh\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
-    'partStatsQuery muss strict aufrufen',
-  );
-  // The list may still take the outdated state — there it does not matter
-  assert.match(
-    h,
-    /tryPartsSummary\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?userId/,
-    'Der Listenpfad bleibt unverändert',
-  );
 });
 
 test('both paths of the metrics count THE SAME — also with manual parts', { skip: skip || undefined }, async t => {

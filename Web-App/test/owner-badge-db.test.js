@@ -2,6 +2,7 @@
  * Where a client draws an owner badge, the response must carry it.
  *
  * Counter-check: attachOwners() (src/household/household.ts) returns rows with user_id without owners → red “every list with a badge in the client carries it in the response too”.
+ * Counter-check (22.11.2026): attachOwners() without `uids.length < 2` → red “in a single account there is no badge” (manual lists).
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -131,6 +132,8 @@ test('in a single account there is no badge', async t => {
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
   await holdsSet(db, allein, '21318-1', 1);
   await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', quantity: 1 });
+  await holdsPart(db, allein, '3021', { quantity: 2, colorId: 0 });
+  await holdsMinifig(db, allein, 'sw0004', { quantity: 1 });
 
   const { scopeIds } = {
     ..._req('src/household/rules.js'),
@@ -140,12 +143,15 @@ test('in a single account there is no badge', async t => {
   const uids = await scopeIds(allein, 'all');
   const S = require('./helpers/sources').areaPage('sets');
   const M = _req('src/minifigs/queries.js');
+  const P = _req('src/parts/queries.js');
 
   // „mine" on every tile would only be noise — and additional fields in
   // every response. The same decision as for the sets all along.
   for (const [name, zeilen] of [
     ['/v2/sets', (await S.readSets(uids, { page_size: 60 })).sets],
     ['/v2/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
+    ['/v2/parts/manual', await P.manualPartsList(uids, allein)],
+    ['/v2/minifigs/manual', await M.readManualMinifigs(uids, allein)],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);
     for (const z of zeilen) {

@@ -1,5 +1,9 @@
 /**
  * Moving a set between accounts — against a real database.
+ *
+ * Counter-check (22.11.2026): setEntriesReassign hands the acquisitions over with
+ * `UPDATE set_acquisitions SET user_id` instead of bookDailyEntry → red “a moved purchase joins
+ * the target's row of the same day” (two rows instead of one).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -153,6 +157,22 @@ test('move set', { concurrency: 1 }, async t => {
     const r2 = await setEntriesReassign('10005-1', a, b, [zweite]);
     assert.equal(r2.source_emptied, true);
     assert.deepEqual(await z(a), { sets: 0, parts: 0, minifigs: 0, manuell: 1 });
+  });
+
+  await t.test("a moved purchase joins the target's row of the same day", async () => {
+    const sn = '10006-1';
+    for (const u of [a, b]) {
+      await holdsSet(db, u, sn, 0);
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition) VALUES ($1,$2,1,50,'N')`,
+        [u, sn],
+      );
+    }
+    await setEntriesReassign(sn, a, b);
+    assert.deepEqual(
+      await db.all('SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [b, sn]),
+      [{ quantity: 2 }],
+    );
   });
 
   await db.pool.end().catch(() => {});
