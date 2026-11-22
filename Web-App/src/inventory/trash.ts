@@ -7,16 +7,16 @@ import type { InventoryContext } from './context';
 import type { InventoryReadContract } from './readContract';
 import { failDomain, notFound } from '../infra/errorTexts';
 
-export type Art = PaperKind;
+export type Kind = PaperKind;
 export const RETENTION_DAYS = 30;
 
-const ACQUISITIONS: Record<Art, string> = {
+const ACQUISITIONS: Record<Kind, string> = {
   set: 'set_acquisitions',
   teil: 'part_acquisitions',
   figur: 'minifig_acquisitions',
 };
 
-function parameter(kind: Art, userId: number, number: string, colorId: number | null) {
+function parameter(kind: Kind, userId: number, number: string, colorId: number | null) {
   return kind === 'teil' ? [userId, number, colorId] : [userId, number];
 }
 
@@ -25,7 +25,7 @@ function parameter(kind: Art, userId: number, number: string, colorId: number | 
  * @returns the entry's id, or null if there was no master row */
 export async function putInTrash(
   k: InventoryContext,
-  kind: Art,
+  kind: Kind,
   userId: number,
   number: string,
   colorId: number | null = null,
@@ -50,8 +50,8 @@ export async function putPurchasesInTrash(
 ): Promise<number | null> {
   if (!rows.length) return null;
   const name = await repo.label(k.db, 'set', userId, number, null);
-  const leer = Object.fromEntries(repo.tablesTheKind('set').map(t => [t, [] as unknown[]]));
-  return repo.createEntry(k.db, userId, 'set', number, null, name, { ...leer, set_acquisitions: rows });
+  const emptyTables = Object.fromEntries(repo.tablesTheKind('set').map(t => [t, [] as unknown[]]));
+  return repo.createEntry(k.db, userId, 'set', number, null, name, { ...emptyTables, set_acquisitions: rows });
 }
 
 /** Back into the row the quantity came from; if it no longer exists, into an identical row of the same day
@@ -63,7 +63,7 @@ async function restorePurchases(
   e: { user_id: number; number: string },
   purchases: Purchase[],
 ) {
-  if (!(await repo.hatSetRow(tx, l, e.user_id, e.number))) return false;
+  if (!(await repo.hasSetRow(tx, l, e.user_id, e.number))) return false;
   for (const k of purchases) {
     const quantity = Number(k.quantity) || 0;
     if (await purchase.stallEntryOn(tx, 'set', Number(k.id), e.user_id, quantity)) continue;
@@ -83,7 +83,7 @@ type Purchase = Record<string, unknown>;
 export interface TrashEntry {
   id: number;
   user_id: number;
-  type: Art;
+  type: Kind;
   number: string;
   color_id: number | null;
   label: string | null;
@@ -102,7 +102,7 @@ export async function listTrash(k: InventoryContext, uidsChoice: Writer | number
   });
 }
 
-export type Restoration = { type: Art; number: string; user_id: number };
+export type Restoration = { type: Kind; number: string; user_id: number };
 
 /** If the element exists again in the meantime, a unique index applies — then
  * nothing is changed and the entry stays. */
@@ -112,7 +112,7 @@ export async function restore(k: InventoryContext, uidsChoice: Writer | number[]
     return await k.transact(async (t): Promise<Restoration> => {
       const e = await repo.lockTrashEntry(t.db, id, uids);
       if (!e) notFound();
-      const kind = e.type as Art;
+      const kind = e.type as Kind;
       const purchases = kind === 'set' && !e.rows?.sets?.length ? (e.rows?.set_acquisitions ?? []) : null;
       if (purchases) {
         if (!(await restorePurchases(t.db, t.readContract, { user_id: e.user_id, number: e.number }, purchases)))

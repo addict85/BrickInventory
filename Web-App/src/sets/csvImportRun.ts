@@ -17,32 +17,32 @@ const CsvRowSchema = z.object({
   // Line of the file and, if it already failed while reading, why: the result then names it in its place.
   row: z.number().int().optional(),
   error: z
-    .object({ code: z.enum(['csv_quantity_invalid', 'csv_no_set_number']), wert: z.string().optional() })
+    .object({ code: z.enum(['csv_quantity_invalid', 'csv_no_set_number']), value: z.string().optional() })
     .optional(),
 });
 /** Part of the kind 'csv_import', which the collection registers (src/collection/jobKinds.ts). */
 export const SetCsvPayload = z.object({
   user_id: z.number().int().positive(),
-  lauf: z.string().min(1),
+  run: z.string().min(1),
   rows: z.array(CsvRowSchema),
 });
 export type CsvPayload = z.output<typeof SetCsvPayload>;
 export type CsvRow = CsvPayload['rows'][number];
 
 async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
-  const wo = z.row ? { row: z.row } : {};
+  const where = z.row ? { row: z.row } : {};
   if (z.error) {
-    const vars = z.error.wert !== undefined ? { wert: z.error.wert } : undefined;
+    const vars = z.error.value !== undefined ? { value: z.error.value } : undefined;
     return {
       set_number: z.sn,
-      ...wo,
+      ...where,
       success: false,
       code: z.error.code,
       ...(vars ? { vars } : {}),
       error: errorText(z.error.code, 'de', vars),
     };
   }
-  return { ...(await bookRow(sk, z, userId)), ...wo };
+  return { ...(await bookRow(sk, z, userId)), ...where };
 }
 
 /** Without network (setErfassen); the deadline only catches a stuck database. After a
@@ -89,13 +89,13 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
 
 async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): Promise<void> {
   const userId = Number(n.user_id),
-    lauf = String(n.lauf),
+    run = String(n.run),
     rows = n.rows ?? [];
-  const state = await sk.jobQueue.setImportFort(userId, lauf);
+  const state = await sk.jobQueue.setImportProgress(userId, run);
   if (!state) return;
   const results = state.results;
   const write = () =>
-    sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
+    sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, run);
 
   if (state.current && results.length < rows.length) {
     results.push({
@@ -111,13 +111,13 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
     if (k.ended) throw new JobInterrupted();
     const z = rows[i]!;
     // Aborted, superseded or assigned elsewhere: stop without writing into foreign rows.
-    if (!(await k.heartbeat()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, lauf))) return;
+    if (!(await k.heartbeat()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, run))) return;
     await sk.jobQueue.reportJobStatus(userId);
     results.push(await importRow(sk, z, userId));
     if (!(await write())) return;
     await sk.jobQueue.reportJobStatus(userId);
   }
-  await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, lauf);
+  await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, run);
   await sk.jobQueue.reportJobStatus(userId);
   console.log(
     `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,
@@ -127,7 +127,7 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
 /** The status line shows the error instead of running forever. */
 async function csvImportGivenUp(k: SetsContext, n: CsvPayload, error: string): Promise<void> {
   console.error(`CSV import fatal error: ${error}`);
-  await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: error, current: null }, String(n.lauf));
+  await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: error, current: null }, String(n.run));
   await k.jobQueue.reportJobStatus(Number(n.user_id));
 }
 

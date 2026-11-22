@@ -31,23 +31,23 @@ export function jobKind<A extends JobKind>(a: Login<A>): Login {
 export class PayloadInvalid extends Error {}
 
 export class Kinds {
-  private readonly je = new Map<string, Login>();
+  private readonly byKind = new Map<string, Login>();
 
   report(a: Login): void {
-    if (this.je.has(a.kind)) throw new Error(`Auftragsart ${a.kind} ist schon angemeldet`);
-    this.je.set(a.kind, a);
+    if (this.byKind.has(a.kind)) throw new Error(`Auftragsart ${a.kind} ist schon angemeldet`);
+    this.byKind.set(a.kind, a);
   }
 
   fromValue(kind: string): Login | undefined {
-    return this.je.get(kind);
+    return this.byKind.get(kind);
   }
 
   all(): Login[] {
-    return [...this.je.values()];
+    return [...this.byKind.values()];
   }
 
   check<A extends JobKind>(kind: A, raw: unknown): Payload<A> {
-    const schema: z.ZodType | undefined = this.je.get(kind)?.payload;
+    const schema: z.ZodType | undefined = this.byKind.get(kind)?.payload;
     if (!schema) throw new PayloadInvalid(`unbekannte Auftragsart ${kind}`);
     const r = schema.safeParse(raw);
     if (r.success) return r.data as Payload<A>;

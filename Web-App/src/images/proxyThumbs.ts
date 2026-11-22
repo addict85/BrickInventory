@@ -6,7 +6,7 @@ import { imgProxyFailures, countProxyError } from './imgProxyStats';
 import { readableImage } from './imageGuard';
 import { jimpPreview } from './thumbs';
 import { LOCKS } from '../infra/lockNamespaces';
-import * as sperre from './repository/sessionLock';
+import * as lock from './repository/sessionLock';
 import type { ImagesContext } from './context';
 
 // Queue, lock and resizing belong together.
@@ -75,12 +75,12 @@ export async function withPreviewLock<T>(k: ImagesContext, work: () => Promise<T
   }
   const client = st.lockClient;
   try {
-    if (!(await sperre.attemptsLock(client, THUMB_LOCK_KEY))) return false; // another process is computing right now
+    if (!(await lock.attemptsLock(client, THUMB_LOCK_KEY))) return false; // another process is computing right now
     try {
       return await work();
     } finally {
       // If the lock gets stuck, nobody would compute any more: the connection closes and releases it.
-      await sperre.giveLockFree(client, THUMB_LOCK_KEY).catch(e => {
+      await lock.giveLockFree(client, THUMB_LOCK_KEY).catch(e => {
         reportError('proxy-vorschau:pg_advisory_unlock', e);
         st.lockClient = null;
         void client.end().catch(f => reportError('proxy-vorschau:verbindung schliessen', f));

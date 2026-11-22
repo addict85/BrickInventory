@@ -160,11 +160,8 @@ export async function loadWanted() {
 }
 
 /** "Nothing found", with the search text when there is one. */
-function noHitsText() {
-  const q = G('mks')?.value.trim();
-  return q ? tRaw('common.no_hits', { query: q }) : tRaw('wanted.no_results');
-}
-
+const noHitsText = (q = G('mks')?.value.trim()) =>
+  q ? tRaw('common.no_hits', { query: q }) : tRaw('wanted.no_results');
 /** @param {boolean} filtered */
 function wantedEmpty(filtered) {
   if (filtered) return emptyState({ ico: 'search', title: noHitsText(), button: resetButton('wanted') });

@@ -49,7 +49,7 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
   const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
   router.endpoint('GET /api/v2/sets/import/csv/status', stateGuard, async (req, res) => {
-    res.json(await d.sets.csvImportStand(signedInUserId(req), req));
+    res.json(await d.sets.csvImportState(signedInUserId(req), req));
   });
 
   // Open streams per account are counted by kontoSchranke('stream') for all streams together.

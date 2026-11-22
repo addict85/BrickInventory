@@ -46,8 +46,8 @@ export function sessionMaxDuration(f: SessionDeadlines) {
     if (typeof s.angemeldetAm !== 'number') s.angemeldetAm = now;
     if (admin && typeof s.lastlyAt !== 'number') s.lastlyAt = now;
     const lastUsed = s.lastlyAt ?? now;
-    const zuAlt = now - s.angemeldetAm > (admin ? f.adminMaxMs : f.maxMs);
-    if (zuAlt || (admin && now - lastUsed > f.adminIdleMs)) return s.destroy((e?: unknown) => next(e));
+    const tooOld = now - s.angemeldetAm > (admin ? f.adminMaxMs : f.maxMs);
+    if (tooOld || (admin && now - lastUsed > f.adminIdleMs)) return s.destroy((e?: unknown) => next(e));
     if (admin && now - lastUsed >= Math.min(60_000, f.adminIdleMs / 4)) s.lastlyAt = now;
     next();
   };

@@ -490,6 +490,7 @@ function adminSource() {
     'set-detail.js',
     'detail-fields.js',
     'charts.js',
+    'time-axis.js',
     'crosshair.js',
     'confirm-prompt.js',
     'purchase-dialogs.js',

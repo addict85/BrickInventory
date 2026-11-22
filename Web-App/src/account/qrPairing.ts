@@ -8,7 +8,7 @@ import { tokenLabel } from './tokenRequest';
 import { failDomain } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
-export type { QrStand } from './repository/qrPairing';
+export type { QrState } from './repository/qrPairing';
 export const QR_TTL_MS = 5 * 60 * 1000;
 export const QR_FAILED_ATTEMPTS = 3;
 
@@ -42,7 +42,7 @@ export async function reportDevice(
     codeHash: tokenDigest(code),
     device: tokenLabel(device, 'Android App'),
     ipArea: ipArea(ip),
-    fristS: QR_TTL_MS / 1000,
+    deadlineS: QR_TTL_MS / 1000,
   });
   return z ? { pickup, code, uid: z.user_id } : null;
 }

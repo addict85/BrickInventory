@@ -88,10 +88,10 @@ export async function reconstructCurve(
 
     // The first monthly bucket holds the value at the end of the month; without correction
     // the yearly curve would start higher than the monthly curve.
-    const erster = rawPoints[0];
-    if (monthResolution && erster) {
-      const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
-      erster.fullDay = firstTag;
+    const first = rawPoints[0];
+    if (monthResolution && first) {
+      const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || first.fullDay;
+      first.fullDay = firstTag;
       const start = await kx.portfolioCurve.lastValuesBeforeStart(
         currency,
         condition,
@@ -100,8 +100,8 @@ export async function reconstructCurve(
         firstTag,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
       );
-      const wert = Number(start?.[0]?.total);
-      if (Number.isFinite(wert) && wert > 0) erster.total = wert;
+      const value = Number(start?.[0]?.total);
+      if (Number.isFinite(value) && value > 0) first.total = value;
     }
   }
 

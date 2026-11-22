@@ -20,7 +20,7 @@ export function imageType(raw: string): string {
  * src/images/http/imageCacheDelivery.ts. */
 export interface CacheHits {
   file: string;
-  typ: string;
+  contentType: string;
   size: number | null;
   etag: string | null;
 }
@@ -50,7 +50,7 @@ export async function cacheHit(
       }
       return {
         file: thumbFile,
-        typ: await previewType(thumbFile),
+        contentType: await previewType(thumbFile),
         size: tst.size,
         etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
       };
@@ -80,10 +80,10 @@ export async function cacheHit(
     // The cap deletes by last use; under noatime nobody else remembers
     // that. mtime stays, it is part of the ETag.
     if (cst && k.clock.now() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, k.clock.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
+      fs.promises.utimes(cacheFile, k.clock.date(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
     return {
       file: cacheFile,
-      typ: imageType(ctRaw),
+      contentType: imageType(ctRaw),
       size: cst?.size ?? null,
       etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null,
     };

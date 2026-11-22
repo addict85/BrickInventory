@@ -206,7 +206,7 @@ function loadSetFollowups(sn, acqs) {
 }
 
 /** Usually a link to a set that is (not yet) in this account: say so and offer to add it.
- * @param {any} d @param {string} sn */
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', `/v2/sets/${string}`>} d @param {string} sn */
 function detailFailed(d, sn) {
   if (d?.status !== 404) {
     toast(d?.error || tRaw('settings.error'), 'error');

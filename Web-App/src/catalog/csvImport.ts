@@ -5,7 +5,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { dbConfigFromEnvironment, createDb, type Db } from '../../db/database';
 import { databaseConnection, systemConnection } from '../infra/config';
-import { isJa } from '../infra/validate';
+import { isYes } from '../infra/validate';
 import { inSystemContext } from '../infra/accountContext';
 import { buildContext } from '../infra/area';
 import { DATA_DIR } from '../infra/appPaths';
@@ -147,7 +147,7 @@ export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pi
       // empty after every swap.
       cols: ['id', 'name', 'rgb', 'is_trans'],
       conflict: ['id'],
-      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isJa(sp(c, 3))],
+      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isYes(sp(c, 3))],
     }),
     part_categories: swap({
       table: 'rb_part_categories',
@@ -211,13 +211,13 @@ export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pi
       tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // isJa(): one interpretation for 't', 'True', '1' …
+      // isYes(): one interpretation for 't', 'True', '1' …
       mapRow: c => [
         parseInt(sp(c, 0), 10) || 0,
         sp(c, 1),
         parseInt(sp(c, 2), 10) || 0,
         parseInt(sp(c, 3), 10) || 1,
-        isJa(sp(c, 4)),
+        isYes(sp(c, 4)),
         sp(c, 5),
       ],
     }),

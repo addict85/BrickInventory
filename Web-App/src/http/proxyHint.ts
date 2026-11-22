@@ -4,14 +4,14 @@ import { proxyTrust, withoutV4Shell, inDockerNetwork, isDockerGateway } from '..
 
 /** From here on "always the same client address" no longer counts as the coincidence of a
  * single user, but as a sign of a further proxy in front of Caddy. */
-export const EINE_ADDRESS = { requests: 300, ms: 60 * 60_000 };
+export const ONE_ADDRESS = { requests: 300, ms: 60 * 60_000 };
 
-export type ProxyStand =
+export type ProxyState =
   | { kind: 'gateway' | 'docker_network'; vars: { ip: string } }
   | { kind: 'single_address'; vars: { ip: string; minutes: number; count: number } };
 /** The admin rarely reads the log; background jobs shows the hint of the hint giver,
  * which startup/app.ts stores in app.locals (GET /admin/jobs). */
-export function proxyHintStatus(app: Application): ProxyStand | null {
+export function proxyHintStatus(app: Application): ProxyState | null {
   return (app.locals.proxyHint as ReturnType<typeof proxyHint> | undefined)?.state() ?? null;
 }
 
@@ -34,13 +34,13 @@ export function proxyHint(
   checker.set('trust proxy', trust);
   const trusted = checker.get('trust proxy fn') as (address: string, hop: number) => boolean;
   let warned = trust === false;
-  let state: ProxyStand | null = null;
-  const eineAddress = onlyClientAddress(Array.isArray(trust), warn, clock, s => {
+  let state: ProxyState | null = null;
+  const oneAddress = onlyClientAddress(Array.isArray(trust), warn, clock, s => {
     state = s;
   });
   const mw = (req: Request, _res: Response, next: NextFunction) => {
     const fromValue = req.socket?.remoteAddress || '';
-    if (req.headers['x-forwarded-for'] && trusted(fromValue, 0)) eineAddress(req.ip, fromValue);
+    if (req.headers['x-forwarded-for'] && trusted(fromValue, 0)) oneAddress(req.ip, fromValue);
     if (!warned && req.headers['x-forwarded-for'] && inDockerNetwork(fromValue) && !trusted(fromValue, 0)) {
       warned = true;
       const ip = withoutV4Shell(fromValue);
@@ -67,7 +67,7 @@ function onlyClientAddress(
   active: boolean,
   warn: (text: string) => void,
   clock: () => number,
-  remember: (s: ProxyStand) => void,
+  remember: (s: ProxyState) => void,
 ) {
   let finished = !active;
   let first: string | undefined;
@@ -86,7 +86,7 @@ function onlyClientAddress(
     }
     count++;
     const minutes = Math.floor((clock() - since) / 60_000);
-    if (count < EINE_ADDRESS.requests || clock() - since < EINE_ADDRESS.ms) return;
+    if (count < ONE_ADDRESS.requests || clock() - since < ONE_ADDRESS.ms) return;
     finished = true;
     remember({ kind: 'single_address', vars: { ip: withoutV4Shell(ip), minutes, count } });
     warn(

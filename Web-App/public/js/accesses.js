@@ -91,7 +91,7 @@ function drawQr(container, qrData) {
   });
 }
 
-/** @param {any} d the QR response @param {string | undefined} serverUrl */
+/** @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/qr-token'>} d the QR response @param {string | undefined} serverUrl */
 function showQrHints(d, serverUrl) {
   // The lifetime from the server's response, not from the selection: if it doesn't know the value, the
   // sliding default applies. Three cases — 0 means unlimited, null means nothing was chosen; a plain

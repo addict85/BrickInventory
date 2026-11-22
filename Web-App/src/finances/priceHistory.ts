@@ -1,7 +1,7 @@
 /** THE one implementation for web app and Android API, so that both show the same chart. */
 
 import { setState, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, type Sicht } from '../household';
+import { asIds, type Viewer } from '../household';
 import { buildChart } from './chartData';
 import { marketPriceFrom } from '../catalog';
 import { developmentPercent } from './setValue';
@@ -83,7 +83,7 @@ function stateComparisons(
 
 export async function priceHistorySet(
   k: FinancesContext,
-  uidChoice: Sicht | number | number[],
+  uidChoice: Viewer | number | number[],
   setNumber: string,
   currency: string,
 ) {
@@ -210,7 +210,7 @@ async function manualPriceHistory(
 
 export async function priceHistoryPart(
   k: FinancesContext,
-  uidChoice: Sicht | number | number[],
+  uidChoice: Viewer | number | number[],
   partNumber: string,
   colorId: number,
   currency: string,
@@ -236,7 +236,7 @@ export async function priceHistoryPart(
 // Prices are under the BrickLink number, acquisitions under the own one; both keys count.
 export async function priceHistoryMinifig(
   k: FinancesContext,
-  uidChoice: Sicht | number | number[],
+  uidChoice: Viewer | number | number[],
   figNumber: string,
   currency: string,
 ) {

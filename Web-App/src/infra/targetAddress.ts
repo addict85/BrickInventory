@@ -48,9 +48,9 @@ function groups(ip: string): number[] {
     s = `${v4[1]}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
   }
   const [header = '', rest] = s.split('::');
-  const teil = (x: string) => (x ? x.split(':').map(g => Number.parseInt(g, 16)) : []);
-  const front = teil(header),
-    back = rest === undefined ? [] : teil(rest);
+  const part = (x: string) => (x ? x.split(':').map(g => Number.parseInt(g, 16)) : []);
+  const front = part(header),
+    back = rest === undefined ? [] : part(rest);
   return [...front, ...Array(8 - front.length - back.length).fill(0), ...back];
 }
 
@@ -81,11 +81,11 @@ type Interfaces = ReturnType<typeof os.networkInterfaces>;
 /** For the mail server: the admin may want one in the own network. Blocked
  * stay the networks of the own container (database, proxy) including loopback;
  * without a container loopback is a local mail server and stays allowed. */
-export function mailServerAddress(raw: string, o: { imContainer?: boolean; interfaces?: Interfaces } = {}): boolean {
+export function mailServerAddress(raw: string, o: { inContainer?: boolean; interfaces?: Interfaces } = {}): boolean {
   if (!net.isIP(raw)) return false;
   const ip = normalized(raw);
   if (NIE.check(ip, type(ip))) return false;
-  if (!(o.imContainer ?? imContainer())) return true;
+  if (!(o.inContainer ?? inContainer())) return true;
   if (LOOPBACK.check(ip, type(ip))) return false;
   const own = new net.BlockList();
   for (const a of Object.values(o.interfaces ?? os.networkInterfaces()).flat()) {
@@ -95,7 +95,7 @@ export function mailServerAddress(raw: string, o: { imContainer?: boolean; inter
   return !own.check(ip, type(ip));
 }
 
-function imContainer(): boolean {
+function inContainer(): boolean {
   return fs.existsSync('/.dockerenv') || fs.existsSync('/run/.containerenv');
 }
 
@@ -114,10 +114,10 @@ export function checkingLookup(allowed: (ip: string) => boolean) {
   return (host: string, opt: dns.LookupOptions, callback: LookupCallback): void => {
     dns.lookup(host, { ...opt, all: true }, (err, addresses) => {
       if (err) return callback(err, '');
-      const gut = addresses.filter(a => allowed(a.address));
-      const first = gut[0];
+      const good = addresses.filter(a => allowed(a.address));
+      const first = good[0];
       if (!first) return callback(new TargetLocked(host), '');
-      if (opt.all) return callback(null, gut);
+      if (opt.all) return callback(null, good);
       callback(null, first.address, first.family);
     });
   };

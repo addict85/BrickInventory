@@ -13,10 +13,10 @@ export async function createStartAdmin(k: AccountContext): Promise<void> {
     return;
   }
   const envPassword = k.config.adminPassword;
-  const mangel = envPassword !== '' ? passwordLack(envPassword, 'admin') : null;
-  if (mangel)
-    console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);
-  const fromEnvironment = envPassword !== '' && !mangel;
+  const lack = envPassword !== '' ? passwordLack(envPassword, 'admin') : null;
+  if (lack)
+    console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${lack}); es gilt ein zufälliges Startpasswort.`);
+  const fromEnvironment = envPassword !== '' && !lack;
   const password = fromEnvironment ? envPassword : crypto.randomBytes(15).toString('base64url'); // 20 characters, URL-safe
   // Before creating: if the file is not writable, startup aborts instead of
   // leaving behind an account with a password nobody knows.

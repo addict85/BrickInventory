@@ -79,7 +79,7 @@ export interface AppConfig {
   pgStmtMs: number;
   /** A hanging transaction would otherwise hold advisory and row locks indefinitely. */
   pgIdleTxMs: number;
-  pgSperreMs: number;
+  pgLockMs: number;
   adminPassword: string;
   appBaseUrl: string | null;
   appRoot: string | null;
@@ -97,7 +97,7 @@ export interface AppConfig {
   mailConsoleWithToken: boolean;
   imageUserAgent: string | null;
   imageCacheMaxMb: number;
-  imageFetchesJeMinute: number;
+  imageFetchesPerMinute: number;
   csvRowDeadlineMs: number;
   jobParallel: number;
   /** null: according to cores and cgroup quota (src/account/bcryptLimit.ts). */
@@ -105,7 +105,7 @@ export interface AppConfig {
   jobDeadlineSec: number;
   /** PEM; null: no own CA. */
   caCertificate: string | null;
-  hinterTls: boolean;
+  behindTls: boolean;
   /** Only in tests: check responses against the API contract (src/http/contractRouter.ts). */
   checkContract: boolean;
   /** SHA-256 of the app's signing certificates, 64 hex characters in upper case. */
@@ -442,7 +442,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     pgConnMs: integer(env, 'PG_CONN_MS', 30_000, 0, 600_000, f),
     pgStmtMs: integer(env, 'PG_STMT_MS', 30_000, 0, 86_400_000, f),
     pgIdleTxMs: integer(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
-    pgSperreMs: integer(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
+    pgLockMs: integer(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
     adminPassword: env.ADMIN_PASSWORD || '',
     appBaseUrl: basis,
     appRoot: env.APP_ROOT?.trim() || null,
@@ -459,13 +459,13 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     mailConsoleWithToken: env.MAIL_CONSOLE_WITH_TOKEN?.trim() === '1',
     imageUserAgent: env.IMG_USER_AGENT?.trim() || null,
     imageCacheMaxMb: number(env, 'IMAGE_CACHE_MAX_MB', 2048, f),
-    imageFetchesJeMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
+    imageFetchesPerMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
     csvRowDeadlineMs: integer(env, 'CSV_ROW_DEADLINE_MS', 120_000, 1, 86_400_000, f),
     jobParallel: integer(env, 'JOB_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
     bcryptWorker: env.BCRYPT_WORKERS?.trim() ? integer(env, 'BCRYPT_WORKERS', 4, 1, 64, f) : null,
     jobDeadlineSec: integer(env, 'JOB_DEADLINE_SEC', DEFAULT.jobDeadlineSec, 1, 86_400, f),
     caCertificate: env.CA_CERTIFICATE?.trim() || null,
-    hinterTls: !!basis && /^https:\/\//i.test(basis),
+    behindTls: !!basis && /^https:\/\//i.test(basis),
     checkContract: env.CHECK_CONTRACT?.trim() === '1',
     androidCertificates: androidCertificates(env, f),
     androidPackage: androidPackage(env, f),
@@ -481,7 +481,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
 /** In production and behind Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 is the deliberate
  * exception for an operation without TLS. */
 export function cookieSafe(k: AppConfig): boolean {
-  return k.cookieSecure ?? (k.operation || k.hinterTls);
+  return k.cookieSecure ?? (k.operation || k.behindTls);
 }
 
 const K = processWide('config', () => ({ v: null as Readonly<AppConfig> | null }));
@@ -495,8 +495,8 @@ export function config(): Readonly<AppConfig> {
 }
 
 /** For tests: lay individual values over the read configuration; null lifts that. */
-export function setConfig(teil: Partial<AppConfig> | null): Readonly<AppConfig> {
-  K.v = teil ? Object.freeze({ ...loadConfig(process.env), ...teil }) : null;
+export function setConfig(part: Partial<AppConfig> | null): Readonly<AppConfig> {
+  K.v = part ? Object.freeze({ ...loadConfig(process.env), ...part }) : null;
   return config();
 }
 
@@ -624,16 +624,16 @@ export function startWarnings(raw: NodeJS.ProcessEnv = process.env): string[] {
  * `db-brickinventory`); a machine on the LAN usually has a name with a domain. */
 function dbWithoutTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres',
-    modus = env.PGSSLMODE?.trim() || '';
+    mode = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {
     try {
       const u = new URL(env.DATABASE_URL);
       host = u.hostname.replace(/^\[|\]$/g, '') || 'localhost';
-      modus = u.searchParams.get('sslmode') || modus;
+      mode = u.searchParams.get('sslmode') || mode;
     } catch {
       return false;
     }
   }
-  const nah = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
-  return !nah && !/^verify-(ca|full)$/.test(modus);
+  const local = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
+  return !local && !/^verify-(ca|full)$/.test(mode);
 }

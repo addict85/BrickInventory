@@ -14,10 +14,10 @@ import {
 } from '../../src/account/http/login';
 import { receiptsAccountSpace, type Gate } from '../../src/http/accountLimit';
 import { requireRelease } from '../../src/account/http/stepGuard';
-import type { Sicht } from '../../src/household';
+import type { Viewer } from '../../src/household';
 
 /** Who is asking and which accounts they chose; the service resolves the scope. */
-export const viewOf = (req: AuthedRequest & { queryArgs: { accounts?: string | undefined } }): Sicht => ({
+export const viewOf = (req: AuthedRequest & { queryArgs: { accounts?: string | undefined } }): Viewer => ({
   user: req.apiUser.user_id,
   accounts: req.queryArgs.accounts,
 });

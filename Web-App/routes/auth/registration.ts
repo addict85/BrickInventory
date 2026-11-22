@@ -12,8 +12,8 @@ import type { Services } from '../../src/services';
 /** The reason of the first rejection, or null if the input is sufficient. */
 function registrationShortfall(e: OpenRequest<'POST /api/v2/auth/register'>['input']) {
   if (!e.username || !e.email || !e.password) return 'registration_fields' as const;
-  const mangel = passwordLack(e.password, e.username);
-  if (mangel) return mangel;
+  const lack = passwordLack(e.password, e.username);
+  if (lack) return lack;
   if (!emailValid(e.email)) return 'email_invalid' as const;
   if (!USERNAME_RE.test(e.username)) return 'username_invalid' as const;
   if (!nameValid(e.first_name) || !nameValid(e.last_name)) return 'name_invalid' as const;
@@ -38,8 +38,8 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     const { username, email, first_name, last_name, password, language } = req.input;
     if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
       failDomain('forbidden', 'registration_disabled');
-    const mangel = registrationShortfall(req.input);
-    if (mangel || !username || !email || !password) failDomain('invalid', mangel ?? 'registration_fields');
+    const lack = registrationShortfall(req.input);
+    if (lack || !username || !email || !password) failDomain('invalid', lack ?? 'registration_fields');
     // Counts every attempt, whether the address exists or not: the rejection reveals nothing.
     const target = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
     if (target) failDomain('too_many', 'too_many_requests', { minutes: target.waitMin });
@@ -120,13 +120,13 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     async req => {
       const { token, password } = req.input;
       if (!token || !password) failDomain('invalid', 'token_password_required');
-      const mangel = passwordLack(password);
-      if (mangel) failDomain('invalid', mangel);
+      const lack = passwordLack(password);
+      if (lack) failDomain('invalid', lack);
       const user = await d.account.accountToResetLink(token);
       if (!user) failDomain('invalid', 'token_invalid');
       // Only the account behind the token knows the name; the rule applies as on all other paths.
-      const nameMangel = passwordLack(password, user.username);
-      if (nameMangel) failDomain('invalid', nameMangel);
+      const nameLack = passwordLack(password, user.username);
+      if (nameLack) failDomain('invalid', nameLack);
       // Only the request that consumes the link sets its password.
       const uid = await d.account.setPasswordPerLink(token, password);
       if (!uid) failDomain('invalid', 'token_invalid');

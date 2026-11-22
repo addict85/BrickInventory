@@ -42,7 +42,7 @@ import { buildAuthRouter } from '../routes/auth';
 import { buildCertificateRouter } from '../routes/certificate';
 import { buildCspReportRouter } from '../src/http/cspReport';
 import { buildWellKnownRouter } from '../routes/wellKnown';
-import { buildGesundheitRouter } from '../routes/health';
+import { buildHealthRouter } from '../routes/health';
 import { buildPagesRouter } from '../routes/pages';
 import { checkContract } from '../src/http/contractRouter';
 import type { Services } from './wiring';
@@ -119,8 +119,8 @@ function baselineProtection(app: express.Express, k: AppConfig): void {
   // `//api/…` would otherwise fall through to the SPA catch-all and get index.html with 200.
   app.use((req, _res, next) => {
     if (req.url.startsWith('//') || req.url.includes('//', 1)) {
-      const [pathTeil, ...rest] = req.url.split('?');
-      const pathPart = pathTeil ?? '';
+      const [pathSegment, ...rest] = req.url.split('?');
+      const pathPart = pathSegment ?? '';
       const cleaned = pathPart.replace(/\/{2,}/g, '/');
       if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
     }
@@ -266,7 +266,7 @@ function apiRoutes(app: express.Express, d: Services): void {
     req.path !== '/v2/' && req.path.length > 1 && req.path.endsWith('/') ? unknownApiPath(req, res) : next(),
   );
   // Before the entrance: asked before schema, migrations and /api/v2 routers are in place.
-  app.use('/api/v2', buildGesundheitRouter(d));
+  app.use('/api/v2', buildHealthRouter(d));
   apiInbox(app, d);
   app.use('/api/v2', buildApiRouter(d));
   app.use('/api/v2/auth', buildAuthRouter(d));

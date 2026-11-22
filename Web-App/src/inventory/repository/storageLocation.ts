@@ -71,14 +71,14 @@ export function addLocationOne(db: DbInterface, userId: number, name: string) {
   );
 }
 
-export function ortNachName(db: DbInterface, userId: number, name: string) {
+export function locationByName(db: DbInterface, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>(
     'SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)',
     [userId, name],
   );
 }
 
-export function ortName(db: DbInterface, id: number, userId: number) {
+export function locationName(db: DbInterface, id: number, userId: number) {
   return db.get<{ name: string }>('SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 

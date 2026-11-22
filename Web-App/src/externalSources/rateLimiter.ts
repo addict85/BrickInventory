@@ -108,7 +108,7 @@ export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise
   const rl = await attempts('takt:kontingentPruefenUndZaehlen', checkAndCountQuota(k, 'rebrickable'));
   // When in doubt let it through: an exceeded daily quota merely costs
   // calls — the opposite of the login counter, where the fallback locks.
-  return rl.ok ? rl.wert.allowed : true;
+  return rl.ok ? rl.value.allowed : true;
 }
 
 /** Two concurrent downloads, but at most one new one per second: the CDN

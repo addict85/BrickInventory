@@ -28,7 +28,7 @@ const STATES = new Set(['N', 'U']);
 
 /** The row as read (db/rows.ts); a CHECK keeps `direction` to two values, the point in time
  * goes out as ISO text as in JSON. */
-function alsAlarm<Z extends repo.AlarmRow>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & PriceAlert {
+function asAlarm<Z extends repo.AlarmRow>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & PriceAlert {
   return { ...z, direction: z.direction as Direction, last_triggered_at: z.last_triggered_at?.toISOString() ?? null };
 }
 
@@ -73,12 +73,12 @@ export async function setAlert(
 /** The alert moves along with a reservation into the other account (src/wanted). */
 export async function alarmTransfer(
   k: FinancesContext,
-  zuId: number,
+  toId: number,
   ofId: number,
   setNumber: string,
   condition: string,
 ): Promise<void> {
-  await repo.transferAlarm(k.db, zuId, ofId, setNumber, condition);
+  await repo.transferAlarm(k.db, toId, ofId, setNumber, condition);
 }
 
 /** No error if there was none — the wish is fulfilled. */
@@ -91,7 +91,7 @@ export async function deleteAlert(k: FinancesContext, userId: number, setNumber:
 export async function alertsFor(k: FinancesContext, userId: number, setNumber: string): Promise<PriceAlert[]> {
   // No catch: an empty list would mean "no alert", and setzeAlarm() would deliver nothing.
   const rows = await repo.alertsOfSets(k.db, k.readContract, userId, setNumber, await k.household.scopeIds(userId));
-  return rows.map(alsAlarm);
+  return rows.map(asAlarm);
 }
 
 /** So that alerts can be found without knowing the set. */
@@ -110,7 +110,7 @@ export async function allAlerts(k: FinancesContext, userId: number): Promise<Ala
   // The scope only asks whether the set is visible; the alert stays with the
   // own account.
   const scope = await k.household.scopeIds(userId);
-  return (await repo.alertsInScope(k.db, k.readContract, userId, scope)).map(alsAlarm);
+  return (await repo.alertsInScope(k.db, k.readContract, userId, scope)).map(asAlarm);
 }
 
 /** The app asks instead of the server pushing: push would go via third-party servers. */
@@ -118,7 +118,7 @@ export async function triggeredSince(k: FinancesContext, userId: number, since: 
   // The database's time: Postgres stores micro-, JavaScript only
   // milliseconds; with the JS clock a notification would come twice.
   const nowRow = await repo.databaseNow(k.db);
-  const now = nowRow?.now ?? k.clock.datum();
+  const now = nowRow?.now ?? k.clock.date();
 
   // `instanceof Date` FIRST: String(date) loses the milliseconds, and a
   // notification from the same second would come a second time.
@@ -133,7 +133,7 @@ export async function triggeredSince(k: FinancesContext, userId: number, since: 
 
   // No catch: the app would otherwise advance its marker and lose the notifications in between.
   const rows = await repo.alertsOfAccount(k.db, k.readContract, userId, mark, await k.household.scopeIds(userId));
-  return { alerts: rows.map(alsAlarm), now: now };
+  return { alerts: rows.map(asAlarm), now: now };
 }
 
 /** A function of its own: the only place where "below" and "above" mean
@@ -196,7 +196,7 @@ type ActiveAlarm = Awaited<ReturnType<typeof repo.allActiveAlerts>>[number];
 async function send(k: FinancesContext, post: AlarmPost, a: ActiveAlarm, price: number, threshold: number) {
   // The alert goes out even without a name; the mail then only names the set number.
   const read = await attempts('preisalarm:name', repo.setNameFromMaster(k.db, a.set_number));
-  const name = read.ok ? read.wert : null;
+  const name = read.ok ? read.value : null;
   const mail = await post.buildAlertMail({
     username: a.username,
     lang: a.language,
@@ -252,14 +252,14 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
           .trim()
           .toUpperCase(),
       });
-      const war = already.some(a => a.condition === alarm.condition);
-      if (war) updated++;
+      const had = already.some(a => a.condition === alarm.condition);
+      if (had) updated++;
       else added++;
       if (divergent) foreignCurrency++;
       results.push({
         set_number: sn,
         condition: alarm.condition,
-        action: war ? 'updated' : 'added',
+        action: had ? 'updated' : 'added',
         ...(divergent ? { currency_adjusted: true, file_currency: fileCurrency, account_currency: currency } : {}),
       });
     } catch (e) {

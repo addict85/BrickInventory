@@ -57,7 +57,7 @@ function sendPlaceholder(res: Response) {
   return res.status(200).end(placeholder);
 }
 
-/** First with referer, then without; a 404 is remembered. `ersatz` answers instead of
+/** First with referer, then without; a 404 is remembered. `spare` answers instead of
  * the error if it can (e.g. with the preview from the cache).
  * @returns null if already answered */
 async function fromCdn(
@@ -65,7 +65,7 @@ async function fromCdn(
   url: string,
   cacheKey: string,
   res: Response,
-  ersatz: () => Promise<boolean> = async () => false,
+  spare: () => Promise<boolean> = async () => false,
 ): Promise<FetchStream | null> {
   // Uncompressed: a compressed body would silently yield a white area.
   const HEADER_SETS = [
@@ -90,14 +90,14 @@ async function fromCdn(
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = errorMessage(e);
     console.error(`[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${errorMessage(e)}`);
-    if (await ersatz()) return null;
+    if (await spare()) return null;
     if (!res.headersSent) res.status(time ? 504 : 502).end();
     return null;
   }
   if (r.status === 200) return r;
   r.discard();
   noteCdnRefusal(d, r.status, url, cacheKey);
-  if (await ersatz()) return null;
+  if (await spare()) return null;
   void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
   return null;
 }
@@ -118,10 +118,10 @@ function noteCdnRefusal(d: ImageServices, status: number, url: string, cacheKey:
  * failed where the first worked. The preview is created by the job bildbedarf. */
 async function storeAsSetImage(d: ImageServices, cacheFile: string, setNumber: string): Promise<void> {
   const target = path.join(SET_IMAGES_DIR, `${setNumber.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
-  const teil = `${target}.${process.pid}-${randomUUID()}.teil`;
+  const part = `${target}.${process.pid}-${randomUUID()}.teil`;
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
-  await fs.promises.copyFile(cacheFile, teil);
-  await fs.promises.rename(teil, target);
+  await fs.promises.copyFile(cacheFile, part);
+  await fs.promises.rename(part, target);
   rememberCacheGrowth((await fs.promises.stat(target)).size, d.images.imageLimits().cacheMaxBytes);
 }
 
@@ -232,7 +232,7 @@ function unpacked(raw: Readable, enc: string, res: Response, url: string, expect
   return body;
 }
 
-const liesDa = (file: string) =>
+const readDa = (file: string) =>
   fs.promises.access(file).then(
     () => true,
     () => false,
@@ -296,7 +296,7 @@ async function setImagePlan(d: ImageServices, uid: number, url: string, cacheFil
   const setNumber = setNumberFromImageAddress(String(url || ''));
   const setMissing = setNumber ? await setImageMissing(d, setNumber, url) : false;
   const store = setMissing && !!setNumber && (await d.images.setNumberInScope(uid, setNumber));
-  const originalMissing = store && !(await liesDa(cacheFile));
+  const originalMissing = store && !(await readDa(cacheFile));
   if (store && setNumber && !originalMissing) await setImageFromCache(d, url, setNumber, cacheFile);
   return { setNumber, setMissing, store, originalMissing };
 }
@@ -338,23 +338,23 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
       streamFileToResponse,
     });
   // If the new fetch fails, the preview from the cache stays.
-  const ersatz = async () => originalMissing && (await fromCache());
+  const spare = async () => originalMissing && (await fromCache());
   if (!originalMissing && (await fromCache())) return;
 
   // The flag (one hour) spares the CDN the question on every page view.
-  if (d.images.isKnownMissing(cacheKey) && (await ersatz())) return;
+  if (d.images.isKnownMissing(cacheKey) && (await spare())) return;
   if (d.images.isKnownMissing(cacheKey)) return sendPlaceholder(res);
 
   // Only fetches from the CDN count: each one fills disk and bandwidth, hits do not.
   const tick = await d.account.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
-  if (tick.count > d.images.imageLimits().fetchesJeMinute) {
-    if (await ersatz()) return;
+  if (tick.count > d.images.imageLimits().fetchesPerMinute) {
+    if (await spare()) return;
     res.setHeader('Retry-After', String(tick.waitMin * 60));
     res.setHeader('Cache-Control', 'no-store');
     return res.status(429).end();
   }
 
-  const r = await fromCdn(d, url, cacheKey, res, ersatz);
+  const r = await fromCdn(d, url, cacheKey, res, spare);
   if (!r) return;
   const setTarget = store ? setNumber : null;
   return forward(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget });

@@ -156,8 +156,8 @@ export function buildSettingsRouter(
   });
 
   router.endpoint('POST /api/v2/settings/household/redeem/check', requireToken, async req => {
-    const zuOft = await d.account.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
-    if (zuOft) failDomain('too_many', 'too_many_requests', { minutes: zuOft.waitMin });
+    const tooOften = await d.account.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+    if (tooOften) failDomain('too_many', 'too_many_requests', { minutes: tooOften.waitMin });
     return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.input.code)) };
   });
 

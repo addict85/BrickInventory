@@ -41,8 +41,8 @@ export function imageTypeAllowed(contentType: string | undefined): boolean {
 }
 
 /** @returns null if it could form a path — then nothing is saved */
-export function filePart(wert: unknown): string | null {
-  const s = String(wert ?? '');
+export function filePart(value: unknown): string | null {
+  const s = String(value ?? '');
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(s) && !s.includes('..') ? s : null;
 }
 

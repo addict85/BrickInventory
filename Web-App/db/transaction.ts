@@ -12,7 +12,7 @@ import {
 } from '../src/infra/accountContext';
 
 /** `offen` guards against stragglers after COMMIT; `db` is the access that opened it. */
-export type TxStand = PathTransaction & {
+export type TxState = PathTransaction & {
   client: PoolClient;
   open: boolean;
   db: object;
@@ -22,9 +22,9 @@ export type TxStand = PathTransaction & {
 };
 
 /** The open transaction of this call path, for the guards (UnboundQuery, fallback value). */
-export function runningTx(): TxStand | null {
+export function runningTx(): TxState | null {
   const t = transactionOfPath();
-  return t && 'client' in t ? (t as TxStand) : null;
+  return t && 'client' in t ? (t as TxState) : null;
 }
 
 /** For row-level security (migration 0111): who is asking, only until the end
@@ -50,7 +50,7 @@ export function contextCheckSql(context: string): string {
 }
 
 /** If the account changes in the middle of the transaction (asRequest), the setting follows. */
-export async function contextSync(state: TxStand): Promise<void> {
+export async function contextSync(state: TxState): Promise<void> {
   const expected = contextSql();
   if (expected === state.context) return;
   await state.client.query(expected || CONTEXT_EMPTY);
@@ -64,7 +64,7 @@ export interface TxHandleOf<D> extends DbInterface {
 }
 
 /** The queries over the transaction's connection; `pruefe` guards the frame. */
-export function txQueries(state: TxStand, check: () => void): DbInterface {
+export function txQueries(state: TxState, check: () => void): DbInterface {
   const q = async (sql: string, p?: unknown[]) => {
     openStill(state);
     check();
@@ -97,7 +97,7 @@ export class TransactionEnded extends Error {
     super('Abfrage nach dem Ende ihrer Transaktion (Nachzügler aus Promise.all?)');
   }
 }
-function openStill(state: TxStand): void {
+function openStill(state: TxState): void {
   if (!state.open) throw new TransactionEnded();
 }
 
@@ -139,7 +139,7 @@ export class ConcurrentSavepoint extends Error {
  * the other's work with it. Hence each begins in the innermost open one, and
  * which one that is is told by the handle it is called through (`rahmen`). */
 export function innerTransaction<T>(
-  state: TxStand,
+  state: TxState,
   frame: string | null,
   number: number,
   fn: (name: string) => Promise<T>,
@@ -177,8 +177,8 @@ export function innerTransaction<T>(
 const fromSavepointCaught = new WeakSet<object>();
 
 /** The state of a new transaction; it is also its guard against fallback values. */
-export function newTxStatus(t: Omit<TxStand, 'spoils' | 'open' | 'innermost' | 'context'>): TxStand {
-  const state: TxStand = {
+export function newTxStatus(t: Omit<TxState, 'spoils' | 'open' | 'innermost' | 'context'>): TxState {
+  const state: TxState = {
     ...t,
     open: true,
     innermost: null,

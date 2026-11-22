@@ -109,10 +109,10 @@ export function excerpt(text: unknown, n = 120): string {
   );
 }
 
-interface Lauf {
+interface Run {
   response: IncomingMessage;
   url: string;
-  frist: NodeJS.Timeout;
+  deadline: NodeJS.Timeout;
   abort: (f: FetchError) => void;
 }
 
@@ -138,13 +138,13 @@ function redirectHop(
   };
 }
 
-function run(start: string, o: FetchOptions): Promise<Lauf> {
+function run(start: string, o: FetchOptions): Promise<Run> {
   return new Promise((finished, fail) => {
     let req: ClientRequest | null = null;
     let reply: IncomingMessage | null = null;
     let done = false;
     const abort = (f: FetchError) => {
-      clearTimeout(frist);
+      clearTimeout(deadline);
       if (!done) {
         done = true;
         fail(f);
@@ -152,11 +152,11 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
       reply?.destroy?.(f);
       req?.destroy?.();
     };
-    const frist = setTimeout(
+    const deadline = setTimeout(
       () => abort(new FetchError('time_limit', `Zeitlimit ${o.timeoutMs} ms: ${addressShort(start)}`)),
       o.timeoutMs,
     );
-    frist.unref?.();
+    deadline.unref?.();
     const atAbort = () => abort(new FetchError('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
     if (o.signal?.aborted) return atAbort();
     o.signal?.addEventListener('abort', atAbort, { once: true });
@@ -182,7 +182,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
           }
           reply = r;
           done = true;
-          finished({ response: r, url: u, frist, abort });
+          finished({ response: r, url: u, deadline, abort });
         };
         const connection = o.agent ? { agent: o.agent } : { lookup: publicLookup };
         req =
@@ -216,7 +216,7 @@ export function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> 
 }
 
 async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> {
-  const { response: r, url: end, frist, abort } = await run(url, o);
+  const { response: r, url: end, deadline, abort } = await run(url, o);
   return new Promise((finished, fail) => {
     const parts: Buffer[] = [];
     let n = 0,
@@ -236,7 +236,7 @@ async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> 
       parts.push(b);
     });
     r.on('end', () => {
-      clearTimeout(frist);
+      clearTimeout(deadline);
       if (!from) {
         from = true;
         finished({ status: r.statusCode ?? 0, head: r.headers ?? {}, url: end, body: Buffer.concat(parts) });
@@ -254,13 +254,13 @@ export function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
 }
 
 async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
-  const { response: r, url: end, frist, abort } = await run(url, o);
+  const { response: r, url: end, deadline, abort } = await run(url, o);
   return {
     status: r.statusCode ?? 0,
     head: r.headers ?? {},
     url: end,
     discard: () => {
-      clearTimeout(frist);
+      clearTimeout(deadline);
       r.resume?.();
     },
     stream: () => {
@@ -274,9 +274,9 @@ async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
           abort(f);
         }
       });
-      r.on('end', () => clearTimeout(frist));
+      r.on('end', () => clearTimeout(deadline));
       r.on('error', (e: Error) => {
-        clearTimeout(frist);
+        clearTimeout(deadline);
         from.destroy(e);
       });
       from.on('close', () => {

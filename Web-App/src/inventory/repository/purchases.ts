@@ -4,14 +4,14 @@ import type { DbInterface } from '../../../db/database';
 export type NewestField = 'preis' | 'zustand';
 
 /** The set literally: there is exactly one place that describes the last set acquisition. */
-function newestSetEntry(db: DbInterface, field: NewestField, wert: number | string | null, uid: number, sn: string) {
+function newestSetEntry(db: DbInterface, field: NewestField, value: number | string | null, uid: number, sn: string) {
   const column = field === 'preis' ? 'purchase_price' : 'condition';
   return db.run(
     `UPDATE set_acquisitions SET ${column} = $1
                  WHERE id = (SELECT id FROM set_acquisitions
                               WHERE user_id=$2 AND set_number=$3
                               ORDER BY created_at DESC, id DESC LIMIT 1)`,
-    [wert, uid, sn],
+    [value, uid, sn],
   );
 }
 
@@ -20,22 +20,22 @@ export async function setNewest(
   db: DbInterface,
   kind: AcquisitionKind,
   field: NewestField,
-  wert: number | string | null,
+  value: number | string | null,
   uid: number,
   key: (string | number)[],
 ): Promise<void> {
   if (kind === 'set') {
-    await newestSetEntry(db, field, wert, uid, String(key[0]));
+    await newestSetEntry(db, field, value, uid, String(key[0]));
     return;
   }
   const s = SHAPES[kind];
-  const wo = s.keys.map((k, i) => `a.${k} = $${i + 3}`).join(' AND ');
+  const where = s.keys.map((k, i) => `a.${k} = $${i + 3}`).join(' AND ');
   const target = field === 'preis' ? `${s.price} = NULLIF($1::numeric, 0)` : 'condition = $1';
   await db.run(
     `UPDATE ${s.table} SET ${target}
-      WHERE id = (SELECT a.id FROM ${s.table} a WHERE a.user_id = $2 AND ${wo}
+      WHERE id = (SELECT a.id FROM ${s.table} a WHERE a.user_id = $2 AND ${where}
                    ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
-    [wert, uid, ...key.slice(0, s.keys.length)],
+    [value, uid, ...key.slice(0, s.keys.length)],
   );
 }
 

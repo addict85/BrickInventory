@@ -35,7 +35,7 @@ export function createImages(
       /** Limits of the image proxy and the cache from the passed configuration. */
       imageLimits: () => ({
         cacheMaxBytes: k.config.imageCacheMaxMb * 1024 * 1024,
-        fetchesJeMinute: k.config.imageFetchesJeMinute,
+        fetchesPerMinute: k.config.imageFetchesPerMinute,
       }),
       deleteExpired: bound(k)(imageDemandService.deleteExpired),
       catalogImagesReserve: bound(k)(imageDemandService.catalogImagesReserve),

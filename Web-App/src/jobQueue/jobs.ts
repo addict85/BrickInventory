@@ -27,8 +27,8 @@ export interface JobRun {
 }
 
 /** Throws the reason for the abort; between two steps of a long run. */
-export function checkAbort(lauf: JobRun | undefined): void {
-  lauf?.signal?.throwIfAborted();
+export function checkAbort(run: JobRun | undefined): void {
+  run?.signal?.throwIfAborted();
 }
 
 export interface JobRow {

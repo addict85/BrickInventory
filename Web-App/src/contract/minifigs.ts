@@ -76,7 +76,7 @@ export const routes = {
       fig_number: input.itemNumber('fig_number'),
       quantity: input.pieceCount(),
       condition: input.condition(),
-      unit_price: input.geld('Stückpreis'),
+      unit_price: input.money('Stückpreis'),
       fig_name: input.text(200),
       image_url: input.imageUrl(),
       bl_fig_number: TEXT(64).nullable().optional(),
@@ -90,7 +90,7 @@ export const routes = {
     input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
-      unit_price: input.geld('Stückpreis'),
+      unit_price: input.money('Stückpreis'),
       condition: CONDITION.nullable().optional(),
       bl_fig_number: TEXT(40).nullable().optional(),
     }),

@@ -208,7 +208,8 @@ async function saveSourceValues(source, fields, values, empty) {
 }
 
 /** A rejected key marks every field of the source; other failures mark none.
- * @param {string} source @param {Record<string, string>} fields @param {any} d */
+ * @param {string} source @param {Record<string, string>} fields
+ * @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/settings/test-source'>} d */
 function sourceTestFailed(source, fields, d) {
   const { reason, details } = d?.code
     ? { reason: d.error, details: d.details == null ? undefined : String(d.details) }

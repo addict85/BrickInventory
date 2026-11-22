@@ -206,7 +206,7 @@ export const PdfInput = z.strictObject({
     .optional(),
 });
 /** The state of a PDF job; the app polls it until it is finished. */
-export const PdfStand = z.looseObject({
+export const PdfState = z.looseObject({
   success: z.literal(true),
   status: z.string(),
   error: z.string().nullable(),
@@ -257,7 +257,7 @@ export const QuantityChanged = GenericResponse.extend({
 const NewSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
   quantity: input.pieceCount(),
-  purchase_price: input.geld('Kaufpreis'),
+  purchase_price: input.money('Kaufpreis'),
   condition: CONDITION.nullable().optional(),
   owner_user_id: IDENTIFIER.nullable().optional(),
   storage: TEXT().nullable().optional(),
@@ -313,7 +313,7 @@ export const routes = {
     input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
-      purchase_price: input.geld('Kaufpreis'),
+      purchase_price: input.money('Kaufpreis'),
       condition: CONDITION.nullable().optional(),
       owner_user_id: IDENTIFIER.nullable().optional(),
     }),
@@ -327,7 +327,7 @@ export const routes = {
   'PUT /api/v2/sets/:setNumber/alert': {
     input: z.strictObject({
       direction: v1Values(z.enum(['below', 'above']), V1_ALERT_DIRECTIONS),
-      threshold: input.geld('Schwelle', { nullable: false }),
+      threshold: input.money('Schwelle', { nullable: false }),
       condition: CONDITION.optional(),
     }),
     response: PriceAlertResponse,
@@ -353,9 +353,9 @@ export const routes = {
   'POST /api/v2/alerts/import/csv': { form: true, response: CsvImportResult },
   'POST /api/v2/sets/:setNumber/instructions': { input: WITHOUT_BODY, response: InstructionsLoaded },
   'POST /api/v2/sets/partslist-pdf': { response: PdfJob, input: PdfInput },
-  'GET /api/v2/sets/partslist-pdf/status/:jobId': { response: PdfStand },
+  'GET /api/v2/sets/partslist-pdf/status/:jobId': { response: PdfState },
   'GET /api/v2/sets/partslist-pdf/download/:jobId': { kind: 'pdf' },
-  'GET /api/v2/sets/partslist-pdf/stream/:jobId': { kind: 'stream', event: PdfStand },
+  'GET /api/v2/sets/partslist-pdf/stream/:jobId': { kind: 'stream', event: PdfState },
   'POST /api/v2/sets/add-stream': { kind: 'stream', input: NewSet },
   'GET /api/v2/sets/export/rebrickable': { kind: 'csv' },
   'POST /api/v2/sets/:setNumber/parts': { input: WITHOUT_BODY, response: PartsLoaded },

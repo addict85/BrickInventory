@@ -26,8 +26,8 @@ export function quantityRequest(body: { quantity?: unknown; quantity_delta?: unk
   return null;
 }
 
-const target = (w: QuantityRequest, bisher: number) =>
-  'absolute' in w ? w.absolute : Math.max(AT_LEAST, bisher + w.delta);
+const target = (w: QuantityRequest, previous: number) =>
+  'absolute' in w ? w.absolute : Math.max(AT_LEAST, previous + w.delta);
 
 /** Computed within the inventory lock so that web and app do not overtake each other.
  * @param marketPrice is asked BEFORE the lock and only for an increasing quantity
@@ -48,17 +48,17 @@ export async function adjustManualQuantity(
   return k.transact(
     async t => {
       const acquisitions = await repo.entriesNewestFirst(t.db, kind, uid, key);
-      const bisher = acquisitions.reduce((s, r) => s + r.quantity, 0);
-      const expected = target(wish, bisher);
-      if (expected > bisher) {
+      const previous = acquisitions.reduce((s, r) => s + r.quantity, 0);
+      const expected = target(wish, previous);
+      if (expected > previous) {
         await addPurchaseAtTag(t, kind, uid, key, {
-          quantity: expected - bisher,
+          quantity: expected - previous,
           price: mp,
           condition: condition,
           estimated: true,
         });
       }
-      let rest = bisher - expected;
+      let rest = previous - expected;
       for (const a of acquisitions) {
         if (rest <= 0) break;
         const route = Math.min(a.quantity, rest);

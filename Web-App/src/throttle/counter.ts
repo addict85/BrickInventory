@@ -15,11 +15,11 @@ type Entry = { count: number; firstAt: number; lastAt: number | null; running: n
 const fallback = () => processWide('loginFallback', () => ({ entries: new Map<string, Entry>(), reportedAt: 0 }));
 const MEMORY_AT_MOST = 5000;
 
-function inMemory(wo: string, e: unknown): void {
+function inMemory(where: string, e: unknown): void {
   const r = fallback();
   if (Date.now() - r.reportedAt < 60_000) return;
   r.reportedAt = Date.now();
-  console.warn(`[login] counter in process memory instead of the database (${wo}): ${errorMessage(e)}`);
+  console.warn(`[login] counter in process memory instead of the database (${where}): ${errorMessage(e)}`);
 }
 
 function trim(windowMs: number): void {

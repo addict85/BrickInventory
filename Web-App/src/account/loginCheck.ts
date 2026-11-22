@@ -45,9 +45,9 @@ export async function verifyEmailToken(
   k: AccountContext,
   token: string | null | undefined,
 ): Promise<{ userId: number }> {
-  const leer = token === undefined || token === null || String(token).trim() === '';
+  const empty = token === undefined || token === null || String(token).trim() === '';
   const hash = tokenDigest(String(token));
-  const id = leer ? undefined : await k.accounts.accountToEmailToken(hash);
+  const id = empty ? undefined : await k.accounts.accountToEmailToken(hash);
   if (id === undefined) failDomain('invalid', 'confirmation_link_invalid');
   const ok = await accessTransaction(k, t => t.accounts.adoptEmailNew(id, hash)).catch(duplicateAs(false));
   if (!ok) {
@@ -146,7 +146,7 @@ export async function checkCredentials(
     return refusal('too_many', 'account_daily_limit', undefined, false, true);
   const passwordRefusal = await checkPassword(k, ip, name, user, password);
   if (passwordRefusal || !user) return passwordRefusal ?? refusal('not_signed_in', 'credentials_invalid');
-  const factor = await checkSecondFactor(k, { ip, name, uid: user.id }, code, passkeyResponse);
+  const factor = await checkSecondFactor(k, { ip, name, uid: user.id }, { code, passkeyResponse });
   if ('refused' in factor) return factor.refused;
   const method = factor.method;
   // Only now, after password and second factor: the plaintext only exists on a login.
@@ -191,10 +191,10 @@ async function checkPassword(
 async function checkSecondFactor(
   k: AccountContext,
   who: { ip: string; name: string; uid: number },
-  code: string | number | null | undefined,
-  passkeyResponse: unknown,
+  factor: { code: string | number | null | undefined; passkeyResponse?: unknown },
 ): Promise<{ refused: LoginResult } | { method: LoginMethod }> {
   const { ip, name, uid } = who;
+  const { code, passkeyResponse } = factor;
   if (!(await k.factors.isActive(uid))) return { method: 'passwort' };
   const withPasskey = passkeyResponse !== undefined && passkeyResponse !== null;
   const hasPasskey = await k.factors.hasPasskeys(uid);

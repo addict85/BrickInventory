@@ -31,7 +31,7 @@ export async function accessAppliesStill(account: AccountServices, req: Request)
   }
   const header = String(req.headers.authorization || '');
   if (!header.startsWith('Bearer ')) return false;
-  return account.tokenGilt(header.slice(7));
+  return account.tokenValid(header.slice(7));
 }
 
 /** `beenden` runs at most once, as soon as the access no longer applies. A

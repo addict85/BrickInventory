@@ -104,7 +104,7 @@ export const routes = {
     input: z.strictObject({
       number: VOUCHER_NUMBER,
       pin: VOUCHER_PIN.optional(),
-      amount: input.geld('Betrag', { nullable: false, oneCode: 'amount_invalid' }),
+      amount: input.money('Betrag', { nullable: false, oneCode: 'amount_invalid' }),
       currency: VOUCHER_CURRENCY.optional(),
     }),
     response: VoucherReply,
@@ -113,7 +113,7 @@ export const routes = {
     input: z.strictObject({
       number: NUMBER_OR_MASK.optional(),
       pin: PIN_OR_MASK.optional(),
-      amount: input.geld('Betrag', { nullable: false, oneCode: 'amount_invalid' }).optional(),
+      amount: input.money('Betrag', { nullable: false, oneCode: 'amount_invalid' }).optional(),
       currency: CURRENCY_CHANGE.optional(),
     }),
     response: VoucherReply,
@@ -125,7 +125,7 @@ export const routes = {
     input: z.strictObject({
       number: VOUCHER_NUMBER.optional(),
       pin: VOUCHER_PIN.optional(),
-      amount: input.geld('Betrag', { nullable: false, oneCode: 'amount_invalid' }).optional(),
+      amount: input.money('Betrag', { nullable: false, oneCode: 'amount_invalid' }).optional(),
       currency: VOUCHER_CURRENCY.optional(),
     }),
   },

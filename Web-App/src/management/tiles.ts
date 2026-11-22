@@ -54,10 +54,10 @@ function asTile(k: { label: string; total: number }, z: LastStatus | undefined):
 
 export async function tiles(kx: ManagementContext): Promise<Record<string, Tile>> {
   const rows = await kx.jobQueue.lastPerKind(Object.values(TILES).map(k => k.kind));
-  const je = new Map(rows.map(z => [z.type, z]));
+  const byKind = new Map(rows.map(z => [z.type, z]));
   const from: Record<string, Tile> = { ...WITHOUT_JOB };
-  for (const [name, k] of Object.entries(TILES)) from[name] = asTile(k, je.get(k.kind));
-  const csv = je.get('csv_sync');
+  for (const [name, k] of Object.entries(TILES)) from[name] = asTile(k, byKind.get(k.kind));
+  const csv = byKind.get('csv_sync');
   if (csv?.status === 'running' && csv.progress?.step === 'BrickLink IDs nachladen')
     from.blIds = { ...asTile({ label: 'BrickLink IDs nachladen', total: 0 }, csv) };
   return from;

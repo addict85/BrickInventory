@@ -11,14 +11,14 @@ type Row = { id: number; storage_id: number | null };
 export async function recolorPartRow(
   k: InventoryContext,
   uid: number,
-  teil: string,
+  part: string,
   source: Row & { color: number },
   target: Row | null,
   newColor: number,
 ) {
-  const merged = await purchases.stallSameEntriesOn(k.db, uid, teil, source.color, newColor);
-  await purchases.deleteToppedUpEntries(k.db, uid, teil, source.color, newColor);
-  const moved = await purchases.recolorEntries(k.db, uid, teil, source.color, newColor);
+  const merged = await purchases.stallSameEntriesOn(k.db, uid, part, source.color, newColor);
+  await purchases.deleteToppedUpEntries(k.db, uid, part, source.color, newColor);
+  const moved = await purchases.recolorEntries(k.db, uid, part, source.color, newColor);
   if (!target) await sharedRepo.updatePartRowColor(k.db, newColor, source.id);
   else {
     if (source.storage_id && !target.storage_id) await sharedRepo.setPartLocation(k.db, source.storage_id, target.id);

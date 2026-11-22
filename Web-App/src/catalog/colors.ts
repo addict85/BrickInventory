@@ -35,6 +35,6 @@ export async function colorList(k: CatalogContext): Promise<Color[]> {
   if (loaded.length) return loaded;
   // Without Rebrickable the built-in emergency list remains; as such it is short.
   const fetched = await attempts('farben:rebrickable', k.externalSources.sources.getBrickColors());
-  if (fetched.ok && fetched.wert.length) return fetched.wert;
+  if (fetched.ok && fetched.value.length) return fetched.value;
   return FALLBACK_LIST;
 }

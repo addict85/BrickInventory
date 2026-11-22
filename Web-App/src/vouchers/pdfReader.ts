@@ -10,9 +10,9 @@ export const MAX_PAGES = 200;
 const TIMEOUT_MS = 30_000;
 
 export type PdfReadResult =
-  | { kind: 'zu_viele_seiten'; seiten: number }
+  | { kind: 'zu_viele_seiten'; pages: number }
   | { kind: 'unlesbar' }
-  | { kind: 'gelesen'; seiten: number; batch: ParsedVoucher[]; single: ParsedVoucher | 'too_large' | 'fehler' };
+  | { kind: 'gelesen'; pages: number; batch: ParsedVoucher[]; single: ParsedVoucher | 'too_large' | 'fehler' };
 
 export async function readUploadedPdf(data: Buffer): Promise<PdfReadResult> {
   let pages: number;
@@ -21,7 +21,7 @@ export async function readUploadedPdf(data: Buffer): Promise<PdfReadResult> {
   } catch {
     pages = 1;
   } // What pdf-lib cannot load, valuesFromPdf still reads as text.
-  if (pages > MAX_PAGES) return { kind: 'zu_viele_seiten', seiten: pages };
+  if (pages > MAX_PAGES) return { kind: 'zu_viele_seiten', pages: pages };
   const batch = await pagesOrNone(data);
   let single: ParsedVoucher | 'too_large' | 'fehler';
   try {
@@ -29,7 +29,7 @@ export async function readUploadedPdf(data: Buffer): Promise<PdfReadResult> {
   } catch (e) {
     single = e instanceof PdfTooLarge ? 'too_large' : 'fehler';
   }
-  return { kind: 'gelesen', seiten: pages, batch, single };
+  return { kind: 'gelesen', pages: pages, batch, single };
 }
 
 /** In a worker; when the server runs from sources (tsx) there is no .js and it stays in-process. */

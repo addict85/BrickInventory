@@ -127,7 +127,7 @@ const noMarket = () =>
 const noPnl = () => html`<span class="text-mut fin-guv-empty">—</span>`;
 
 /** The numbers of a row: of the acquisition if there is one, else of the item. avg_price first — as
- * everywhere since the price-model switch. @param {any} it @param {any} acq */
+ * everywhere since the price-model switch. @param {ManualItem} it @param {ManualAcquisition | null} acq */
 function pmValues(it, acq) {
   const src = acq ?? it;
   const purchase = src.purchase_price != null ? Number(src.purchase_price) : null;
@@ -140,7 +140,7 @@ function pmValues(it, acq) {
   };
 }
 
-/** @param {any} it */
+/** @param {ManualItem} it */
 function pmImage(it) {
   const kind = it.fig_number ? 'figur' : 'teil';
   const source = it.image_local || it.image_url;

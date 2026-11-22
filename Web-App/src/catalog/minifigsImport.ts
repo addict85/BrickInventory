@@ -28,17 +28,17 @@ export async function loadSetMinifigs(
         image_url: f.image_url || null,
       }))
     : await k.externalSources.sources.getSetMinifigs(setNumber);
-  const jeNumber = new Map<string, SetFig>();
+  const perNumber = new Map<string, SetFig>();
   for (const f of raw) {
     if (!f.fig_number) continue;
-    const alt = jeNumber.get(f.fig_number);
-    jeNumber.set(
+    const alt = perNumber.get(f.fig_number);
+    perNumber.set(
       f.fig_number,
       alt ? { ...alt, quantity: alt.quantity + (f.quantity || 1) } : { ...f, quantity: f.quantity || 1 },
     );
   }
   // From the catalog the quantities are already merged; only what came from the source is written.
-  return { minifigs: [...jeNumber.values()], fromSource: !fromCatalog.length };
+  return { minifigs: [...perNumber.values()], fromSource: !fromCatalog.length };
 }
 
 /** In the caller's transaction (t.katalog), next to the entry in the inventory. */

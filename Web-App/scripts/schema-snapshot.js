@@ -62,7 +62,7 @@ async function schemaText(db) {
   for (const t of tables) {
     const rows = fromValue(columns, t).map(
       s =>
-        `  ${s.column_name} ${s.typ}${s.not_null ? ' NOT NULL' : ''}${s.default_expr != null ? ` DEFAULT ${s.default_expr}` : ''}`,
+        `  ${s.column_name} ${s.type}${s.not_null ? ' NOT NULL' : ''}${s.default_expr != null ? ` DEFAULT ${s.default_expr}` : ''}`,
     );
     rows.push(...fromValue(limits, t).map(k => `  CONSTRAINT ${k.name} ${k.def}`));
     parts.push('', `CREATE TABLE ${t} (`, rows.join(',\n'), ');');

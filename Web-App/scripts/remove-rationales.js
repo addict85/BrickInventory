@@ -100,14 +100,14 @@ function files(d, out = []) {
   return out;
 }
 
-/** @param {string} wurzel */
-function lauf(wurzel, checkOnly = false) {
+/** @param {string} root */
+function run(root, checkOnly = false) {
   const changed = [];
-  for (const f of files(wurzel)) {
+  for (const f of files(root)) {
     const alt = fs.readFileSync(f, 'utf8');
     const fresh = removeReferences(alt);
     if (fresh === alt) continue;
-    changed.push(path.relative(wurzel, f));
+    changed.push(path.relative(root, f));
     if (!checkOnly) fs.writeFileSync(f, fresh);
   }
   return changed;
@@ -115,8 +115,8 @@ function lauf(wurzel, checkOnly = false) {
 
 if (require.main === module) {
   const check = process.argv.includes('--pruefen');
-  const wurzel = process.argv.slice(2).find(a => !a.startsWith('--')) ?? WEB;
-  const changed = lauf(path.resolve(wurzel), check);
+  const root = process.argv.slice(2).find(a => !a.startsWith('--')) ?? WEB;
+  const changed = run(path.resolve(root), check);
   console.log(`[begruendungen] ${changed.length} Dateien ${check ? 'mit Verweisen' : 'bereinigt'}`);
   if (check && changed.length) {
     console.log(changed.join('\n'));
@@ -124,4 +124,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { removeReferences, lauf };
+module.exports = { removeReferences, run };

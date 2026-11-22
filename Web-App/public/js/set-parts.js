@@ -37,7 +37,8 @@ function usedInList(sets) {
 }
 
 /** The item's own rows: quantity, color, category, spare flag and, for parts, the storage location.
- * @param {string} type @param {string} id @param {number} color @param {any} item */
+ * @param {string} type @param {string} id @param {number} color
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', `/v2/parts/${string}/${string}/sets`>['item'] | import('../../frontend-types/api').ApiResponse<'GET', `/v2/minifigs/${string}/sets`>['item']} item */
 function itemRows(type, id, color, item) {
   const rows = [];
   // Quantity for display only: it comes from the sets' inventories. toLocaleString as on the parts tile —

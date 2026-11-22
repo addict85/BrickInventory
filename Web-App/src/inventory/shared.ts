@@ -1,7 +1,7 @@
 import * as repo from './repository/shared';
 import * as purchases from './repository/purchases';
 import { isSparePart, NO_COLOR } from '../infra/validate';
-import { asIds, type Sicht } from '../household';
+import { asIds, type Viewer } from '../household';
 import type { InventoryContext } from './context';
 
 // What sets, parts and figures need in common.
@@ -114,7 +114,7 @@ export interface ComponentResponse {
 
 export async function usingSets(
   k: InventoryContext,
-  uidsChoice: Sicht | number[],
+  uidsChoice: Viewer | number[],
   table: 'parts' | 'minifigs',
   key: Record<string, string | number>,
 ): Promise<ComponentResponse> {
@@ -132,7 +132,7 @@ export async function usingSets(
 
   // The header from the same rows as the list; the image from the first one with an image.
   const first = rows[0];
-  const withImage = rows.find(r => r.teil_image_local || r.teil_image_url);
+  const withImage = rows.find(r => r.part_image_local || r.part_image_url);
   const item: ComponentHeader | null = first
     ? {
         number: String(first.number),
@@ -141,8 +141,8 @@ export async function usingSets(
         color_name: first.color_name ?? null,
         color_hex: first.color_hex ?? null,
         category_name: first.category_name ?? null,
-        image_local: withImage?.teil_image_local ?? null,
-        image_url: withImage?.teil_image_url ?? null,
+        image_local: withImage?.part_image_local ?? null,
+        image_url: withImage?.part_image_url ?? null,
         // istErsatzteil(): aggregates come as strings, and "0" is truthy.
         is_spare: isSparePart(first.is_spare),
         storage: first.storage ?? null,

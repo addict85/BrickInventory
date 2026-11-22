@@ -1,6 +1,6 @@
 /** One rule for three kinds, so the webapp and the app don't drift apart. */
 import { moneyInput } from '../infra/money';
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { Degradations } from '../infra/result';
 import { inventoryKey } from '../../db/txLock';
 import { failDomain, type ErrorCode } from '../infra/errorTexts';
@@ -114,10 +114,10 @@ async function moveToOwner(
   uid: number,
   id: number,
   keys: Keys,
-  ownerReq: unknown,
+  body: Change,
 ) {
   const from = await k.household.moveSource(uid, kind, id);
-  const to = await k.household.writeTargetOrNull(uid, ownerReq);
+  const to = await k.household.writeTargetOrNull(uid, body.owner_user_id);
   if (to === null) failDomain('forbidden', 'no_write_access');
   if (from === to) return { unchanged: true };
   const moved = await k.transact(
@@ -137,18 +137,18 @@ async function incomingPrice(
   k: CollectionContext,
   kind: AcquisitionKind,
   at: { uid: number; id: number; keys: Keys },
-  rawPrice: unknown,
-  condition: unknown,
+  body: Change,
   ab: Degradations,
 ): Promise<{ value: number | null; estimated: boolean }> {
-  const p = moneyInput(rawPrice, priceColumn(kind) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
+  const { condition } = body;
+  const p = moneyInput(body[priceColumn(kind)], priceColumn(kind) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
   if (p !== null) return { value: p, estimated: false };
-  const bisher = condition ? null : ((await beforehand(k, kind, at.uid, at.id, at.keys))?.condition ?? null);
-  const market = kinds(k)[kind].resolvePrice(at.uid, at.keys, String(condition || bisher || '') || null);
+  const previous = condition ? null : ((await beforehand(k, kind, at.uid, at.id, at.keys))?.condition ?? null);
+  const market = kinds(k)[kind].resolvePrice(at.uid, at.keys, String(condition || previous || '') || null);
   return { value: await ab.orElse('marktpreis', market, null), estimated: true };
 }
 
-function newDateOf(date: unknown): string | null {
+function newDateOf({ date }: Change): string | null {
   if (date === undefined || date === null || date === '') return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) failDomain('invalid', 'date_invalid');
   return String(date);
@@ -170,7 +170,7 @@ async function changeInTransaction(
   const acq = await rowInWriteScope(t, kind, wids, id, keys);
   // From here on the row's owner counts, not the viewer.
   const ownerId = Number(acq.user_id);
-  const newDate = newDateOf(body.date);
+  const newDate = newDateOf(body);
   const hasCondition = condition !== undefined && condition !== null;
   const targetCondition = hasCondition ? conditionOf(condition) : acq.condition || 'N';
   const targetEstimated = price ? price.estimated && price.value != null : !!acq.price_estimated;
@@ -186,7 +186,7 @@ async function changeInTransaction(
   const hasQuantity = quantity !== undefined && quantity !== null;
   await t.inventory.acquisition.change(kind, id, wids, {
     ...(hasQuantity ? { quantity: inventoryQuantity(quantity, 1) } : {}),
-    ...(price ? { price: { wert: price.value, estimated: targetEstimated } } : {}),
+    ...(price ? { price: { value: price.value, estimated: targetEstimated } } : {}),
     ...(hasCondition ? { condition: targetCondition } : {}),
     ...(newDate ? { date: newDate } : {}),
   });
@@ -204,12 +204,11 @@ export async function changeAcquisition(
   const a = kinds(k)[kind];
   const rawPrice = body[priceColumn(kind)];
   const ownerReq = body.owner_user_id;
-  if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '')
-    return moveToOwner(k, kind, uid, id, keys, ownerReq);
+  if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') return moveToOwner(k, kind, uid, id, keys, body);
 
   const at = { uid, id, keys };
   const ab = new Degradations();
-  const price = rawPrice !== undefined ? await incomingPrice(k, kind, at, rawPrice, body.condition, ab) : undefined;
+  const price = rawPrice !== undefined ? await incomingPrice(k, kind, at, body, ab) : undefined;
   const owner = (await beforehand(k, kind, uid, id, keys))?.user_id ?? uid;
   await k.transact(t => changeInTransaction(t, a, kind, at, body, price), {
     locks: [{ account: owner, key: inventoryKey(kind, keys) }],
@@ -241,6 +240,6 @@ export async function deleteAcquisition(
   return response(k, kind, uid, keys, { new_quantity: quantity ?? 0 });
 }
 
-export async function setAcquisitionsForSet(k: CollectionContext, sicht: Sicht | number[], setNumber: string) {
-  return k.setAcquisitions.inScope(await k.household.scopeFrom(sicht), setNumber);
+export async function setAcquisitionsForSet(k: CollectionContext, scope: Viewer | number[], setNumber: string) {
+  return k.setAcquisitions.inScope(await k.household.scopeFrom(scope), setNumber);
 }

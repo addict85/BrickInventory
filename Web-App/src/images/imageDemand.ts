@@ -13,7 +13,7 @@ export const TICK_MS = 20_000;
 export const NOTE_VALID_MS = 3 * 24 * 60 * 60 * 1000;
 export const IMAGE_DEMAND_KEY = 'image_demand';
 
-export function requestsJeMinute(): number {
+export function requestsPerMinute(): number {
   return BATCH * (60_000 / TICK_MS);
 }
 
@@ -36,7 +36,7 @@ export async function imageDemandKick(k: ImagesContext): Promise<void> {
 
 /** One INSERT per image request drained the pool with a tile wall. Whatever is in the buffer
  * during a crash is requested again by the next call. */
-const puffer = (k: ImagesContext) => k.compartments.slot('image_demand:puffer', () => new Map<string, string>()); // url → set_number
+const buffer = (k: ImagesContext) => k.compartments.slot('image_demand:puffer', () => new Map<string, string>()); // url → set_number
 const ticks = (k: ImagesContext) => k.compartments.slot('image_demand:takte', (): NodeJS.Timeout[] => []);
 
 /** Once per set in 15 minutes, at most 5000 remembered: the image proxy asks for every
@@ -51,7 +51,7 @@ export function imageOnceReserve(k: ImagesContext, url: string, setNumber: strin
 /** Never holds up the request. */
 export function rememberUsed(k: ImagesContext, url: string, setNumber: string | null): void {
   if (!setNumber) return;
-  if (puffer(k).size < 500) puffer(k).set(url, setNumber);
+  if (buffer(k).size < 500) buffer(k).set(url, setNumber);
 }
 
 export async function noteImageDemand(k: ImagesContext, urls: string[], sets: (string | null)[]): Promise<void> {
@@ -60,16 +60,16 @@ export async function noteImageDemand(k: ImagesContext, urls: string[], sets: (s
 
 /** Written via the context of whoever started the tick (setUpImageDemand). */
 export async function writeBuffer(k: ImagesContext): Promise<void> {
-  const _puffer = puffer(k);
-  if (!_puffer.size) return;
-  const urls = [..._puffer.keys()];
-  const sets = urls.map(u => _puffer.get(u)!);
-  _puffer.clear();
+  const _buffer = buffer(k);
+  if (!_buffer.size) return;
+  const urls = [..._buffer.keys()];
+  const sets = urls.map(u => _buffer.get(u)!);
+  _buffer.clear();
   // If writing fails, the buffer goes back and the error to the tick: nothing gets lost.
   try {
     await noteImageDemand(k, urls, sets);
   } catch (e) {
-    for (const [i, u] of urls.entries()) _puffer.set(u, sets[i]!);
+    for (const [i, u] of urls.entries()) _buffer.set(u, sets[i]!);
     throw e;
   }
   await imageDemandKick(k);

@@ -1,6 +1,6 @@
 import type { DbInterface, Hit } from '../../../db/database';
 
-export async function hatInstructions(tx: DbInterface, uid: number, sn: string): Promise<boolean> {
+export async function hasInstructions(tx: DbInterface, uid: number, sn: string): Promise<boolean> {
   return !!(await tx.get<Hit>('SELECT 1 AS ok FROM instructions WHERE user_id=$1 AND set_number=$2 LIMIT 1', [
     uid,
     sn,

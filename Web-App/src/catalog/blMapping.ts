@@ -1,17 +1,17 @@
 // BrickLink numbers live only in bl_mapping.
 
-import type { BlArt } from '../../db/blMappingSql';
+import type { BlKind } from '../../db/blMappingSql';
 import { writeBlNumbers } from './repository/blMapping';
 import type { CatalogContext } from './context';
 
 /** The kind is INSERTED into SQL snippets (no value can be bound there);
  * the type prevents anything else from ever ending up there. */
-export type { BlArt };
+export type { BlKind };
 /** In db/ so that repositories can insert them. */
 
 /** Only for verified sources (Rebrickable, BrickLink); the same number means
  * "no differing one". What an account enters goes to rememberOwnBlNumber. */
-export function rememberBlNumber(k: CatalogContext, kind: BlArt, rbId: string, blId: string): Promise<void> {
+export function rememberBlNumber(k: CatalogContext, kind: BlKind, rbId: string, blId: string): Promise<void> {
   return k.blMapping.writeBlNumber(kind, rbId, blId);
 }
 
@@ -19,7 +19,7 @@ export function rememberBlNumber(k: CatalogContext, kind: BlArt, rbId: string, b
 export function rememberOwnBlNumber(
   k: CatalogContext,
   uid: number,
-  kind: BlArt,
+  kind: BlKind,
   rbId: string,
   blId: string,
 ): Promise<void> {
@@ -31,7 +31,7 @@ const accounts = (k: number | number[] | null | undefined): number[] => (k == nu
 /** The last entry per number. */
 export async function rememberBlNumbers(
   k: CatalogContext,
-  kind: BlArt,
+  kind: BlKind,
   pairs: { rbId: string; blId: string }[],
   dbh?: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
 ) {
@@ -47,7 +47,7 @@ export async function rememberBlNumbers(
 
 /** So that the same part is not queried again and again; a mapping
  * once found stays. */
-export function rememberBlNumberUnchanged(k: CatalogContext, kind: BlArt, rbId: string): Promise<void> {
+export function rememberBlNumberUnchanged(k: CatalogContext, kind: BlKind, rbId: string): Promise<void> {
   return k.blMapping.noteLookedUp(kind, rbId);
 }
 
@@ -55,7 +55,7 @@ export function rememberBlNumberUnchanged(k: CatalogContext, kind: BlArt, rbId: 
  * together. Whoever must tell them apart asks blFetchNumber. */
 export function blNumberOf(
   k: CatalogContext,
-  kind: BlArt,
+  kind: BlKind,
   rbId: string,
   account?: number | number[] | null,
 ): Promise<string | null> {
@@ -66,7 +66,7 @@ export function blNumberOf(
  * failures and needs this distinction. */
 export function blFetchNumber(
   k: CatalogContext,
-  kind: BlArt,
+  kind: BlKind,
   rbId: string,
   account?: number | number[] | null,
 ): Promise<string | null> {
@@ -76,7 +76,7 @@ export function blFetchNumber(
 // One query for many numbers; every row comes back so that nothing is asked twice.
 export async function blFetchNumbers(
   k: CatalogContext,
-  kind: BlArt,
+  kind: BlKind,
   rbIds: string[],
   account?: number | number[] | null,
 ): Promise<Map<string, string>> {
@@ -92,8 +92,8 @@ export function rememberBlColorNumber(k: CatalogContext, colorId: number, blColo
 }
 
 /** Rebrickable delivers `ext_ids` as a list or the list directly. */
-type ExterneNumbers = { external_ids?: { BrickLink?: { ext_ids?: number[] } & number[] } } | null | undefined;
-export function blColorNumberFrom(color: ExterneNumbers): number | null {
+type ExternalNumbers = { external_ids?: { BrickLink?: { ext_ids?: number[] } & number[] } } | null | undefined;
+export function blColorNumberFrom(color: ExternalNumbers): number | null {
   const id = color?.external_ids?.BrickLink?.ext_ids?.[0] ?? color?.external_ids?.BrickLink?.[0];
   return id ?? null;
 }

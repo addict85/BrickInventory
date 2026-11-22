@@ -60,7 +60,7 @@ export function asIds(v: ScopeInput): Scope {
 
 /** Who asks and which accounts of their household they want to see (`accounts`). The
  * scope is resolved by the service, not by the route: every caller gets the same rule. */
-export interface Sicht {
+export interface Viewer {
   readonly user: number;
   readonly accounts?: string | undefined;
 }

@@ -276,7 +276,7 @@ async function updateVoucher(v) {
 
 /** The PDF did not yield enough. What WAS read is filled in — the user adds the rest and presses once
  * more, with the same file. That is the difference between "did not work" and "the amount is still
- * missing here". @param {any} g what the server read @param {VoucherInput} v */
+ * missing here". @param {{ number?: string, pin?: string, amount?: number | string | null, currency?: string }} g what the server read @param {VoucherInput} v */
 function fillFromPdf(g, v) {
   if (g.number && !v.number) el('v-number').value = g.number;
   if (g.pin && !v.pin) el('v-pin').value = g.pin;

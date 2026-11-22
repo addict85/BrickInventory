@@ -178,9 +178,9 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const active = await imagesInProgress(k, ab, open);
   const { reDl, running: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
   // "running" means: has recently done something, according to the database.
-  const lastRun = await readRunState<{ time?: number }>(k, ab, 'imgqueue_last_run');
-  const sinceRun = lastRun?.time ? k.clock.now() - lastRun.time : null;
-  const jobRunning = isFresh(k, lastRun?.time);
+  const lastRun = await readRunState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
+  const sinceRun = lastRun?.zeit ? k.clock.now() - lastRun.zeit : null;
+  const jobRunning = isFresh(k, lastRun?.zeit);
   const counts = { open, finished, openCatalog, active, jobRunning, sinceRun };
   const basisSub = imageTileSub(counts);
   const parts = imageTileParts(counts);
@@ -200,7 +200,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
     progress: finished,
     total: finished + open + openCatalog,
     queue: openCatalog,
-    queueLastRun: lastRun?.time || null,
+    queueLastRun: lastRun?.zeit || null,
     lastRun: job?.lastRun || null,
     canRedownload: true,
   };

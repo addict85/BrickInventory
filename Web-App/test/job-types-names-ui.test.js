@@ -4,7 +4,7 @@
  * A new kind without an entry in KIND_NAMES turns red here.
  *
  * Counter-checks (measured 16.11.2026, each alone, bundle rebuilt):
- *   A  in monitor.js the entry katalog_nachzug deleted from KIND_NAMES → red: “katalog_nachzug”
+ *   A  in job-names.js the entry catalog_followup deleted from KIND_NAMES → red: “catalog_followup”
  *      stands as a key in the table (de and en)
  *   B  in en.js monitor.kind.catalog_catch_up deleted → red: i18n.test.js (key sets); green here
  *      because tRaw falls back to the German text — that test catches the gap.

@@ -20,7 +20,7 @@ import { legoFetch } from '../../clients/legoBalance';
 export { legoFetch };
 export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoBalance';
 export type { Fetch, Rate } from '../../clients/ecb';
-export type { RbSetTeil } from '../../clients/rebrickable';
+export type { RbSetPart } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
 /** The clients of an access, flat like the exports used to be; `setAngaben` is the one from

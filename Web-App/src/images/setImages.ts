@@ -88,10 +88,10 @@ export async function downloadSetImage(
     return null;
   }
   // Finished first, then visible: the image proxy would otherwise deliver half a file.
-  const teil = `${localPath}.${process.pid}.teil`;
+  const part = `${localPath}.${process.pid}.teil`;
   // On a fresh installation the folder is still missing.
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
-  await fs.promises.writeFile(teil, buf);
-  await fs.promises.rename(teil, localPath);
+  await fs.promises.writeFile(part, buf);
+  await fs.promises.rename(part, localPath);
   return relPath;
 }

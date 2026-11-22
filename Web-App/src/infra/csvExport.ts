@@ -52,7 +52,7 @@ export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
 }
 
 /** @returns ISO date or null if nothing usable is in it */
-export function csvDatum(raw: unknown) {
+export function csvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 
@@ -94,8 +94,8 @@ export function csvReadIn(csvText: string): {
     // key that writes into the prototype chain.
     columns: (header: string[]) =>
       header.map(name => {
-        const rein = String(name || '').trim();
-        return DANGEROUS_COLUMNS.has(rein) ? false : rein;
+        const clean = String(name || '').trim();
+        return DANGEROUS_COLUMNS.has(clean) ? false : clean;
       }),
     skip_empty_lines: true,
     trim: true,
@@ -151,7 +151,7 @@ export function csvSharedFields(row: CsvRow): {
   return {
     quantity: parseInt(String(csvFirst(row, 'quantity', 'Anzahl') || '1').replace(/[^0-9]/g, ''), 10) || 1,
     price,
-    recordedAt: csvDatum(csvFirst(row, 'acquired_at', 'erfassungsdatum')),
+    recordedAt: csvDate(csvFirst(row, 'acquired_at', 'erfassungsdatum')),
     condition: (csvFirst(row, 'condition', 'zustand') || '').trim().toUpperCase(),
   };
 }

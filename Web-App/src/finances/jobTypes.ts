@@ -6,21 +6,21 @@ import { runPriceRefresh } from './priceRun';
 import { rateJob } from './exchangeRates';
 import type { FinancesContext } from './context';
 
-const LEER = z.object({});
+const EMPTY = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    exchange_rates: typeof LEER;
-    prices: typeof LEER;
+    exchange_rates: typeof EMPTY;
+    prices: typeof EMPTY;
   }
 }
 
 export function financesJobTypes(k: FinancesContext): Login[] {
   return [
-    jobKind({ kind: 'exchange_rates', payload: LEER, run: (_n, l) => rateJob(k, undefined, l) }),
+    jobKind({ kind: 'exchange_rates', payload: EMPTY, run: (_n, l) => rateJob(k, undefined, l) }),
     jobKind({
       kind: 'prices',
-      payload: LEER,
+      payload: EMPTY,
       run: (_n, l) => runPriceRefresh(k, l),
       exclusive: true,
       crossAccount: 'Preise aller Sets',

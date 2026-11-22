@@ -199,7 +199,7 @@ export function writeSetParts(
   numbers: string[],
   colors: number[],
   quantities: number[],
-  ersatz: boolean[],
+  spare: boolean[],
 ) {
   return dbh.run(
     `
@@ -207,7 +207,7 @@ export function writeSetParts(
     SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::boolean[]) AS x(p, f, q, s)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`,
-    [setNumber, numbers, colors, quantities, ersatz],
+    [setNumber, numbers, colors, quantities, spare],
   );
 }
 

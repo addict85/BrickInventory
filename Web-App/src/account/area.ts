@@ -55,7 +55,7 @@ function loginAndDevices(k: AccountContext) {
     rotateToken: bound(k)(deviceToken.rotateToken),
     deleteToken: bound(k)(deviceToken.deleteToken),
     userForToken: bound(k)(deviceToken.userForToken),
-    tokenGilt: bound(k)(deviceToken.tokenGilt),
+    tokenValid: bound(k)(deviceToken.tokenValid),
   };
 }
 

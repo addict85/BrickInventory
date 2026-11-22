@@ -11,5 +11,5 @@ export type { Acquisition, NewSet, SetRecorded, ExistingSet, Progress } from './
 export type { Shift } from './setMove';
 export type { BarcodeHits } from './barcode';
 export type { ImportRow } from './csvImport';
-export type { CatalogPart, ListenTeil, SetMaster } from './rows';
+export type { CatalogPart, ListedPart, SetMaster } from './rows';
 export { SetCsvPayload } from './csvImportRun';

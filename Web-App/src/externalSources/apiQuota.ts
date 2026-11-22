@@ -10,20 +10,20 @@ const DEFAULTS: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRIC
 
 /** Per account (except admins): otherwise a sub-account would use up
  * everyone's quota. */
-export const SHARE_JE_ACCOUNT = 0.25;
+export const SHARE_PER_ACCOUNT = 0.25;
 
 /** All non-admins together; the other half stays with the admins and the
  * background. Counted in the row `account = -1`. */
 export const SHARE_ALL_ACCOUNTS = 0.5;
 const ALL_ACCOUNTS = -1;
 
-const today = (k: ForeignSourcesContext) => k.clock.datum().toISOString().slice(0, 10);
+const today = (k: ForeignSourcesContext) => k.clock.date().toISOString().slice(0, 10);
 
 export async function limitTheSource(k: ForeignSourcesContext, apiName: ApiName): Promise<number> {
   return parseInt(await k.settings.globalValue(`api_limit_${apiName}`, ''), 10) || DEFAULTS[apiName] || 4000;
 }
 
-const limitJeAccount = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_JE_ACCOUNT));
+const limitPerAccount = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_PER_ACCOUNT));
 const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_ALL_ACCOUNTS));
 
 /** Atomic: the upsert only increments below the limit, and if the account's limit
@@ -43,13 +43,13 @@ export async function checkAndCountQuota(k: ForeignSourcesContext, apiName: ApiN
       if (total === null) return { allowed: false, count: limit, limit, remaining: 0 };
       if (account && !account.admin) {
         const all = await count(t.db, ALL_ACCOUNTS, limitAllAccounts(limit));
-        const own = all === null ? null : await count(t.db, account.id, limitJeAccount(limit));
+        const own = all === null ? null : await count(t.db, account.id, limitPerAccount(limit));
         if (own === null) throw Object.assign(new Error('kontingent_je_konto'), { accountFull: true });
       }
       return { allowed: true, count: total, limit, remaining: limit - total };
     })
     .catch((e: { accountFull?: boolean }) => {
-      if (e?.accountFull) return { allowed: false, count: 0, limit, remaining: 0, jeAccount: true };
+      if (e?.accountFull) return { allowed: false, count: 0, limit, remaining: 0, perAccount: true };
       throw e;
     });
 }
@@ -67,10 +67,10 @@ export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const s = await quotaOverview(kx, apiName);
   const account = currentAccount();
   if (!account || account.admin || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await kx.apiQuota.callsJeAccount(s.date, apiName, account.id, ALL_ACCOUNTS);
+  const z = await kx.apiQuota.callsPerAccount(s.date, apiName, account.id, ALL_ACCOUNTS);
   const state = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
-    allowed: state(account.id) < limitJeAccount(s.limit) && state(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
+    allowed: state(account.id) < limitPerAccount(s.limit) && state(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
     limit: s.limit,
   };
 }

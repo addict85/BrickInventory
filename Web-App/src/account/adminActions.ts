@@ -149,8 +149,8 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
     k,
     () => null,
     async t => {
-      const { gilt } = await t.takeovers.takeDue();
-      const done = gilt.filter(u => isTakeover(u.type));
+      const { valid } = await t.takeovers.takeDue();
+      const done = valid.filter(u => isTakeover(u.type));
       for (const u of done) {
         if (u.password_hash) await t.accounts.setPasswordHash(u.target_id, u.password_hash);
         else await t.factors.disable(u.target_id);
@@ -162,7 +162,7 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
           u.password_hash ? 'password_set' : 'second_factor_removed',
         );
       }
-      return { done, teardown: gilt.filter(u => !isTakeover(u.type)) };
+      return { done, teardown: valid.filter(u => !isTakeover(u.type)) };
     },
   );
   for (const u of done) {

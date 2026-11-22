@@ -65,7 +65,7 @@ function catalogServices(k: CatalogContext) {
     catalogEntry: bound(k)(bricklinkPrices.catalogEntry),
     emptySubsetsCache: bound(k)(bricklinkPrices.clearSubsetsCache),
     emptyCatalogCache: bound(k)(bricklinkPrices.clearCatalogCache),
-    cacheStand: bound(k)(bricklinkPrices.getCacheStats),
+    cacheState: bound(k)(bricklinkPrices.getCacheStats),
     priceGuide: bound(k)(bricklinkPrices.priceGuideQuery),
     bricksetList: bound(k)(bricksetFollowUp.bricksetList),
     enqueueInstruction: bound(k)(instructionJob.enqueueInstruction),
@@ -106,7 +106,7 @@ function catalogServices(k: CatalogContext) {
     /** PDF jobs of an account: trigger, track, discard; the cleanup across all. */
     pdf: {
       start: bound(k)(pdfJobs.startPdfJob),
-      lies: bound(k)(pdfJobs.readJob),
+      read: bound(k)(pdfJobs.readJob),
       finishedFile: bound(k)(pdfJobs.finishedFile),
       remove: bound(k)(pdfJobs.deleteJob),
       cleanUp: bound(k)(pdfJobs.cleanOldPdfJobs),

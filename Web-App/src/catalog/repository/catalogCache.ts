@@ -28,10 +28,10 @@ export async function setInCatalog(db: DbInterface, number: string): Promise<boo
   return !!r;
 }
 
-export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
+export type BricklinkKind = 'GEAR' | 'BOOK' | 'NONE';
 
 /** NONE means "no price", with a timestamp. */
-export async function rememberBricklinkKind(db: DbInterface, number: string, kind: BricklinkArt): Promise<void> {
+export async function rememberBricklinkKind(db: DbInterface, number: string, kind: BricklinkKind): Promise<void> {
   if (kind === 'NONE') {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,true)

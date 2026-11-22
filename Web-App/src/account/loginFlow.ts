@@ -7,7 +7,7 @@ import { tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
 import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
 import { baseUrl, hintWithoutBaseUrl, viaTls } from '../infra/baseUrl';
-import { tlsStand } from '../infra/tlsRoot';
+import { tlsState } from '../infra/tlsRoot';
 import { failDomain } from '../infra/errorTexts';
 import { passwordLack } from '../infra/passwordRule';
 import { attempts, valueOr } from '../infra/result';
@@ -85,7 +85,7 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
   const { token, pairing } = await QR.create(k, uid, days);
   hintInBackground(k, uid, 'qr_access_added');
   // `fp` only with TLS: the app pins the root of the internal CA with it.
-  const ca = viaTls(basis) ? await tlsStand() : null;
+  const ca = viaTls(basis) ? await tlsState() : null;
   return {
     token,
     pairing,
@@ -99,8 +99,8 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
 /** The name from the table: with an app token there is no session that carries it. */
 export async function changeOwnPasswordChecked(k: AccountContext, uid: number, fresh: string, revokePasskeys: boolean) {
   const account = await k.accounts.accountShort(uid);
-  const mangel = passwordLack(fresh, account?.username);
-  if (mangel) failDomain('invalid', mangel);
+  const lack = passwordLack(fresh, account?.username);
+  if (lack) failDomain('invalid', lack);
   await K.changeOwnPassword(k, uid, fresh, { revokePasskeys });
   hintInBackground(k, uid, 'password_changed');
   return account;

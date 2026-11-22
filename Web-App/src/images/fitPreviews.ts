@@ -12,7 +12,7 @@ import type { ImagesContext } from './context';
 export const FITTED_MARKER = 'vorschauen_eingepasst';
 const OLD_EDGE = 200;
 
-async function masse(file: string): Promise<{ width: number; height: number } | null> {
+async function dimensions(file: string): Promise<{ width: number; height: number } | null> {
   const fd = await fs.promises.open(file, 'r').catch(withoutMissingFile('vorschau:masse', null));
   if (!fd) return null;
   try {
@@ -26,9 +26,9 @@ async function masse(file: string): Promise<{ width: number; height: number } | 
 
 /** Only the old crop looked like this: exactly 200 × 200 for an original that is not square. */
 async function cropped(original: string, preview: string): Promise<boolean> {
-  const v = await masse(preview);
+  const v = await dimensions(preview);
   if (!v || v.width !== OLD_EDGE || v.height !== OLD_EDGE) return false;
-  const o = await masse(original);
+  const o = await dimensions(original);
   return !!o && o.height > 0 && Math.abs(o.width / o.height - 1) > 0.02;
 }
 
@@ -61,7 +61,7 @@ export async function fitTailoredPreviews(
     await fs.promises.rm(preview, { force: true });
     replaced++;
   }
-  await k.jobQueue.setState(FITTED_MARKER, k.clock.datum().toISOString());
+  await k.jobQueue.setState(FITTED_MARKER, k.clock.date().toISOString());
   if (replaced) console.log(`  🖼️  ${replaced} zugeschnittene Vorschauen neu eingepasst`);
   return replaced;
 }

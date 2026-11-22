@@ -9,7 +9,7 @@ export function removeStartupScaffold() {
   G('start-skeleton')?.remove();
 }
 
-/** Main bar of the startup screen. @param {any} s the startup status */
+/** Main bar of the startup screen. @param {NonNullable<Awaited<ReturnType<typeof startupStatus>>>} s the startup status */
 function showStartupMain(s) {
   const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
   const stepEl = G('startup-step');

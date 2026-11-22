@@ -25,7 +25,7 @@ function check(web) {
     )
     .filter(n => !['node_modules', 'dist', 'coverage', 'data', '.git'].includes(n))
     .concat(EARLIER);
-  const muster = new RegExp(
+  const pattern = new RegExp(
     `(?<![\\w./-])((?:${folder.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${EXTENSIONS}))\\b`,
     'g',
   );
@@ -39,11 +39,11 @@ function check(web) {
   const sources = [];
   /** @type {string[]} */
   const docs = [path.join(web, 'README.md')];
-  (function lauf(/** @type {string} */ d) {
+  (function run(/** @type {string} */ d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (!OUTER_BEFORE.has(e.name)) lauf(p);
+        if (!OUTER_BEFORE.has(e.name)) run(p);
       } else if (/\.(ts|js|sh)$/.test(e.name) && !e.name.startsWith('app.bundle.js')) sources.push(p);
       else if (e.name.endsWith('.md') && path.relative(web, p).startsWith(`docs${path.sep}`)) docs.push(p);
     }
@@ -52,20 +52,20 @@ function check(web) {
   /** @type {string[]} */
   const tot = [];
   let seen = 0;
-  /** @param {string} fileName @param {(z: string) => string} teil the part of a line to check */
-  const lies = (fileName, teil) =>
+  /** @param {string} fileName @param {(z: string) => string} part the part of a line to check */
+  const read = (fileName, part) =>
     fs
       .readFileSync(fileName, 'utf8')
       .split('\n')
       .forEach((z, i) => {
-        for (const m of teil(z).matchAll(muster)) {
+        for (const m of part(z).matchAll(pattern)) {
           const filePath = m[1] ?? '';
           seen++;
           if (!exists(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
         }
       });
-  for (const f of sources) lies(f, f.endsWith('.sh') ? commentSh : commentJs);
-  for (const f of docs) if (fs.existsSync(f)) lies(f, z => z);
+  for (const f of sources) read(f, f.endsWith('.sh') ? commentSh : commentJs);
+  for (const f of docs) if (fs.existsSync(f)) read(f, z => z);
   return { tot, seen, files: sources.length + docs.length };
 }
 

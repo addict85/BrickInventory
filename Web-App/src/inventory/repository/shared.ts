@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import { inAccountCurrency, accountCurrencyJoin, subsetFrom } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, minifigViewJoin, setMasterJoin, TEIL, MINIFIG, SET } from '../../../db/catalogView';
+import { partViewJoin, minifigViewJoin, setMasterJoin, PART, MINIFIG, SET } from '../../../db/catalogView';
 
 /** Purchase price weighted by quantity in the account currency. */
 export function entryMetrics(db: DbInterface, l: InventoryReadContract, kind: 'part' | 'fig', uids: number[]) {
@@ -38,22 +38,22 @@ const SEARCH_COLUMNS = new Set(['part_number', 'color_id', 'fig_number']);
 /** Figures have neither color nor category; fixed NULL, so that both branches
  * deliver the same shape. */
 const HEADER_FIELDS = {
-  parts: `x.part_number AS number, MAX(${TEIL.name}) AS name,
-          MAX(x.color_id) AS color_id, MAX(${TEIL.colorName}) AS color_name,
-          MAX(${TEIL.colorHex}) AS color_hex, MAX(${TEIL.category}) AS category_name,
-          MAX(${TEIL.imageFile}) AS teil_image_local, MAX(${TEIL.image}) AS teil_image_url,
+  parts: `x.part_number AS number, MAX(${PART.name}) AS name,
+          MAX(x.color_id) AS color_id, MAX(${PART.colorName}) AS color_name,
+          MAX(${PART.colorHex}) AS color_hex, MAX(${PART.category}) AS category_name,
+          MAX(${PART.imageFile}) AS part_image_local, MAX(${PART.image}) AS part_image_url,
           bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
   minifigs: `x.fig_number AS number, MAX(${MINIFIG.name}) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(${MINIFIG.imageFile}) AS teil_image_local, MAX(${MINIFIG.image}) AS teil_image_url,
+          MAX(${MINIFIG.imageFile}) AS part_image_local, MAX(${MINIFIG.image}) AS part_image_url,
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
 // Since 0034 the description is in the catalog; JOINs over the primary key do not change the grouping.
 const CATALOG_JOIN = {
-  parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
+  parts: `${partViewJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_parts spc ON spc.set_number  = x.set_number
                                          AND spc.part_number = x.part_number
                                          AND spc.color_id    = x.color_id`,
@@ -62,7 +62,7 @@ const CATALOG_JOIN = {
 
 const KEY_COLUMN = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
-const ART = { parts: 'part', minifigs: 'fig' } as const;
+const KIND = { parts: 'part', minifigs: 'fig' } as const;
 
 /** A set that contains the component, with the component's header fields. */
 export interface UsageRow {
@@ -78,8 +78,8 @@ export interface UsageRow {
   color_name: string | null;
   color_hex: string | null;
   category_name: string | null;
-  teil_image_local: string | null;
-  teil_image_url: string | null;
+  part_image_local: string | null;
+  part_image_url: string | null;
   is_spare: unknown;
   storage: string | null;
 }
@@ -110,13 +110,13 @@ export async function setsWithComponent(
             -- Tabellen ueber ${table}, und der Helfer braucht dieselbe
             -- Unterscheidung — deshalb kommt sie wie KOPFFELDER aus einer
             -- Zuordnung je Tabelle.
-            SUM(${subsetFrom('x', ART[table])})::int AS quantity,
+            SUM(${subsetFrom('x', KIND[table])})::int AS quantity,
             ${SET.name}          AS set_name,
             c.image_local        AS set_image_local,
             c.image_url          AS set_image_url,
             ${HEADER_FIELDS[table]}
        FROM ${table} x
-       ${l.quantityJoin('x', ART[table])}
+       ${l.quantityJoin('x', KIND[table])}
        -- Name und Bild haengen nur an der Setnummer, nicht am Konto.
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
        ${setMasterJoin('x.set_number')}

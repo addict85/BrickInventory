@@ -1,6 +1,6 @@
 /** Per acquisition with the price of its condition, because mixed inventories would otherwise
  * get a wrong average. */
-import { inTenThousandths, aufRappen, alsText } from '../infra/money';
+import { inTenThousandths, toCents, asText } from '../infra/money';
 import { conditionOf } from '../infra/validate';
 import type { FinancesContext } from './context';
 
@@ -35,7 +35,7 @@ export async function loadConditionPrices(
   const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
-  const rows = await k.setWert.cachePricesForSets(params, ttlClause);
+  const rows = await k.setValueOf.cachePricesForSets(params, ttlClause);
 
   for (const r of rows) {
     const p = num(r.market_price);
@@ -93,9 +93,9 @@ export function valueSet(
   // Over the PRICED pieces, so that a missing price does not pull the unit price
   // down. Rounding happens only here.
   return {
-    unit_price: aufRappen(totalZ / priced),
+    unit_price: toCents(totalZ / priced),
     unit_z: totalZ / priced,
-    total: aufRappen(totalZ),
+    total: toCents(totalZ),
     quantity,
     by_condition,
   };
@@ -108,7 +108,7 @@ export async function getSetValue(
   setNumber: string,
   currency: string,
 ): Promise<SetValue> {
-  const acqs = await k.setWert.setEntriesToValue(userId, setNumber);
+  const acqs = await k.setValueOf.setEntriesToValue(userId, setNumber);
   const prices = await loadConditionPrices(k, [setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
@@ -182,14 +182,14 @@ function valueRow(setNumber: string, a: EntryForValue, prices: Map<string, numbe
   const raw = a.purchase_price ?? a.unit_price;
   const purchase = raw === null || raw === undefined ? null : parseFloat(String(raw)) || 0;
   const unit = priceFor(prices, setNumber, condition);
-  const total = unit != null ? aufRappen((inTenThousandths(unit) ?? 0) * quantity) : null;
+  const total = unit != null ? toCents((inTenThousandths(unit) ?? 0) * quantity) : null;
   return {
     id: a.id,
     condition,
     quantity,
     purchase_price: purchase,
     avg_price: unit,
-    total_avg: total != null ? alsText(total) : null,
+    total_avg: total != null ? asText(total) : null,
     value_total: total,
     pnl_pct: pnlPct(purchase, unit),
     pnl_percent: pnlPercent(purchase, unit),
@@ -260,16 +260,16 @@ function tilePct(zs: TileSource[], market: number): number | null {
 /** In the household the base price weighted by quantity counts: "any row"
  * would yield a different percentage depending on the order. */
 export function tileValues(rows: TileSource[]): Map<string, TileValue> {
-  const jeSet = new Map<string, TileSource[]>();
-  for (const z of rows) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
+  const perSet = new Map<string, TileSource[]>();
+  for (const z of rows) perSet.set(z.set_number, [...(perSet.get(z.set_number) || []), z]);
   const from = new Map<string, TileValue>();
-  for (const [nr, zs] of jeSet) {
+  for (const [nr, zs] of perSet) {
     const market = Number(zs[0]?.current_price) || 0;
     const purchase = weightedBy(zs, 'purchase_price');
     const source = market > 0 ? 'market' : purchase != null ? 'purchase' : null;
     const shown = source === 'market' ? market : purchase;
     from.set(nr, {
-      tile_price: shown != null ? aufRappen(inTenThousandths(shown) ?? 0) : null,
+      tile_price: shown != null ? toCents(inTenThousandths(shown) ?? 0) : null,
       tile_pnl_pct: tilePct(zs, market),
       tile_source: source,
     });

@@ -10,6 +10,6 @@ export interface FinancesReadContract {
   partAcquisitions(accounts?: AccountFilter): string;
   figAcquisitions(accounts?: AccountFilter): string;
   wantedList(accounts?: AccountFilter): string;
-  mengeJoin(basis: string, alias?: string, accounts?: AccountFilter): string;
+  setQuantityJoin(basis: string, alias?: string, accounts?: AccountFilter): string;
   quantityJoin(basis: string, kind: 'part' | 'fig', alias?: string, accounts?: AccountFilter): string;
 }

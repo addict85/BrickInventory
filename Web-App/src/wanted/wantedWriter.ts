@@ -1,13 +1,13 @@
 /** Write resolved items of the wanted list as report rows and via the creators
  * into the inventory. */
 import { logAndContinue } from '../infra/error';
-import type { WantedArt } from './wantedParser';
+import type { WantedKind } from './wantedParser';
 import type { Resolution, Confidence } from './wantedResolution';
 
 /** Image and name travel along, because the preview shows them like the parts list. */
 export interface ItemResult {
   blId: string;
-  kind: WantedArt;
+  kind: WantedKind;
   blColor: number | null;
   quantity: number;
   condition: string | null;
@@ -32,7 +32,7 @@ export interface ItemResult {
 
 /** As an interface: the route plugs in the real functions, a test counters. */
 export interface Creator {
-  teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
+  part: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   minifig: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   set: (
     uid: number,
@@ -47,7 +47,7 @@ export interface WriteOptions {
   creator?: Creator;
   /** Passed in, so that this function stays write-free except for the creator. */
   rememberNumber?: (
-    kind: WantedArt,
+    kind: WantedKind,
     rbId: string,
     blId: string,
     source: 'korrigiert' | 'rebrickable',
@@ -96,7 +96,7 @@ export async function writeItem(
   if (a.items.kind === 'part') {
     // The color name travels along: the parts list reads it from the row; without it
     // it does not fall back to the catalog.
-    feedback = await opt.creator.teil(uid, {
+    feedback = await opt.creator.part(uid, {
       part_number: rbId,
       color_id: a.rbColor ?? 0,
       ...(a.rbColorName ? { color_name: a.rbColorName } : {}),

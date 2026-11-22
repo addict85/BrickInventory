@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const OPEN = new Set([]);
 
 /** Run tsc with noImplicitAny and collect the messages per file. */
-function messagesJeFile() {
+function messagesPerFile() {
   let output = '';
   try {
     execFileSync(
@@ -36,15 +36,15 @@ function messagesJeFile() {
     const p = /** @type {{ stdout?: unknown, stderr?: unknown }} */ (e);
     output = String(p.stdout || '') + String(p.stderr || '');
   }
-  const jeFile = new Map();
+  const perFile = new Map();
   for (const row of output.split('\n')) {
     const m = row.match(/^([^(]+)\(\d+,\d+\): error TS\d+/);
     if (!m) continue;
     const file = (m[1] ?? '').replace(/\\/g, '/');
-    if (!jeFile.has(file)) jeFile.set(file, []);
-    jeFile.get(file).push(row);
+    if (!perFile.has(file)) perFile.set(file, []);
+    perFile.get(file).push(row);
   }
-  return jeFile;
+  return perFile;
 }
 
 /**
@@ -57,31 +57,31 @@ function messagesJeFile() {
 function isSwitchOn() {
   const raw = require('node:fs').readFileSync(path.join(ROOT, 'tsconfig.json'), 'utf8');
   const m = raw.match(/"noImplicitAny"\s*:\s*(true|false)/);
-  if (!m) return { an: false, grund: 'Der Eintrag "noImplicitAny" fehlt in tsconfig.json.' };
-  if (m[1] !== 'true') return { an: false, grund: 'tsconfig.json hat "noImplicitAny": false.' };
-  return { an: true, grund: '' };
+  if (!m) return { an: false, reason: 'Der Eintrag "noImplicitAny" fehlt in tsconfig.json.' };
+  if (m[1] !== 'true') return { an: false, reason: 'tsconfig.json hat "noImplicitAny": false.' };
+  return { an: true, reason: '' };
 }
 
 function main() {
   const flag = isSwitchOn();
   if (!flag.an) {
-    console.error('\n❌ ' + flag.grund + '\n');
+    console.error('\n❌ ' + flag.reason + '\n');
     console.error('Der Schalter war einmal aus, und der Abbau von 454 Meldungen hat');
     console.error('ihn scharf gemacht. Ihn wieder auszuschalten macht `tsc` GRUENER —');
     console.error('genau deshalb steht diese Pruefung hier und nicht im Uebersetzer.');
     process.exit(1);
   }
 
-  const jeFile = messagesJeFile();
+  const perFile = messagesPerFile();
 
-  const fresh = [...jeFile.keys()].filter(d => !OPEN.has(d)).sort();
-  const orphaned = [...OPEN].filter(d => !jeFile.has(d)).sort();
+  const fresh = [...perFile.keys()].filter(d => !OPEN.has(d)).sort();
+  const orphaned = [...OPEN].filter(d => !perFile.has(d)).sort();
 
   if (fresh.length) {
     console.error('\n❌ noImplicitAny: Meldungen aus Dateien, die sauber sein sollten:\n');
     for (const d of fresh) {
-      for (const z of jeFile.get(d).slice(0, 5)) console.error('   ' + z);
-      const rest = jeFile.get(d).length - 5;
+      for (const z of perFile.get(d).slice(0, 5)) console.error('   ' + z);
+      const rest = perFile.get(d).length - 5;
       if (rest > 0) console.error(`   … und ${rest} weitere in ${d}`);
     }
     console.error('\nEntweder die Typen ergänzen — oder, wenn die Datei wirklich noch');
@@ -95,7 +95,7 @@ function main() {
     console.error('mitschrumpft, verliert genau den Zweck, für den es sie gibt.');
   }
 
-  const openMessages = [...jeFile.entries()].filter(([d]) => OPEN.has(d)).reduce((n, [, z]) => n + z.length, 0);
+  const openMessages = [...perFile.entries()].filter(([d]) => OPEN.has(d)).reduce((n, [, z]) => n + z.length, 0);
 
   if (fresh.length || orphaned.length) process.exit(1);
 

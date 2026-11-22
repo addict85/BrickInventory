@@ -89,8 +89,8 @@ async function barcodeResult(
       source,
     };
   }
-  const leer = { year: null, pieces: null, theme: null, image_local };
-  return { uncertain, set_number: setNumber, name, minifigs, image_url, source, ...leer };
+  const noCatalog = { year: null, pieces: null, theme: null, image_local };
+  return { uncertain, set_number: setNumber, name, minifigs, image_url, source, ...noCatalog };
 }
 
 async function inCatalog(
@@ -152,7 +152,7 @@ async function rebrickableEan(sk: SetsContext, ean13: string, barcode: string): 
 async function fromProductTitle(sk: SetsContext, ean13: string): Promise<BarcodeHits | null> {
   const title = await sk.externalSources.sources.productTitle(ean13);
   if (!title) return null;
-  const candidates = setNumberCandidates(title, sk.clock.datum().getFullYear());
+  const candidates = setNumberCandidates(title, sk.clock.date().getFullYear());
   for (const k of candidates) {
     const known = await inCatalog(sk, k, normalizeSetNumber(k));
     if (known) return barcodeResult(sk, known.set_number, title, 'upcitemdb');

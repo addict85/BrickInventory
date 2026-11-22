@@ -11,7 +11,7 @@ import { errorMessage, logAndContinue } from './src/infra/error';
 import { startBans, startWarnings } from './src/infra/config';
 import { hintWithoutBaseUrl } from './src/infra/baseUrl';
 import { prepareDatabaseBefore } from './startup/database';
-import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProcess';
+import { startJobs, stopJobs, type JobsRun } from './startup/jobsProcess';
 import { wireProcess, type Services } from './startup/wiring';
 import { buildApp } from './startup/app';
 import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
@@ -67,21 +67,21 @@ function sessionSecret(): string {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 
 /** What the start holds and the shutdown needs; a second signal finds `endedBecomes`. */
-interface Lauf {
+interface Run {
   ending: boolean;
-  jobs: JobsLauf | null;
+  jobs: JobsRun | null;
 }
 
 async function shutdown(
-  lauf: Lauf,
+  run: Run,
   signal: string,
   httpServer: Server | null,
   jobs: boolean,
   access: Db,
   services: Services,
 ): Promise<void> {
-  if (lauf.ending) return;
-  lauf.ending = true;
+  if (run.ending) return;
+  run.ending = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
   // Emergency brake for a hanging connection; exit code 0, because it is not an error.
   const emergencyBrake = setTimeout(() => {
@@ -97,7 +97,7 @@ async function shutdown(
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Running jobs stop safely and go back into the table.
-    if (jobs && lauf.jobs) await stopJobs(services, lauf.jobs);
+    if (jobs && run.jobs) await stopJobs(services, run.jobs);
     await closeBufferAndTicks(access, services);
     await access.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
@@ -141,7 +141,7 @@ async function startListeners(services: Services, web: boolean): Promise<void> {
     ['start:smtp-altlast', () => services.mail.reportSmtpLegacySetting()],
     ...services.account.addressHints(),
   ];
-  if (web) for (const [wo, hint] of hints) await hint().catch(logAndContinue(wo));
+  if (web) for (const [where, hint] of hints) await hint().catch(logAndContinue(where));
   if (web) services.account.listenOnRevocation();
   // Web and jobs (also separate processes) clear their household memory on every change.
   services.household.listenOnChanges();
@@ -185,15 +185,15 @@ async function start(): Promise<void> {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
-  const lauf: Lauf = { ending: false, jobs: null };
+  const run: Run = { ending: false, jobs: null };
   process.on('SIGTERM', () => {
-    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, services);
+    void shutdown(run, 'SIGTERM', httpServer, jobs, access, services);
   });
   process.on('SIGINT', () => {
-    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, services);
+    void shutdown(run, 'SIGINT', httpServer, jobs, access, services);
   });
   // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
-  if (jobs) lauf.jobs = await startJobs(services);
+  if (jobs) run.jobs = await startJobs(services);
 }
 
 // Continuing without a worker would fake a service.

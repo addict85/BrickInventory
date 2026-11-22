@@ -76,7 +76,7 @@ export function captureForSet(nr) {
 
 /** The form empties, the gallery reloads; background jobs are still running, so every tab refreshes
  * periodically. If the stream couldn't fill in name and image, a job catches up after a minute.
- * @param {any} ev the final event of the stream */
+ * @param {import('./progress.js').SseEvent} ev the final event of the stream */
 function afterSetAdded(ev) {
   hideProgress();
   emit('collectionLoad');

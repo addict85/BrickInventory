@@ -26,7 +26,7 @@ export interface WorkerOptions {
 
 export type HandlerTable = { [A in JobKind]?: Handler<A> };
 
-interface Lauf {
+interface Run {
   a: JobRow;
   ac: AbortController;
   done: Promise<void>;
@@ -74,7 +74,7 @@ async function backToTable(d: JobsServices, a: JobRow): Promise<void> {
 
 /** Also after a final error, otherwise the schedule would end; without a schedule nothing. */
 async function followUpPlan(d: JobsServices, a: JobRow): Promise<void> {
-  await d.planeNext(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
+  await d.planNext(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
 }
 
 function contextFor(
@@ -168,7 +168,7 @@ async function afterError(
 
 /** On shutdown: interrupt all runs, wait for them briefly, and return whatever is
  * still running then — otherwise it would stay on 'running' until the deadline. */
-async function interruptRunning(d: JobsServices, running: Map<string, Lauf>, waitMs: number): Promise<Lauf[]> {
+async function interruptRunning(d: JobsServices, running: Map<string, Run>, waitMs: number): Promise<Run[]> {
   const all = [...running.values()];
   for (const l of all) if (!l.ac.signal.aborted) l.ac.abort(new JobInterrupted());
   await Promise.race([Promise.all(all.map(l => l.done)), new Promise(r => setTimeout(r, waitMs).unref())]);
@@ -184,7 +184,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
   // The values are passed by the start (startup/jobsProcess.ts); without them the default applies.
   const parallel = Math.max(1, o.parallel ?? DEFAULT.jobParallel);
   const deadlineSec = o.deadlineSec ?? DEFAULT.jobDeadlineSec;
-  const running = new Map<string, Lauf>();
+  const running = new Map<string, Run>();
   let ended = false,
     started = false,
     pumps = false;
@@ -194,7 +194,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
   let lastRound = 0;
   const exclusiveRemembered = d.rememberExclusive(exclusive).catch(logAndContinue('auftraege:exklusiv'));
 
-  async function receiptsAndStart(): Promise<Lauf | null> {
+  async function receiptsAndStart(): Promise<Run | null> {
     await exclusiveRemembered;
     const a = await d.claimJob(kinds, deadlineSec, receiptId(), exclusive, [...running.keys()]);
     if (!a) return null;
@@ -203,13 +203,13 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
       return null;
     }
     const ac = new AbortController();
-    const lauf: Lauf = { a, ac, done: Promise.resolve() };
-    running.set(a.id, lauf);
+    const current: Run = { a, ac, done: Promise.resolve() };
+    running.set(a.id, current);
     // No frame around the run: the execution sets it per account (inNamesOfJob).
-    lauf.done = runJobFrom(d, a, ac, editor[a.type], deadlineSec, () => ended)
+    current.done = runJobFrom(d, a, ac, editor[a.type], deadlineSec, () => ended)
       .catch(logAndContinue(`auftraege:${a.type}`))
       .finally(() => running.delete(a.id));
-    return lauf;
+    return current;
   }
 
   async function processOne(): Promise<boolean> {
@@ -222,13 +222,13 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
   // The running round, so stoppe() can wait for a claim that
   // is currently in the database: it would otherwise arrive after shutdown and
   // stay on 'running' until its deadline expires.
-  let pumpLauf: Promise<void> = Promise.resolve();
+  let pumpRun: Promise<void> = Promise.resolve();
 
   function pump(): Promise<void> {
-    if (pumps || ended) return pumpLauf;
+    if (pumps || ended) return pumpRun;
     pumps = true;
-    pumpLauf = round();
-    return pumpLauf;
+    pumpRun = round();
+    return pumpRun;
   }
 
   async function round(): Promise<void> {
@@ -266,7 +266,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
     ended = true;
     if (tick) clearInterval(tick);
     for (const ab of deregister) ab();
-    await pumpLauf;
+    await pumpRun;
     const rest = await interruptRunning(d, running, waitMs);
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }

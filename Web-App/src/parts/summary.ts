@@ -110,14 +110,14 @@ async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ accounts: n
     if (!numbers.length) return { accounts: 0, groups: 0 };
     if (numbers.length > CATALOG_INDIVIDUAL_UP_TO) return { accounts: await repo.discardAllStates(t.db), groups: -1 };
     const affected = await repo.affectedGroups(t.db, numbers);
-    const jeAccount = new Map<number, string[]>();
-    for (const b of affected) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
-    for (const [uid, groups] of jeAccount) {
+    const perAccount = new Map<number, string[]>();
+    for (const b of affected) perAccount.set(b.user_id, [...(perAccount.get(b.user_id) ?? []), b.part_key]);
+    for (const [uid, groups] of perAccount) {
       // An in-progress rebuild is waited out so it doesn't overwrite with a stale catalog.
       await repo.waitForAccount(t.db, uid);
       await repo.rebuildGroups(t.db, uid, groups);
     }
-    return { accounts: jeAccount.size, groups: affected.length };
+    return { accounts: perAccount.size, groups: affected.length };
   });
 }
 

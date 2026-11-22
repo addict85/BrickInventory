@@ -15,9 +15,9 @@ const PDF_START = Buffer.from('%PDF-');
  * if need be. */
 
 /** So that the queue's tick only waits after real fetches; per set of services. */
-const fetchState = (k: CatalogContext) => k.compartments.slot('anleitungen:abruf', () => ({ extern: false }));
-export function lastFetchWarExtern(k: CatalogContext): boolean {
-  return fetchState(k).extern;
+const fetchState = (k: CatalogContext) => k.compartments.slot('anleitungen:abruf', () => ({ external: false }));
+export function lastFetchWasExternal(k: CatalogContext): boolean {
+  return fetchState(k).external;
 }
 
 // Count, read, delete in one place instead of scattered.
@@ -62,7 +62,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
   const n = withVersion(setNumber);
   const existing = await instructionCount(k, n);
   if (existing > 0) return existing;
-  const biAlreadyTried = await k.instructions.hatBrickinstructions(n);
+  const biAlreadyTried = await k.instructions.hasBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
     const fund = await brickinstructionsFund(k, n);
@@ -106,19 +106,19 @@ export async function loadSetInstructions(k: CatalogContext, setNumber: string, 
 
   // Remember whether a foreign server was asked: the tick should not depend on sets
   // that have long had instructions.
-  fetchState(k).extern = false;
+  fetchState(k).external = false;
 
   const existing = await instructionCount(k, n);
   if (existing > 0) {
     return existing;
   }
 
-  fetchState(k).extern = true; // from here on a real request is made
+  fetchState(k).external = true; // from here on a real request is made
   const { instrList, bricksetSucceededEmpty } = await instructionSources(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpFallback(k, n, ownTick))) return 1;
 
-  const biAlreadyTried = await k.instructions.hatBrickinstructions(n);
+  const biAlreadyTried = await k.instructions.hasBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
     const bi = await brickinstructionsSource(k, n);
     if (bi) instrList.push(bi);
@@ -142,10 +142,10 @@ async function instructionSources(k: CatalogContext, n: string) {
   }
   if (!instrList.length) {
     const bs = await attempts('anleitungen:brickset', k.externalSources.sources.brickset.getInstructions(n));
-    instrList = bs.ok ? bs.wert.instructions || [] : [];
+    instrList = bs.ok ? bs.value.instructions || [] : [];
     // usesFallback false means quota exhausted. An error is not an answer —
     // both stay in the queue.
-    bricksetSucceededEmpty = bs.ok && bs.wert.usesFallback && instrList.length === 0;
+    bricksetSucceededEmpty = bs.ok && bs.value.usesFallback && instrList.length === 0;
   }
   return { instrList, bricksetSucceededEmpty };
 }
@@ -210,9 +210,9 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
       const relPath = `/data/instructions/${pdfName}`;
       await k.instructions.rememberInstruction(n, instr.url, instr.description ?? null, null);
       saved++;
-      const { brickinstructions_base: basis, brickinstructions_hdrs: header, brickinstructions_first: erstes } = instr;
+      const { brickinstructions_base: basis, brickinstructions_hdrs: header, brickinstructions_first: first } = instr;
       setImmediate(() => {
-        void collectAndBuildPDF(k, basis, header, erstes, pdfDest, relPath, n).catch(
+        void collectAndBuildPDF(k, basis, header, first, pdfDest, relPath, n).catch(
           logAndContinue('instructions:collectAndBuildPDF'),
         );
       });

@@ -64,7 +64,7 @@ export async function deleteJob(k: CatalogContext, id: string, uid: number): Pro
 
 export const PDF_JOB_TTL = 10 * 60 * 1000;
 /** Per user: one job loads hundreds of images. */
-export const MAX_JOBS_PRO_USER = 2;
+export const MAX_JOBS_PER_USER = 2;
 
 /** Not guessable, but sortable. */
 export function newJobId(now: number): string {
@@ -112,7 +112,7 @@ async function countMissingImages(
   return absent;
 }
 
-/** If MAX_JOBS_PRO_USER are already running, there is no identifier but their count. */
+/** If MAX_JOBS_PER_USER are already running, there is no identifier but their count. */
 export async function startPdfJob(
   k: CatalogContext,
   uid: number,
@@ -120,7 +120,7 @@ export async function startPdfJob(
   parts: PayloadInput<'pdf'>['parts'],
 ): Promise<{ jobId: string } | { running: number }> {
   const runningJobs = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
-  if (runningJobs >= MAX_JOBS_PRO_USER) return { running: runningJobs };
+  if (runningJobs >= MAX_JOBS_PER_USER) return { running: runningJobs };
   const jobId = newJobId(k.clock.now());
   // The client's image details do not go into the job: the images come from the catalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));

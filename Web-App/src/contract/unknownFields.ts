@@ -69,7 +69,7 @@ const STEPS: Record<string, Step> = {
 for (const shell of SHELL) STEPS[shell] = (d, w, path, walk) => walk(d.innerType, w, path);
 
 /** Paths like `sets.0.letzter_kauf`; at most `grenze` so that a long list does not flood. */
-export function unknownFields(schema: z.ZodType, wert: unknown, limit = 20): string[] {
+export function unknownFields(schema: z.ZodType, value: unknown, limit = 20): string[] {
   const findings = new Set<string>();
   const found = (p: string) => findings.add(p);
   const walk: Walk = (s, w, path) => {
@@ -77,6 +77,6 @@ export function unknownFields(schema: z.ZodType, wert: unknown, limit = 20): str
     const d = defOf(s);
     STEPS[d.type]?.(d, w, path, walk, found, limit);
   };
-  walk(schema, wert, '');
+  walk(schema, value, '');
   return [...findings];
 }

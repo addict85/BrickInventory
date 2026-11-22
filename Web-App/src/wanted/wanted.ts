@@ -1,7 +1,7 @@
 /** The wanted list — what one WANTS to have, separate from holdings. A helper
  * instead of code in the routes, because both UIs and several entry paths
  * need the same rules. */
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import * as V from '../infra/validate';
 import { failDomain } from '../infra/errorTexts';
 import { moneyInput } from '../infra/money';
@@ -9,7 +9,7 @@ import { publicError } from '../infra/error';
 import { Degradations } from '../infra/result';
 import { forSet } from '../catalog';
 import { imageIfPresent } from '../images';
-import { toCsv, csvRowsFromRequest, csvDatum, csvFirst } from '../infra/csvExport';
+import { toCsv, csvRowsFromRequest, csvDate, csvFirst } from '../infra/csvExport';
 import { possibleSetNumber, withVersion, normalizeSetNumber } from '../infra/setNumber';
 import type { WantedContext } from './context';
 
@@ -124,21 +124,21 @@ export async function moveWantedItem(
   ofId: number,
   setNumber: string,
   c: V.ConditionState,
-  zuId: number,
+  toId: number,
 ): Promise<{ moved: boolean; merged: boolean }> {
   const sn = normalizeSetNumber(setNumber);
-  if (ofId === zuId) return { moved: false, merged: false };
+  if (ofId === toId) return { moved: false, merged: false };
 
-  return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
-    if (await t.wanted.isWanted(zuId, sn, c)) {
+  return withWantedItemLock(k, [ofId, toId], sn, c, async t => {
+    if (await t.wanted.isWanted(toId, sn, c)) {
       const route = await removeWantedItem(t, ofId, sn, c);
       await t.finances.priceAlert.deleteAlert(ofId, sn, c);
       return { moved: route > 0, merged: true };
     }
-    const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
+    const r = await t.wanted.transferWantedEntry(toId, ofId, sn, c);
     const moved = (r.changes ?? 0) > 0;
     // Only carry the alert along if the item really moved.
-    if (moved) await t.finances.priceAlert.alarmTransfer(zuId, ofId, sn, c);
+    if (moved) await t.finances.priceAlert.alarmTransfer(toId, ofId, sn, c);
     return { moved, merged: false };
   });
 }
@@ -155,8 +155,8 @@ export interface WantedFilter {
 /** `userIds`: the wanted list follows the household tree like everything else. */
 export async function wantedItemsOf(
   k: WantedContext,
-  userIdsChoice: Sicht | number[],
-  nurSet?: string,
+  userIdsChoice: Viewer | number[],
+  onlySet?: string,
   currency = 'EUR',
   filter?: WantedFilter,
 ): Promise<WantedItem[]> {
@@ -167,7 +167,7 @@ export async function wantedItemsOf(
   const rows = await k.wanted.wantedListInScope(
     userIds,
     {
-      setOnly: nurSet ? normalizeSetNumber(nurSet) : null,
+      setOnly: onlySet ? normalizeSetNumber(onlySet) : null,
       search: String(filter?.search ?? '').trim() || null,
       condition: condition === 'N' || condition === 'U' ? condition : null,
       sort: filter?.sort,
@@ -271,7 +271,7 @@ export async function importWantedListCsv(k: WantedContext, owner: number, text:
     if (!setNumber) continue;
 
     const condition = String(csvFirst(row, 'condition', 'zustand', 'Zustand') || '').trim();
-    const am = csvDatum(row.created_at || row.captured_at || row['Auf der Liste seit']);
+    const am = csvDate(row.created_at || row.captured_at || row['Auf der Liste seit']);
 
     try {
       const { was_new } = await addWantedItem(k, owner, setNumber, condition, am);

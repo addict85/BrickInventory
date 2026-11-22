@@ -3,14 +3,14 @@
  * appear in the shared catalog and thus show up in no query. */
 
 /** LEFT JOINs pc/pcc (shared) and te/tfe (own details of `account`). */
-export function teilSichtJoin(account: string, number: string, color: string): string {
+export function partViewJoin(account: string, number: string, color: string): string {
   return `LEFT JOIN part_catalog pc ON pc.part_number = ${number}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = ${number} AND pcc.color_id = ${color}
     LEFT JOIN part_custom te ON te.user_id = ${account} AND te.part_number = ${number}
     LEFT JOIN part_color_custom tfe ON tfe.user_id = ${account} AND tfe.part_number = ${number} AND tfe.color_id = ${color}`;
 }
 
-export const TEIL = {
+export const PART = {
   name: 'COALESCE(pc.part_name, te.part_name)',
   category: 'COALESCE(pc.category_name, te.category_name)',
   colorName: 'COALESCE(pcc.color_name, tfe.color_name)',
@@ -42,6 +42,6 @@ export function setMasterJoin(number: string): string {
 export const SET = {
   name: 'rs.name',
   year: 'NULLIF(rs.year, 0)',
-  thema: 'rt.name',
+  theme: 'rt.name',
   parts: 'NULLIF(rs.num_parts, 0)',
 } as const;

@@ -122,9 +122,9 @@ export async function abortJob(k: JobsContext, id: string): Promise<JobRow | nul
 }
 
 export async function repeat(k: JobsContext, id: string): Promise<boolean> {
-  const ja = await k.jobs.placeAgainOne(id);
-  if (ja) await wakeWorker(k, 'wiederholt');
-  return ja;
+  const yes = await k.jobs.placeAgainOne(id);
+  if (yes) await wakeWorker(k, 'wiederholt');
+  return yes;
 }
 
 export async function pullBefore(k: JobsContext, kind: JobKind, key?: string): Promise<number> {
@@ -180,8 +180,8 @@ export function checkMembership(
   for (const { a, ac } of runs) {
     if (ac.signal.aborted || (key !== undefined && key !== (a.dedupe_key ?? a.id))) continue;
     void k.jobs.belongsStill(a).then(
-      ja => {
-        if (!ja && !ac.signal.aborted) ac.abort(new JobLost());
+      yes => {
+        if (!yes && !ac.signal.aborted) ac.abort(new JobLost());
       },
       logAndContinue(`auftraege:stand ${a.type}`),
     );

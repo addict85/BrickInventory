@@ -4,7 +4,7 @@
  * page only ever answers "done" and names the certificate, which is public
  * under /ca.crt anyway. */
 import { Degradations } from '../infra/result';
-import { tlsStand } from '../infra/tlsRoot';
+import { tlsState } from '../infra/tlsRoot';
 import type { ProfileContext } from './context';
 
 export type StepId = 'database' | 'base_url' | 'https' | 'ca' | 'account' | 'source';
@@ -60,7 +60,7 @@ export function setupStatus(k: ProfileContext, { isAdmin = false } = {}): Promis
 }
 
 async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatusResponse> {
-  const ca = await tlsStand();
+  const ca = await tlsState();
   const k = kx.config;
   const base = {
     ca: {
@@ -69,7 +69,7 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
       download: '/ca.crt',
     },
     base_url: isAdmin ? k.appBaseUrl : null,
-    https: k.hinterTls,
+    https: k.behindTls,
   };
 
   // What couldn't be read reads "missing" and goes into `degradiert`; only the
@@ -92,8 +92,8 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   const database = await kx.db.databaseResponds();
   steps.push({ id: 'database', ok: database, required: true });
   steps.push({ id: 'base_url', ok: !!k.appBaseUrl, required: true });
-  steps.push({ id: 'https', ok: k.hinterTls, required: false });
-  steps.push({ id: 'ca', ok: !!ca, required: !!k.hinterTls });
+  steps.push({ id: 'https', ok: k.behindTls, required: false });
+  steps.push({ id: 'ca', ok: !!ca, required: !!k.behindTls });
   const account = await ab.orElse('konten', kx.account.accountConfigured(isAdmin), false);
   steps.push({ id: 'account', ok: account, required: true });
   steps.push({ id: 'source', ok: rebrickable, required: true });

@@ -34,8 +34,12 @@ export async function shortenEntry(
   tx: DbInterface,
   kind: ManualKind,
   id: number,
-  um: number,
+  around: number,
   accounts: number[],
 ): Promise<void> {
-  await tx.run(`UPDATE ${ERF[kind]} SET quantity=quantity-$1 WHERE id=$2 AND user_id = ANY($3)`, [um, id, accounts]);
+  await tx.run(`UPDATE ${ERF[kind]} SET quantity=quantity-$1 WHERE id=$2 AND user_id = ANY($3)`, [
+    around,
+    id,
+    accounts,
+  ]);
 }

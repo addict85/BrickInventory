@@ -132,7 +132,7 @@ function buildRationale(db: Db, { imageWorker, sources, config, clock }: Assigne
   const profile = createProfile({ db, clock, config, settings, account, mail }, show('profile'));
   const idempotency = createIdempotency({ db, clock }, show('idempotency'));
   const externalSources = createForeignSources(
-    { db, clock, settings, jobQueue, ersatz: sources },
+    { db, clock, settings, jobQueue, spare: sources },
     show('externalSources'),
   );
   const images = createImages(

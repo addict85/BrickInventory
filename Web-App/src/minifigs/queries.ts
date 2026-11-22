@@ -1,5 +1,5 @@
 import { resolveImageLocal } from '../images';
-import { asIds, type Sicht } from '../household';
+import { asIds, type Viewer } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 import { withVersion } from '../infra/setNumber';
 import { Degradations } from '../infra/result';
@@ -17,7 +17,7 @@ type MinifigsQuery = {
 };
 export async function readMinifigs(
   k: MinifigsContext,
-  userIdChoice: Sicht | number | number[],
+  userIdChoice: Viewer | number | number[],
   { search, source, set_number, page = 1, page_size = null }: MinifigsQuery = {},
 ) {
   const userId = await k.household.scopeFrom(userIdChoice);
@@ -56,7 +56,7 @@ export async function readMinifigs(
 }
 
 // One count for the webapp and the app; the app used to count itself, differently.
-export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sicht | number | number[]) {
+export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Viewer | number | number[]) {
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const row = await k.minifigsList.minifigStats(uids);
@@ -72,7 +72,7 @@ export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sich
 /** @param viewerId whose settings apply (currency); `userId` says whose data. */
 export async function readManualMinifigs(
   k: MinifigsContext,
-  userIdChoice: Sicht | number | number[],
+  userIdChoice: Viewer | number | number[],
   viewerId: number,
   {
     page = 1,

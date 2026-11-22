@@ -11,7 +11,7 @@ import { normalizeLocation } from '../inventory';
 import { normalizeSetNumber } from '../infra/setNumber';
 import * as detailRepo from './repository/setDetail';
 import type { SetsContext } from './context';
-export type { CatalogPart, ListenTeil, SetMaster } from './rows';
+export type { CatalogPart, ListedPart, SetMaster } from './rows';
 
 /** Create, change and output sets — one implementation for web and app, so that
  * both follow the same rules for quantity, purchase price and scope. */
@@ -125,11 +125,11 @@ function droppedResponse(rows: Record<string, unknown>[]) {
 async function writeInLastEntry(
   sk: SetsContext,
   field: 'purchase_price' | 'condition',
-  wert: number | string | null,
+  value: number | string | null,
   ownerId: number,
   sn: string,
 ) {
-  await sk.inventory.setNewest('set', field === 'purchase_price' ? 'preis' : 'zustand', wert, ownerId, [sn]);
+  await sk.inventory.setNewest('set', field === 'purchase_price' ? 'preis' : 'zustand', value, ownerId, [sn]);
 }
 
 type SetChange = Input<'PUT /api/v2/sets/:setNumber'>;
@@ -155,8 +155,8 @@ async function changeSetQuantity(
   const readField = await sk.household.scopeIds(uid);
   // The household is displayed, only the target account is changed.
   const ownTargetOf = async (s: SetsContext) => {
-    const totalBefore = await repo.setMenge(s.db, 'blickfeld', readField, sn);
-    const ownBefore = await repo.setMenge(s.db, 'eines', target, sn);
+    const totalBefore = await repo.setQuantity(s.db, 'blickfeld', readField, sn);
+    const ownBefore = await repo.setQuantity(s.db, 'eines', target, sn);
     // Capped at 0: I cannot take away copies of another account.
     const change = delta ?? Number(desiredTotal) - totalBefore;
     return { ownBefore, ownTarget: Math.max(0, ownBefore + change) };
@@ -230,7 +230,7 @@ export async function changeSet(sk: SetsContext, uid: number, sn: string, body: 
   // Writing is already done; if only reading back fails, the response says "unknown" instead of 0.
   const after = await ab.orElse(
     'menge',
-    async () => (await repo.setMenge(sk.db, 'blickfeld', await sk.household.scopeIds(uid), sn)) ?? 0,
+    async () => (await repo.setQuantity(sk.db, 'blickfeld', await sk.household.scopeIds(uid), sn)) ?? 0,
     null,
   );
   return {
@@ -241,7 +241,7 @@ export async function changeSet(sk: SetsContext, uid: number, sn: string, body: 
   };
 }
 
-export async function setsAlsCsv(sk: SetsContext, uid: number) {
+export async function setsAsCsv(sk: SetsContext, uid: number) {
   const rows = await repo.setsForCsv(sk.db, uid);
 
   return toCsv(

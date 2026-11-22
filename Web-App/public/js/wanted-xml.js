@@ -215,7 +215,7 @@ function correctionsJson() {
 }
 
 /** What gets reloaded depends on WHAT the list contained — and the report knows that better than the
- * button it came from: a wanted list may mix parts, figures AND sets. @param {any} d the report */
+ * button it came from: a wanted list may mix parts, figures AND sets. @param {Report} d the report */
 function afterWrite(d) {
   toast(
     tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.failed }),
@@ -267,7 +267,7 @@ async function readReally(write) {
   _report = resultReport;
   drawSummary(resultReport);
   drawTable(resultReport);
-  if (write) afterWrite(d);
+  if (write) afterWrite(resultReport);
 }
 
 /** The summary above the table. */
@@ -310,7 +310,7 @@ function drawSummary(d) {
   );
 }
 
-/** @param {any} p a report row */
+/** @param {Item} p a report row */
 function outcomeTexts(p) {
   // The outcome in words, not just a color. In the preview "will be created", after import "created":
   // otherwise every row would still read in future tense after writing.
@@ -329,7 +329,7 @@ function outcomeTexts(p) {
   return { outcome, reason };
 }
 
-/** @param {any} p a report row */
+/** @param {Item} p a report row */
 function defaultConditionCell(p) {
   // The condition that gets created: from the file, else the account's default — with a note that it came
   // from there. Without the note, "Used" would read like a value from the file.
@@ -340,7 +340,7 @@ function defaultConditionCell(p) {
     : '';
 }
 
-/** @param {any} p a report row @param {number} i */
+/** @param {Item} p a report row @param {number} i */
 function correctionCells(p, i) {
   const correction = _corrections.get(i) || {};
 
@@ -496,7 +496,7 @@ function wantedCorrectionColor() {
 /**
  * Per editable field: the value into the correction, or the text to put back into the field. Nothing
  * unusable is sent: the server would reject the whole correction, and the color next to it would be lost
- * too. @type {Record<string, (k: any, p: any, raw: string) => string | undefined>}
+ * too. @type {Record<string, (k: Record<string, unknown>, p: Item, raw: string) => string | undefined>}
  */
 const CORRECTION_FIELDS = {
   quantity: (k, p, raw) => {

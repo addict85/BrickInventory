@@ -40,7 +40,7 @@ export async function createKey(
   l: DevicesReadContract,
   f: Family,
   public_key: string,
-  fristS: number,
+  deadlineS: number,
 ): Promise<boolean> {
   await db.run(
     `DELETE FROM device_keys g WHERE g.user_id = $1 AND NOT ${l.familyAlive('g.user_id', 'g.token_family')}`,
@@ -52,7 +52,7 @@ export async function createKey(
      ON CONFLICT (user_id, token_family) DO UPDATE SET public_key = EXCLUDED.public_key, attested = true,
        created_at = NOW() WHERE NOT device_keys.attested
      RETURNING user_id`,
-    [f.uid, f.since, public_key, fristS],
+    [f.uid, f.since, public_key, deadlineS],
   ));
 }
 
@@ -62,7 +62,7 @@ export async function createNonce(
   l: DevicesReadContract,
   f: Family,
   nonce: string,
-  o: { fristS: number; open: number; fromQr: boolean },
+  o: { deadlineS: number; open: number; fromQr: boolean },
 ): Promise<boolean> {
   await db.run(
     `DELETE FROM device_nonces WHERE user_id = $1 AND token_family = $2::timestamptz AND (expires_at <= NOW()
@@ -74,7 +74,7 @@ export async function createNonce(
     `INSERT INTO device_nonces (nonce, user_id, token_family, from_qr, expires_at)
      SELECT $3, $1, $2::timestamptz, $5, $2::timestamptz + make_interval(secs => $4)
       WHERE ${l.familyAlive('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
-    [f.uid, f.since, nonce, o.fristS, o.fromQr],
+    [f.uid, f.since, nonce, o.deadlineS, o.fromQr],
   ));
 }
 
@@ -104,7 +104,7 @@ export async function createChallenge(
   f: Family,
   challenge: string,
   action: string,
-  fristS: number,
+  deadlineS: number,
   open: number,
 ): Promise<Date> {
   await db.run(
@@ -116,7 +116,7 @@ export async function createChallenge(
   const z = await db.get<{ expires_at: Date }>(
     `INSERT INTO step_up_challenges (challenge, user_id, token_family, action, expires_at)
      VALUES ($1, $2, $3::timestamptz, $4, NOW() + make_interval(secs => $5)) RETURNING expires_at`,
-    [challenge, f.uid, f.since, action, fristS],
+    [challenge, f.uid, f.since, action, deadlineS],
   );
   if (!z) throw new Error('step_up_challenges: INSERT ohne Zeile');
   return z.expires_at;

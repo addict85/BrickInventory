@@ -64,12 +64,16 @@ async function cacheSettings(k: FinancesContext, viewerId: number): Promise<{ cu
 }
 
 /** The first cached price over the keys, the requested condition before the other one. */
-function firstCached(cache: Map<string, number>, keys: string[], condition: unknown): number | undefined {
+function firstCached(
+  cache: Map<string, number>,
+  keys: string[],
+  condition: string | null | undefined,
+): number | undefined {
   const zst = conditionOf(condition);
   for (const k of keys)
     for (const c of [zst, zst === 'N' ? 'U' : 'N']) {
-      const wert = cache.get(`${k}|${c}`);
-      if (wert != null) return wert;
+      const value = cache.get(`${k}|${c}`);
+      if (value != null) return value;
     }
   return undefined;
 }
@@ -95,8 +99,8 @@ export async function marketPricesFromCacheForMinifigs(
 
   const cache = new Map<string, number>();
   for (const z of rows) {
-    const wert = marketPriceFrom(z);
-    if (wert !== null) cache.set(`${z.fig_number}|${z.condition}`, wert);
+    const value = marketPriceFrom(z);
+    if (value !== null) cache.set(`${z.fig_number}|${z.condition}`, value);
   }
 
   for (const f of minifigs) {
@@ -104,8 +108,8 @@ export async function marketPricesFromCacheForMinifigs(
     if (!num) continue;
     // Order as in the valuation; for many older figures BrickLink lists
     // only one of the two conditions. A price under the RB number wins over the BL number.
-    const wert = firstCached(cache, spellings(f).reverse(), f.condition);
-    if (wert !== undefined) hits.set(num, wert);
+    const value = firstCached(cache, spellings(f).reverse(), f.condition);
+    if (value !== undefined) hits.set(num, value);
   }
   return hits;
 }
@@ -155,16 +159,16 @@ export async function marketPricesFromCacheForParts(
 
   const cache = new Map<string, number>();
   for (const z of rows) {
-    const wert = marketPriceFrom(z);
-    if (wert !== null) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, wert);
+    const value = marketPriceFrom(z);
+    if (value !== null) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, value);
   }
 
   for (const t of parts) {
     const key = `${t.part_number}|${t.color_id ?? NO_COLOR}`;
     const a = resolution.get(key);
     if (!a) continue;
-    const wert = firstCached(cache, [`${a.number}|${a.color}`], t.condition);
-    if (wert !== undefined) hits.set(key, wert);
+    const value = firstCached(cache, [`${a.number}|${a.color}`], t.condition);
+    if (value !== undefined) hits.set(key, value);
   }
   return hits;
 }

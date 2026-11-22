@@ -157,7 +157,7 @@ export async function voucherFromPdf(
 ): Promise<FromPdf> {
   const reading = await readInBackground(pdf);
   if (reading.kind === 'zu_viele_seiten')
-    failDomain('unprocessable', 'pdf_too_many_pages', { seiten: reading.seiten, max: MAX_PAGES });
+    failDomain('unprocessable', 'pdf_too_many_pages', { pages: reading.pages, max: MAX_PAGES });
   if (reading.kind === 'unlesbar') failDomain('unprocessable', 'pdf_unreadable');
   if (reading.batch.length >= 2) return { kind: 'stapel', report: await batchCreate(k, uid, reading.batch) };
   // The media type is a claim by the client: what is checked is the signature, since

@@ -33,8 +33,8 @@ export async function changeProfile(
   const newEmail = emailWillChange(user, e.email);
   if (nameNew || newEmail) {
     // Every availability check reveals whether an account exists; registration hides that.
-    const zuOft = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
-    if (zuOft) failDomain('too_many', 'too_many_requests', { minutes: zuOft.waitMin });
+    const tooOften = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
+    if (tooOften) failDomain('too_many', 'too_many_requests', { minutes: tooOften.waitMin });
     if (nameNew && e.username && (await k.accounts.nameTaken(e.username, user.id)))
       failDomain('invalid', 'username_taken');
   }

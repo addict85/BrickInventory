@@ -1,6 +1,6 @@
 /** Here, not in a route, because the session route and the v1 factory both
  * reach it — a route should not import another route. */
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { publicError } from '../infra/error';
 import { Degradations, attempts } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest, csvFirst, type CsvRow } from '../infra/csvExport';
@@ -133,12 +133,12 @@ async function minifigDescription(
     fig_name = local.name;
     image_url = image_url || local.image;
   }
-  // `hatImage`, not `image_url`: a local path would fail the URL check but
+  // `hasImage`, not `image_url`: a local path would fail the URL check but
   // still proves there's nothing left to fetch.
-  if (!fig_name || !(image_url || local?.hatImage)) {
+  if (!fig_name || !(image_url || local?.hasImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
     const fetch = await attempts('figuren:getMinifigInfo', k.externalSources.sources.getMinifigInfo(num));
-    found = fetch.ok ? fetch.wert : null;
+    found = fetch.ok ? fetch.value : null;
     // `||`: what the catalog already knew stays.
     if (found) fig_name = fig_name || found.fig_name;
   }
@@ -198,7 +198,7 @@ export async function updateManualMinifig(
 }
 
 /** `uid` is the viewing scope (list). */
-export async function minifigAcquisitionsInScope(k: MinifigsContext, uidChoice: Sicht | number[], figNumber: string) {
+export async function minifigAcquisitionsInScope(k: MinifigsContext, uidChoice: Viewer | number[], figNumber: string) {
   const uid = await k.household.scopeFrom(uidChoice);
   return k.manualMinifigs.minifigAcquisitions(uid, figNumber);
 }
@@ -217,7 +217,7 @@ type FigImportResult = { fig_number: string; action: string; fig_name?: string |
 async function minifigInfo(k: MinifigsContext, figNumber: string, typedName: string | null) {
   if (typedName) return { figName: typedName, imageUrl: null };
   const fetch = await attempts('figuren:import-info', k.externalSources.sources.getMinifigInfo(figNumber));
-  const info = fetch.ok ? fetch.wert : null;
+  const info = fetch.ok ? fetch.value : null;
   return { figName: info ? info.fig_name : null, imageUrl: info ? info.image_url : null };
 }
 
@@ -242,7 +242,7 @@ async function importMinifigRow(
     price: acquisitionPrice,
     estimated: estimated,
     condition: effectiveCondition || 'N',
-    createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
+    createdAt: acquiredAt || k.clock.date().toISOString().slice(0, 10),
   };
   if (await findManualMinifig(k, uid, figNumber)) {
     await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);

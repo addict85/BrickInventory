@@ -7,7 +7,7 @@ import { hintInBackground } from './accountNotice';
 import { countFailedAttempt, toManyFailedAttempts } from './tokenFailedAttempts';
 import { inSystemContext } from '../infra/accountContext';
 import {
-  cacheStand,
+  cacheState,
   tokenFromCache,
   rememberEntry,
   forgetEntry,
@@ -89,7 +89,7 @@ export interface TokenCheck {
 /** `zweck: 'rotation'` lets an unlimited token through even after the
  * mandatory deadline — only for the swap itself. */
 /** For the stream: is the access still alive? Asked with the plaintext; the hash stays in the account. */
-export async function tokenGilt(k: AccountContext, plaintext: string): Promise<boolean> {
+export async function tokenValid(k: AccountContext, plaintext: string): Promise<boolean> {
   return !!(await k.accesses.validToken(tokenDigest(plaintext)));
 }
 
@@ -105,7 +105,7 @@ export async function checkToken(
       ? { user: null, reason: 'token_rotation_required' }
       : { user: u };
 
-  const state = cacheStand(k);
+  const state = cacheState(k);
   const hit = tokenFromCache(k, token, state, now);
   if (hit) {
     // Both deadlines here too: this branch does not query the database.
@@ -332,7 +332,7 @@ export async function tokensCleanup(k: AccountContext) {
   const step = async (was: string, work: () => Promise<number>) => {
     const r = await attempts(`tokens:${was}`, work);
     if (!r.ok) without.push(was);
-    return r.ok ? r.wert : 0;
+    return r.ok ? r.value : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
   const g = await step('ohne Ende', () => k.accesses.boundUnlimited(k.config.tokenMaxDays));

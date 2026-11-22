@@ -11,8 +11,8 @@ import { moneyInput } from './money';
 export const LARGEST_ID = 2 ** 31 - 1;
 
 /** An ID from path, body or query: digits up to `hoechstens`, otherwise null. */
-export function idWert(wert: unknown, atMost = LARGEST_ID): number | null {
-  const raw = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
+export function idValue(value: unknown, atMost = LARGEST_ID): number | null {
+  const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
   if (!/^\d{1,16}$/.test(raw)) return null;
   const n = Number(raw);
   return Number.isSafeInteger(n) && n <= atMost ? n : null;
@@ -22,9 +22,9 @@ const ID_FIELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
 
 /** The first field name that is named like an ID and carries a too large or crooked number.
  * Other values (set numbers, empty values) are checked by the route itself. */
-export function toLargeId(wert: unknown, depth = 0): string | null {
-  if (depth > 6 || wert === null || typeof wert !== 'object') return null;
-  for (const [k, v] of Object.entries(wert)) {
+export function toLargeId(value: unknown, depth = 0): string | null {
+  if (depth > 6 || value === null || typeof value !== 'object') return null;
+  for (const [k, v] of Object.entries(value)) {
     const list = Array.isArray(v) ? v : [v];
     if (
       ID_FIELD.test(k) &&
@@ -42,9 +42,9 @@ export function toLargeId(wert: unknown, depth = 0): string | null {
 }
 
 /** null if it is none (the route then answers 400). */
-export function jsonOrNull(text: string): { wert: unknown } | null {
+export function jsonOrNull(text: string): { value: unknown } | null {
   try {
-    return { wert: JSON.parse(text) };
+    return { value: JSON.parse(text) };
   } catch {
     return null;
   }
@@ -176,11 +176,11 @@ export function strictBool(value: unknown, field = 'Wert'): boolean {
 
 /** Aggregates come as strings, and "0" is truthy in JavaScript. */
 export function isSparePart(value: unknown): boolean {
-  return isJa(value);
+  return isYes(value);
 }
 
 /** Everything unknown is no. */
-export function isJa(value: unknown): boolean {
+export function isYes(value: unknown): boolean {
   if (value === true || value === 1) return true;
   if (typeof value !== 'string') return false;
   const v = value.trim().toLowerCase();
@@ -205,13 +205,13 @@ export function fromTable<T>(table: Record<string, T>, key: unknown, defaultValu
 
 /** The same checks as an input schema for the API contract: the rule exists
  * once, the JSON schema only describes it, and the route gets its result. */
-function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory: true): z.ZodType<T, unknown>;
-function alsSchema<T>(
+function asSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory: true): z.ZodType<T, unknown>;
+function asSchema<T>(
   check: (v: unknown) => T,
   json: Record<string, unknown>,
   mandatory?: false,
 ): z.ZodType<T | undefined, unknown>;
-function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory = false) {
+function asSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory = false) {
   const checked = z
     .unknown()
     .meta(json)
@@ -233,47 +233,46 @@ function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, m
 
 export const input = {
   /** An own rule with its own error code; mandatory. */
-  rule: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(check, json, true),
+  rule: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => asSchema(check, json, true),
   itemNumber: (field: string) =>
-    alsSchema(v => numberRequired(v, field), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
-  text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
-  imageUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
+    asSchema(v => numberRequired(v, field), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
+  text: (max = 200) => asSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
+  imageUrl: () => asSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Without `pflicht` the quantity may be missing or null; then it stays as it is. */
   quantity: (min = 0, max = 100_000) =>
-    alsSchema(v => inventoryQuantity(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
+    asSchema(v => inventoryQuantity(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
   /** If it is missing or null, the quantity stays as it is. */
   quantityOrNothing: (min = 0, max = 100_000) =>
-    alsSchema(v => (v == null ? null : inventoryQuantity(v, min, max)), {
+    asSchema(v => (v == null ? null : inventoryQuantity(v, min, max)), {
       type: ['integer', 'string', 'null'],
       minimum: min,
       maximum: max,
     }),
-  pieceCount: () =>
-    alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
+  pieceCount: () => asSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   color: () =>
-    alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${NO_COLOR} (no color) applies` }),
-  colorCode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
+    asSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${NO_COLOR} (no color) applies` }),
+  colorCode: () => asSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/money.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
-  geld: (field: string, o: { nullable?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
-    alsSchema(v => moneyInput(v, field, o.max, o.oneCode), {
+  money: (field: string, o: { nullable?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
+    asSchema(v => moneyInput(v, field, o.max, o.oneCode), {
       ...(o.nullable === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
       minimum: 0,
       maximum: o.max ?? 1_000_000,
       description: 'Amount as a number, at most four decimal places; null or empty: no amount',
     }),
   quantitiesDelta: () =>
-    alsSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
-  condition: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
+    asSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
+  condition: () => asSchema(optionalCondition, { enum: ['N', 'U', null] }),
   flag: (field: string) =>
-    alsSchema(
+    asSchema(
       v => strictBool(v, field),
       { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] },
       true,
     ),
   /** May be missing; then it is no. */
   toggleOrNo: (field: string) =>
-    alsSchema(v => strictBool(v, field), {
+    asSchema(v => strictBool(v, field), {
       type: ['boolean', 'integer', 'string'],
       enum: [true, false, 1, 0, 'true', 'false', '1', '0'],
     }),

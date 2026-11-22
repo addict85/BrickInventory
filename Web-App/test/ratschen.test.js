@@ -285,7 +285,12 @@ function routesMatchContexts() {
   // src/collection/deletion.ts (with `export const readSets = …` in src/sets/index.ts) → red (1 facade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
-  const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
+  // A module-level `const x = getter<XServices>(…)` is such a store, whatever the getter is called.
+  const HOLER = /^\s*(?:export\s+)?(?:const|let)\s+\w+\s*=\s*\w+<\w*Services>\s*\(/m;
+  assert.ok(
+    HOLER.test("export const sets = processSlot<SetsServices>('sets');"),
+    'Selbstbeweis: Prozessstelle erkannt',
+  );
   const holer = sources().filter(f => HOLER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
   assert.deepEqual(
     holer.map(f => path.relative(WEB, f)),
@@ -455,7 +460,7 @@ test('direct clock calls in domain areas become fewer, never more', () => {
   const CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(CLOCK)?.length, 2, 'Selbstbeweis');
   const fach = (/** @type {string} */ f) =>
-    /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
+    /^(src[\\/](?!infra|http|contract)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
   const ist = zaehle([CLOCK], fach);
   assert.ok(ist <= LIMIT, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -920,7 +925,7 @@ test('fixed waits in tests become fewer, never more', () => {
     2,
     'Selbstbeweis: die Pause nach einer Anweisung und die umbrochene zählen, Schleifen und kurze nicht',
   );
-  const OWN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
+  const OWN = /^\s*const (warte|takt|sleep|schlafe|wait|delay)\s*=/;
   let ist = 0;
   const eigene = [];
   for (const n of fs.readdirSync(__dirname).filter(x => x.endsWith('.js'))) {
@@ -1597,14 +1602,27 @@ test('paths named in test comments exist', () => {
 });
 
 // ---- Language of the code: German identifiers per area ---------------------
+// The server has a fixed ban; the test area still counts down.
 // Counter-checks (22.11.2026): `const fehlerZahl = 1;` added to src/infra/config.ts
-// → "server" red (953 > 952); the word list emptied → the sample check red;
-// `'Fehler'` only as a string → stays green (texts are not code).
-test('German identifiers become fewer, never more (server and tests separately; public/ has its ban)', () => {
+// → "server" red (fehlerZahl); `const liesPause = 1;` there → red (the extended word
+// list knows `lies`); `zeit` removed from STORED → red (src/images/imageDemandRun.ts);
+// the word list emptied → the sample check red; `'Fehler'` only as a string → green.
+// The helper reads nested templates and regex literals (samples below): before, both hid code.
+test('German identifiers: none in the server, fewer and fewer in the tests', () => {
   const { germanIdentifiers, isGerman } = require('./helpers/german-identifiers');
   assert.ok(isGerman('backInDieTable') && isGerman('preiseNachladen') && isGerman('ladeAn'), 'Stichprobe deutsch');
+  assert.ok(
+    isGerman('liesPause') && isGerman('fetchesJeMinute') && isGerman('planeNext'),
+    'Stichprobe deutsch (Runde 31)',
+  );
   assert.ok(!isGerman('importStatus') && !isGerman('jobKinds') && !isGerman('settable'), 'Stichprobe englisch');
   assert.equal(germanIdentifiers("const x = 'Fehler'; // Fehler").size, 0, 'Texte und Kommentare zählen nicht');
+  assert.deepEqual(
+    [...germanIdentifiers('const a = `x ${`y ${"z"}`} w`; const fehlerZahl = 1;')],
+    ['fehlerZahl'],
+    'ein verschachteltes Template beendet das äussere nicht',
+  );
+  assert.deepEqual([...germanIdentifiers("const r = /'/; const fehlerZahl = 1;")], ['fehlerZahl'], 'Regex mit Quote');
   const SKIP = new Set(['node_modules', 'dist', 'coverage', 'data', 'vendor', '.git']);
   const files = (/** @type {string} */ d, /** @type {string[]} */ out = []) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -1618,20 +1636,67 @@ test('German identifiers become fewer, never more (server and tests separately; 
   const SERVER = ['src', 'routes', 'db', 'clients', 'startup', 'jobs', 'scripts'].filter(d =>
     fs.existsSync(path.join(WEB, d)),
   );
-  const AREAS = {
-    server: [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))],
-    test: files(__dirname),
+  /** Dictionaries of names that are not ours: v1 and the Kotlin types (Android), and the keys of
+   * shared/design-tokens.json, which the Android build reads as well. */
+  const NOT_OUR_FILES = new Set(['scripts/contract-kotlin-mapping.js', 'scripts/generate-design-tokens.js']);
+  /** German names the server does not own, per group; each one is a value that lives outside the code. */
+  const NOT_OURS = {
+    /** Stored: database columns, JSON keys in run_state, job payloads, setting keys, session fields,
+     * trash kinds. Renaming them voids what is already stored. */
+    STORED: [
+      'pruefsumme',
+      'sitzungsVersion',
+      'angemeldetAm',
+      'eingabe',
+      'nur_ausweichquelle',
+      'versuch',
+      'schritt',
+      'geheimnisse',
+      'vorschauen',
+      'katalog',
+      'anleitungen',
+      'set_bilder',
+      'kaufpreise',
+      'einrichtung_erledigt',
+      'gutschein_land',
+      'figur',
+      'teil',
+      'nummern',
+      'zeit',
+      'ergebnis',
+    ],
+    /** Fields on the wire that the UI reads (contract.d.ts does not list them). */
+    WIRE: ['abdeckung'],
+    /** Names of others: Node's TLS option, operator environment variables, keys of shared/app-schnittstelle.json. */
+    EXTERNAL: ['servername', 'DB_LESEN_USER', 'TEST_NACHLAUF', 'antwortfelder'],
   };
-  // Distinct names per area; the goal for "server" is 0.
-  const LIMITS = { server: 530, test: 1331 };
-  for (const [area, list] of Object.entries(AREAS)) {
-    const found = new Set();
-    for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);
-    const limit = LIMITS[/** @type {keyof typeof LIMITS} */ (area)];
-    assert.ok(found.size <= limit, `${found.size} deutsche Bezeichner in ${area}, erlaubt sind ${limit}`);
-    if (found.size < limit)
-      console.log(`  ℹ deutsche Bezeichner ${area}: ${found.size} (Schranke ${limit}) — Schranke nachziehen`);
-  }
+  const exempt = new Set(Object.values(NOT_OURS).flat());
+  const server = [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))].filter(
+    f => !NOT_OUR_FILES.has(path.relative(WEB, f).split(path.sep).join('/')),
+  );
+  /** @type {Map<string, string>} */
+  const found = new Map();
+  const seen = new Set();
+  for (const f of server)
+    for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) {
+      seen.add(id);
+      if (!exempt.has(id) && !found.has(id)) found.set(id, path.relative(WEB, f));
+    }
+  assert.deepEqual(
+    [...found].map(([id, f]) => `${f}: ${id}`),
+    [],
+    'Bezeichner im Server auf Englisch; ein gespeicherter oder fremder Name gehört begründet in NOT_OURS',
+  );
+  const unused = [...exempt].filter(id => !seen.has(id));
+  assert.deepEqual(unused, [], 'Ausnahme ohne Vorkommen — aus NOT_OURS streichen');
+
+  // Distinct names in the test area; the goal is 0.
+  const LIMIT_TEST = 1217;
+  const inTests = new Set();
+  for (const f of files(__dirname)) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) inTests.add(id);
+  assert.ok(inTests.size <= LIMIT_TEST, `${inTests.size} deutsche Bezeichner in test, erlaubt sind ${LIMIT_TEST}`);
+  if (inTests.size < LIMIT_TEST)
+    console.log(`  ℹ deutsche Bezeichner test: ${inTests.size} (Schranke ${LIMIT_TEST}) — Schranke nachziehen`);
 });
 
 // ── Language: no German names in the UI code ─────────────────────────────────────────────

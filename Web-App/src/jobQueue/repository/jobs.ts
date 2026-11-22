@@ -8,7 +8,7 @@ import type { Columns } from '../../../db/rows';
 
 /** Only the SQL here; waking, waiting times and working on behalf of an account
  * live in the service. */
-type Stand = { s: string } | undefined;
+type State = { s: string } | undefined;
 
 export interface JobListenRow {
   id: string;
@@ -147,12 +147,12 @@ export async function heartbeat(db: DbInterface, a: Claim, deadlineSec: number):
 }
 /** Read only: a status change wakes every run; none of them should write while doing so. */
 export async function belongsStill(db: DbInterface, a: Claim): Promise<boolean> {
-  return !!(await db.get<{ ja: number }>(
+  return !!(await db.get<{ yes: number }>(
     `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
     [a.id, a.locked_by],
   ));
 }
-export function writeProgress(db: DbInterface, a: Claim, f: Progress, deadlineSec: number): Promise<Stand> {
+export function writeProgress(db: DbInterface, a: Claim, f: Progress, deadlineSec: number): Promise<State> {
   return db.get<{ s: string }>(
     `UPDATE jobs SET progress = $3, deadline_at = NOW() + make_interval(secs => $4), updated_at = NOW()
       WHERE id = $1 AND locked_by = $2 AND status = 'running' RETURNING COALESCE(dedupe_key, id::text) AS s`,
@@ -160,7 +160,7 @@ export function writeProgress(db: DbInterface, a: Claim, f: Progress, deadlineSe
   );
 }
 /** PDF and CSV carry whole lists; once done, nobody needs them any more. */
-export function setDone(db: DbInterface, a: Claim, discardPayload: boolean): Promise<Stand> {
+export function setDone(db: DbInterface, a: Claim, discardPayload: boolean): Promise<State> {
   return db.get<{ s: string }>(
     `UPDATE jobs SET status = 'done', locked_by = NULL, error_message = NULL, deadline_at = NULL, updated_at = NOW(),
             payload = CASE WHEN $3 THEN '{}'::jsonb ELSE payload END
@@ -174,7 +174,7 @@ export function setFailed(
   final: boolean,
   error: string,
   waitTimeSec: number,
-): Promise<Stand> {
+): Promise<State> {
   return againAtTwin(() =>
     db.get<{ s: string }>(
       `UPDATE jobs SET status = CASE WHEN $3 THEN 'error' ELSE ${OPEN_OR_REPLACED} END,
@@ -194,7 +194,7 @@ export function setMoved(
   bis: Date,
   reason: string,
   counts: boolean,
-): Promise<Stand> {
+): Promise<State> {
   return againAtTwin(() =>
     db.get<{ s: string }>(
       `UPDATE jobs SET status = CASE WHEN $3 THEN 'error' ELSE ${OPEN_OR_REPLACED} END,
@@ -258,7 +258,7 @@ export async function cleanCompletedOn(db: DbInterface): Promise<number> {
   );
   return r?.changes ?? 0;
 }
-export async function liesPause(db: DbInterface, kind: JobKind): Promise<Pause | null> {
+export async function readPause(db: DbInterface, kind: JobKind): Promise<Pause | null> {
   return (
     (await db.get<Columns<'job_pauses', 'type' | 'until_at' | 'reason' | 'level'>>(
       'SELECT type, until_at, reason, level FROM job_pauses WHERE type = $1',
@@ -452,7 +452,7 @@ export function lastPerKind(db: DbInterface, kinds: readonly JobKind[]) {
   );
 }
 
-export function numbersJeKindAndStatus(db: DbInterface) {
+export function countsByKindAndStatus(db: DbInterface) {
   return db.all<{ type: string; status: string; count: number }>(
     `SELECT type, status, COUNT(*)::int AS count FROM jobs GROUP BY type, status ORDER BY type, status`,
   );

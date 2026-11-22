@@ -70,16 +70,16 @@ export async function occupiedSpace(folder: string): Promise<number> {
 
 /** Uploads can be private (invoices): readable only by the service, even
  * if the folder already existed with looser permissions. */
-export async function privaterFolder(wurzel: string, name: string): Promise<string> {
-  const folder = path.join(wurzel, name);
+export async function privateFolder(root: string, name: string): Promise<string> {
+  const folder = path.join(root, name);
   await fs.promises.mkdir(folder, { recursive: true, mode: 0o700 });
-  for (const o of [wurzel, folder]) await fs.promises.chmod(o, 0o700);
+  for (const o of [root, folder]) await fs.promises.chmod(o, 0o700);
   return folder;
 }
 
 /** A file into an account's private folder: extension from the MIME type, never
  * from the client's name; the name random so that it cannot be guessed. */
-export function privaterReceive(o: {
+export function privateReceive(o: {
   folder: (req: Request) => Promise<string>;
   prefix: (req: Request) => string;
   types: Record<string, string>;
@@ -131,8 +131,8 @@ export async function totalSufficesFor(length: number): Promise<boolean> {
 }
 
 /** The path comes from the request (multer); the service does not touch what would lie outside the storage. */
-export function belowRoot(wurzel: string, file: string): string {
-  const w = path.resolve(wurzel);
+export function belowRoot(root: string, file: string): string {
+  const w = path.resolve(root);
   const d = path.resolve(file);
   if (!d.startsWith(w + path.sep)) throw new Error(`Upload ausserhalb von ${w}`);
   return d;
@@ -140,8 +140,8 @@ export function belowRoot(wurzel: string, file: string): string {
 
 /** After writing: readable only by the service, content matches the type, and the
  * quota holds even without Content-Length (chunked). Otherwise the file is gone again. */
-export async function checkReceivedFile(wurzel: string, received: string, mime: string): Promise<void> {
-  const file = belowRoot(wurzel, received);
+export async function checkReceivedFile(root: string, received: string, mime: string): Promise<void> {
+  const file = belowRoot(root, received);
   await fs.promises.chmod(file, 0o600);
   const refusal = !(await contentFitsToType(file, mime))
     ? fileError('invalid', 'file_content_wrong')

@@ -62,9 +62,9 @@ interface Thrown {
 /** A 4xx is an answer, not a server error: with a stack every wrong input would fill the log
  * and hide the real errors. Only the path says which route it was: one place often serves several. */
 function logRouteError(code: number, e: Thrown | null | undefined, error: unknown, req?: ErrorSource): void {
-  const wo = req?.originalUrl || req?.url;
+  const where = req?.originalUrl || req?.url;
   // Without line breaks: a path or text with a line break would otherwise fake a second log line.
-  const request = wo ? `${req?.method || '?'} ${String(wo).split('?')[0]} `.replace(/\n|\r/g, '') : '';
+  const request = where ? `${req?.method || '?'} ${String(where).split('?')[0]} `.replace(/\n|\r/g, '') : '';
   if (code >= 500) console.error('[route-error] %s%d:', request, code, e?.stack || e?.message || e);
   else console.warn('[route-warnung] %s%d: %s', request, code, errorMessage(error).replace(/\n|\r/g, ''));
 }
@@ -90,10 +90,10 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   }
   // A library's text names parsers, paths or bytes; it stays in the log.
   if (!isServerError) {
-    const ersatz: ErrorCode = code === 404 ? 'not_found' : code === 413 ? 'request_too_large' : 'request_invalid';
+    const spare: ErrorCode = code === 404 ? 'not_found' : code === 413 ? 'request_too_large' : 'request_invalid';
     res
       .status(code)
-      .json(withRequestId({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) }));
+      .json(withRequestId({ success: false, code: spare, error: errorText(spare, responseLanguage(req)) }));
     return;
   }
   // Every error response carries a code so that the apps do not guess from the sentence.
@@ -131,20 +131,20 @@ function asUploadError<T>(e: T): T | Error {
   )
     return fileError('invalid', 'request_unreadable');
   if (m?.name !== 'MulterError') return e;
-  const zuGross = m.code === 'LIMIT_FILE_SIZE';
-  return fileError(zuGross ? 'too_large' : 'invalid', zuGross ? 'file_too_large' : 'upload_invalid');
+  const tooLarge = m.code === 'LIMIT_FILE_SIZE';
+  return fileError(tooLarge ? 'too_large' : 'invalid', tooLarge ? 'file_too_large' : 'upload_invalid');
 }
 
 // Express 5 also delivers placeholders as an array; joined with / instead of a comma.
 export function pathParam(req: { params: Record<string, string | string[] | undefined> }, name: string): string {
-  const wert = req.params[name];
-  return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
+  const value = req.params[name];
+  return Array.isArray(value) ? value.join('/') : (value ?? '');
 }
 
 /** The segments of a placeholder `*name` without empty ones. */
 export function pathSegments(req: { params: Record<string, string | string[] | undefined> }, name: string): string[] {
-  const wert = req.params[name];
-  return (Array.isArray(wert) ? wert : wert ? [wert] : []).filter(Boolean);
+  const value = req.params[name];
+  return (Array.isArray(value) ? value : value ? [value] : []).filter(Boolean);
 }
 
 /** Express 5 also passes rejected promises here; a try/catch per route

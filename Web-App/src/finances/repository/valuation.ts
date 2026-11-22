@@ -3,7 +3,7 @@ import { purchasePriceColumns } from '../../../db/moneySql';
 import { quantityFrom, subsetFrom } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import { teilSichtJoin, minifigViewJoin, setMasterJoin, TEIL, MINIFIG, SET } from '../../../db/catalogView';
+import { partViewJoin, minifigViewJoin, setMasterJoin, PART, MINIFIG, SET } from '../../../db/catalogView';
 
 /** An acquisition of a manual part or a figure, purchase price in the account currency. */
 export interface ManualEntry {
@@ -63,7 +63,7 @@ export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: 
        FROM ${l.setHoldings('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
        ${setMasterJoin('s.set_number')}
-       ${l.mengeJoin('s', 'sm', '= ANY($1)')}
+       ${l.setQuantityJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`,
     [uids],
   );
@@ -136,13 +136,13 @@ export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract,
            ${subsetFrom('p', 'part')} AS quantity,
            p.source,
            p.storage_id, p.added_at,
-           ${TEIL.name} AS part_name, ${TEIL.category} AS category_name,
-           ${TEIL.colorName} AS color_name, ${TEIL.colorHex} AS color_hex,
-           ${TEIL.image} AS image_url, ${TEIL.imageFile} AS image_local
+           ${PART.name} AS part_name, ${PART.category} AS category_name,
+           ${PART.colorName} AS color_name, ${PART.colorHex} AS color_hex,
+           ${PART.image} AS image_url, ${PART.imageFile} AS image_local
       FROM ${l.partHoldings('= ANY($1)')} p
       ${l.quantityJoin('p', 'part')}
       ${blJoin('p.part_number', 'part', 'p.user_id')}
-      ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+      ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`,
     [uids],
   );

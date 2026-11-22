@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { config } from './config';
 import { processWide } from './processWide';
 
-export interface TlsStand {
+export interface TlsState {
   /** The format of the QR code. */
   fp: string;
   /** For reading aloud. */
@@ -15,9 +15,9 @@ export interface TlsStand {
   pem: string;
 }
 
-const Z = processWide('tlsStand', () => ({ v: null as { path: string; mtimeMs: number; state: TlsStand } | null }));
+const Z = processWide('tlsState', () => ({ v: null as { path: string; mtimeMs: number; state: TlsState } | null }));
 
-export function tlsStatusFrom(pem: string): TlsStand {
+export function tlsStatusFrom(pem: string): TlsState {
   const cert = new crypto.X509Certificate(pem);
   const spki = cert.publicKey.export({ type: 'spki', format: 'der' });
   const raw = crypto.createHash('sha256').update(spki).digest();
@@ -33,7 +33,7 @@ export function tlsStatusFrom(pem: string): TlsStand {
 
 /** Re-read as soon as the file changes: Caddy only creates it on the first
  * start, a restart of the app should not be necessary. */
-export async function tlsStand(): Promise<TlsStand | null> {
+export async function tlsState(): Promise<TlsState | null> {
   const path = config().caCertificate;
   if (!path) return null;
   try {
@@ -56,9 +56,9 @@ export async function tlsStand(): Promise<TlsStand | null> {
 }
 
 export async function tlsInfo() {
-  const state = await tlsStand();
+  const state = await tlsState();
   return {
-    https: config().hinterTls,
+    https: config().behindTls,
     ...(state
       ? {
           fp: state.fp,

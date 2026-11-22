@@ -19,13 +19,13 @@ export function setNumberCandidates(title: string, year: number): string[] {
   if (!title) return [];
   const yearLimit = year + 1;
 
-  type Candidate = { wert: string; withSuffix: boolean; withHash: boolean; year: boolean; quality: number };
+  type Candidate = { value: string; withSuffix: boolean; withHash: boolean; year: boolean; quality: number };
   const found: Candidate[] = [];
 
   // Three to seven digits: three-digit old sets and seven-digit
   // order numbers of large sets.
-  const muster = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
-  for (let hits = muster.exec(title); hits !== null; hits = muster.exec(title)) {
+  const pattern = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
+  for (let hits = pattern.exec(title); hits !== null; hits = pattern.exec(title)) {
     // Under noUncheckedIndexedAccess TypeScript does not know that the pattern
     // guarantees treffer[2].
     const digits = hits[2];
@@ -37,7 +37,7 @@ export function setNumberCandidates(title: string, year: number): string[] {
     // With a variant suffix it is no longer a year but a set number.
     const year = !suffix && digits.length === 4 && number >= 1949 && number <= yearLimit;
     found.push({
-      wert: digits + suffix,
+      value: digits + suffix,
       withSuffix: !!suffix,
       withHash: !!hits[1],
       year,
@@ -45,7 +45,7 @@ export function setNumberCandidates(title: string, year: number): string[] {
     });
   }
 
-  const unique = found.filter((k, i) => found.findIndex(a => a.wert === k.wert) === i);
+  const unique = found.filter((k, i) => found.findIndex(a => a.value === k.value) === i);
 
   // Array.prototype.sort is stable: on a tie the order in the title stays.
   return unique
@@ -57,5 +57,5 @@ export function setNumberCandidates(title: string, year: number): string[] {
         Number(a.year) - Number(b.year) ||
         a.quality - b.quality,
     )
-    .map(k => k.wert);
+    .map(k => k.value);
 }

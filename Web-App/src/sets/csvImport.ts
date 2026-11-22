@@ -2,7 +2,7 @@
 import { beforeThe, errorMessage, publicError } from '../infra/error';
 import { buildJobStatus } from '../jobQueue';
 import { normalizeSetNumber } from '../infra/setNumber';
-import { csvReadIn, defusingUndo, csvDatum, rowsList, csvAny, csvFirst } from '../infra/csvExport';
+import { csvReadIn, defusingUndo, csvDate, rowsList, csvAny, csvFirst } from '../infra/csvExport';
 import { failDomain, type Language } from '../infra/errorTexts';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
@@ -16,11 +16,11 @@ export interface ImportRow {
   condition: string | null;
   acquiredAt: string | null;
   row?: number;
-  error?: { code: 'csv_quantity_invalid' | 'csv_no_set_number'; wert?: string };
+  error?: { code: 'csv_quantity_invalid' | 'csv_no_set_number'; value?: string };
 }
 
 /** Turning "x" into a 1 and "-2" into a 2 would silently book something other than what is in the file. */
-function csvMenge(raw: string): number | null {
+function csvQuantity(raw: string): number | null {
   const s = raw.trim();
   if (s === '') return 1;
   return /^\d{1,6}$/.test(s) && Number(s) >= 1 ? Number(s) : null;
@@ -37,11 +37,11 @@ function normalizedRow(raw: Record<string, unknown>): Record<string, string> {
 function importRowOf(row: Record<string, string>, line: number | undefined): ImportRow {
   const rawSn = csvFirst(row, 'set_number', 'setnummer', 'set') || Object.values(row)[0];
   const sn = rawSn ? beforeThe(String(rawSn), ';').trim() : '';
-  const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(line ? { row: line } : {}) };
-  if (!sn) return { ...leer, error: { code: 'csv_no_set_number' } };
+  const base = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(line ? { row: line } : {}) };
+  if (!sn) return { ...base, error: { code: 'csv_no_set_number' } };
   const quantityRaw = String(csvAny(row, 'quantity', 'anzahl', 'qty', 'menge') ?? '');
-  const qty = csvMenge(quantityRaw);
-  if (qty === null) return { ...leer, error: { code: 'csv_quantity_invalid', wert: quantityRaw.trim().slice(0, 20) } };
+  const qty = csvQuantity(quantityRaw);
+  if (qty === null) return { ...base, error: { code: 'csv_quantity_invalid', value: quantityRaw.trim().slice(0, 20) } };
   const rawPrice = csvAny(row, 'purchase_price', 'kaufpreis', 'einkaufspreis', 'price') ?? '';
   const priceValue = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
   const state = String(csvFirst(row, 'condition', 'zustand', 'kondition') || '')
@@ -54,7 +54,7 @@ function importRowOf(row: Record<string, string>, line: number | undefined): Imp
     purchasePrice: priceValue !== null && !Number.isNaN(priceValue) ? priceValue : null,
     condition: ['N', 'U'].includes(state) ? state : null,
     // 05.03.2026 is the 5th of March, not the 3rd of May.
-    acquiredAt: csvDatum(csvFirst(row, 'acquired_at', 'erfassungsdatum', 'datum')),
+    acquiredAt: csvDate(csvFirst(row, 'acquired_at', 'erfassungsdatum', 'datum')),
   };
 }
 
@@ -91,7 +91,7 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
   if (checkOnly) return { total: rows.length, skipped, existing, started: false };
   const running = await sk.jobQueue.jobGet(userId);
   if (running && running.status === 'running') await sk.jobQueue.jobUpdate(userId, { status: 'cancelled' });
-  const lauf = randomUUID();
+  const run = randomUUID();
   await sk.jobQueue.jobSet(userId, {
     status: 'running',
     total: rows.length,
@@ -99,14 +99,14 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
     current: null,
     results: JSON.stringify([]),
     error: null,
-    run_id: lauf,
+    run_id: run,
   });
   try {
-    await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, lauf, rows }, { userId, maxAttempts: 3 });
+    await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, run, rows }, { userId, maxAttempts: 3 });
   } catch (e) {
     await attempts(
       'csv-import:fehler vermerken',
-      sk.jobQueue.jobUpdate(userId, { status: 'error', error: publicError(e, 'csv-import:einstellen').error }, lauf),
+      sk.jobQueue.jobUpdate(userId, { status: 'error', error: publicError(e, 'csv-import:einstellen').error }, run),
     );
     throw e;
   }
@@ -122,7 +122,7 @@ export async function cancelSetCsvImport(k: SetsContext, userId: number) {
 
 type Header = { headers?: Record<string, unknown> };
 
-export async function csvImportStand(k: SetsContext, uid: number, req: Header) {
+export async function csvImportState(k: SetsContext, uid: number, req: Header) {
   return buildJobStatus(await k.jobQueue.jobGet(uid), req);
 }
 

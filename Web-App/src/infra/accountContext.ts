@@ -29,10 +29,10 @@ interface Frame {
   companion: unknown;
   rid: string | null;
 }
-const LEER: Frame = { source: null, system: null, web: false, transaction: null, companion: null, rid: null };
+const EMPTY: Frame = { source: null, system: null, web: false, transaction: null, companion: null, rid: null };
 const frame = new AsyncLocalStorage<Frame>();
-const now = (): Frame => frame.getStore() ?? LEER;
-const withFrame = <T>(teil: Partial<Frame>, f: () => T): T => frame.run({ ...now(), ...teil }, f);
+const now = (): Frame => frame.getStore() ?? EMPTY;
+const withFrame = <T>(part: Partial<Frame>, f: () => T): T => frame.run({ ...now(), ...part }, f);
 
 export function currentAccount(): { id: number; admin: boolean } | null {
   const q = now().source;

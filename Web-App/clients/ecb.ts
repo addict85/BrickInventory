@@ -12,11 +12,11 @@ export const ECB_HISTORY = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-
 export const ECB_DAILY_RATES = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
 export const ALLOWED_RATE_HOSTS = ['www.ecb.europa.eu'] as const;
 
-/** One rate: how many units of `waehrung` one euro costs on `tag`. */
+/** One rate: how many units of `currency` one euro costs on `tag` (the day). */
 export interface Rate {
   tag: string;
   currency: string;
-  je_eur: number;
+  per_eur: number;
 }
 
 /** Loads an address; replaced by a local server in tests. */
@@ -45,8 +45,8 @@ export function readDailyRates(xml: string): Rate[] {
   const from: Rate[] = [];
   for (const tagBlock of xml.matchAll(/<Cube\s+time=['"](\d{4}-\d{2}-\d{2})['"]\s*>([\s\S]*?)<\/Cube>/g)) {
     for (const k of (tagBlock[2] ?? '').matchAll(/<Cube\s+currency=['"]([A-Z]{3})['"]\s+rate=['"]([0-9.]+)['"]/g)) {
-      const je = Number(k[2]);
-      if (Number.isFinite(je) && je > 0) from.push({ tag: tagBlock[1] ?? '', currency: k[1] ?? '', je_eur: je });
+      const rate = Number(k[2]);
+      if (Number.isFinite(rate) && rate > 0) from.push({ tag: tagBlock[1] ?? '', currency: k[1] ?? '', per_eur: rate });
     }
   }
   return from;
@@ -63,9 +63,9 @@ export function readHistory(csv: string): Rate[] {
     if (!TAG.test(tag)) continue;
     for (let i = 1; i < header.length; i++) {
       const w = header[i] ?? '',
-        je = Number(fields[i]);
-      if (CURRENCY.test(w) && w !== 'EUR' && fields[i] && Number.isFinite(je) && je > 0)
-        from.push({ tag, currency: w, je_eur: je });
+        rate = Number(fields[i]);
+      if (CURRENCY.test(w) && w !== 'EUR' && fields[i] && Number.isFinite(rate) && rate > 0)
+        from.push({ tag, currency: w, per_eur: rate });
     }
   }
   return from;

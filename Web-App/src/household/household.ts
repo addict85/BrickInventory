@@ -24,16 +24,16 @@ import {
   type Household,
   type ScopeMode,
   type Writer,
-  type Sicht,
+  type Viewer,
 } from './rules';
 
 /** Per set of services: the state counts the changes, the dependents (images) listen in. */
-const state = (k: HouseholdContext) => k.compartments.slot('haushaltStand', () => ({ wert: 0 }));
+const state = (k: HouseholdContext) => k.compartments.slot('haushaltStand', () => ({ value: 0 }));
 const householdChange = (k: HouseholdContext) =>
   k.compartments.slot('haushaltsaenderung', () => {
     const e = processEvent('haushaltsaenderung', HOUSEHOLD_CHANNEL);
     e.listen(() => {
-      state(k).wert++;
+      state(k).value++;
     });
     return e;
   });
@@ -51,7 +51,7 @@ export function listenOnChanges(k: HouseholdContext): () => void {
 /** Per access (two databases, same account IDs); none within a transaction, otherwise a never-valid state would remain after ROLLBACK. */
 function memory(k: HouseholdContext): Cache<number, Household> {
   if (k.db.inTransaction()) return new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
-  const now = state(k).wert;
+  const now = state(k).value;
   const g = k.compartments.slot('haushalt', () => ({
     state: now,
     store: new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS),
@@ -71,7 +71,7 @@ export function reportHouseholdChange(k: HouseholdContext): void {
 /** Only the direct sub-accounts: every account in scope has itself agreed to an
  * invitation of THIS account. A sub-account only sees itself —
  * the main account is not a shared pot but a view. */
-const kinder = (k: HouseholdContext, id: number) => repo.subAccounts(k.db, id);
+const children = (k: HouseholdContext, id: number) => repo.subAccounts(k.db, id);
 
 /** Whoever asks is the row security's account (checkRequester); others via the system frame. */
 export async function householdOf(k: HouseholdContext, uid: number): Promise<Household> {
@@ -83,7 +83,7 @@ export async function householdOf(k: HouseholdContext, uid: number): Promise<Hou
   // the remembered state of all following requests.
   if (hits) return { ...hits, memberIds: [...hits.memberIds], parentIds: [...hits.parentIds] };
 
-  const [bottom, parents] = await Promise.all([kinder(k, id), repo.parentAccounts(k.db, id)]);
+  const [bottom, parents] = await Promise.all([children(k, id), repo.parentAccounts(k.db, id)]);
   const household: Household = { memberIds: [id, ...bottom], isMain: bottom.length > 0, parentIds: parents };
   store.set(id, household);
   return { ...household, memberIds: [...household.memberIds], parentIds: [...household.parentIds] };
@@ -103,7 +103,7 @@ export async function mayWriteFor(k: HouseholdContext, actorId: number, ownerId:
 export async function writeScope(k: HouseholdContext, uid: number): Promise<number[]> {
   const id = parseInt(String(uid), 10);
   checkRequester(id);
-  return [id, ...(await kinder(k, id))];
+  return [id, ...(await children(k, id))];
 }
 
 /** `tiefe` stays in the field for older app versions (0 = own, 1 = sub-account). */
@@ -274,7 +274,7 @@ export async function scopeIds(k: HouseholdContext, uid: number, mode: ScopeMode
 }
 
 /** IDs only come from inside (jobs, other services); from outside comes a view. */
-export async function scopeFrom(k: HouseholdContext, v: Sicht | ScopeInput): Promise<Scope> {
+export async function scopeFrom(k: HouseholdContext, v: Viewer | ScopeInput): Promise<Scope> {
   return typeof v === 'object' && !Array.isArray(v) ? scopeIds(k, v.user, scopeKind(v.accounts)) : asIds(v);
 }
 

@@ -25,20 +25,20 @@ export function bricksetJobType(run: Handler<'brickset'>['run']): Login {
 const key = (sn: string) => `brickset:${sn}`;
 
 /** Soon (disruption on the remote side) or at the time of day. */
-export async function bricksetDueFrom(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
-  if (bald) return new Date(k.clock.now() + 30 * 60_000);
+export async function bricksetDueFrom(k: ForeignSourcesContext, soon: boolean): Promise<Date> {
+  if (soon) return new Date(k.clock.now() + 30 * 60_000);
   const time = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.preset);
-  return nextTimeOfDay(time, k.clock.datum());
+  return nextTimeOfDay(time, k.clock.date());
 }
 
 /** @returns vorgemerkt false if it was already queued BRICKSET_AT_MOST times */
-export async function bricksetReserve(k: ForeignSourcesContext, sn: string, error: string, bald = false) {
+export async function bricksetReserve(k: ForeignSourcesContext, sn: string, error: string, soon = false) {
   const r = await k.jobQueue.resubmission.rememberBefore(
     'brickset',
     key(sn),
     attempt => ({ set_number: sn, versuch: attempt }),
     {
-      dueFrom: await bricksetDueFrom(k, bald),
+      dueFrom: await bricksetDueFrom(k, soon),
       error,
       atMost: BRICKSET_AT_MOST,
     },

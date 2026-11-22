@@ -186,7 +186,8 @@ function acqBody(id, field, value) {
 
 /** After an owner change almost everything on the screen is wrong: quantities, sums, owner badges.
  * Better reload than update four places individually. restore: without it the user lands at page 1
- * again after the change; that way position and loaded depth are kept. @param {string} sn @param {any} d */
+ * again after the change; that way position and loaded depth are kept. @param {string} sn
+ * @param {import('../../frontend-types/api').ApiResponse<'PUT', `/v2/sets/${string}/acquisitions/${string}`>} d */
 function afterOwnerChange(sn, d) {
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');

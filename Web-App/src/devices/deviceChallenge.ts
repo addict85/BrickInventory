@@ -19,7 +19,7 @@ export type StepAction = (typeof ACTIONS)[number];
 /** Only right after logging in: whoever came later with a stolen token
  * could otherwise register their own key. */
 export const KEY_DEADLINE_S = 10 * 60;
-export const CHALLENGE_FRIST_S = 2 * 60;
+export const CHALLENGE_DEADLINE_S = 2 * 60;
 const CHALLENGES_OPEN = 5;
 const NONCES_OPEN = 3;
 /** Admin stays open in the app until it goes to the background;
@@ -58,7 +58,7 @@ export async function newNonce(k: DevicesContext, f: Family, fromQr = false): Pr
   }
   const nonce = randomBytes(32).toString('base64url');
   const ok = await k.deviceKeys.createNonce(f, nonce, {
-    fristS: KEY_DEADLINE_S,
+    deadlineS: KEY_DEADLINE_S,
     open: NONCES_OPEN,
     fromQr,
   });
@@ -73,14 +73,14 @@ export async function nonceForQrToken(k: DevicesContext, tokenHash: string): Pro
 
 /** Read once per PEM; the key '' stands for the Google roots. */
 function roots(pem: string): X509Certificate[] {
-  const wurzelCache = processWide('attestationRoots', () => new Map<string, X509Certificate[]>());
-  let list = wurzelCache.get(pem);
+  const rootCache = processWide('attestationRoots', () => new Map<string, X509Certificate[]>());
+  let list = rootCache.get(pem);
   if (!list) {
     const parts = pem
       ? (pem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [])
       : GOOGLE_ROOTS;
     list = parts.map(p => new X509Certificate(p));
-    wurzelCache.set(pem, list);
+    rootCache.set(pem, list);
   }
   return list;
 }
@@ -99,7 +99,7 @@ export async function depositKey(kx: DevicesContext, f: Family, chain: readonly 
   const revoked = applicableList(
     await kx.jobQueue.readState(REVOCATION_STATE),
     k.attestationRevocationDays,
-    kx.clock.datum(),
+    kx.clock.date(),
   );
   if (!revoked) attestationRejected(f, 'widerrufsliste_fehlt');
   const p = checkChain(chain, {
@@ -108,7 +108,7 @@ export async function depositKey(kx: DevicesContext, f: Family, chain: readonly 
     digests: k.androidCertificates,
     revoked,
     patchAtLeast: k.attestationPatchAtLeast,
-    now: kx.clock.datum(),
+    now: kx.clock.date(),
   });
   if (!p.ok) attestationRejected(f, p.reason);
   const canonical = (p.public_key.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
@@ -129,7 +129,7 @@ export type Challenge = { challenge: string; message: string; valid_until: Date 
 export async function newChallenge(k: DevicesContext, f: Family, action: StepAction): Promise<Challenge> {
   if (!(await k.deviceKeys.keyThe(f, k.config.deviceKeyLegacyUntil))) failDomain('forbidden', 'device_key_missing');
   const challenge = randomBytes(32).toString('base64url');
-  const bis = await k.deviceKeys.createChallenge(f, challenge, action, CHALLENGE_FRIST_S, CHALLENGES_OPEN);
+  const bis = await k.deviceKeys.createChallenge(f, challenge, action, CHALLENGE_DEADLINE_S, CHALLENGES_OPEN);
   return { challenge, message: message(action, challenge), valid_until: bis };
 }
 

@@ -90,7 +90,7 @@ async function currentTheme(k: ProfileContext, userId?: number): Promise<string>
   // The start page still loads with a disrupted database, then classic and uncached.
   const read = await attempts('index-html:design', k.settings.globalValue('app_theme'));
   if (!read.ok) return 'classic';
-  const stored = read.wert;
+  const stored = read.value;
   const chosen: string = stored && DESIGNS.includes(stored) ? stored : 'classic';
   Z.theme = chosen;
   Z.themeAt = k.clock.now();

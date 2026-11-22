@@ -751,13 +751,6 @@ export type GenericResponse = {
   success: boolean;
   [feld: string]: unknown;
 };
-export type Gesundheit = {
-  status: 'ok' | 'starting';
-  startup?: StartupStatus;
-  db_pool?: Record<string, unknown>;
-  uptime_seconds?: number;
-  [feld: string]: unknown;
-};
 export type GET_api_v2_minifigs = {
   success: boolean;
   total: number;
@@ -840,6 +833,13 @@ export type GET_api_v2_parts = {
     [feld: string]: unknown;
   }>;
   degraded?: string[];
+  [feld: string]: unknown;
+};
+export type Health = {
+  status: 'ok' | 'starting';
+  startup?: StartupStatus;
+  db_pool?: Record<string, unknown>;
+  uptime_seconds?: number;
   [feld: string]: unknown;
 };
 export type Heartbeat = {
@@ -1501,7 +1501,7 @@ export type PdfJob = {
   jobId: string;
   [feld: string]: unknown;
 };
-export type PdfStand = {
+export type PdfState = {
   success: true;
   status: string;
   error: string | null;
@@ -2117,7 +2117,7 @@ export type StorageStockResponse = {
   preset: StorageEntry | null;
   [feld: string]: unknown;
 };
-export type TlsStand = {
+export type TlsState = {
   success: true;
   https: boolean;
   fp: string | null;
@@ -2552,7 +2552,7 @@ export type Route =
   | { m: 'GET'; p: '/v2/finance/pnl'; a: PnlResponse }
   | { m: 'GET'; p: '/v2/finance/portfolio-history'; a: PortfolioHistoryResponse }
   | { m: 'GET'; p: '/v2/finance/valuation'; a: ValuationResponse }
-  | { m: 'GET'; p: '/v2/health'; a: Gesundheit }
+  | { m: 'GET'; p: '/v2/health'; a: Health }
   | { m: 'GET'; p: '/v2/health/live'; a: Heartbeat }
   | { m: 'GET'; p: '/v2/health/ready'; a: Heartbeat }
   | { m: 'DELETE'; p: '/v2/inventory'; a: HoldingCleared }
@@ -2618,7 +2618,7 @@ export type Route =
   | { m: 'GET'; p: '/v2/sets/import/csv/status'; a: CsvImportStatus }
   | { m: 'GET'; p: `/v2/sets/info/${string}`; a: SetInfoResponse }
   | { m: 'POST'; p: '/v2/sets/partslist-pdf'; a: PdfJob }
-  | { m: 'GET'; p: `/v2/sets/partslist-pdf/status/${string}`; a: PdfStand }
+  | { m: 'GET'; p: `/v2/sets/partslist-pdf/status/${string}`; a: PdfState }
   | { m: 'GET'; p: '/v2/settings'; a: SettingsResponse }
   | { m: 'PUT'; p: '/v2/settings'; a: SettingsSaved }
   | { m: 'POST'; p: '/v2/settings'; a: DELETE_api_v2_trash_id }
@@ -2639,7 +2639,7 @@ export type Route =
   | { m: 'POST'; p: '/v2/settings/smtp-test'; a: SmtpProbe }
   | { m: 'POST'; p: '/v2/settings/test-source'; a: DELETE_api_v2_trash_id }
   | { m: 'GET'; p: '/v2/settings/theme'; a: AppThemeResponse }
-  | { m: 'GET'; p: '/v2/settings/tls'; a: TlsStand }
+  | { m: 'GET'; p: '/v2/settings/tls'; a: TlsState }
   | { m: 'GET'; p: '/v2/settings/tokens'; a: TokensResponse }
   | { m: 'DELETE'; p: `/v2/settings/tokens/${string}`; a: TokenRevocation }
   | { m: 'POST'; p: '/v2/settings/user/default-condition'; a: AdminCondition }
@@ -2679,4 +2679,4 @@ export type Route =
 /** Per event stream (GET): path and one event, as strom() in js/api.js delivers it. */
 export type Strom =
   | { p: '/v2/sets/import/csv/stream'; e: CsvImportStatus }
-  | { p: `/v2/sets/partslist-pdf/stream/${string}`; e: PdfStand };
+  | { p: `/v2/sets/partslist-pdf/stream/${string}`; e: PdfState };

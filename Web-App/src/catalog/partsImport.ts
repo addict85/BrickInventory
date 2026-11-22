@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { JobRun } from '../jobQueue';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../externalSources';
+import { type RbSetPart, firstBlNumber, parseThrottleWait } from '../externalSources';
 import { allPartsOfSet } from './rebrickableCatalog';
 import { logAndContinue, reportError } from '../infra/error';
 import { withVersion } from '../infra/setNumber';
@@ -24,11 +24,11 @@ function localPartImage(partNum: string, colorId: number, imageUrl: string | nul
 }
 
 /** Sorted by part and color: a fixed lock order against deadlocks. */
-function setPartRows(raw: RbSetTeil[]): SetPartRow[] {
+function setPartRows(raw: RbSetPart[]): SetPartRow[] {
   const rows: SetPartRow[] = [];
   for (const t of raw) {
-    const p = t.part || ({} as RbSetTeil['part']),
-      color = t.color || ({} as RbSetTeil['color']);
+    const p = t.part || ({} as RbSetPart['part']),
+      color = t.color || ({} as RbSetPart['color']);
     if (!p.part_num) continue;
     const colorId = color.id || 0;
     const imageUrl = p.part_img_url || null;
@@ -57,7 +57,7 @@ export async function loadSetParts(
   setNumber: string,
 ): Promise<{ n: string; rows: SetPartRow[] } | null> {
   const n = withVersion(setNumber);
-  const raw: RbSetTeil[] | null = await allPartsOfSet(k, n);
+  const raw: RbSetPart[] | null = await allPartsOfSet(k, n);
   if (!raw?.length) return null;
   const rows = setPartRows(raw);
   return rows.length ? { n, rows } : null;
@@ -109,14 +109,14 @@ function parseBlPage(body: string): BlPage | null | undefined {
 }
 
 /** An empty bl_id means "looked up" and does not trigger a second reload. */
-export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
+export async function reloadBlNumbers(k: CatalogContext, run: JobRun = {}) {
   const rbKey = await k.settings.globalValue('rebrickable_api_key');
   if (!rbKey) return;
   const missing = await k.setContent.partsWithoutBlMapping();
   if (!missing.length) return;
 
   const state = (n: number) =>
-    lauf.progress?.({
+    run.progress?.({
       done: n,
       total: missing.length,
       step: 'BrickLink IDs nachladen',
@@ -126,7 +126,7 @@ export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   const BATCH = 500;
   let serverErrors = 0;
   for (let i = 0; i < missing.length; i += BATCH) {
-    if (lauf.signal?.aborted || !(await k.externalSources.consumeRebrickableDaily())) break;
+    if (run.signal?.aborted || !(await k.externalSources.consumeRebrickableDaily())) break;
     await k.externalSources.throttle.background.waitForSlot();
     const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
     const result = await fetchPage(

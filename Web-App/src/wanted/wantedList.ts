@@ -1,7 +1,7 @@
 /** Import a BrickLink wanted list: read (wantedParser), resolve
  * (wantedAufloesung), write (wantedSchreiber). The file carries BL numbers,
  * the inventory lists RB numbers. */
-import { readWantedList, type WantedArt, type WantedItem } from './wantedParser';
+import { readWantedList, type WantedKind, type WantedItem } from './wantedParser';
 import {
   resolveLocalOn,
   resolveViaRebrickableOn,
@@ -23,7 +23,7 @@ export interface WantedReport {
   levels: Record<string, number>;
   colorPending: number;
   /** With BL numbers, so that they can be looked up. */
-  open: { blId: string; kind: WantedArt; blColor: number | null }[];
+  open: { blId: string; kind: WantedKind; blColor: number | null }[];
   rebrickable?: { asked: number; found: number; filterIneffective: boolean; aborted?: RebrickableAbort };
   /** `abgewiesen`: corrections whose item did not match — then a different
    * file was chosen. They are NAMED, not skipped. */
@@ -41,20 +41,20 @@ export interface WantedReport {
   items: ItemResult[];
 }
 
-function countLevels(auf: Resolution[]): Record<string, number> {
+function countLevels(up: Resolution[]): Record<string, number> {
   const z: Record<string, number> = {};
-  for (const a of auf) if (a.confidence) z[a.confidence] = (z[a.confidence] ?? 0) + 1;
+  for (const a of up) if (a.confidence) z[a.confidence] = (z[a.confidence] ?? 0) + 1;
   return z;
 }
 
 /** The corrections after resolving, because they override it; before counting,
  * because the report would otherwise name numbers from before the correction. */
 async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: number, opt: WantedOptions) {
-  let auf = await resolveLocalOn(kx, item, uid);
+  let up = await resolveLocalOn(kx, item, uid);
   let rebrickable: WantedReport['rebrickable'];
   if (opt.viaRebrickable) {
-    const r = await resolveViaRebrickableOn(kx, auf, 250, opt.progress);
-    auf = r.auf;
+    const r = await resolveViaRebrickableOn(kx, up, 250, opt.progress);
+    up = r.up;
     rebrickable = {
       asked: r.asked,
       found: r.found,
@@ -64,11 +64,11 @@ async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: num
   }
   let corrections: WantedReport['corrections'];
   if (opt.corrections?.length) {
-    const k = applyCorrections(auf, opt.corrections);
-    auf = await backfillColors(kx, k.auf);
+    const k = applyCorrections(up, opt.corrections);
+    up = await backfillColors(kx, k.up);
     corrections = { applied: k.applied, rejected: k.rejected };
   }
-  return { auf, rebrickable, corrections };
+  return { up, rebrickable, corrections };
 }
 
 export interface WantedOptions extends WriteOptions {
@@ -116,15 +116,15 @@ export async function importWantedList(
   opt: WantedOptions = {},
 ): Promise<WantedReport> {
   const read = readWantedList(xml);
-  const { auf, rebrickable, corrections } = await resolveCompleteOn(k, read.items, uid, opt);
+  const { up, rebrickable, corrections } = await resolveCompleteOn(k, read.items, uid, opt);
 
   const report: WantedReport = {
     parsed: read.items.length,
     foreignTypes: read.foreignTypes,
     withoutNumber: read.withoutNumber,
-    levels: countLevels(auf),
-    colorPending: auf.filter(a => a.colorPending).length,
-    open: auf
+    levels: countLevels(up),
+    colorPending: up.filter(a => a.colorPending).length,
+    open: up
       .filter(a => a.rbId === null)
       .map(a => ({ blId: a.items.blId, kind: a.items.kind, blColor: a.items.blColor })),
     ...(rebrickable ? { rebrickable } : {}),
@@ -138,9 +138,9 @@ export async function importWantedList(
   };
 
   let seq = -1;
-  const reportProgress = () => opt.progress?.({ phase: 'write', done: seq + 1, total: auf.length });
+  const reportProgress = () => opt.progress?.({ phase: 'write', done: seq + 1, total: up.length });
 
-  for (const a of auf) {
+  for (const a of up) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
     if (await cancelledAt(opt, seq)) {
       report.aborted = true;
@@ -166,14 +166,14 @@ export async function importWantedList(
     reportProgress();
   }
 
-  await describeRows(k, report.items, auf);
+  await describeRows(k, report.items, up);
   return report;
 }
 
 /** After writing too: the dialog redraws the same table with the
  * response and would otherwise show empty cells. */
-async function describeRows(k: WantedContext, rows: ItemResult[], auf: Resolution[]): Promise<void> {
-  const description = await describeItem(k, auf);
+async function describeRows(k: WantedContext, rows: ItemResult[], up: Resolution[]): Promise<void> {
+  const description = await describeItem(k, up);
   rows.forEach((row, i) => {
     const b = description.get(i);
     if (!b) return;

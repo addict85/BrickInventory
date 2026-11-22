@@ -2,7 +2,7 @@
  * (mappings, catalog), then via Rebrickable, finally the manual corrections. */
 import { RebrickableLocked } from '../externalSources';
 import { reportError } from '../infra/error';
-import type { WantedArt, WantedItem } from './wantedParser';
+import type { WantedKind, WantedItem } from './wantedParser';
 import type { WantedContext } from './context';
 
 export type Confidence =
@@ -104,11 +104,11 @@ export type WantedProgress = {
 
 export async function resolveViaRebrickableOn(
   k: WantedContext,
-  auf: Resolution[],
+  up: Resolution[],
   limit = 250,
   progress?: (state: WantedProgress) => void,
 ): Promise<{
-  auf: Resolution[];
+  up: Resolution[];
   asked: number;
   found: number;
   filterIneffective: boolean;
@@ -117,7 +117,7 @@ export async function resolveViaRebrickableOn(
   let asked = 0,
     found = 0;
 
-  const result = [...auf];
+  const result = [...up];
   // Exactly the conditions of the loop below, otherwise the bar counts against
   // a different number than it fills.
   const total = Math.min(limit, result.filter(a => a.rbId === null && a.items.kind === 'part').length);
@@ -137,7 +137,7 @@ export async function resolveViaRebrickableOn(
       if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
       const aborted = e instanceof RebrickableLocked ? e.reason : 'failure';
       return {
-        auf: result,
+        up: result,
         asked,
         found,
         filterIneffective: k.externalSources.sources.blFilterIneffective(),
@@ -151,7 +151,7 @@ export async function resolveViaRebrickableOn(
     // After the fetch: "37 of 50" means 37 done.
     progress?.({ phase: 'rebrickable', done: asked, total });
   }
-  return { auf: result, asked, found, filterIneffective: k.externalSources.sources.blFilterIneffective() };
+  return { up: result, asked, found, filterIneffective: k.externalSources.sources.blFilterIneffective() };
 }
 
 /** Addressed via the index: the same number may appear several times in the list. */
@@ -159,7 +159,7 @@ export interface Correction {
   index: number;
   /** Cross-check — must match the item at [index]. */
   blId: string;
-  kind: WantedArt;
+  kind: WantedKind;
   rbId?: string | null | undefined;
   rbColor?: number | null | undefined;
   /** The values from the file, changed by hand, so that a typo does not force
@@ -215,7 +215,7 @@ async function describeParts(
 /** Three queries for the whole list, not one per item. */
 export async function describeItem(
   k: WantedContext,
-  auf: Resolution[],
+  up: Resolution[],
 ): Promise<Map<number, { name: string | null; image: string | null; guessed: boolean }>> {
   const out = new Map<number, { name: string | null; image: string | null; guessed: boolean }>();
 
@@ -223,7 +223,7 @@ export async function describeItem(
   const parts: { i: number; nr: string; color: number | null; guessed: boolean }[] = [];
   const minifigs: { i: number; nr: string; guessed: boolean }[] = [];
   const sets: { i: number; nr: string; guessed: boolean }[] = [];
-  auf.forEach((a, i) => {
+  up.forEach((a, i) => {
     const nr = a.rbId ?? a.items.blId;
     const guessed = a.rbId === null;
     if (!nr) return;
@@ -307,10 +307,10 @@ function corrected(a: Resolution | undefined, k: Correction): Resolution | 'reje
 /** Every correction is checked against kind and number at the index, otherwise after a file change
  * it would silently act on a foreign item. */
 export function applyCorrections(
-  auf: Resolution[],
+  up: Resolution[],
   corrections: Correction[],
-): { auf: Resolution[]; applied: number; rejected: Correction[] } {
-  const result = [...auf];
+): { up: Resolution[]; applied: number; rejected: Correction[] } {
+  const result = [...up];
   const rejected: Correction[] = [];
   let applied = 0;
   for (const k of corrections) {
@@ -321,17 +321,17 @@ export function applyCorrections(
       applied++;
     }
   }
-  return { auf: result, applied, rejected };
+  return { up: result, applied, rejected };
 }
 
 /** A color entered by hand was not part of the resolution; without
  * this step it would go to the creator without a name. */
-export async function backfillColors(k: WantedContext, auf: Resolution[]): Promise<Resolution[]> {
-  const open = auf.filter(a => a.rbColor !== null && a.rbColorName === null).map(a => a.rbColor as number);
-  if (!open.length) return auf;
+export async function backfillColors(k: WantedContext, up: Resolution[]): Promise<Resolution[]> {
+  const open = up.filter(a => a.rbColor !== null && a.rbColorName === null).map(a => a.rbColor as number);
+  if (!open.length) return up;
   const rows = await k.wantedList.colorsToIds([...new Set(open)]);
   const nach = new Map(rows.map(z => [Number(z.id), z]));
-  return auf.map(a => {
+  return up.map(a => {
     if (a.rbColor === null || a.rbColorName !== null) return a;
     const z = nach.get(a.rbColor);
     return z ? { ...a, rbColorName: z.name ?? null, rbColorHex: z.rgb ?? null } : a;

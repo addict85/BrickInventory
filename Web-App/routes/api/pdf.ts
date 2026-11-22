@@ -27,7 +27,7 @@ function streamStatus(job: {
 
 /** The only way of the three fetch routes to a job: only the own one; a read error goes on. */
 function pdfJobReadFor(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
-  return d.catalog.pdf.lies(id, userId);
+  return d.catalog.pdf.read(id, userId);
 }
 /** The inflection is a placeholder in the table, not here. */
 function runningInflection(count: number, language: string) {
@@ -53,7 +53,7 @@ function sequenceJob(
 ) {
   const check = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
-    if (stream.zu) return;
+    if (stream.to) return;
     if (job) stream.send(streamStatus(job));
     if (!job || finished(job.status)) stream.end();
   };

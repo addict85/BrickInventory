@@ -685,9 +685,9 @@ export function asDuplicate(code: ErrorCode): (e: unknown) => never {
 
 /** Like asDuplicate, but with a result instead of a refusal: a concurrent
  * winner is an outcome of the flow there, not an error. */
-export function duplicateAs<T>(wert: T): (e: unknown) => T {
+export function duplicateAs<T>(value: T): (e: unknown) => T {
   return (e: unknown) => {
-    if ((e as { code?: unknown } | null)?.code === '23505') return wert;
+    if ((e as { code?: unknown } | null)?.code === '23505') return value;
     throw e;
   };
 }

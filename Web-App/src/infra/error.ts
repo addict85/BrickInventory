@@ -21,10 +21,10 @@ function logWarning(context: string, e: unknown) {
 }
 
 /** With a substitute value, where the caller keeps computing. */
-export function reportAndDeliver<T>(context: string, ersatz: T) {
+export function reportAndDeliver<T>(context: string, spare: T) {
   return (e: unknown): T => {
     continueDespiteError(context, e);
-    return ersatz;
+    return spare;
   };
 }
 
@@ -48,11 +48,11 @@ export function isDatabaseError(e: unknown): boolean {
 
 /** An already missing file is the goal, not an error. */
 export function withoutMissingFile(context: string): (e: unknown) => void;
-export function withoutMissingFile<T>(context: string, ersatz: T): (e: unknown) => T;
-export function withoutMissingFile<T>(context: string, ersatz?: T) {
+export function withoutMissingFile<T>(context: string, spare: T): (e: unknown) => T;
+export function withoutMissingFile<T>(context: string, spare?: T) {
   return (e: unknown): T | undefined => {
     if (errorCode(e) !== 'ENOENT') continueDespiteError(context, e);
-    return ersatz;
+    return spare;
   };
 }
 

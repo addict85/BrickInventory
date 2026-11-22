@@ -147,13 +147,13 @@ async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBus
   });
   _downloadLocks.set(n, lock);
 
-  const sperre = await fetchImageLock(k, n, waitIfBusy);
-  if (sperre === 'belegt') {
+  const held = await fetchImageLock(k, n, waitIfBusy);
+  if (held === 'belegt') {
     resolveLock();
     _downloadLocks.delete(n);
     return;
   }
-  const { lockClient, haveXlock } = sperre;
+  const { lockClient, haveXlock } = held;
 
   let _pendingAdded = 0; // this batch's share of the global imgDl counter
   let _flushed = 0; // of which already reported to the counter (rest in finally)

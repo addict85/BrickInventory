@@ -1,26 +1,26 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, minifigViewJoin, TEIL, MINIFIG } from '../../../db/catalogView';
+import { partViewJoin, minifigViewJoin, PART, MINIFIG } from '../../../db/catalogView';
 
 /** An entry holds the deleted rows of all tables of an inventory item as
  * JSON; restoring writes them back column by column. */
 export type PaperKind = 'set' | 'teil' | 'figur';
 
 /** The first table is the master row. */
-const TABLES: Record<PaperKind, { table: string; wo: string }[]> = {
+const TABLES: Record<PaperKind, { table: string; where: string }[]> = {
   set: [
-    { table: 'sets', wo: 'user_id = $1 AND set_number = $2' },
-    { table: 'parts', wo: 'user_id = $1 AND set_number = $2' },
-    { table: 'minifigs', wo: 'user_id = $1 AND set_number = $2' },
-    { table: 'set_acquisitions', wo: 'user_id = $1 AND set_number = $2' },
+    { table: 'sets', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'parts', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'minifigs', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'set_acquisitions', where: 'user_id = $1 AND set_number = $2' },
   ],
   teil: [
-    { table: 'parts', wo: "user_id = $1 AND part_number = $2 AND color_id = $3 AND source = 'manual'" },
-    { table: 'part_acquisitions', wo: 'user_id = $1 AND part_number = $2 AND color_id = $3' },
+    { table: 'parts', where: "user_id = $1 AND part_number = $2 AND color_id = $3 AND source = 'manual'" },
+    { table: 'part_acquisitions', where: 'user_id = $1 AND part_number = $2 AND color_id = $3' },
   ],
   figur: [
-    { table: 'minifigs', wo: "user_id = $1 AND fig_number = $2 AND source = 'manual'" },
-    { table: 'minifig_acquisitions', wo: 'user_id = $1 AND fig_number = $2' },
+    { table: 'minifigs', where: "user_id = $1 AND fig_number = $2 AND source = 'manual'" },
+    { table: 'minifig_acquisitions', where: 'user_id = $1 AND fig_number = $2' },
   ],
 };
 
@@ -32,9 +32,9 @@ export async function inventoryRows(
   values: unknown[],
 ): Promise<Record<string, unknown[]>> {
   const rows: Record<string, unknown[]> = {};
-  for (const { table, wo } of TABLES[kind]) {
+  for (const { table, where } of TABLES[kind]) {
     const r = await tx.get<{ z: unknown[] }>(
-      `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${table} t WHERE ${wo}`,
+      `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${table} t WHERE ${where}`,
       values,
     );
     rows[table] = r?.z ?? [];
@@ -44,9 +44,9 @@ export async function inventoryRows(
 
 const LABEL: Record<PaperKind, string> = {
   set: 'SELECT name AS b FROM rb_sets WHERE set_num = $1 AND $2::int IS NOT NULL',
-  teil: `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.colorName}) AS b
+  teil: `SELECT concat_ws(' · ', ${PART.name}, ${PART.colorName}) AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
-            ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,
+            ${partViewJoin('x.konto', 'x.nr', 'x.farbe')}`,
   figur: `SELECT ${MINIFIG.name} AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto) x
             ${minifigViewJoin('x.konto', 'x.nr')}`,
@@ -145,7 +145,7 @@ export async function writeBack(
   }
 }
 
-export async function hatSetRow(
+export async function hasSetRow(
   tx: DbInterface,
   l: InventoryReadContract,
   userId: number,

@@ -18,7 +18,7 @@ export const isSensitive = (k: string) =>
  * SMTP data is none of a sub-account's business. */
 export async function exportConfig(k: ManagementContext, uid: number, admin: boolean, name: string | null) {
   return {
-    exported_at: k.clock.datum().toISOString(),
+    exported_at: k.clock.date().toISOString(),
     exported_by: name,
     version: '3.0',
     global: admin ? await k.settings.globalValuesWithoutSecrets() : {},
@@ -35,8 +35,8 @@ export async function dataZip(
 ): Promise<void> {
   // archiver 8 is an ES module; from CommonJS only require() works, no import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiveHandle };
-  const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
-    k.sets.setsAlsCsv(uid),
+  const [setsCsv, partsCsv, figsCsv, noteCsv, alarmCsv] = await Promise.all([
+    k.sets.setsAsCsv(uid),
     k.inventory.partsAsCsv(uid),
     k.inventory.minifigsAsCsv(uid),
     k.wanted.wantedListCsv(uid),
@@ -49,7 +49,7 @@ export async function dataZip(
     ['sets.csv', setsCsv],
     ['teile.csv', partsCsv],
     ['minifiguren.csv', figsCsv],
-    ['merkliste.csv', merkCsv],
+    ['merkliste.csv', noteCsv],
     ['preisalarme.csv', alarmCsv],
   ] as const)
     archive.append('﻿' + content, { name });
@@ -112,7 +112,7 @@ async function importGlobal(kx: ManagementContext, uid: number, global: GlobalIm
 
 export async function importConfig(kx: ManagementContext, uid: number, admin: boolean, file: Buffer) {
   const read = jsonOrNull(file.toString('utf-8'));
-  const checked = read ? ConfigExport.safeParse(read.wert) : null;
+  const checked = read ? ConfigExport.safeParse(read.value) : null;
   if (!checked?.success) failDomain('invalid', 'json_invalid');
   const { global: raw, user_settings: account } = checked.data;
   const global = withVoucherCountry(raw);

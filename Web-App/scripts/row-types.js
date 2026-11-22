@@ -33,9 +33,9 @@ function jsType(pg) {
   return list ? `${hits[1]}[]` : hits[1];
 }
 
-/** @param {string} sql @returns {Map<string, { name: string, typ: string, null: boolean }[]>} */
+/** @param {string} sql @returns {Map<string, { name: string, type: string, null: boolean }[]>} */
 function tablesOf(sql) {
-  /** @type {Map<string, { name: string, typ: string, null: boolean }[]>} */
+  /** @type {Map<string, { name: string, type: string, null: boolean }[]>} */
   const from = new Map();
   for (const m of sql.matchAll(/^CREATE TABLE (\w+) \(\n([\s\S]*?)\n\);/gm)) {
     const columns = [];
@@ -43,11 +43,11 @@ function tablesOf(sql) {
       const s = /^ {2}("?[a-z_][a-z0-9_]*"?) (.+?),?$/.exec(z);
       if (!s || /^(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN|EXCLUDE)\b/i.test(s[1] ?? '')) continue;
       const rest = s[2] ?? '';
-      const typ = rest
+      const type = rest
         .replace(/ (NOT NULL|DEFAULT|GENERATED|COLLATE|CONSTRAINT)\b.*$/, '')
         .replace(/ (NOT NULL|DEFAULT).*$/, '')
         .trim();
-      columns.push({ name: (s[1] ?? '').replace(/"/g, ''), typ, null: !/\bNOT NULL\b/.test(rest) });
+      columns.push({ name: (s[1] ?? '').replace(/"/g, ''), type, null: !/\bNOT NULL\b/.test(rest) });
     }
     from.set(m[1] ?? '', columns);
   }
@@ -65,7 +65,7 @@ function create() {
   ];
   for (const [name, columns] of [...t].sort(([a], [b]) => a.localeCompare(b))) {
     rows.push(`  ${name}: {`);
-    for (const s of columns) rows.push(`    ${s.name}: ${jsType(s.typ)}${s.null ? ' | null' : ''};`);
+    for (const s of columns) rows.push(`    ${s.name}: ${jsType(s.type)}${s.null ? ' | null' : ''};`);
     rows.push('  };');
   }
   rows.push(

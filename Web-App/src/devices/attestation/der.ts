@@ -14,14 +14,14 @@ export class TheError extends Error {}
 const HIGHEST_NUMBER = 2 ** 21;
 
 /** An element starting at [pos]; `end` points behind it. */
-export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; end: number } {
+export function readTlv(b: Buffer, pos = 0): { tlv: Tlv; end: number } {
   let p = pos;
   const byte = () => {
     if (p >= b.length) throw new TheError('DER: abgeschnitten');
     return b[p++] as number;
   };
-  const erstes = byte();
-  let number = erstes & 0x1f;
+  const first = byte();
+  let number = first & 0x1f;
   if (number === 0x1f) {
     number = 0;
     for (let b7 = byte(); ; b7 = byte()) {
@@ -39,22 +39,22 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; end: number } {
     for (let i = 0; i < n; i++) length = length * 256 + byte();
   }
   if (p + length > b.length) throw new TheError('DER: Länge über das Ende');
-  const tlv = { tagClass: erstes >> 6, number, constructed: !!(erstes & 0x20), content: b.subarray(p, p + length) };
+  const tlv = { tagClass: first >> 6, number, constructed: !!(first & 0x20), content: b.subarray(p, p + length) };
   return { tlv, end: p + length };
 }
 
 /** Exactly one element, nothing behind it. */
 export function readWhole(b: Buffer): Tlv {
-  const { tlv, end } = liesTlv(b);
+  const { tlv, end } = readTlv(b);
   if (end !== b.length) throw new TheError('DER: Bytes hinter dem Element');
   return tlv;
 }
 
-export function kinder(t: Tlv): Tlv[] {
+export function children(t: Tlv): Tlv[] {
   if (!t.constructed) throw new TheError('DER: kein zusammengesetztes Element');
   const list: Tlv[] = [];
   for (let p = 0; p < t.content.length; ) {
-    const { tlv, end } = liesTlv(t.content, p);
+    const { tlv, end } = readTlv(t.content, p);
     list.push(tlv);
     p = end;
   }

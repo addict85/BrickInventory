@@ -628,7 +628,7 @@ function loginFieldsFilled() {
 
 /** Second factor required: show the code field and continue there. The focus jumps into the new field;
  * without the sentence one would not know whether the password was right. If the account has passkeys, one
- * works instead of the code (js/passkeys.js). @param {any} d @param {string} code */
+ * works instead of the code (js/passkeys.js). @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/login'>} d @param {string} code */
 function askSecondFactor(d, code) {
   G('lc-row').style.display = '';
   G('lc').value = '';
@@ -639,7 +639,7 @@ function askSecondFactor(d, code) {
 }
 
 /** Every login starts with "all accounts" — BEFORE showApp(), so that the select fields are created right
- * away with the reset value. @param {any} d */
+ * away with the reset value. @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/login'>} d */
 function enterAfterLogin(d) {
   if (_expiredAccount !== null && _expiredAccount !== d.user?.id) {
     location.reload();
@@ -656,7 +656,7 @@ function enterAfterLogin(d) {
   openApp();
 }
 
-/** Both filled: usually the password is wrong, so go there. @param {any} d */
+/** Both filled: usually the password is wrong, so go there. @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/login'>} d */
 function loginRefused(d) {
   const err = d.error || tRaw('settings.error');
   formError(G('lerr'), err, ['lp', 'lu']);

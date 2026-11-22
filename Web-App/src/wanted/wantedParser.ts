@@ -1,14 +1,14 @@
 /** Read BrickLink wanted XML: the file carries BL numbers; the mapping to
  * Rebrickable numbers is done by wantedResolution.ts. */
 
-export type WantedArt = 'part' | 'fig' | 'set';
+export type WantedKind = 'part' | 'fig' | 'set';
 
 // Only P, M and S have a place in the inventory; other kinds are counted and
 // reported instead of silently discarded.
-const KINDS: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
+const KINDS: Record<string, WantedKind> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedItem {
-  kind: WantedArt;
+  kind: WantedKind;
   /** ITEMID — a BrickLink number, NOT a Rebrickable number. */
   blId: string;
   /** COLOR as a BrickLink color number; null for sets and colorless items. */
@@ -24,15 +24,15 @@ export interface WantedItem {
 /** Two searches for fixed text instead of `<name>([\s\S]*?)</name>`: with an open tag the lazy
  * pattern restarts at every match position — quadratic. */
 function between(text: string, name: string, ab: number): { content: string; end: number } | null {
-  const auf = new RegExp(`<${name}>`, 'gi');
-  auf.lastIndex = ab;
-  const a = auf.exec(text);
+  const up = new RegExp(`<${name}>`, 'gi');
+  up.lastIndex = ab;
+  const a = up.exec(text);
   if (!a) return null;
-  const zu = new RegExp(`</${name}>`, 'gi');
-  zu.lastIndex = auf.lastIndex;
-  const z = zu.exec(text);
+  const to = new RegExp(`</${name}>`, 'gi');
+  to.lastIndex = up.lastIndex;
+  const z = to.exec(text);
   if (!z) return null;
-  return { content: text.slice(auf.lastIndex, z.index), end: zu.lastIndex };
+  return { content: text.slice(up.lastIndex, z.index), end: to.lastIndex };
 }
 
 function field(block: string, name: string): string | null {

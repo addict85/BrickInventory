@@ -3,14 +3,14 @@
 import type { InventoryContext } from './context';
 import * as places from './repository/storageLocation';
 import type { StorageTable } from './repository/storageLocation';
-import { asIds, type Sicht, type ScopeInput } from '../household';
+import { asIds, type Viewer, type ScopeInput } from '../household';
 import { failDomain } from '../infra/errorTexts';
 
 /** Domain-wise, not technical (the column is TEXT): the name must fit on a
  * tile, and a refusal is better than a truncated name. */
 export const LOCATION_MAX_CHARS = 60;
 
-export type LagerArt = StorageTable;
+export type StorageKind = StorageTable;
 
 /** Empty and NULL are the same: an empty text would be a place called "nothing"
  * in every selection list (db/migrations/0018-lagerort.sql). */
@@ -57,7 +57,7 @@ export async function createStorage(
   const isNew = await places.addLocationOne(k.db, userId, n);
   if (isNew)
     return { location: { id: parseInt(String(isNew.id), 10), user_id: userId, name: isNew.name }, was_new: true };
-  const alt = await places.ortNachName(k.db, userId, n);
+  const alt = await places.locationByName(k.db, userId, n);
   // Without a hit something other than a duplicate went wrong — better a
   // refusal than a silent "already there".
   if (!alt) failDomain('internal', 'storage_unknown');
@@ -72,7 +72,7 @@ export async function renameStorage(
   name: string | undefined,
 ): Promise<Storage> {
   const isNew = nameOrError(name);
-  const alt = await places.ortName(k.db, id, userId);
+  const alt = await places.locationName(k.db, id, userId);
   if (!alt) failDomain('not_found', 'storage_unknown');
   // The refusal beforehand is easier to understand than the error at the index.
   const collision = await places.otherLocationSameNamed(k.db, userId, isNew, id);
@@ -84,7 +84,7 @@ export async function renameStorage(
 /** Refusal as long as something is still in it: silent clearing would lose assignments
  * the deleting user did not have in view, with no way back. */
 export async function deleteStorage(k: InventoryContext, userId: number, id: number): Promise<void> {
-  const location = await places.ortName(k.db, id, userId);
+  const location = await places.locationName(k.db, id, userId);
   if (!location) failDomain('not_found', 'storage_unknown');
   // All three tables, via the ID: otherwise a place could be deleted that
   // only holds figures or is assigned with a different spelling.
@@ -94,7 +94,7 @@ export async function deleteStorage(k: InventoryContext, userId: number, id: num
 }
 
 /** ONE query over all tables, so that not every UI merges by itself. */
-export async function storages(k: InventoryContext, scopeChoice: Sicht | ScopeInput) {
+export async function storages(k: InventoryContext, scopeChoice: Viewer | ScopeInput) {
   const scope = await k.household.scopeFrom(scopeChoice);
   const uids = asIds(scope);
   // Grouped by NAME, on purpose: "basement" of grandfather and grandchild

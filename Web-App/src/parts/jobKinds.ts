@@ -3,11 +3,11 @@ import { jobKind, type Login } from '../jobQueue';
 import { runCatalogFollowUp } from './summary';
 import type { PartsContext } from './context';
 
-const LEER = z.object({});
+const EMPTY = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    catalog_followup: typeof LEER;
+    catalog_followup: typeof EMPTY;
   }
 }
 
@@ -16,7 +16,7 @@ export function partsJobKinds(k: PartsContext): Login[] {
   return [
     jobKind({
       kind: 'catalog_followup',
-      payload: LEER,
+      payload: EMPTY,
       run: async () => void (await runCatalogFollowUp(k)),
       crossAccount: 'Parts summary of all accounts',
     }),

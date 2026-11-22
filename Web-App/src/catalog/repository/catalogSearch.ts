@@ -4,13 +4,13 @@ import { quantityFrom } from '../../../db/stockQuantity';
 import type { CatalogReadContract } from '../readContract';
 import { fromTable } from '../../infra/validate';
 
-export type Thema = { id: number; name: string; parent_id: number | null };
+export type Theme = { id: number; name: string; parent_id: number | null };
 
 export function themes(db: DbInterface) {
-  return db.all<Thema>('SELECT id, name, parent_id FROM rb_themes');
+  return db.all<Theme>('SELECT id, name, parent_id FROM rb_themes');
 }
 
-export function setsJeThema(db: DbInterface) {
+export function setsPerTheme(db: DbInterface) {
   return db.all<{ theme_id: number; n: number }>('SELECT theme_id, COUNT(*)::int AS n FROM rb_sets GROUP BY theme_id');
 }
 
@@ -20,7 +20,7 @@ export function yearRange(db: DbInterface) {
   );
 }
 
-export function setsJeYear(db: DbInterface) {
+export function setsPerYear(db: DbInterface) {
   return db.all<{ year: number; n: number }>(
     'SELECT year::int AS year, COUNT(*)::int AS n FROM rb_sets WHERE year > 0 GROUP BY year ORDER BY year',
   );
@@ -59,7 +59,7 @@ function catalogWhere(f: CatalogChoice, params: unknown[]): string {
   return `WHERE ${where.join(' AND ')}`;
 }
 
-export function setsJeYearFiltered(db: DbInterface, f: CatalogChoice, descending: boolean) {
+export function setsPerYearFiltered(db: DbInterface, f: CatalogChoice, descending: boolean) {
   const params: unknown[] = [];
   return db.all<{ year: number | null; n: number }>(
     `SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${catalogWhere(f, params)}
@@ -96,7 +96,7 @@ const IMAGE_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 const ownershipJoin = (
   l: CatalogReadContract,
 ) => `LEFT JOIN (SELECT s.set_number, SUM(${quantityFrom('sm', 0)})::int AS quantity
-                    FROM ${l.setHoldings('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
+                    FROM ${l.setHoldings('= ANY($1)')} s ${l.setQuantityJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function catalogCount(db: DbInterface, f: CatalogChoice): Promise<number> {
@@ -119,14 +119,14 @@ export function catalogRows(
   // fromTable: ?sort=constructor must not yield an inherited property.
   const sortSql = fromTable(ORDERS, order, ORDERS.year_desc);
   const params: unknown[] = [accounts];
-  const wo = catalogWhere(f, params);
+  const whereSql = catalogWhere(f, params);
   params.push(limit, offset);
   return db.all<CatalogSet>(
     `SELECT ${SET_COLUMNS}
        FROM rb_sets rb
        ${IMAGE_JOIN}
        ${ownershipJoin(l)}
-       ${wo}
+       ${whereSql}
       ORDER BY ${sortSql}
       LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,

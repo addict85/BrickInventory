@@ -12,7 +12,7 @@ function planOf(k: JobsContext, kind: JobKind): Schedule {
   return plan;
 }
 
-export const hatSchedule = (k: JobsContext, kind: JobKind): boolean => !!k.kinds.fromValue(kind)?.schedule;
+export const hasSchedule = (k: JobsContext, kind: JobKind): boolean => !!k.kinds.fromValue(kind)?.schedule;
 
 export function readTimeOfDay(s: string | null | undefined, defaultValue: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(defaultValue);
@@ -37,7 +37,7 @@ export async function dailyTimeOfDay(
   return readTimeOfDay(await k.settings.globalValue(setting), defaultValue);
 }
 
-export async function nextRun(k: JobsContext, kind: JobKind, now = k.clock.datum()): Promise<Date> {
+export async function nextRun(k: JobsContext, kind: JobKind, now = k.clock.date()): Promise<Date> {
   const plan = planOf(k, kind);
   if ('daily' in plan) return nextTimeOfDay(await dailyTimeOfDay(k, plan.daily.setting, plan.daily.preset), now);
   const raw = plan.minutes.setting ? await k.settings.globalValue(plan.minutes.setting) : null;
@@ -46,12 +46,12 @@ export async function nextRun(k: JobsContext, kind: JobKind, now = k.clock.datum
 }
 
 /** Without a schedule nothing: the worker calls it after every job. */
-export async function planeNext<A extends JobKind>(
+export async function planNext<A extends JobKind>(
   k: JobsContext,
   kind: A,
   payload: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<string | null> {
-  if (!hatSchedule(k, kind)) return null;
+  if (!hasSchedule(k, kind)) return null;
   return placeJobOne(k, kind, payload, {
     key: planKey(kind),
     dueFrom: await nextRun(k, kind),
@@ -59,8 +59,8 @@ export async function planeNext<A extends JobKind>(
   });
 }
 
-export async function planeAll(k: JobsContext): Promise<void> {
-  for (const a of k.kinds.all()) if (a.schedule) await planeNext(k, a.kind);
+export async function planAll(k: JobsContext): Promise<void> {
+  for (const a of k.kinds.all()) if (a.schedule) await planNext(k, a.kind);
 }
 
 export async function scheduleChanged(k: JobsContext, kind: JobKind): Promise<void> {

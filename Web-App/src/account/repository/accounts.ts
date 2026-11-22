@@ -247,14 +247,14 @@ async function belowAdminLock<T>(tx: Db, fn: (tx: DbInterface) => Promise<T>): P
 export async function setAdmin(
   db: Db,
   id: number,
-  ja: boolean,
+  yes: boolean,
 ): Promise<{ before: boolean } | typeof LAST_ADMIN | undefined> {
   return belowAdminLock(db, async tx => {
     const r = await tx.get<{ before: boolean }>(
       `UPDATE users u SET is_admin = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${OTHER_ADMIN})
       RETURNING alt.is_admin AS before`,
-      [id, ja],
+      [id, yes],
     );
     if (r) return r;
     return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LAST_ADMIN : undefined;
@@ -265,14 +265,14 @@ export async function setAdmin(
 export async function writeActive(
   db: Db,
   id: number,
-  ja: boolean,
+  yes: boolean,
 ): Promise<{ before: boolean } | typeof LAST_ADMIN | undefined> {
   return belowAdminLock(db, async tx => {
     const r = await tx.get<{ before: boolean }>(
       `UPDATE users u SET is_active = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${OTHER_ADMIN})
       RETURNING alt.is_active AS before`,
-      [id, ja],
+      [id, yes],
     );
     if (r) return r;
     return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LAST_ADMIN : undefined;
@@ -492,7 +492,7 @@ export function accessesOfAccount(db: DbInterface, uid: number): Promise<Access[
   );
 }
 
-export function tokenStand(
+export function tokenState(
   db: DbInterface,
   hash: string,
 ): Promise<

@@ -21,8 +21,8 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const { username, password } = req.input;
     if (!username || !password) failDomain('invalid', 'username_password');
     if (!USERNAME_RE.test(String(username))) failDomain('invalid', 'username_invalid');
-    const mangel = passwordLack(password, username);
-    if (mangel) failDomain('invalid', mangel);
+    const lack = passwordLack(password, username);
+    if (lack) failDomain('invalid', lack);
     // Strict: the string "false" is truthy in JavaScript and would create an
     // administrator.
     const asAdmin = req.input.is_admin ?? req.input.isAdmin ?? false;
@@ -84,8 +84,8 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const { password } = req.input || {};
     const targetId = req.pathArgs.id;
     if (targetId === userId(req)) failDomain('invalid', 'own_account_password');
-    const mangel = passwordLack(password, (await d.account.accountShortOf(targetId))?.username);
-    if (mangel) failDomain('invalid', mangel);
+    const lack = passwordLack(password, (await d.account.accountShortOf(targetId))?.username);
+    if (lack) failDomain('invalid', lack);
 
     // With the password of another account this one can be taken over —
     // an open administrator session alone is not enough for that.

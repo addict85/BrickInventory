@@ -1,8 +1,8 @@
 import * as repo from './repository/partsList';
 import { blColorNumberFrom } from '../catalog';
 import { resolveImageLocal } from '../images';
-import { type RbSetTeil, firstBlNumber } from '../externalSources';
-import { asIds, type Sicht, type ScopeInput, type ScopeInput as Scope } from '../household';
+import { type RbSetPart, firstBlNumber } from '../externalSources';
+import { asIds, type Viewer, type ScopeInput, type ScopeInput as Scope } from '../household';
 import { isSparePart, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../inventory';
@@ -16,7 +16,7 @@ import type { PartsContext } from './context';
 
 /** Without manual entries — those have their own view. Hex fallback from
  * rb_colors for parts without a value of their own. */
-export async function partColorsQuery(k: PartsContext, userIdChoice: Sicht | Scope) {
+export async function partColorsQuery(k: PartsContext, userIdChoice: Viewer | Scope) {
   const userId = await k.household.scopeFrom(userIdChoice);
   // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
@@ -66,8 +66,8 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
       const items = await ab.orElse('rebrickable_teile', k.catalog.allSetParts(sn), []);
       if (!items?.length) continue;
       const rbParts = items
-        .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
-        .map((it: RbSetTeil) => ({
+        .filter((it: RbSetPart) => !it.is_spare && it.part?.part_num)
+        .map((it: RbSetPart) => ({
           part_number: it.part?.part_num ?? '',
           bl_part_number: firstBlNumber(it.part?.external_ids) || it.part?.part_num || null,
           part_name: it.part?.name || it.part?.part_num || null,
@@ -134,7 +134,7 @@ export async function tryPartsSummary(k: PartsContext, userId: Scope, o: Record<
   }
 }
 
-export async function partsQuery(k: PartsContext, userIdChoice: Sicht | Scope, query: Record<string, unknown> = {}) {
+export async function partsQuery(k: PartsContext, userIdChoice: Viewer | Scope, query: Record<string, unknown> = {}) {
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const filter = partsFilter(query);
@@ -159,11 +159,11 @@ export async function partsQuery(k: PartsContext, userIdChoice: Sicht | Scope, q
     filter.withoutManual ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
   ]);
   // One "used" acquisition makes the part used; without one, 'N'.
-  const usedJe = new Set(used.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
+  const usedKeys = new Set(used.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
   const parts = rows.map(p => ({
     ...partAsResponse(p),
     total_quantity: p.total_quantity,
-    condition: usedJe.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
+    condition: usedKeys.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
     image_url: p.image_url || null,
   }));
 
@@ -187,13 +187,13 @@ export async function partsQuery(k: PartsContext, userIdChoice: Sicht | Scope, q
 
 /** The category from the own catalog, else from rb_parts: Rebrickable's set-parts
  * response usually has none, the list would otherwise consist of "Unknown". */
-export async function partCategoriesQuery(k: PartsContext, userIdChoice: Sicht | Scope) {
+export async function partCategoriesQuery(k: PartsContext, userIdChoice: Viewer | Scope) {
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   return k.partsList.categories(uids, await summaryFresh(k, uids, { strict: true }));
 }
 
-export async function partStatsQuery(k: PartsContext, userIdChoice: Sicht | Scope) {
+export async function partStatsQuery(k: PartsContext, userIdChoice: Viewer | Scope) {
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   // From the summary only when it's fresh: the webapp and the app show the same numbers.
@@ -256,7 +256,7 @@ export async function blColorMapQuery(k: PartsContext) {
  * @param search filter bar's search text, for both lists. */
 export async function manualPartsList(
   k: PartsContext,
-  userIdChoice: Sicht | Scope,
+  userIdChoice: Viewer | Scope,
   viewerId: number,
   {
     page = 1,
@@ -288,7 +288,7 @@ export const MAX_OWNED_PARTS = 5000;
 
 export async function ownedQuantitiesQuery(
   k: PartsContext,
-  scopeChoice: Sicht | ScopeInput,
+  scopeChoice: Viewer | ScopeInput,
   parts: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { total: number; loose: number }>> {
   const uids = await k.household.scopeFrom(scopeChoice);

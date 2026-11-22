@@ -14,7 +14,7 @@ const db = createImportAccess();
 const pool = db.pool;
 const TASKS = createCatalogImports(db, post, READ_CONTRACT);
 
-type Aufgabe = keyof typeof TASKS;
+type Task = keyof typeof TASKS;
 
 // The error is already reported; a second one while closing does not hold up the exit.
 async function endWithError() {
@@ -32,7 +32,7 @@ process.on('message', async (msg: { task?: string } | null) => {
     return endWithError();
   }
   try {
-    const total = await TASKS[task as Aufgabe]();
+    const total = await TASKS[task as Task]();
     post({ type: 'done', filename: task, total });
     post({ type: 'complete', task });
     await pool.end();

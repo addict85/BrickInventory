@@ -19,11 +19,11 @@ export type AlarmRow = Columns<
 /** The app makes the row clickable based on this; $3 is the scope. */
 /** If the target already has an alert (e.g. on an owned set), its own applies;
  * otherwise the primary key would abort moving it together with the wishlist item. */
-export async function transferAlarm(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
+export async function transferAlarm(db: DbInterface, toId: number, ofId: number, sn: string, c: string) {
   await db.run(
     `UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
                    AND NOT EXISTS (SELECT 1 FROM price_alerts z WHERE z.user_id=$1 AND z.set_number=$3 AND z.condition=$4)`,
-    [zuId, ofId, sn, c],
+    [toId, ofId, sn, c],
   );
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [ofId, sn, c]);
 }

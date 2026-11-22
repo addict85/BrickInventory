@@ -1,5 +1,5 @@
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Scope } from '../household';
+import { asIds, type Viewer, type ScopeInput as Scope } from '../household';
 import type { SetsContext } from './context';
 
 // For deletion and removal; otherwise parts become orphaned. In the caller's transaction (`t`).
@@ -8,7 +8,7 @@ export async function deleteSetRows(t: SetsContext, uids: number[], setNumber: s
 }
 
 /** By default in the whole write scope; an account selection narrows it, never widens it. */
-export async function deleteSetFor(sk: SetsContext, s: Sicht, setNumber: string) {
+export async function deleteSetFor(sk: SetsContext, s: Viewer, setNumber: string) {
   const writable = await sk.household.writeScope(s.user);
   const chosen = s.accounts === undefined ? writable : await sk.household.scopeFrom(s);
   return deleteSet(

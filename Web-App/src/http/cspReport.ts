@@ -8,24 +8,24 @@ import { processWide } from '../infra/processWide';
 import { throttleAddress } from '../infra/throttleAddress';
 
 const WINDOW_MS = 60_000;
-const JE_ADDRESS = 10;
+const PER_ADDRESS = 10;
 /** The minute does not remember more senders; whoever comes after that is discarded. */
 const AT_MOST_ADDRESSES = 1000;
-const F = processWide('cspReport', () => ({ since: Date.now(), throttled: 0, jeAddress: new Map<string, number>() }));
+const F = processWide('cspReport', () => ({ since: Date.now(), throttled: 0, perAddress: new Map<string, number>() }));
 
 export function cspMessageFree(address: string, now = Date.now()): boolean {
-  const _jeAddress = F.jeAddress;
+  const _perAddress = F.perAddress;
   if (now - F.since >= WINDOW_MS) {
     if (F.throttled) console.warn(`[csp] ${F.throttled} gedrosselt`);
-    _jeAddress.clear();
+    _perAddress.clear();
     F.throttled = 0;
     F.since = now;
   }
   // Per sender instead of shared, otherwise real reports would drown in a foreign flood; IPv6 per /64.
   const a = throttleAddress(address);
-  const n = (_jeAddress.get(a) ?? 0) + 1;
-  const free = n <= JE_ADDRESS && (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES);
-  if (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES) _jeAddress.set(a, n);
+  const n = (_perAddress.get(a) ?? 0) + 1;
+  const free = n <= PER_ADDRESS && (_perAddress.has(a) || _perAddress.size < AT_MOST_ADDRESSES);
+  if (_perAddress.has(a) || _perAddress.size < AT_MOST_ADDRESSES) _perAddress.set(a, n);
   if (!free) F.throttled++;
   return free;
 }
@@ -68,11 +68,11 @@ const DIRECTIVE = /^[a-z][a-z-]{1,39}$/;
 const KEYWORD = /^(inline|eval|wasm-eval|self|data|blob|trusted-types-(sink|policy))$/;
 
 function directive(v: unknown): string | null {
-  const erstes =
+  const first =
     String(v ?? '')
       .trim()
       .split(/\s/)[0] ?? '';
-  return DIRECTIVE.test(erstes) ? erstes : null;
+  return DIRECTIVE.test(first) ? first : null;
 }
 
 /** Only http(s)/ws(s) and without the query part: an address can carry a reset or confirmation link. */

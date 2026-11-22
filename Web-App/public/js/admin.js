@@ -31,7 +31,7 @@ function showJobProgress(progress) {
   G('job-status-detail').textContent = progress.set ? tRaw('monitor.current', { set: progress.set }) : '';
 }
 
-/** The last run with its result, or the wait for the first one. @param {any} j */
+/** The last run with its result, or the wait for the first one. @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/admin/job-status'>['job']} j */
 function showLastJobRun(j) {
   const dot = G('job-dot');
   const stxt = G('job-status-txt');

@@ -92,7 +92,7 @@ function checkStatus(status: number, body: string, label: string) {
 async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: string | null = null, soon = false) {
   const r = await attempts('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
-  const { attempt, queued, atMost } = r.wert;
+  const { attempt, queued, atMost } = r.value;
   if (!queued) {
     console.log(`[brickset] ${setNumber}: ${atMost} quota retries exceeded — removed from queue, using fallback`);
     return false;

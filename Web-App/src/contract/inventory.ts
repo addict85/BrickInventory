@@ -128,8 +128,8 @@ export const HoldingCleared = z.looseObject({
 /** The price is called purchase_price for sets, otherwise unit_price; the app sends both. */
 const AcquisitionChange = z.strictObject({
   quantity: input.quantityOrNothing(1, 100_000),
-  purchase_price: input.geld('Kaufpreis'),
-  unit_price: input.geld('Stückpreis'),
+  purchase_price: input.money('Kaufpreis'),
+  unit_price: input.money('Stückpreis'),
   condition: CONDITION.nullable().optional(),
   date: TEXT(40).nullable().optional(),
   owner_user_id: IDENTIFIER.nullable().optional(),

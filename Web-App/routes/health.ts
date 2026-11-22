@@ -7,7 +7,7 @@ import { userIdTheRequest, isAdmin } from '../src/account/http/login';
 import { publicStartState } from '../src/jobQueue';
 import type { Services } from '../src/services';
 
-export function buildGesundheitRouter(d: Pick<Services, 'jobQueue' | 'account' | 'management'>) {
+export function buildHealthRouter(d: Pick<Services, 'jobQueue' | 'account' | 'management'>) {
   // Like the contract: a different spelling is a different route (404).
   const router = express.Router({ caseSensitive: true });
 

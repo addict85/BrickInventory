@@ -10,7 +10,7 @@ export interface SetMaster {
   /** Created by setErfassen without a catalog: only says that some account captured the number. */
   placeholder?: boolean;
 }
-export interface ListenTeil {
+export interface ListedPart {
   part_number: string;
   color_id: number;
   total_quantity: number | string;

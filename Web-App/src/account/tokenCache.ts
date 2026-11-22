@@ -58,7 +58,7 @@ function _pruneCache(k: AccountContext) {
 }
 
 /** The state before reading, or null if the cache may not apply right now. */
-export function cacheStand(k: AccountContext): number | null {
+export function cacheState(k: AccountContext): number | null {
   return tokenCacheUsable(k) ? store(k).state : null;
 }
 

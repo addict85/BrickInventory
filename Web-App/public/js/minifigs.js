@@ -185,7 +185,7 @@ function appendFigs(batch) {
   renderFigs(allFigsCache);
 }
 
-/** The parts of a figure tile that depend on its source. @param {any} f */
+/** The parts of a figure tile that depend on its source. @param {Minifig | ManualMinifig} f */
 function figTileExtras(f) {
   // Trash at the top right, as on the set tile: .ca sets top:6px;right:6px and fades it in on
   // hover (styles.css). Marco's requirement from 24.09., second part: "like the tiles for
@@ -207,7 +207,7 @@ function figTileExtras(f) {
   return { delBtn, condBadge, owner };
 }
 
-/** One tile of the set figures. @param {any} f */
+/** One tile of the set figures. @param {Minifig | ManualMinifig} f */
 function figCard(f) {
   const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
   const dateVal = /** @type {string | null} */ (f.set_added_at || null);

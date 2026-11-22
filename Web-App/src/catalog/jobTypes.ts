@@ -12,9 +12,9 @@ import * as revocationList from './revocationList';
 import type { CatalogContext } from './context';
 
 const SET_NUMBER = z.string().min(1).max(64);
-const LEER = z.object({});
+const EMPTY = z.object({});
 
-const PdfTeil = z.object({
+const PdfPart = z.object({
   part_number: z.string(),
   bl_part_number: z.string().nullish(),
   part_name: z.string().nullish(),
@@ -31,7 +31,7 @@ export const PdfPayload = z.object({
   job_id: z.string().min(1),
   user_id: z.number().int().positive(),
   sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
-  parts: z.array(PdfTeil),
+  parts: z.array(PdfPart),
 });
 /** Queued by the catalog and by the sets; executed by the sets (src/sets/jobTypes.ts). */
 export const ImagesPayload = z.object({ set_number: SET_NUMBER, only_images: z.boolean().optional() });
@@ -43,10 +43,10 @@ declare module '../jobQueue/jobs' {
     pdf: typeof PdfPayload;
     images: typeof ImagesPayload;
     instructions: typeof InstructionPayload;
-    images_reload: typeof LEER;
+    images_reload: typeof EMPTY;
     csv_sync: typeof CatalogSyncPayload;
-    image_followup: typeof LEER;
-    revocation_list: typeof LEER;
+    image_followup: typeof EMPTY;
+    revocation_list: typeof EMPTY;
   }
 }
 
@@ -71,7 +71,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     bricksetJobType((n, l) => bricksetFollowUp.bricksetFollowUp(k, n, l)),
     jobKind({
       kind: 'images_reload',
-      payload: LEER,
+      payload: EMPTY,
       run: async (_n, l) => {
         await reloadImages.redownloadMissingImages(k, l);
       },
@@ -88,7 +88,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     }),
     jobKind({
       kind: 'image_followup',
-      payload: LEER,
+      payload: EMPTY,
       run: (_n, l) => imageFollowUp.imageFollowUp(k, l),
       exclusive: true,
       crossAccount: 'Bilder aller Bestände',
@@ -96,7 +96,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     }),
     jobKind({
       kind: 'revocation_list',
-      payload: LEER,
+      payload: EMPTY,
       run: (_n, l) => revocationList.loadRevocationList(k, l),
       schedule: { minutes: { preset: 6 * 60 } },
     }),

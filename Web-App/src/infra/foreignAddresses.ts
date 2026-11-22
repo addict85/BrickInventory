@@ -92,8 +92,8 @@ export function nextRedirect(
 
 /** Inserted raw, "/", "?" or ".." would leave the path at Rebrickable or
  * S3; dot segments stay dot segments even when encoded, that is why they throw. */
-export function pathSegment(wert: string | number): string {
-  const s = String(wert);
+export function pathSegment(value: string | number): string {
+  const s = String(value);
   if (!s || /^\.+$/.test(s)) throw new Error(`Ungültiges Pfadsegment: „${s.slice(0, 40)}"`);
   return encodeURIComponent(s);
 }

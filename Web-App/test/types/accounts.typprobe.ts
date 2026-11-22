@@ -6,13 +6,13 @@
  * Markierung an beiden Zeilen).
  */
 import { setHoldings } from '../../db/inventoryView';
-import { mengeJoin } from '../../db/stockQuantity';
+import { setQuantityJoin } from '../../db/stockQuantity';
 
 setHoldings('= ANY($1)');
-mengeJoin('s', 'sm', '= $2');
+setQuantityJoin('s', 'sm', '= $2');
 
 // @ts-expect-error Ein Wert im Text statt eines Platzhalters.
 setHoldings('= 1 OR TRUE');
 
 // @ts-expect-error Auch angehängt an einen Platzhalter.
-mengeJoin('s', 'sm', '= ANY($1) OR TRUE');
+setQuantityJoin('s', 'sm', '= ANY($1) OR TRUE');

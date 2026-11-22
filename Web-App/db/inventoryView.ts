@@ -4,46 +4,46 @@
  * Without `accounts` all accounts apply. */
 import { onAccounts, type AccountFilter } from './accounts';
 
-const nur = (accounts?: AccountFilter) => (accounts ? ` WHERE ${onAccounts('user_id', accounts)}` : '');
+const only = (accounts?: AccountFilter) => (accounts ? ` WHERE ${onAccounts('user_id', accounts)}` : '');
 
 /** Sets in the inventory (src/inventory): id, user_id, set_number, storage_id, added_at. */
 export const setHoldings = (accounts?: AccountFilter) =>
-  `(SELECT id, user_id, set_number, storage_id, added_at FROM sets${nur(accounts)})`;
+  `(SELECT id, user_id, set_number, storage_id, added_at FROM sets${only(accounts)})`;
 
 /** Parts in the inventory (src/inventory): id, user_id, set_number, part_number, color_id, source, storage_id, added_at. */
 export const partHoldings = (accounts?: AccountFilter) =>
-  `(SELECT id, user_id, set_number, part_number, color_id, source, storage_id, added_at FROM parts${nur(accounts)})`;
+  `(SELECT id, user_id, set_number, part_number, color_id, source, storage_id, added_at FROM parts${only(accounts)})`;
 
 /** Minifigs in the inventory (src/inventory): id, user_id, set_number, fig_number, source, storage_id. */
 export const figHoldings = (accounts?: AccountFilter) =>
-  `(SELECT id, user_id, set_number, fig_number, source, storage_id FROM minifigs${nur(accounts)})`;
+  `(SELECT id, user_id, set_number, fig_number, source, storage_id FROM minifigs${only(accounts)})`;
 
 /** Storage locations (src/inventory): id, user_id, name. */
 export const storages = (accounts?: AccountFilter) =>
-  `(SELECT id, user_id, name FROM storage_locations${nur(accounts)})`;
+  `(SELECT id, user_id, name FROM storage_locations${only(accounts)})`;
 
 const ACQUISITION = 'id, user_id, quantity, condition, created_at, currency, price_estimated, day';
 
 /** Purchases of a set (src/inventory): the acquisition columns, set_number, purchase_price. */
 export const setAcquisitions = (accounts?: AccountFilter) =>
-  `(SELECT ${ACQUISITION}, set_number, purchase_price FROM set_acquisitions${nur(accounts)})`;
+  `(SELECT ${ACQUISITION}, set_number, purchase_price FROM set_acquisitions${only(accounts)})`;
 
 /** Purchases of manual parts (src/inventory): the acquisition columns, part_number, color_id, unit_price. */
 export const partAcquisitions = (accounts?: AccountFilter) =>
-  `(SELECT ${ACQUISITION}, part_number, color_id, unit_price FROM part_acquisitions${nur(accounts)})`;
+  `(SELECT ${ACQUISITION}, part_number, color_id, unit_price FROM part_acquisitions${only(accounts)})`;
 
 /** Purchases of manual minifigs (src/inventory): the acquisition columns, fig_number, unit_price. */
 export const figAcquisitions = (accounts?: AccountFilter) =>
-  `(SELECT ${ACQUISITION}, fig_number, unit_price FROM minifig_acquisitions${nur(accounts)})`;
+  `(SELECT ${ACQUISITION}, fig_number, unit_price FROM minifig_acquisitions${only(accounts)})`;
 
 /** Wanted list (src/wanted); the name mirrors src/finances's FinancesReadContract.wantedList,
  * which is out of this phase's scope — see the Phase 2a report. */
 export const wantedList = (accounts?: AccountFilter) =>
-  `(SELECT user_id, set_number, condition FROM wanted${nur(accounts)})`;
+  `(SELECT user_id, set_number, condition FROM wanted${only(accounts)})`;
 
 /** Own instructions (src/sets): user_id, set_number. */
 export const instructions = (accounts?: AccountFilter) =>
-  `(SELECT user_id, set_number FROM instructions${nur(accounts)})`;
+  `(SELECT user_id, set_number FROM instructions${only(accounts)})`;
 
 /** A set counts as long as an account holds, wants or watches it: only then does it need an image,
  * a master row and a price. The rule stands once, for images, catalog sync and scope. */
@@ -60,5 +60,5 @@ export const setCounts = (number: string) =>
 /** Query: per set that counts for `accounts`, set_number and owned (held, not only wanted). */
 export const countedSets = (accounts?: AccountFilter) =>
   `SELECT set_number, bool_or(besitz) AS besitz FROM (
-     ${COUNTS.map(z => `SELECT set_number, ${z.owned} AS besitz FROM ${z.table}${nur(accounts)}`).join('\n     UNION ALL ')}) t
+     ${COUNTS.map(z => `SELECT set_number, ${z.owned} AS besitz FROM ${z.table}${only(accounts)}`).join('\n     UNION ALL ')}) t
    GROUP BY set_number`;

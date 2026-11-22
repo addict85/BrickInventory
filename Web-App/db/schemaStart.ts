@@ -22,8 +22,8 @@ const MINIMUM_VERSION = '0050-teilezaehler-nur-bestehende-konten.sql';
 export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: FirstStart): Promise<boolean> {
   const c = await ownConnection();
   try {
-    const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-    if (!leer) return false;
+    const fresh = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+    if (!fresh) return false;
     // A connection of its own, because the base sets session values (SET …) that
     // would otherwise stick to a pool connection.
     await c.query('BEGIN');
@@ -100,11 +100,11 @@ async function maySchemaChangeOn(client: import('pg').ClientBase): Promise<boole
 /** For the runtime role: an empty or unmigrated schema stops the start
  * instead of requests hitting missing columns. */
 async function checkOnlyStatus(client: import('pg').ClientBase, timeZone: string, systemPool: Pool): Promise<void> {
-  const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-  const open = leer ? [] : await openMigrations(client);
-  if (leer || open.length)
+  const fresh = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+  const open = fresh ? [] : await openMigrations(client);
+  if (fresh || open.length)
     throw new Error(
-      `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${open.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
+      `${fresh ? 'Die Datenbank ist leer' : `Migrationen offen: ${open.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
         'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
   // Usually the migration service has already written the same value; otherwise the system role.

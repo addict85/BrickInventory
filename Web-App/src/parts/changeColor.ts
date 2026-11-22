@@ -28,9 +28,9 @@ async function fetchImageLater(k: PartsContext, partNumber: string, color: numbe
 
   // The change already stands; a failed fetch only drops the image.
   const info = await attempts('partColor:lookupPart', () => k.externalSources.sources.lookupPart(partNumber, color));
-  if (!info.ok || !info.wert?.image_url) return null;
+  if (!info.ok || !info.value?.image_url) return null;
   try {
-    await k.catalog.rememberPartColor(partNumber, color, null, null, info.wert.image_url, null);
+    await k.catalog.rememberPartColor(partNumber, color, null, null, info.value.image_url, null);
     return 'rebrickable';
   } catch (e) {
     reportError('colorChange:image from Rebrickable', e);

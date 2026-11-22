@@ -181,7 +181,7 @@ export const routes = {
       color_hex: input.colorCode(),
       quantity: input.pieceCount(),
       condition: input.condition(),
-      unit_price: input.geld('Stückpreis'),
+      unit_price: input.money('Stückpreis'),
       part_name: input.text(200),
       image_url: input.imageUrl(),
       category_name: input.text(100),
@@ -195,7 +195,7 @@ export const routes = {
     input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
-      unit_price: input.geld('Stückpreis'),
+      unit_price: input.money('Stückpreis'),
       condition: CONDITION.nullable().optional(),
     }),
     response: PieceChanged,

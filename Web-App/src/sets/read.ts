@@ -2,7 +2,7 @@ import { forSet, mergeInstructions } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { reportError } from '../infra/error';
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Scope } from '../household';
+import { asIds, type Viewer, type ScopeInput as Scope } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 
 // Read queries; condition from the acquisitions.
@@ -13,7 +13,7 @@ import type { SetsContext } from './context';
 
 /** Filtering and sorting on the server, so that they work together with page-wise
  * loading. Without page_size everything — that is how the Android app calls. */
-export async function readSets(sk: SetsContext, userIdChoice: Sicht | Scope, query: Query<'GET /api/v2/sets'> = {}) {
+export async function readSets(sk: SetsContext, userIdChoice: Viewer | Scope, query: Query<'GET /api/v2/sets'> = {}) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);
@@ -100,10 +100,10 @@ export async function withSetAggregate<T extends object>(
 ) {
   const uids = asIds(userId);
   const agg = await attempts('sets-handler:zustandsAggregat', conditionAggregate(sk, uids, setNumber));
-  return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
+  return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.value } } : payload;
 }
 
-export async function readSet(sk: SetsContext, userIdChoice: Sicht | Scope, setNumber: string) {
+export async function readSet(sk: SetsContext, userIdChoice: Viewer | Scope, setNumber: string) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([

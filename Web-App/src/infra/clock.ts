@@ -4,10 +4,10 @@ export interface Clock {
   /** Milliseconds since 1970, like Date.now(). */
   now(): number;
   /** The present as a Date. */
-  datum(): Date;
+  date(): Date;
 }
 
-export const systemClock: Clock = { now: () => Date.now(), datum: () => new Date() };
+export const systemClock: Clock = { now: () => Date.now(), date: () => new Date() };
 
 /** Runs with the system time but can be set ahead: a test jumps over a deadline instead of waiting for it. */
 export interface SettableClock extends Clock {
@@ -20,7 +20,7 @@ export function settableClock(): SettableClock {
   const now = () => Date.now() + offset;
   return {
     now,
-    datum: () => new Date(now()),
+    date: () => new Date(now()),
     ago: ms => {
       offset += ms;
     },

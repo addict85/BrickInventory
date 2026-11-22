@@ -21,7 +21,7 @@ export type ConfirmationRejection = {
 };
 export type Factor = { code?: string | number | null | undefined; passkey?: unknown };
 
-const leer = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
+const blank = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
 
 async function braked(
   k: AccountContext,
@@ -62,7 +62,7 @@ export async function checkConfirmation(
   factor: Factor,
 ): Promise<ConfirmationRejection | null> {
   const withFactor = await k.factors.isActive(uid);
-  if (withFactor && leer(factor.code) && leer(factor.passkey))
+  if (withFactor && blank(factor.code) && blank(factor.passkey))
     return {
       kind: 'invalid',
       code: 'second_factor_required',
@@ -83,7 +83,7 @@ export async function checkConfirmation(
     throw e;
   });
   if (pw || !withFactor) return pw;
-  return leer(factor.passkey)
+  return blank(factor.passkey)
     ? braked(
         k,
         'faktor',

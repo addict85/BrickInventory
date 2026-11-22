@@ -7,27 +7,27 @@
  */
 
 /** Domain types from core-model: package, empty value, optionally an own serializer (then always nullable). */
-/** @type {Record<string, { pkg: string, leer: string, serializer?: string }>} */
+/** @type {Record<string, { pkg: string, empty: string, serializer?: string }>} */
 const DOMAIN_TYPES = {
   Zustand: {
     pkg: 'ch.brickinventoryapp.model.domain.Zustand',
-    leer: 'Zustand.NEU',
+    empty: 'Zustand.NEU',
   },
   Waehrung: {
     pkg: 'ch.brickinventoryapp.model.domain.Waehrung',
-    leer: 'Waehrung.KEINE',
+    empty: 'Waehrung.KEINE',
   },
   Laufstatus: {
     pkg: 'ch.brickinventoryapp.model.domain.Laufstatus',
-    leer: 'Laufstatus.UNBEKANNT',
+    empty: 'Laufstatus.UNBEKANNT',
   },
   Alarmrichtung: {
     pkg: 'ch.brickinventoryapp.model.domain.Alarmrichtung',
-    leer: 'Alarmrichtung.UNTER',
+    empty: 'Alarmrichtung.UNTER',
   },
   Design: {
     pkg: 'ch.brickinventoryapp.model.ui.theme.Design',
-    leer: 'null',
+    empty: 'null',
     serializer: 'ch.brickinventoryapp.model.ui.theme.DesignOderNichts',
   },
 };
@@ -93,7 +93,9 @@ const NAMES = {
   POSTApiV1MinifigsImportCsv: 'CsvImportErgebnis',
   ImportZeile: 'CsvImportZeile',
   POSTApiV1AuthEmailBestaetigenVorschau: 'EmailVorschau',
-  PdfStand: 'PdfAuftragStand',
+  PdfState: 'PdfAuftragStand',
+  Health: 'Gesundheit',
+  TlsState: 'TlsStand',
   VerwalterWeg: 'PasswortGesetzt',
   PasskeyAnmeldung: 'LoginResponse',
   PdfAuftrag: 'PdfAuftragAntwort',

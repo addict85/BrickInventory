@@ -15,8 +15,8 @@ type Store = { get?: Method; set?: Method; destroy?: Method; touch?: Method };
 export function hashSessionIds<T extends object>(store: T): T {
   const s = store as Store;
   for (const name of ['get', 'set', 'destroy', 'touch'] as const) {
-    const echt = s[name]?.bind(store);
-    if (echt) s[name] = (sid: string, ...rest: never[]) => echt(sessionDigest(sid), ...rest);
+    const real = s[name]?.bind(store);
+    if (real) s[name] = (sid: string, ...rest: never[]) => real(sessionDigest(sid), ...rest);
   }
   return store;
 }

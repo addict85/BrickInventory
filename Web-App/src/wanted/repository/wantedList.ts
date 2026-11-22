@@ -1,11 +1,11 @@
 import type { DbInterface } from '../../../db/database';
 
-export type Art = 'part' | 'fig' | 'set';
+export type Kind = 'part' | 'fig' | 'set';
 
 /** Mappings to BrickLink numbers; `bl_id IS NULL` means "noted as identical".
  * The account's own ones come first (`own`), so that they take precedence. */
 export function mappings(db: DbInterface, blNumbers: string[], uid: number | null = null) {
-  return db.all<{ type: Art; rb_id: string; bl_id: string | null; own: boolean }>(
+  return db.all<{ type: Kind; rb_id: string; bl_id: string | null; own: boolean }>(
     `SELECT type, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS own FROM bl_mapping_custom
       WHERE user_id = $2 AND bl_id = ANY($1)
      UNION ALL
@@ -16,14 +16,14 @@ export function mappings(db: DbInterface, blNumbers: string[], uid: number | nul
   );
 }
 
-const CATALOG: Record<Art, string> = {
+const CATALOG: Record<Kind, string> = {
   part: 'SELECT part_number AS n FROM part_catalog WHERE part_number = ANY($1)',
   fig: 'SELECT fig_number AS n FROM minifigs_catalog WHERE fig_number = ANY($1)',
   set: 'SELECT set_number AS n FROM set_catalog WHERE set_number = ANY($1)',
 };
 
 /** Which of the numbers the own catalog of this kind lists. */
-export async function numbersInCatalog(db: DbInterface, kind: Art, numbers: string[]): Promise<string[]> {
+export async function numbersInCatalog(db: DbInterface, kind: Kind, numbers: string[]): Promise<string[]> {
   return (await db.all<{ n: string }>(CATALOG[kind], [numbers])).map(z => z.n);
 }
 

@@ -19,8 +19,8 @@ const RESET_VALID_MIN = 60,
 /** Exception: the mail goes out even without a readable setting, then in German.
  * The owner's account is not the request's (row-level security). */
 async function mailLanguage(k: AccountContext, uid: number): Promise<string> {
-  const wert = inSystemContext('registrierung', () => k.settings.userValue(uid, 'language', 'de'));
-  return String(await wert.catch(reportAndDeliver('registrierung:sprache', 'de')));
+  const value = inSystemContext('registrierung', () => k.settings.userValue(uid, 'language', 'de'));
+  return String(await value.catch(reportAndDeliver('registrierung:sprache', 'de')));
 }
 
 /** Without a base address no link, so no mail. */

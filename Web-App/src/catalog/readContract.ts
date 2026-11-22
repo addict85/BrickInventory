@@ -7,5 +7,5 @@ export interface CatalogReadContract {
   partHoldings(accounts?: AccountFilter): string;
   figHoldings(accounts?: AccountFilter): string;
   setCounts(number: string): string;
-  mengeJoin(basis: string, alias?: string, accounts?: AccountFilter): string;
+  setQuantityJoin(basis: string, alias?: string, accounts?: AccountFilter): string;
 }

@@ -1,11 +1,11 @@
-import type { Sicht } from '../../household';
+import type { Viewer } from '../../household';
 import { valueSet, valueAcquisitionRows, weightedPurchase, developmentPercent, tileValues } from '../setValue';
 import { effectiveCondition } from './condition';
 import { valueMinifigs, valueParts } from './valuation';
 import type { Scope } from './prices';
 import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
-import { aufRappen, inTenThousandths, sumFrom } from '../../infra/money';
+import { toCents, inTenThousandths, sumFrom } from '../../infra/money';
 import type * as repo from '../repository/profitLoss';
 import { marketPriceFrom } from '../../catalog';
 import type { FinancesContext } from '../context';
@@ -15,16 +15,16 @@ type Acquisition = Awaited<ReturnType<typeof loadSetEntries>>[number];
 /** Per set: market price now and first known, purchase price and quantity from the acquisitions. */
 type MarketValues = {
   price: Map<string, number>;
-  erster: Map<string, number>;
+  firstPrice: Map<string, number>;
   purchase: Map<string, number>;
   quantity: Map<string, number>;
 };
 
 /** Falling back to the other condition lives in valueSet() (priceFor). */
-function pricesOfSets(sn: string, jeKey: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
+function pricesOfSets(sn: string, perKey: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
   const from = new Map<string, number>();
   for (const cond of ['N', 'U']) {
-    const v = marketPriceFrom(jeKey.get(`${sn}|${cond}`));
+    const v = marketPriceFrom(perKey.get(`${sn}|${cond}`));
     if (v !== null) from.set(`${sn}|${cond}`, v);
   }
   return from;
@@ -35,11 +35,11 @@ function pricesOfSets(sn: string, jeKey: Map<string, { avg_price?: unknown; qty_
 async function setMarketValues(
   k: FinancesContext,
   sets: PnlSet[],
-  jeSet: Map<string, Acquisition[]>,
+  perSet: Map<string, Acquisition[]>,
   currency: string,
   ttl: number,
 ): Promise<MarketValues> {
-  const w: MarketValues = { price: new Map(), erster: new Map(), purchase: new Map(), quantity: new Map() };
+  const w: MarketValues = { price: new Map(), firstPrice: new Map(), purchase: new Map(), quantity: new Map() };
   const numbers = sets.map(s => s.set_number);
   if (!numbers.length) return w;
   const [current, history] = await Promise.all([
@@ -51,13 +51,13 @@ async function setMarketValues(
   const now = afterKey(current),
     first = afterKey(history);
   for (const set of sets) {
-    const acqs = jeSet.get(set.set_number) || [];
+    const acqs = perSet.get(set.set_number) || [];
     const condition = effectiveCondition(set),
       prices = pricesOfSets(set.set_number, now);
     const cur = valueSet(set.set_number, acqs, prices, condition, set.quantity || 1);
     const hist = valueSet(set.set_number, acqs, pricesOfSets(set.set_number, first), condition, set.quantity || 1);
     if (cur.unit_z) w.price.set(set.set_number, cur.unit_z / 10000);
-    if (hist.unit_z) w.erster.set(set.set_number, hist.unit_z / 10000);
+    if (hist.unit_z) w.firstPrice.set(set.set_number, hist.unit_z / 10000);
     const purchase = weightedPurchase(valueAcquisitionRows(set.set_number, acqs, prices));
     if (purchase != null) w.purchase.set(set.set_number, purchase);
     w.quantity.set(set.set_number, cur.quantity);
@@ -77,8 +77,8 @@ function pnlSetRow(set: PnlSet, w: MarketValues) {
   const qty = w.quantity.get(sn) || set.quantity || 1;
   const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
   const pnlPct = hasCost ? developmentPercent(purchasePrice, currentPrice) : null;
-  const baselinePrice = hasCost ? purchasePrice : (w.erster.get(sn) ?? null);
-  const baselinePnlPct = hasCost || w.erster.has(sn) ? developmentPercent(baselinePrice, currentPrice) : null;
+  const baselinePrice = hasCost ? purchasePrice : (w.firstPrice.get(sn) ?? null);
+  const baselinePnlPct = hasCost || w.firstPrice.has(sn) ? developmentPercent(baselinePrice, currentPrice) : null;
   return {
     set_number: sn,
     name: set.name,
@@ -91,11 +91,11 @@ function pnlSetRow(set: PnlSet, w: MarketValues) {
     condition: effectiveCondition(set),
     baseline_price: baselinePrice,
     added_at: set.added_at,
-    pnl_abs: pnlAbs === null ? null : aufRappen(inTenThousandths(pnlAbs) ?? 0).toFixed(2),
+    pnl_abs: pnlAbs === null ? null : toCents(inTenThousandths(pnlAbs) ?? 0).toFixed(2),
     pnl_pct: pnlPct?.toFixed(1) ?? null,
     baseline_pnl_pct: baselinePnlPct?.toFixed(1) ?? null,
     // The text fields stay for older clients.
-    pnl_amount: pnlAbs === null ? null : aufRappen(inTenThousandths(pnlAbs) ?? 0),
+    pnl_amount: pnlAbs === null ? null : toCents(inTenThousandths(pnlAbs) ?? 0),
     pnl_percent: pnlPct === null ? null : Number(pnlPct.toFixed(1)),
     baseline_pnl_percent: baselinePnlPct === null ? null : Number(baselinePnlPct.toFixed(1)),
   };
@@ -120,7 +120,7 @@ function itemRow(p: { quantity?: number | null; avg_price?: unknown; purchase_pr
 const purchaseTotal = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
   sumFrom(rs.map(r => ({ price: r.purchase_price || 0, quantity: r.quantity || 1 })));
 
-export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Sicht | Scope) {
+export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Viewer | Scope) {
   // Two quantities: viewerId — whose SETTINGS apply; ids — WHOSE DATA
   // is calculated. With the filter "sub-accounts" viewerId is missing from ids.
   const uids = await k.household.scopeFrom(idsChoice);
@@ -131,13 +131,13 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
   const sets = await k.profitLoss.setsWithEntries(uids);
   // From the acquisitions, so that gallery, detail and finances show the same numbers.
   const acqRows = sets.length ? await k.acquisitions.loadSetEntries(uids, currency) : [];
-  const jeSet = new Map<string, Acquisition[]>();
+  const perSet = new Map<string, Acquisition[]>();
   for (const a of acqRows) {
-    const l = jeSet.get(a.set_number);
+    const l = perSet.get(a.set_number);
     if (l) l.push(a);
-    else jeSet.set(a.set_number, [a]);
+    else perSet.set(a.set_number, [a]);
   }
-  const values = await setMarketValues(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
+  const values = await setMarketValues(k, sets, perSet, currency, Math.max(1, parseInt(ttlHours, 10)));
 
   const setResults = sets.map(s => pnlSetRow(s, values));
   const tile = tileValues(setResults);
@@ -146,12 +146,12 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
     figsResults = figsVal.figs.map(itemRow);
 
   const allRows = [...setResults, ...partsResults, ...figsResults];
-  const totalPurchase = aufRappen(
+  const totalPurchase = toCents(
     [setResults, partsResults, figsResults].reduce((z, rs) => z + (inTenThousandths(purchaseTotal(rs)) ?? 0), 0),
   );
   const totalCurrent = sumFrom(allRows.map(r => ({ price: r.current_price || 0, quantity: r.quantity || 1 })));
   const comparable = comparableSums(allRows);
-  const totalPnlPct = totalGuvPercent(allRows);
+  const totalPnlPct = totalPnlPercent(allRows);
   return {
     currency,
     sets: setResults.map(r => ({ ...r, ...tile.get(r.set_number) })),
@@ -185,14 +185,14 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
 /** Only over items with purchase price AND market price: a missing market price is
  * not a value of 0; counted along it would yield −100 %. A gift (purchase price 0) counts.
  * @returns null if the cost basis of these items is 0 */
-export function totalGuvPercent(rows: GuvRow[]): string | null {
+export function totalPnlPercent(rows: ProfitLossRow[]): string | null {
   const { purchase, market } = comparableSums(rows);
   return purchase > 0 ? (((market - purchase) / purchase) * 100).toFixed(1) : null;
 }
 
-type GuvRow = { purchase_price: number | null; current_price: number; quantity: number };
+type ProfitLossRow = { purchase_price: number | null; current_price: number; quantity: number };
 
-export function comparableSums(rows: GuvRow[]): { purchase: number; market: number } {
+export function comparableSums(rows: ProfitLossRow[]): { purchase: number; market: number } {
   let purchase = 0,
     market = 0;
   for (const z of rows) {
@@ -208,7 +208,7 @@ export function comparableSums(rows: GuvRow[]): { purchase: number; market: numb
 
 /** Cost basis, market value and P/L of the finance cards over the same items, plus what is missing.
  * That way cost basis + P/L = market value always holds, and the card names the omitted items. */
-export function baseTheMetrics(rows: GuvRow[]) {
+export function baseTheMetrics(rows: ProfitLossRow[]) {
   const { purchase, market } = comparableSums(rows);
   let withoutMarket = 0,
     withoutMarketPurchase = 0,

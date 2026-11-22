@@ -42,7 +42,7 @@ function hole(url) {
         res.on('data', c => {
           n += c.length;
         });
-        res.on('end', () => r({ status: res.statusCode, typ: res.headers['content-type'], bytes: n }));
+        res.on('end', () => r({ status: res.statusCode, type: res.headers['content-type'], bytes: n }));
       },
     );
     req.on('timeout', () => {
@@ -108,7 +108,7 @@ async function reportCdn(effective) {
   }
   const r = await hole(effective);
   row('Adresse', effective);
-  row('Antwort', `${r.status}${r.typ ? '  ' + r.typ : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
+  row('Antwort', `${r.status}${r.type ? '  ' + r.type : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
   if (r.status === 404) {
     console.log('   ⚠️  404 — die hinterlegte Adresse zeigt ins Leere. Bei ganz neuen Sets');
     console.log('   ist das oft der geratene BrickLink-Rückfall aus clients/bricklink.ts');

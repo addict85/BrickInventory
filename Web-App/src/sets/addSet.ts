@@ -202,8 +202,11 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   }
   imageUrl ??= rebrickableSetImage(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
-  const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const image = await attempts('set-anlegen:bild-laden', Promise.race([sk.images.loadSetImage(imageUrl, sn), frist]));
+  const deadline = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
+  const image = await attempts(
+    'set-anlegen:bild-laden',
+    Promise.race([sk.images.loadSetImage(imageUrl, sn), deadline]),
+  );
   const local = valueOr(image, null);
   if (local) void attempts('set-anlegen:vorschau', sk.images.createPreview(local));
   // No catch: the catalog is the only place with name, year and image.

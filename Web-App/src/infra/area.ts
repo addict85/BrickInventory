@@ -35,8 +35,8 @@ export function inSystemFrame<R>(access: { inTransaction(): boolean }, reason: s
   throw new SystemFrameInTransaction(reason);
 }
 
-/** Like mit(), but in the system frame: the reason stands at the call, findable via `imSystem(`. */
-export function imSystem<Z extends { inTransaction(): boolean }, A extends unknown[], R>(
+/** Like mit(), but in the system frame: the reason stands at the call, findable via `asSystem(`. */
+export function asSystem<Z extends { inTransaction(): boolean }, A extends unknown[], R>(
   access: Z,
   reason: string,
   f: (z: Z, ...a: A) => R,
@@ -65,7 +65,7 @@ function isRebuildBar(w: unknown): w is { over(db: unknown): unknown } {
 /** The dependencies via `db`: the access and every rebuildable set of services; everything else stays. */
 function rebuild<Z, A extends { db: Z }>(a: A, db: Z): A {
   const from: Record<string, unknown> = {};
-  for (const [name, wert] of Object.entries(a)) from[name] = isRebuildBar(wert) ? wert.over(db) : wert;
+  for (const [name, value] of Object.entries(a)) from[name] = isRebuildBar(value) ? value.over(db) : value;
   from.db = db;
   return from as A;
 }
@@ -76,12 +76,12 @@ export function buildContext<D extends Access<D> & object, A extends { db: D }, 
   a: A,
   access: (db: D) => Z,
 ): Context<A, Z> {
-  const jeDb = new WeakMap<D, Context<A, Z>>();
+  const perDb = new WeakMap<D, Context<A, Z>>();
   const over = (db: D): Context<A, Z> => {
-    const da = jeDb.get(db);
+    const da = perDb.get(db);
     if (da) return da;
     const t = buildContext(rebuild(a, db), access);
-    jeDb.set(db, t);
+    perDb.set(db, t);
     return t;
   };
   return {
@@ -99,17 +99,17 @@ export function buildArea<B extends Access<B> & object, A extends { db: B }, Z e
   services: (k: Context<A, Z>) => D,
   inspect?: Inspect<Context<A, Z>>,
 ): Area<D, B> {
-  const jeDb = new WeakMap<B, Area<D, B>>();
+  const perDb = new WeakMap<B, Area<D, B>>();
   const build = (abh: A, show?: Inspect<Context<A, Z>>): Area<D, B> => {
     const k = buildContext(abh, access);
     show?.(k);
     const d: Area<D, B> = Object.assign(services(k), {
       over: (db: B): Area<D, B> => {
         if (db === abh.db) return d;
-        const da = jeDb.get(db);
+        const da = perDb.get(db);
         if (da) return da;
         const fresh = build(rebuild(abh, db));
-        jeDb.set(db, fresh);
+        perDb.set(db, fresh);
         return fresh;
       },
     });

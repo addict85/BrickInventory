@@ -6,7 +6,7 @@ import type { CatalogContext } from './context';
 
 /** Once the daily quota is used up, the whole kind waits until the
  * configured time of day; the attempt then does not count. */
-async function bricksetFollowUp(k: CatalogContext, n: Payload<'brickset'>, lauf?: JobRun): Promise<void> {
+async function bricksetFollowUp(k: CatalogContext, n: Payload<'brickset'>, run?: JobRun): Promise<void> {
   const sn = n.set_number;
   try {
     const [limit, status] = await Promise.all([
@@ -23,10 +23,10 @@ async function bricksetFollowUp(k: CatalogContext, n: Payload<'brickset'>, lauf?
     reportError('brickset-retry:kontingent', e);
   }
 
-  checkAbort(lauf);
+  checkAbort(run);
   // If the quota runs out midway, setAngaben queues the set again itself.
   if (await imageState.fillFromBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
-  checkAbort(lauf);
+  checkAbort(run);
   if ((await instructionCount(k, sn)) === 0) {
     await loadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:setAnleitungenLaden'));
   }

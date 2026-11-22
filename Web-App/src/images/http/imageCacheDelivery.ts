@@ -24,7 +24,7 @@ export async function deliverFromCache(
   const { res, req, streamFileToResponse } = opts;
   const hits = await images.cacheHit(opts);
   if (!hits) return false;
-  res.setHeader('Content-Type', hits.typ);
+  res.setHeader('Content-Type', hits.contentType);
   // Pass the length: a reverse proxy may buffer a chunked response.
   if (hits.size !== null) res.setHeader('Content-Length', String(hits.size));
   if (hits.etag) res.setHeader('ETag', hits.etag);

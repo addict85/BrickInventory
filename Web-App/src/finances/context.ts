@@ -14,7 +14,7 @@ import * as priceAlerts from './repository/priceAlerts';
 import * as priceCache from './repository/priceCache';
 import * as priceRun from './repository/priceRun';
 import * as priceHistory from './repository/priceHistory';
-import * as setWert from './repository/setValue';
+import * as setValueOf from './repository/setValue';
 import * as exchangeRates from './repository/exchangeRates';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
@@ -127,9 +127,9 @@ const priceAccess = (db: Db, l: FinancesReadContract) => ({
     cachePricesAfterKey: bound(db)(priceHistory.cachePricesAfterKey),
     purchaseAveragesByKey: withContract(db, l)(priceHistory.purchaseAveragesByKey),
   },
-  setWert: {
-    cachePricesForSets: bound(db)(setWert.cachePricesForSets),
-    setEntriesToValue: withContract(db, l)(setWert.setEntriesToValue),
+  setValueOf: {
+    cachePricesForSets: bound(db)(setValueOf.cachePricesForSets),
+    setEntriesToValue: withContract(db, l)(setValueOf.setEntriesToValue),
   },
   exchangeRates: {
     writeRates: bound(db)(exchangeRates.writeRates),

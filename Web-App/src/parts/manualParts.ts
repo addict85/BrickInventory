@@ -1,6 +1,6 @@
 /** Here and not in a route, because the session route and the v1 factory both
  * reach for it — a route shouldn't import another route. */
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { publicError } from '../infra/error';
 import { Degradations, attempts } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest, csvFirst, type CsvRow } from '../infra/csvExport';
@@ -131,15 +131,15 @@ async function partDescription(
     image_url = image_url || local.image;
   }
 
-  // `hatImage` instead of `image_url`: a local path would fail the URL check, but
+  // `hasImage` instead of `image_url`: a local path would fail the URL check, but
   // still proves the fetch has nothing more to get.
-  if (!part_name || !(image_url || local?.hatImage)) {
+  if (!part_name || !(image_url || local?.hasImage)) {
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const fetch = await attempts(
       'parts:lookupPart',
       k.externalSources.sources.lookupPart(part_number, hasColor ? color_id : null),
     );
-    found = fetch.ok ? fetch.wert : null;
+    found = fetch.ok ? fetch.value : null;
     // `||`: what the catalog already knew stays as-is.
     if (found) part_name = part_name || found.part_name;
   }
@@ -222,7 +222,7 @@ export async function changeManualPart(
 
 export async function listPartAcquisitions(
   k: PartsContext,
-  uidChoice: Sicht | number[],
+  uidChoice: Viewer | number[],
   partNumber: string,
   colorId: string | number,
 ) {
@@ -249,7 +249,7 @@ async function partInfo(k: PartsContext, partNumber: string, colorId: number, ty
     'parts:import-lookupPart',
     k.externalSources.sources.lookupPart(partNumber, colorId === NO_COLOR ? null : colorId),
   );
-  const info = fetch.ok ? fetch.wert : null;
+  const info = fetch.ok ? fetch.value : null;
   return {
     partName: info ? info.part_name : null,
     imageUrl: info ? info.image_url : null,
@@ -279,7 +279,7 @@ async function importPartRow(
     price: acquisitionPrice,
     estimated,
     condition: effectiveCondition || 'N',
-    createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
+    createdAt: acquiredAt || k.clock.date().toISOString().slice(0, 10),
   };
   if (await manualPartExists(k, uid, partNumber, colorId)) {
     await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);

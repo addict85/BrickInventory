@@ -26,7 +26,7 @@ export interface ClientsAccess {
   bricksetReserve(
     setNumber: string,
     error: string,
-    bald: boolean,
+    soon: boolean,
   ): Promise<{ attempt: number; queued: boolean; atMost: number }>;
   bricksetForgotten(setNumber: string): Promise<void>;
 }

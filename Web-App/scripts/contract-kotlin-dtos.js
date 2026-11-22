@@ -88,20 +88,20 @@ const constant = w => {
 };
 
 /**
- * @typedef {{ art: 'grund', name: string } | { art: 'liste', element: Typ } | { art: 'karte', wert: Typ }
- *   | { art: 'klasse', name: string }} TypeKind
+ * @typedef {{ form: 'primitive', name: string } | { form: 'list', element: Typ } | { form: 'map', value: Typ }
+ *   | { form: 'class', name: string }} TypeKind
  * @typedef {TypeKind & { nullable: boolean }} Typ
- * @typedef {{ json: string, typ: Typ, required: boolean }} Feld
+ * @typedef {{ json: string, ktType: Typ, required: boolean }} Feld
  * @typedef {{ name: string, fields: Feld[], enumValues?: string[], isRequest: boolean, sources: string[] }} Form
  */
 
 /** @param {string} name @returns {Typ} */
-const grund = (name, nullable = false) => ({ art: 'grund', name, nullable });
+const primitive = (name, nullable = false) => ({ form: 'primitive', name, nullable });
 
 /** anyOf/oneOf and type lists: one type besides null stays that type (nullable), more become JsonElement.
  * @param {any[]} withoutNull @param {boolean} nullable @param {(s: any) => Typ} typeOf @returns {Typ} */
 function oneOrJson(withoutNull, nullable, typeOf) {
-  if (withoutNull.length !== 1) return grund('JsonElement', nullable);
+  if (withoutNull.length !== 1) return primitive('JsonElement', nullable);
   const t = typeOf(withoutNull[0]);
   return { ...t, nullable: nullable || t.nullable };
 }
@@ -110,14 +110,14 @@ function oneOrJson(withoutNull, nullable, typeOf) {
 function objectType(s, suggestion, beside) {
   if (s.properties && Object.keys(s.properties).length) {
     beside(suggestion, s);
-    return { art: 'klasse', name: suggestion, nullable: false };
+    return { form: 'class', name: suggestion, nullable: false };
   }
-  const wert = s.additionalProperties;
-  if (wert && typeof wert === 'object' && Object.keys(wert).length) {
-    const w = type(wert, `${suggestion}Wert`, beside);
-    if (!(w.art === 'grund' && w.name === 'JsonElement')) return { art: 'karte', wert: w, nullable: false };
+  const value = s.additionalProperties;
+  if (value && typeof value === 'object' && Object.keys(value).length) {
+    const w = type(value, `${suggestion}Wert`, beside);
+    if (!(w.form === 'primitive' && w.name === 'JsonElement')) return { form: 'map', value: w, nullable: false };
   }
-  return grund('JsonObject');
+  return primitive('JsonObject');
 }
 
 /**
@@ -126,16 +126,16 @@ function objectType(s, suggestion, beside) {
  * @param {any} s @param {string} suggestion @param {(name: string, s: any) => void} beside @returns {Typ}
  */
 function type(s, suggestion, beside) {
-  if (!s || typeof s !== 'object' || Object.keys(s).length === 0) return grund('JsonElement', true);
+  if (!s || typeof s !== 'object' || Object.keys(s).length === 0) return primitive('JsonElement', true);
   if (s.$ref)
     return {
-      art: 'klasse',
+      form: 'class',
       name: className(s.$ref.split('/').pop()),
       nullable: false,
     };
-  if (s.const !== undefined) return grund(baseType(typeof s.const === 'number' ? 'number' : typeof s.const));
+  if (s.const !== undefined) return primitive(baseType(typeof s.const === 'number' ? 'number' : typeof s.const));
   if (s.enum)
-    return grund(s.enum.every((/** @type {unknown} */ e) => typeof e === 'string') ? 'String' : 'JsonElement');
+    return primitive(s.enum.every((/** @type {unknown} */ e) => typeof e === 'string') ? 'String' : 'JsonElement');
   const branches = s.anyOf || s.oneOf;
   if (branches) {
     const withoutNull = branches.filter((/** @type {any} */ z) => z.type !== 'null');
@@ -146,18 +146,18 @@ function type(s, suggestion, beside) {
     // The single type keeps the nullability of the list, not its own.
     const nullable = withoutNull.length < s.type.length;
     if (withoutNull.length === 1) return { ...type({ ...s, type: withoutNull[0] }, suggestion, beside), nullable };
-    return grund('JsonElement', nullable);
+    return primitive('JsonElement', nullable);
   }
   if (s.type === 'array')
     return {
-      art: 'liste',
+      form: 'list',
       element: type(s.items, `${suggestion}Eintrag`, beside),
       nullable: false,
     };
   if (s.type === 'object') return objectType(s, suggestion, beside);
   // Whole numbers are counters, identifiers and quantities: Int as in the views.
-  if (s.type === 'integer') return grund('Int');
-  return grund(baseType(s.type));
+  if (s.type === 'integer') return primitive('Int');
+  return primitive(baseType(s.type));
 }
 
 /** @param {string} t */
@@ -175,8 +175,8 @@ function baseType(t) {
 /** @param {Typ} t @returns {string} */
 function kotlin(t) {
   const n = t.nullable ? '?' : '';
-  if (t.art === 'liste') return `List<${kotlin(t.element)}>${n}`;
-  if (t.art === 'karte') return `Map<String, ${kotlin(t.wert)}>${n}`;
+  if (t.form === 'list') return `List<${kotlin(t.element)}>${n}`;
+  if (t.form === 'map') return `Map<String, ${kotlin(t.value)}>${n}`;
   return `${t.name}${n}`;
 }
 
@@ -204,7 +204,7 @@ function collect(doc) {
     const mandatory = new Set(s.required ?? []);
     const fields = Object.entries(s.properties ?? {}).map(([json, schema]) => ({
       json,
-      typ: type(schema, name + className(json), beside),
+      ktType: type(schema, name + className(json), beside),
       required: mandatory.has(json),
     }));
     shapes.push({ name, fields, isRequest, sources: [name] });
@@ -227,24 +227,24 @@ const endName = n => Z.NAMES[n] ?? n;
 
 /** @param {Typ} t @returns {Typ} */
 function renamed(t) {
-  if (t.art === 'liste') return { ...t, element: renamed(t.element) };
-  if (t.art === 'karte') return { ...t, wert: renamed(t.wert) };
-  if (t.art === 'klasse') return { ...t, name: endName(t.name) };
+  if (t.form === 'list') return { ...t, element: renamed(t.element) };
+  if (t.form === 'map') return { ...t, value: renamed(t.value) };
+  if (t.form === 'class') return { ...t, name: endName(t.name) };
   return t;
 }
 
 /** Put a domain type in the place of the innermost String (a list stays a list). @param {Typ} t @param {string} domain @returns {Typ} */
 function withSlotType(t, domain) {
-  if (t.art === 'liste') return { ...t, element: withSlotType(t.element, domain) };
+  if (t.form === 'list') return { ...t, element: withSlotType(t.element, domain) };
   // With an own serializer something unknown reads as null: then the field is always nullable.
-  if (t.art === 'grund' && t.name === 'String')
+  if (t.form === 'primitive' && t.name === 'String')
     return {
       ...t,
       name: domain,
       nullable: t.nullable || !!Z.DOMAIN_TYPES[domain]?.serializer,
     };
   // An open schema ({} or text|number) gets the type the app sends.
-  if (t.art === 'grund' && t.name === 'JsonElement') return { ...t, name: domain };
+  if (t.form === 'primitive' && t.name === 'JsonElement') return { ...t, name: domain };
   throw new Error(`Fachtyp ${domain} nur an Stelle eines String (${kotlin(t)})`);
 }
 
@@ -254,14 +254,14 @@ function withSlotType(t, domain) {
  * @param {Feld} x @param {Feld} y @param {(ky: string, kx: string) => string} clash @returns {Feld}
  */
 function mergedField(x, y, clash) {
-  const open = [x.typ, y.typ].some(t => t.art === 'grund' && t.name === 'JsonElement');
-  if (open) return { ...y, required: false, typ: grund('JsonElement', true) };
-  if (kotlin({ ...x.typ, nullable: false }) !== kotlin({ ...y.typ, nullable: false }))
-    throw new Error(clash(kotlin(y.typ), kotlin(x.typ)));
+  const open = [x.ktType, y.ktType].some(t => t.form === 'primitive' && t.name === 'JsonElement');
+  if (open) return { ...y, required: false, ktType: primitive('JsonElement', true) };
+  if (kotlin({ ...x.ktType, nullable: false }) !== kotlin({ ...y.ktType, nullable: false }))
+    throw new Error(clash(kotlin(y.ktType), kotlin(x.ktType)));
   return {
     ...y,
     required: y.required && x.required,
-    typ: { ...y.typ, nullable: y.typ.nullable || x.typ.nullable },
+    ktType: { ...y.ktType, nullable: y.ktType.nullable || x.ktType.nullable },
   };
 }
 
@@ -277,8 +277,8 @@ function unite(shapes) {
     const name = endName(f.name);
     const fields = f.fields.map(x => {
       const domain = Z.FIELD_TYPES[`${name}.${x.json}`];
-      const t = renamed(x.typ);
-      return { ...x, typ: domain ? withSlotType(t, domain) : t };
+      const t = renamed(x.ktType);
+      return { ...x, ktType: domain ? withSlotType(t, domain) : t };
     });
     const da = from.get(name);
     if (!da) {
@@ -314,11 +314,11 @@ function unite(shapes) {
  */
 function emptyValue(t) {
   if (t.nullable) return 'null';
-  if (t.art === 'liste') return 'emptyList()';
-  if (t.art === 'karte') return 'emptyMap()';
-  if (t.art === 'klasse') return `${t.name}()`;
+  if (t.form === 'list') return 'emptyList()';
+  if (t.form === 'map') return 'emptyMap()';
+  if (t.form === 'class') return `${t.name}()`;
   const domain = Z.DOMAIN_TYPES[t.name];
-  if (domain) return domain.leer;
+  if (domain) return domain.empty;
   return (
     /** @type {Record<string, string>} */ ({
       String: '""',
@@ -338,13 +338,13 @@ function emptyValue(t) {
  * @param {string} name @param {string} key @param {Feld} f @param {string | undefined} defaultValue
  */
 function bodyField(name, key, f, defaultValue) {
-  const t = kotlin(f.typ);
+  const t = kotlin(f.ktType);
   if (defaultValue !== undefined)
-    return `val ${name}: ${Z.REQUIRED.has(key) ? kotlin({ ...f.typ, nullable: false }) : t} = ${defaultValue}`;
+    return `val ${name}: ${Z.REQUIRED.has(key) ? kotlin({ ...f.ktType, nullable: false }) : t} = ${defaultValue}`;
   if (f.required) return `val ${name}: ${t}`;
-  if (Z.REQUIRED.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullable: false })}`;
-  if (Z.NULL_SEND.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullable: true })} = null`;
-  return `@EncodeDefault(EncodeDefault.Mode.NEVER) val ${name}: ${kotlin({ ...f.typ, nullable: true })} = null`;
+  if (Z.REQUIRED.has(key)) return `val ${name}: ${kotlin({ ...f.ktType, nullable: false })}`;
+  if (Z.NULL_SEND.has(key)) return `val ${name}: ${kotlin({ ...f.ktType, nullable: true })} = null`;
+  return `@EncodeDefault(EncodeDefault.Mode.NEVER) val ${name}: ${kotlin({ ...f.ktType, nullable: true })} = null`;
 }
 
 /**
@@ -353,15 +353,15 @@ function bodyField(name, key, f, defaultValue) {
  * @param {string} kind @param {Feld} f @returns {Typ}
  */
 function responseType(kind, f) {
-  if (f.required || f.typ.nullable) return f.typ;
-  const withoutEmptyValue = f.typ.art === 'klasse' && STRICT.has(f.typ.name);
-  return withoutEmptyValue || Z.NULLABLE.has(`${kind}.${f.json}`) ? { ...f.typ, nullable: true } : f.typ;
+  if (f.required || f.ktType.nullable) return f.ktType;
+  const withoutEmptyValue = f.ktType.form === 'class' && STRICT.has(f.ktType.name);
+  return withoutEmptyValue || Z.NULLABLE.has(`${kind}.${f.json}`) ? { ...f.ktType, nullable: true } : f.ktType;
 }
 
 /** Response shapes with required fields: they have no empty value `Form()`. */
 let STRICT = new Set();
 /** A required field of such a shape gets no default; the caller names it. @param {Typ} t */
-const withoutEmptyValue = t => t.art === 'klasse' && !t.nullable && STRICT.has(t.name);
+const withoutEmptyValue = t => t.form === 'class' && !t.nullable && STRICT.has(t.name);
 
 /** @param {Form} f @returns {string} */
 function kind(f) {
@@ -380,7 +380,7 @@ function kind(f) {
       : x.required && defaultValue === undefined && (Z.STRICT.has(key) || withoutEmptyValue(t))
         ? `val ${name}: ${kotlin(t)}`
         : `val ${name}: ${kotlin(t)} = ${defaultValue ?? emptyValue(t)}`;
-    const ser = x.typ.art === 'grund' ? Z.DOMAIN_TYPES[x.typ.name]?.serializer : undefined;
+    const ser = x.ktType.form === 'primitive' ? Z.DOMAIN_TYPES[x.ktType.name]?.serializer : undefined;
     const serialWith = ser ? `@Serializable(with = ${ser.split('.').pop()}::class) ` : '';
     return `    ${serialWith}@SerialName(${JSON.stringify(x.json)}) ${decl},`;
   });

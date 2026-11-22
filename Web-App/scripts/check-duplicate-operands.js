@@ -72,12 +72,12 @@ function right(s, i) {
   return s.slice(i, j);
 }
 
-/** @param {string} wurzel @param {string[]} extensions @param {string[]} from */
-function files(wurzel, extensions, from) {
+/** @param {string} root @param {string[]} extensions @param {string[]} from */
+function files(root, extensions, from) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
-  const lauf = d => {
+  const run = d => {
     let e;
     try {
       e = fs.readdirSync(d, { withFileTypes: true });
@@ -87,11 +87,11 @@ function files(wurzel, extensions, from) {
     for (const x of e) {
       const p = path.join(d, x.name);
       if (from.some(a => p.includes(a))) continue;
-      if (x.isDirectory()) lauf(p);
+      if (x.isDirectory()) run(p);
       else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
   };
-  lauf(wurzel);
+  run(root);
   return out;
 }
 

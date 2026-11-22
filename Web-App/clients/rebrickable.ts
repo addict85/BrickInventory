@@ -12,9 +12,9 @@ import { attempts } from '../src/infra/result';
 import type { z } from 'zod';
 import {
   RbSet,
-  RbThema,
-  RbTeil,
-  RbSetTeil as RbSetTeilSchema,
+  RbTheme,
+  RbPart,
+  RbSetPart as RbSetPartSchema,
   RbSetMinifig,
   RbMinifig,
   RbColor,
@@ -33,8 +33,8 @@ import {
 const BASE = 'https://rebrickable.com/api/v3';
 
 /** A part row as /lego/sets/{id}/parts returns it. */
-export type RbSetTeil = z.output<typeof RbSetTeilSchema>;
-const SetPartPage = rbPage(RbSetTeilSchema);
+export type RbSetPart = z.output<typeof RbSetPartSchema>;
+const SetPartPage = rbPage(RbSetPartSchema);
 
 /** The Rebrickable key from the central settings. */
 async function getRbKey(kl: Rb): Promise<string | null> {
@@ -45,7 +45,7 @@ async function getRbKey(kl: Rb): Promise<string | null> {
  * calls — the opposite of the login counter, where the fallback locks. */
 async function dailyQuotaFree(kl: Rb): Promise<boolean> {
   const r = await attempts('takt:kontingentPruefenUndZaehlen', kl.method.count('rebrickable'));
-  return r.ok ? r.wert.allowed : true;
+  return r.ok ? r.value.allowed : true;
 }
 
 /** Response: {"detail": "… Expected available in 2 seconds."} */
@@ -176,7 +176,7 @@ async function rbGet<T extends z.ZodType>(
 async function getThemeName(kl: Rb, themeId: number | string) {
   if (!themeId) return null;
   if (kl.themes.has(themeId)) return kl.themes.get(themeId);
-  const d = await rbGet(kl, `/lego/themes/${pathSegment(themeId)}/`, RbThema);
+  const d = await rbGet(kl, `/lego/themes/${pathSegment(themeId)}/`, RbTheme);
   const name = d?.name || null;
   kl.themes.set(themeId, name);
   return name;
@@ -189,10 +189,10 @@ async function holeSet(kl: Rb, number: string) {
 
 /** The part list page by page. `refused`: Rebrickable answered 403 (set unknown or no
  * access) — the caller should notice that. */
-async function fetchSetParts(kl: Rb, n: string): Promise<{ parts: RbSetTeil[]; refused: boolean }> {
+async function fetchSetParts(kl: Rb, n: string): Promise<{ parts: RbSetPart[]; refused: boolean }> {
   const key = await getRbKey(kl);
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
-  const allParts: RbSetTeil[] = [];
+  const allParts: RbSetPart[] = [];
   let url: string | null = `${BASE}/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
@@ -420,7 +420,7 @@ async function lookupPart(kl: Rb, partNumber: string, colorId?: number | null) {
     15000,
   );
   if (status !== 200) return null;
-  const d = checkResponse('Rebrickable', rbPage(RbTeil), JSON.parse(body));
+  const d = checkResponse('Rebrickable', rbPage(RbPart), JSON.parse(body));
   const part = d.results[0];
   if (!part) return null;
   let image_url = part.part_img_url || null;
@@ -459,8 +459,8 @@ function firstBlNumber(ext: Record<string, unknown> | null | undefined): string 
   return Array.isArray(bl) && bl[0] != null ? String(bl[0]) : null;
 }
 
-function carriesBlNumber(teil: unknown, blId: string): boolean {
-  const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;
+function carriesBlNumber(row: unknown, blId: string): boolean {
+  const ext = (row as { external_ids?: Record<string, unknown> } | null)?.external_ids;
   const raw = ext?.BrickLink;
   const list: unknown[] = Array.isArray(raw)
     ? raw
@@ -474,12 +474,12 @@ function carriesBlNumber(teil: unknown, blId: string): boolean {
 async function blPartToRb(kl: Rb, blId: string): Promise<string | null> {
   // Path 1: most parts carry the same number in both services; external_ids turns that guess
   // into a mapping.
-  const direct = await rbGet(kl, `/lego/parts/${pathSegment(blId)}/`, RbTeil);
+  const direct = await rbGet(kl, `/lego/parts/${pathSegment(blId)}/`, RbPart);
   if (direct && carriesBlNumber(direct, blId)) return String(direct.part_num);
 
   // Path 2: the filter, with a cross-check.
   if (kl.filterIneffective) return null;
-  const filtered = await rbGet(kl, '/lego/parts/', rbPage(RbTeil), { bricklink_id: blId, page_size: 20 });
+  const filtered = await rbGet(kl, '/lego/parts/', rbPage(RbPart), { bricklink_id: blId, page_size: 20 });
   if (!filtered) return null;
   // More than a thousand hits for ONE number cannot be what the filter
   // meant — then it was ignored.
@@ -500,7 +500,7 @@ function blFilterIneffective(kl: Rb): boolean {
 
 /** A small request with the stored key — for the test button of the setup. */
 async function checkRebrickableAccess(kl: Rb): Promise<void> {
-  await rbGet(kl, '/lego/themes/', rbPage(RbThema), { page_size: 1 });
+  await rbGet(kl, '/lego/themes/', rbPage(RbTheme), { page_size: 1 });
 }
 
 /** Access and intermediate state of a client; every function gets it as first parameter. */

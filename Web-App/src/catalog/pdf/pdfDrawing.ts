@@ -10,12 +10,12 @@ import type { Payload } from '../../jobQueue';
 /** In a worker_thread: pdfkit draws synchronously and with thousands of rows would stall
  * the event loop, which in the "beides" process also answers requests. */
 
-export type PdfTeil = Payload<'pdf'>['parts'][number];
+export type PdfPart = Payload<'pdf'>['parts'][number];
 export type PdfSet = Payload<'pdf'>['sets'][number];
 
 /** Only inside the image folder: the list comes from the client, an `image_local`
  * like `/images/../../…` would otherwise read foreign files into the PDF. */
-function pdfImagePath(p: PdfTeil): string | null {
+function pdfImagePath(p: PdfPart): string | null {
   let src = p.image_local || p.image_url || '';
   const m = src.match(/\/api\/img-proxy\?url=(.+)/);
   if (m) {
@@ -35,8 +35,8 @@ function pdfImagePath(p: PdfTeil): string | null {
 const withoutImage = (): null => null;
 
 /** One row per BrickLink number and color, grouped by color and sorted by number. */
-function afterColor(parts: PdfTeil[]) {
-  const deduped = new Map<string, PdfTeil & { quantity: number }>();
+function afterColor(parts: PdfPart[]) {
+  const deduped = new Map<string, PdfPart & { quantity: number }>();
   for (const p of parts) {
     const blNum = p.bl_part_number || p.part_number;
     const key = `${blNum}|${p.color_id || p.color_name || 0}`;
@@ -46,7 +46,7 @@ function afterColor(parts: PdfTeil[]) {
   }
 
   const colorOrder: string[] = [],
-    byColor = new Map<string, (PdfTeil & { quantity: number })[]>();
+    byColor = new Map<string, (PdfPart & { quantity: number })[]>();
   for (const p of deduped.values()) {
     const name = p.color_name ?? '';
     if (!byColor.has(name)) {
@@ -67,7 +67,7 @@ function afterColor(parts: PdfTeil[]) {
 }
 
 type Doc = InstanceType<typeof PDFDocument>;
-type Row = PdfTeil & { quantity: number };
+type Row = PdfPart & { quantity: number };
 const PAGE_H = 841.89,
   PAGE_W = 595.28;
 const COL = { num: 40, name: 200 };
@@ -75,10 +75,10 @@ const START_X = 40;
 
 /** As a stream, not as a buffer: a large collection results in many megabytes.
  * Only the finished file gets its name. */
-async function buildPdf(sets: PdfSet[], parts: PdfTeil[], target: string): Promise<void> {
+async function buildPdf(sets: PdfSet[], parts: PdfPart[], target: string): Promise<void> {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
-  const teil = `${target}.teil`;
-  const file = fs.createWriteStream(teil);
+  const part = `${target}.teil`;
+  const file = fs.createWriteStream(part);
   doc.pipe(file);
   const pdfDone = new Promise((resolve, reject) => {
     file.on('finish', resolve);
@@ -86,7 +86,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], target: string): Promi
     doc.on('error', reject);
   });
 
-  const seiten = pagesLead(doc);
+  const pages = pagesLead(doc);
   drawHeader(doc, sets, parts);
 
   const { colorOrder, byColor } = afterColor(parts);
@@ -95,13 +95,13 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], target: string): Promi
   for (const colorName of colorOrder) {
     const colorParts = byColor.get(colorName) ?? [];
     await loadImages(colorParts, images);
-    drawColorGroup(doc, colorName, colorParts, images, seiten.newPage);
+    drawColorGroup(doc, colorName, colorParts, images, pages.newPage);
   }
 
-  seiten.footer();
+  pages.footer();
   doc.end();
   await pdfDone;
-  await fsp.rename(teil, target);
+  await fsp.rename(part, target);
 }
 
 /** Page number at the bottom center; the margin is lifted briefly for it, otherwise pdfkit wraps. */
@@ -131,7 +131,7 @@ function pagesLead(doc: Doc) {
   return { footer, newPage };
 }
 
-function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
+function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfPart[]) {
   doc.fontSize(18).font('Helvetica-Bold').text('Bauliste', { align: 'left' });
   doc
     .fontSize(10)
@@ -144,7 +144,7 @@ function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.moveDown(1);
 }
 
-async function loadImages(group: PdfTeil[], images: Map<string, Buffer | null>) {
+async function loadImages(group: PdfPart[], images: Map<string, Buffer | null>) {
   images.clear();
   const paths = [...new Set(group.map(pdfImagePath).filter((fp): fp is string => !!fp))];
   for (let i = 0; i < paths.length; i += 32) {
@@ -218,10 +218,10 @@ function drawPart(doc: Doc, p: Row, images: Map<string, Buffer | null>, newPage:
   doc.y = rowY + rowHeight + 2;
 }
 
-type ThreadJob = { kind: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; target: string };
+type ThreadJob = { kind: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfPart[]; target: string };
 
 /** From the TypeScript sources (tsx) there is no .js file for the thread; then drawing happens here. */
-function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], target: string): Promise<void> {
+function drawPdfInThread(sets: PdfSet[], parts: PdfPart[], target: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, target);
   return new Promise((resolve, reject) => {
     const w = new Worker(__filename, { workerData: { kind: 'pdf-zeichnen', sets, parts, target } satisfies ThreadJob });

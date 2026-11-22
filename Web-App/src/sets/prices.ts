@@ -1,5 +1,5 @@
 /** Market price, price history and price alert of a set. */
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { normalizeSetNumber } from '../infra/setNumber';
 import type { ConditionState } from '../infra/validate';
 import type { CsvImportReport } from '../infra/csvExport';
@@ -8,7 +8,7 @@ import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** In the inventory's condition. null: no set in scope. */
-export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht | number[], sn: string) {
+export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Viewer | number[], sn: string) {
   const scope = await sk.household.scopeFrom(scopeChoice);
   const set = await repo.setInField(sk.db, sn, scope);
   if (!set) return null;
@@ -31,7 +31,7 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
       no_price: true,
       error: price.error.reason,
     };
-  const pd = price.wert;
+  const pd = price.value;
   return {
     set_number: sn,
     currency,
@@ -75,6 +75,6 @@ export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: st
   );
 }
 
-export async function setPriceHistory(sk: SetsContext, uid: number, sicht: Sicht | number[], sn: string) {
-  return sk.finances.priceHistorySet(sicht, sn, await currencyOf(sk, uid));
+export async function setPriceHistory(sk: SetsContext, uid: number, viewer: Viewer | number[], sn: string) {
+  return sk.finances.priceHistorySet(viewer, sn, await currencyOf(sk, uid));
 }

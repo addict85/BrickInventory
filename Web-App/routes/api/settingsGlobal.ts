@@ -80,8 +80,8 @@ export function buildSettingsGlobalRouter(
   router.endpoint('POST /api/v2/settings/smtp-test', requireAdmin, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Otherwise the mail server would be a relay to any address for a captured administrator session.
-    const zuOft = await d.account.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
-    if (zuOft) failDomain('too_many', 'too_many_requests', { minutes: zuOft.waitMin });
+    const tooOften = await d.account.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
+    if (tooOften) failDomain('too_many', 'too_many_requests', { minutes: tooOften.waitMin });
 
     const own = (await d.account.profile(uid))?.email || '';
     const to = (req.input.to || '').trim() || own;
@@ -101,20 +101,20 @@ export function buildSettingsGlobalRouter(
   // Open as long as the administrator has not completed it AND something
   // is missing — a configured installation never sees the wizard.
   router.endpoint('GET /api/v2/settings/setup', requireAdmin, async req => {
-    const wert = async (k: string) => !!(await d.settings.globalValue(k));
+    const value = async (k: string) => !!(await d.settings.globalValue(k));
     const password = await d.account.passwordSwitchDue(req.apiUser.user_id);
     const sources = {
-      rebrickable: await wert('rebrickable_api_key'),
-      brickset: await wert('brickset_api_key'),
+      rebrickable: await value('rebrickable_api_key'),
+      brickset: await value('brickset_api_key'),
       bricklink: (
         await Promise.all(
           ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'].map(
-            wert,
+            value,
           ),
         )
       ).every(Boolean),
     };
-    const done = await wert('einrichtung_erledigt');
+    const done = await value('einrichtung_erledigt');
     return { open: !done && (password || !sources.rebrickable), change_password: password, sources };
   });
 

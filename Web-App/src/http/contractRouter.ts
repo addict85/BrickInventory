@@ -6,7 +6,7 @@ import { config } from '../infra/config';
 import { routeFor, type Key, type ResponseBody, type Input, type Query } from '../contract';
 import { unknownFields } from '../contract/unknownFields';
 import { FLAT_INPUT, ErrorBody, PATH, type PathOf, type Route } from '../contract/base';
-import { LARGEST_ID, idWert } from '../infra/validate';
+import { LARGEST_ID, idValue } from '../infra/validate';
 import { handleRouteError, sendError } from './httpResponse';
 import { bodyToV2 } from './apiV1Alias';
 
@@ -34,8 +34,8 @@ type Checked = { input: unknown; queryArgs: unknown; pathArgs: Record<string, un
 
 /** Each step sends its own error and then answers false. */
 function queryTextsOk(req: Request, res: Response): boolean {
-  for (const [name, wert] of Object.entries(req.query ?? {}))
-    if (typeof wert !== 'string' || wert.length > QUERY_AT_MOST) {
+  for (const [name, value] of Object.entries(req.query ?? {}))
+    if (typeof value !== 'string' || value.length > QUERY_AT_MOST) {
       sendError(req, res, 'invalid', 'input_invalid', { field: name.slice(0, 40) });
       return false;
     }
@@ -113,10 +113,10 @@ function reportDeviation(req: Request, res: Response, error: z.ZodError): void {
 function contractErrors(req: Request, status: number, key: string, body: unknown): string[] {
   const route = status < 300 && req.route ? routeFor(key) : undefined;
   const error: string[] = [];
-  const check = (teil: string, schema: import('zod').ZodType | undefined, wert: unknown) => {
-    const r = schema?.safeParse(wert);
+  const check = (part: string, schema: import('zod').ZodType | undefined, value: unknown) => {
+    const r = schema?.safeParse(value);
     if (r && !r.success)
-      error.push(...r.error.issues.slice(0, 8).map(i => `${teil} ${i.path.join('.') || '$'}: ${i.message}`));
+      error.push(...r.error.issues.slice(0, 8).map(i => `${part} ${i.path.join('.') || '$'}: ${i.message}`));
   };
   if (route) {
     // What goes out is checked: a Date only becomes ISO text in res.json.
@@ -240,8 +240,8 @@ export function contractRouter<P extends string>(prefix: P, o: { largeIds?: bool
   // A path ID that is too large would otherwise come out of PostgreSQL as a 500; jobs count in bigint (largeIds).
   const atMost = o.largeIds ? Number.MAX_SAFE_INTEGER : LARGEST_ID;
   for (const name of ['id', 'acqId', 'instrId']) {
-    router.param(name, (req, res, next, wert) =>
-      idWert(wert, atMost) === null ? sendError(req, res, 'invalid', 'id_invalid') : next(),
+    router.param(name, (req, res, next, value) =>
+      idValue(value, atMost) === null ? sendError(req, res, 'invalid', 'id_invalid') : next(),
     );
   }
   const login = (method: string, path: string, steps: unknown[]) =>

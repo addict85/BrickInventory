@@ -1,6 +1,6 @@
 import { storages, setHoldings } from '../../../db/inventoryView';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import { quantityFrom, mengeJoin, subsetFrom, quantityJoin } from '../../../db/stockQuantity';
+import { quantityFrom, setQuantityJoin, subsetFrom, quantityJoin } from '../../../db/stockQuantity';
 import type { Row, DbInterface } from '../../../db/database';
 import { minifigViewJoin, MINIFIG } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
@@ -81,9 +81,9 @@ export async function groupedMinifigs(
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
-    ${mengeJoin('m')}
+    ${setQuantityJoin('m')}
     ${quantityJoin('m', 'fig')}
-    -- The sets row only for added_at; the quantity comes from mengeJoin().
+    -- The sets row only for added_at; the quantity comes from setQuantityJoin().
     LEFT JOIN ${setHoldings()} s ON s.user_id = m.user_id AND s.set_number = m.set_number
     -- LEFT JOIN, so a minifig without a location doesn't fall out of the list.
     LEFT JOIN ${storages()} lo ON lo.id = m.storage_id
@@ -187,7 +187,7 @@ export function minifigStats(db: DbInterface, uids: number[]) {
       FROM (
         SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}) AS quantity
           FROM minifigs m
-          ${mengeJoin('m', 'sm', '= ANY($1)')}
+          ${setQuantityJoin('m', 'sm', '= ANY($1)')}
           ${quantityJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source

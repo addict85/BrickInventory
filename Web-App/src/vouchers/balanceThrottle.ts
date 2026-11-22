@@ -36,7 +36,7 @@ export async function claimSlot(k: VoucherContext, uid: number): Promise<{ free:
     await repo.ensureThrottleRow(t.db);
 
     // In SQL: ONE row, ONE lock, ONE clock.
-    const z = (await repo.throttleState(t.db, GAP_SEC)) as { sperre_sek?: unknown; gap_sec?: unknown } | undefined;
+    const z = (await repo.throttleState(t.db, GAP_SEC)) as { lock_sec?: unknown; gap_sec?: unknown } | undefined;
 
     // NULL (= never) comes back as NaN and means "no remainder".
     const rest = (w: unknown) => {
@@ -50,7 +50,7 @@ export async function claimSlot(k: VoucherContext, uid: number): Promise<{ free:
 
     // The lock first: whoever reports it should not hear "12 more seconds"
     // when it is 20 minutes.
-    const lock = rest(z?.sperre_sek);
+    const lock = rest(z?.lock_sec);
     if (lock > 0) return { free: false as const, reason: 'botschutz' as const, waitSeconds: lock };
 
     const gap = rest(z?.gap_sec);

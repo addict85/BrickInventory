@@ -12,11 +12,11 @@ export type { ForeignSourcesDependencies, ForeignSourcesContext } from './contex
 
 /** Read at call time, not at construction: a test replaces a client even after
  * the services already exist (test/helpers/sources.js testSources). */
-function withFallback(echt: Sources, ersatz: Partial<Sources> | undefined): Sources {
-  if (!ersatz) return echt;
+function withFallback(real: Sources, spare: Partial<Sources> | undefined): Sources {
+  if (!spare) return real;
   const from = {} as Sources;
-  for (const n of Object.keys(echt) as (keyof Sources)[])
-    Object.defineProperty(from, n, { enumerable: true, get: () => (n in ersatz ? ersatz[n] : echt[n]) });
+  for (const n of Object.keys(real) as (keyof Sources)[])
+    Object.defineProperty(from, n, { enumerable: true, get: () => (n in spare ? spare[n] : real[n]) });
   return from;
 }
 
@@ -39,8 +39,8 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
     bricksetForgotten: bound(k)(brickset.bricksetForgotten),
   };
   const services = {
-    /** The clients of this access; a test replaces individual ones via `ersatz`. */
-    sources: withFallback(buildSources(clients), a.ersatz),
+    /** The clients of this access; a test replaces individual ones via `spare`. */
+    sources: withFallback(buildSources(clients), a.spare),
     throttle,
     quotaStatus: quota.quotaStatus,
     quotaFree: quota.quotaFree,

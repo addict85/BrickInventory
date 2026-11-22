@@ -6,8 +6,8 @@ import { failDomain, notFound } from '../../src/infra/errorTexts';
 import { accountGate, guardFor } from './middleware';
 import {
   uploadQuotaBytes,
-  privaterFolder,
-  privaterReceive,
+  privateFolder,
+  privateReceive,
   quotaSufficesFor,
   totalSufficesFor,
   uploadTotalMb,
@@ -47,8 +47,8 @@ export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'
     return { instructions, count: instructions.length, job_id: job };
   });
 
-  const uploadInstr = privaterReceive({
-    folder: req => privaterFolder(INSTRUCTION_ROOT, String(signedInUserId(req))),
+  const uploadInstr = privateReceive({
+    folder: req => privateFolder(INSTRUCTION_ROOT, String(signedInUserId(req))),
     prefix: req => pathParam(req, 'setNumber'),
     types: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
     maxBytes: 50 * 1024 * 1024,

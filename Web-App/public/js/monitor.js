@@ -6,6 +6,7 @@ import { ico, G, setHtml, ifVisible } from './dom.js';
 import { fmtDate } from './format.js';
 import { reportAtField, toast } from './messages.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
+import { kindName, statusName } from './job-names.js';
 /** @typedef {import('../../frontend-types/contract').JobPause} QueuePause */
 /** @typedef {import('../../frontend-types/contract').Job} QueueJob */
 /** @typedef {import('../../frontend-types/contract').JobStatus} JobStatus */
@@ -294,7 +295,7 @@ const PROXY_HINT = {
   single_address: 'monitor.proxy.one_address',
 };
 
-/** @param {string} k @param {JobStatus} j @param {any} schedules */
+/** @param {string} k @param {JobStatus} j @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules */
 function serviceRow(k, j, schedules) {
   const sub = j.sub_parts?.length ? subFromCodes(j.sub_parts, j.sub ?? '') : translateJobSub(j.sub ?? '');
   return html`<tr>
@@ -375,41 +376,6 @@ export async function loadMonitor() {
   await round();
 }
 
-/**
- * Names of the job kinds and statuses — spelled out, so that every key stands checkably in the dictionary.
- * @type {Record<string, () => string>}
- */
-const KIND_NAMES = {
-  rework: () => tRaw('monitor.kind.rework'),
-  images: () => tRaw('monitor.kind.images'),
-  pdf: () => tRaw('monitor.kind.pdf'),
-  csv_import: () => tRaw('monitor.kind.csv_import'),
-  exchange_rates: () => tRaw('monitor.kind.wechselkurse'),
-  instructions: () => tRaw('monitor.kind.instructions'),
-  brickset: () => tRaw('monitor.kind.brickset'),
-  image_demand: () => tRaw('monitor.kind.bildbedarf'),
-  images_reload: () => tRaw('monitor.kind.images_new_load'),
-  followup: () => tRaw('monitor.kind.follow_up'),
-  csv_sync: () => tRaw('monitor.kind.csv_sync'),
-  prices: () => tRaw('monitor.kind.prices'),
-  price_refresh: () => tRaw('monitor.kind.prices_reload'),
-  image_followup: () => tRaw('monitor.kind.image_follow_up'),
-  cleanup: () => tRaw('monitor.kind.cleanup'),
-  cleanup_daily: () => tRaw('monitor.kind.cleanup_daily'),
-  account_files: () => tRaw('monitor.kind.account_files'),
-  revocation_list: () => tRaw('monitor.kind.revocation_list'),
-  catalog_followup: () => tRaw('monitor.kind.catalog_catch_up'),
-};
-/** @type {Record<string, () => string>} */
-const STATUS_NAMES = {
-  pending: () => tRaw('monitor.jobs.open'),
-  running: () => tRaw('monitor.jobs.running'),
-  error: () => tRaw('monitor.jobs.error'),
-  cancelled: () => tRaw('monitor.jobs.cancelled'),
-};
-/** The name of a job kind in the UI language, already escaped; unknown ones stay as they are. */
-const kindName = (/** @type {string} */ kind) => (Object.hasOwn(KIND_NAMES, kind) ? KIND_NAMES[kind]() : kind);
-
 /** A server error message in one sentence without networking knowledge; the original stays expandable for debugging.
  * @param {unknown} text */
 export function errorShort(text) {
@@ -431,7 +397,6 @@ function errorBox(text) {
 // Seven identical "start now" are indistinguishable for screen readers: the name names the kind too.
 const button = (/** @type {string} */ action, /** @type {string} */ arg, /** @type {string} */ text, purpose = '') =>
   html`<button class="btn bs btn-sm" type="button" data-click="${action}"${genuine()} data-arg="${arg}"${purpose ? html` aria-label="${text}: ${purpose}"` : ''}>${text}</button>`;
-const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUS_NAMES, s) ? STATUS_NAMES[s]() : s);
 /** Only when one kind has several open jobs: which one is the regular run, which one a retry.
  * @param {QueueJob} a @param {Set<string>} multiple */
 function jobRole(a, multiple) {
@@ -487,7 +452,7 @@ const jobRow = (a, multiple) => {
 };
 
 /** Per kind the jobs by status, the next run (the earliest waiting job) and the retries after an error.
- * @param {any} d the job queue */
+ * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/admin/job-queue'>} d the job queue */
 function jobCounts(d) {
   /** @type {Record<string, Record<string, number>>} */
   const number = {};

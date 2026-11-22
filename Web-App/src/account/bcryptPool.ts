@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
  * requests for up to 100 ms. Workers are created only on demand and keep the
  * process alive only while they compute. If the file is missing (source instead of build), the
  * main thread computes as before. */
-type Job = { kind: 'hash' | 'vergleich'; password: string; wert: string | number };
+type Job = { kind: 'hash' | 'vergleich'; password: string; value: string | number };
 type Pending = { job: Job; ok: (v: unknown) => void; error: (e: Error) => void };
 
 export interface Pool {
@@ -18,16 +18,46 @@ export interface Pool {
 }
 
 const inMainThread = (a: Job) =>
-  a.kind === 'hash' ? bcrypt.hash(a.password, Number(a.wert)) : bcrypt.compare(a.password, String(a.wert));
+  a.kind === 'hash' ? bcrypt.hash(a.password, Number(a.value)) : bcrypt.compare(a.password, String(a.value));
 const NO_WORKER = '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:';
+
+/** The free workers with their idle timer: one that waits longer than idleMs ends and frees its memory. */
+function idleWorkers(idleMs: number) {
+  const free: Worker[] = [];
+  const rest = new Map<Worker, NodeJS.Timeout>();
+  const drop = (w: Worker) => {
+    clearTimeout(rest.get(w));
+    rest.delete(w);
+    if (free.includes(w)) free.splice(free.indexOf(w), 1);
+  };
+  return {
+    size: () => free.length,
+    park(w: Worker) {
+      w.unref();
+      free.push(w);
+      rest.set(
+        w,
+        setTimeout(() => {
+          drop(w);
+          void w.terminate();
+        }, idleMs).unref(),
+      );
+    },
+    take(): Worker | undefined {
+      const w = free.pop();
+      if (w) drop(w);
+      return w;
+    },
+    drop,
+  };
+}
 
 /** idleMs: an idle worker ends after that and frees its memory. */
 export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
   let mainThread = !fs.existsSync(file);
-  const free: Worker[] = [],
-    all = new Set<Worker>(),
+  const idle = idleWorkers(idleMs);
+  const all = new Set<Worker>(),
     queue: Pending[] = [];
-  const rest = new Map<Worker, NodeJS.Timeout>();
   const running = new Map<Worker, { id: number; o: Pending }>();
   let nextId = 0,
     ended = false;
@@ -41,35 +71,13 @@ export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.
   const next = (w: Worker) => {
     running.delete(w);
     const o = queue.shift();
-    if (o) {
-      start(w, o);
-      return;
-    }
-    w.unref();
-    free.push(w);
-    rest.set(
-      w,
-      setTimeout(() => {
-        rest.delete(w);
-        free.splice(free.indexOf(w), 1);
-        void w.terminate();
-      }, idleMs).unref(),
-    );
-  };
-  const takeFree = (): Worker | undefined => {
-    const w = free.pop();
-    if (w) {
-      clearTimeout(rest.get(w));
-      rest.delete(w);
-    }
-    return w;
+    if (o) start(w, o);
+    else idle.park(w);
   };
   /** A worker that ended: out of every list; @returns the job it was running. */
   const forget = (w: Worker) => {
     all.delete(w);
-    clearTimeout(rest.get(w));
-    rest.delete(w);
-    if (free.includes(w)) free.splice(free.indexOf(w), 1);
+    idle.drop(w);
     const l = running.get(w);
     running.delete(w);
     return l;
@@ -111,15 +119,15 @@ export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.
     if (mainThread) return inMainThread(a);
     return new Promise((ok, error) => {
       const o = { job: a, ok, error };
-      const w = takeFree() ?? (all.size < size ? fresh() : undefined);
+      const w = idle.take() ?? (all.size < size ? fresh() : undefined);
       if (w) start(w, o);
       else queue.push(o);
     });
   };
   return {
-    hash: (password, rounds) => job({ kind: 'hash', password, wert: rounds }) as Promise<string>,
-    compare: (password, hash) => job({ kind: 'vergleich', password, wert: hash }) as Promise<boolean>,
-    state: () => ({ worker: all.size, free: free.length, waiting: queue.length, mainThread }),
+    hash: (password, rounds) => job({ kind: 'hash', password, value: rounds }) as Promise<string>,
+    compare: (password, hash) => job({ kind: 'vergleich', password, value: hash }) as Promise<boolean>,
+    state: () => ({ worker: all.size, free: idle.size(), waiting: queue.length, mainThread }),
     finish: async () => {
       ended = true;
       await Promise.all([...all].map(w => w.terminate()));

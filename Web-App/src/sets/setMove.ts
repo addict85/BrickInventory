@@ -19,7 +19,7 @@ export interface Shift {
 async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
   for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.inventory.setContent.copy(tab, sn, fromId, toId);
-  if (!(await repo.hatInstructions(t.db, toId, sn)))
+  if (!(await repo.hasInstructions(t.db, toId, sn)))
     n.instructions = await repo.copyInstructions(t.db, sn, fromId, toId);
   return n;
 }

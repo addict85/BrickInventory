@@ -15,7 +15,7 @@ import {
   deleteExpired,
   setUpImageDemand,
   stopImageDemand,
-  requestsJeMinute,
+  requestsPerMinute,
   takeImageRequests,
 } from './imageDemand';
 import { attempts } from '../infra/result';
@@ -64,7 +64,7 @@ async function createPreview(k: ImagesContext, relPath: string, key: string): Pr
   if (isKnownMissing(k, 'thumb:' + key)) return false;
   // An error is remembered as well: the file would otherwise come back on every pass.
   const r = await attempts('bild-job:vorschauErzeugenAus', () => k.imageWorker.createPreview(relPath));
-  const ok = r.ok && !!r.wert;
+  const ok = r.ok && !!r.value;
   if (!ok) rememberMissing(k, 'thumb:' + key, 'Vorschau konnte nicht erzeugt werden');
   return ok;
 }
@@ -130,7 +130,8 @@ async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
   // await: the next tick reads the state via ANOTHER process; without await the tile would report "not
   // run yet".
   await k.jobQueue
-    .setState(RUN_KEY, JSON.stringify({ time: k.clock.now(), result: erg }))
+    // The keys are what run_state already holds; the job monitor reads `zeit` from there.
+    .setState(RUN_KEY, JSON.stringify({ zeit: k.clock.now(), ergebnis: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
 
@@ -177,14 +178,14 @@ async function afterFailure(
   }
   // ONLY a 404/410 means "the image does not exist"; timeouts and network dropouts must not
   // block an image permanently.
-  const hartMissing = info.status === 404 || info.status === 410;
-  if (hartMissing) rememberMissing(k, 'set:' + setNumber, `HTTP ${status} vom CDN`);
+  const hardMissing = info.status === 404 || info.status === 410;
+  if (hardMissing) rememberMissing(k, 'set:' + setNumber, `HTTP ${status} vom CDN`);
   else st.somethingToDo = true;
   st.erg.notLoaded++;
   st.reasons.push(
     `${setNumber}: Download fehlgeschlagen` +
       (status ? ` (HTTP ${status})` : ' (kein Statuscode — vorübergehend?)') +
-      (hartMissing ? '' : ', wird erneut versucht'),
+      (hardMissing ? '' : ', wird erneut versucht'),
   );
   return false;
 }
@@ -223,7 +224,7 @@ async function workRow(k: ImagesContext, r: ImageRequest, st: StackStatus): Prom
   const info: { status?: number } = {};
   // An error counts like a futile fetch; afterFailure() decides about the retry.
   const fetch = await attempts('bild-job:setBildHerunterladen', k.imageWorker.loadSetImage(r.url, r.set_number, info));
-  const local = fetch.ok ? fetch.wert : null;
+  const local = fetch.ok ? fetch.value : null;
   if (!local) return (await afterFailure(k, r.set_number, info, st)) ? 'stop' : 'next';
   // The preview is NOT created in setBildHerunterladen(); without this call it would stay at the large
   // original file.
@@ -236,7 +237,7 @@ async function workRow(k: ImagesContext, r: ImageRequest, st: StackStatus): Prom
 
 async function workStack(k: ImagesContext): Promise<StackResult> {
   const erg = emptyResult();
-  const pause = await k.jobQueue.liesPause('image_demand');
+  const pause = await k.jobQueue.readPause('image_demand');
   if (pause && new Date(pause.until_at).getTime() > k.clock.now()) return erg; // CDN has throttled, see below
   const rows = await takeImageRequests(k, NOTE_VALID_MS, BATCH);
   if (!rows.length) {
@@ -303,7 +304,7 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
     if (k.ended) throw new JobInterrupted();
     const e = await tickPass(kx);
     if (e.total || e.setAside) console.log(`[image-queue] ${message(e)}`);
-    const pause = await kx.jobQueue.liesPause('image_demand');
+    const pause = await kx.jobQueue.readPause('image_demand');
     if (pause && new Date(pause.until_at).getTime() > kx.clock.now())
       throw new JobMove(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
     if (!e.total) return;
@@ -312,6 +313,6 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
   }
 }
 
-export { rememberUsed, setUpImageDemand, stopImageDemand, requestsJeMinute, BATCH, TICK_MS, PASS_MAX_NOTES };
+export { rememberUsed, setUpImageDemand, stopImageDemand, requestsPerMinute, BATCH, TICK_MS, PASS_MAX_NOTES };
 
 export { workStack as _workStack, tickPass as _tickPass, deleteExpired as _deleteExpired, writeBuffer as _writeBuffer };

@@ -93,7 +93,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   await supplementSetMinifigs(k, n, rbKey);
 }
 
-type ApiTeil = {
+type ApiPart = {
   part_name: string;
   bl_part_num: string | null;
   image_url: string | null;
@@ -103,8 +103,8 @@ type ApiTeil = {
 };
 
 /** The set's parts according to Rebrickable, per "part_num|color_id". */
-async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
-  const apiParts: Record<string, ApiTeil> = {};
+async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiPart>> {
+  const apiParts: Record<string, ApiPart> = {};
   let url = `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   while (url) {
     const data = await apiGet(k, url, rbKey);
@@ -131,7 +131,7 @@ async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promi
  * incomplete. */
 async function supplementBlNumbers(
   kx: CatalogContext,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
   missingBl: string[],
   rbKey: string,
 ): Promise<void> {
@@ -161,7 +161,7 @@ async function rememberPartsOfSets(
   k: CatalogContext,
   n: string,
   csvParts: Awaited<ReturnType<typeof repo.partsOfInventory>>,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
 ): Promise<void> {
   const blMapRows = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
@@ -169,7 +169,7 @@ async function rememberPartsOfSets(
 
   for (const p of csvParts) {
     const key = `${p.part_num}|${p.color_id}`;
-    const info: Partial<ApiTeil> = apiParts[key] ?? {};
+    const info: Partial<ApiPart> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
     // Into the MAPPING: the number belongs to the part, not to set, part and color.
     if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);

@@ -55,7 +55,7 @@ async function refresh(k: ImagesContext): Promise<void> {
   // Not readable: the previous state in memory stays until the next reconciliation succeeds.
   const r = await attempts('bild-fehlanzeige:rows', k.imageFailures.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
-  const rows = r.wert;
+  const rows = r.value;
   const { front: _front, reasons: _reasons } = state(k);
   _front.clear();
   _reasons.clear();

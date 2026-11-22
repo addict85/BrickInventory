@@ -64,10 +64,12 @@ const BUILDING_BLOCKS = [
   'account.js',
   'dialogs.js',
   'progress.js',
+  'job-names.js',
   'monitor.js',
   'components.js',
   'confirm-prompt.js',
   'crosshair.js',
+  'time-axis.js',
   'charts.js',
   // Shared by several views without being a view itself (no tab, no screen of its own).
   'account-filter.js',

@@ -15,8 +15,8 @@ const K = processWide('requestId', () => ({ sequence: 0 }));
 /** Unfiltered, a client could write line breaks or foreign identifiers into the
  * log and fake entries. */
 export function requestId(raw: unknown): string {
-  const wert = typeof raw === 'string' ? raw : '';
-  if (ID_RE.test(wert)) return wert;
+  const value = typeof raw === 'string' ? raw : '';
+  if (ID_RE.test(value)) return value;
   K.sequence = (K.sequence + 1) % 1_679_616;
   return K.sequence.toString(36).padStart(4, '0');
 }
@@ -98,7 +98,7 @@ export function split(args: unknown[]): { message: string; context?: Record<stri
 interface State {
   output: Output;
   pool: Querier | null;
-  puffer: { level: string; message: string }[];
+  pending: { level: string; message: string }[];
   timer: NodeJS.Timeout | null;
   failed: number;
   lastError: string;
@@ -156,8 +156,8 @@ export function reportWriteError(): void {
 }
 
 export function emptyLog(): Promise<void> {
-  if (!P.z?.pool || !P.z.puffer.length) return Promise.resolve();
-  const rows = P.z.puffer.splice(0);
+  if (!P.z?.pool || !P.z.pending.length) return Promise.resolve();
+  const rows = P.z.pending.splice(0);
   return logs.writeLogRows(P.z.pool, rows).then(
     () => undefined,
     (e: unknown) => writeError(rows.length, e),
@@ -195,8 +195,8 @@ export async function stopLog(): Promise<void> {
 function buffer(z: NonNullable<typeof P.z>, level: string, args: unknown[], rid: string | undefined): void {
   const { message, context } = split(args);
   const text = `[${pidTag}${rid ? '/' + rid : ''}] ${message}${context ? ' ' + logText(context) : ''}`;
-  z.puffer.push({ level, message: text.substring(0, MAX_TEXT) });
-  if (z.puffer.length > 500) z.puffer.splice(0, z.puffer.length - 500);
+  z.pending.push({ level, message: text.substring(0, MAX_TEXT) });
+  if (z.pending.length > 500) z.pending.splice(0, z.pending.length - 500);
   if (z.timer) clearTimeout(z.timer);
   z.timer = setTimeout(() => {
     if (P.z) P.z.timer = null;
@@ -210,7 +210,7 @@ export function installLog(output: Output = PROCESS): () => void {
   P.z = {
     output,
     pool: null,
-    puffer: [],
+    pending: [],
     timer: null,
     failed: 0,
     lastError: '',

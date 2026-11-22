@@ -47,7 +47,7 @@ async function lockHouseholdCurrency(tx: DbInterface): Promise<void> {
 async function withSessionLock<T>(
   access: { pool: Pool },
   key: number,
-  lauf: () => Promise<T>,
+  work: () => Promise<T>,
   claimed: () => never,
 ): Promise<T> {
   const client = await access.pool.connect();
@@ -58,7 +58,7 @@ async function withSessionLock<T>(
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [key]);
     if (!rows[0]?.ok) claimed();
     try {
-      return await lauf();
+      return await work();
     } finally {
       await client.query('SELECT pg_advisory_unlock($1, 0)', [key]).catch((e: unknown) => {
         broken = e instanceof Error ? e : new Error(String(e));

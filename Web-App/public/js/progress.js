@@ -538,7 +538,7 @@ export function streamRequest(path, body, onEvent) {
 }
 
 /** The `data:` lines of an event stream; an unreadable line is skipped.
- * @param {string[]} lines @param {(e: any) => void} onEvent */
+ * @template T @param {string[]} lines @param {(e: T) => void} onEvent */
 function dispatchLines(lines, onEvent) {
   for (const line of lines) {
     if (!line.startsWith('data: ')) continue;

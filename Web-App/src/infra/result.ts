@@ -6,9 +6,9 @@ export interface Failure {
   reason: string;
 }
 
-export type Result<T, F = Failure> = { ok: true; wert: T } | { ok: false; error: F };
+export type Result<T, F = Failure> = { ok: true; value: T } | { ok: false; error: F };
 
-export const succeeded = <T>(wert: T): Result<T, never> => ({ ok: true, wert });
+export const succeeded = <T>(value: T): Result<T, never> => ({ ok: true, value });
 export const failed = <F>(error: F): Result<never, F> => ({ ok: false, error });
 
 /** Reports the error to the log and passes it on as a result; the caller has to decide. */
@@ -26,10 +26,10 @@ export async function attempts<T>(context: string, work: Promise<T> | (() => Pro
  * them in `degradiert`, otherwise a 0 after an error would look like a real 0. */
 export class Degradations {
   readonly parts: string[] = [];
-  async orElse<T, E>(teil: string, work: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
-    const r = await attempts(teil, work);
-    if (!r.ok && !this.parts.includes(teil)) this.parts.push(teil);
-    return r.ok ? r.wert : ersatz;
+  async orElse<T, E>(part: string, work: Promise<T> | (() => Promise<T>), spare: E): Promise<T | E> {
+    const r = await attempts(part, work);
+    if (!r.ok && !this.parts.includes(part)) this.parts.push(part);
+    return r.ok ? r.value : spare;
   }
   detail(): { degraded?: string[] } {
     return this.parts.length ? { degraded: [...this.parts] } : {};
@@ -37,6 +37,6 @@ export class Degradations {
 }
 
 /** The value or, after a failure, the explicitly named substitute. */
-export function valueOr<T, E>(e: Result<T, unknown>, ersatz: E): T | E {
-  return e.ok ? e.wert : ersatz;
+export function valueOr<T, E>(e: Result<T, unknown>, spare: E): T | E {
+  return e.ok ? e.value : spare;
 }

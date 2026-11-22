@@ -5334,7 +5334,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Gesundheit"
+                  "$ref": "#/components/schemas/Health"
                 }
               }
             }
@@ -10528,7 +10528,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -10568,7 +10568,7 @@
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -11859,7 +11859,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TlsStand"
+                  "$ref": "#/components/schemas/TlsState"
                 }
               }
             }
@@ -17180,37 +17180,6 @@
         ],
         "additionalProperties": {}
       },
-      "Gesundheit": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "starting"
-            ]
-          },
-          "startup": {
-            "$ref": "#/components/schemas/StartupStatus"
-          },
-          "db_pool": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          },
-          "uptime_seconds": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "additionalProperties": {}
-      },
       "GET_api_v2_minifigs": {
         "type": "object",
         "properties": {
@@ -17675,6 +17644,37 @@
           "page",
           "page_size",
           "parts"
+        ],
+        "additionalProperties": {}
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "starting"
+            ]
+          },
+          "startup": {
+            "$ref": "#/components/schemas/StartupStatus"
+          },
+          "db_pool": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "uptime_seconds": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "status"
         ],
         "additionalProperties": {}
       },
@@ -20901,7 +20901,7 @@
         ],
         "additionalProperties": {}
       },
-      "PdfStand": {
+      "PdfState": {
         "type": "object",
         "properties": {
           "success": {
@@ -23749,7 +23749,7 @@
         ],
         "additionalProperties": {}
       },
-      "TlsStand": {
+      "TlsState": {
         "type": "object",
         "properties": {
           "success": {

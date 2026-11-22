@@ -47,7 +47,7 @@ function renderColorDropdown() {
 }
 
 /** "No color" is null, not 0: 0 is black at Rebrickable. With 0 for both, the server looked for
- * no color image for black parts and showed the generic one, mostly white. @param {any} colorSel */
+ * no color image for black parts and showed the generic one, mostly white. @param {Field | null} colorSel */
 function selectedColor(colorSel) {
   const rawColor = colorSel?.value ?? '';
   const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor, 10) || 0;
@@ -55,7 +55,8 @@ function selectedColor(colorSel) {
   return { colorId, colorName: colorOpt?.dataset.name || null, colorHex: colorOpt?.dataset.hex || null };
 }
 
-/** Report the saved part and empty the form for the next one. @param {any} d @param {any} res @param {any} colorSel */
+/** Report the saved part and empty the form for the next one. @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/parts'>} d @param {HTMLElement} res
+ * @param {Field | null} colorSel */
 function partAdded(d, res, colorSel) {
   const hintT = priceOriginHint(d.price_from_condition);
   res.style.color = 'var(--g700)';

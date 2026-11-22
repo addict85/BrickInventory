@@ -263,20 +263,13 @@ export async function loadGallery(opts = {}) {
   if (scrollY != null) requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
   enrichGalleryWithPrices();
 }
-/** @param {number} count @param {string} q */
-function galleryHits(count, q) {
-  if (count) return tRaw('match.sets', { n: _galTotal || count });
-  return q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter');
-}
+
+const galleryNoHits = (/** @type {string} */ q) =>
+  q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter');
 
 /** @param {boolean} filtered @param {string} q */
 function galleryEmpty(filtered, q) {
-  if (filtered)
-    return emptyState({
-      ico: 'search',
-      title: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
-      button: resetButton('gallery'),
-    });
+  if (filtered) return emptyState({ ico: 'search', title: galleryNoHits(q), button: resetButton('gallery') });
   return emptyState({
     ico: 'set',
     title: tRaw('gallery.empty'),
@@ -296,7 +289,7 @@ export function renderGallery() {
   const filtered = !!(q || G('gtheme')?.value || locationMode('gallery'));
   // Without a single set, the fields filter and sort nothing (N5).
   G('tab-gallery')?.classList.toggle('collection-empty', !list.length && !filtered);
-  if (filtered) reportHits(galleryHits(list.length, q));
+  if (filtered) reportHits(list.length ? tRaw('match.sets', { n: _galTotal || list.length }) : galleryNoHits(q));
   if (!list.length) {
     setHtml(c, galleryEmpty(filtered, q));
     return;
@@ -358,7 +351,7 @@ function priceLine(s) {
 
 /** thumbUrl() only applies to locally stored images (the _thumb variant). Sets with no local copy go
  * through the proxy — there imgUrl(…, true) produces the scaled-down version, otherwise full resolution
- * would load for a tile. No alt text: the tile is a button, its text already names the set. @param {any} s */
+ * would load for a tile. No alt text: the tile is a button, its text already names the set. @param {Tile} s */
 function gridImage(s) {
   const src = s.image_local || s.image_url || '';
   if (!src) return html`<span class="image-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
@@ -368,7 +361,7 @@ function gridImage(s) {
 
 /** The date of the last purchase: when importing, the date added to the account was the same day for every
  * set and said nothing. With several purchases (often within a household), the tile shows it is the most
- * recent one. @param {any} s @param {string} buyFmt */
+ * recent one. @param {Tile} s @param {string} buyFmt */
 function gridBuyText(s, buyFmt) {
   const buys = Number(s.acq_count) || 0;
   return buys > 1
@@ -376,7 +369,7 @@ function gridBuyText(s, buyFmt) {
     : html`<span>${tRaw('detail.added')}</span> ${buyFmt}`;
 }
 
-/** @param {any} s @param {unknown} condBadge @param {boolean} unknown */
+/** @param {Tile} s @param {unknown} condBadge @param {boolean} unknown */
 function gridBadges(s, condBadge, unknown) {
   return html`
           ${s.instructions?.length ? html`<span class="ibadge">${ico('list')}${s.instructions.length}</span>` : ''}

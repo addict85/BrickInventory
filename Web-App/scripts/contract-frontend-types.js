@@ -82,11 +82,11 @@ function create(doc) {
   );
   const routes = [];
   for (const [path, ops] of Object.entries(doc.paths || {})) {
-    const muster = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
+    const pattern = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
     for (const [method, op] of Object.entries(/** @type {Record<string, any>} */ (ops))) {
       const schema = op.responses?.['200']?.content?.['application/json']?.schema;
       if (!schema) continue;
-      const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
+      const p = pattern.includes('${') ? '`' + pattern + '`' : `'${pattern}'`;
       routes.push(`  | { m: '${method.toUpperCase()}'; p: ${p}; a: ${type(schema, '  ')} }`);
     }
   }
@@ -95,8 +95,8 @@ function create(doc) {
   for (const [path, ops] of Object.entries(doc.paths || {})) {
     const schema = ops.get?.responses?.['200']?.content?.['text/event-stream']?.schema;
     if (!schema) continue;
-    const muster = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
-    const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
+    const pattern = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
+    const p = pattern.includes('${') ? '`' + pattern + '`' : `'${pattern}'`;
     streams.push(`  | { p: ${p}; e: ${type(schema, '  ')} }`);
   }
   from.push(

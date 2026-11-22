@@ -17,7 +17,7 @@ export function quantityScalar(basis: string): string {
 /** Quantity as a grouped JOIN source (`<alias>.menge`). `accounts`, e.g.
  * `= ANY($1)`, already filters in the subquery: the planner does not pull the
  * account condition of the JOIN inside and would otherwise sum all accounts. */
-export function mengeJoin(basis: string, alias = 'sm', accounts?: AccountFilter): string {
+export function setQuantityJoin(basis: string, alias = 'sm', accounts?: AccountFilter): string {
   const filter = accounts
     ? `
                       WHERE ${onAccounts('a.user_id', accounts)}`
@@ -29,7 +29,7 @@ export function mengeJoin(basis: string, alias = 'sm', accounts?: AccountFilter)
               AND ${alias}.set_number = ${basis}.set_number`;
 }
 
-/** The quantity column for [mengeJoin], never NULL (NULL would make every product
+/** The quantity column for [setQuantityJoin], never NULL (NULL would make every product
  * NULL). `fehlt`: 0 for a quantity, 1 for a factor. */
 export function quantityFrom(alias = 'sm', isMissing: 0 | 1 = 0): string {
   return `COALESCE(${alias}.quantity, ${isMissing})`;
@@ -85,7 +85,7 @@ export interface EntryRow {
 export type StockKind = 'part' | 'fig';
 
 /** Per kind: tables, keys and column names. Once, as a table. */
-const ART = {
+const KIND = {
   part: {
     holding: 'parts',
     acquisition: 'part_acquisitions',
@@ -105,9 +105,9 @@ const ART = {
 } as const;
 
 /** The JOIN sources `<alias>_e` (acquisitions) and `<alias>_k` (catalog) for
- * the quantity of the inventory row `bezug`; `accounts` as for [mengeJoin]. */
+ * the quantity of the inventory row `bezug`; `accounts` as for [setQuantityJoin]. */
 export function quantityJoin(basis: string, kind: StockKind, alias = 'tm', accounts?: AccountFilter): string {
-  const a = ART[kind];
+  const a = KIND[kind];
   const colorAcq = a.color ? `, x.color_id AS fk` : '';
   const colorCmp = a.color ? ` AND ${alias}_e.fk = ${basis}.color_id` : '';
   const colorCat = a.color ? ` AND ${alias}_k.color_id = ${basis}.color_id` : '';
@@ -130,7 +130,7 @@ export function quantityJoin(basis: string, kind: StockKind, alias = 'tm', accou
 /**
  * The quantity of the inventory row — the case distinction itself.
  */
-export function subsetFrom(basis: string, _art: StockKind, alias = 'tm'): string {
+export function subsetFrom(basis: string, _kind: StockKind, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${basis}.source, 'set') = 'manual'
                THEN COALESCE(${alias}_e.quantity, 0)
                ELSE COALESCE(${alias}_k.quantity, 1) END`;
@@ -145,7 +145,7 @@ export async function quantityThePosition(
   keys: (string | number | null)[],
   dbh: Pick<DbInterface, 'get'>,
 ): Promise<number | null> {
-  const a = ART[kind];
+  const a = KIND[kind];
   const color = a.color ? ' AND b.color_id = $3' : '';
   const colorAcq = a.color ? ' AND x.color_id = $3' : '';
   const params = a.color ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];

@@ -91,7 +91,8 @@ function setPeriodButtons(disabled) {
 
 /** Points with real timestamps where d.chart has them (same order as points): then they sit on a time axis
  * instead of by index. The last point is the header value, the others scaled to it.
- * @param {any} d the portfolio history @param {any} untyped its chart @param {number} grandTotal */
+ * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/finance/portfolio-history'>} d the portfolio history
+ * @param {{ chart?: { values?: { values?: { x: string }[] }[] } }} untyped its chart @param {number} grandTotal */
 function curvePoints(d, untyped, grandTotal) {
   const lastVal = d.points[d.points.length - 1].value || 1;
   const scale = lastVal > 0 ? grandTotal / lastVal : 1;
@@ -106,7 +107,8 @@ function curvePoints(d, untyped, grandTotal) {
 }
 
 /** Without a market value there is no trend: the history then only carries the purchase price, and
- * "0.0 %" next to "—" would claim no movement. @param {HTMLElement} pnlEl @param {any} d
+ * "0.0 %" next to "—" would claim no movement. @param {HTMLElement} pnlEl
+ * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/finance/portfolio-history'>} d
  * @param {{ total: number, time?: number }[]} points @param {number} grandTotal */
 function showPeriodChange(pnlEl, d, points, grandTotal) {
   const periodText = {

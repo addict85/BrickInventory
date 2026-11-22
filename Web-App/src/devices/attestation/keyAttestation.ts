@@ -3,7 +3,7 @@
  * belongs to our app. Without it a stolen token could register a software key
  * and pass the step guard without unlock. */
 import { X509Certificate, type KeyObject } from 'node:crypto';
-import { TheError, expect, kinder, readWhole, type Tlv, UNIVERSAL, theNumber } from './der';
+import { TheError, expect, children, readWhole, type Tlv, UNIVERSAL, theNumber } from './der';
 
 /** 1.3.6.1.4.1.11129.2.1.17 as DER content. */
 const OID_ATTESTATION = Buffer.from('2b06010401d679020111', 'hex');
@@ -45,10 +45,10 @@ export interface Description {
 
 function list(t: Tlv): Map<number, Tlv> {
   const m = new Map<number, Tlv>();
-  for (const k of kinder(expect(t, UNIVERSAL.SEQUENCE))) {
+  for (const k of children(expect(t, UNIVERSAL.SEQUENCE))) {
     if (k.tagClass !== 2 || !k.constructed) throw new TheError('AuthorizationList: Eintrag ohne Kontext-Tag');
     if (m.has(k.number)) throw new TheError(`AuthorizationList: Tag ${k.number} doppelt`);
-    const inner = kinder(k);
+    const inner = children(k);
     if (inner.length !== 1) throw new TheError('AuthorizationList: Eintrag ohne genau einen Wert');
     m.set(k.number, inner[0] as Tlv);
   }
@@ -63,7 +63,7 @@ function confidence(t: Tlv | undefined): Confidence {
 
 /** The KeyDescription from the extension's content (without the enclosing OCTET STRING). */
 export function readDescription(encoded: Buffer): Description {
-  const f = kinder(expect(readWhole(encoded), UNIVERSAL.SEQUENCE));
+  const f = children(expect(readWhole(encoded), UNIVERSAL.SEQUENCE));
   if (f.length < 8) throw new TheError('KeyDescription: zu wenige Felder');
   return {
     version: theNumber(expect(f[0], UNIVERSAL.INTEGER)),
@@ -77,12 +77,12 @@ export function readDescription(encoded: Buffer): Description {
 
 /** The content of the attestation extension, null without it. */
 export function attestationExtension(certificateThe: Buffer): Buffer | null {
-  const [tbs] = kinder(expect(readWhole(certificateThe), UNIVERSAL.SEQUENCE));
-  const ext = kinder(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.tagClass === 2 && k.number === 3);
+  const [tbs] = children(expect(readWhole(certificateThe), UNIVERSAL.SEQUENCE));
+  const ext = children(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.tagClass === 2 && k.number === 3);
   if (!ext) return null;
   let hits: Buffer | null = null;
-  for (const e of kinder(expect(kinder(ext)[0], UNIVERSAL.SEQUENCE))) {
-    const parts = kinder(expect(e, UNIVERSAL.SEQUENCE));
+  for (const e of children(expect(children(ext)[0], UNIVERSAL.SEQUENCE))) {
+    const parts = children(expect(e, UNIVERSAL.SEQUENCE));
     if (!expect(parts[0], UNIVERSAL.OID).content.equals(OID_ATTESTATION)) continue;
     if (hits) throw new TheError('Attestation-Erweiterung doppelt');
     hits = expect(parts[parts.length - 1], UNIVERSAL.OCTET_STRING).content;
@@ -92,12 +92,14 @@ export function attestationExtension(certificateThe: Buffer): Buffer | null {
 
 /** Package names and SHA-256 of the signing certificates (hex, upper case) from attestationApplicationId. */
 export function readAppId(t: Tlv): { packages: string[]; digests: string[] } {
-  const [packages, digests] = kinder(expect(readWhole(expect(t, UNIVERSAL.OCTET_STRING).content), UNIVERSAL.SEQUENCE));
+  const [packages, digests] = children(
+    expect(readWhole(expect(t, UNIVERSAL.OCTET_STRING).content), UNIVERSAL.SEQUENCE),
+  );
   return {
-    packages: kinder(expect(packages, UNIVERSAL.SET)).map(p =>
-      expect(kinder(expect(p, UNIVERSAL.SEQUENCE))[0], UNIVERSAL.OCTET_STRING).content.toString('utf8'),
+    packages: children(expect(packages, UNIVERSAL.SET)).map(p =>
+      expect(children(expect(p, UNIVERSAL.SEQUENCE))[0], UNIVERSAL.OCTET_STRING).content.toString('utf8'),
     ),
-    digests: kinder(expect(digests, UNIVERSAL.SET)).map(d =>
+    digests: children(expect(digests, UNIVERSAL.SET)).map(d =>
       expect(d, UNIVERSAL.OCTET_STRING).content.toString('hex').toUpperCase(),
     ),
   };
@@ -123,7 +125,7 @@ export function serialNumber(c: X509Certificate): string {
  * a KeyMint could be slipped in that confirms any lock. */
 function checkBoot(t: Tlv | undefined): string | null {
   if (!t) return 'ohne_root_of_trust';
-  const f = kinder(expect(t, UNIVERSAL.SEQUENCE));
+  const f = children(expect(t, UNIVERSAL.SEQUENCE));
   const locked = expect(f[1], UNIVERSAL.BOOLEAN).content;
   if (locked.length !== 1) throw new TheError('RootOfTrust: deviceLocked kein BOOLEAN');
   if (!locked[0]) return 'bootloader_offen';
@@ -150,11 +152,11 @@ function checkLinks(z: X509Certificate[], raw: Buffer[], e: Expectation): string
     if (issuer && (c.issuer !== issuer.subject || !c.verify(issuer.publicKey))) return `glied_${i}_signatur`;
   }
   const last = z[z.length - 1] as X509Certificate;
-  const anker =
+  const anchor =
     e.roots.find(w => spki(w).equals(spki(last))) ??
     e.roots.find(w => last.issuer === w.subject && last.verify(w.publicKey));
-  if (!anker) return 'fremde_wurzel';
-  if (new Date(anker.validFrom) > now || new Date(anker.validTo) < now) return 'wurzel_abgelaufen';
+  if (!anchor) return 'fremde_wurzel';
+  if (new Date(anchor.validFrom) > now || new Date(anchor.validTo) < now) return 'wurzel_abgelaufen';
   return null;
 }
 
@@ -162,7 +164,7 @@ function checkLinks(z: X509Certificate[], raw: Buffer[], e: Expectation): string
 function checkKey(hw: Description['hardware'], z: (tag: number) => number | null): string | null {
   if (z(TAG.algorithm) !== ALGORITHM_EC || z(TAG.curve) !== CURVE_P256) return 'kein_ec_p256';
   const purposes = hw.get(TAG.purpose);
-  if (!purposes || !kinder(expect(purposes, UNIVERSAL.SET)).some(t => theNumber(t) === PURPOSE_SIGN))
+  if (!purposes || !children(expect(purposes, UNIVERSAL.SET)).some(t => theNumber(t) === PURPOSE_SIGN))
     return 'kein_signieren';
   if (z(TAG.origin) !== ORIGIN_CREATED) return 'importiert';
   return null;

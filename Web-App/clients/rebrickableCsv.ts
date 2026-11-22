@@ -11,22 +11,22 @@ const CSV_HOSTS = ['cdn.rebrickable.com'] as const;
 /** inventory_parts.csv.gz is about 30 MB packed, about 1 GB unpacked. */
 const PACKED_AT_MOST = 256 * 1024 * 1024;
 const UNPACKED_AT_MOST = 4 * 1024 * 1024 * 1024;
-const FRIST_MS = 30 * 60_000;
+const DEADLINE_MS = 30 * 60_000;
 
-export interface CsvLaden {
+export interface CsvDownload {
   signal?: AbortSignal;
   /** Packed bytes read and the announced total (0: unknown). */
   atProgress?: (bytes: number, total: number) => void;
 }
 
 /** Loads `datei` (e.g. parts.csv.gz) unpacked into `ziel`. */
-export async function loadCatalogCsv(file: string, target: string, o: CsvLaden = {}): Promise<void> {
+export async function loadCatalogCsv(file: string, target: string, o: CsvDownload = {}): Promise<void> {
   if (!/^[a-z_]+\.csv\.gz$/.test(file))
     throw new FetchError('adresse', `Unbekannte Katalogdatei: ${file.slice(0, 60)}`);
   const a = await openHttps(CSV_BASIS + file, {
     hosts: CSV_HOSTS,
     maxBytes: PACKED_AT_MOST,
-    timeoutMs: FRIST_MS,
+    timeoutMs: DEADLINE_MS,
     ...(o.signal ? { signal: o.signal } : {}),
   });
   if (a.status !== 200) {

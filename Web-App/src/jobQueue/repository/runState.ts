@@ -7,11 +7,11 @@ export async function readState(db: DbInterface, key: string): Promise<string | 
   return z ? String(z.value) : null;
 }
 
-export async function setState(db: DbInterface, key: string, wert: unknown): Promise<void> {
+export async function setState(db: DbInterface, key: string, value: unknown): Promise<void> {
   await db.run(
     `INSERT INTO run_state (key, value, updated_at) VALUES ($1, $2, NOW())
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-    [key, String(wert)],
+    [key, String(value)],
   );
 }
 
