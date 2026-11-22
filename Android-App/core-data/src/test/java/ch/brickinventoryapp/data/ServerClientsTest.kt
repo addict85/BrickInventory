@@ -94,8 +94,8 @@ class ServerClientsTest {
     @Test
     fun `no server client follows a redirect itself`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
-            assertFalse("$name: OkHttp folgte Umleitungen am Wächter vorbei", c.followRedirects)
-            assertFalse("$name: OkHttp folgte einer Umleitung von https auf http", c.followSslRedirects)
+            assertFalse("$name: OkHttp followed redirects past the guard", c.followRedirects)
+            assertFalse("$name: OkHttp followed a redirect from https to http", c.followSslRedirects)
         }
     }
 
@@ -103,20 +103,20 @@ class ServerClientsTest {
     @Test
     fun `both clients hook in the server guard`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
-            assertTrue("$name: ohne ServerGuard ginge kein Token mit", c.interceptors.any { it is ServerGuard })
+            assertTrue("$name: without ServerGuard no token would go along", c.interceptors.any { it is ServerGuard })
         }
     }
 
     @Test
     fun `the image client talks only via the host guard and throttles moderately`() {
         val image = imageClient()
-        assertTrue("Der Bild-Client lädt ohne Host-Wächter", image.interceptors.any { it is ImageHostGuard })
+        assertTrue("The image client loads without host guard", image.interceptors.any { it is ImageHostGuard })
         val perHost = image.dispatcher.maxRequestsPerHost
-        assertTrue("maxRequestsPerHost=$perHost ist zu eng für eine Kachelwand", perHost >= 6)
-        assertTrue("maxRequests=${image.dispatcher.maxRequests} ist keine bewusste Drosselung",
+        assertTrue("maxRequestsPerHost=$perHost is too narrow for a tile wall", perHost >= 6)
+        assertTrue("maxRequests=${image.dispatcher.maxRequests} is no deliberate throttling",
             image.dispatcher.maxRequests in perHost..32)
-        assertNotNull("Der Bild-Client hat keinen Zwischenspeicher", image.cache)
-        assertNull("Der API-Client hat einen Zwischenspeicher: Eine Änderung könnte aus ihm beantwortet werden",
+        assertNotNull("The image client has no cache", image.cache)
+        assertNull("The API client has a cache: a change could be answered from it",
             apiClient().cache)
     }
 
@@ -127,17 +127,17 @@ class ServerClientsTest {
         val address = server.url("/api/v1/images/set/10179-1").toString()
         assertEquals(200 to "bild-10179", fetch(image, address))
         server.shutdown()
-        assertEquals("Offline bleibt die Kachel leer", 200 to "bild-10179", fetch(image, address))
+        assertEquals("Offline the tile stays empty", 200 to "bild-10179", fetch(image, address))
     }
 
     @Test
     fun `Coil loads via the image client and creates no own disk cache`() {
         server.enqueue(MockResponse().setBody("kein Bild"))
         val loader = NetworkModule.provideImageLoader(ctx, imageClient())
-        assertNull("Coil hielte dieselben Bytes noch einmal, im Klartext", loader.diskCache)
+        assertNull("Coil would hold the same bytes once more, in plaintext", loader.diskCache)
         runBlocking { loader.execute(ImageRequest.Builder(ctx).data(server.url("/api/v1/images/set/1-1").toString()).build()) }
         val request = server.takeRequest(5, TimeUnit.SECONDS)
-        assertNotNull("Coil hat nichts angefragt", request)
-        assertNotNull("Die Anfrage lief nicht über den Wächter des Bild-Clients", request!!.getHeader("X-App-Api"))
+        assertNotNull("Coil requested nothing", request)
+        assertNotNull("The request did not go through the image client's guard", request!!.getHeader("X-App-Api"))
     }
 }

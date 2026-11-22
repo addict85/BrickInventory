@@ -51,18 +51,18 @@ class LoadOnObserveTest {
         var loaded = 0
         vm.loadPerServer(session, condition) { loaded++ }
         val withoutAddress = pages.launch { condition.collect {} }
-        assertEquals("ohne Adresse nichts", 0, loaded)
+        assertEquals("without an address nothing", 0, loaded)
         session.loginChanged("https://a.example", loggedIn = true)
-        assertEquals("die Adresse kommt, während die Seite offen ist", 1, loaded)
+        assertEquals("the address arrives while the page is open", 1, loaded)
         session.loginChanged("https://a.example", loggedIn = false)
-        assertEquals("eine andere Änderung der Sitzung bei derselben Adresse lädt nicht", 1, loaded)
+        assertEquals("another change of the session with the same address does not load", 1, loaded)
         session.loginChanged("https://b.example", loggedIn = true)
-        assertEquals("ein anderer Server lädt neu", 2, loaded)
+        assertEquals("another server reloads", 2, loaded)
         withoutAddress.cancel()
         session.loginChanged("https://c.example", loggedIn = true)
-        assertEquals("ohne Beobachter nichts", 2, loaded)
+        assertEquals("without observers nothing", 2, loaded)
         pages.launch { condition.collect {} }
-        assertEquals("wer zurückkommt, bekommt frisch", 3, loaded)
+        assertEquals("whoever comes back gets fresh data", 3, loaded)
     }
 
     @Test
@@ -78,7 +78,7 @@ class LoadOnObserveTest {
         second.cancel()
         assertEquals(0, b.observer.value)
         pages.launch { b.collect {} }
-        assertEquals("nach der Pause wieder", 2, reported)
+        assertEquals("again after the pause", 2, reported)
         assertEquals("x", b.value)
     }
 }

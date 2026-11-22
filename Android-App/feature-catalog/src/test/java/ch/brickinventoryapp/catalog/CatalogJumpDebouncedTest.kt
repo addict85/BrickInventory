@@ -87,11 +87,11 @@ class CatalogJumpDebouncedTest {
         // all the others in the queue: three to five seconds.
         val totalPages = (total - 1) / CATALOG_PAGE_SIZE + 1
         assert(pages.size >= totalPages - 1) {
-            "Der Weg beruehrt nur ${pages.size} von $totalPages Seiten. Dann " +
-                "waere die Entprellung die falsche Behebung, und die Ursache laege " +
-                "woanders — nachrechnen, bevor hier eine Zahl angepasst wird."
+            "The way touches only ${pages.size} of $totalPages pages. Then " +
+                "debouncing would be the wrong fix, and the cause would lie " +
+                "elsewhere — recalculate before adjusting a number here."
         }
-        assert(totalPages > 100) { "Katalog zu klein fuer diese Aussage — Rechnung veraltet?" }
+        assert(totalPages > 100) { "Catalog too small for this statement — calculation outdated?" }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -105,9 +105,9 @@ class CatalogJumpDebouncedTest {
             loader.visible(page, page + 1)
             advanceTimeBy(10)
         }
-        assertEquals("Waehrend des Zuges wird nichts geladen", emptyList<Int>(), loaded)
+        assertEquals("nothing is loaded during the drag", emptyList<Int>(), loaded)
         advanceUntilIdle()
-        assertEquals("Nur das letzte Fenster, mit einer Seite Vorlauf in beide Richtungen",
+        assertEquals("only the last window, with one page of lead in both directions",
             listOf(99, 100, 101, 102), loaded)
         // Page 1 has no predecessor: no fetch for page 0.
         loaded.clear()
@@ -122,11 +122,11 @@ class CatalogJumpDebouncedTest {
         val src = Sources.withoutComments(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
 
         val ab = src.indexOf("onScrollTo = ")
-        assert(ab > 0) { "Der Rueckruf der Jahresleiste ist nicht mehr zu finden" }
+        assert(ab > 0) { "the year bar's callback can no longer be found" }
         val callback = src.substring(ab, minOf(ab + 200, src.length))
         assert(!callback.contains("onEnsurePage")) {
-            "Die Leiste laedt wieder bei JEDEM Beruehrungspunkt. Das sind ueber " +
-                "hundert Abrufe je Zug (siehe die Messung im ersten Test)."
+            "The bar loads on EVERY touch point again. That is over " +
+                "a hundred fetches per drag (see the measurement in the first test)."
         }
 
         // And no second, separate jump fetch next to it: that used to sit here
@@ -135,8 +135,8 @@ class CatalogJumpDebouncedTest {
         // but left the viewport loader running unchanged.
         // Two versions of the same rule also drift apart.
         assert(!src.contains("zielSeite")) {
-            "Der eigene Sprung-Abruf ist wieder da. Er ist ueberfluessig, seit die " +
-                "Ruhe im Sichtfenster-Lader steht — dort enden BEIDE Wege."
+            "The own jump fetch is back. It is superfluous since the " +
+                "quiet sits in the viewport loader — BOTH ways end there."
         }
     }
 }

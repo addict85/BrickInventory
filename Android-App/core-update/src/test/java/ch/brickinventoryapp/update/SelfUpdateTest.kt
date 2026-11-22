@@ -54,42 +54,42 @@ class SelfUpdateTest {
             .toSet()
         val show = reader - setOf("SettingsScreen.kt")
         assert(show.isNotEmpty()) {
-            "Ausser SettingsScreen.kt liest niemand updateState. Die Pruefung beim Start " +
-                "(AppNavigation.kt, checkOnUpdate(still = true)) findet dann zwar etwas, " +
-                "aber es ist nirgends zu sehen — genau der Zustand, den Marco gemeldet hat."
+            "Apart from SettingsScreen.kt nobody reads updateState. The check at start " +
+                "(AppNavigation.kt, checkOnUpdate(still = true)) then finds something, " +
+                "but it is visible nowhere — exactly the state Marco reported."
         }
     }
 
     @Test
     fun `only a truly higher version counts as newer`() {
-        assert(isNew(100, 101)) { "Eine hoehere Fassung wird nicht erkannt" }
-        assert(!isNew(100, 100)) { "Dieselbe Fassung gilt als Update" }
+        assert(isNew(100, 101)) { "a higher version is not recognized" }
+        assert(!isNew(100, 100)) { "the same version counts as an update" }
         // The point: with `!=` the app would offer a downgrade after a
         // reverted build, which Android would then reject with
         // INSTALL_FAILED_VERSION_DOWNGRADE — a dead end the user
         // couldn't get out of.
-        assert(!isNew(100, 99)) { "Eine AELTERE Fassung wird als Update angeboten" }
+        assert(!isNew(100, 99)) { "an OLDER version is offered as an update" }
     }
 
     @Test
     fun `only addresses from our release store`() {
         assert(isAllowedApkAddress("$UPDATE_RELEASE_BASE/BrickInventory.apk")) {
-            "Die eigene Adresse wird abgelehnt"
+            "our own address is rejected"
         }
         // The classic prefix bug: `startsWith(BASIS)` without a slash
         // would let this through. This exact trap was already fixed once in
         // network/util/NetworkPolicy.kt, for the bearer token.
         assert(!isAllowedApkAddress("$UPDATE_RELEASE_BASE.angreifer.tld/x.apk")) {
-            "Eine Adresse, die nur mit unserer ANFAENGT, wird zugelassen"
+            "an address that only STARTS with ours is allowed"
         }
         assert(!isAllowedApkAddress("https://angreifer.tld/BrickInventory.apk")) {
-            "Eine voellig fremde Adresse wird zugelassen"
+            "a completely foreign address is allowed"
         }
         assert(!isAllowedApkAddress("$UPDATE_RELEASE_BASE/version.json")) {
-            "Etwas anderes als ein APK wird als APK zugelassen"
+            "something other than an APK is allowed as an APK"
         }
         assert(UPDATE_RELEASE_BASE.startsWith("https://")) {
-            "Die Release-Ablage steht nicht auf HTTPS"
+            "the release store is not on HTTPS"
         }
     }
 
@@ -103,11 +103,11 @@ class SelfUpdateTest {
         // Every `return null` in the signature lookup leads, via the
         // `?: return false` in signatureFits, to "do not install".
         assert(help.contains("val newValue = fingerprints(ctx, apk) ?: return false")) {
-            "Ein unlesbares oder unsigniertes APK gilt nicht mehr als unzulaessig"
+            "an unreadable or unsigned APK no longer counts as inadmissible"
         }
         assert(help.contains("if (info.packageName != ctx.packageName) return null")) {
-            "Der Paketname wird nicht geprueft — ein FREMDES Paket mit demselben " +
-                "Schluessel kaeme durch"
+            "The package name is not checked — a FOREIGN package with the same " +
+                "key would get through"
         }
     }
 
@@ -119,12 +119,12 @@ class SelfUpdateTest {
         // sign-in triggers it is checked by UpdateViewModelTest on the running ViewModel.
         val vm = Sources.function(Sources.withoutComments(Sources.read("account/ui/viewmodel/UpdateViewModel.kt")), "fun checkOnStart(")
         assert(vm.contains("checkOnUpdate(still = true)")) {
-            "Beim Start wird nicht (mehr) still nach einem Update gesehen"
+            "at start there is no (longer a) silent look for an update"
         }
         // And it loads nothing: loadUpdate() has exactly one trigger, the button.
         assert(!nav.contains("loadUpdate()")) {
-            "Der Start stoesst das Herunterladen an — Marcos Vorgabe war ausdruecklich " +
-                "„nie von allein laden\""
+            "The start triggers the download — Marco's requirement was explicitly " +
+                "“never load on its own”"
         }
     }
 
@@ -134,27 +134,27 @@ class SelfUpdateTest {
         val cfg = File(Sources.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
-            "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +
-                "die base-config, und die vertraut nutzerinstallierten Zertifikaten."
+            "There is no domain-config block of its own any more — then for GitHub " +
+                "the base-config applies, and it trusts user-installed certificates."
         }
         val block = cfg.substring(ab, cfg.indexOf("</domain-config>", ab))
         for (host in listOf("github.com", "githubusercontent.com")) {
             assert(block.contains(host)) {
-                "$host steht nicht im eigenen Block. Der Release-Anhang wird umgeleitet — " +
-                    "beide Hosts werden gebraucht."
+                "$host is not in the block of its own. The release attachment is redirected — " +
+                    "both hosts are needed."
             }
         }
         assert(!block.contains("""src="user"""")) {
-            "Der GitHub-Block vertraut wieder nutzerinstallierten Zertifikaten"
+            "the GitHub block trusts user-installed certificates again"
         }
         assert(block.contains("""cleartextTrafficPermitted="false"""")) {
-            "Zu GitHub waere wieder Klartext erlaubt"
+            "plain text to GitHub would be allowed again"
         }
         // The base config also trusts only the system; the user allows custom CAs
         // explicitly, at runtime (ServerTrustTest).
         val basis = cfg.substring(cfg.indexOf("<base-config"))
         assert(!basis.contains("""src="user"""")) {
-            "Die base-config vertraut wieder jeder nutzerinstallierten CA"
+            "the base-config trusts every user-installed CA again"
         }
     }
 
@@ -162,11 +162,11 @@ class SelfUpdateTest {
     fun `the manifest allows installing, no provider exposes the update directory`() {
         val manifest = Sources.manifest.readText()
         assert(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
-            "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
+            "without the permission the app cannot open the installer"
         }
         // The APK goes to the system via a PackageInstaller session; a grant via
         // a FileProvider would be available to any app handed a URI.
-        assert(!manifest.contains("FileProvider")) { "Ein FileProvider könnte das Update-Verzeichnis freigeben" }
+        assert(!manifest.contains("FileProvider")) { "a FileProvider could expose the update directory" }
     }
 
     @Test
@@ -180,8 +180,8 @@ class SelfUpdateTest {
         assert(Regex("""BESCHREIBUNG=app/build/outputs/version-signiert\.json\n""").containsMatchIn(text) &&
             Regex("""gh release create "\${'$'}QUELLE" [^\n]*"\${'$'}APK" "\${'$'}BESCHREIBUNG" [^\n]*\n\s*--verify-tag --latest """)
                 .containsMatchIn(text)) {
-            "Der Workflow legt die Release ohne version-signiert.json oder nicht als „Latest“ an — " +
-                "ohne sie findet die App kein Update, ohne dass irgendwo etwas scheitert"
+            "The workflow creates the release without version-signiert.json or not as “Latest” — " +
+                "without it the app finds no update, without anything failing anywhere"
         }
         // The values come from AGP's output-metadata.json and are NOT generated
         // again from the date here: a second calculation would run minutes
@@ -189,10 +189,10 @@ class SelfUpdateTest {
         // carries — the app would then offer an update that, after installing,
         // is still "outdated".
         assert(text.contains("output-metadata.json")) {
-            "Die Versionswerte werden nicht aus AGPs output-metadata.json gelesen"
+            "the version values are not read from AGP's output-metadata.json"
         }
         assert(Sources.workflow("android-signieren.yml").contains("{versionCode:${'$'}code, versionName:${'$'}name,")) {
-            "Die Beschreibung traegt nicht beide Versionsangaben"
+            "the description does not carry both version details"
         }
     }
 
@@ -212,16 +212,16 @@ class SelfUpdateTest {
         // everywhere.
         val workflow = Sources.workflow("android-signieren.yml")
         assert(workflow.contains("commit:${'$'}commit")) {
-            "Die Beschreibung traegt das Herkunftsfeld nicht mehr als `commit`"
+            "the description no longer carries the origin field as `commit`"
         }
         assert(!workflow.contains("sha:${'$'}sha")) {
-            "Das Feld heisst wieder `sha` — neben apkUrl und apkSize liest sich das " +
-                "als Pruefsumme des APK, und eine solche Pruefung gibt es nicht"
+            "The field is called `sha` again — next to apkUrl and apkSize that reads " +
+                "as a checksum of the APK, and no such check exists"
         }
         // Quellen.read() is relative to ch/brickinventoryapp/ — see there.
         val model = Sources.read("update/util/AppUpdate.kt")
         assert(model.contains("@SerialName(\"commit\")")) {
-            "Das Datenmodell liest das Feld nicht als `commit` — dann bleibt es leer"
+            "the data model does not read the field as `commit` — then it stays empty"
         }
     }
 
@@ -231,9 +231,9 @@ class SelfUpdateTest {
     fun `the dialog hangs over the whole app, not on one screen`() {
         val nav = Sources.withoutComments(Sources.read("app/AppNavigation.kt"))
         assert(nav.contains("UpdateRoute(selfUpdate)")) {
-            "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
-                "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
-                "den der Punkt in den Einstellungen schon einmal hatte."
+            "The update hint is shown nowhere. Called in a single screen, " +
+                "only whoever sits there anyway would get it — exactly the error " +
+                "that the item in the settings already had once."
         }
     }
 }

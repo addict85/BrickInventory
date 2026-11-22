@@ -26,15 +26,15 @@ class StateFlowWidthTest {
     @Test
     fun `the gallery fields stay out of the common state`() {
         val gallery = fields(GalleryUiState::class.java)
-        assertTrue("Nur ${gallery.size} Felder in GalleryUiState", gallery.size >= 8)
+        assertTrue("only ${gallery.size} fields in GalleryUiState", gallery.size >= 8)
         val fallback = gallery.filter { it in fields(AppUiState::class.java) }
-        assertTrue("Diese Galerie-Felder stehen wieder in AppUiState: ${fallback.joinToString()}", fallback.isEmpty())
+        assertTrue("these gallery fields stand in AppUiState again: ${fallback.joinToString()}", fallback.isEmpty())
     }
 
     @Test
     fun `the common state does not grow again`() {
         // Whoever lands here checks whether the field really belongs to everyone, instead of raising the number.
         val n = fields(AppUiState::class.java).size
-        assertTrue("AppUiState hat $n Felder (erlaubt: 10)", n <= 10)
+        assertTrue("AppUiState has $n fields (allowed: 10)", n <= 10)
     }
 }

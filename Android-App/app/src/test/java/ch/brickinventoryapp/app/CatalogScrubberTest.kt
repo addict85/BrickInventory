@@ -37,18 +37,18 @@ class CatalogScrubberTest {
     fun `the bar scrolls instead of filtering`() {
         val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
         val i = s.indexOf("YearScrubber(")
-        assert(i > 0) { "die Leiste fehlt ganz" }
+        assert(i > 0) { "the bar is missing entirely" }
         val call = s.substring(i, minOf(i + 700, s.length))
         // As in the web app the bar scrolls to
         // a POSITION instead of jumping to the first set of a year. The
         // difference to the filter stays the same: a filter throws the other
         // years away, scrolling leaves them in place.
         assert(call.contains("onScrollTo = ")) {
-            "Die Leiste rollt die Liste nicht — dann ist sie wieder ein Filter " +
-                "oder ein Sprung, aber nicht die Leiste der Webapp"
+            "The bar does not scroll the list — then it is a filter or a jump " +
+                "again, but not the web app's bar"
         }
         assert(!call.contains("onYearSelected") && !call.contains("selectedYear")) {
-            "Die Leiste haengt wieder am Jahr statt an der Stelle in der Liste"
+            "the bar hangs on the year again instead of on the position in the list"
         }
         // What is needed at the new position is fetched by the viewport loader.
         //
@@ -64,12 +64,12 @@ class CatalogScrubberTest {
         // stands WITH the measurement in CatalogJumpDebouncedTest, not here once
         // more; at this place it only remains that NO loading happens here.
         assert(!call.contains("onEnsurePage")) {
-            "Die Leiste laedt wieder selbst — das ist ein Abruf je " +
+            "The bar loads by itself again — that is one fetch per " +
                 "Beruehrungspunkt, siehe CatalogJumpDebouncedTest"
         }
         // The explicit filter stays.
         assert(s.contains("onYearChange")) {
-            "Der Jahresfilter (Chip und Auswahlblatt) darf nicht mit verschwunden sein"
+            "the year filter (chip and picker sheet) must not have disappeared too"
         }
     }
 
@@ -77,18 +77,18 @@ class CatalogScrubberTest {
     fun `the list holds all places and loads in both directions`() {
         val s = code(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("items(count = state.total")) {
-            "Die Liste zählt über die geladene Teilmenge statt über das ganze Ergebnis — " +
-                "dann gibt es an der Sprungstelle nichts"
+            "The list counts over the loaded subset instead of the whole result — " +
+                "then there is nothing at the jump position"
         }
         assert(s.contains("state.loadedPages[page]")) {
-            "Die Plätze werden nicht aus den geladenen Seiten bedient"
+            "the places are not served from the loaded pages"
         }
         // The prefetch in both directions is checked by CatalogJumpDebouncedTest, executed
         // on the viewport loader (pages 99..102 for the window 100..101).
-        assert(s.contains("CatalogPlaceholderCard()")) { "Der Platzhalter fehlt" }
+        assert(s.contains("CatalogPlaceholderCard()")) { "the placeholder is missing" }
         assert(Regex("""CatalogPlaceholderCard[\s\S]{0,400}\.height\(""").containsMatchIn(s)) {
-            "Der Platzhalter hat keine feste Höhe — die Liste springt, sobald die " +
-                "Seite eintrifft, und der Sprung landet daneben"
+            "The placeholder has no fixed height — the list jumps as soon as the " +
+                "page arrives, and the jump lands beside the target"
         }
     }
 
@@ -99,8 +99,8 @@ class CatalogScrubberTest {
         // ready as soon as `total` is there, because the places count via the total.
         val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("ScrollPositionKeeper(CatalogTarget.Catalog.rollKey, gridState, ready = state.total > 0")) {
-            "Die Wiederherstellung hängt nicht an state.total — vor dem Eintreffen " +
-                "der Länge gibt es keine Stelle, an die gesprungen werden könnte"
+            "The restore does not hang on state.total — before the length " +
+                "arrives there is no position to jump to"
         }
         // How the marker jumps back is checked by ScrollPositionTest, executed; the forgetting
         // on a filter change by CatalogViewModelTest.

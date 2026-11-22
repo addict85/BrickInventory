@@ -132,11 +132,11 @@ class NumberPadTest {
         }
         // Self-proof against the silent zero: does the search find any
         // fields at all? Without that an empty error list would be green forever.
-        assert(seen >= 15) { "Nur $seen gefilterte Felder gefunden — Muster veraltet?" }
+        assert(seen >= 15) { "Only $seen filtered fields found — pattern outdated?" }
         assert(error.isEmpty()) {
-            "Diese Felder lassen nur Ziffern zu, bieten aber die Texttastatur an:\n  " +
+            "These fields only allow digits but offer the text keyboard:\n  " +
                 error.joinToString("\n  ") +
-                "\nDer Filter aus NumericInput gehoert mit der passenden Tastatur zusammen."
+                "\nThe filter from NumericInput belongs together with the matching keyboard."
         }
     }
 
@@ -177,11 +177,11 @@ class NumberPadTest {
             }
         }
         // Self-proof against the silent zero, measured on 28.09.: 21.
-        assert(seen >= 15) { "Nur $seen Felder mit Zahlentastatur — Muster veraltet?" }
+        assert(seen >= 15) { "Only $seen fields with the number keyboard — pattern outdated?" }
         assert(error.isEmpty()) {
-            "Diese Felder zeigen die Zahlentastatur, lassen aber alles herein:\n  " +
+            "These fields show the number keyboard but let everything in:\n  " +
                 error.joinToString("\n  ") +
-                "\nDie Tastaturwahl ist eine Bitte, keine Zusicherung — der Filter fehlt."
+                "\nThe keyboard choice is a request, not a guarantee — the filter is missing."
         }
     }
 
@@ -211,17 +211,17 @@ class NumberPadTest {
     fun `the price comparison takes digits and hyphen`() {
         val s = Sources.withoutComments(Sources.read("collection/ui/screens/ComparisonScreen.kt"))
         assert(s.contains("NumericInput.setNumber(")) {
-            "Das Suchfeld filtert nicht mehr auf Ziffern und Bindestrich."
+            "The search field no longer filters to digits and hyphen."
         }
         assert(s.contains("NumericInput.integerKeyboard(")) {
-            "Das Suchfeld zeigt nicht mehr die Zahlentastatur — genau das hat " +
-                "Marco am 28.09. verlangt."
+            "The search field no longer shows the number keyboard — exactly that is what " +
+                "Marco asked for on 28.09."
         }
         // The search key MUST stay: the field triggers the search via
         // ImeAction.Search, and without it there would be no way to trigger it
         // except the button next to it.
         assert(s.contains("ImeAction.Search")) {
-            "Die Suchtaste der Tastatur ist weg."
+            "The keyboard's search key is gone."
         }
     }
 }

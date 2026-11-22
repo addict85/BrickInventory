@@ -28,7 +28,7 @@ class NoEmojiTest {
                 if (emoji.containsMatchIn(row)) "${file.name}:${i + 1}  ${row.trim()}" else null
             }
         }
-        assertTrue("Emoji statt Symbol:\n  " + error.joinToString("\n  "), error.isEmpty())
+        assertTrue("Emoji instead of icon:\n  " + error.joinToString("\n  "), error.isEmpty())
     }
 
     @Test
@@ -45,10 +45,10 @@ class NoEmojiTest {
     @Test
     fun `the pattern recognizes emoji and leaves script characters alone`() {
         listOf("📅", "⚠️", "⏳", "✅", "❌", "👷", "🔍").forEach {
-            assertTrue("nicht erkannt: $it", emoji.containsMatchIn(it))
+            assertTrue("not recognized: $it", emoji.containsMatchIn(it))
         }
         listOf("✓ ×2", "✕", "▾", "—", "€", "Größe").forEach {
-            assertFalse("fälschlich erkannt: $it", emoji.containsMatchIn(it))
+            assertFalse("wrongly recognized: $it", emoji.containsMatchIn(it))
         }
     }
 }

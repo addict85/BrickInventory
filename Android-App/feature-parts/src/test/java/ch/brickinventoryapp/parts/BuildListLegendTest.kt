@@ -63,7 +63,7 @@ class BuildListLegendTest {
         val header = compose.onNodeWithText(text(R.string.detail_minifigs), useUnmergedTree = true)
             .fetchSemanticsNode("Keine Gruppe Minifiguren").positionInRoot.y
         val figure = compose.onNodeWithText("Luke Skywalker", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
-        assertTrue("Luke steht nicht unter dem Kopf „Minifiguren“", figure > header)
+        assertTrue("Hatch does not stand under the header „Minifiguren“", figure > header)
     }
 
     @Test

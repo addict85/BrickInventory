@@ -45,11 +45,11 @@ class PartsOrderTest {
     @Test
     fun `every order sorts like the server`() {
         val all = listOf(white, plate, withoutName, tan)
-        assertEquals("Farbe, dann Name", listOf(withoutName, plate, tan, white),
+        assertEquals("Color, then name", listOf(withoutName, plate, tan, white),
             sorted(all, PartsFilter.Order.COLOR))
-        assertEquals("Name, dann Farbe; ohne Namen zuletzt", listOf(tan, white, plate, withoutName),
+        assertEquals("Name, then color; without a name last", listOf(tan, white, plate, withoutName),
             sorted(all, PartsFilter.Order.NAME))
-        assertEquals("Menge absteigend", listOf(plate, white, tan, withoutName),
+        assertEquals("Quantity descending", listOf(plate, white, tan, withoutName),
             sorted(all, PartsFilter.Order.QUANTITY))
     }
 
@@ -96,7 +96,7 @@ class PartsOrderTest {
 
         vm.setPartsOrder(PartsFilter.Order.QUANTITY)
         assertEquals(listOf("3020/Blue", "3001/White", "3001/Tan"), vm.series())
-        assertEquals("Umsortieren lädt nicht nach", fetches, paths.requestsTo("GET /api/v1/parts?").size)
+        assertEquals("Re-sorting does not reload", fetches, paths.requestsTo("GET /api/v1/parts?").size)
 
         paths.newProcess(io = tick) { _, t ->
             val newValue = vm(wanted, t)

@@ -21,8 +21,8 @@ class PdfCacheTest {
         // THE case from the report: 12 MB lie there finished.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 0L)
         assert(s is PdfStep.Done) {
-            "Eine vollstaendige Anleitung ergab $s. Damit schickt der Viewer " +
-                "wieder einen Bereich hinter dem Dateiende — genau Marcos 404."
+            "A complete instruction gave $s. With that the viewer sends " +
+                "a range behind the end of the file again — exactly the reported 404."
         }
     }
 
@@ -32,13 +32,13 @@ class PdfCacheTest {
         // broke off at 3 MB. If this step fails, every aborted
         // 300 MB instruction loads from the start again.
         val s = pdfStep(finishedSize = 0L, partSize = 3_000_000L)
-        assert(s == PdfStep.Fetch(3_000_000L)) { "Teildatei ergab $s statt Fetch(3000000)" }
+        assert(s == PdfStep.Fetch(3_000_000L)) { "Partial file gave $s instead of Fetch(3000000)" }
     }
 
     @Test
     fun `without anything it loads from the start`() {
         val s = pdfStep(finishedSize = 0L, partSize = 0L)
-        assert(s == PdfStep.Fetch(0L)) { "Leerer Cache ergab $s statt Fetch(0)" }
+        assert(s == PdfStep.Fetch(0L)) { "Empty cache gave $s instead of Fetch(0)" }
     }
 
     @Test
@@ -47,6 +47,6 @@ class PdfCacheTest {
         // the first was already finished. The finished file wins; the partial file
         // is cleaned away by prunePdfCache.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 3_000_000L)
-        assert(s is PdfStep.Done) { "Fertig + Teildatei ergab $s" }
+        assert(s is PdfStep.Done) { "Done + partial file gave $s" }
     }
 }

@@ -67,7 +67,7 @@ class MonitoringStartButtonsTest {
         assertEquals(Message.Resource(R.string.monitoring_started), vm.state.value.buttons[Jobstart.PRICE_RUN])
         vm.launch(Jobstart.PRICE_RUN)
         runCurrent()
-        assertEquals("Ein zweiter Tipp startet nicht noch einmal", 1, paths.requestsTo("trigger-price-job").size)
+        assertEquals("a second tap does not start again", 1, paths.requestsTo("trigger-price-job").size)
         advanceTimeBy(4_001)
         assertEquals(emptyMap<Jobstart, Message>(), vm.state.value.buttons)
     }
@@ -100,7 +100,7 @@ class MonitoringStartButtonsTest {
         val m = channel.message.value as Message.Resource
         assertEquals(R.string.monitoring_delete_error, m.id)
         assertEquals("75192", m.values.first())
-        assertTrue("Ohne Grund: ${m.values}", m.values.last() is Message)
+        assertTrue("without a reason: ${m.values}", m.values.last() is Message)
     }
 
     @Test
@@ -114,9 +114,9 @@ class MonitoringStartButtonsTest {
 
     /** The sentence [id] with exactly one value, and that value is the failure's own message. */
     private fun assertCause(id: Int, m: Message?) {
-        val r = m as? Message.Resource ?: throw AssertionError("Keine Meldung: $m")
+        val r = m as? Message.Resource ?: throw AssertionError("no message: $m")
         assertEquals(id, r.id)
-        assertTrue("Ohne Grund: ${r.values}", r.values.single() is Message)
+        assertTrue("without a reason: ${r.values}", r.values.single() is Message)
     }
 
     @Test
@@ -125,7 +125,7 @@ class MonitoringStartButtonsTest {
         val vm = vm()
         vm.showQueue()
         runCurrent()
-        assert(vm.state.value.queue is Load.Failure) { "Steht: ${vm.state.value.queue}" }
+        assert(vm.state.value.queue is Load.Failure) { "shows: ${vm.state.value.queue}" }
     }
 
     @Test

@@ -36,7 +36,7 @@ class NetworkSecurityTest {
 
     private fun read(variant: String): Element {
         val f = File(Sources.project, "app/src/$variant/res/xml/network_security_config.xml")
-        assertTrue("$f fehlt", f.isFile)
+        assertTrue("$f missing", f.isFile)
         return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(f).documentElement
     }
 
@@ -52,8 +52,8 @@ class NetworkSecurityTest {
         val basis = cfg.children("base-config").single()
         assertEquals("false", basis.getAttribute("cleartextTrafficPermitted"))
         val allowed = (cfg.children("domain-config") + basis).filter { it.getAttribute("cleartextTrafficPermitted") != "false" }
-        assertTrue("Klartext erlaubt in: " + allowed.map { it.tagName }, allowed.isEmpty())
-        assertTrue("Unterdrückte Lint-Warnung", !cfg.hasAttribute("xmlns:tools"))
+        assertTrue("Plaintext allowed in: " + allowed.map { it.tagName }, allowed.isEmpty())
+        assertTrue("Suppressed lint warning", !cfg.hasAttribute("xmlns:tools"))
     }
 
     @Test
@@ -63,7 +63,7 @@ class NetworkSecurityTest {
         val plaintext = cfg.children("domain-config").filter { it.getAttribute("cleartextTrafficPermitted") == "true" }
         val hosts = plaintext.flatMap { it.children("domain") }
         assertEquals(NetworkPolicy.DEVELOPMENT_HOSTS, hosts.map { it.textContent.trim() }.toSet())
-        assertTrue("Ohne Unterdomänen", hosts.all { it.getAttribute("includeSubdomains") == "false" })
+        assertTrue("Without subdomains", hosts.all { it.getAttribute("includeSubdomains") == "false" })
     }
 
     @Test
@@ -71,7 +71,7 @@ class NetworkSecurityTest {
         val cfg = read("main")
         val areas = cfg.children("domain-config") + cfg.children("base-config")
         val without = areas.filter { b -> b.children("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
-        assertTrue("Ohne Certificate Transparency: " + without.map { it.tagName }, areas.isNotEmpty() && without.isEmpty())
+        assertTrue("Without Certificate Transparency: " + without.map { it.tagName }, areas.isNotEmpty() && without.isEmpty())
     }
 
     /** Like release, except for the development hosts in cleartext; otherwise the debug build would check another chain. */
@@ -81,7 +81,7 @@ class NetworkSecurityTest {
         val areas = (cfg.children("domain-config") + cfg.children("base-config"))
             .filter { it.getAttribute("cleartextTrafficPermitted") != "true" }
         val without = areas.filter { b -> b.children("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
-        assertTrue("Ohne Certificate Transparency: " + without.map { it.tagName }, areas.size == 2 && without.isEmpty())
+        assertTrue("Without Certificate Transparency: " + without.map { it.tagName }, areas.size == 2 && without.isEmpty())
     }
 
     @Test
@@ -94,7 +94,7 @@ class NetworkSecurityTest {
 
     private fun rules(name: String): Element {
         val f = File(Sources.project, "app/src/main/res/xml/$name")
-        assertTrue("$f fehlt", f.isFile)
+        assertTrue("$f missing", f.isFile)
         return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(f).documentElement
     }
 
@@ -112,7 +112,7 @@ class NetworkSecurityTest {
             "device-transfer" to r.all("device-transfer").single().excepted(),
             "backup_rules.xml" to rules("backup_rules.xml").excepted(),
         )
-        for ((where, list) in lists) assertTrue("$where: es fehlt ${needed - list}", list.containsAll(needed))
-        assertEquals("Die drei Listen weichen voneinander ab", 1, lists.values.toSet().size)
+        for ((where, list) in lists) assertTrue("$where: missing ${needed - list}", list.containsAll(needed))
+        assertEquals("The three lists differ from each other", 1, lists.values.toSet().size)
     }
 }

@@ -23,8 +23,8 @@ class AbortTest {
 
     @Test
     fun `an ordinary error becomes the result`() {
-        val r = catchUnlessCancelled { error("kaputt") }
-        assertEquals("kaputt", r.exceptionOrNull()?.message)
+        val r = catchUnlessCancelled { error("broken") }
+        assertEquals("broken", r.exceptionOrNull()?.message)
         assertEquals(3, catchUnlessCancelled { 3 }.getOrNull())
     }
 
@@ -36,7 +36,7 @@ class AbortTest {
         } catch (_: CancellationException) {
             through = true
         }
-        assertTrue("CancellationException wurde als Fehler verschluckt", through)
+        assertTrue("CancellationException was swallowed as an error", through)
     }
 
     @Test
@@ -47,7 +47,7 @@ class AbortTest {
         } catch (_: AssertionError) {
             through = true
         }
-        assertTrue("Ein Error darf nicht im Ergebnis verschwinden", through)
+        assertTrue("An Error must not vanish into the result", through)
     }
 
     @Test

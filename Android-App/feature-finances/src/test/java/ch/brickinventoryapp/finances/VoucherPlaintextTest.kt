@@ -101,7 +101,7 @@ class VoucherPlaintextTest {
     fun `revealing the PIN asks for password, then code, and the plaintext lives only on the page`() {
         vm.switchVoucherPin(1)
         assertEquals(VoucherStep.PIN_SHOW, vm.state.value.confirmation?.step)
-        assertEquals("Vor dem Passwort keine Anfrage", 1, server.requestCount)
+        assertEquals("no request before the password", 1, server.requestCount)
 
         server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.confirm("geheim", null)
@@ -157,13 +157,13 @@ class VoucherPlaintextTest {
         vm.confirm("geheim", null)
         pollUntil("Absage") { vm.state.value.confirmation?.let { it.operation is Operation.Failed } == true }
         assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.confirmation?.operation?.errorMessage.text)
-        assertEquals("Der Gutschein steht noch da", 1, vm.state.value.vouchers.size)
+        assertEquals("the voucher is still shown", 1, vm.state.value.vouchers.size)
     }
 
     @Test
     fun `PDF and export only with a ticket`() {
         vm.openVoucherPdf(1)
-        assertNull("Ohne Passwort kein Ziel", vm.state.value.pdfTarget)
+        assertNull("without a password no destination", vm.state.value.pdfTarget)
         server.enqueue(response("""{"success":true,"ticket":"t/1+","gueltig_sek":60}"""))
         vm.confirm("geheim", null)
         pollUntil("Ticket") { vm.state.value.pdfTarget != null }
@@ -206,10 +206,10 @@ class VoucherPlaintextTest {
     fun `the mask is a whole`() {
         assertEquals("5", inputViaMask("…3333", "…33335", true))
         assertEquals("5", inputViaMask("…3333", "5…3333", true))
-        assertEquals("Eine Ziffer weg heisst: alles weg", "", inputViaMask("…3333", "…333", true))
+        assertEquals("one digit gone means: everything gone", "", inputViaMask("…3333", "…333", true))
         assertEquals("", inputViaMask("•••", "••", true))
-        assertEquals("Eingefügt ersetzt", "6000111122223333", inputViaMask("…3333", "6000111122223333", true))
-        assertEquals("Ohne Maske unverändert", "123", inputViaMask("12", "123", false))
+        assertEquals("pasted replaces", "6000111122223333", inputViaMask("…3333", "6000111122223333", true))
+        assertEquals("unchanged without a mask", "123", inputViaMask("12", "123", false))
         assertFalse(inputViaMask("•••", "•••7", true).contains('•'))
     }
 }

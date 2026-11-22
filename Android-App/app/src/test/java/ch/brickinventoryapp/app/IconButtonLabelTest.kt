@@ -27,7 +27,7 @@ class IconButtonLabelTest {
             .also {
                 // Lower bound: an empty file walk lets every
                 // collective check below pass silently.
-                check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${'$'}{it.size}) — Pfad veraltet?" }
+                check(it.size >= 20) { "Too few Kotlin files found (${'$'}{it.size}) — path outdated?" }
             }
 
     @Test
@@ -56,7 +56,7 @@ class IconButtonLabelTest {
         }
 
         assert(withoutLabel.isEmpty()) {
-            "IconButton ohne Beschriftung — TalkBack sagt dort nur „Schaltfläche\": $withoutLabel"
+            "IconButton without a label — TalkBack only says “button” there: $withoutLabel"
         }
     }
 
@@ -81,7 +81,7 @@ class IconButtonLabelTest {
                 if (!before.contains("WithTooltip(")) without += "${file.name}:${i + 1}"
             }
         }
-        assert(without.isEmpty()) { "Symbolknopf ohne Tooltip (WithTooltip): $without" }
+        assert(without.isEmpty()) { "icon button without a tooltip (WithTooltip): $without" }
     }
 
     @Test
@@ -95,8 +95,8 @@ class IconButtonLabelTest {
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",
         )
         for (name in names) {
-            assert(en.contains("\"$name\"")) { "values/strings.xml: $name fehlt" }
-            assert(de.contains("\"$name\"")) { "values-de/strings.xml: $name fehlt" }
+            assert(en.contains("\"$name\"")) { "values/strings.xml: $name missing" }
+            assert(de.contains("\"$name\"")) { "values-de/strings.xml: $name missing" }
         }
     }
 
@@ -117,6 +117,6 @@ class IconButtonLabelTest {
                 if (!m.value.contains("role =")) withoutRole += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
             }
         }
-        assert(withoutRole.isEmpty()) { "clickable ohne role: $withoutRole" }
+        assert(withoutRole.isEmpty()) { "clickable without role: $withoutRole" }
     }
 }

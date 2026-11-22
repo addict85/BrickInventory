@@ -95,12 +95,12 @@ class CertificateDialogTest {
     @Test
     fun `the transcript gets colons and a character counter while typing`() {
         show(CertificateUnresolved.Kind.UNKNOWN_CA)
-        assertEquals("Der Zähler steht vor dem Tippen da", 1, shown("0/24"))
+        assertEquals("the counter is shown before typing", 1, shown("0/24"))
         field().performTextInput("3fa2b")
         assertEquals("3F:A2:B", typed())
         assertEquals(1, shown("5/24"))
         field().performTextInput("c")
-        assertEquals("Weitergetippt wird am Ende, nicht vor dem letzten Zeichen", "3F:A2:BC", typed())
+        assertEquals("typing continues at the end, not before the last character", "3F:A2:BC", typed())
         assertEquals(1, shown("6/24"))
     }
 
@@ -111,7 +111,7 @@ class CertificateDialogTest {
         val button = compose.onNodeWithText(ctx.getString(R.string.cert_trust))
         field().performTextInput(withoutPoints.takeLast(16))
         button.performClick()
-        assertEquals("16 Zeichen sind zu kurz, nicht falsch", 1,
+        assertEquals("16 characters are too short, not wrong", 1,
             shown(ctx.getString(R.string.cert_input_too_short, 16, 24)))
         assertEquals(0, shown(ctx.getString(R.string.cert_input_wrong)))
 
@@ -123,7 +123,7 @@ class CertificateDialogTest {
         field().performTextClearance()
         field().performTextInput(withoutPoints.takeLast(24))
         button.performClick()
-        assertEquals("Angenommen: kein Fehler mehr", 0, shown(ctx.getString(R.string.cert_input_wrong)))
+        assertEquals("accepted: no error any more", 0, shown(ctx.getString(R.string.cert_input_wrong)))
         assertEquals(0, shown(ctx.getString(R.string.cert_input_too_short, 24, 24)))
     }
 
@@ -141,8 +141,8 @@ class CertificateDialogTest {
     @Test
     fun `whoever types it sees no part that is to be typed`() {
         show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-        assertEquals("Die letzten 24 Zeichen stehen da", 0, shown(hex.takeLast(35)))
-        assertEquals("Der Anfang fehlt", 1, shown(hex.take(11)))
+        assertEquals("the last 24 characters are shown", 0, shown(hex.takeLast(35)))
+        assertEquals("the beginning is missing", 1, shown(hex.take(11)))
     }
 
     @Test
@@ -164,10 +164,10 @@ class CertificateDialogTest {
         val aloud = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         show(CertificateUnresolved.Kind.CODE_MISMATCH, expected = aloud)
         compose.onNodeWithText(ctx.getString(R.string.cert_title_code_mismatch)).assertExists()
-        assertEquals("Der Wert des Servers steht ganz da", 1, shown(hex))
-        assertEquals("Der Wert des Codes steht ganz da", 1, shown(fingerprintReadable(aloud)))
-        assertEquals("Kein Knopf zum Vertrauen", 0, shown(ctx.getString(R.string.cert_trust)))
-        assertEquals("Kein Feld zum Abtippen", 0,
+        assertEquals("the server's value is shown in full", 1, shown(hex))
+        assertEquals("the code's value is shown in full", 1, shown(fingerprintReadable(aloud)))
+        assertEquals("no button to trust", 0, shown(ctx.getString(R.string.cert_trust)))
+        assertEquals("no field to type it in", 0,
             compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
     }
 
@@ -176,8 +176,8 @@ class CertificateDialogTest {
         show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
         val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
         val texts = field.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
-        assertTrue("Kein kurzes Etikett: $texts", ctx.getString(R.string.cert_input_label) in texts)
-        assertTrue("Die Anleitung fehlt: $texts", ctx.getString(R.string.cert_changed_input) in texts)
+        assertTrue("no short label: $texts", ctx.getString(R.string.cert_input_label) in texts)
+        assertTrue("the instructions are missing: $texts", ctx.getString(R.string.cert_changed_input) in texts)
     }
 
     @Test
@@ -195,9 +195,9 @@ class CertificateDialogTest {
         var accepted: String? = "nie"
         show(CertificateUnresolved.Kind.KEY_NEW, expected = previous, ct = true) { accepted = it; true }
         compose.onNodeWithText(ctx.getString(R.string.cert_title_key_new)).assertExists()
-        assertEquals("Der neue Schlüssel steht ganz da", 1, shown(hex))
-        assertEquals("Der bisherige auch", 1, shown(fingerprintReadable(previous)))
-        assertEquals("Kein Feld zum Abtippen", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        assertEquals("the new key is shown in full", 1, shown(hex))
+        assertEquals("the previous one too", 1, shown(fingerprintReadable(previous)))
+        assertEquals("no field to type it in", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
         compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsEnabled().performClick()
         assertEquals(null, accepted)
     }
@@ -206,7 +206,7 @@ class CertificateDialogTest {
     fun `without CT requirement a new server key is typed, only the beginning is shown`() {
         var accepted: String? = null
         show(CertificateUnresolved.Kind.KEY_NEW, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") { accepted = it; true }
-        assertEquals("Das Abzutippende steht nicht da", 0, shown(hex.takeLast(35)))
+        assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
         compose.onNodeWithText(ctx.getString(R.string.cert_key_new_input)).assertExists()
         compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
         field().performTextInput(hex.replace(":", "").takeLast(24))
@@ -220,7 +220,7 @@ class CertificateDialogTest {
         show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true) { accepted = it; true }
         compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_type)).performClick()
         compose.waitForIdle()
-        assertEquals("Das Abzutippende steht nicht mehr da", 0, shown(hex.takeLast(35)))
+        assertEquals("what is to be typed in is no longer shown", 0, shown(hex.takeLast(35)))
         compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
         field().performTextInput(hex.replace(":", "").takeLast(24))
         compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled().performClick()
@@ -233,8 +233,8 @@ class CertificateDialogTest {
         var accepted: String? = null
         show(CertificateUnresolved.Kind.FIRST_CONTACT) { accepted = it; true }
         compose.onNodeWithText(ctx.getString(R.string.cert_text_first_contact_type, "nas")).assertExists()
-        assertEquals("Das Abzutippende steht nicht da", 0, shown(hex.takeLast(35)))
-        assertEquals("Abtippen ist keine Wahl", 0, shown(ctx.getString(R.string.cert_first_contact_type)))
+        assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
+        assertEquals("typing it in is not a choice", 0, shown(ctx.getString(R.string.cert_first_contact_type)))
         compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_input)).assertExists()
         compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
         field().performTextInput(hex.replace(":", "").takeLast(24))

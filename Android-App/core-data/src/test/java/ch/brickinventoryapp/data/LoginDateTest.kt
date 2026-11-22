@@ -75,9 +75,9 @@ class LoginDateTest {
         assertFalse(runBlocking { p.loginExpiresSoon(now) })
         assertTrue(runBlocking { p.loginExpiresSoon(now + 85 * day) })
         assertTrue(runBlocking { p.loginExpired(now + 91 * day) })
-        assertNull("Kein Klartext-Datum mehr", disk()[TokenStore.SIGNED_IN_AT])
+        assertNull("No plaintext date anymore", disk()[TokenStore.SIGNED_IN_AT])
         val sealed = disk()[TokenStore.SIGNED_IN_SECRET]!!
-        assertFalse("Das Datum steht nicht lesbar da", (now / 100_000).toString() in sealed)
+        assertFalse("The date is not readable", (now / 100_000).toString() in sealed)
     }
 
     @Test
@@ -104,7 +104,7 @@ class LoginDateTest {
         assertTrue(runBlocking { p.replaceSwappedToken(before, "tok-neu", before.origin) })
         assertEquals("tok-neu", runBlocking { p.tokenNow() })
         assertFalse(runBlocking { p.loginExpired(now + 89 * day) })
-        assertTrue("Der Tausch verlängert nichts", runBlocking { p.loginExpired(now + 91 * day) })
+        assertTrue("The switch extends nothing", runBlocking { p.loginExpired(now + 91 * day) })
     }
 
     @Test
@@ -116,10 +116,10 @@ class LoginDateTest {
         }
         val legacyNow = minOf(now, TokenStore.LEGACY_DATE_UNTIL - day)
         assertFalse(runBlocking { p.loginExpired(legacyNow) })
-        assertTrue("Ein Datum in der Zukunft verlängert nichts", runBlocking { p.loginExpired(legacyNow + 91 * day) })
+        assertTrue("A date in the future extends nothing", runBlocking { p.loginExpired(legacyNow + 91 * day) })
         assertNull(disk()[TokenStore.SIGNED_IN_AT])
         runBlocking { store.edit { it.remove(TokenStore.SIGNED_IN_SECRET); it[TokenStore.SIGNED_IN_AT] = now } }
-        assertTrue("Nach der Übergangszeit gilt nur das Siegel",
+        assertTrue("After the transition period only the seal counts",
             runBlocking { p.loginExpired(TokenStore.LEGACY_DATE_UNTIL + 1) })
     }
 
@@ -128,8 +128,8 @@ class LoginDateTest {
         val p = signedIn()
         wipe.wipe()
         runBlocking { withTimeout(5_000) { while (p.authTokenState.value != TokenStore.TOKEN_WIPED) delay(10) } }
-        assertTrue("Angemeldet bleibt angemeldet", p.authTokenState.value!!.isNotBlank())
-        assertEquals("Wer suspendiert fragt, liest von der Platte", "tok-a", runBlocking { p.tokenNow() })
+        assertTrue("Signed in stays signed in", p.authTokenState.value!!.isNotBlank())
+        assertEquals("Whoever asks suspended reads from disk", "tok-a", runBlocking { p.tokenNow() })
         wipe.restore()
         runBlocking { withTimeout(5_000) { while (p.authTokenState.value != "tok-a") delay(10) } }
     }

@@ -36,7 +36,7 @@ class DesignStoreTest {
     @Test
     fun `the remembered design is there immediately on the next start`() = runBlocking {
         val now = store()
-        assertEquals("Ohne Eintrag gilt der Standard", Design.CLASSIC, now.rememberedDesign())
+        assertEquals("Without an entry the default applies", Design.CLASSIC, now.rememberedDesign())
         now.saveAppTheme(Design.BRICK)
         assertEquals(Design.BRICK, now.appTheme.first())
         // A new start whose DataStore has not delivered anything yet: only the mirror counts.

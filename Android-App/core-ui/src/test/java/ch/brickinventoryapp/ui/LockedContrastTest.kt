@@ -43,7 +43,7 @@ class LockedContrastTest {
                 if (k(g.font, color) < TEXT) error += "$name Schrift/$reason %.2f".format(k(g.font, color))
             }
         }
-        assertTrue("Gesperrte Knöpfe zu blass: $error", error.isEmpty())
+        assertTrue("disabled buttons too pale: $error", error.isEmpty())
     }
 
     @Test
@@ -63,7 +63,7 @@ class LockedContrastTest {
                 if (k(surface, behind) < GRAPHIC) error += "$name Dialog/$reason %.2f".format(k(surface, behind))
             }
         }
-        assertTrue("Dialoge zu blass: $error", error.isEmpty())
+        assertTrue("dialogs too pale: $error", error.isEmpty())
     }
 
     private companion object {

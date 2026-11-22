@@ -37,8 +37,8 @@ class RejectedTest {
     @Test
     fun `the observed case - a GET without a token to our server`() {
         assert(followUpMay(401, ourServer = true, hadAuthHeader = false, method = "GET")) {
-            "Genau dieser Fall ist Marcos Meldung: Die Galerie lädt beim Anmelden " +
-                "per GET, und die Anfrage ging im Anmeldefenster ohne Token hinaus."
+            "Exactly this case is Marco's report: the gallery loads on sign-in " +
+                "via GET, and the request went out without a token in the sign-in window."
         }
     }
 
@@ -48,8 +48,8 @@ class RejectedTest {
         // it's invalid. This condition also rules out any loop
         // at the same time: the second attempt CARRIES the header.
         assert(!followUpMay(401, ourServer = true, hadAuthHeader = true, method = "GET")) {
-            "Ein 401 trotz mitgeschicktem Token wird wiederholt — das ist entweder " +
-                "sinnlos oder eine Endlosschleife."
+            "A 401 despite a token sent along is repeated — that is either " +
+                "pointless or an endless loop."
         }
     }
 
@@ -59,13 +59,13 @@ class RejectedTest {
         // second attempt would count the same try twice — against the server's
         // throttling and against the account lockout.
         assert(!followUpMay(401, ourServer = true, hadAuthHeader = false, method = "POST")) {
-            "Ein fehlgeschlagener Anmeldeversuch geht ein zweites Mal hinaus und " +
-                "zählt doppelt gegen die Kontosperre."
+            "A failed sign-in attempt goes out a second time and " +
+                "counts twice against the account lock."
         }
         for (m in listOf("PUT", "DELETE", "PATCH")) {
             assert(!followUpMay(401, ourServer = true, hadAuthHeader = false, method = m)) {
-                "$m wird blind wiederholt — schreibende Anfragen sind keine " +
-                    "Wettlaufsituation, sondern eine eigene Fehlerquelle."
+                "$m is repeated blindly — writing requests are not a " +
+                    "race but an error source of their own."
             }
         }
     }
@@ -73,7 +73,7 @@ class RejectedTest {
     @Test
     fun `a foreign host is none of our business`() {
         assert(!followUpMay(401, ourServer = false, hadAuthHeader = false, method = "GET")) {
-            "Ein 401 von einem Bild-CDN löst einen zweiten Abruf MIT unserem Token aus."
+            "a 401 from an image CDN triggers a second fetch WITH our token."
         }
     }
 
@@ -81,7 +81,7 @@ class RejectedTest {
     fun `everything except 401 stays untouched`() {
         for (code in listOf(200, 204, 304, 400, 403, 404, 500, 503)) {
             assert(!followUpMay(code, ourServer = true, hadAuthHeader = false, method = "GET")) {
-                "Status $code wird als Anmeldeproblem behandelt."
+                "status $code is treated as a sign-in problem."
             }
         }
     }
@@ -95,9 +95,9 @@ class RejectedTest {
         // there is nothing to report at all. In both cases
         // the fetch has nothing to tell the user.
         assert(reportsTheSessionLayer(unauthorized = true, loggedIn = true)) {
-            "Der Abruf redet wieder ueber einen 401, den die Sitzungsschicht " +
-                "schon behandelt hat — entweder doppelt (echter Ablauf) oder " +
-                "falsch (Wettlauf beim Anmelden, Marcos Befund)."
+            "The fetch talks about a 401 again that the session layer " +
+                "has already handled — either twice (real expiry) or " +
+                "wrongly (race on sign-in, Marco's finding)."
         }
     }
 
@@ -107,8 +107,8 @@ class RejectedTest {
         // the same message. But whoever isn't signed in has no session that
         // could expire — „Sitzung abgelaufen“ would simply be a lie there.
         assert(!reportsTheSessionLayer(unauthorized = true, loggedIn = false)) {
-            "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
-                "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
+            "A failed sign-in attempt is reported as an expired session " +
+                "— the user then looks for a problem that does not exist."
         }
     }
 
@@ -116,7 +116,7 @@ class RejectedTest {
     fun `without 401 nothing changes`() {
         for (loggedIn in listOf(true, false)) {
             assert(!reportsTheSessionLayer(unauthorized = false, loggedIn = loggedIn)) {
-                "Ein Fehler ohne 401 wird als abgelaufene Sitzung gemeldet."
+                "an error without 401 is reported as an expired session."
             }
         }
     }
@@ -134,13 +134,13 @@ class RejectedTest {
         }
         val rejected = Outcome.Failure.Rejected()
         assert(texts(withToken = true).messageForSnackbar(rejected) == null) {
-            "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
+            "a 401 with the app signed in appears as a sentence in the snackbar again."
         }
         assert(texts(withToken = false).messageForSnackbar(rejected) == "Satz") {
-            "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
+            "without a token a 401 is a wrong password and must be shown."
         }
         assert(texts(withToken = true).messageForSnackbar(Outcome.Failure.Network()) == "Satz") {
-            "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
+            "a network error with the app signed in disappears from the snackbar."
         }
     }
 
@@ -162,10 +162,10 @@ class RejectedTest {
                 hits += "$name: ${row.trim()}"
             }
         }
-        assert(writer >= 50) { "Nur $writer Schreibstellen der Snackbar gefunden — Muster veraltet?" }
+        assert(writer >= 50) { "Only $writer places writing to the snackbar found — pattern outdated?" }
         assert(hits.isEmpty()) {
-            "Diese Stellen schreiben message() direkt in die Snackbar und umgehen " +
-                "damit die Regel: $hits"
+            "These places write message() directly into the snackbar and thereby " +
+                "bypass the rule: $hits"
         }
     }
 
@@ -193,10 +193,10 @@ class RejectedTest {
                 hits += name
         }
         assert(hits.isEmpty()) {
-            "Diese Dateien lesen den nachlaufenden DataStore-Fluss statt " +
-                "tokenNow()/serverUrlNow(): $hits — beim Anmelden geht dort " +
-                "eine Anfrage ohne Token hinaus, und der Server antwortet mit " +
-                "„Ungültiger oder abgelaufener Token\"."
+            "These files read the lagging DataStore flow instead of " +
+                "tokenNow()/serverUrlNow(): $hits — on sign-in " +
+                "a request goes out there without a token, and the server answers with " +
+                "“invalid or expired token”."
         }
     }
 }

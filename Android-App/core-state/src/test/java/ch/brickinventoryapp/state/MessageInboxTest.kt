@@ -31,7 +31,7 @@ class MessageInboxTest {
         // Path, query and control characters would become part of the navigation route.
         for (raw in listOf(null, "", " ", "75192-1/../settings", "75192-1?x=1", "a b", "75192-1\n",
                 "x".repeat(21), "%2e%2e", "set_detail/1", "ä-1"))
-            assertNull("„$raw“ gilt als Setnummer", setNumberFromMessage(raw))
+            assertNull("“$raw” counts as a set number", setNumberFromMessage(raw))
         val e = MessageInbox()
         assertFalse(e.put("../admin"))
         assertNull(e.pickUp())
@@ -42,7 +42,7 @@ class MessageInboxTest {
         val e = MessageInbox()
         assertTrue(e.put("75192-1"))
         assertEquals("75192-1", e.pickUp())
-        assertNull("Ein zweiter Start öffnet das Set nicht erneut", e.pickUp())
+        assertNull("a second start does not open the set again", e.pickUp())
     }
 
     @Test

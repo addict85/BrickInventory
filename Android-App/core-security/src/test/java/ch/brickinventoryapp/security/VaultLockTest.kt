@@ -60,7 +60,7 @@ class VaultLockTest {
         assertEquals(2, n)
         n = 0
         assertEquals(VaultFinding.Gone, openWithRetry { n++; throw AEADBadTagException() })
-        assertEquals("Kein zweiter Versuch bei einem falschen Schlüssel", 1, n)
+        assertEquals("no second attempt with a wrong key", 1, n)
         assertEquals(VaultFinding.Gone, openWithRetry { null })
     }
 
@@ -98,7 +98,7 @@ class VaultLockTest {
                 if (read++ < night) VaultFinding.LockedState else VaultFinding.Readable("token")
         }
         val (reported, pauses) = read(vault, lock = { read < night })
-        assertEquals("Einmal leer, dann das Token", listOf("", "token"), reported)
+        assertEquals("empty once, then the token", listOf("", "token"), reported)
         assertEquals(night, pauses.size)
     }
 
@@ -130,16 +130,16 @@ class VaultLockTest {
     @Test
     fun `a locked keystore at start is waited for, without signing out`() {
         val (reported, pauses) = read(Sequence(VaultFinding.LockedState, VaultFinding.LockedState, VaultFinding.Readable("token")))
-        assertEquals("Kein leeres Token vor dem echten", listOf("token"), reported)
+        assertEquals("no empty token before the real one", listOf("token"), reported)
         assertEquals(VAULT_ATTEMPT_MS.take(2), pauses)
-        assertTrue("Der Anlauf bleibt unter der Wartezeit des Wächters (5 s)", VAULT_ATTEMPT_MS.sum() < 5_000)
+        assertTrue("the start-up stays below the watchdog's waiting time (5 s)", VAULT_ATTEMPT_MS.sum() < 5_000)
     }
 
     @Test
     fun `a keystore locked for longer reports the token afterwards`() {
         val lock = Array<VaultFinding>(VAULT_ATTEMPT_MS.size + 3) { VaultFinding.LockedState }
         val (reported, pauses) = read(Sequence(*lock, VaultFinding.Readable("token")))
-        assertEquals("Erst die Anmeldemaske, dann wieder angemeldet", listOf("", "token"), reported)
+        assertEquals("first the sign-in mask, then signed in again", listOf("", "token"), reported)
         assertEquals(VAULT_ATTEMPT_MS + List(3) { VAULT_FOLLOW_UP_MS }, pauses)
     }
 
@@ -147,7 +147,7 @@ class VaultLockTest {
     fun `a permanently locked keystore gives up eventually, a missing key immediately`() {
         val (reported, pauses) = read(Sequence(VaultFinding.LockedState))
         assertEquals(listOf(""), reported)
-        assertTrue("Höchstens zehn Minuten: ${pauses.sum()}", pauses.sum() <= 10 * 60_000L + VAULT_ATTEMPT_MS.sum())
+        assertTrue("at most ten minutes: ${pauses.sum()}", pauses.sum() <= 10 * 60_000L + VAULT_ATTEMPT_MS.sum())
         assertEquals(listOf("alt") to emptyList<Long>(), read(Sequence(VaultFinding.Gone), old = "alt"))
     }
 }

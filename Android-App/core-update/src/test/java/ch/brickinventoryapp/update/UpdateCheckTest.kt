@@ -47,13 +47,13 @@ class UpdateCheckTest {
     fun `the same key matches, a foreign one does not`() {
         assertTrue(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k1"), listOf("k1"))))
         assertFalse(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("x"), listOf("x"))))
-        assertFalse("Unbekannt ist nie passend", signatureFollows(Signature(emptySet(), emptyList()), Signature(emptySet(), emptyList())))
+        assertFalse("unknown never matches", signatureFollows(Signature(emptySet(), emptyList()), Signature(emptySet(), emptyList())))
     }
 
     @Test
     fun `a rotated key with the running one in the lineage matches`() {
         assertTrue(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k2"), listOf("k1", "k2"))))
-        assertFalse("Fremde Ahnenreihe", signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k2"), listOf("x", "k2"))))
+        assertFalse("foreign lineage", signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k2"), listOf("x", "k2"))))
     }
 
     @Test

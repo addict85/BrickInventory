@@ -23,10 +23,10 @@ class PdfSelectionTest {
             "https://srv/Bauanleitung Teil 2.pdf",
         )
         val key = addresses.map { PdfSelection.put(it, "100 % C++ / Grüße") }
-        assertEquals("je PDF ein eigener Schlüssel", addresses.size, key.toSet().size)
+        assertEquals("a key of its own per PDF", addresses.size, key.toSet().size)
         for ((s, url) in key.zip(addresses)) {
             assertEquals(PdfSelection.Pdf(url, "100 % C++ / Grüße"), PdfSelection.fetch(s))
-            assertNotEquals("die Adresse steht nicht im Schlüssel", url, s)
+            assertNotEquals("the address does not stand in the key", url, s)
         }
         assertNull(PdfSelection.fetch("unbekannt"))
     }
@@ -35,6 +35,6 @@ class PdfSelectionTest {
     fun `only the last eight stay, older ones drop out`() {
         val first = PdfSelection.put("https://srv/alt.pdf", "alt")
         repeat(8) { PdfSelection.put("https://srv/$it.pdf", "neu $it") }
-        assertNull("Die Auswahl wächst nicht ohne Ende", PdfSelection.fetch(first))
+        assertNull("the selection does not grow without end", PdfSelection.fetch(first))
     }
 }

@@ -41,7 +41,7 @@ class InstallSessionTest {
         install(app, apk)
         val session = app.packageManager.packageInstaller.allSessions.single()
         assertEquals(app.packageName, session.appPackageName)
-        assertNull("Kein Intent an andere Apps", shadowOf(app).nextStartedActivity)
+        assertNull("no intent to other apps", shadowOf(app).nextStartedActivity)
     }
 
     /** A package with an Activity for the confirmation dialog, as a system app or not. */
@@ -71,7 +71,7 @@ class InstallSessionTest {
         reportConfirmation(Intent(INSTALLATION_CONFIRM).setPackage(system.packageName))
         val started = shadowOf(app).nextStartedActivity
         assertEquals(INSTALLATION_CONFIRM, started?.action)
-        assertEquals("Gestartet wird genau die geprüfte Komponente", system, started!!.component)
+        assertEquals("exactly the checked component is started", system, started!!.component)
         assertTrue((started.flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0)
     }
 
@@ -81,9 +81,9 @@ class InstallSessionTest {
         val foreign = installer("com.example.falscherinstaller", system = false)
         InstallMessage.error.value = null
         reportConfirmation(Intent(INSTALLATION_CONFIRM).setPackage(foreign.packageName))
-        assertNull("Eine App, die sich nur als Installer ausgibt, wird nicht gestartet",
+        assertNull("an app that only pretends to be an installer is not started",
             shadowOf(app).nextStartedActivity)
-        assertNotNull("Der Nutzer erfährt, warum nichts kommt", InstallMessage.error.value)
+        assertNotNull("the user learns why nothing comes", InstallMessage.error.value)
     }
 
     @Test
@@ -91,7 +91,7 @@ class InstallSessionTest {
         val system = installer("com.android.packageinstaller", system = true)
         reportConfirmation(Intent(INSTALLATION_CONFIRM).setPackage(system.packageName)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-        assertNull("Ein Uri-Recht würde mit unserer Identität vergeben", shadowOf(app).nextStartedActivity)
+        assertNull("a Uri permission would be granted with our identity", shadowOf(app).nextStartedActivity)
     }
 
     @Test

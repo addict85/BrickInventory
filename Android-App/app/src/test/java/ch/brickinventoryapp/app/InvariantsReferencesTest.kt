@@ -48,23 +48,23 @@ class InvariantsReferencesTest {
         val tests = files(Sources.tests).map { it.substringAfterLast('/') }.toSet()
         val named = Regex("`([^`\\s]+\\.kt)`").findAll(docs).map { it.groupValues[1] }.toSet()
         val classes = Regex("""\b[A-Z][A-Za-z0-9]*Test\b""").findAll(docs).map { it.value }.toSet()
-        assertTrue("Nur ${named.size} Dateien, ${classes.size} Testklassen gefunden — greift die Suche noch?",
+        assertTrue("Only ${named.size} files, ${classes.size} test classes found — does the search still apply?",
             named.size >= 30 && classes.size >= 20)
         val missing = named.filter { d ->
             val m = pattern(d)
             sources.none { m.matches(if ('/' in d) it else it.substringAfterLast('/')) }
         } + classes.filter { "$it.kt" !in tests }.map { "$it (Testklasse)" }
-        assertTrue("jede in INVARIANTEN.md genannte Datei und Testklasse muss es geben; fehlt:\n  " +
+        assertTrue("every file and test class named in INVARIANTEN.md must exist; missing:\n  " +
             missing.joinToString("\n  "), missing.isEmpty())
 
         // Statements the code once refuted, and the structure behind „Kein FileProvider“.
         val outdated = listOf("FileProvider nur", "Klartext für die Ziel-App", "Unsignierte `version.json`")
-        assertTrue("überholt in INVARIANTEN.md: ${outdated.filter { it in docs }}", outdated.none { it in docs })
+        assertTrue("outdated in INVARIANTEN.md: ${outdated.filter { it in docs }}", outdated.none { it in docs })
         val manifest = Sources.manifest.readText()
-        assertTrue("INVARIANTEN.md sagt „Kein FileProvider“", "**Kein FileProvider.**" in docs)
-        assertFalse("Das Manifest trägt einen FileProvider", "FileProvider" in manifest)
+        assertTrue("INVARIANTEN.md says “no FileProvider”", "**Kein FileProvider.**" in docs)
+        assertFalse("the manifest carries a FileProvider", "FileProvider" in manifest)
         val partList = Regex("""<provider[^>]*PartListsProvider[^>]*>""").find(manifest)?.value
-        assertTrue("PartListsProvider nicht exportiert: $partList", partList?.contains("""android:exported="false"""") == true)
+        assertTrue("PartListsProvider not exported: $partList", partList?.contains("""android:exported="false"""") == true)
     }
 
     /** Signed like the job `description`: Base64 of the data and an ECDSA signature over it. */
@@ -81,12 +81,12 @@ class InvariantsReferencesTest {
         fun signed(with: KeyPair) = Signature.getInstance("SHA256withECDSA")
             .run { initSign(with.private); update(data.toByteArray()); sign() }
         val key = listOf(own.public.encoded)
-        assertNotNull("Echt signiert gilt sie", checkedDescription(shell(data, signed(own)), key))
-        assertNull("Ohne Signatur", checkedDescription(shell(data, null), key))
-        assertNull("Leere Signatur", checkedDescription(shell(data, ByteArray(0)), key))
-        assertNull("Fremd signiert", checkedDescription(shell(data, signed(foreign)), key))
-        assertNull("Die unsignierte version.json", checkedDescription(data, key))
-        assertNull("Ohne Beschreibungsschlüssel gilt nichts", checkedDescription(shell(data, signed(own)), emptyList()))
+        assertNotNull("genuinely signed it counts", checkedDescription(shell(data, signed(own)), key))
+        assertNull("without a signature", checkedDescription(shell(data, null), key))
+        assertNull("empty signature", checkedDescription(shell(data, ByteArray(0)), key))
+        assertNull("signed by someone else", checkedDescription(shell(data, signed(foreign)), key))
+        assertNull("the unsigned version.json", checkedDescription(data, key))
+        assertNull("without a description key nothing counts", checkedDescription(shell(data, signed(own)), emptyList()))
     }
 
     @Test
@@ -97,9 +97,9 @@ class InvariantsReferencesTest {
             val pdf = "%PDF-1.7 Teileliste 3001 rot x4".toByteArray()
             val file = PartListVault(StoreCipher { key }).put(intern, null, pdf)
             val plate = file.readBytes()
-            assertFalse("Klartext auf der Platte", plate.decodeToString(throwOnInvalidSequence = false).contains("Teileliste 3001"))
-            assertArrayEquals("Der Anbieter liest sie zurück", pdf, PartListVault(StoreCipher { key }).read(intern))
-            assertNull("Unter anderem Schlüssel unlesbar",
+            assertFalse("plain text on disk", plate.decodeToString(throwOnInvalidSequence = false).contains("Teileliste 3001"))
+            assertArrayEquals("the provider reads it back", pdf, PartListVault(StoreCipher { key }).read(intern))
+            assertNull("unreadable under another key",
                 PartListVault(StoreCipher { ByteArray(32) { 7 } }).read(intern))
         } finally {
             intern.deleteRecursively()

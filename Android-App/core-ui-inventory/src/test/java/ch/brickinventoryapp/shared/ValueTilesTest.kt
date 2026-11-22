@@ -102,15 +102,15 @@ class ValueTilesTest {
             compose.onNodeWithText(amount, useUnmergedTree = true).fetchSemanticsNode()
                 .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
             val t = outcome.single()
-            assertEquals("$amount in einer Zeile", 1, t.lineCount)
-            assertTrue("$amount ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
+            assertEquals("$amount in one line", 1, t.lineCount)
+            assertTrue("$amount is cut off (right ${t.getLineRight(0)} of ${t.size.width})",
                 !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == amount.length &&
                     t.getLineRight(0) <= t.size.width + 0.5f)
         }
         val tiles = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
             .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
         tiles.groupBy { it.top }.values.filter { it.size > 1 }.forEach { series ->
-            assertTrue("Kacheln einer Reihe gleich hoch: ${series.map { it.height }}",
+            assertTrue("tiles of a row equally high: ${series.map { it.height }}",
                 series.all { kotlin.math.abs(it.height - series[0].height) < 1f })
         }
     }
@@ -131,6 +131,6 @@ class ValueTilesTest {
         val amount = compose.onNodeWithText(fmtMoney(700.0, CurrencyCode.CHF), useUnmergedTree = true)
         assertEquals(1, rows(amount))
         val name = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Der Betrag steht unter der Bezeichnung", amount.fetchSemanticsNode().boundsInRoot.top >= name.bottom)
+        assertTrue("the amount stands below the label", amount.fetchSemanticsNode().boundsInRoot.top >= name.bottom)
     }
 }

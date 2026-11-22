@@ -120,11 +120,11 @@ class LoginEdgeTest {
     /** The scroll area is the visible viewport: it must lie between the bars. */
     private fun checkBetweenBars(was: String) {
         val surface = compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
-        assertTrue("$was beginnt unter der Statusleiste: ${surface.top / density} dp", surface.top >= px(24) - 1f)
-        assertTrue("$was endet unter der Gestenleiste: ${(height() - surface.bottom) / density} dp frei",
+        assertTrue("$was starts under the status bar: ${surface.top / density} dp", surface.top >= px(24) - 1f)
+        assertTrue("$was ends under the gesture bar: ${(height() - surface.bottom) / density} dp free",
             surface.bottom <= height() - px(48) + 1f)
         val brand = compose.onNode(hasText(text(R.string.app_name))).fetchSemanticsNode().boundsInRoot
-        assertTrue("$was: Marke zu nah an der Statusleiste (${brand.top / density} dp)", brand.top >= px(24 + 16) - 1f)
+        assertTrue("$was: brand too close to the status bar (${brand.top / density} dp)", brand.top >= px(24 + 16) - 1f)
     }
 
     @Test
@@ -143,7 +143,7 @@ class LoginEdgeTest {
         back.performScrollTo()
         compose.waitForIdle()
         val bottom = back.fetchSemanticsNode().boundsInRoot.bottom
-        assertTrue("„Zurück zur Anmeldung“ unter der Gestenleiste", bottom <= height() - px(48) + 1f)
+        assertTrue("„Zurück zur Anmeldung“ under the gesture bar", bottom <= height() - px(48) + 1f)
     }
 
     @Test
@@ -168,11 +168,11 @@ class LoginEdgeTest {
         val button = compose.onNode(hasText(text(R.string.login_button)) and hasClickAction())
         button.performScrollTo()
         button.assertIsEnabled()
-        assertTrue("Vor dem Tipp kein Fehler", compose.onAllNodes(hasText(text(R.string.login_username_missing)))
+        assertTrue("No error before the tap", compose.onAllNodes(hasText(text(R.string.login_username_missing)))
             .fetchSemanticsNodes().isEmpty())
         button.performClick()
         compose.waitForIdle()
-        assertEquals("Mit leeren Feldern geht nichts hinaus", 0, logins)
+        assertEquals("With empty fields nothing goes out", 0, logins)
         for (id in listOf(R.string.login_username_missing, R.string.login_password_missing)) {
             assertEquals(text(id), 1, compose.onAllNodes(hasText(text(id))).fetchSemanticsNodes().size)
         }
@@ -188,11 +188,11 @@ class LoginEdgeTest {
                     mutableListOf<TextLayoutResult>().also { fetch(it) }.firstOrNull()?.lineCount
                 }
             }
-        assertTrue("Kein Etikett gefunden", rows.isNotEmpty())
-        assertTrue("Das Etikett bricht um: $rows Zeilen", rows.all { it == 1 })
+        assertTrue("No label found", rows.isNotEmpty())
+        assertTrue("The label wraps: $rows lines", rows.all { it == 1 })
         val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
         val texts = field.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
-        assertTrue("Die Erklärung fehlt unter dem Feld: $texts", text(R.string.setup_url_supporting) in texts)
+        assertTrue("The explanation is missing below the field: $texts", text(R.string.setup_url_supporting) in texts)
     }
 
     @Test
@@ -203,7 +203,7 @@ class LoginEdgeTest {
         button.performScrollTo()
         compose.waitForIdle()
         val bottom = button.fetchSemanticsNode().boundsInRoot.bottom
-        assertTrue("Registrieren bleibt hinter der Tastatur: unten ${bottom / density} dp, Tastatur ab " +
+        assertTrue("Register stays behind the keyboard: bottom ${bottom / density} dp, keyboard from " +
             "${(height() - px(300)) / density} dp", bottom <= height() - px(300) + 1f)
     }
 
@@ -225,10 +225,10 @@ class LoginEdgeTest {
         show { Login(LoginForm.REGISTER) }
         val button = compose.onNode(hasText(text(R.string.register_button)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("Registrieren auf dem Tablet unter dem Falz: unten ${button.bottom / density} dp von ${height() / density}",
+        assertTrue("Register on the tablet below the fold: bottom ${button.bottom / density} dp of ${height() / density}",
             button.bottom <= height() - px(24))
         val brand = compose.onNode(hasText(text(R.string.app_name))).fetchSemanticsNode().boundsInRoot
-        assertTrue("Marke klebt am oberen Rand: ${brand.top / density} dp", brand.top >= px(24))
+        assertTrue("Brand sticks to the top edge: ${brand.top / density} dp", brand.top >= px(24))
     }
 
     private fun contrast(a: Color, b: Color): Double {

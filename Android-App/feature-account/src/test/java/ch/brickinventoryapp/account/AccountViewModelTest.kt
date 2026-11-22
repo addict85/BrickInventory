@@ -102,7 +102,7 @@ class AccountViewModelTest {
     @Test
     fun `devices and second factor load as soon as someone observes their state`() {
         clock.runCurrent()
-        assertEquals("ohne Beobachter kein Abruf", 0, server.requestCount)
+        assertEquals("no fetch without an observer", 0, server.requestCount)
         server.enqueue(response(devices(currentAlong = true)))
         val devicesPage = CoroutineScope(tick).launch { vm.devicesState.collect {} }
         until("Geräte") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
@@ -118,7 +118,7 @@ class AccountViewModelTest {
     fun `profile and design load with the account page, not with the start password form`() {
         val mask = CoroutineScope(tick).launch { vm.accountState.collect {} }
         clock.runCurrent()
-        assertEquals("die Maske lädt nichts", 0, server.requestCount)
+        assertEquals("the mask loads nothing", 0, server.requestCount)
         server.enqueue(response("""{"success":false,"error":"aus"}""", 500))
         server.enqueue(response("""{"success":false,"error":"aus"}""", 500))
         val page = CoroutineScope(tick).launch { vm.accountPage.collect {} }
@@ -269,8 +269,8 @@ class AccountViewModelTest {
             "otpauth":"intent://totp/#Intent;scheme=otpauth;end"}"""))
         vm.setUpSecondFactorOne("geheim")
         until("Einrichtung") { vm.secondFactorState.value.secret != null }
-        assertNull("Nur otpauth:// geht an ACTION_VIEW", vm.secondFactorState.value.otpauth)
-        assertEquals("Der Schlüssel bleibt zum Abtippen", "JBSWY3DPEHPK3PXP", vm.secondFactorState.value.secret)
+        assertNull("only otpauth:// goes to ACTION_VIEW", vm.secondFactorState.value.otpauth)
+        assertEquals("the key stays for typing it in", "JBSWY3DPEHPK3PXP", vm.secondFactorState.value.secret)
 
         val real = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP"
         server.enqueue(response("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXQ","otpauth":"$real"}"""))
@@ -284,7 +284,7 @@ class AccountViewModelTest {
         server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.changePassword("alt", "neuNeuNeu123!")
         until("Absage") { vm.accountState.value.save.errorMessage != null }
-        assertTrue("Das Codefeld erscheint", vm.accountState.value.codeNeeded)
+        assertTrue("the code field appears", vm.accountState.value.codeNeeded)
         assertFalse(loggedOut)
         server.takeRequest()
 
@@ -325,7 +325,7 @@ class AccountViewModelTest {
         vm.saveProfile("marco", "neu@example.org", "", "", "pw", "654321")
         until("gespeichert") { vm.accountState.value.message != null }
         assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"654321\""))
-        assertFalse("Nach Erfolg kein Codefeld mehr", vm.accountState.value.codeNeeded)
+        assertFalse("after success no code field any more", vm.accountState.value.codeNeeded)
     }
 
     @Test
@@ -337,7 +337,7 @@ class AccountViewModelTest {
         until("neu geladen") { vm.accountState.value.profile != null }
         assertEquals(R.string.account_email_link_sent, (vm.accountState.value.message as Message.Resource).id)
         assertNull(vm.accountState.value.save.errorMessage)
-        assertEquals("Es gilt die alte Adresse", "alt@example.org", vm.accountState.value.profile?.email)
+        assertEquals("the old address counts", "alt@example.org", vm.accountState.value.profile?.email)
         assertEquals("neu@example.org", vm.accountState.value.profile?.emailNew)
     }
 
@@ -348,7 +348,7 @@ class AccountViewModelTest {
             "email_verified":true,"new_email":"neu@example.org"}}"""))
         vm.saveProfile("marco", "neu@example.org", "", "", "pw")
         until("neu geladen") { vm.accountState.value.profile != null }
-        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.account_email_not_sent}", vm.accountState.value.save.errorMessage.text)
-        assertNull("Kein „gespeichert“", vm.accountState.value.message)
+        assertEquals("the error survives the reload", "t${R.string.account_email_not_sent}", vm.accountState.value.save.errorMessage.text)
+        assertNull("no “saved”", vm.accountState.value.message)
     }
 }

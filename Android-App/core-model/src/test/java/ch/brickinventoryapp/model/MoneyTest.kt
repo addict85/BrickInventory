@@ -29,7 +29,7 @@ class MoneyTest {
         assertEquals(Money(10_050), Money.from(1.005))
         assertEquals(Money(1_203_333), Money.from(120.3333))
         assertEquals(Money(-1_000), Money.from(-0.1))
-        assertNull("keine Zahl ist kein Betrag", Money.from(Double.NaN))
+        assertNull("no number is no amount", Money.from(Double.NaN))
         assertNull(null.asMoney())
         assertEquals(Money(1_250_000), Money.fromText("125"))
         assertNull(Money.fromText("12,50"))
@@ -40,7 +40,7 @@ class MoneyTest {
     fun `sums and quantities stay exact where Double would deviate`() {
         val sum = Money.from(0.1)!! + Money.from(0.2)!!
         assertEquals(Money.from(0.3), sum)
-        assertEquals("120,3333 × 2 bleibt 240,67", BigDecimal("240.67"), (Money.from(120.3333)!! * 2).onRappen())
+        assertEquals("120,3333 × 2 stays 240,67", BigDecimal("240.67"), (Money.from(120.3333)!! * 2).onRappen())
         assertEquals(Money(-5_000), Money.from(1.0)!! - Money.from(1.5)!!)
     }
 

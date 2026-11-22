@@ -41,8 +41,8 @@ class SecondFactorTakeoverTest {
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val required = SecondFactorRequired()
         t.session.adoptAccount(account, required)
-        assertTrue("Die Maske für den zweiten Faktor erscheint", required.needed.value)
-        assertTrue("/auth/me nennt das Recht weiter", t.session.state.value.isAdmin)
+        assertTrue("the mask for the second factor appears", required.needed.value)
+        assertTrue("/auth/me passes the right on", t.session.state.value.isAdmin)
     }
 
     @Test
@@ -50,13 +50,13 @@ class SecondFactorTakeoverTest {
         paths.responses["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
         val required = SecondFactorRequired()
         t.session.adoptAccount(account, required)
-        assertFalse("Ohne Feld keine Pflicht", required.needed.value)
+        assertFalse("without a field no obligation", required.needed.value)
         assertTrue(t.session.state.value.isAdmin)
 
         paths.responses["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":false}}"""
         t.session.adoptAccount(account, required)
-        assertFalse("false heisst keine Pflicht", required.needed.value)
+        assertFalse("false means no obligation", required.needed.value)
         assertEquals(2, paths.requestsTo("/auth/me").size)
     }
 
@@ -64,15 +64,15 @@ class SecondFactorTakeoverTest {
     fun `sign-in and auth me read the field secondFactorRequired`() = runBlocking {
         val login = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}""")
-        assertTrue("aus der Anmeldung", login.user?.zweiterFaktorPflicht == true)
+        assertTrue("from the sign-in", login.user?.zweiterFaktorPflicht == true)
         val without = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco"}}""")
-        assertFalse("ein älterer Server nennt es nicht", without.user?.zweiterFaktorPflicht == true)
+        assertFalse("an older server does not name it", without.user?.zweiterFaktorPflicht == true)
 
         paths.responses["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = account.getMe()
-        assertTrue("aus /auth/me", me is Outcome.Success &&
+        assertTrue("from /auth/me", me is Outcome.Success &&
             me.data?.secondFactorRequired == true)
     }
 }

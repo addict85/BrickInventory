@@ -31,21 +31,21 @@ class MirrorFollowUpTest {
         }
         stream.send("token-alt")
         testScheduler.runCurrent()
-        assertEquals("Der erste Stand der Platte kommt an", "token-alt", memory)
+        assertEquals("The first state of the disk arrives", "token-alt", memory)
         assertEquals(1, onRead)
 
         // Discard: memory first, then the disk; the disk's notification comes too late.
         limit.write { memory = ""; plate = "" }
         stream.send("token-zwischen")
         testScheduler.runCurrent()
-        assertEquals("ein überholter Plattenwert dreht den Speicher nicht zurück", "", memory)
+        assertEquals("an outdated disk value does not turn the memory back", "", memory)
 
         // A change that did not come via the writes counts.
         plate = "token-fremd"
         stream.send("token-fremd")
         testScheduler.runCurrent()
         assertEquals("token-fremd", memory)
-        assertEquals("gelesen zählt nur den ersten Stand", 1, onRead)
+        assertEquals("read counts only the first state", 1, onRead)
         mirror.cancel()
     }
 }

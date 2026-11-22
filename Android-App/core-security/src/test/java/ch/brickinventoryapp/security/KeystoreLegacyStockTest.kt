@@ -59,13 +59,13 @@ class KeystoreLegacyStockTest {
         val vault = KeystoreTokenVault("t", bund = bund)
         val old = oldCiphertext("t", "token-alt")
         assertEquals(VaultFinding.Readable("token-alt"), vault.open(old))
-        assertTrue("Ohne AAD wird umgeschlüsselt", vault.stale(old))
+        assertTrue("without AAD it is re-encrypted", vault.stale(old))
 
         val newValue = vault.encrypt("token-neu")
         assertFalse(vault.stale(newValue))
         assertEquals(VaultFinding.Readable("token-neu"), vault.open(newValue))
         // Prefix stripped off: if the vault reads this as legacy data without AAD, none had been set.
-        assertEquals("Ohne Präfix gilt der neue Geheimtext nicht", VaultFinding.Gone, vault.open(newValue.substringAfter(":")))
+        assertEquals("without a prefix the new ciphertext does not count", VaultFinding.Gone, vault.open(newValue.substringAfter(":")))
     }
 
     @Test
@@ -73,7 +73,7 @@ class KeystoreLegacyStockTest {
         val old = KeystoreTokenVault("brickinventory_auth_token", readOnly = true, bund = bund)
         val secret = KeystoreTokenVault("anderer", bund = bund).encrypt("x").removePrefix("a1:")
         assertEquals(VaultFinding.Gone, old.open(secret))
-        assertFalse("Kein neuer Schlüssel unter dem alten Alias: ${bund.created}", "brickinventory_auth_token" in bund.created)
+        assertFalse("no new key under the old alias: ${bund.created}", "brickinventory_auth_token" in bund.created)
         assertEquals(VaultFinding.Gone, UnlockVault(KeystoreTokenVault("neu", true, bund = bund), old).open(secret))
         assertFalse("${bund.created}", "brickinventory_auth_token" in bund.created)
     }
@@ -87,10 +87,10 @@ class KeystoreLegacyStockTest {
             KeystoreTokenVault("brickinventory_ablage_entsperrt", onlyUnlocked = true, bund = bund),
             KeystoreTokenVault("brickinventory_ablage", readOnly = true, bund = bund),
         )
-        assertArrayEquals("Derselbe Schlüssel", ByteArray(32) { 0xab.toByte() }, StoreKey(file, vault).fetch())
-        assertFalse("Umgeschlüsselt: ${stored()}", vault.stale(stored()))
-        assertFalse("Der alte Alias ist weg: ${bund.key.keys}", "brickinventory_ablage" in bund.key)
-        assertArrayEquals("Nach dem Neustart lesbar", ByteArray(32) { 0xab.toByte() }, StoreKey(file, vault).fetch())
+        assertArrayEquals("the same key", ByteArray(32) { 0xab.toByte() }, StoreKey(file, vault).fetch())
+        assertFalse("re-encrypted: ${stored()}", vault.stale(stored()))
+        assertFalse("the old alias is gone: ${bund.key.keys}", "brickinventory_ablage" in bund.key)
+        assertArrayEquals("readable after the restart", ByteArray(32) { 0xab.toByte() }, StoreKey(file, vault).fetch())
     }
 
     @Test
@@ -101,6 +101,6 @@ class KeystoreLegacyStockTest {
             KeystoreTokenVault("a", readOnly = true, bund = bund))
         assertTrue(vault.stale(stored()))
         assertArrayEquals(ByteArray(32) { 0xcd.toByte() }, StoreKey(file, vault).fetch())
-        assertTrue("Jetzt mit AAD: ${stored()}", stored().startsWith(UNLOCKED_PREFIX + "a1:"))
+        assertTrue("now with AAD: ${stored()}", stored().startsWith(UNLOCKED_PREFIX + "a1:"))
     }
 }

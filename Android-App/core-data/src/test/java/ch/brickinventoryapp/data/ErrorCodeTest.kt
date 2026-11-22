@@ -59,7 +59,7 @@ class ErrorCodeTest {
     private fun vouchers() = testVouchersRepository(TestApi.forTarget(server))
 
     private fun error(r: Outcome<*>): Outcome.Failure {
-        assert(r is Outcome.Failure) { "Erwartet wurde ein Fehler, kam: $r" }
+        assert(r is Outcome.Failure) { "Expected an error, got: $r" }
         return r as Outcome.Failure
     }
 
@@ -78,7 +78,7 @@ class ErrorCodeTest {
         server.enqueue(MockResponse().setResponseCode(502).setBody("<html>Bad Gateway</html>"))
         val e = error(admin().getMe())
         assertNull(e.code)
-        assertEquals("Ohne Satz bleibt nur der Status", Outcome.Failure.Server(502), e)
+        assertEquals("Without a sentence only the status remains", Outcome.Failure.Server(502), e)
 
         assertNull(ErrorBody.read("""{"success":false,"code":null,"error":""}""").code)
         assertNull(ErrorBody.read("""{"success":false,"code":null,"error":""}""").text)
@@ -94,7 +94,7 @@ class ErrorCodeTest {
                 assertEquals("abstand", r.data.reason)
                 assertEquals(30, r.data.waitSec)
             }
-            is Outcome.Failure -> throw AssertionError("Die Wartezeit ging verloren: $r")
+            is Outcome.Failure -> throw AssertionError("The waiting time got lost: $r")
         }
     }
 
@@ -110,9 +110,9 @@ class ErrorCodeTest {
     @Test
     fun `upload lock, connection limit and page limit each have their own sentence`() {
         val texts = listOf(ErrorCode.UPLOAD_RUNNING, ErrorCode.TOO_MANY_CONNECTIONS, ErrorCode.PDF_TOO_MANY_PAGES).map { errorTextToCode(it) }
-        assertTrue("jeder dieser Codes hat einen Satz der App: $texts", texts.all { it != null })
-        assertEquals("keine zwei teilen sich einen Satz", 3, texts.toSet().size)
-        assertNull("sonst gilt der Satz des Servers", errorTextToCode(ErrorCode.TOO_MANY_REQUESTS))
+        assertTrue("each of these codes has a sentence of the app: $texts", texts.all { it != null })
+        assertEquals("no two share a sentence", 3, texts.toSet().size)
+        assertNull("otherwise the server's sentence applies", errorTextToCode(ErrorCode.TOO_MANY_REQUESTS))
         assertNull(errorTextToCode(null))
     }
 

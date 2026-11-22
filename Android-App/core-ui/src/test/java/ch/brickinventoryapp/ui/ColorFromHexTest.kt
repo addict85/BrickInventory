@@ -21,7 +21,7 @@ class ColorFromHexTest {
         assertEquals(0xFFC91A09L, argbFromHex("C91A09"))
         assertEquals(0xFFC91A09L, argbFromHex("#c91a09"))
         assertEquals(0xFF05131DL, argbFromHex(" 05131D "))
-        assertEquals("Mit Deckkraft bleibt sie", 0x80FFFFFFL, argbFromHex("80FFFFFF"))
+        assertEquals("with opacity it stays", 0x80FFFFFFL, argbFromHex("80FFFFFF"))
     }
 
     @Test

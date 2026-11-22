@@ -34,7 +34,7 @@ class LockWipeTest {
     private class LockedVault : TokenEncryption {
         var locked = false
         override fun encrypt(plaintext: String): String {
-            check(!locked) { "gesperrt" }
+            check(!locked) { "locked" }
             return "t:" + Base64.getEncoder().encodeToString(plaintext.toByteArray())
         }
         override fun decrypt(saved: String): String? = (open(saved) as? VaultFinding.Readable)?.plaintext
@@ -50,16 +50,16 @@ class LockWipeTest {
     fun `after the wipe a locked device yields no key, unlocked the same one again`() {
         val before = key.fetch()
         vault.locked = true
-        assertArrayEquals("Ohne Verwerfen bleibt er im Speicher", before, key.fetch())
+        assertArrayEquals("without discarding it stays in memory", before, key.fetch())
         key.forgetInMemory()
         try {
             key.fetch()
-            fail("Gesperrt und verworfen darf kein Schlüssel mehr herauskommen")
+            fail("locked and discarded, no key may come out any more")
         } catch (_: IOException) {
             // expected: the Keystore releases nothing while locked
         }
         vault.locked = false
-        assertArrayEquals("Derselbe Schlüssel von der Platte, kein neuer", before, key.fetch())
+        assertArrayEquals("the same key from disk, not a new one", before, key.fetch())
     }
 
     @Test
@@ -67,14 +67,14 @@ class LockWipeTest {
         val handedOut = key.fetch()
         val copy = handedOut.copyOf()
         key.forgetInMemory()
-        assertArrayEquals("Eine laufende Verschlüsselung bekäme sonst Nullen", copy, handedOut)
+        assertArrayEquals("a running encryption would otherwise get zeros", copy, handedOut)
     }
 
     @Test
     fun `one failing holder does not keep the others in memory`() {
         val wipe = LockWipe()
         val calls = mutableListOf<String>()
-        wipe.register({ calls += "a"; error("kaputt") }, { calls += "ra" })
+        wipe.register({ calls += "a"; error("broken") }, { calls += "ra" })
         wipe.register({ calls += "b" }, { calls += "rb" })
         wipe.wipe()
         wipe.restore()

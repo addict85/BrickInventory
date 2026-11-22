@@ -64,11 +64,11 @@ class SegmentChoiceTest {
     fun `all segments are equally high and not higher than needed, even if one has two lines`() {
         show()
         val heights = segments().map { it.size.height }
-        assertEquals("Drei Segmente erwartet", 3, heights.size)
+        assertEquals("three segments expected", 3, heights.size)
         assertTrue("Ungleich hoch: $heights", heights.distinct().size == 1)
         val label = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode().size.height
         val atMost = label + with(compose.density) { 48.dp.roundToPx() }
-        assertTrue("Segmente $heights px hoch, die Beschriftung braucht $label px", heights.first() <= atMost)
+        assertTrue("segments $heights px high, the label needs $label px", heights.first() <= atMost)
     }
 
     @Test
@@ -80,7 +80,7 @@ class SegmentChoiceTest {
         val checkmark = with(density) { (SegmentedButtonDefaults.IconSize + 8.dp).toPx() }
         val air = with(density) { CHECKMARK_AIR.toPx() }
         val needed = label.size.width + checkmark + 2 * air
-        assertTrue("Beschriftung ${label.size.width} px und Häkchen brauchen $needed px, " +
-            "das Segment hat ${segment.size.width} px", needed <= segment.size.width + 1f)
+        assertTrue("label ${label.size.width} px and checkmark need $needed px, " +
+            "the segment has ${segment.size.width} px", needed <= segment.size.width + 1f)
     }
 }

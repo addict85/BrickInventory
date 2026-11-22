@@ -61,8 +61,8 @@ class QrAddressTest {
     @Test
     fun `user info, line break and backslash make the code invalid`() {
         for (url in deceptive) {
-            assertTrue("angenommen: $url", qrAddressInvalid(url))
-            assertTrue("von Hand angenommen: $url", NetworkPolicy.addressError(url, development = false) != null)
+            assertTrue("accepted: $url", qrAddressInvalid(url))
+            assertTrue("accepted by hand: $url", NetworkPolicy.addressError(url, development = false) != null)
         }
         assertEquals(NetworkPolicy.AddressError.USER_INPUT,
             NetworkPolicy.addressError("https://brick.meinserver.ch@evil.example", development = false))
@@ -78,7 +78,7 @@ class QrAddressTest {
     fun `whitespace at the edge of a code makes it invalid, by hand it does not`() {
         assertTrue(qrAddressInvalid("https://evil.example\n"))
         assertTrue(qrAddressInvalid(" https://evil.example"))
-        assertNull("Von Hand getippt trägt der Rand nichts", NetworkPolicy.addressError(" brick.fritz.box ", development = false))
+        assertNull("typed by hand, the edge carries nothing", NetworkPolicy.addressError(" brick.fritz.box ", development = false))
     }
 
     @Test
@@ -99,7 +99,7 @@ class QrAddressTest {
         assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://xn--brck-m9d.meinserver.ch"))
         assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://brick.meinserver.ch:8443"))
         assertNull(qrSwitchesServer("https://brick.meinserver.ch", "https://BRICK.meinserver.ch/"))
-        assertNull("Ohne bisherigen Server kein Wechsel", qrSwitchesServer("", "https://brick.meinserver.ch"))
+        assertNull("no switch without a previous server", qrSwitchesServer("", "https://brick.meinserver.ch"))
     }
 
     // ── The ViewModel as a second line ─────────────────────────────────────────
@@ -146,8 +146,8 @@ class QrAddressTest {
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), store.log.toList())
-        assertEquals("Nichts abgemeldet", 0, logout.logouts)
-        assertTrue("kein qr-login", paths.requestsTo("qr-login").isEmpty())
+        assertEquals("nothing signed out", 0, logout.logouts)
+        assertTrue("no qr login", paths.requestsTo("qr-login").isEmpty())
         assertTrue(vm.loginState.value.login.errorMessage != null)
     }
 }

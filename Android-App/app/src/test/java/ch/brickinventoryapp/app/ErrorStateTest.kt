@@ -93,14 +93,14 @@ class ErrorStateTest {
         val vm = t.track(WantedListViewModel(t.session, t.filter(), t.hints, t.wantedList(), t.alerts(), t.accountView,
             testCatalogRepository(t.api), testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadWanted()
-        assertTrue("Fehler", vm.wantedState.value.fetch.errorMessage != null)
+        assertTrue("Error", vm.wantedState.value.fetch.errorMessage != null)
         // No finished sentence in the state: the resource for the kind plus HTTP status.
         assertEquals(Message.Resource(R.string.err_server, listOf(404)), vm.wantedState.value.fetch.errorMessage)
-        assertEquals("404 ohne Rumpf ist ein Serverfehler", ErrorClass.SERVER, vm.wantedState.value.fetch.errorKind)
+        assertEquals("404 without a body is a server error", ErrorClass.SERVER, vm.wantedState.value.fetch.errorKind)
 
         paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.loadWanted()
-        assertTrue("Inhalt", vm.wantedState.value.wantedItem.isNotEmpty())
+        assertTrue("content", vm.wantedState.value.wantedItem.isNotEmpty())
         assertNull(vm.wantedState.value.fetch.errorMessage)
     }
 
@@ -108,12 +108,12 @@ class ErrorStateTest {
     fun `the valuation reports the error and forgets it on reload`() {
         val vm = t.track(FinanceViewModel(t.session, t.filter(), t.hints, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadValuation()
-        assertTrue("Fehler", vm.financeState.value.valuationLoad is Load.Failure)
+        assertTrue("Error", vm.financeState.value.valuationLoad is Load.Failure)
         assertEquals(ErrorClass.SERVER, vm.financeState.value.valuationLoad.errorKind)
 
         paths.responses["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
-        assertTrue("Bewertung", vm.financeState.value.valuation != null)
+        assertTrue("rating", vm.financeState.value.valuation != null)
         assertNull(vm.financeState.value.valuationLoad.errorMessage)
     }
 
@@ -136,7 +136,7 @@ class ErrorStateTest {
         val vm = t.track(SetDetailViewModel(t.session, t.filter(), t.hints, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
             testFinancesRepository(t.api), testHouseholdRepository(t.api), reader,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
-        assertTrue("Fehler", vm.setDetailState.value.detailFetch is Load.Failure)
+        assertTrue("Error", vm.setDetailState.value.detailFetch is Load.Failure)
         assertEquals(false, vm.setDetailState.value.detailFetch.loading)
         assertEquals(ErrorClass.SERVER, vm.setDetailState.value.detailFetch.errorKind)
     }
@@ -150,7 +150,7 @@ class ErrorStateTest {
             messages = t.messages,
         )
         vm.loadVouchers()
-        assertTrue("Fehler", vm.state.value.fetch is Load.Failure)
+        assertTrue("Error", vm.state.value.fetch is Load.Failure)
         assertEquals(ErrorClass.SERVER, vm.state.value.fetch.errorKind)
     }
 }

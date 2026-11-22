@@ -105,19 +105,19 @@ class TipTargetAndNameTest {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
         }
-        driveUntil("$name (angezeigt)", requests = { world.paths.requests.size }, ready = ready)
+        driveUntil("$name (shown)", requests = { world.paths.requests.size }, ready = ready)
         compose.waitForIdle()
         val density = ctx.resources.displayMetrics.density
         val min = 48 * density - 0.5f
         val tappable = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes()
-        assertTrue("$name: nichts Antippbares gefunden — greift die Suche noch?", tappable.isNotEmpty())
+        assertTrue("$name: nothing tappable found — does the search still apply?", tappable.isNotEmpty())
         val small = tappable.filter { n ->
             val target = n.touchBoundsInRoot
             maxOf(n.size.width.toFloat(), target.width) < min || maxOf(n.size.height.toFloat(), target.height) < min
         }.map { "${describe(it)} (${(it.size.width / density).toInt()}×${(it.size.height / density).toInt()} dp)" }
         val nameless = tappable.filter { !hasNames(it) }.map { describe(it) }
-        assertTrue("$name: Tippziel unter 48 dp: $small", small.isEmpty())
-        assertTrue("$name: ohne Namen: $nameless", nameless.isEmpty())
+        assertTrue("$name: tap target below 48 dp: $small", small.isEmpty())
+        assertTrue("$name: without a name: $nameless", nameless.isEmpty())
     }
 
     private fun hasNames(n: SemanticsNode): Boolean {

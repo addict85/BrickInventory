@@ -58,7 +58,7 @@ class AlarmAndStockStoreTest {
         alerts.setPriceAlarm("75192-1", AlarmDirection.OVER, Money.from(800.0)!!, Condition.NEW)
         val set = alerts.observeAlerts("75192-1").first().list.single()
         assertEquals(AlarmDirection.OVER to Money.from(800.0), set.direction to set.threshold)
-        assertEquals("der Name der Übersicht bleibt", "Falcon", set.name)
+        assertEquals("the name of the overview stays", "Falcon", set.name)
 
         alerts.deletePriceAlert("10294-1", Condition.USED)
         assertEquals(listOf("75192-1"), alerts.observeAlerts().first().list.map { it.setNumber })

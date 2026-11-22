@@ -131,7 +131,7 @@ class AreaFlowsTest {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); ready() }
         } catch (e: ComposeTimeoutException) {
-            throw AssertionError("$was: nach 10 s nicht da", e)
+            throw AssertionError("$was: not there after 10 s", e)
         }
         compose.waitForIdle()
     }
@@ -152,7 +152,7 @@ class AreaFlowsTest {
         // fmtMoney puts a non-breaking space between code and amount.
         val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, CurrencyCode("CHF")))
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
-            .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
+            .let { assertTrue("alert before deleting", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
         wait("Detail") { !vm.wantedItemDetailState.value.fetch.loading }
         // From here the clock by hand: otherwise the snackbar would expire immediately at the test clock's pace.
@@ -161,14 +161,14 @@ class AreaFlowsTest {
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_delete)).performClick()
         step()
         compose.onNodeWithText(ctx.getString(R.string.wanted_deleted, "Lion Knights' Castle")).fetchSemanticsNode("Keine Snackbar")
-        assertTrue("Schon gelöscht, bevor die Snackbar endet", world.paths.requestsTo("DELETE").isEmpty())
+        assertTrue("already deleted before the snackbar ends", world.paths.requestsTo("DELETE").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         step()
         wait("zurück") { vm.wantedState.value.wantedItem.any { it.setNumber == "10305-1" } }
         step()
         compose.onAllNodesWithText(alarm, substring = true)
-            .fetchSemanticsNodes().let { assertTrue("Alarm wieder sichtbar", it.isNotEmpty()) }
-        assertTrue("Nach Rückgängig nie gelöscht", world.paths.requestsTo("DELETE").isEmpty())
+            .fetchSemanticsNodes().let { assertTrue("alert visible again", it.isNotEmpty()) }
+        assertTrue("never deleted after undo", world.paths.requestsTo("DELETE").isEmpty())
     }
 
     private object NoCatalogActions : CatalogActions {
@@ -230,7 +230,7 @@ class AreaFlowsTest {
         rotate.emulateSavedInstanceStateRestore()
         compose.onNode(count).fetchSemanticsNode().let { n ->
             val text = n.config.getOrNull(SemanticsProperties.EditableText)?.text
-            assertEquals("Anzahl nach der Drehung", "2", text)
+            assertEquals("count after rotation", "2", text)
         }
         compose.onNodeWithText(ctx.getString(R.string.barcode_add)).performClick()
         assertEquals(2, quantity)
@@ -268,7 +268,7 @@ class AreaFlowsTest {
         compose.onNodeWithText(ctx.getString(R.string.household_invite_share)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_copy)).fetchSemanticsNode()
         compose.onAllNodesWithText("Gültig bis", substring = true).fetchSemanticsNodes()
-            .let { assertTrue("Gültigkeit fehlt", it.isNotEmpty()) }
+            .let { assertTrue("validity missing", it.isNotEmpty()) }
     }
 
     @Test

@@ -66,7 +66,7 @@ class VoucherEmptyAndErrorTest {
     fun `without vouchers a heading stands and below it what the page is for`() {
         show(VoucherUiState())
         val title = compose.onNodeWithText(text(R.string.vouchers_empty)).fetchSemanticsNode("Titel fehlt")
-        assertTrue("„Noch keine Gutscheine“ ist keine Überschrift",
+        assertTrue("“Noch keine Gutscheine” is not a heading",
             title.config.getOrNull(SemanticsProperties.Heading) != null)
         compose.onNodeWithText(text(R.string.vouchers_empty_hint)).fetchSemanticsNode("Erklärung fehlt")
     }

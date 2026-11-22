@@ -58,7 +58,7 @@ class EffectiveDesignTest {
         assertEquals(Brightness.SYSTEM, brightnessApplies(null, true))
         assertEquals(Brightness.LIGHT, brightnessApplies(null, false))
         assertEquals(Brightness.DARK, brightnessApplies(Brightness.DARK, false))
-        assertEquals("Unbekanntes faellt auf die fruehere Wahl zurueck", Brightness.LIGHT, brightnessApplies("blau", false))
+        assertEquals("unknown falls back to the earlier choice", Brightness.LIGHT, brightnessApplies("blau", false))
     }
 
     @Test
@@ -85,7 +85,7 @@ class EffectiveDesignTest {
             appearance(Design.CLASSIC, brightness = Brightness.SYSTEM, systemDark = false, systemColors = true, sdk = 31))
         assertEquals(Appearance(Design.WORKBENCH, true, systemColors = true),
             appearance(Design.WORKBENCH, brightness = Brightness.SYSTEM, systemDark = true, systemColors = true, sdk = 34))
-        assertEquals("Ohne Wahl kein Dunkel, auch mit Systemfarben", Appearance(Design.BRICK, false, systemColors = true),
+        assertEquals("without a choice no dark, even with system colors", Appearance(Design.BRICK, false, systemColors = true),
             appearance(Design.BRICK, brightness = Brightness.LIGHT, systemDark = true, systemColors = true, sdk = 34))
     }
 
@@ -103,9 +103,9 @@ class EffectiveDesignTest {
     @Test
     fun `MainActivity draws the effective design`() {
         val src = Sources.withoutComments(Sources.read("app/MainActivity.kt"))
-        assertTrue("MainActivity nutzt appearance() nicht — die Wahl bliebe ohne Wirkung",
+        assertTrue("MainActivity does not use appearance() — the choice would have no effect",
             Regex("""appearance\(theme,\s*brightness,\s*isSystemInDarkTheme\(\),\s*systemColors,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
-        assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
+        assertTrue("MainActivity does not pass the dark variant to the theme",
             Regex("""(\w+) = appearance\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dark\s*=\s*\1\.dark,\s*systemColors\s*=\s*\1\.systemColors\)""").containsMatchIn(src))
     }
 
@@ -117,20 +117,20 @@ class EffectiveDesignTest {
     fun `the start does not flash white`() {
         val res = Sources.res
         val night = File(res, "values-night/themes.xml")
-        assertTrue("values-night/themes.xml fehlt", night.isFile)
-        assertTrue("Das Nacht-Theme erbt wieder von einem hellen",
+        assertTrue("values-night/themes.xml is missing", night.isFile)
+        assertTrue("the night theme inherits from a light one again",
             Regex("""name="Theme\.BrickInventoryManager"\s+parent="[^"]*Light""").find(night.readText()) == null)
-        assertTrue("values-night/colors.xml setzt keinen eigenen Fensterhintergrund",
+        assertTrue("values-night/colors.xml sets no window background of its own",
             File(res, "values-night/colors.xml").readText().contains("window_background"))
 
         val manifest = Sources.manifest.readText()
-        assertTrue("Die Activity startet nicht im SplashScreen-Theme",
+        assertTrue("the activity does not start in the SplashScreen theme",
             manifest.contains("@style/Theme.BrickInventoryManager.Start"))
 
         val src = Sources.withoutComments(Sources.read("app/MainActivity.kt"))
         val splash = src.indexOf("installSplashScreen()")
         val oncreate = src.indexOf("super.onCreate(")
-        assertTrue("installSplashScreen() fehlt oder steht nach super.onCreate()",
+        assertTrue("installSplashScreen() is missing or stands after super.onCreate()",
             splash in 0 until oncreate)
     }
 }

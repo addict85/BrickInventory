@@ -32,7 +32,7 @@ class ColumnsVersion2Test {
 
     @Test
     fun `set - number, name, theme, year in the search text, theme and storage location as columns`() {
-        assertEquals("Set: Nummer, Name, Thema, Jahr",
+        assertEquals("set: number, name, theme, year",
             FilterColumns("10294-1\ntitanic\nicons\n2021", theme = "Icons", storageLocation = "Regal 3"),
             ColumnsVersion2.from("SETS", set))
     }
@@ -45,7 +45,7 @@ class ColumnsVersion2Test {
     @Test
     fun `wishlist item - condition as a column, without condition N applies`() {
         assertEquals(FilterColumns("75192-1\nmillennium falcon", condition = "N"), ColumnsVersion2.from("MERKLISTE", wantedItem))
-        assertEquals("Merkposten ohne Zustand", FilterColumns("", condition = "N"), ColumnsVersion2.from("MERKLISTE", "{}"))
+        assertEquals("watchlist item without condition", FilterColumns("", condition = "N"), ColumnsVersion2.from("MERKLISTE", "{}"))
         assertEquals(FilterColumns("1-1", condition = "U"), ColumnsVersion2.from("MERKLISTE", """{"set_number":"1-1","condition":"U"}"""))
     }
 
@@ -66,11 +66,11 @@ class ColumnsVersion2Test {
 
     @Test
     fun `unreadable rows give null`() {
-        assertNull("Set ohne Nummer ist unlesbar", ColumnsVersion2.from("SETS", "{}"))
-        assertNull("Teil ohne Nummer", ColumnsVersion2.from("TEILE", """{"part_name":"x"}"""))
-        assertNull("Figur ohne Nummer", ColumnsVersion2.from("FIGUREN", """{"fig_name":"x"}"""))
-        assertNull("kein Objekt", ColumnsVersion2.from("SETS", "[1,2]"))
-        assertNull("kein JSON", ColumnsVersion2.from("SETS", "kaputt"))
-        assertNull("unbekannte Art", ColumnsVersion2.from("GIBT_ES_NICHT", set))
+        assertNull("a set without a number is unreadable", ColumnsVersion2.from("SETS", "{}"))
+        assertNull("part without a number", ColumnsVersion2.from("TEILE", """{"part_name":"x"}"""))
+        assertNull("figure without a number", ColumnsVersion2.from("FIGUREN", """{"fig_name":"x"}"""))
+        assertNull("no object", ColumnsVersion2.from("SETS", "[1,2]"))
+        assertNull("no JSON", ColumnsVersion2.from("SETS", "kaputt"))
+        assertNull("unknown kind", ColumnsVersion2.from("GIBT_ES_NICHT", set))
     }
 }

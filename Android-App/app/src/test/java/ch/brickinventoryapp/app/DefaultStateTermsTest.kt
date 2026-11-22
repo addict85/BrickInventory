@@ -47,7 +47,7 @@ class DefaultStateTermsTest {
             val c = inLanguage(language)
             val choice = c.getString(R.string.settings_default_condition_global)
             val hint = c.getString(R.string.settings_default_condition_hint)
-            assertTrue("$language: „$hint“ nennt „$choice“ nicht", Regex("[„“\"]${Regex.escape(choice)}[“”\"]").containsMatchIn(hint))
+            assertTrue("$language: “$hint” does not name “$choice”", Regex("[„“\"]${Regex.escape(choice)}[“”\"]").containsMatchIn(hint))
         }
     }
 }

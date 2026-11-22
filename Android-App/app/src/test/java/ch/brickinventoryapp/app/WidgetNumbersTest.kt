@@ -48,7 +48,7 @@ class WidgetNumbersTest {
     @Test
     fun `signed out the widget shows no numbers`() {
         val z = widgetNumbers(pnl, history, now = 7)!!
-        assertNull("Die Ablage hält noch Zahlen, gezeigt werden sie nicht", widgetDisplay(z, loggedIn = false))
+        assertNull("the store still holds numbers, they are not shown", widgetDisplay(z, loggedIn = false))
         assertEquals(z, widgetDisplay(z, loggedIn = true))
     }
 
@@ -97,7 +97,7 @@ class WidgetNumbersTest {
         val obscured = widgetValues(z, show = false)
         assertEquals(Triple(WIDGET_HIDDEN, WIDGET_HIDDEN, WIDGET_HIDDEN), obscured)
         val open = widgetValues(z, show = true)
-        assertTrue("Mit Erlaubnis steht der Wert da", open.first.contains("1") && open.first != WIDGET_HIDDEN)
+        assertTrue("with permission the value is shown", open.first.contains("1") && open.first != WIDGET_HIDDEN)
         assertTrue(open.third.startsWith("+"))
     }
 

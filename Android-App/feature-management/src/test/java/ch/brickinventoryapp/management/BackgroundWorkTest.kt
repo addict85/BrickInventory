@@ -125,7 +125,7 @@ class BackgroundWorkTest {
         paths.codes["/api/v1/admin/auftraege/17/wiederholen"] = 409
         val sentence = vm.repeatJob("17")
         assertEquals(Message.Text("Der Auftrag lässt sich nicht mehr ändern."), sentence)
-        assertEquals("Auch nach dem Fehlschlag gilt der Stand des Servers", 1,
+        assertEquals("even after the failure the server's status counts", 1,
             paths.requestsTo("GET /api/v1/admin/auftraege").size)
     }
 

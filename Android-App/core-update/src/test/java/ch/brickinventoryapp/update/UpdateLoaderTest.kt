@@ -64,7 +64,7 @@ class UpdateLoaderTest {
         val loader = UpdateLoader(client, AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         val steps = loader.loadApk(description(), target).toList()
         assertEquals(100, steps.last())
-        assertTrue("Der Fortschritt steigt nur", steps.zipWithNext().all { (a, b) -> b > a })
+        assertTrue("the progress only rises", steps.zipWithNext().all { (a, b) -> b > a })
         assertEquals(apk.size.toLong(), target.length())
     }
 
@@ -73,7 +73,7 @@ class UpdateLoaderTest {
         val loader = UpdateLoader(client, AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         // take(1) breaks off after the first update, in the middle of the read loop.
         assertEquals(1, loader.loadApk(description(), target).take(1).toList().size)
-        assertFalse("Die Teildatei bleibt nach dem Abbruch liegen", target.exists())
+        assertFalse("the partial file stays after the cancellation", target.exists())
     }
 
     @Test
@@ -82,8 +82,8 @@ class UpdateLoaderTest {
         val toMuch = ByteArray(2 * 1024 * 1024) { 7 }
         val loader = UpdateLoader(delivers(toMuch), AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         val error = runCatching { loader.loadApk(description().copy(apkSize = 100L * 1024), target).toList() }.exceptionOrNull()
-        assertTrue("Der Download lief über die Grenze hinaus durch ($error)", error is IOException)
-        assertFalse("Das Zuviel bleibt auf der Platte", target.exists())
+        assertTrue("the download ran past the limit ($error)", error is IOException)
+        assertFalse("the excess stays on disk", target.exists())
     }
 
     @Test

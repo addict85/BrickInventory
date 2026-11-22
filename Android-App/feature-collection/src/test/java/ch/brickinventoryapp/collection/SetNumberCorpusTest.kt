@@ -57,7 +57,7 @@ class SetNumberCorpusTest {
             val actual = k.firstOrNull()
             assert(actual == expected) {
                 "Korpusfall $i: ${text.replace("\n", "\\n")}\n" +
-                "  erwartet: $expected\n  bekommen: $actual  (alle: $k)\n  warum: $why"
+                "  expected: $expected\n  got: $actual  (all: $k)\n  why: $why"
             }
             if (expected == null) withoutCandidate++ else withExpectation++
             if (expected != null && expected.length == 3) threeDigit++
@@ -65,14 +65,14 @@ class SetNumberCorpusTest {
 
         // Self-proof 1: the corpus was really read and is not empty.
         assert(corpus.length() >= 15) {
-            "Nur ${corpus.length()} Faelle im Korpus — Datei geschrumpft oder falscher Pfad?"
+            "Only ${corpus.length()} cases in the corpus — file shrunk or wrong path?"
         }
         // Self-proof 2: both directions are represented. Without this the
         // corpus could degrade into nothing but misses and still be green.
-        assert(withExpectation >= 10) { "nur $withExpectation Faelle mit erwarteter Nummer" }
-        assert(withoutCandidate >= 2) { "nur $withoutCandidate Faelle, die gar nichts liefern duerfen" }
+        assert(withExpectation >= 10) { "only $withExpectation cases with an expected number" }
+        assert(withoutCandidate >= 2) { "only $withoutCandidate cases that must deliver nothing at all" }
         // Self-proof 3: the occasion for this round — three-digit legacy sets — is
         // covered. If support drops out again, it turns red.
-        assert(threeDigit >= 2) { "nur $threeDigit dreistellige Setnummern im Korpus" }
+        assert(threeDigit >= 2) { "only $threeDigit three-digit set numbers in the corpus" }
     }
 }

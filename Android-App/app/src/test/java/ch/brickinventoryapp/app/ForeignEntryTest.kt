@@ -67,7 +67,7 @@ class ForeignEntryTest {
     fun `the entry point of the notifications is not exported`() {
         val pm = ctx.packageManager
         assertFalse(pm.getActivityInfo(ComponentName(ctx, MessageEntryPoint::class.java), 0).exported)
-        assertTrue("Der Launcher braucht MainActivity", pm.getActivityInfo(ComponentName(ctx, MainActivity::class.java), 0).exported)
+        assertTrue("the launcher needs MainActivity", pm.getActivityInfo(ComponentName(ctx, MainActivity::class.java), 0).exported)
     }
 
     @Test
@@ -75,7 +75,7 @@ class ForeignEntryTest {
         val inbox = MessageInbox()
         val next = forwardMessage(ctx, Intent().putExtra(PriceAlarmWorker.EXTRA_SET, "75192-1"), inbox)
         assertEquals(MainActivity::class.java.name, next.component?.className)
-        assertNull("MainActivity liest keine Extras; es gibt auch keine", next.extras)
+        assertNull("MainActivity reads no extras; there are none either", next.extras)
         assertEquals("75192-1", inbox.pickUp())
     }
 
@@ -96,7 +96,7 @@ class ForeignEntryTest {
         compose.setContent { BrickInventoryManagerTheme { UserCaDialog(onYes = { yes++ }, onCancel = { no++ }) } }
         compose.waitForIdle()
         val dialog = ShadowDialog.getLatestDialog()
-        assertTrue("Berührungen durch ein fremdes Fenster kämen an", dialog.window!!.decorView.filterTouchesWhenObscured)
+        assertTrue("touches through a foreign window would get through", dialog.window!!.decorView.filterTouchesWhenObscured)
         compose.onNodeWithText(ctx.getString(R.string.user_ca_question_yes)).performClick()
         assertEquals(1, yes)
         assertEquals(0, no)
@@ -108,10 +108,10 @@ class ForeignEntryTest {
         compose.setContent { if (show.value) OverlayGuard() }
         compose.waitForIdle()
         val window = compose.activity.window.decorView
-        assertTrue("Berührungen durch ein fremdes Fenster kämen an", window.filterTouchesWhenObscured)
+        assertTrue("touches through a foreign window would get through", window.filterTouchesWhenObscured)
         show.value = false
         compose.waitForIdle()
-        assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", window.filterTouchesWhenObscured)
+        assertFalse("after the screen the rest of the app stays without", window.filterTouchesWhenObscured)
     }
 
     // How navigation expects the path to the target in the start intent: root graph, then the target.
@@ -131,7 +131,7 @@ class ForeignEntryTest {
     @Test
     fun `without extras a foreign deep link does not navigate`() {
         val open = navigation()
-        assertTrue("Ohne Entfernen springt der fremde Start ins Ziel", open.handleDeepLink(attack(open)))
+        assertTrue("without removing, the foreign start jumps into the destination", open.handleDeepLink(attack(open)))
         assertEquals("konto", open.currentDestination?.route)
 
         val nav = navigation()
@@ -146,26 +146,26 @@ class ForeignEntryTest {
         val start = attack(nav).setClass(ctx, ProbeStart::class.java)
         val probe = Robolectric.buildActivity(ProbeStart::class.java, start).create()
         assertNull("Extras beim Start", probe.get().seen?.extras)
-        assertNull("Daten beim Start", probe.get().seen?.data)
+        assertNull("data at start", probe.get().seen?.data)
 
         probe.start().resume().newIntent(attack(nav).setClass(ctx, ProbeStart::class.java))
-        assertNull("Extras bei onNewIntent", probe.get().newValue?.extras)
-        assertNull("Daten bei onNewIntent", probe.get().newValue?.data)
-        assertTrue("MainActivity entfernt nicht", OnlyLauncherStart::class.java.isAssignableFrom(MainActivity::class.java))
+        assertNull("extras on onNewIntent", probe.get().newValue?.extras)
+        assertNull("data on onNewIntent", probe.get().newValue?.data)
+        assertTrue("MainActivity does not remove", OnlyLauncherStart::class.java.isAssignableFrom(MainActivity::class.java))
     }
 
     @Test
     fun `the parts list goes out only via the system's chooser`() {
         val selection = partListsSelection(ctx, "Teileliste")
-        assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, selection.action)
+        assertEquals("without a chooser the default app would get the inventory", Intent.ACTION_CHOOSER, selection.action)
         val target = IntentCompat.getParcelableExtra(selection, Intent.EXTRA_INTENT, Intent::class.java)!!
         assertEquals(Intent.ACTION_VIEW, target.action)
         assertEquals("content", target.data?.scheme)
-        assertTrue("Ohne Leserecht öffnet keine App die Datei", (target.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
+        assertTrue("without read permission no app opens the file", (target.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
         val provider = ctx.packageManager.resolveContentProvider(target.data!!.authority!!, 0)
-        assertEquals("Die Uri zeigt auf den Teilelisten-Provider des Manifests",
+        assertEquals("the Uri points to the manifest's parts list provider",
             PartListsProvider::class.java.name, provider?.name)
-        assertFalse("Der Teilelisten-Provider ist exportiert", provider!!.exported)
+        assertFalse("the parts list provider is exported", provider!!.exported)
     }
 }
 

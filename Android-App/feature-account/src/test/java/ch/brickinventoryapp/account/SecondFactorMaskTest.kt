@@ -147,7 +147,7 @@ class SecondFactorMaskTest {
         condition.value = setup
         show()
         compose.onNodeWithText("JBSW Y3DP EHPK 3PXP").assertExists()
-        assertTrue("Der Schlüssel steht im Klartext da: kein Bildschirmfoto", guarded())
+        assertTrue("the key stands in plain text: no screenshot", guarded())
         button(R.string.zf_confirm).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("12 34 56")
         button(R.string.zf_confirm).performScrollTo().performClick()
@@ -161,7 +161,7 @@ class SecondFactorMaskTest {
         show()
         // The code text reads character by character (readAloudAs); its text isn't in the tree.
         compose.onNodeWithContentDescription("a a a a - b b b b, c c c c - d d d d").assertExists()
-        assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", guarded())
+        assertTrue("the codes stand in plain text: no screenshot", guarded())
         button(R.string.zf_required_next).assertIsNotEnabled()
         button(R.string.zf_codes_saved).performScrollTo().performClick()
         compose.waitForIdle()
@@ -178,7 +178,7 @@ class SecondFactorMaskTest {
     fun `the emergency codes can be shared without filling the clipboard`() {
         condition.value = codes
         show()
-        assertEquals("Vor dem Tipp wird nichts geteilt", null,
+        assertEquals("nothing is shared before the tap", null,
             Shadows.shadowOf(compose.activity).peekNextStartedActivity())
         button(R.string.zf_share).performScrollTo().performClick()
         compose.waitForIdle()
@@ -189,7 +189,7 @@ class SecondFactorMaskTest {
         assertEquals(Intent.ACTION_SEND, send?.action)
         assertEquals("aaaa-bbbb\ncccc-dddd", send?.getStringExtra(Intent.EXTRA_TEXT))
         val store = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Teilen legt nichts in die Zwischenablage", !store.hasPrimaryClip())
+        assertTrue("sharing puts nothing on the clipboard", !store.hasPrimaryClip())
     }
 
     /** Prefers a file at a location of choice: when sharing, the target app would read along. */
@@ -213,7 +213,7 @@ class SecondFactorMaskTest {
         assertEquals("aaaa-bbbb\ncccc-dddd\n", file.toString(Charsets.UTF_8.name()))
         button(R.string.zf_required_next).assertIsEnabled()
         val store = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Speichern legt nichts in die Zwischenablage", !store.hasPrimaryClip())
+        assertTrue("saving puts nothing on the clipboard", !store.hasPrimaryClip())
     }
 
     /** Every button of the code step tapped (sign-out excepted): the clipboard stays empty. */
@@ -224,23 +224,23 @@ class SecondFactorMaskTest {
         val buttons = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes()
             .mapNotNull { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() }
             .filter { it != text(R.string.settings_logout) }
-        assertTrue("Der Codeschritt hat keine Knöpfe: $buttons", buttons.size >= 2)
+        assertTrue("the code step has no buttons: $buttons", buttons.size >= 2)
         for (k in buttons) {
             compose.onNode(hasText(k) and hasClickAction()).performScrollTo().performClick()
             compose.waitForIdle()
         }
         val store = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Ein Knopf legte die Codes in die Zwischenablage: $buttons", !store.hasPrimaryClip())
+        assertTrue("a button put the codes on the clipboard: $buttons", !store.hasPrimaryClip())
     }
 
     @Test
     fun `the key is copyable only from API 33, and then marked as confidential`() {
-        assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !secretCopyable(32))
+        assertTrue("below API 33 the system shows copied secrets", !secretCopyable(32))
         assertTrue(secretCopyable(33))
         condition.value = setup
         level.value = 32
         show()
-        assertEquals("Unter API 33 kein Knopf zum Kopieren", 0,
+        assertEquals("below API 33 no button to copy", 0,
             compose.onAllNodes(hasText(text(R.string.zf_copy_key))).fetchSemanticsNodes().size)
         level.value = 33
         compose.waitForIdle()
@@ -284,7 +284,7 @@ class SecondFactorMaskTest {
             compose.waitForIdle()
             button(R.string.settings_logout).performScrollTo().performClick()
             compose.waitForIdle()
-            assertEquals("Schritt $i", i + 1, loggedOut)
+            assertEquals("step $i", i + 1, loggedOut)
         }
     }
 
@@ -305,7 +305,7 @@ class SecondFactorMaskTest {
             compose.waitForIdle()
             for (t in texts.map(::text)) if (breaksInWord(layout(t))) broken += t
         }
-        assertTrue("Mitten im Wort umgebrochen: $broken", broken.isEmpty())
+        assertTrue("wrapped in the middle of a word: $broken", broken.isEmpty())
     }
 
     /** The layout of the text node with exactly [text] (not a field that carries it). */

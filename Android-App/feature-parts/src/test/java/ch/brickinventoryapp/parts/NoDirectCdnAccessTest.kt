@@ -30,7 +30,7 @@ class NoDirectCdnAccessTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -58,8 +58,8 @@ class NoDirectCdnAccessTest {
             // the helper in ui/util/ImageRueckfall.kt internally calls resolveThumbUrl()
             assert(fn.contains("resolveThumbUrl(") || fn.contains("resolveFullUrl(") ||
                    fn.contains("rememberTileImageWithFallback(")) {
-                "$rel lädt ein Bild, ohne resolveThumbUrl()/resolveFullUrl() oder den " +
-                "Rückfall-Helfer zu benutzen — das führt am Server-Proxy vorbei direkt zum CDN"
+                "$rel loads an image without using resolveThumbUrl()/resolveFullUrl() or the " +
+                "fallback helper — that goes past the server proxy directly to the CDN"
             }
         }
     }
@@ -83,8 +83,8 @@ class NoDirectCdnAccessTest {
         // would wrap the proxy address a second time.
         val screen = code(Sources.screen("parts/ui/screens/PartsListScreen.kt"))
         assert(!screen.contains("resolveThumbUrl(") && !screen.contains("resolveFullUrl(")) {
-            "Die Teileliste darf part.imageUrl NICHT durch resolveThumbUrl() schicken — " +
-            "es ist bereits aufgelöst, sonst entsteht ein doppelt gewickelter Proxy-Aufruf"
+            "The parts list must NOT send part.imageUrl through resolveThumbUrl() — " +
+            "it is already resolved, otherwise a doubly wrapped proxy call results"
         }
     }
 }

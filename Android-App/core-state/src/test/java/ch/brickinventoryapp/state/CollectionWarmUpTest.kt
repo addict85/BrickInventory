@@ -55,8 +55,8 @@ class CollectionWarmUpTest {
             val asked = paths.requests.toList()
             assertEquals(setOf("/api/v1/sets", "/api/v1/parts", "/api/v1/minifigs", "/api/v1/parts/manual", "/api/v1/minifigs/manual"),
                 asked.map { it.substringAfter(' ').substringBefore('?') }.toSet())
-            assertTrue("Ohne Kontofilter: $asked", asked.all { "accounts=own" in it })
-            assertTrue("Nur lesend: $asked", asked.all { it.startsWith("GET ") })
+            assertTrue("without account filter: $asked", asked.all { "accounts=own" in it })
+            assertTrue("read-only: $asked", asked.all { it.startsWith("GET ") })
         } finally {
             paths.server.shutdown()
             folder.deleteRecursively()

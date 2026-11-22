@@ -73,7 +73,7 @@ class VoucherPdfStoreTest {
     fun `the file name depends on the whole address, not on 32 bits`() {
         val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
         val y = "https://brick.example/api/v1/vouchers/BB/pdf"
-        assertEquals("Die Probe braucht zwei Adressen mit gleichem hashCode()", x.hashCode(), y.hashCode())
+        assertEquals("the probe needs two addresses with the same hashCode()", x.hashCode(), y.hashCode())
         assertTrue(pdfStore(cache, x, false) != pdfStore(cache, y, false))
         assertEquals("anleitung_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.bin", pdfStore(cache, "", false)?.name)
     }
@@ -83,9 +83,9 @@ class VoucherPdfStoreTest {
         assertTrue(showsVouchers("https://brick.example/API/v1/Vouchers/7/pdf"))
         assertTrue(showsVouchers("https://brick.example/api/v1/%76ouchers/7/pdf"))
         assertTrue(showsVouchers("https://brick.example/brick/api//v1/vouchers/export/pdf"))
-        assertTrue("Was sich nicht lesen lässt, gilt als vertraulich", showsVouchers("https://brick example/x y"))
+        assertTrue("what cannot be read counts as confidential", showsVouchers("https://brick example/x y"))
         assertFalse(showsVouchers(instruction))
-        assertFalse("Die Abfrage ist kein Pfad", showsVouchers("$instruction?von=/api/v1/vouchers/7"))
+        assertFalse("the query is not a path", showsVouchers("$instruction?von=/api/v1/vouchers/7"))
     }
 
     /** Voucher PDFs that older versions placed in their own folder. */
@@ -113,25 +113,25 @@ class VoucherPdfStoreTest {
         val loader = Sources.withoutComments(Sources.read("finances/ui/pdf/InstructionLoader.kt") + Sources.read("finances/ui/pdf/PdfSource.kt") +
             Sources.read("data/InstructionRepository.kt"))
         val vm = Sources.withoutComments(Sources.read("finances/ui/viewmodel/PdfViewerViewModel.kt"))
-        assertTrue("Der Betrachter legt nicht über pdfStore() ab", loader.contains("pdfStore(ctx.cacheDir, pdfUrl, confidential)"))
-        assertTrue("Ohne Datei nimmt der Betrachter nicht den Weg über den Speicher",
+        assertTrue("the viewer does not store via pdfStore()", loader.contains("pdfStore(ctx.cacheDir, pdfUrl, confidential)"))
+        assertTrue("without a file the viewer does not take the way via memory",
             Regex("""if \(store == null\) \{\s*loadIntoMemoryAndCount\(""").containsMatchIn(loader))
-        assertTrue("Der Speicherweg lädt nicht über loadPdfIntoMemory()", loader.contains("loadPdfIntoMemory(loadClient(httpClient), url"))
-        assertTrue("Das Gutschein-PDF liegt nicht in einem memfd", loader.contains("Os.memfd_create("))
-        assertTrue("Der Speicherbereich bleibt nach dem Verlassen offen",
+        assertTrue("the memory way does not load via loadPdfIntoMemory()", loader.contains("loadPdfIntoMemory(loadClient(httpClient), url"))
+        assertTrue("the voucher PDF does not lie in a memfd", loader.contains("Os.memfd_create("))
+        assertTrue("the memory area stays open after leaving",
             Regex("""override fun onCleared\(\)\s*\{\s*open\.close\(\)""").containsMatchIn(vm))
-        assertTrue("Herunterladen steht ohne Prüfung da",
+        assertTrue("download stands without a check",
             Regex("""if \(savable\) \{\s*((?:ch\.brickinventoryapp\.ui\.components\.)?WithTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (report\()?savePdfToDownloads\(""").containsMatchIn(viewer))
         // The print dialog offers „Als PDF speichern“: printing only where saving is also allowed.
         val guarded = viewer.substringAfter("if (savable) {").substringBefore("\n                    }\n")
-        assertTrue("Drucken steht ohne Prüfung da", viewer.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in guarded)
+        assertTrue("print stands without a check", viewer.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in guarded)
         val logout = Sources.function(Sources.withoutComments(Sources.read("data/SessionCleanup.kt")), "suspend fun cleanUp(")
-        assertTrue("Abmelden lässt Gutschein-PDFs liegen", logout.contains("cleanUpConfidentialPdfs("))
-        assertTrue("Abmelden lässt Anleitungen liegen", logout.contains("cleanUpInstructions(ctx.cacheDir)"))
-        assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
+        assertTrue("sign-out leaves voucher PDFs behind", logout.contains("cleanUpConfidentialPdfs("))
+        assertTrue("sign-out leaves manuals behind", logout.contains("cleanUpInstructions(ctx.cacheDir)"))
+        assertTrue("sign-out leaves parts list and update in filesDir",
             logout.contains("cleanUpAccountFiles(ctx.filesDir, ctx.getExternalFilesDir(null))"))
         val start = Sources.read("app/BrickInventoryApp.kt")
-        assertTrue("Der Start räumt Reste nicht weg", start.contains("cleanUpConfidentialPdfs(cacheDir)"))
-        assertTrue("Der Start lässt Klartext-Anleitungen liegen", start.contains("cleanUpPlaintextInstructions(cacheDir)"))
+        assertTrue("the start does not clear leftovers away", start.contains("cleanUpConfidentialPdfs(cacheDir)"))
+        assertTrue("the start leaves plain-text manuals behind", start.contains("cleanUpPlaintextInstructions(cacheDir)"))
     }
 }

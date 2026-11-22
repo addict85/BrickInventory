@@ -152,7 +152,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         assertEquals(20, condition().newerVersion?.versionCode)
         assertEquals(UpdateFresh.CURRENT, condition().freshness)
-        assertEquals("Der Stand wird fortgeschrieben", 20, store.state?.highestCode)
+        assertEquals("the status is carried forward", 20, store.state?.highestCode)
         assertNull(condition().error)
     }
 
@@ -163,7 +163,7 @@ class UpdateViewModelTest {
         vm.checkOnUpdate(still = true)
         advanceUntilIdle()
         assertTrue(condition().checked)
-        assertNull("Die stille Prüfung hinterlässt keinen Fehler", condition().error)
+        assertNull("the silent check leaves no error behind", condition().error)
         assertNull(condition().newerVersion)
         vm.checkOnUpdate(still = false)
         advanceUntilIdle()
@@ -176,7 +176,7 @@ class UpdateViewModelTest {
         vm.checkOnUpdate(still = false)
         advanceUntilIdle()
         assertEquals(UpdateFresh.RESET, condition().freshness)
-        assertNull("Eine ältere Beschreibung hält nicht auf einer Zwischenfassung fest", condition().newerVersion)
+        assertNull("an older description does not hold on to an intermediate version", condition().newerVersion)
     }
 
     @Test
@@ -185,8 +185,8 @@ class UpdateViewModelTest {
         vm.checkOnUpdate(still = false)
         advanceUntilIdle()
         assertEquals(UpdateFresh.EXPIRED, condition().freshness)
-        assertEquals("Sonst bliebe das Gerät auf der alten Fassung", 20, condition().newerVersion?.versionCode)
-        assertNull("Eine abgelaufene setzt keine Messlatte", store.state)
+        assertEquals("otherwise the device would stay on the old version", 20, condition().newerVersion?.versionCode)
+        assertNull("an expired one sets no bar", store.state)
     }
 
     @Test
@@ -212,7 +212,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         assertEquals(Message.Resource(R.string.update_signature_wrong), condition().error)
         assertFalse(condition().readyToInstallation)
-        assertFalse("Ein APK unbekannter Herkunft bleibt nicht liegen", device.file.exists())
+        assertFalse("an APK of unknown origin does not stay around", device.file.exists())
         assertTrue(device.installed.isEmpty())
     }
 
@@ -276,10 +276,10 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.closeUpdateHint()
         assertTrue(condition().dialogRejected)
-        assertEquals("Der Befund bleibt, nur die Frage ist weg", 20, condition().newerVersion?.versionCode)
+        assertEquals("the finding stays, only the question is gone", 20, condition().newerVersion?.versionCode)
         token.value = ""
         advanceUntilIdle()
-        assertEquals("beim Abmelden verfaellt der Zustand", UpdateUiState(), condition())
+        assertEquals("on sign-out the state expires", UpdateUiState(), condition())
     }
 
     @Test
@@ -291,13 +291,13 @@ class UpdateViewModelTest {
             advanceUntilIdle()
             requested.clear()
             advanceUntilIdle()
-            assertEquals("Abgemeldet fragt niemand bei GitHub", emptyList<String>(), requested)
+            assertEquals("signed out, nobody asks GitHub", emptyList<String>(), requested)
             login.value = "token"
             advanceUntilIdle()
             assertEquals(listOf(UPDATE_VERSION_URL), requested)
-            assertEquals("Die Prüfung beim Start ist still", 20, own.updateState.value.newerVersion?.versionCode)
+            assertEquals("the check at start is silent", 20, own.updateState.value.newerVersion?.versionCode)
             assertNull(own.updateState.value.error)
-            assertFalse("kein Ladebalken", own.updateState.value.check.running)
+            assertFalse("no loading bar", own.updateState.value.check.running)
         } finally {
             own.viewModelScope.cancel()
         }
@@ -310,10 +310,10 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         requested.clear()
         vm.setStartCheck(false)
-        assertFalse("Der Schalter steht im Zustand", vm.updateState.value.startCheck)
+        assertFalse("the switch stands in the state", vm.updateState.value.startCheck)
         vm.checkOnStart()
         advanceUntilIdle()
-        assertEquals("Ausgeschaltet ging eine Anfrage hinaus", emptyList<String>(), requested)
+        assertEquals("switched off, a request went out", emptyList<String>(), requested)
         vm.setStartCheck(true)
         vm.checkOnStart()
         advanceUntilIdle()

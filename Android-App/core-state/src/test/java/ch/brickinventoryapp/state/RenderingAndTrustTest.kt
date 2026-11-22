@@ -92,7 +92,7 @@ class RenderingAndTrustTest {
         val store = StorageRendering()
         var widgetKicks = 0
         val vm = AppearanceViewModel(store, testSession()) { widgetKicks++ }
-        assertTrue("Vorgabe: Vorschau verborgen", vm.hidePreview.value)
+        assertTrue("default: preview hidden", vm.hidePreview.value)
 
         vm.setBrightness("dunkel")
         vm.setSystemColors(true)
@@ -101,12 +101,12 @@ class RenderingAndTrustTest {
         assertEquals("dunkel", vm.brightness.value)
         assertTrue(store.colors && vm.systemColors.value)
         assertFalse(store.hide || vm.hidePreview.value)
-        assertEquals("Andere Werte stossen das Widget nicht an", 0, widgetKicks)
+        assertEquals("other values do not nudge the widget", 0, widgetKicks)
 
         vm.setWidgetValues(true)
         advanceUntilIdle()
         assertTrue(store.widget && vm.widgetValues.value)
-        assertEquals("Das Widget zeigt die neue Wahl erst nach einem Anstoss", 1, widgetKicks)
+        assertEquals("the widget only shows the new choice after a nudge", 1, widgetKicks)
         vm.viewModelScope.cancel()
     }
 
@@ -121,9 +121,9 @@ class RenderingAndTrustTest {
 
         assertTrue(vm.trustCertificate())
         assertEquals("AB:CD", store.pins["brick.example:443"])
-        assertEquals("Verbindungen mit dem alten Vertrauen bleiben offen", 1, drops)
+        assertEquals("connections with the old trust stay open", 1, drops)
         assertNull(vm.certificate.value)
-        assertFalse("Ohne offene Frage nichts zu bestätigen", vm.trustCertificate())
+        assertFalse("without an open question nothing to confirm", vm.trustCertificate())
         assertEquals(1, drops)
     }
 
@@ -136,8 +136,8 @@ class RenderingAndTrustTest {
         val fp = "0123456789ABCDEF0123456789ABCDEF"
         question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.UNKNOWN_CA))
 
-        assertFalse("Ein Tipp allein genügt nicht", vm.trustCertificate())
-        assertFalse("Ein falscher Fingerabdruck genügt nicht", vm.trustCertificate("FFFFFFFFFFFF"))
+        assertFalse("a tap alone is not enough", vm.trustCertificate())
+        assertFalse("a wrong fingerprint is not enough", vm.trustCertificate("FFFFFFFFFFFF"))
         assertTrue(store.pins.isEmpty())
         assertEquals(0, drops)
         assertTrue(vm.trustCertificate(fp))
@@ -157,7 +157,7 @@ class RenderingAndTrustTest {
         val vm = TrustViewModel(store, { drops++ }, CertificateQuestion())
         vm.userCa.requests()
         assertTrue(vm.userCa.question.value)
-        assertFalse("Erst die Bestätigung schaltet ein", store.caOn)
+        assertFalse("only the confirmation switches on", store.caOn)
         vm.userCa.confirm()
         assertTrue(store.caOn && vm.userCa.an.value)
         assertEquals(1, drops)

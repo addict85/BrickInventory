@@ -98,8 +98,8 @@ class SetTileTest {
                     price = TilePrice(Money.from(812.5), 16.1), currency = CurrencyCode.CHF)
             }
         }
-        assertEquals("Prozent", 1, rows(compose.onNodeWithText(fmtPercent(16.1), useUnmergedTree = true)))
-        assertEquals("Betrag", 1, rows(compose.onNodeWithText(fmtMoney(812.5, CurrencyCode.CHF), useUnmergedTree = true)))
+        assertEquals("percent", 1, rows(compose.onNodeWithText(fmtPercent(16.1), useUnmergedTree = true)))
+        assertEquals("amount", 1, rows(compose.onNodeWithText(fmtMoney(812.5, CurrencyCode.CHF), useUnmergedTree = true)))
     }
 
     @Test
@@ -118,7 +118,7 @@ class SetTileTest {
         }
         val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val b = compose.onNode(hasText("1-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        assertEquals("Kacheln einer Reihe gleich hoch", a.height, b.height, 1f)
+        assertEquals("tiles of a row equally high", a.height, b.height, 1f)
     }
 
     @Test
@@ -134,6 +134,6 @@ class SetTileTest {
         node.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
         val row = outcome.single().let { it.getLineBottom(0) - it.getLineTop(0) }
         val height = node.fetchSemanticsNode().boundsInRoot.height
-        assertTrue("Der Name ist $height px hoch, eine Zeile $row px", height < row * 1.5f)
+        assertTrue("the name is $height px high, one line $row px", height < row * 1.5f)
     }
 }

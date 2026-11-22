@@ -18,7 +18,7 @@ fun driveUntil(name: String, requests: () -> Int = { 0 }, condition: () -> Any? 
         last = now
         if (calm >= CALM_ROUNDS) return
     }
-    throw AssertionError("$name: nach $AT_MOST_ROUNDS Runden des Hauptloopers nicht bereit: ${condition()}")
+    throw AssertionError("$name: not ready after $AT_MOST_ROUNDS rounds of the main looper: ${condition()}")
 }
 
 private const val AT_MOST_ROUNDS = 200

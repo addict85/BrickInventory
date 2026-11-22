@@ -11,7 +11,7 @@ object Sources {
     /** Android-App/, found from any module folder where Gradle starts the tests. */
     val project: File = generateSequence(File("").absoluteFile) { it.parentFile }
         .firstOrNull { File(it, "settings.gradle.kts").isFile }
-        ?: error("settings.gradle.kts nicht gefunden über ${File("").absolutePath}")
+        ?: error("settings.gradle.kts not found above ${File("").absolutePath}")
 
     /** The Gradle modules with source code, each as a folder under [project]. */
     val module: List<File> = project.listFiles { f -> File(f, "build.gradle.kts").isFile }.orEmpty().sortedBy { it.name }
@@ -43,11 +43,11 @@ object Sources {
             source.walkTopDown().filter { it.isFile }.forEach { f ->
                 val rel = f.relativeTo(source).path
                 val z = File(target, rel)
-                check(!z.exists()) { "$rel liegt in zwei Modulen" }
+                check(!z.exists()) { "$rel lies in two modules" }
                 f.copyTo(z); n++
             }
         }
-        check(n > 0) { "Keine Dateien unter */$subPath in ${project.absolutePath}" }
+        check(n > 0) { "No files under */$subPath in ${project.absolutePath}" }
         return target
     }
 
@@ -59,8 +59,8 @@ object Sources {
     fun workflow(file: String = "android.yml"): String {
         val f = File("../../.github/workflows/$file")
         check(f.isFile) {
-            "$file nicht gefunden unter ${f.absolutePath}. Ohne die Datei " +
-                "pruefen die Tests darauf nichts und waeren trotzdem gruen."
+            "$file not found under ${f.absolutePath}. Without the file " +
+                "the tests on it check nothing and would still be green."
         }
         return f.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")
     }
@@ -105,7 +105,7 @@ object Sources {
      */
     fun di(): String {
         val files = all().filter { it.parentFile?.name == "di" }.sortedBy { it.name }
-        check(files.size >= 3) { "Nur ${files.size} Dateien in */di/ gefunden" }
+        check(files.size >= 3) { "Only ${files.size} files found in */di/" }
         return files.joinToString("\n") { it.readText() }
     }
 
@@ -116,7 +116,7 @@ object Sources {
     fun states(): String {
         val files = all().filter { it.parentFile?.name == "ui" && it.name.endsWith("States.kt") }
             .sortedBy { it.name }
-        check(files.size >= 5) { "Nur ${files.size} Zustandsdateien in */ui/ gefunden" }
+        check(files.size >= 5) { "Only ${files.size} state files found in */ui/" }
         return files.joinToString("\n") { it.readText() }
     }
 
@@ -127,9 +127,9 @@ object Sources {
     fun all(): List<File> {
         val files = root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         check(files.size >= 60) {
-            "Nur ${files.size} Kotlin-Dateien unter ${root.absolutePath} gefunden. " +
-                "Das ist zu wenig — vermutlich stimmt der Pfad nicht mehr. Alle Prüfungen, " +
-                "die darauf aufbauen, wären sonst stillschweigend grün."
+            "Only ${files.size} Kotlin files found under ${root.absolutePath}. " +
+                "That is too few — the path is probably wrong. All checks " +
+                "that build on it would otherwise be silently green."
         }
         return files
     }
@@ -142,8 +142,8 @@ object Sources {
         val pattern = "/${folder.trim('/')}/"
         val hits = all().filter { it.invariantSeparatorsPath.contains(pattern) }
         check(hits.isNotEmpty()) {
-            "Keine Kotlin-Dateien unter '$folder' gefunden — Ordner umbenannt? " +
-                "Eine leere Liste würde jede darauf aufbauende Prüfung stillschweigend bestehen."
+            "No Kotlin files found under '$folder' — folder renamed? " +
+                "An empty list would let every check building on it pass silently."
         }
         return hits
     }

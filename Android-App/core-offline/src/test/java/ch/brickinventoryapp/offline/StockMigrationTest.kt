@@ -85,13 +85,13 @@ class StockMigrationTest {
         try {
             val real = room.openHelper.writableDatabase
             val newest = versions().last()
-            assertEquals("Für die Fassung der Datenbank fehlt das eingecheckte Schema", real.version, newest)
+            assertEquals("the checked-in schema is missing for the database version", real.version, newest)
             val should = SQLiteDatabase.create(null)
             afterSchema(should, newest)
             val tables = schema(newest)["entities"]!!.jsonArray.map { it.jsonObject["tableName"]!!.jsonPrimitive.content }
             assertTrue(tables.containsAll(listOf("stock", "stock_state", "outbox")))
             for (t in tables) {
-                assertEquals("das eingecheckte Schema weicht bei `$t` von der Datenbank ab",
+                assertEquals("the checked-in schema differs from the database at `$t`",
                     setup({ should.rawQuery(it, null) }, t), setup({ real.query(it) }, t))
             }
             assertEquals(newest, schema(newest)["version"]!!.jsonPrimitive.int)
@@ -104,7 +104,7 @@ class StockMigrationTest {
     @Test
     fun `every earlier version becomes the newest without loss, every item has its own key, every row its filters`() {
         val earlier = versions().dropLast(1)
-        assertTrue("Mindestens Fassung 1 muss eingecheckt sein", 1 in earlier)
+        assertTrue("at least version 1 must be checked in", 1 in earlier)
         for (v in earlier) {
             val name = "migration-$v.db"
             context.deleteDatabase(name)
@@ -132,15 +132,15 @@ class StockMigrationTest {
                 .addMigrations(*InventoryDatabase.MIGRATIONS).allowMainThreadQueries().build()
             try {
                 val item = runBlocking { RoomOutbox(room).all("a") }
-                assertEquals("Version $v: der Ausgang ist vollständig und in Reihenfolge",
+                assertEquals("version $v: the outbox is complete and in order",
                     listOf(Editing.SetQuantity("10001-1", 1), Editing.SetQuantity("10002-1", 2)), item.map { it.editing })
-                assertTrue("Version $v: jeder Posten hat einen Schlüssel", item.all { it.key.length == 36 })
-                assertEquals("Version $v: jeder Posten hat einen eigenen Schlüssel", 2, item.map { it.key }.toSet().size)
+                assertTrue("version $v: every item has a key", item.all { it.key.length == 36 })
+                assertEquals("version $v: every item has a key of its own", 2, item.map { it.key }.toSet().size)
                 val stock = RoomInventory(room)
-                assertEquals("Version $v: die lesbare Liste bleibt, die unlesbare Zeile geht",
+                assertEquals("version $v: the readable list stays, the unreadable row goes",
                     listOf("10002-1"), runBlocking { stock.read("a", StockKind.SETS) }.list.map { it.key })
                 for (f in listOf(FilterColumns(theme = "City"), FilterColumns(storageLocation = "Kiste 2"), FilterColumns(searchText = "POLIZEI")))
-                    assertEquals("Version $v: die Filterspalten sind aus dem JSON gefüllt ($f)", listOf("10002-1"),
+                    assertEquals("version $v: the filter columns are filled from the JSON ($f)", listOf("10002-1"),
                         runBlocking { stock.filter("a", StockKind.SETS, f) }.list.map { it.key })
             } finally {
                 room.close()
@@ -167,7 +167,7 @@ class StockMigrationTest {
         try {
             val db = room.openHelper.writableDatabase
             fun row(sql: String) = db.query(sql).use { c ->
-                assertTrue("keine Zeile für $sql", c.moveToFirst())
+                assertTrue("no row for $sql", c.moveToFirst())
                 (0 until c.columnCount).map { c.getString(it) }
             }
             assertEquals(listOf("a", "PARTS", "3001/5", "7", PART, "3001 brick 2 x 4", null, "Kiste 1", "Red", "Bricks", "1", "U"),
@@ -176,7 +176,7 @@ class StockMigrationTest {
             assertEquals(listOf("a", "PARTS", "1700000000000"), row("SELECT area, kind, state FROM stock_state"))
             assertEquals(listOf("5", "a", EDIT, "42", "2", "k-5"), row("SELECT id, area, editing, created, attempts, `key` FROM outbox"))
             val parts = runBlocking { RoomInventory(room).read("a", StockKind.PARTS) }
-            assertEquals("die Liste ist unter ihrer neuen Art lesbar", listOf("3001/5"), parts.list.map { it.key })
+            assertEquals("the list is readable under its new kind", listOf("3001/5"), parts.list.map { it.key })
             assertEquals(1700000000000, parts.state)
         } finally {
             room.close()

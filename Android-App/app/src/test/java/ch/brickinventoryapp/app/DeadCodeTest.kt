@@ -30,7 +30,7 @@ class DeadCodeTest {
         val en = File(Sources.res, "values/strings.xml").readText()
         val key = Regex("""<string name="([^"]+)"""").findAll(en)
             .map { it.groupValues[1] }.toSet()
-        assert(key.size > 300) { "Nur ${key.size} Texte gefunden — Muster veraltet?" }
+        assert(key.size > 300) { "Only ${key.size} texts found — pattern outdated?" }
 
         // Searched is the Kotlin code AND the other XML files (themes,
         // menus, the manifest also include texts).
@@ -52,15 +52,15 @@ class DeadCodeTest {
                 .forEach { append(withoutXmlComments(it.readText())).append('\n') }
             append(withoutXmlComments(Sources.manifest.readText()))
         }
-        assert(usage.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
+        assert(usage.length > 100_000) { "Too little source read — path outdated?" }
 
         val dead = key.filter {
             it !in allowedResources && !Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(usage)
         }.sorted()
         assert(dead.isEmpty()) {
-            "Diese Texte werden nirgends benutzt (${dead.size}):\n  " + dead.joinToString("\n  ") +
-                "\nEntweder ist die Anzeige dazu nie gebaut worden — dann fehlt eine " +
-                "Funktion —, oder sie ist entfernt worden und der Text blieb liegen."
+            "These texts are used nowhere (${dead.size}):\n  " + dead.joinToString("\n  ") +
+                "\nEither the display for them was never built — then a " +
+                "function is missing —, or it was removed and the text was left behind."
         }
     }
 
@@ -79,7 +79,7 @@ class DeadCodeTest {
         files.forEach { (file, s) ->
             declaration.findAll(s).forEach { locations.getOrPut(it.groupValues[1]) { mutableListOf() } += file.invariantSeparatorsPath }
         }
-        assert(locations.size > 80) { "Nur ${locations.size} Funktionen gefunden — Muster veraltet?" }
+        assert(locations.size > 80) { "Only ${locations.size} functions found — pattern outdated?" }
 
         // Entry points nobody calls from within this tree.
         val entries = setOf("main", "onCreate", "onStart", "onResume", "onPause", "onDestroy")
@@ -113,9 +113,9 @@ class DeadCodeTest {
         }.map { "${it.key} (${it.value.joinToString { p -> p.substringAfterLast('/') }})" }.sorted()
 
         assert(dead.isEmpty()) {
-            "Diese Funktionen haben keinen Aufrufer (${dead.size}):\n  " + dead.joinToString("\n  ") +
-                "\nEntfernen — oder es fehlt die Stelle, die sie benutzen sollte. " +
-                "Genau das war bei saveUserDefaultCondition der Fall."
+            "These functions have no caller (${dead.size}):\n  " + dead.joinToString("\n  ") +
+                "\nRemove them — or the place that should use them is missing. " +
+                "Exactly that was the case with saveUserDefaultCondition."
         }
     }
 }

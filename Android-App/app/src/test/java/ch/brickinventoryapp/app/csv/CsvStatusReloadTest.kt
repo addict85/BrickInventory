@@ -40,8 +40,8 @@ class CsvStatusReloadTest {
     @Test
     fun `only the transition reloads`() {
         assert(csvSequence(wasBeforeActive = true, status = RunStatus.DONE) == CsvSequence.RELOAD) {
-            "Ein Import, der gerade fertig geworden ist, muss die Daten neu laden — " +
-                "sonst bleibt nach dem Import die alte Liste stehen."
+            "An import that has just finished must reload the data — " +
+                "otherwise the old list stays after the import."
         }
     }
 
@@ -51,9 +51,9 @@ class CsvStatusReloadTest {
         // having run before.
         for (status in listOf("done", "cancelled", "finished")) {
             assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
-                "Statusmeldung \"$status\" ohne vorherigen Lauf löst ein Nachladen aus. " +
-                    "Der SSE-Strom schickt sie alle paar Sekunden — die Galerie fällt " +
-                    "damit dauernd auf Seite 1 zurück."
+                "Status message \"$status\" without a previous run triggers a reload. " +
+                    "The SSE stream sends them every few seconds — the gallery then " +
+                    "keeps falling back to page 1."
             }
         }
     }
@@ -62,11 +62,11 @@ class CsvStatusReloadTest {
     fun `a running import starts the service exactly once`() {
         for (status in listOf("running", "pending")) {
             assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.SERVICE_START) {
-                "Beim Anlaufen (\"$status\") muss der Vordergrunddienst starten"
+                "On starting up (\"$status\") the foreground service must start"
             }
             assert(csvSequence(wasBeforeActive = true, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
-                "Jede Fortschrittszeile startet den Dienst erneut — dasselbe Muster " +
-                    "wie der Rücksprung, nur an anderer Stelle."
+                "Every progress row starts the service again — the same pattern " +
+                    "as the jump back, only at another place."
             }
         }
     }
@@ -75,10 +75,10 @@ class CsvStatusReloadTest {
     fun `pending counts as running`() {
         // Otherwise the app seems frozen between job acceptance and the first line:
         // no banner, no service.
-        assert(importRunning(RunStatus.WAITING)) { "pending gilt nicht mehr als laufend" }
-        assert(importRunning(RunStatus.RUNNING)) { "running gilt nicht mehr als laufend" }
-        assert(!importRunning(RunStatus.DONE)) { "done gilt als laufend" }
-        assert(!importRunning(null)) { "eine Meldung ohne Zustand gilt als laufend" }
+        assert(importRunning(RunStatus.WAITING)) { "pending no longer counts as running" }
+        assert(importRunning(RunStatus.RUNNING)) { "running no longer counts as running" }
+        assert(!importRunning(RunStatus.DONE)) { "done counts as running" }
+        assert(!importRunning(null)) { "a message without a state counts as running" }
     }
 
     @Test

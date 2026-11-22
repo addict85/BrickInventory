@@ -61,7 +61,7 @@ class PdfViewerViewModelTest {
 
     private class Source : PdfSource {
         var too = false
-        override fun open(): ParcelFileDescriptor = error("Im Test wird nicht gerendert")
+        override fun open(): ParcelFileDescriptor = error("nothing is rendered in the test")
         override fun inbox(): InputStream = "%PDF".byteInputStream()
         override fun close() { too = true }
     }
@@ -192,12 +192,12 @@ class PdfViewerViewModelTest {
         val holder = PdfHolder()
         val first = Source()
         assertTrue(holder.hold(first))
-        assertFalse("Gehalten heisst offen", first.too)
+        assertFalse("held means open", first.too)
         holder.close()
-        assertTrue("Das Verlassen schliesst die gehaltene Quelle", first.too)
+        assertTrue("leaving closes the held source", first.too)
         val late = Source()
         assertFalse(holder.hold(late))
-        assertTrue("Eine späte Quelle lebte sonst bis zum Prozessende", late.too)
+        assertTrue("a late source would otherwise live until the process ends", late.too)
     }
 
     private companion object {

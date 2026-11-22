@@ -62,6 +62,7 @@ import java.io.File
  *   `fun ladeDaten()` in GalleryViewModel → red „German declarations …: ladeDaten“
  *   a file data/repository/Ergebnis.kt → red „German file names …: [Ergebnis.kt]“
  *   `// Lädt die Liste neu` in OutboxWorker.kt → red „German comment words …“ (expected 0, was 1)
+ *   `assertEquals("Die Meldung fehlt", "broken", …)` in AbortTest → red “assertion messages are English”
  */
 class SourceRatchetTest {
 
@@ -72,8 +73,8 @@ class SourceRatchetTest {
 
     /** Equality: if the number rises, that is an error; if it sinks, the limit is adjusted. */
     private fun ratchet(was: String, limit: Number, measured: Number, hint: String = "") {
-        assertTrue("$was: $measured, erlaubt $limit. $hint", measured.toDouble() <= limit.toDouble())
-        assertEquals("$was ist auf $measured gesunken — die Schranke von $limit auf $measured senken",
+        assertTrue("$was: $measured, allowed $limit. $hint", measured.toDouble() <= limit.toDouble())
+        assertEquals("$was has dropped to $measured — lower the limit from $limit to $measured",
             limit.toDouble(), measured.toDouble(), 0.0)
     }
 
@@ -96,23 +97,27 @@ class SourceRatchetTest {
         }.map { it.groupValues[1] }.toSet()
         // The name in backticks is prose, not code: "the workflow …" does not call a helper `workflow`.
         val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n").replace(Regex("`[^`\n]*`"), "``") }
-        val reading = tests.count { t -> readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }
+        // Messages are prose too: "the code reads …" does not call a helper `code`.
+        val reading = tests.count { t ->
+            val calls = string.replace(t, "\"\"")
+            readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(calls) }
+        }
         return tests.size to reading
     }
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 208
+        val FUNCTIONS = 207
         val ONLY_SOURCE_TEXT = 33
         val all = Sources.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "SourceRatchetTest.kt" }.toList()
         val tally = all.associate { it.name to sourceTextFunctions(it.readText()) }
         val total = tally.values.sumOf { it.first }
-        assertTrue("Nur ${all.size} Testdateien, $total Tests — greift die Suche noch?", all.size >= 200 && total >= 1000)
+        assertTrue("Only ${all.size} test files, $total tests — does the search still apply?", all.size >= 200 && total >= 1000)
         val only = tally.filterValues { (n, l) -> n > 0 && l == n }.keys.sorted()
-        ratchet("Testfunktionen, die Quelltext lesen", FUNCTIONS, tally.values.sumOf { it.second },
-            "Prüft der neue Test Verhalten, soll er den Code ausführen statt nachzusehen, ob eine Zeile dasteht.")
-        ratchet("Testdateien, die nur Quelltext lesen", ONLY_SOURCE_TEXT, only.size, only.joinToString())
+        ratchet("test functions that read source", FUNCTIONS, tally.values.sumOf { it.second },
+            "If the new test checks behavior, it should run the code instead of looking whether a line is there.")
+        ratchet("test files that only read source", ONLY_SOURCE_TEXT, only.size, only.joinToString())
     }
 
     @Test
@@ -188,9 +193,9 @@ class SourceRatchetTest {
             rows++
             if (isComment(t)) comment++
         }
-        assert(rows > 30_000) { "Nur $rows Zeilen gefunden — greift die Suche noch?" }
+        assert(rows > 30_000) { "Only $rows rows found — does the search still apply?" }
         val share = Math.round(1000.0 * comment / rows) / 10.0
-        assert(share <= BARRIER) { "Kommentaranteil $share %, erlaubt $BARRIER %" }
+        assert(share <= BARRIER) { "comment share $share %, allowed $BARRIER %" }
     }
 
     @Test
@@ -198,10 +203,10 @@ class SourceRatchetTest {
         var counted = 0
         val lang = productionFiles().flatMap { f ->
             blocks(f.readLines()).also { counted += it.size }
-                .filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+                .filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} lines)" }
         }
-        assert(counted > 1000) { "Nur $counted Kommentarblöcke gefunden — greift die Suche noch?" }
-        assert(lang.isEmpty()) { "Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  ") }
+        assert(counted > 1000) { "Only $counted comment blocks found — does the search still apply?" }
+        assert(lang.isEmpty()) { "Comments over five lines; shorten the why, put the history in the commit:\n  " + lang.joinToString("\n  ") }
     }
 
     /** Prose lines per `#` block (equal indentation); empty `#` lines do not count. */
@@ -234,10 +239,10 @@ class SourceRatchetTest {
         val lang = buildFiles().flatMap { f ->
             val z = f.readLines()
             val blocks = if (f.extension in setOf("toml", "properties")) hashesBlocks(z) else blocks(z)
-            blocks.also { counted += it.size }.filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+            blocks.also { counted += it.size }.filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} lines)" }
         }
-        assertTrue("Nur $counted Kommentarblöcke in Build-Dateien — greift die Suche noch?", counted > 30)
-        assertTrue("Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  "),
+        assertTrue("Only $counted comment blocks in build files — does the search still apply?", counted > 30)
+        assertTrue("Comments over five lines; shorten the why, put the history in the commit:\n  " + lang.joinToString("\n  "),
             lang.isEmpty())
     }
 
@@ -268,12 +273,12 @@ class SourceRatchetTest {
                 (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) && narrative.containsMatchIn(t)
             }.map { "${f.name}: ${it.trim()}" }
         }
-        assertTrue("Nur ${wf.size} Zeilen Workflow — Pfad veraltet?", wf.size > 500)
-        ratchet("Workflow-Kommentare über fünf Zeilen", WORKFLOW, wfLang.size, wfLang.joinToString())
-        ratchet("Absätze über fünf Zeilen in Tests ohne Gegenproben", TESTS, testLang.size, testLang.take(20).joinToString())
-        ratchet("Datum oder Prüfkennung in Testkommentaren ausserhalb der Gegenproben", DATE_AND_ID, history.size,
+        assertTrue("Only ${wf.size} workflow lines — path outdated?", wf.size > 500)
+        ratchet("workflow comments over five lines", WORKFLOW, wfLang.size, wfLang.joinToString())
+        ratchet("paragraphs over five lines in tests without counter-checks", TESTS, testLang.size, testLang.take(20).joinToString())
+        ratchet("date or check id in test comments outside the counter-checks", DATE_AND_ID, history.size,
             history.take(20).joinToString("\n  "))
-        ratchet("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", HISTORY, tells.size,
+        ratchet("history (addendum, reporter, origin) in test comments", HISTORY, tells.size,
             tells.take(20).joinToString("\n  "))
         // In code and build files a comment names the why, not the check that found it.
         val abbreviation = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
@@ -281,7 +286,7 @@ class SourceRatchetTest {
             f.readLines().filter { z -> z.trim().let { isComment(it) || it.startsWith("#") } && abbreviation.containsMatchIn(z) }
                 .map { "${f.name}: ${it.trim()}" }
         }
-        ratchet("Prüfungskürzel in Kommentaren von Code und Bau", 0, truncated.size, truncated.take(20).joinToString("\n  "))
+        ratchet("check abbreviations in comments of code and build", 0, truncated.size, truncated.take(20).joinToString("\n  "))
     }
 
     /** Line numbers of comment paragraphs over five prose lines that do not begin with „Gegenprobe“ or „Counter-check“. */
@@ -315,14 +320,14 @@ class SourceRatchetTest {
             z.indices.mapNotNull { i ->
                 if (z[i].trim().startsWith("/**")) kdocs++
                 when {
-                    "docs/begruendungen/" in z[i] -> "${f.name}:${i + 1} verweist auf das Archiv"
-                    z[i].trim().startsWith("/**") && i > 0 && z[i - 1].trim().endsWith("*/") -> "${f.name}:${i + 1} zweite KDoc"
+                    "docs/begruendungen/" in z[i] -> "${f.name}:${i + 1} points to the archive"
+                    z[i].trim().startsWith("/**") && i > 0 && z[i - 1].trim().endsWith("*/") -> "${f.name}:${i + 1} second KDoc"
                     else -> null
                 }
             }
         }
-        assert(kdocs >= 500) { "Nur $kdocs KDoc-Blöcke gefunden — greift die Suche noch?" }
-        assert(findings.isEmpty()) { "Das Warum in den Kommentar, die Geschichte in den Commit:\n  " + findings.joinToString("\n  ") }
+        assert(kdocs >= 500) { "Only $kdocs KDoc blocks found — does the search still apply?" }
+        assert(findings.isEmpty()) { "The why in the comment, the history in the commit:\n  " + findings.joinToString("\n  ") }
     }
 
     /** Index of the opening bracket for the closing one at [too], -1 if none. */
@@ -414,9 +419,9 @@ class SourceRatchetTest {
                     "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
             }.toList()
         }
-        assert(checked >= 10) { "Nur $checked runCatching gefunden — greift die Suche noch?" }
+        assert(checked >= 10) { "Only $checked runCatching found — does the search still apply?" }
         assert(findings.isEmpty()) {
-            "runCatching um einen suspendierenden Aufruf; fangeAusserAbbruch verwenden:\n  " + findings.joinToString("\n  ")
+            "runCatching around a suspending call; use fangeAusserAbbruch:\n  " + findings.joinToString("\n  ")
         }
     }
 
@@ -436,9 +441,9 @@ class SourceRatchetTest {
                 if (swallows) "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
             }.toList()
         }
-        assert(names.size > 100 && checked >= 15) { "Nur ${names.size} suspend-Funktionen, $checked Fänge — greift die Suche noch?" }
+        assert(names.size > 100 && checked >= 15) { "Only ${names.size} suspend functions, $checked catches — does the search still apply?" }
         assert(findings.isEmpty()) {
-            "Breiter Fang um einen suspendierenden Aufruf ohne Abbruch-Zweig; fangeAusserAbbruch verwenden:\n  " +
+            "Broad catch around a suspending call without a cancellation branch; use fangeAusserAbbruch:\n  " +
                 findings.joinToString("\n  ")
         }
     }
@@ -451,9 +456,9 @@ class SourceRatchetTest {
             .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
         assert("<CurrentIssues>" in baseline) { "No <CurrentIssues> in the baseline — format outdated?" }
         val foreign = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod", "LongParameterList") }.distinct()
-        assert(foreign.isEmpty()) { "Die Baseline verschweigt andere Regeln: $foreign. Den Fund beheben, nicht eintragen." }
-        ratchet("Funktionen in der detekt-Baseline (tools/detekt-limit.txt)", limit, ids.size,
-            "Eine neue lange oder verzweigte Funktion zerlegen, statt sie einzutragen.")
+        assert(foreign.isEmpty()) { "The baseline hides other rules: $foreign. Fix the finding, do not list it." }
+        ratchet("functions in the detekt baseline (tools/detekt-limit.txt)", limit, ids.size,
+            "Split a new long or branched function instead of listing it.")
     }
 
     @Test
@@ -467,10 +472,10 @@ class SourceRatchetTest {
         val texts = files.map { code(it.readText()) }
         val sleep = texts.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
         val wait = texts.sumOf { Regex("""\bpollUntil\(""").findAll(it).count() }
-        assert(files.size > 200) { "Nur ${files.size} Testdateien gefunden — greift die Suche noch?" }
-        val hint = "Neue Tests laufen im Takt: PathServer.onTick() oder FakeApi mit Test-Dispatcher."
+        assert(files.size > 200) { "Only ${files.size} test files found — does the search still apply?" }
+        val hint = "New tests run in ticks: PathServer.onTick() or FakeApi with a test dispatcher."
         ratchet("Thread.sleep in Tests", SLEEP, sleep, hint)
-        ratchet("warteBis in Tests", WAIT, wait, hint)
+        ratchet("waitUntil in tests", WAIT, wait, hint)
     }
 
     private val publicDecl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
@@ -480,7 +485,7 @@ class SourceRatchetTest {
         val files = module.flatMap { m ->
             File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         }
-        assert(files.size > atLeast) { "Nur ${files.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
+        assert(files.size > atLeast) { "Only ${files.size} files in ${module.map { it.name }} — does the search still apply?" }
         return files.sumOf { f ->
             publicDecl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
         }
@@ -496,9 +501,9 @@ class SourceRatchetTest {
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
-        assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
-        ratchet("öffentliche Deklarationen in ${module.joinToString { it.name }}", LIMIT_AREAS, public(module, 100),
-            "Was nur das Modul braucht, wird internal.")
+        assert("core-data" in module.map { it.name }) { "core-data not under ${module.map { it.name }} — does the search still apply?" }
+        ratchet("public declarations in ${module.joinToString { it.name }}", LIMIT_AREAS, public(module, 100),
+            "What only the module needs becomes internal.")
     }
 
     @Test
@@ -507,9 +512,9 @@ class SourceRatchetTest {
         // Much is still public because graphs and UI tests live in app.
         val LIMIT_AREAS = 135
         val module = Sources.module.filter { it.name.startsWith("feature-") }
-        assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
-        ratchet("öffentliche Deklarationen der Bereiche", LIMIT_AREAS, public(module, 100),
-            "Was nur der Bereich braucht, wird internal.")
+        assert(module.size >= 7) { "Only ${module.size} areas — does the search still apply?" }
+        ratchet("public declarations of the areas", LIMIT_AREAS, public(module, 100),
+            "What only the area needs becomes internal.")
     }
 
     /** All Kotlin files under src/main, without comments and strings. */
@@ -527,10 +532,10 @@ class SourceRatchetTest {
         val fixed = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
         val between = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
         val code = mainCode()
-        ratchet("padding mit fester dp-Zahl", LIMIT_AREAS, code.sumOf { (_, text) -> fixed.findAll(text).count() },
-            "Einen Abstand aus Abstaende nehmen.")
-        ratchet("spacedBy und Spacer mit fester dp-Zahl", BETWEEN, code.sumOf { (_, text) -> between.findAll(text).count() },
-            "Einen Abstand aus Abstaende nehmen.")
+        ratchet("padding with a fixed dp number", LIMIT_AREAS, code.sumOf { (_, text) -> fixed.findAll(text).count() },
+            "Take a spacing from Spacing.")
+        ratchet("spacedBy and Spacer with a fixed dp number", BETWEEN, code.sumOf { (_, text) -> between.findAll(text).count() },
+            "Take a spacing from Spacing.")
     }
 
     @Test
@@ -539,7 +544,7 @@ class SourceRatchetTest {
         // stringResource(id, …) or appNumberLocale() name it explicitly.
         val without = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
         val places = mainCode().filter { (_, text) -> without.containsMatchIn(text) }.map { it.first.name }
-        assertEquals("String.format ohne Locale in $places", emptyList<String>(), places)
+        assertEquals("String.format without Locale in $places", emptyList<String>(), places)
     }
 
     @Test
@@ -547,12 +552,12 @@ class SourceRatchetTest {
         // `as? Outcome.Success` turns a failure into null: the page then shows nothing instead of an
         // error. A result goes through `when` (or loadAs/fetched), so its failure reaches the UI state.
         val dropped = Regex("""\bas\?\s*\w*Outcome\.Success\b""")
-        assertTrue("Das Muster erkennt die alte Form nicht mehr",
+        assertTrue("The pattern no longer recognizes the old form",
             dropped.containsMatchIn("(source.partsMetrics() as? Outcome.Success)?.let { }"))
         val places = mainCode().flatMap { (f, text) ->
             dropped.findAll(text).map { "${f.name}:${text.substring(0, it.range.first).count { c -> c == '\n' } + 1}" }.toList()
         }
-        assertEquals("Ladefehler still verworfen (as? Outcome.Success); exhaustiv mit when behandeln",
+        assertEquals("load error silently discarded (as? Outcome.Success); handle exhaustively with when",
             emptyList<String>(), places)
     }
 
@@ -579,11 +584,11 @@ class SourceRatchetTest {
                 val args = arguments(text, m.range.last)
                 val missing = listOf("paneTitle", "heading()").filter { it !in args }
                 val row = text.substring(0, m.range.first).count { it == '\n' } + 1
-                if (missing.isEmpty()) null else "${f.name}:$row ohne ${missing.joinToString()}"
+                if (missing.isEmpty()) null else "${f.name}:$row without ${missing.joinToString()}"
             }.toList()
         }
-        assertTrue("Nur $seen AlertDialogs gefunden — greift die Suche noch?", seen >= 8)
-        assertEquals("AlertDialogs ohne Fenstername oder Überschrift", emptyList<String>(), without)
+        assertTrue("Only $seen AlertDialogs found — does the search still apply?", seen >= 8)
+        assertEquals("AlertDialogs without window name or heading", emptyList<String>(), without)
     }
 
     @Test
@@ -599,8 +604,8 @@ class SourceRatchetTest {
                 if ("containerColor = windowSurface()" in arguments(text, m.range.last)) null else "${f.name}:$row"
             }.toList()
         }
-        assertTrue("Nur $seen AlertDialogs gefunden — greift die Suche noch?", seen >= 8)
-        assertEquals("AlertDialogs ohne windowSurface()", emptyList<String>(), without)
+        assertTrue("Only $seen AlertDialogs found — does the search still apply?", seen >= 8)
+        assertEquals("AlertDialogs without windowSurface()", emptyList<String>(), without)
     }
 
     /** Call including trailing block: `Row(…) { … }` or `Row { … }`; [on] points to `(` or `{`. */
@@ -634,8 +639,8 @@ class SourceRatchetTest {
                 if ("Text(stringResource(R.string.common_cancel))" in content && main.containsMatchIn(content)) "${f.name}:$row" else null
             }.toList()
         }
-        assertTrue("Nur $seen Zeilen gefunden — greift die Suche noch?", seen >= 100)
-        assertEquals("Eigene Knopfreihe mit Abbrechen und Hauptknopf; Knopfzeile nehmen",
+        assertTrue("Only $seen rows found — does the search still apply?", seen >= 100)
+        assertEquals("own button row with cancel and main button; use the button row",
             emptyList<String>(), own)
     }
 
@@ -646,9 +651,9 @@ class SourceRatchetTest {
         val LIMIT_AREAS = 6
         val activity = Sources.module.map { File(it, "src/main") }.filter { it.isDirectory }
             .flatMap { d -> d.walkTopDown().filter { it.isFile && it.name == "MainActivity.kt" }.toList() }
-        assertEquals("genau eine MainActivity", 1, activity.size)
+        assertEquals("exactly one MainActivity", 1, activity.size)
         val number = Regex("""\bby\s+viewModels\s*\(""").findAll(code(activity.single().readText())).count()
-        ratchet("ViewModels an der Activity", LIMIT_AREAS, number, "Ein ViewModel gehört an sein Ziel.")
+        ratchet("ViewModels at the activity", LIMIT_AREAS, number, "A ViewModel belongs to its destination.")
     }
 
     @Test
@@ -657,13 +662,13 @@ class SourceRatchetTest {
         // invisible and the line long. Comments and strings do not count.
         val full = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
         val files = productionFiles() + Sources.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }
-        assert(files.size > 500) { "Nur ${files.size} Dateien gefunden — greift die Suche noch?" }
+        assert(files.size > 500) { "Only ${files.size} files found — does the search still apply?" }
         val findings = files.flatMap { f ->
             code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
                 .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
                 .filter { full.containsMatchIn(it) }.map { "${f.name}: ${it.trim()}" }
         }
-        assert(findings.isEmpty()) { "Voll qualifizierte Namen; importieren statt ausschreiben:\n  " + findings.joinToString("\n  ") }
+        assert(findings.isEmpty()) { "Fully qualified names; import instead of spelling out:\n  " + findings.joinToString("\n  ") }
     }
 
     @Test
@@ -679,9 +684,9 @@ class SourceRatchetTest {
         }
         val main = count(productionFiles().asSequence())
         val tests = count(Sources.tests.walkTopDown().filter { it.isFile && it.extension == "kt" })
-        assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", main + tests > 0)
-        ratchet("voll qualifizierte Namen im Hauptcode", MAIN, main)
-        ratchet("voll qualifizierte Namen in Tests", TESTS, tests)
+        assertTrue("No fully qualified names found — does the pattern still apply?", main + tests > 0)
+        ratchet("fully qualified names in main code", MAIN, main)
+        ratchet("fully qualified names in tests", TESTS, tests)
     }
 
     @Test
@@ -694,9 +699,9 @@ class SourceRatchetTest {
         val findings = productionFiles().flatMap { f ->
             effect.findAll(code(f.readText())).filter { loader.containsMatchIn(it.groupValues[1]) }.map { f.name }.toList()
         }
-        assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
+        assertTrue("No LaunchedEffect found — does the pattern still apply?",
             productionFiles().any { "LaunchedEffect(" in it.readText() })
-        ratchet("LaunchedEffect, die laden", LOADING, findings.size, findings.joinToString())
+        ratchet("LaunchedEffects that load", LOADING, findings.size, findings.joinToString())
         // A screen state carries Laden<T> (fetch) or Vorgang (action) instead of a pair
         // of `running: Boolean` and `error: String?`, and Meldung or error class instead of a
         // translated sentence: the sentence arises when drawing, in the language of then.
@@ -722,12 +727,12 @@ class SourceRatchetTest {
         // Both numbers stand at 0; that the pattern still applies is shown by an old form.
         val unrecognized = listOf("galleryLoading", "stockRunning", "isExporting", "saves", "loadingCheck")
             .filterNot { recognized(load, it) }
-        assertTrue("Das Muster erkennt $unrecognized nicht mehr", unrecognized.isEmpty())
-        assertTrue("Nur $states Zustandsdateien — greift die Suche noch?", states >= 10)
-        ratchet("alte Ladeformen (Boolean laedt/…laeuft/speichert/…ing)", OLD, old,
-            "Laden<T> (model/ui/Load.kt) für Abrufe, Vorgang (model/ui/Operation.kt) für Handlungen nehmen.")
-        ratchet("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texts,
-            "Meldung (model/ui/Message.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
+        assertTrue("The pattern no longer recognizes $unrecognized", unrecognized.isEmpty())
+        assertTrue("Only $states state files — does the search still apply?", states >= 10)
+        ratchet("old loading forms (Boolean loading/…running/saves/…ing)", OLD, old,
+            "Take Load<T> (model/ui/Load.kt) for fetches, Operation (model/ui/Operation.kt) for actions.")
+        ratchet("finished texts in the state (String error/message/…)", TEXT, texts,
+            "Store a Message (model/ui/Message.kt) or error class; the screen forms the sentence.")
     }
 
     @Test
@@ -746,10 +751,10 @@ class SourceRatchetTest {
                 hits.filter { (n, t) -> t == "String" && datum.containsMatchIn(n) }.map { it.first }
         }
         val probe = count(listOf("    val avgPrice: Double? = null,", "    val createdAt: String? = null,", "    val pnlPercent: Double? = null,"))
-        assertEquals("Das Muster erkennt die alten Formen nicht mehr", listOf("avgPrice") to listOf("createdAt"), probe)
+        assertEquals("The pattern no longer recognizes the old forms", listOf("avgPrice") to listOf("createdAt"), probe)
         val (money, days) = count(rowsPerModule().filter { it.first == "core-model" }.flatMap { it.second })
-        ratchet("Beträge als Double in core-model", AMOUNTS, money.size, "Geld nehmen (model/domain/Money.kt): $money")
-        ratchet("Daten als String in core-model", DATA, days.size, "Instant nehmen, gelesen mit parseInstant(): $days")
+        ratchet("amounts as Double in core-model", AMOUNTS, money.size, "take Money (model/domain/Money.kt): $money")
+        ratchet("dates as String in core-model", DATA, days.size, "take Instant, read with parseInstant(): $days")
     }
     /** Whether [pattern] counts a Boolean property of this name as an old loading form. */
     private fun recognized(pattern: Regex, name: String): Boolean =
@@ -799,7 +804,7 @@ class SourceRatchetTest {
         val files = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }.filter { it.isFile && it.extension in setOf("kt", "kts") }.toList()
         }
-        assertTrue("Nur ${files.size} Kotlin-Dateien gefunden — greift die Suche noch?", files.size > 800)
+        assertTrue("Only ${files.size} Kotlin files found — does the search still apply?", files.size > 800)
         // The only exception until API v2: what the generated contract declares, and its bridges.
         val contract = files.single { it.name == "Vertrag.kt" }
         val bridges = files.filter { it.name == "ContractNames.kt" }
@@ -825,5 +830,78 @@ class SourceRatchetTest {
             }
         }
         assertEquals("German comment words; comments are English (CLAUDE.md)", 0, comments)
+    }
+
+    /** A string literal that opens an assertion call, or the message lambda right after an assert(…) on the same line. */
+    private val messageLiteral = Regex(
+        """\b(assert(?:True|False|Null|NotNull|Equals|NotEquals|Same|NotSame|That)|fail|error|ratchet)\s*\(\s*""" +
+            """("(?:\\.|[^"\\\n])*")""" +
+            """|\b(?:assert|check|require|checkNotNull|requireNotNull)\([^\n]*\)\s*\{\s*("(?:\\.|[^"\\\n])*")""")
+
+    /** Top-level arguments of the call whose first argument starts at [from]; a string counts as one. */
+    private fun argumentCount(code: String, from: Int): Int {
+        var depth = 0
+        var commas = 0
+        var i = from
+        while (i < code.length) {
+            val c = code[i]
+            when {
+                c == '"' -> i = endOfString(code, i)
+                c in "([{" -> depth++
+                c in ")]}" && depth == 0 -> return commas + 1
+                c in ")]}" -> depth--
+                c == ',' && depth == 0 -> commas++
+            }
+            i++
+        }
+        return commas + 1
+    }
+
+    /** Index of the closing quote of the string that opens at [start]. */
+    private fun endOfString(code: String, start: Int): Int {
+        var i = start + 1
+        while (i < code.length && code[i] != '"') i += if (code[i] == '\\') 2 else 1
+        return i
+    }
+
+    /** The message of an assertion: assertEquals and its kin carry one only as the first of three arguments. */
+    private fun messages(code: String): Sequence<String> = messageLiteral.findAll(code).mapNotNull { m ->
+        val literal = m.groups[2]
+        when {
+            m.groupValues[3].isNotEmpty() -> m.groupValues[3]
+            literal == null -> null
+            m.groupValues[1] in setOf("assertEquals", "assertNotEquals", "assertSame", "assertNotSame", "assertThat") ->
+                literal.value.takeIf { argumentCount(code, literal.range.first) >= 3 }
+            m.groupValues[1] in setOf("assertTrue", "assertFalse", "assertNull", "assertNotNull") ->
+                literal.value.takeIf { argumentCount(code, literal.range.first) >= 2 }
+            else -> literal.value
+        }
+    }
+
+    @Test
+    fun `assertion messages are English`() {
+        // Test sources of all modules and the shared test helpers; UI texts in quotes do not count.
+        val files = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
+            m.walkTopDown().onEnter { it.name != "build" }
+                .filter { it.isFile && it.extension == "kt" && Regex("/src/(test|testFixtures|androidTest)/|core-testing/src/main/")
+                    .containsMatchIn(it.invariantSeparatorsPath) }.toList()
+        }
+        assertTrue("Only ${files.size} test files found — does the search still apply?", files.size > 300)
+        val quoted = Regex("""„[^“\n]*“|“[^”\n]*”|`[^`\n]*`|«[^»\n]*»|\$\{[^}]*\}|\$\w+""")
+        val prose = Regex("""(?<![\w-])(der|die|das|und|nicht|wird|ist|kein|keine|ohne|mit|nach|fehlt|steht|gefunden)(?![\w-])""")
+        val word = Regex("""(?<![\w-])[a-zäöüß]{4,}(?![\w-])""")
+        fun germanText(literal: String): Boolean {
+            val t = quoted.replace(literal, " ").lowercase()
+            return prose.containsMatchIn(t) || word.findAll(t).any { it.value in germanWords || umlaut.containsMatchIn(it.value) }
+        }
+        val found = files.flatMap { f ->
+            messages(Sources.withoutComments(f.readText())).filter { germanText(it) }.map { "${f.name}: $it" }.toList()
+        }
+        // That the pattern still applies is shown by an old form.
+        assertTrue("The pattern no longer recognizes a German message",
+            messages("assert" + """True("Die Liste fehlt", ok)""").any { germanText(it) })
+        assertTrue("An expected value is no message", messages("""assertEquals("Galerie", title)""").none())
+        assertEquals("German assertion messages; tests speak English (CLAUDE.md):\n  " + found.joinToString("\n  "),
+            emptyList<String>(), found)
     }
 }

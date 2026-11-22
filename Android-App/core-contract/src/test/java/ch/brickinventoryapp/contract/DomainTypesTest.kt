@@ -53,7 +53,7 @@ class DomainTypesTest {
     fun `an unknown sorting counts as the default as on the server`() {
         assertEquals(SetSort.NEWEST, SetSort.from("schraeg_asc"))
         assertEquals(SetSort.NEWEST, SetSort.from(null))
-        assertEquals("Die Merkliste kennt keine Menge", WantedSort.NEWEST, WantedSort.from("qty_desc"))
+        assertEquals("the watchlist knows no quantity", WantedSort.NEWEST, WantedSort.from("qty_desc"))
         assertEquals(CatalogSort.YEAR_DESCENDING, CatalogSort.from(""))
         for (s in SetSort.entries) assertEquals(s, SetSort.from(s.identifier))
         for (s in WantedSort.entries) assertEquals(s, WantedSort.from(s.identifier))

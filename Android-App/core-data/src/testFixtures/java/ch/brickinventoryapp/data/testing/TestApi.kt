@@ -79,7 +79,7 @@ object TestApi {
     fun pollUntil(was: String, condition: () -> Boolean) {
         val end = System.currentTimeMillis() + 5000
         while (!condition()) {
-            check(System.currentTimeMillis() < end) { "Zeitüberschreitung: $was" }
+            check(System.currentTimeMillis() < end) { "Timeout: $was" }
             Thread.sleep(10)
         }
     }
@@ -141,7 +141,7 @@ class PathServer(vararg rules: Pair<String, String>) {
         val client = OkHttpClient.Builder().addInterceptor { chain ->
             val request = chain.request()
             val path = pathWithQuery(request)
-            check(delayed.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($path); dafür ausbleibend" }
+            check(delayed.isEmpty()) { "In ticks there is no delayed response ($path); use a missing one instead" }
             val body = request.body?.let { b -> Buffer().also { b.writeTo(it) }.readUtf8() }.orEmpty()
             val (code, text) = answer(request.method, path, body)
             if (code in 200..299) checkAgainstDto(request, path, text)
@@ -174,7 +174,7 @@ class PathServer(vararg rules: Pair<String, String>) {
         } catch (e: IllegalArgumentException) {
             val reason = "${request.method} $path: ${e.message?.lineSequence()?.firstOrNull()}"
             readError += reason
-            throw AssertionError("Testantwort passt nicht zum DTO — $reason", e)
+            throw AssertionError("Test response does not match the DTO — $reason", e)
         }
     }
 
@@ -192,7 +192,7 @@ class PathServer(vararg rules: Pair<String, String>) {
     fun checkReadIn() {
         val error = synchronized(readError) { readError.toList() }
         if (error.isNotEmpty()) {
-            throw AssertionError("Testantworten passen nicht zum DTO; die Antwort vervollständigen:\n  " +
+            throw AssertionError("Test responses do not match the DTO; complete the response:\n  " +
                 error.joinToString("\n  "))
         }
     }
@@ -261,7 +261,7 @@ class RowsServer {
     init {
         paths.priority = { method, path ->
             posed += RecordedCall(method, path, Buffer().writeUtf8(paths.bodyBytes.last()))
-            series.removeFirstOrNull() ?: throw AssertionError("Keine Antwort mehr in der Reihe für $method $path")
+            series.removeFirstOrNull() ?: throw AssertionError("No response left in the queue for $method $path")
         }
     }
 

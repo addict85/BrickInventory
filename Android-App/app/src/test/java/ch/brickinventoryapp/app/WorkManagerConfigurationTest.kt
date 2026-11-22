@@ -16,7 +16,7 @@ class WorkManagerConfigurationTest {
 
     @Test
     fun `the app supplies WorkManager its configuration itself`() {
-        assertTrue("BrickInventoryApp ist kein Configuration.Provider",
+        assertTrue("BrickInventoryApp is not a Configuration.Provider",
             Configuration.Provider::class.java.isAssignableFrom(BrickInventoryApp::class.java))
     }
 }

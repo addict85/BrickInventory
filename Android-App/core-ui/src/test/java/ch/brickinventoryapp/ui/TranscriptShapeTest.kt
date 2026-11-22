@@ -24,7 +24,7 @@ class TranscriptShapeTest {
         assertEquals("3F:A2:B" to 4, pairTranscriptIn("3F:A2B", 4))
         assertEquals("3F:A2" to 0, pairTranscriptIn(" 3f a2", 0))
         val base64 = "Hn4QkHjv0R6m0V4Qn8yJbM1C8dV2wP1o3aY6m2+qF0E="
-        assertEquals("Ein eingefügtes Base64 bleibt", base64 to 3, pairTranscriptIn(base64, 3))
+        assertEquals("pasted Base64 stays", base64 to 3, pairTranscriptIn(base64, 3))
     }
 
     @Test

@@ -66,8 +66,8 @@ class LanguageTheMessagesTest {
     fun `resource texts come from the localized context`() {
         val files = affectedFiles()
         assert(files.size >= 15) {
-            "Nur ${files.size} Dateien gefunden — der Pfadfilter stimmt nicht mehr, " +
-                "und die Pruefung waere still gruen."
+            "Only ${files.size} files found — the path filter no longer matches, " +
+                "and the check would be silently green."
         }
 
         val error = mutableListOf<String>()
@@ -95,10 +95,10 @@ class LanguageTheMessagesTest {
                 error += "$name: $recipient.getString(...)"
             }
         }
-        assert(checked > 0) { "Kein einziger getString-Aufruf gefunden — Muster veraltet?" }
+        assert(checked > 0) { "Not a single getString call found — pattern outdated?" }
         assert(error.isEmpty()) {
-            "Diese Stellen holen Texte ueber einen Context, der unterhalb von " +
-                "Android 13 die SYSTEM-Sprache traegt statt der eingestellten App-Sprache:\n  " +
+            "These places fetch texts via a Context that below " +
+                "Android 13 carries the SYSTEM language instead of the chosen app language:\n  " +
                 error.distinct().joinToString("\n  ") +
                 "\nRichtig ist LanguageManager.localizedContext(...) — siehe TextSource.text()."
         }
@@ -110,10 +110,10 @@ class LanguageTheMessagesTest {
         for (file in listOf("data/util/TextSource.kt")) {
             val s = Sources.withoutComments(Sources.read(file))
             assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
-                "$file hat keinen text()-Helfer mehr"
+                "$file no longer has a text() helper"
             }
             assert(s.contains("localizedContext")) {
-                "$file holt den lokalisierten Context nicht mehr"
+                "$file no longer fetches the localized Context"
             }
         }
     }
@@ -127,7 +127,7 @@ class LanguageTheMessagesTest {
         for (file in listOf("data/util/TextSource.kt")) {
             val s = Sources.withoutComments(Sources.read(file))
             assert(s.contains("if (args.isEmpty()) c.getString(id) else c.getString(id, *args)")) {
-                "$file formatiert auch ohne Argumente — siehe TextSource.text()"
+                "$file formats even without arguments — see TextSource.text()"
             }
         }
     }

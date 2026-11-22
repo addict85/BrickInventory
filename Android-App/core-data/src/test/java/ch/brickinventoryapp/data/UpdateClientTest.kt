@@ -27,9 +27,9 @@ class UpdateClientTest {
     @Test
     fun `the update client carries nothing from our server and follows no redirect itself`() {
         val client = NetworkModule.provideUpdateOkHttpClient()
-        assertFalse("OkHttp folgt Umleitungen am Wächter vorbei", client.followRedirects)
-        assertFalse("OkHttp folgt einer Umleitung von https auf http", client.followSslRedirects)
-        assertNull("Ein APK im Zwischenspeicher verdrängte die Vorschauen", client.cache)
+        assertFalse("OkHttp follows redirects past the guard", client.followRedirects)
+        assertFalse("OkHttp follows a redirect from https to http", client.followSslRedirects)
+        assertNull("An APK in the cache displaced the previews", client.cache)
         assertTrue(client.networkInterceptors.isEmpty())
 
         var beyond: Request? = null
@@ -42,6 +42,6 @@ class UpdateClientTest {
             .execute().close()
 
         val header = beyond!!.headers
-        assertEquals("Köpfe zu GitHub: ${header.names()}", emptySet<String>(), header.names())
+        assertEquals("Headers to GitHub: ${header.names()}", emptySet<String>(), header.names())
     }
 }

@@ -36,7 +36,7 @@ class LibraryComponentsTest {
     private fun missing(name: String, fetch: (ComponentName) -> Unit) {
         try {
             fetch(ComponentName(ctx.packageName, name))
-            fail("$name steht im Manifest")
+            fail("$name is in the manifest")
         } catch (_: PackageManager.NameNotFoundException) {
             // expected: taken out
         }
@@ -61,7 +61,7 @@ class LibraryComponentsTest {
     @Test
     fun `the PDF renderer runs isolated and is not reachable from outside`() {
         val info = ctx.packageManager.getServiceInfo(ComponentName(ctx, PDF_SERVICE), 0)
-        assertTrue("Ohne isolatedProcess rendert pdfium im Prozess mit Token und Schlüsseln",
+        assertTrue("without isolatedProcess pdfium renders in the process with token and keys",
             info.flags and ServiceInfo.FLAG_ISOLATED_PROCESS != 0)
         assertFalse(info.exported)
     }

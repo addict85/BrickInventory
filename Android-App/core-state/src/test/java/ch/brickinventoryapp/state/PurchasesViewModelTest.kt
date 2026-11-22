@@ -91,25 +91,25 @@ class PurchasesViewModelTest {
         runBlocking { t.store.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0)).map { it.asView() }) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
-        assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
+        assertTrue("List loaded", vm.manDetailState.value.acquisitions.isNotEmpty())
         val before = paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size
         vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
-        assertTrue("neu geladen", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
         val tile = runBlocking { t.sets().observeSets().first().list.single() }
-        assertEquals("die Kachel der Galerie liest die Zusammenfassung", 1, tile.usedCount)
-        assertTrue("ohne den ganzen Bestand neu zu holen", paths.requestsTo("GET /api/v1/sets?").isEmpty())
+        assertEquals("the gallery tile reads the summary", 1, tile.usedCount)
+        assertTrue("without fetching the whole stock again", paths.requestsTo("GET /api/v1/sets?").isEmpty())
     }
 
     @Test
     fun `the purchases of an entry load as soon as its page shows them`() {
         val vm = vm()
         val condition = vm.purchasesOf(ItemKind.PART, "3001", 5)
-        assertTrue("ohne Beobachter kein Abruf", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
+        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
         val page = CoroutineScope(Dispatchers.Main).launch { condition.collect {} }
         assertEquals(listOf(9), condition.value.acquisitions.map { it.id })
         page.cancel()
         val set = CoroutineScope(Dispatchers.Main).launch { vm.purchasesOf(ItemKind.SET, "75192-1", 0).collect {} }
-        assertTrue("ein Set fragt seine Käufe", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").isNotEmpty())
+        assertTrue("a set asks for its purchases", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").isNotEmpty())
         set.cancel()
     }
 
@@ -118,10 +118,10 @@ class PurchasesViewModelTest {
         paths.codes["/api/v1/parts/3001/5/acquisitions/9"] = 409
         val vm = vm()
         vm.loadManualAcquisitions(ItemKind.PART, "3001", 5)
-        assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
+        assertTrue("List loaded", vm.manDetailState.value.acquisitions.isNotEmpty())
         val before = paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").size
         vm.updateManualAcquisition(ItemKind.PART, "3001", 5, 9, date = "2020-01-01")
-        assertTrue("neu geladen", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v1/parts/3001/5/acquisitions").size > before)
         assertEquals("fehler", t.messages.text)
     }
 
@@ -132,7 +132,7 @@ class PurchasesViewModelTest {
         vm.changeAcquisitionOwner(ItemKind.SET, "75192-1", 0, 7, toUserId = 4) { f, parts, figures ->
             outcome = Triple(f, parts, figures)
         }
-        assertTrue("Antwort", outcome != null)
+        assertTrue("Response", outcome != null)
         assertEquals(Triple(null, 12, 2), outcome)
         // Moved along: the store fetches the state of all three lists from the server.
         for (path in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
@@ -162,22 +162,22 @@ class PurchasesViewModelTest {
 
         vm.updateManualAcquisition(ItemKind.PART, "3001", 5, 9, unitPrice = 0.25)
         val part = body("PUT /api/v1/parts/3001/5/acquisitions/9")
-        assertTrue("Teil: $part", "\"unit_price\":0.25" in part && !set("purchase_price", part))
+        assertTrue("part: $part", "\"unit_price\":0.25" in part && !set("purchase_price", part))
 
         vm.updateManualAcquisition(ItemKind.FIG, "sw0001", 0, 3, unitPrice = 12.0)
         val figure = body("PUT /api/v1/minifigs/sw0001/acquisitions/3")
-        assertTrue("Figur: $figure", "\"unit_price\":12.0" in figure && !set("purchase_price", figure))
+        assertTrue("figure: $figure", "\"unit_price\":12.0" in figure && !set("purchase_price", figure))
     }
 
     @Test
     fun `the price history of another entry does not stay`() {
         val vm = vm()
         vm.loadManualAcquisitions(ItemKind.PART, "3001", 5)
-        assertTrue("Verlauf geladen", vm.manDetailState.value.priceHistory != null)
+        assertTrue("history loaded", vm.manDetailState.value.priceHistory != null)
         // 3002 has no history on the test server: it stays empty, instead of
         // keeping on showing 3001's.
         vm.loadManualAcquisitions(ItemKind.PART, "3002", 5)
-        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.purchasesFetch.loading && !vm.manDetailState.value.historyFetch.loading)
+        assertTrue("list of 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.purchasesFetch.loading && !vm.manDetailState.value.historyFetch.loading)
         assertNull(vm.manDetailState.value.priceHistory)
     }
 
@@ -185,9 +185,9 @@ class PurchasesViewModelTest {
     fun `the price history for parts and figures comes from the matching path`() {
         val vm = vm()
         vm.loadManualPriceHistory(ItemKind.FIG, "sw0001")
-        assertTrue("Figur ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        assertTrue("figure without history", vm.manDetailState.value.priceHistory != null)
         vm.loadManualPriceHistory(ItemKind.PART, "3001", 5)
-        assertTrue("Teil ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        assertTrue("part without history", vm.manDetailState.value.priceHistory != null)
         assertEquals(1, paths.requestsTo("/api/v1/minifigs/sw0001/price-history").size)
         assertEquals(1, paths.requestsTo("/api/v1/parts/3001/5/price-history").size)
     }

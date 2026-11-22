@@ -120,7 +120,7 @@ class PriceAlertsDisplayTest {
 
         compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp auf den Mülleimer löscht schon", emptyList<String>(), requests("DELETE"))
+        assertEquals("a tap on the bin already deletes", emptyList<String>(), requests("DELETE"))
         compose.onNode(hasText(ctx.getString(R.string.common_delete)) and hasClickAction() and hasAnyAncestor(isDialog()))
             .performClick()
         wait("Löschen") { requests("DELETE").isNotEmpty() }
@@ -136,7 +136,7 @@ class PriceAlertsDisplayTest {
         compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Ultimate Falcon", useUnmergedTree = true).performClick()
         compose.waitForIdle()
-        assertEquals("Nur das Set aus der Sammlung öffnet sich", listOf("75192-1"), opened)
+        assertEquals("only the set from the collection opens", listOf("75192-1"), opened)
 
         compose.onNodeWithText(ctx.getString(R.string.alerts_armed), useUnmergedTree = true).fetchSemanticsNode()
         compose.onNodeWithText(ctx.getString(R.string.alerts_fired), useUnmergedTree = true).fetchSemanticsNode()
@@ -148,13 +148,13 @@ class PriceAlertsDisplayTest {
             val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) })
             val active = c.getString(R.string.alerts_armed)
             val triggered = c.getString(R.string.alerts_fired)
-            assertNotEquals("Beide Zustände heissen in $language gleich", active.lowercase(), triggered.lowercase())
+            assertNotEquals("both states are called the same in $language", active.lowercase(), triggered.lowercase())
             for (t in listOf(active, triggered)) {
-                assertTrue("„$t“ ($language) trägt ein Sinnbildzeichen", t.none { it in '■'..'◿' })
-                assertTrue("„$t“ ($language) ist kein Wort", t.count { it.isLetter() } >= 4)
+                assertTrue("“$t” ($language) carries a symbol character", t.none { it in '■'..'◿' })
+                assertTrue("“$t” ($language) is not a word", t.count { it.isLetter() } >= 4)
             }
             val explanation = c.getString(R.string.detail_alert_fired)
-            assertTrue("„$explanation“ ($language) erklärt nicht, was als Nächstes geschieht", explanation.trim().contains(' '))
+            assertTrue("“$explanation” ($language) does not explain what happens next", explanation.trim().contains(' '))
         }
     }
 }

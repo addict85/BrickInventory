@@ -66,30 +66,30 @@ class AppOverviewProtectionTest {
     @Test
     fun `from Android 13 the lock hides only the thumbnail, off releases it`() {
         show()
-        assertEquals("Ohne Sperre kein Eingriff", emptyList<Boolean>(), probe.preview)
+        assertEquals("without a lock no intervention", emptyList<Boolean>(), probe.preview)
 
         lock.setMinutes(5)
         compose.waitForIdle()
-        assertEquals("Mit Sperre kein Vorschaubild", listOf(false), probe.preview)
-        assertFalse("Bildschirmfotos bleiben erlaubt", safe())
+        assertEquals("with a lock no preview image", listOf(false), probe.preview)
+        assertFalse("screenshots stay allowed", safe())
 
         lock.setMinutes(0)
         compose.waitForIdle()
-        assertEquals("Sperre aus: Vorschaubild wieder frei", listOf(false, true), probe.preview)
+        assertEquals("lock off: preview image free again", listOf(false, true), probe.preview)
     }
 
     @Test
     fun `below Android 13 the lock protects the window with FLAG_SECURE`() {
         level.intValue = 32
         show()
-        assertFalse("Ohne Sperre kein Schutz", safe())
+        assertFalse("without a lock no protection", safe())
 
         lock.setMinutes(1)
         compose.waitForIdle()
-        assertTrue("Mit Sperre zeigt die Übersicht nichts", safe())
+        assertTrue("with a lock the overview shows nothing", safe())
 
         lock.setMinutes(0)
         compose.waitForIdle()
-        assertFalse("Sperre aus: wieder frei", safe())
+        assertFalse("lock off: free again", safe())
     }
 }

@@ -47,9 +47,9 @@ class PdfInStorageTest {
         server.start()
         val address = server.url("/api/v1/vouchers/export/pdf").toString()
         val withLength = runCatching { runBlocking { loadPdfIntoMemory(client, address, limit = 1000) } }
-        assertTrue("Content-Length über der Grenze", withLength.exceptionOrNull() is IOException)
+        assertTrue("Content-Length above the limit", withLength.exceptionOrNull() is IOException)
         val withoutLength = runCatching { runBlocking { loadPdfIntoMemory(client, address, limit = 1000) } }
-        assertTrue("Eine Antwort ohne Laenge ueber der Grenze wird nicht ganz geladen", withoutLength.exceptionOrNull() is IOException)
+        assertTrue("A response without length above the limit is not loaded entirely", withoutLength.exceptionOrNull() is IOException)
     }
 
     @Test

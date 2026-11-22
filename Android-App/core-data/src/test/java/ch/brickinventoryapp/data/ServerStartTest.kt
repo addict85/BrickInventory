@@ -41,7 +41,7 @@ class ServerStartTest {
         // The server reports steps including the share of the running one (2.37 of 8).
         paths.responses["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
-        assert(r is Outcome.Success) { "Startzustand nicht gelesen: $r" }
+        assert(r is Outcome.Success) { "Start state not read: $r" }
         assertEquals(2.37f / 8, (r as Outcome.Success).data.share!!, 0.0001f)
     }
 
@@ -49,16 +49,16 @@ class ServerStartTest {
     fun `the sign-in shows the progress instead of the form`() {
         val s = code(read("login/ui/LoginGraph.kt"))
         assert(s.contains("ServerStartDisplay(serverStart)")) {
-            "Die Anmeldung zeigt den Startfortschritt nicht"
+            "The sign-in does not show the start progress"
         }
         // The jump into the gallery must stand OUTSIDE the if/else: the
         // switch to „finished“ can come at any time.
         val display = s.indexOf("ServerStartDisplay(serverStart)")
         val jump = s.indexOf("LaunchedEffect(state.isLoggedIn)")
-        assert(jump > display) { "Test veraltet — die Reihenfolge stimmt nicht mehr" }
+        assert(jump > display) { "Test outdated — the order no longer matches" }
         val between = s.substring(display, jump)
         assert(between.contains("} else LoginScreen(")) {
-            "Anzeige und Formular stehen nicht als Entweder-Oder da"
+            "Display and form do not stand as either-or"
         }
     }
 }

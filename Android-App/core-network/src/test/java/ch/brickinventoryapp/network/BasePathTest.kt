@@ -85,7 +85,7 @@ class BasePathTest {
         server.enqueue(MockResponse().setBody("{}"))
         assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v1/h"))
         server.takeRequest()
-        assertEquals("Nur eine Anfrage, keine an /andere-app", 1, server.requestCount)
+        assertEquals("only one request, none to /andere-app", 1, server.requestCount)
     }
 
     @Test

@@ -35,7 +35,7 @@ class AppUnlockingTest {
         var pair = pair()
         var discarded = 0
         var missing = false
-        override fun signature() = if (missing) error("kein Keystore") else signature(pair.private)
+        override fun signature() = if (missing) error("no keystore") else signature(pair.private)
         override fun public() = pair.public
         override fun discard() { discarded++; pair = pair() }
     }

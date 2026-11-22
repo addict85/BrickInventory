@@ -29,7 +29,7 @@ class PdfServiceTextsTest {
             Outcome.Failure.EmptyResponse(), Outcome.Failure.Rejected(), Outcome.Failure.Server(503),
             Outcome.Failure.Plaintext, Outcome.Failure.Unknown("socket closed"),
         )
-        for (f in withoutSet) assertTrue("$f ohne Satz", errorText(PdfFailure.Fetch(f), sentence).isNotBlank())
+        for (f in withoutSet) assertTrue("$f without a sentence", errorText(PdfFailure.Fetch(f), sentence).isNotBlank())
         assertEquals("t${R.string.err_network}", errorText(PdfFailure.Fetch(Outcome.Failure.Network()), sentence))
         assertEquals("t${R.string.pdfexp_http_error}:503", errorText(PdfFailure.Fetch(Outcome.Failure.Server(503)), sentence))
         assertEquals("zu viele", errorText(PdfFailure.Fetch(Outcome.Failure.Server(429, "zu viele")), sentence))

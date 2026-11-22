@@ -40,7 +40,7 @@ class MessageQueueTest {
         channel.show(Message.Resource(7, listOf(4)))
         assertEquals(Message.Resource(7, listOf(3)), channel.message.value)
         channel.acknowledge()
-        assertEquals("andere Werte sind eine andere Meldung", Message.Resource(7, listOf(4)), channel.message.value)
+        assertEquals("other values are a different message", Message.Resource(7, listOf(4)), channel.message.value)
         channel.acknowledge()
         assertNull(channel.message.value)
     }

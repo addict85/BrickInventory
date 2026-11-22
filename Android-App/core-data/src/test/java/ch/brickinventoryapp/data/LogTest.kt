@@ -83,7 +83,7 @@ class LogTest {
     @Test
     fun `the network log redacts token and session even with a raised level`() {
         val rows = recording(HttpLoggingInterceptor.Level.HEADERS)
-        assertTrue("Die Köpfe stehen da, nur geschwärzt: $rows", rows.any { it.startsWith("Authorization:") })
+        assertTrue("The headers are there, only redacted: $rows", rows.any { it.startsWith("Authorization:") })
         assertTrue(rows.toString(), rows.none { "geheim" in it })
     }
 
@@ -97,7 +97,7 @@ class LogTest {
                 if (raw.containsMatchIn(z)) "${f.name}:${i + 1}: ${z.trim()}" else null
             }
         }
-        assertTrue("Die Hülle selbst wurde nicht gefunden", files.any { it.name == "AppLog.kt" })
-        assertTrue("Ins Logcat nur über network/util/AppLog.kt:\n" + hits.joinToString("\n"), hits.isEmpty())
+        assertTrue("The wrapper itself was not found", files.any { it.name == "AppLog.kt" })
+        assertTrue("Into logcat only via network/util/AppLog.kt:\n" + hits.joinToString("\n"), hits.isEmpty())
     }
 }

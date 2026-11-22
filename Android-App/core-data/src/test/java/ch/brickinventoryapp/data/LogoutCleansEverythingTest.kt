@@ -130,9 +130,9 @@ class LogoutCleansEverythingTest {
         coil.openEditor("bild")!!.apply { coil.fileSystem.write(data) { writeUtf8("bild") }; coil.fileSystem.write(metadata) { writeUtf8("m") } }.commit()
         val (partList, update, instruction) = createFilesAndMessage()
         val messages = shadowOf(ctx.getSystemService(NotificationManager::class.java))
-        assertEquals("Vorbedingung: eine Meldung steht da", 1, messages.allNotifications.size)
-        assertTrue("Vorbedingung: Bildcache gefüllt", imageClient.cache!!.urls().hasNext())
-        assertTrue("Vorbedingung: Vorschau abgelegt", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
+        assertEquals("Precondition: a notification is there", 1, messages.allNotifications.size)
+        assertTrue("Precondition: image cache filled", imageClient.cache!!.urls().hasNext())
+        assertTrue("Precondition: preview stored", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
         val oldKey = storeKey.fetch().copyOf()
 
         val cleanup = DevicesCleanup(ctx, prefs, AccountDataDeletion(offline), PasswordRequired(),
@@ -141,22 +141,22 @@ class LogoutCleansEverythingTest {
 
         val plate = store.data.first()
         assertEquals("Token", "", prefs.tokenNow())
-        assertFalse("Benutzername", listOf(TokenStore.USERNAME, TokenStore.USERNAME_ENC, TokenStore.USERNAME_SECRET)
+        assertFalse("Username", listOf(TokenStore.USERNAME, TokenStore.USERNAME_ENC, TokenStore.USERNAME_SECRET)
             .any { it in plate.asMap() })
-        assertFalse("Marke des Preisalarms", DevicesStore.ALARM_BRAND in plate.asMap())
-        assertNull("Kennzahlen", offline.read(Slots.METRICS)?.list?.takeIf { it.isNotEmpty() })
-        assertNull("Bestand", offline.read(Slots.SETS)?.list?.takeIf { it.isNotEmpty() })
-        assertFalse("Ausgang", offline.waiting())
+        assertFalse("Price alert brand", DevicesStore.ALARM_BRAND in plate.asMap())
+        assertNull("Metrics", offline.read(Slots.METRICS)?.list?.takeIf { it.isNotEmpty() })
+        assertNull("Stock", offline.read(Slots.SETS)?.list?.takeIf { it.isNotEmpty() })
+        assertFalse("Outbox", offline.waiting())
         // Looked at on disk: the names hang on the store key, and that is a different one afterwards.
-        assertTrue("Vorschau", File(ctx.filesDir, "vorschau").walkTopDown().none { it.isFile })
+        assertTrue("Preview", File(ctx.filesDir, "vorschau").walkTopDown().none { it.isFile })
         assertFalse("HTTP-Bildcache", imageClient.cache!!.urls().hasNext())
         assertNull("Coil-Bildcache", coil.openSnapshot("bild"))
         assertFalse("PartList", partList.exists())
         assertFalse("Update-APK", update.exists())
-        assertFalse("Anleitung", instruction.exists())
-        assertEquals("Preisalarm-Meldung", 0, messages.allNotifications.size)
-        assertNotEquals("Der Ablageschlüssel ist noch der alte", oldKey.toList(), storeKey.fetch().toList())
-        assertNull("Mit dem alten Schlüssel verschlüsselte Reste sind lesbar",
+        assertFalse("Instruction", instruction.exists())
+        assertEquals("Price alert notification", 0, messages.allNotifications.size)
+        assertNotEquals("The store key is still the old one", oldKey.toList(), storeKey.fetch().toList())
+        assertNull("Remains encrypted with the old key are readable",
             StoreCipher { storeKey.forTarget("x") }.decrypt(secret, "x/1"))
     }
 }

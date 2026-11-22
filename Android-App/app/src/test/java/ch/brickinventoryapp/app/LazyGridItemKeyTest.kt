@@ -14,7 +14,7 @@ class LazyGridItemKeyTest {
         // nothing, the violation list would stay empty and the test green without having
         // checked anything.
         val ui = Sources.below("ui")
-        assert(ui.size >= 20) { "Nur ${'$'}{ui.size} Dateien unter ui/ — Pfad veraltet?" }
+        assert(ui.size >= 20) { "Only ${'$'}{ui.size} files under ui/ — path outdated?" }
         // The call can span several lines and contain nested brackets
         // (`span = { GridItemSpan(maxLineSpan) }`). A first version
         // without DOT_MATCHES_ALL stayed green in the counter-check — it did not find the
@@ -37,10 +37,10 @@ class LazyGridItemKeyTest {
             }
         }
         assert(error.isEmpty()) {
-            "Eintrag ohne Schlüssel in einer verschlüsselten Liste:\n  " +
+            "Entry without a key in an encrypted list:\n  " +
                 error.joinToString("\n  ") +
-                "\nSein Ersatzschlüssel kommt aus dem Index und wechselt, sobald die " +
-                "Liste wächst — das Raster behandelt ihn dann als anderen Eintrag."
+                "\nIts fallback key comes from the index and changes as soon as the " +
+                "list grows — the grid then treats it as a different entry."
         }
     }
 }

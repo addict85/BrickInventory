@@ -43,13 +43,13 @@ class SecretClipboardTest {
 
         SecretClipboard.copy(ctx, "BrickInventory", "4711")
         ShadowLooper.idleMainLooper(59, TimeUnit.SECONDS)
-        assertEquals("Vor Ablauf noch da", "4711", content())
+        assertEquals("still there before expiry", "4711", content())
         ShadowLooper.idleMainLooper(2, TimeUnit.SECONDS)
-        assertEquals("Nach einer Minute leer", "", content())
+        assertEquals("empty after a minute", "", content())
 
         SecretClipboard.copy(ctx, "BrickInventory", "4711")
         store.setPrimaryClip(ClipData.newPlainText("Notiz", "fremd"))
         ShadowLooper.idleMainLooper(61, TimeUnit.SECONDS)
-        assertEquals("Fremder Inhalt bleibt", "fremd", content())
+        assertEquals("foreign content stays", "fremd", content())
     }
 }

@@ -59,8 +59,8 @@ class PreviewDeviceTest {
     fun `the store lies under filesDir, where Android does not clean up`() {
         val key = StoreKey(File(ctx.noBackupFilesDir, "vorschau-test.schluessel"), PlainVault)
         PreviewMemory(ctx, key).write("https://brick.example/api/v1/images/set/1-1?thumb=1", "bild".toByteArray())
-        assertTrue("Unter filesDir liegt nichts", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
-        assertFalse("Die Ablage liegt (auch) unter cacheDir", ctx.cacheDir.walkTopDown().any { it.isFile })
+        assertTrue("Nothing lies under filesDir", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
+        assertFalse("The store lies (also) under cacheDir", ctx.cacheDir.walkTopDown().any { it.isFile })
     }
 
     @Test
@@ -68,7 +68,7 @@ class PreviewDeviceTest {
         val internet = NetworkCapabilities.NET_CAPABILITY_INTERNET
         assertEquals(NetworkState.Kind.WIFI,
             situation(NetworkCapabilities.TRANSPORT_WIFI, internet, NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
-        assertEquals("Der Hotspot eines Telefons ist WLAN mit Datentarif",
+        assertEquals("A phone's hotspot is Wi-Fi with a data plan",
             NetworkState.Kind.MOBILE, situation(NetworkCapabilities.TRANSPORT_WIFI, internet))
         assertEquals(NetworkState.Kind.NO_NETWORK, situation(NetworkCapabilities.TRANSPORT_WIFI))
     }
@@ -88,6 +88,6 @@ class PreviewDeviceTest {
         val default = PrewarmNetwork.entries.associateWith { device.warmUpAllowed(it).first() }
         assertEquals(mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false), default)
         device.warmUpSet(PrewarmNetwork.ROAMING, true)
-        assertTrue("Die Wahl wird gemerkt", device.warmUpAllowed(PrewarmNetwork.ROAMING).first())
+        assertTrue("The choice is remembered", device.warmUpAllowed(PrewarmNetwork.ROAMING).first())
     }
 }

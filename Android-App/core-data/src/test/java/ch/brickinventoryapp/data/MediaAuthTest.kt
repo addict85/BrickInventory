@@ -30,12 +30,12 @@ class MediaAuthTest {
         // Lower bound: all checks here run over their
         // own file walk and collect violations. If it found nothing, they would
         // all be green without having checked anything.
-        check(Sources.all().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
+        check(Sources.all().size >= 60) { "Too few Kotlin files — path outdated?" }
     }
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -54,7 +54,7 @@ class MediaAuthTest {
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("HttpURLConnection")) {
-                "${rel.name}: eigener HTTP-Aufruf — Bilder gehören über den ImageLoader"
+                "${rel.name}: its own HTTP call — images belong to the ImageLoader"
             }
         }
     }
@@ -67,12 +67,12 @@ class MediaAuthTest {
     fun `the PDF download copies the loaded file instead of loading again`() {
         val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         assert(!viewer.contains("DownloadManager")) {
-            "DownloadManager kennt den Bearer-Token nicht — der Abruf endet in einer 401, " +
-            "die als PDF gespeichert wird"
+            "DownloadManager does not know the bearer token — the fetch ends in a 401, " +
+            "which is saved as a PDF"
         }
-        assert(viewer.contains("savePdfToDownloads")) { "Kopier-Funktion fehlt" }
+        assert(viewer.contains("savePdfToDownloads")) { "Copy function missing" }
         assert(viewer.contains("MediaStore.Downloads")) {
-            "Ab Android 10 ist der direkte Schreibzugriff auf Downloads/ gesperrt"
+            "From Android 10 direct write access to Downloads/ is blocked"
         }
     }
 
@@ -85,12 +85,12 @@ class MediaAuthTest {
         // Counter-check: counter-checks/pdf-download-ausserhalb-ready.patch → red here.
         val condition = code(read("finances/ui/pdf/PdfSource.kt"))
         val field = Regex("""class Ready\(val (\w+): \w+,""").find(condition)?.groupValues?.get(1)
-        assert(field != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
-        assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
+        assert(field != null) { "PdfLoadState.Ready no longer carries a loaded source" }
+        assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready check missing" }
         val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
         assert(ready.contains("savePdfToDownloads(ctx, s.$field, title)")) {
-            "Der Herunterladen-Knopf muss innerhalb des Ready-Zweigs stehen — " +
-            "vorher stand er ausserhalb und lud eigenständig neu"
+            "The download button must be inside the Ready branch — " +
+            "before, it stood outside and reloaded on its own"
         }
     }
 
@@ -101,15 +101,15 @@ class MediaAuthTest {
         // What is checked is the statement, not the wording of the call: the download runs
         // via the injected client, no matter how the arguments wrap.
         val call = Sources.window(viewer, "downloadPdfWithResume(", 8)
-        assert(call.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
+        assert(call.isNotEmpty()) { "The download call is missing entirely" }
         assert(call.contains("httpClient")) {
-            "Das PDF muss über den injizierten OkHttpClient geladen werden, nicht frei"
+            "The PDF must be loaded via the injected OkHttpClient, not freely"
         }
         assert(!viewer.contains("OkHttpClient()")) {
-            "Ein frei gebauter Client kennt den Bearer-Token nicht"
+            "A freely built client does not know the bearer token"
         }
         assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
-            "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
+            "The loader does not get the api client with token and plaintext ban"
         }
     }
 
@@ -162,8 +162,8 @@ class MediaAuthTest {
                 val nextWhen = body.indexOf("when ", 1)
                 val area = if (nextWhen > 0) body.substring(0, nextWhen) else body
                 assert(!area.contains("else ->")) {
-                    "${f.name}: else-Zweig in einem when über Result — " +
-                    "stattdessen einen expliziten null-Zweig ergänzen"
+                    "${f.name}: else branch in a when over Result — " +
+                    "add an explicit null branch instead"
                 }
                 idx = src.indexOf("is Ergebnis.Erfolg", idx + 1)
             }
@@ -191,7 +191,7 @@ class MediaAuthTest {
             }
         }
         assert(offenders.isEmpty()) {
-            "AsyncImage ohne imageLoader (Bilder bleiben nach 401 leer): ${offenders.joinToString()}"
+            "AsyncImage without imageLoader (images stay empty after 401): ${offenders.joinToString()}"
         }
     }
 
@@ -203,7 +203,7 @@ class MediaAuthTest {
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             assert(!Regex("""@Suppress\("UNUSED_PARAMETER"\)\s*imageLoader""").containsMatchIn(src)) {
-                "${f.name}: imageLoader ist als unbenutzt markiert — dann fehlt der Auth-Header"
+                "${f.name}: imageLoader is marked as unused — then the auth header is missing"
             }
         }
     }

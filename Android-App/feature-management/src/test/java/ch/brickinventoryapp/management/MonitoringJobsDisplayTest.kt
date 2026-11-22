@@ -70,7 +70,7 @@ class MonitoringJobsDisplayTest {
     /** Scrolls the list containing [target]; smaller rows next to it scroll along. */
     private fun roleTo(target: SemanticsMatcher) {
         val lists = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
-        assertTrue("Nichts gefunden, das zu ${target.description} rollt", (0 until lists).any { i ->
+        assertTrue("nothing found that scrolls to ${target.description}", (0 until lists).any { i ->
             runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(target) }.isSuccess
         })
         compose.waitForIdle()

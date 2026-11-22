@@ -56,14 +56,14 @@ class RepoCacheFallbackTest {
     }
 
     private fun success(r: Outcome<*>): Outcome.Success<*> {
-        assert(r is Outcome.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
+        assert(r is Outcome.Success) { "expected a success, but got: $r" }
         return r as Outcome.Success<*>
     }
 
     private suspend fun fillCache(year: Int = 1999) {
         server.enqueue(TestApi.response(response(year)))
         val fresh = success(repo.getCatalogMeta())
-        assert(!fresh.stale) { "Eine frische Antwort darf nicht als veraltet gelten: $fresh" }
+        assert(!fresh.stale) { "a fresh answer must not count as stale: $fresh" }
     }
 
     @Test
@@ -73,13 +73,13 @@ class RepoCacheFallbackTest {
         server.shutdown()   // Connection refused: a real network error
 
         val r = success(repo.getCatalogMeta())
-        assert((r.data as CatalogMetaView).yearMin == 1999) { "Nicht die gespeicherten Daten: $r" }
+        assert((r.data as CatalogMetaView).yearMin == 1999) { "not the stored data: $r" }
         val state = r.state
         assert(state != null && r.stale) {
-            "Der Rückfall trägt keinen Stand — die Liste sähe frisch aus: $r"
+            "the fallback carries no timestamp — the list would look fresh: $r"
         }
         assert(state!! in before..System.currentTimeMillis()) {
-            "Der Stand ist nicht der Zeitpunkt der Ablage: $state"
+            "the timestamp is not the time of storing: $state"
         }
     }
 
@@ -89,7 +89,7 @@ class RepoCacheFallbackTest {
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
         assert(r == Outcome.Failure.Server(500)) {
-            "Ein 500 ist eine Auskunft des Servers, kein Netzausfall — er muss " +
+            "A 500 is information from the server, not a network outage — it must " +
                 "durchkommen. Bekommen: $r"
         }
     }
@@ -108,7 +108,7 @@ class RepoCacheFallbackTest {
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
         assert(r is Outcome.Failure.Rejected) {
-            "Bei 401 darf der Cache NICHT einspringen, sonst läuft die Abmeldung ins Leere: $r"
+            "On 401 the cache must NOT step in, otherwise the sign-out comes to nothing: $r"
         }
     }
 
@@ -118,7 +118,7 @@ class RepoCacheFallbackTest {
         server.enqueue(TestApi.response(response(2024)))
         val newValue = success(repo.getCatalogMeta())
         assert((newValue.data as CatalogMetaView).yearMin == 2024 && newValue.state == null) {
-            "Erst Netz, dann Platte — bekommen: $newValue"
+            "network first, then disk — got: $newValue"
         }
     }
 
@@ -127,7 +127,7 @@ class RepoCacheFallbackTest {
         server.shutdown()
         val r = repo.getCatalogMeta()
         assert(r is Outcome.Failure && r.transient) {
-            "Ohne Cache-Eintrag gibt es nichts zurückzufallen. Bekommen: $r"
+            "without a cache entry there is nothing to fall back to. Got: $r"
         }
     }
 }

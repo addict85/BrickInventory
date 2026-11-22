@@ -73,13 +73,13 @@ class MonitoringLogDisplayTest {
         compose.onNodeWithContentDescription(text(R.string.common_expand)).performClick()
         compose.waitForIdle()
         roleTo(hasText(error.message!!))
-        assertEquals("Geladene Zeilen holt das Aufklappen nicht noch einmal", 0, logFetches)
+        assertEquals("expanding does not fetch loaded rows again", 0, logFetches)
     }
 
     /** Scrolls the list containing [target]; smaller rows next to it scroll along. */
     private fun roleTo(target: SemanticsMatcher) {
         val lists = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
-        assertTrue("Nichts gefunden, das zu ${target.description} rollt", (0 until lists).any { i ->
+        assertTrue("nothing found that scrolls to ${target.description}", (0 until lists).any { i ->
             runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(target) }.isSuccess
         })
         compose.waitForIdle()
@@ -93,7 +93,7 @@ class MonitoringLogDisplayTest {
         for (row in listOf(info, error)) {
             // The way the row shows it: by the device's 12/24-hour setting.
             val timeOfDay = fmtClockTime(row.loggedAt, appNumberLocale(), DateFormat.is24HourFormat(compose.activity))!!
-            assertEquals("Uhrzeit $timeOfDay zu „${row.message}“", 1, count(timeOfDay))
+            assertEquals("time of day $timeOfDay for “${row.message}”", 1, count(timeOfDay))
         }
     }
 
@@ -103,8 +103,8 @@ class MonitoringLogDisplayTest {
         assertEquals(1, count(info.message!!))
         compose.onNode(hasText("INFO") and hasClickAction()).performClick()
         compose.waitForIdle()
-        assertEquals("Die INFO-Zeile steht noch da", 0, count(info.message!!))
-        assertEquals("Die ERROR-Zeile ist mit verschwunden", 1, count(error.message!!))
+        assertEquals("the INFO row is still shown", 0, count(info.message!!))
+        assertEquals("the ERROR row disappeared too", 1, count(error.message!!))
     }
 
     @Test
@@ -112,7 +112,7 @@ class MonitoringLogDisplayTest {
         openShow()
         compose.onNodeWithContentDescription(text(R.string.admin_log_search)).performTextInput("BrickLink")
         compose.waitForIdle()
-        assertEquals("Die Zeile ohne den Suchtext steht noch da", 0, count(info.message!!))
-        assertEquals("Die passende Zeile ist mit verschwunden", 1, count(error.message!!))
+        assertEquals("the row without the search text is still shown", 0, count(info.message!!))
+        assertEquals("the matching row disappeared too", 1, count(error.message!!))
     }
 }

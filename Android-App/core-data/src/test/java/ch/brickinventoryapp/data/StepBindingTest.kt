@@ -109,6 +109,6 @@ class StepBindingTest {
         server.enqueue(TestApi.response("""{"success":false,"code":"geraeteschluessel_attestation","error":"nicht bestätigt"}""", 400))
         assertEquals(StepResponse.Rejected("nicht bestätigt"), binding.depositChain(chain))
         server.shutdown()
-        assertEquals("Ein Netzfehler ist keine Meldung", StepResponse.Rejected(null), binding.depositChain(chain))
+        assertEquals("A network error is no notification", StepResponse.Rejected(null), binding.depositChain(chain))
     }
 }

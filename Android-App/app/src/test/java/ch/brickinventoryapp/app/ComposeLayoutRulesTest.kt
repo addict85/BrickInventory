@@ -42,16 +42,16 @@ class ComposeLayoutRulesTest {
                     ?.let { "${f.name}:${i + 1} — FlowRow in ${it.first} (Zeile ${it.second})" }
             }
         }
-        assertTrue("Nur $flowRows FlowRows gefunden — greift die Suche noch?", flowRows >= 4)
-        assertTrue("Eine FlowRow gehört in eine Column, nicht in eine Row:\n" + findings.joinToString("\n"), findings.isEmpty())
+        assertTrue("Only $flowRows FlowRows found — does the search still apply?", flowRows >= 4)
+        assertTrue("A FlowRow belongs in a Column, not in a Row:\n" + findings.joinToString("\n"), findings.isEmpty())
     }
 
     @Test
     fun `the table row tells the screen reader what tapping does`() {
         val row = Sources.withoutComments(Sources.read("shared/ui/TableRow.kt"))
-        assertTrue("TableRow nimmt keine Beschriftung für die Sprachausgabe",
+        assertTrue("TableRow takes no label for screen readers",
             row.contains("onClickLabel: String? = null"))
-        assertTrue("TableRow reicht die Beschriftung nicht an clickable weiter",
+        assertTrue("TableRow does not pass the label on to clickable",
             Regex("""clickable\(onClickLabel = onClickLabel,[^)]*\bonClick = onClick\)""").containsMatchIn(row))
     }
 }

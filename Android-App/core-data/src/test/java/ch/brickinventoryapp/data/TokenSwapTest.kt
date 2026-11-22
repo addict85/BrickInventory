@@ -111,7 +111,7 @@ class TokenSwapTest {
         var locked = true
         val w = World(ready = { !locked })
         assertEquals(ExchangeOutcome.LATER, w.swapping.swap("alt"))
-        assertEquals("Der Server sah keinen Tausch", emptyList<String>(), w.log)
+        assertEquals("The server saw no switch", emptyList<String>(), w.log)
         assertEquals("alt", w.saved)
         locked = false
         assertEquals(ExchangeOutcome.EXCHANGED, w.swapping.swap("alt"))
@@ -165,7 +165,7 @@ class TokenSwapTest {
         val w = World().apply { responses = MutableList(10) { lost } }
         w.rotateOn = { if (w.origin == HERE) w.logout() }
         assertEquals(ExchangeOutcome.DISCARDED, w.swapping.swap("alt"))
-        assertEquals("Der alte Token ging nach dem Wechsel nochmals hinaus", listOf("rotiere alt"), w.log)
+        assertEquals("The old token went out again after the switch", listOf("rotiere alt"), w.log)
         assertEquals("", w.saved)
     }
 
@@ -177,7 +177,7 @@ class TokenSwapTest {
         w.logout()
         w.brake!!.complete(Unit)
         assertEquals(ExchangeOutcome.DISCARDED, swapping.await())
-        assertEquals("Nach dem Abmelden ist niemand angemeldet", "", w.saved)
+        assertEquals("After signing out nobody is signed in", "", w.saved)
         assertFalse(w.log.toString(), w.log.any { it.startsWith("speichere") })
         assertEquals(null, w.swapping.needed("alt", HERE, w.limit.generation))
     }
@@ -206,9 +206,9 @@ class TokenSwapTest {
         val w = World()
         val g = w.limit.generation
         w.logout(); w.logIn("vom-neuen", "https://neu.example:443")
-        assertEquals("Andere Herkunft und Generation", null, w.swapping.needed("alt", HERE, g))
-        assertEquals("Andere Generation", null, w.swapping.needed("alt", "https://neu.example:443", g))
-        assertEquals("Andere Herkunft", null, w.swapping.needed("alt", HERE, w.limit.generation))
+        assertEquals("Different origin and generation", null, w.swapping.needed("alt", HERE, g))
+        assertEquals("Different generation", null, w.swapping.needed("alt", "https://neu.example:443", g))
+        assertEquals("Different origin", null, w.swapping.needed("alt", HERE, w.limit.generation))
         // The same session: another request has just swapped, its token counts.
         assertEquals("vom-neuen", w.swapping.needed("alt", "https://neu.example:443", w.limit.generation))
         assertFalse(w.log.toString(), w.log.any { it.startsWith("rotiere") })
@@ -221,13 +221,13 @@ class TokenSwapTest {
         val w = World(CoroutineScope(StandardTestDispatcher(testScheduler)), wait = 1_000).apply { brake = CompletableDeferred() }
         val waiting = async { w.swapping.neededWaiting("alt", HERE, w.limit.generation) }
         advanceTimeBy(999)
-        assertFalse("Vor der Frist wartet noetig noch", waiting.isCompleted)
+        assertFalse("Before the deadline, needed still waits", waiting.isCompleted)
         advanceTimeBy(2)
-        assertTrue("Nach der Frist kehrt noetig zurück", waiting.isCompleted)
+        assertTrue("After the deadline, needed returns", waiting.isCompleted)
         assertEquals(null, waiting.await())
         w.brake?.complete(Unit)
         advanceUntilIdle()
-        assertEquals("Der Tausch lief im Anwendungsbereich weiter", "neu", w.saved)
+        assertEquals("The switch continued in the application scope", "neu", w.saved)
     }
 
     /** With the test clock instead of waiting: the swap runs only when the scope processes it. */
@@ -236,7 +236,7 @@ class TokenSwapTest {
     fun `due swaps in the application scope and returns immediately`() = runTest {
         val w = World(CoroutineScope(StandardTestDispatcher(testScheduler))).apply { responses = mutableListOf(lost) }
         w.swapping.due("alt")
-        assertEquals("due() hat im Aufrufer getauscht", emptyList<String>(), w.log)
+        assertEquals("due() switched in the caller", emptyList<String>(), w.log)
         advanceUntilIdle()
         assertEquals(listOf("rotiere alt", "rotiere alt", "speichere neu"), w.log)
         assertEquals("neu", w.saved)
@@ -249,7 +249,7 @@ class TokenSwapTest {
         assertFalse(loginOverdue(at, at + 89 * tag))
         assertFalse(loginOverdue(at, at + 90 * tag))
         assertTrue(loginOverdue(at, at + 90 * tag + 1))
-        assertFalse("Eine zurückgestellte Uhr meldet nicht ab", loginOverdue(at, at - tag))
+        assertFalse("A clock set back does not sign out", loginOverdue(at, at - tag))
     }
 
     @Test
@@ -259,7 +259,7 @@ class TokenSwapTest {
         assertFalse(loginDueSoon(at, at + 83 * tag))
         assertTrue(loginDueSoon(at, at + 83 * tag + 1))
         assertTrue(loginDueSoon(at, at + 90 * tag))
-        assertFalse("Abgelaufen ist kein Hinweis mehr, sondern Abmelden", loginDueSoon(at, at + 90 * tag + 1))
+        assertFalse("Expired is no longer a hint but signing out", loginDueSoon(at, at + 90 * tag + 1))
     }
 
     private companion object {

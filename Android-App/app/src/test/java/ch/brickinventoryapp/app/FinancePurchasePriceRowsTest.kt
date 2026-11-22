@@ -82,7 +82,7 @@ class FinancePurchasePriceRowsTest {
         val found = (0 until lists).any { i ->
             runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(row) }.isSuccess
         }
-        assertTrue("Keine Zeile mit „$purchasePrice … $amount“", found)
+        assertTrue("no row with “$purchasePrice … $amount”", found)
         compose.onNode(row, useUnmergedTree = true).fetchSemanticsNode()
     }
 

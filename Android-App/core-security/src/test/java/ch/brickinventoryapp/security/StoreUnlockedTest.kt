@@ -50,7 +50,7 @@ class StoreUnlockedTest {
         var broken = false
         private var iv = 0
         override fun encrypt(plaintext: String): String {
-            check(!locked && !broken) { "$brand gerade nicht" }
+            check(!locked && !broken) { "$brand not right now" }
             return brand + (iv++) + "." + Base64.getEncoder().encodeToString(plaintext.toByteArray())
         }
         override fun decrypt(saved: String): String? = (open(saved) as? VaultFinding.Readable)?.plaintext
@@ -76,8 +76,8 @@ class StoreUnlockedTest {
     fun `a legacy stock without condition goes under the unlocked one on first read, the stores stay readable`() {
         val (key, secret) = legacyStock()
         val k = newValue()
-        assertArrayEquals("Derselbe Schlüssel, nur anders umhüllt", key, k.fetch())
-        assertTrue("Jetzt unter dem Schlüssel mit Entsperr-Bedingung", stored().startsWith(UNLOCKED_PREFIX + "n:"))
+        assertArrayEquals("the same key, only wrapped differently", key, k.fetch())
+        assertTrue("now under the key with an unlock condition", stored().startsWith(UNLOCKED_PREFIX + "n:"))
         assertFalse(k.newCreated)
         assertEquals("Kaufpreis 499.99", String(StoreCipher { newValue().forTarget("bestand") }.decrypt(secret, "b")!!))
     }
@@ -90,14 +90,14 @@ class StoreUnlockedTest {
         unlocked.locked = true
         try {
             newValue().fetch()
-            fail("Gesperrt darf kein Schlüssel herauskommen")
+            fail("locked, no key may come out")
         } catch (_: IOException) {
             // expected: Keystore not ready right now
         }
-        assertEquals("Nichts neu angelegt", before, stored())
+        assertEquals("nothing created anew", before, stored())
         try {
             StoreCipher { newValue().forTarget("bestand") }.decrypt(secret, "b")
-            fail("Gesperrt hiesse sonst unlesbar, und die Ablage würde gelöscht")
+            fail("locked would otherwise mean unreadable, and the store would be deleted")
         } catch (_: IOException) {
             // expected
         }
@@ -111,10 +111,10 @@ class StoreUnlockedTest {
         val before = stored()
         unlocked.broken = true
         assertArrayEquals(key, newValue().fetch())
-        assertEquals("Ohne Not nicht neu geschrieben", before, stored())
+        assertEquals("not rewritten without need", before, stored())
         unlocked.broken = false
         newValue().fetch()
-        assertTrue("Beim nächsten Start umgeschlüsselt", stored().startsWith(UNLOCKED_PREFIX))
+        assertTrue("re-encrypted at the next start", stored().startsWith(UNLOCKED_PREFIX))
     }
 
     @Test
@@ -123,7 +123,7 @@ class StoreUnlockedTest {
         unlocked.locked = true
         try {
             vault.encrypt("neu-getauscht")
-            fail("Gesperrt darf kein Geheimtext unter dem Schlüssel ohne Bedingung entstehen")
+            fail("locked, no ciphertext may arise under the key without a condition")
         } catch (_: IllegalStateException) {
             // expected: the unlock key isn't working right now
         }
@@ -137,15 +137,15 @@ class StoreUnlockedTest {
         val old = k.fetch()
         unlocked.locked = true
         k.renew()
-        assertFalse("Der alte Schlüssel ist weg", file.exists())
+        assertFalse("the old key is gone", file.exists())
         try {
             k.fetch()
-            fail("Gesperrt entsteht kein neuer Schlüssel")
+            fail("locked, no new key arises")
         } catch (_: IOException) {
             // expected: later
         }
         unlocked.locked = false
-        assertFalse("Ein neuer Schlüssel", old.contentEquals(k.fetch()))
+        assertFalse("a new key", old.contentEquals(k.fetch()))
         assertTrue(stored().startsWith(UNLOCKED_PREFIX + "n:"))
     }
 }

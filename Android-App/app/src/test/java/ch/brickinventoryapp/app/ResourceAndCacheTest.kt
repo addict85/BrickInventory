@@ -13,7 +13,7 @@ class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -35,12 +35,12 @@ class ResourceAndCacheTest {
         )) {
             val src = code(withAnalyse(rel))
             assert(src.contains("DisposableEffect(Unit)") && src.contains("onDispose")) {
-                "$rel räumt nicht auf. remember() hat KEINEN Aufräum-Hook: Analyse-Thread " +
-                    "und ML-Kit-Client (native Ressourcen) überleben sonst jeden Besuch " +
-                    "des Screens — zwanzig Scans in einer Sortier-Session = zwanzig Threads."
+                "$rel does not clean up. remember() has NO cleanup hook: the analysis thread " +
+                    "and the ML Kit client (native resources) otherwise survive every visit " +
+                    "of the screen — twenty scans in one sorting session = twenty threads."
             }
-            assert(src.contains(close)) { "$rel schliesst den ML-Kit-Client nicht" }
-            assert(src.contains("executor.shutdown()")) { "$rel beendet den Executor nicht" }
+            assert(src.contains(close)) { "$rel does not close the ML Kit client" }
+            assert(src.contains("executor.shutdown()")) { "$rel does not shut down the executor" }
         }
     }
 
@@ -54,17 +54,17 @@ class ResourceAndCacheTest {
     fun `the PDF view cache has an upper limit`() {
         val src = code(read("data/InstructionRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
-            "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
-                "liegen (Resume, erneutes Öffnen ohne Neudownload) — bei bis zu 300 MB " +
-                "pro Datei braucht das aber eine Obergrenze."
+            "No cleanup of the PDF cache. Viewed manuals deliberately stay " +
+                "(resume, reopening without a new download) — with up to 300 MB " +
+                "per file this needs an upper limit though."
         }
-        assert(src.contains("PDF_CACHE_BUDGET_BYTES")) { "Kein Budget definiert" }
+        assert(src.contains("PDF_CACHE_BUDGET_BYTES")) { "no budget defined" }
         assert(src.contains("prunePdfCache(ctx.cacheDir")) {
-            "prunePdfCache() wird vor dem Download nicht aufgerufen"
+            "prunePdfCache() is not called before the download"
         }
         assert(src.contains("keep.absolutePath")) {
-            "Die gerade angeforderte Datei ist nicht vom Löschen ausgenommen — ihr " +
-                "Teil-Download ginge verloren und der Resume-Mechanismus liefe ins Leere"
+            "The file just requested is not exempt from deleting — its " +
+                "partial download would be lost and the resume mechanism would come to nothing"
         }
     }
 
@@ -73,16 +73,16 @@ class ResourceAndCacheTest {
     @Test
     fun `debug builds have a fixed version`() {
         val bg = File("build.gradle.kts")
-        assert(bg.exists()) { "app/build.gradle.kts nicht gefunden" }
+        assert(bg.exists()) { "app/build.gradle.kts not found" }
         val src = code(bg.readText())
         assert(src.contains("withBuildType(\"debug\")")) {
-            "Debug-Builds erben weiter die zeitbasierte Version aus LocalDateTime.now() — " +
-                "die Manifest-Tasks sind damit bei jedem Build \"out of date\", auch ohne " +
-                "Änderung. buildTypes { debug { … } } genügt nicht: dort liesse sich nur " +
-                "ein versionNameSuffix setzen, der Name selbst wechselte weiter minütlich."
+            "Debug builds still inherit the time-based version from LocalDateTime.now() — " +
+                "the manifest tasks are therefore \"out of date\" on every build, even without " +
+                "a change. buildTypes { debug { … } } is not enough: there only " +
+                "a versionNameSuffix could be set, the name itself would keep changing every minute."
         }
         assert(src.contains("versionCode.set(1)") && src.contains("versionName.set(")) {
-            "Die Variant-Überschreibung setzt nicht beide Felder"
+            "the variant override does not set both fields"
         }
     }
 
@@ -95,12 +95,12 @@ class ResourceAndCacheTest {
     fun `the version comes from Git, not from the clock`() {
         val src = code(File("build.gradle.kts").readText())
         assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
-            "versionCode/-Name kommen nicht aus Git"
+            "versionCode/-Name do not come from Git"
         }
-        assert(!src.contains("LocalDateTime.now()")) { "Die Version hängt wieder an der Bauzeit" }
+        assert(!src.contains("LocalDateTime.now()")) { "the version hangs on the build time again" }
         val build = Sources.workflow().substringAfter("  build:").substringBefore("  release:")
         assert(Regex("""actions/checkout@\S+.*\n\s+with:\n\s+fetch-depth: 0""").containsMatchIn(build)) {
-            "Der Bau-Job klont flach: Jeder Bau wäre Commit Nummer 1"
+            "the build job clones shallow: every build would be commit number 1"
         }
     }
 
@@ -110,15 +110,15 @@ class ResourceAndCacheTest {
     fun `the CSV service shares the SSE client with the ViewModel`() {
         val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sseClient")) {
-            "CsvImportService pollt wieder eigenständig, statt den CsvImportSseClient " +
-                "zu benutzen — zwei getrennte Implementierungen desselben Sachverhalts"
+            "CsvImportService polls on its own again instead of using the CsvImportSseClient " +
+                "— two separate implementations of the same matter"
         }
         val applyCount = Regex("""private fun applyStatus""").findAll(src).count()
         assert(applyCount == 1) {
-            "Die Statuslogik steht nicht mehr an genau einer Stelle ($applyCount Treffer)"
+            "the status logic no longer stands in exactly one place ($applyCount hits)"
         }
         assert(src.contains("pollOnce()")) {
-            "Die Polling-Rückfallebene fehlt — bei SSE-Ausfall gäbe es keinen Fortschritt mehr"
+            "the polling fallback is missing — on an SSE outage there would be no progress any more"
         }
     }
 
@@ -126,10 +126,10 @@ class ResourceAndCacheTest {
     fun `a first idle response does not end the service immediately`() {
         val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sawRunning") && src.contains("GRACE_MS")) {
-            "Kein Anlaufschutz in applyStatus(). Der Service startet im selben Moment " +
-                "wie der Upload; bis der Import-Job angelegt ist, meldet der Server " +
-                "\"idle\". Ohne Anlauffenster beendet die erste idle-Antwort den Service, " +
-                "und der Nutzer sieht nie einen Fortschritt."
+            "No start-up protection in applyStatus(). The service starts at the same moment " +
+                "as the upload; until the import job is created the server reports " +
+                "\"idle\". Without a start-up window the first idle answer ends the service, " +
+                "and the user never sees any progress."
         }
     }
 }

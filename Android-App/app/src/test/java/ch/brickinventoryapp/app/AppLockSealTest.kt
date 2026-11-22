@@ -63,7 +63,7 @@ class AppLockSealTest {
     fun `an edited file to unlocked locks the app`() {
         store().apply { setMinutes(5); setLocked(true) }
         file.edit(commit = true) { putBoolean("gesperrt", false) }
-        assertTrue("Ein gebrochenes Siegel sperrt", store().locked())
+        assertTrue("a broken seal locks", store().locked())
     }
 
     @Test
@@ -74,16 +74,16 @@ class AppLockSealTest {
         assertTrue(s.locked())
         assertEquals(AppLock.DEFAULT_MINUTES, s.minutes())
         s.setLocked(false)
-        assertEquals("Nach dem Entsperren gilt das neue Siegel", false, store().locked())
+        assertEquals("after unlocking the new seal counts", false, store().locked())
     }
 
     @Test
     fun `a state of an older version without a seal is taken over once`() {
         file.edit(commit = true) { putInt("minuten", 0); putBoolean("gesperrt", false) }
         val s = store()
-        assertFalse("Ein Update sperrt nicht", s.locked())
+        assertFalse("an update does not lock", s.locked())
         assertEquals(0, s.minutes())
         file.edit(commit = true) { remove("siegel") }
-        assertTrue("Danach zählt ein fehlendes Siegel als verändert", store().locked())
+        assertTrue("afterwards a missing seal counts as changed", store().locked())
     }
 }

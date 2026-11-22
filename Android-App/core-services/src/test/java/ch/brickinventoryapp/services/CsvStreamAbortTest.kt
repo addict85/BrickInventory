@@ -27,7 +27,7 @@ class CsvStreamAbortTest {
 
     @Test
     fun `followStream passes the cancellation on, a network error means fallback level`() = runTest {
-        assertTrue("folgeStrom hat das Abbrechen verschluckt",
+        assertTrue("folgeStrom swallowed the cancellation",
             aborts { followStream(flow { throw CancellationException("weg") }) { true } })
         assertFalse(followStream(flow { throw IOException("weg") }) { true })
         assertFalse(followStream(flowOf(CsvImportSseClient.Event.Failed("zu"))) { true })

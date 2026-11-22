@@ -42,15 +42,15 @@ class ViewModelDesignTest {
     fun `no ViewModel inherits its context`() {
         val files = viewModelFiles()
         assert(files.size >= 3) {
-            "Nur ${'$'}{dateien.size} ViewModel-Dateien gefunden — Muster veraltet? " +
-                "Eine leere Suche wäre still grün."
+            "Only ${files.size} ViewModel files found — pattern outdated? " +
+                "An empty search would be silently green."
         }
         val hits = files.filter { (_, s) -> s.contains("AndroidViewModel") }.map { it.first }
         assert(hits.isEmpty()) {
             "Diese ViewModels erben von AndroidViewModel: ${'$'}{hits.joinToString()}.\n" +
-                "AndroidViewModel verlangt eine echte Application im Konstruktor — die Klasse " +
-                "lässt sich damit in keinem JVM-Test bauen. Den Context gibt es über " +
-                "@ApplicationContext, wie in CatalogViewModel und in der ganzen Datenschicht."
+                "AndroidViewModel requires a real Application in the constructor — the class " +
+                "then cannot be built in any JVM test. The Context comes via " +
+                "@ApplicationContext, as in CatalogViewModel and in the whole data layer."
         }
     }
 
@@ -67,7 +67,7 @@ class ViewModelDesignTest {
             // counter-check that stayed green.
             if (!Regex("""\bctx\b""").containsMatchIn(s)) continue
             assert(s.contains("@param:ApplicationContext")) {
-                "$name benutzt ctx, bekommt ihn aber nicht über @ApplicationContext"
+                "$name uses ctx but does not get it via @ApplicationContext"
             }
         }
     }

@@ -228,7 +228,7 @@ fun PartsListScreen(
         // Input row
         Surface(tonalElevation = 2.dp) {
             Column(Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                SetInputRow(setInput, { setInput = NumericInput.setNumber(it); setMissing = false }, setMissing,
+                SetInputRow(setInput, { setInput = it; setMissing = false }, setMissing,
                     setFieldFocus, ::addSet, onScanBarcode)
 
                 // The collected sets with their reset: it clears this list and so stands
@@ -293,7 +293,7 @@ private fun SetInputRow(
             // Filter and keyboard choice like every set-number field (util/NumericInput.kt).
             // "Fertig" and the "+" in the field take the set into the list: one way in,
             // one button to create it.
-            onValueChange = onInput,
+            onValueChange = { onInput(NumericInput.setNumber(it)) },
             keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) onAdd(setInput) }),
             // Label instead of placeholder: the long placeholder wrapped into two

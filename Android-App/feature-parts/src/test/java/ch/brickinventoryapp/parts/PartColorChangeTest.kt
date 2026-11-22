@@ -76,27 +76,27 @@ class PartColorChangeTest {
     fun `the app calls the same service as the web app`() {
         var opened: Int? = null
         vm().setPartColor("3001", 5, 11, owner = 7) { opened = it }
-        assertTrue("neu geöffnet", opened != null)
+        assertTrue("reopened", opened != null)
         // The store fetches the color itself afterward; only the call is counted.
         assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), paths.requestsTo("/color"))
         val bodyBytes = paths.bodyBytes[paths.requests.indexOfFirst { "/color" in it }]
         assertTrue(bodyBytes, bodyBytes.contains("\"color_id\":11"))
-        assertEquals("Der Bildschirm öffnet mit der neuen Farbe", 11, opened)
-        assertTrue("Der Bildschirm reicht den Besitzer der Karte nicht weiter",
+        assertEquals("The screen opens with the new color", 11, opened)
+        assertTrue("The screen does not pass on the card's owner",
             Regex("""owner\s*=\s*part\?\.userId""").containsMatchIn(screen))
     }
 
     @Test
     fun `after the change the screen opens with the new color`() {
         assertTrue(
-            "Der Bildschirm wird nach der Aenderung nicht neu geoeffnet: In " +
-                "PartsGraph.kt fehlt onColorChanged. Die Farbe ist Teil der " +
-                "Route und der Suche nach der Zeile — der Bildschirm stuende leer da, " +
-                "obwohl die Aenderung geklappt hat.",
+            "The screen is not reopened after the change: In " +
+                "PartsGraph.kt onColorChanged is missing. The color is part of the " +
+                "route and of the search for the row — the screen would stand empty, " +
+                "although the change worked.",
             graph.contains("onColorChanged")
         )
         assertTrue(
-            "onFarbeGeaendert navigiert nicht auf ManualItemDetail mit der neuen Farbe.",
+            "onFarbeGeaendert does not navigate to ManualItemDetail with the new color.",
             Regex(
                 """onColorChanged\s*=\s*\{[^}]*navigate\(target\.copy\(colorId\s*=\s*newColor\)\)""",
                 RegexOption.DOT_MATCHES_ALL
@@ -106,16 +106,16 @@ class PartColorChangeTest {
         // a back tap would land on exactly the color that was just being
         // corrected.
         assertTrue(
-            "Vor dem neuen Aufruf fehlt das popBackStack() — der alte Eintrag mit " +
-                "der falschen Farbe bliebe im Rueckweg stehen.",
+            "The popBackStack() before the new call is missing — the old entry with " +
+                "the wrong color would stay in the back stack.",
             Regex(
                 """onColorChanged\s*=\s*\{[^}]*popBackStack\(\)[^}]*navigate""",
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )
         assertTrue(
-            "Der Screen gibt onFarbeGeaendert nicht an setzeTeilFarbe weiter — dann " +
-                "wird nach der Aenderung nichts neu geoeffnet.",
+            "The screen does not pass onFarbeGeaendert to setzeTeilFarbe — then " +
+                "nothing is reopened after the change.",
             Regex("""onDone\s*=\s*onColorChanged""").containsMatchIn(screen)
         )
     }
@@ -128,8 +128,8 @@ class PartColorChangeTest {
         // else.
         val i = screen.indexOf("ColorChoiceField(")
         assertTrue(
-            "ColorChoiceField wird im Detailbildschirm nicht aufgerufen — dann gibt es " +
-                "keine Moeglichkeit, die Farbe zu korrigieren.",
+            "ColorChoiceField is not called in the detail screen — then there is " +
+                "no way to correct the color.",
             i > 0
         )
         val before = screen.substring(0, i)
@@ -137,21 +137,21 @@ class PartColorChangeTest {
             ?.groupValues?.get(1)
             ?: Regex("""if \(([^)\n]*)\)""").findAll(before).lastOrNull()?.groupValues?.get(1) ?: ""
         assertTrue(
-            "Die Farbzeile steht hinter der Bedingung „$lastCondition\". Verlangt sie " +
-                "einen Farbnamen, zeigt ausgerechnet das Teil ohne Farbnamen nichts an — " +
-                "und genau das ist der Fall, der korrigiert werden muss.",
+            "The color row stands behind the condition „$lastCondition\". If it demands " +
+                "a color name, precisely the part without a color name shows nothing — " +
+                "and that is exactly the case that has to be corrected.",
             !lastCondition.contains("colorName")
         )
         // And the opposite direction, in the field itself: without a color list (no network, no
         // Rebrickable key) today's color must still be shown.
         assertTrue(
-            "ColorChoiceField faellt ohne Farbliste nicht auf den heutigen Namen zurueck — " +
-                "dann stuende dort ein leeres Feld.",
+            "ColorChoiceField does not fall back to today's name without a color list — " +
+                "then an empty field would stand there.",
             field.contains("currentName")
         )
         assertTrue(
-            "ColorChoiceField nennt keinen Rueckfall fuer eine Farbe ohne Namen — dann " +
-                "waere das Feld bei genau diesen Teilen leer.",
+            "ColorChoiceField names no fallback for a color without a name — then " +
+                "the field would be empty for exactly these parts.",
             field.contains("parts_color_unknown")
         )
     }
@@ -166,9 +166,9 @@ class PartColorChangeTest {
         // "the server will catch it" is no reason to send a request
         // whose answer is a rebuild of the screen.
         vm().setPartColor("3001", 5, 5)
-        assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${paths.requests}", paths.requestsTo("/color").isEmpty())
+        assertTrue("setzeTeilFarbe does not stop at the same color: ${paths.requests}", paths.requestsTo("/color").isEmpty())
         assertTrue(
-            "ColorChoiceField ruft onWahl auch fuer die bereits gewaehlte Farbe.",
+            "ColorChoiceField calls onWahl also for the color already chosen.",
             Regex("""if \(c\.id != current\) onChoice\(c\)""").containsMatchIn(field)
         )
     }

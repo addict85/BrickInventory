@@ -29,14 +29,14 @@ class PinPurposeTest {
     @Test
     fun `a server certificate under the pinned root matches`() {
         assertTrue("EKU serverAuth", fitsToPin(arrayOf(cert(SERVER), root), pin))
-        assertTrue("Ohne EKU ist jeder Zweck erlaubt", fitsToPin(arrayOf(cert(WITHOUT), root), pin))
+        assertTrue("Without EKU every purpose is allowed", fitsToPin(arrayOf(cert(WITHOUT), root), pin))
     }
 
     @Test
     fun `a certificate for a different purpose does not match the pin`() {
         val code = cert(CODE)
-        assertFalse("Code-Signatur unter der Wurzel", fitsToPin(arrayOf(code, root), pin))
-        assertFalse("Auch als selbst gepinntes Blatt", fitsToPin(arrayOf(code), spkiFingerprint(code)))
+        assertFalse("Code signature under the root", fitsToPin(arrayOf(code, root), pin))
+        assertFalse("Also as a self-pinned leaf", fitsToPin(arrayOf(code), spkiFingerprint(code)))
     }
 
     private companion object {

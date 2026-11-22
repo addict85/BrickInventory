@@ -68,8 +68,8 @@ class StateDomainBoundaryTest {
             (changed - allowed.getValue(name)).forEach { error += "$name setzt $it" }
         }
         assert(error.isEmpty()) {
-            "Die Sitzung schreibt an unerwarteter Stelle:\n  " + error.joinToString("\n  ") +
-                "\nGehört das Feld einem Bereich, zieht es in dessen eigenen Zustand; sonst die Liste oben bewusst erweitern."
+            "The session writes at an unexpected place:\n  " + error.joinToString("\n  ") +
+                "\nIf the field belongs to an area, it moves into that area's own state; otherwise extend the list above deliberately."
         }
     }
 }

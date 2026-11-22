@@ -20,7 +20,7 @@ class AddPathOwnerTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -34,16 +34,16 @@ class AddPathOwnerTest {
         // files, so the rule is found wherever it lives.
         val nav = code(read("collection/ui/EntryFrame.kt") + "\n" + read("collection/ui/dialogs/BarcodeResultDialog.kt"))
         assert(nav.contains("OwnerPicker(")) {
-            "im Barcode-Dialog fehlt die Eigentümer-Auswahl — OwnerPicker blendet sich " +
-                "ohne Haushalt ohnehin selbst aus, schadet also nie"
+            "the owner choice is missing in the barcode dialog — OwnerPicker hides itself " +
+                "without a household anyway, so it never hurts"
         }
         assert(nav.contains("glance.householdMembers")) {
-            "die Auswahl braucht die Haushaltsmitglieder aus dem Zustand"
+            "the choice needs the household members from the state"
         }
         // Without a household, nothing may be sent along — otherwise the
         // app would overwrite a server default with an ID nobody chose.
         assert(nav.contains("glance.householdMembers.size > 1")) {
-            "ohne Haushalt darf kein Eigentümer mitgeschickt werden (gleiche Regel wie im Galerie-Dialog)"
+            "without a household no owner may be sent along (same rule as in the gallery dialog)"
         }
     }
 
@@ -57,7 +57,7 @@ class AddPathOwnerTest {
         )
         for ((file, name) in routes) {
             assert(code(read(file)).contains("OwnerPicker(")) {
-                "Erfassungsweg ohne Eigentümer-Auswahl: $name ($file)"
+                "entry way without owner choice: $name ($file)"
             }
         }
     }
@@ -71,12 +71,12 @@ class AddPathOwnerTest {
     fun `without a household no owner goes along`() {
         for (file in listOf("parts/ui/screens/PartsDialogs.kt", "parts/ui/screens/FiguresRecord.kt")) {
             assert(code(read(file)).contains("entryValues(")) {
-                "$file rechnet die Eingaben wieder selbst um statt über entryValues()"
+                "$file converts the inputs itself again instead of via entryValues()"
             }
         }
         val alone = listOf(MemberView(id = 1, username = "ich", isSelf = true))
         val household = alone + MemberView(id = 7, username = "lea")
-        assertEquals("ohne Haushalt überschriebe die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat",
+        assertEquals("without a household the app would overwrite a server default with an ID nobody chose",
             EntryValues(count = 1, price = Money.from(2.5), condition = Condition.USED, owner = null),
             entryValues(count = "", price = "2,50", condition = Condition.USED, owner = 7, household = alone))
         assertEquals(EntryValues(count = 3, price = null, condition = Condition.NEW, owner = 7),

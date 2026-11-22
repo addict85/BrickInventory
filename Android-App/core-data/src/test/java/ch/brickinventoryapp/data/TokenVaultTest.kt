@@ -99,12 +99,12 @@ class TokenVaultTest {
     fun `a plaintext token of older versions never counts and is removed at start`() {
         put(plaintext = "altes-token-123")
         val prefs = start()
-        assertEquals("Ein Klartext-Token gilt nicht als Anmeldung", "", runBlocking { prefs.tokenNow() })
+        assertEquals("A plaintext token does not count as a sign-in", "", runBlocking { prefs.tokenNow() })
         assertEquals("", runBlocking { prefs.authToken.first() })
-        assertTrue("Es gab etwas zu entfernen", runBlocking { prefs.adoptOldToken() })
-        assertNull("Der Klartext muss weg sein", plate()[TokenStore.AUTH_TOKEN])
-        assertNull("Nichts wird aus dem Klartext übernommen", plate()[TokenStore.AUTH_TOKEN_ENC])
-        assertFalse("Beim zweiten Start gibt es nichts mehr zu tun", runBlocking { prefs.adoptOldToken() })
+        assertTrue("There was something to remove", runBlocking { prefs.adoptOldToken() })
+        assertNull("The plaintext must be gone", plate()[TokenStore.AUTH_TOKEN])
+        assertNull("Nothing is taken over from the plaintext", plate()[TokenStore.AUTH_TOKEN_ENC])
+        assertFalse("On the second start there is nothing left to do", runBlocking { prefs.adoptOldToken() })
     }
 
     @Test
@@ -113,10 +113,10 @@ class TokenVaultTest {
         runBlocking { store.edit { it[TokenStore.USERNAME] = "marco" } }
         val prefs = start()
         val p = plate()
-        assertNull("Die Adresse liegt nach dem Start noch im Klartext", p[TokenStore.SERVER_URL])
-        assertNull("Der Name liegt nach dem Start noch im Klartext", p[TokenStore.USERNAME])
+        assertNull("The address is still in plaintext after the start", p[TokenStore.SERVER_URL])
+        assertNull("The name is still in plaintext after the start", p[TokenStore.USERNAME])
         for (secret in listOf(p[TokenStore.SERVER_URL_SECRET], p[TokenStore.USERNAME_SECRET]))
-            assertTrue("Geheimtext fehlt oder verrät den Wert: $secret",
+            assertTrue("Ciphertext missing or reveals the value: $secret",
                 secret != null && "brick" !in secret && "marco" !in secret)
         assertEquals("https://brick.example", runBlocking { prefs.serverUrlNow() })
         assertEquals("marco", runBlocking { prefs.username.first() })
@@ -148,10 +148,10 @@ class TokenVaultTest {
         assertEquals("https://brick.example", runBlocking { prefs.serverUrlNow() })
         assertEquals("marco", runBlocking { prefs.username.first() })
         val p = plate()
-        assertFalse("Die frühere Form ist weg", TokenStore.SERVER_URL_ENC in p.asMap() || TokenStore.USERNAME_ENC in p.asMap())
+        assertFalse("The earlier form is gone", TokenStore.SERVER_URL_ENC in p.asMap() || TokenStore.USERNAME_ENC in p.asMap())
         assertEquals(VaultFinding.Readable("https://brick.example"),
             twoKey.openDetail(p[TokenStore.SERVER_URL_SECRET]!!, TokenStore.SERVER_URL_SECRET.name))
-        assertEquals("Nicht unter dem Schlüssel der Pins", null,
+        assertEquals("Not under the key of the pins", null,
             testTrustCipher().decrypt(p[TokenStore.SERVER_URL_SECRET]!!, "angabe:server_url_geheim"))
     }
 
@@ -160,15 +160,15 @@ class TokenVaultTest {
         put()
         locked = true
         val before = start(cipher = twoKey)
-        assertEquals("Ein Klartext älterer Fassung bleibt lesbar", "https://brick.example", runBlocking { before.serverUrlNow() })
-        assertEquals("Gesperrt nicht übernommen, aber auch nicht verloren", "https://brick.example", plate()[TokenStore.SERVER_URL])
+        assertEquals("A plaintext of an older version stays readable", "https://brick.example", runBlocking { before.serverUrlNow() })
+        assertEquals("Locked: not taken over, but not lost either", "https://brick.example", plate()[TokenStore.SERVER_URL])
         locked = false
         val after = start(cipher = twoKey)
         assertEquals("https://brick.example", runBlocking { after.serverUrlNow() })
         assertNull(plate()[TokenStore.SERVER_URL])
         locked = true
-        assertEquals("Gesperrt ist die Adresse nicht lesbar", "", runBlocking { start(cipher = twoKey).serverUrlNow() })
-        assertTrue("Und doch nicht gelöscht", TokenStore.SERVER_URL_SECRET in plate().asMap())
+        assertEquals("Locked, the address is not readable", "", runBlocking { start(cipher = twoKey).serverUrlNow() })
+        assertTrue("And yet not deleted", TokenStore.SERVER_URL_SECRET in plate().asMap())
         locked = false
         assertEquals("https://brick.example", runBlocking { start(cipher = twoKey).serverUrlNow() })
     }
@@ -187,7 +187,7 @@ class TokenVaultTest {
         put(plaintext = "alt")
         val prefs = start()
         runBlocking { prefs.saveAuthToken("neu") }
-        assertNull("Der alte Klartext verschwindet beim Schreiben", plate()[TokenStore.AUTH_TOKEN])
+        assertNull("The old plaintext disappears on writing", plate()[TokenStore.AUTH_TOKEN])
         assertEquals("ENC(uen)", plate()[TokenStore.AUTH_TOKEN_ENC])
         assertEquals("neu", runBlocking { start().tokenNow() })
     }
@@ -205,7 +205,7 @@ class TokenVaultTest {
         runBlocking { prefs.clearSession() }
         assertFalse(TokenStore.AUTH_TOKEN in plate().asMap())
         assertFalse(TokenStore.AUTH_TOKEN_ENC in plate().asMap())
-        assertEquals("Über den Altbestand wieder angemeldet", "", runBlocking { start().tokenNow() })
+        assertEquals("Signed in again via the old stock", "", runBlocking { start().tokenNow() })
     }
 
     @Test
@@ -217,7 +217,7 @@ class TokenVaultTest {
     /** Strict like the device: encrypts only as long as [locked] says no. */
     private class Strict(val locked: () -> Boolean) : TokenEncryption {
         override fun encrypt(plaintext: String): String {
-            check(!locked()) { "Gerät gesperrt" }
+            check(!locked()) { "Device locked" }
             return "S(" + plaintext.reversed() + ")"
         }
         override fun decrypt(saved: String): String? =
@@ -230,13 +230,13 @@ class TokenVaultTest {
         var locked = true
         val vault = UnlockVault(Strict { locked }, Fake())
         runBlocking { start(vault).adoptOldToken() }
-        assertEquals("Gesperrt bleibt der Altbestand, wie er ist", "ENC(tla)", plate()[TokenStore.AUTH_TOKEN_ENC])
+        assertEquals("Locked, the old stock stays as it is", "ENC(tla)", plate()[TokenStore.AUTH_TOKEN_ENC])
 
         locked = false
         val prefs = start(vault)
         runBlocking { prefs.adoptOldToken() }
         val secret = plate()[TokenStore.AUTH_TOKEN_ENC]!!
-        assertFalse("Umgeschlüsselt: $secret", vault.stale(secret))
+        assertFalse("Re-keyed: $secret", vault.stale(secret))
         assertEquals("alt", runBlocking { start(vault).tokenNow() })
     }
 
@@ -249,14 +249,14 @@ class TokenVaultTest {
         val vault = UnlockVault(Strict { locked }, old)
         val prefs = start(vault)
         runBlocking { prefs.levelTokenHigh() }
-        assertEquals("Gesperrt bleibt es, wie es ist", "ENC(tla)", plate()[TokenStore.AUTH_TOKEN_ENC])
-        assertEquals("Gesperrt bleibt der alte Schlüssel", 0, old.forget)
+        assertEquals("Locked, it stays as it is", "ENC(tla)", plate()[TokenStore.AUTH_TOKEN_ENC])
+        assertEquals("Locked, the old key stays", 0, old.forget)
 
         locked = false
         runBlocking { prefs.levelTokenHigh() }
         val secret = plate()[TokenStore.AUTH_TOKEN_ENC]!!
-        assertFalse("Hochgestuft ohne Neustart: $secret", vault.stale(secret))
+        assertFalse("Upgraded without restart: $secret", vault.stale(secret))
         assertEquals("alt", runBlocking { prefs.tokenNow() })
-        assertEquals("Der alte Schlüssel ist danach gelöscht", 1, old.forget)
+        assertEquals("The old key is deleted afterwards", 1, old.forget)
     }
 }

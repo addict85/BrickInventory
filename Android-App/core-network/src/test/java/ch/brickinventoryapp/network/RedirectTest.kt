@@ -59,7 +59,7 @@ class RedirectTest {
         a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", b.url("/fang").toString()))
         b.enqueue(MockResponse().setBody("{}"))
         assertEquals(307, logIn())
-        assertEquals("B erhielt eine Anfrage", 0, b.requestCount)
+        assertEquals("B received a request", 0, b.requestCount)
     }
 
     @Test

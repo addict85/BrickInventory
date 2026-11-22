@@ -27,19 +27,19 @@ class StringResourceParityTest {
     fun `every text is in both language files`() {
         val en = key("values/strings.xml")
         val de = key("values-de/strings.xml")
-        assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
+        assert(en.size > 300) { "Too few texts found (${en.size}) — pattern outdated?" }
 
         val onlyEn = (en - de).sorted()
         val onlyDe = (de - en).sorted()
         assert(onlyEn.isEmpty()) {
-            "Nur in values/, fehlt auf Deutsch (Android zeigt dort still Englisch):\n  " +
+            "Only in values/, missing in German (Android silently shows English there):\n  " +
                 onlyEn.joinToString("\n  ")
         }
         // The opposite direction is more harmless, but just as much an error: a
         // German entry without an English counterpart is dead ballast,
         // because values/ is the default language and is always read.
         assert(onlyDe.isEmpty()) {
-            "Nur in values-de/, ohne Gegenstück in values/:\n  " + onlyDe.joinToString("\n  ")
+            "Only in values-de/, without a counterpart in values/:\n  " + onlyDe.joinToString("\n  ")
         }
     }
 
@@ -83,33 +83,33 @@ class StringResourceParityTest {
         // Self-proof against the silent zero: without hits everything below would run
         // into nothing and still be green.
         assert(en.isNotEmpty()) {
-            "Keine <plurals> in values/strings.xml gefunden — Muster veraltet?"
+            "No <plurals> found in values/strings.xml — pattern outdated?"
         }
 
         val onlyEn = (en.keys - de.keys).sorted()
         assert(onlyEn.isEmpty()) {
-            "Mengenform nur in values/, fehlt auf Deutsch (Android zeigt dort still " +
-                "Englisch):\n  " + onlyEn.joinToString("\n  ")
+            "Plural only in values/, missing in German (Android silently shows " +
+                "English there):\n  " + onlyEn.joinToString("\n  ")
         }
         val onlyDe = (de.keys - en.keys).sorted()
         assert(onlyDe.isEmpty()) {
-            "Mengenform nur in values-de/, ohne Gegenstück in values/:\n  " +
+            "Plural only in values-de/, without a counterpart in values/:\n  " +
                 onlyDe.joinToString("\n  ")
         }
 
         val otherClasses = en.keys.filter { it in de && en[it] != de[it] }.sorted()
         assert(otherClasses.isEmpty()) {
-            "Diese Mengenformen haben in den beiden Dateien NICHT dieselben " +
-                "Mengenklassen — die fehlende Fassung fällt still auf Englisch " +
-                "zurück:\n  " + otherClasses.joinToString("\n  ") {
+            "These plurals do NOT have the same quantity classes in the two " +
+                "files — the missing version silently falls back to English " +
+                "there:\n  " + otherClasses.joinToString("\n  ") {
                     "$it: values=${en[it]?.sorted()} values-de=${de[it]?.sorted()}"
                 }
         }
 
         val withoutBoth = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
         assert(withoutBoth.isEmpty()) {
-            "Diese Mengenformen haben nicht beide Klassen `one` und `other` — dann " +
-                "steht auch bei genau einem Treffer die Mehrzahl da:\n  " +
+            "These plurals do not have both classes `one` and `other` — then " +
+                "the plural is shown even for exactly one hit:\n  " +
                 withoutBoth.joinToString("\n  ")
         }
     }
@@ -193,20 +193,20 @@ class StringResourceParityTest {
 
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
-        assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
+        assert(en.size > 300) { "Too few texts found (${en.size}) — pattern outdated?" }
 
         val equal = en.keys.filter { it in de && en[it] == de[it] }.toSet()
         val untranslated = (equal - intendedEqual).sorted()
         assert(untranslated.isEmpty()) {
-            "Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr " +
-                "wahrscheinlich beim Anlegen kopiert und nicht uebersetzt:\n  " +
+            "These texts are word for word the same in German as in English — very " +
+                "likely copied when created and not translated:\n  " +
                 untranslated.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
-                "\nIst er wirklich in beiden Sprachen gleich, gehoert er in `gewolltGleich`."
+                "\nIf it really is the same in both languages, it belongs in `gewolltGleich`."
         }
         val stale = (intendedEqual - equal).sorted()
         assert(stale.isEmpty()) {
-            "Diese Eintraege in `intendedEqual` stimmen nicht mehr (Text unterscheidet " +
-                "sich inzwischen oder Name ist weg): " + stale.joinToString(", ") + " — raus damit."
+            "These entries in `intendedEqual` no longer hold (the text differs " +
+                "by now or the name is gone): " + stale.joinToString(", ") + " — remove them."
         }
     }
 
@@ -262,7 +262,7 @@ class StringResourceParityTest {
             assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
         }
         val old = (en + de.mapKeys { "de:" + it.key }).filterValues { it.contains("Monitoring") }
-        assert(old.isEmpty()) { "Noch „Monitoring“ in: ${old.keys}" }
+        assert(old.isEmpty()) { "still “Monitoring” in: ${old.keys}" }
     }
 
     /**
@@ -275,9 +275,9 @@ class StringResourceParityTest {
     fun `German texts in Swiss spelling and unambiguous`() {
         val de = texts("values-de/strings.xml")
         val wrong = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
-        assert(wrong.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${wrong.keys}" }
+        assert(wrong.isEmpty()) { "not in Swiss spelling or with an old term: ${wrong.keys}" }
         for (t in listOf(de, texts("values/strings.xml"))) {
-            assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
+            assert(t["login_title"] != t["login_button"]) { "heading and button of the sign-in are equal: ${t["login_title"]}" }
         }
     }
 
@@ -325,9 +325,9 @@ class StringResourceParityTest {
     fun `no second name for a common text`() {
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
-        assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
+        assert(en.size > 300) { "Too few texts found (${en.size}) — pattern outdated?" }
         val shared = en.keys.filter { it.startsWith("common_") }
-        assert(shared.size >= 3) { "Nur ${shared.size} common_-Namen — Konvention aufgegeben?" }
+        assert(shared.size >= 3) { "Only ${shared.size} common_ names — convention given up?" }
 
         val double = mutableListOf<String>()
         for (g in shared.sorted()) {
@@ -340,7 +340,7 @@ class StringResourceParityTest {
             }
         }
         assert(double.isEmpty()) {
-            "Diese Namen tragen denselben Text wie ein common_-Name; nimm den common_-Namen:\n  " +
+            "These names carry the same text as a common_ name; take the common_ name:\n  " +
                 double.joinToString("\n  ")
         }
     }
@@ -389,14 +389,14 @@ class StringResourceParityTest {
             }
         }
         assert(error.isEmpty()) {
-            "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
+            "UI text as a literal instead of from the language files:\n  " +
                 error.joinToString("\n  ")
         }
         val stale = (allowed - allowedSeen).sorted()
         assert(stale.isEmpty()) {
-            "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
+            "These entries in `erlaubt` no longer describe anything: " +
                 stale.joinToString(", ") +
-                " — der Text steht nirgends mehr im Quelltext. Raus damit."
+                " — the text no longer stands anywhere in the source. Remove them."
         }
     }
 }

@@ -27,7 +27,7 @@ class ServerTrustTest {
     private class Checker(val name: String, val accepts: Boolean, val log: MutableList<String>) : X509ExtendedTrustManager() {
         private fun check(kind: String) {
             log += "$name:$kind"
-            if (!accepts) throw CertificateException("$name vertraut nicht")
+            if (!accepts) throw CertificateException("$name does not trust")
         }
         override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = check("server")
         override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = check("server")
@@ -52,9 +52,9 @@ class ServerTrustTest {
 
     @Test
     fun `without the setting only the system applies`() {
-        assertFalse("Ein selbst ausgestelltes Zertifikat ginge ohne Einstellung durch", serverChecked())
+        assertFalse("A self-issued certificate would pass without the setting", serverChecked())
         assertEquals(listOf("system:server"), log)
-        assertFalse("Der CA-Speicher wird ohne Bedarf nicht gelesen", read)
+        assertFalse("The CA store is not read without need", read)
     }
 
     @Test
@@ -63,7 +63,7 @@ class ServerTrustTest {
         allowed = true
         assertTrue(serverChecked())
         allowed = false
-        assertFalse("Ausschalten wirkt ohne Neustart", serverChecked())
+        assertFalse("Switching off takes effect without restart", serverChecked())
     }
 
     @Test

@@ -63,15 +63,15 @@ class ScrollPositionTest {
         }
         compose.onNode(hasScrollToIndexAction()).performScrollToIndex(60)
         compose.waitForIdle()
-        assertEquals("Der Keeper schreibt die Stelle mit", 60, memory.read("probe").first)
+        assertEquals("the keeper records the position", 60, memory.read("probe").first)
 
         compose.runOnIdle { nav.navigate("detail") }
         compose.waitForIdle()
         compose.runOnIdle { nav.popBackStack() }
         compose.waitForIdle()
 
-        assertEquals("Ein neuer Besuch, ein neuer Zustand", 2, states.size)
+        assertEquals("a new visit, a new state", 2, states.size)
         assertNotSame(states[0], states[1])
-        assertEquals("die Liste steht nach dem Ausflug wieder an ihrer Stelle", 60, states[1].firstVisibleItemIndex)
+        assertEquals("the list stands at its position again after the trip", 60, states[1].firstVisibleItemIndex)
     }
 }

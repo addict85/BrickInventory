@@ -80,12 +80,12 @@ class InstructionDownloadTest {
 
         download.load(address, target, once = false) { _, _ -> }
 
-        assertEquals("Abgerissen und einmal fortgesetzt", 2, posed.size)
+        assertEquals("Broken off and resumed once", 2, posed.size)
         val range = posed[1].getHeader("Range")
-        assertTrue("Fortgesetzt wird am Klartext-Byte, nicht von vorn: $range",
+        assertTrue("Resumed at the plaintext byte, not from the start: $range",
             range != null && range != "bytes=0-" && range.startsWith("bytes="))
-        assertArrayEquals("Die fertige Datei trägt die ganze Anleitung", pdf, store.read(target).use { it.readBytes() })
-        assertFalse("Die Teildatei bleibt liegen", File(target.path + ".part").exists())
-        assertTrue("Ohne die Köpfe des api-Clients", posed.all { it.getHeader("Authorization") == "Bearer token-marco" })
+        assertArrayEquals("The finished file carries the whole instruction", pdf, store.read(target).use { it.readBytes() })
+        assertFalse("The partial file stays behind", File(target.path + ".part").exists())
+        assertTrue("Without the api client's headers", posed.all { it.getHeader("Authorization") == "Bearer token-marco" })
     }
 }

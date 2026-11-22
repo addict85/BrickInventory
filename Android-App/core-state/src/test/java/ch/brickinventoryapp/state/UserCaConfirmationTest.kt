@@ -42,7 +42,7 @@ class UserCaConfirmationTest {
     fun `requesting turns nothing on`() {
         val s = toggle()
         s.requests()
-        assertTrue("Der Dialog wartet", s.question.value)
+        assertTrue("the dialog waits", s.question.value)
         assertFalse(s.an.value)
         assertEquals(emptyList<Boolean>(), written)
     }
@@ -82,7 +82,7 @@ class UserCaConfirmationTest {
         val s = toggle(start = true)
         assertTrue(s.an.value)
         s.requests()
-        assertFalse("Schon an: keine Frage", s.question.value)
+        assertFalse("already on: no question", s.question.value)
         s.turnOff()
         assertFalse(s.an.value)
         assertEquals(listOf(false), written)

@@ -42,9 +42,9 @@ class GalleryLoadsFilteredTest {
             vm.setScope(ScopeFilter.View.GALLERY, "own")
             assertEquals(listOf("75192-1", "10294-1"), vm.galleryState.value.sets.map { it.setNumber })
             val fetches = paths.requestsTo("GET /api/v1/sets?")
-            assertTrue("kein Abruf", fetches.isNotEmpty())
+            assertTrue("no fetch", fetches.isNotEmpty())
             for (a in fetches) for (part in listOf("accounts=own", "search=Falke", "theme=Star%20Wars", "sort=year_desc")) {
-                assertTrue("$a ohne $part", part in a)
+                assertTrue("$a without $part", part in a)
             }
         } finally {
             t.cleanUp()

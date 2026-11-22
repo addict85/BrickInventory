@@ -87,7 +87,7 @@ class TabOpensAtTopTest {
         compose.onNodeWithText("Finanzen").performClick()
         compose.waitForIdle()
         assertEquals(listOf(FinanceTarget.Finance to true), reported)
-        assertTrue("Die Leiste navigiert nicht mehr", nav.currentDestination?.hasRoute<FinanceTarget.Finance>() == true)
+        assertTrue("the bar no longer navigates", nav.currentDestination?.hasRoute<FinanceTarget.Finance>() == true)
     }
 
     @Test
@@ -96,7 +96,7 @@ class TabOpensAtTopTest {
         compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
         compose.waitForIdle()
         assertEquals(listOf(PartsTarget.Parts to true), reported)
-        assertTrue("Der Umschalter navigiert nicht mehr", nav.currentDestination?.hasRoute<PartsTarget.Parts>() == true)
+        assertTrue("the switcher no longer navigates", nav.currentDestination?.hasRoute<PartsTarget.Parts>() == true)
     }
 
     @Test
@@ -104,12 +104,12 @@ class TabOpensAtTopTest {
         // Structure: TabScaffold sets the callback once; a destination that builds MainScaffold
         // itself would have to pass it through by hand again.
         val targets = Sources.below("nav")
-        assertTrue("Nur ${targets.size} Dateien unter nav/ — Pfad veraltet?", targets.size >= 3)
+        assertTrue("Only ${targets.size} files under nav/ — path outdated?", targets.size >= 3)
         val direct = targets.filter { Sources.withoutComments(it.readText()).contains("MainScaffold(") }
-        assertTrue("Diese Ziele bauen MainScaffold selbst statt TabScaffold: ${direct.joinToString { it.name }}",
+        assertTrue("These destinations build MainScaffold themselves instead of TabScaffold: ${direct.joinToString { it.name }}",
             direct.isEmpty())
         val scaffold = Sources.withoutComments(Sources.read("app/MainScaffold.kt"))
-        assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
+        assertTrue("the scaffold no longer discards the scroll position of the tapped tab",
             scaffold.contains("onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) }"))
     }
 }

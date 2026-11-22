@@ -131,7 +131,7 @@ class EntryViewModelTest {
         val vm = vm()
         vm.resolveBarcode("5702016616316", ScannerOrigin.GALLERY_SEARCH)
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
-        assertNull("Kein Bestätigungsdialog", vm.barcodeState.value.result)
+        assertNull("no confirmation dialog", vm.barcodeState.value.result)
         until("Prüfanzeige weg") { vm.entryState.value.check == null }
     }
 
@@ -190,7 +190,7 @@ class EntryViewModelTest {
         val vm = vm(Creator(listOf(SetCreateStep.Done(SetRecorded(number = "75192-1", present = true)))))
         vm.addSet(EntryRequest("75192-1"))
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
-        assertTrue("nichts angelegt, nichts nachzuziehen", paths.requestsTo("GET /api/v1/sets?").isEmpty())
+        assertTrue("nothing created, nothing to follow up", paths.requestsTo("GET /api/v1/sets?").isEmpty())
     }
 
     @Test
@@ -211,7 +211,7 @@ class EntryViewModelTest {
         vm.confirmAddBarcode(EntryRequest("75192-1", condition = Condition.USED))
         until("gemeldet") { t.messages.text != null }
         val wantedList = runBlocking { t.wantedList().observeWanted().first().list }
-        assertEquals("der Merkposten steht in der Ablage", listOf("75192-1"), wantedList.map { it.setNumber })
+        assertEquals("the watchlist item stands in the store", listOf("75192-1"), wantedList.map { it.setNumber })
         assertEquals("t${R.string.wanted_added}", t.messages.text)
         assertTrue(paths.requestsTo("POST /api/v1/wanted").isNotEmpty())
         assertNull(vm.barcodeState.value.result)
@@ -274,7 +274,7 @@ class EntryViewModelTest {
         paths.release()
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
         until("Prüfanzeige weg") { vm.entryState.value.check == null }
-        assertTrue("Ein vorhandenes Set fragt den Katalog nicht", paths.requestsTo("/catalog/").isEmpty())
+        assertTrue("an existing set does not ask the catalog", paths.requestsTo("/catalog/").isEmpty())
     }
 
     @Test
@@ -285,7 +285,7 @@ class EntryViewModelTest {
         until("gemeldet") { t.messages.text == "fehler" }
         until("Prüfanzeige weg") { vm.entryState.value.check == null }
         assertNull(vm.barcodeState.value.result)
-        assertTrue("Nach einem Fehler wird nicht auf gut Glück weitergefragt", paths.requestsTo("/catalog/").isEmpty())
+        assertTrue("after an error it does not keep asking at random", paths.requestsTo("/catalog/").isEmpty())
     }
 
     @Test
@@ -320,7 +320,7 @@ class EntryViewModelTest {
         assertNull(vm.entryState.value.check)
         paths.release()
         clock.advanceUntilIdle()
-        assertNull("Der abgebrochene Abruf öffnet hinterher doch noch das Set",
+        assertNull("the cancelled fetch still opens the set afterwards",
             vm.barcodeState.value.foundSet)
     }
 

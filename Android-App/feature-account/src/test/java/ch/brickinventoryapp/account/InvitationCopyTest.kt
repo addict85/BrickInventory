@@ -68,8 +68,8 @@ class InvitationCopyTest {
     fun `below Android 13 the code can only be shared, from 13 also copied secretly`() {
         level.value = 32
         show()
-        assertEquals("Teilen bleibt", 1, buttons(R.string.household_invite_share))
-        assertEquals("Unter Android 13 kein Kopierknopf", 0, buttons(R.string.household_invite_copy))
+        assertEquals("sharing stays", 1, buttons(R.string.household_invite_share))
+        assertEquals("below Android 13 no copy button", 0, buttons(R.string.household_invite_copy))
 
         level.value = 33
         compose.waitForIdle()

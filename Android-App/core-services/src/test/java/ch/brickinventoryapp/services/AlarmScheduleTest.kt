@@ -37,7 +37,7 @@ class AlarmScheduleTest {
 
     @Test
     fun `scheduling reports an error of the WorkManager instead of throwing`() {
-        assertNotNull("WorkManager ohne Konfiguration und trotzdem kein Fehler?", PriceAlarmWorker.schedule(withoutApp, an = true))
+        assertNotNull("WorkManager without configuration and still no error?", PriceAlarmWorker.schedule(withoutApp, an = true))
         assertNotNull(PriceAlarmWorker.schedule(withoutApp, an = false))
     }
 
@@ -46,6 +46,6 @@ class AlarmScheduleTest {
         val io = CountingDispatcher()
         val error = WorkManagerAlarmPlanner(withoutApp, io).schedule(true)
         assertNotNull(error)
-        assertTrue("WorkManager lief auf dem Thread des Aufrufers (am Schalter: dem Hauptthread)", io.switch > 0)
+        assertTrue("WorkManager ran on the caller's thread (at the switch: the main thread)", io.switch > 0)
     }
 }

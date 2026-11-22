@@ -27,7 +27,7 @@ class ErrorMessageLayerTest {
         // decides — or a passed-through server message (a variable).
         val sentence = Regex("""Outcome\.Failure\.(?:Rejected\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val error = mutableListOf<String>()
-        assert(dataLayer.size >= 20) { "Nur ${dataLayer.size} Dateien der Datenschicht — greift die Suche noch?" }
+        assert(dataLayer.size >= 20) { "Only ${dataLayer.size} files of the data layer — does the search still apply?" }
         for (rel in dataLayer) {
             val s = Sources.withoutComments(Sources.read(rel))
             sentence.findAll(s).forEach { m ->
@@ -36,8 +36,8 @@ class ErrorMessageLayerTest {
             }
         }
         assert(error.isEmpty()) {
-            "Die Datenschicht formuliert wieder selbst. Sie hat keinen Context und " +
-                "kann nicht übersetzen — stattdessen eine Fehlerart melden und den " +
+            "The data layer words messages itself again. It has no Context and " +
+                "cannot translate — report an error kind instead and leave the " +
                 "Satz in AppTexts.message() bilden:\n  " + error.joinToString("\n  ")
         }
     }
@@ -50,16 +50,16 @@ class ErrorMessageLayerTest {
         // mapping IS its own, context-free function. If it moves
         // back into message(), it is again only checkable via Android.
         val texts = Sources.withoutComments(Sources.read("state/ui/ErrorTexts.kt"))
-        assert(texts.contains("fun errorTextId(")) { "errorTextId() fehlt" }
+        assert(texts.contains("fun errorTextId(")) { "errorTextId() is missing" }
         assert(!texts.contains("ctx.") && !texts.contains("Context")) {
-            "ErrorTexts.kt darf keinen Context brauchen — sonst ist die Zuordnung " +
-                "wieder nur mit Android-Laufzeit prüfbar"
+            "ErrorTexts.kt must not need a Context — otherwise the mapping " +
+                "can again only be checked with the Android runtime"
         }
         val vm = Sources.withoutComments(Sources.read("state/ui/viewmodel/AppTexts.kt"))
         val message = Sources.function(vm, "override fun message(")
-        assert(message.isNotEmpty()) { "message() fehlt in AppTexts" }
+        assert(message.isNotEmpty()) { "message() is missing in AppTexts" }
         assert(message.contains("errorTextId(")) {
-            "message() benutzt die gemeinsame Zuordnung nicht mehr"
+            "message() no longer uses the shared mapping"
         }
     }
 }

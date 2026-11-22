@@ -22,8 +22,8 @@ class UpdateVersionTest {
 
     @Test
     fun `an APK with a different version than announced does not match`() {
-        assertFalse("Älter als angekündigt", versionFits(200_000_110L, reported = 200_000_120, running = 200_000_100))
-        assertFalse("Gleich der laufenden", versionFits(200_000_100L, reported = 200_000_100, running = 200_000_100))
-        assertFalse("Unlesbar", versionFits(null, reported = 200_000_120, running = 200_000_100))
+        assertFalse("older than announced", versionFits(200_000_110L, reported = 200_000_120, running = 200_000_100))
+        assertFalse("equal to the running one", versionFits(200_000_100L, reported = 200_000_100, running = 200_000_100))
+        assertFalse("unreadable", versionFits(null, reported = 200_000_120, running = 200_000_100))
     }
 }

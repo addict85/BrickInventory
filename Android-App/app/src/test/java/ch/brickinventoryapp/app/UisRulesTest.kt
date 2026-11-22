@@ -190,7 +190,7 @@ class UisRulesTest {
         val bar = compose.onAllNodesWithText("Sammlung")
         // The tab in the side bar is the left one of the two (the other one is the title).
         val tabRight = (0 until 2).map { bar[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
-        assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
+        assertTrue("the switcher starts right of the side bar",
             compose.onNodeWithText(parts).fetchSemanticsNode().boundsInRoot.left >= tabRight)
     }
 
@@ -219,12 +219,12 @@ class UisRulesTest {
                 .first { n -> n.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
             val layouts = mutableListOf<TextLayoutResult>()
             label.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
-            assertTrue("$text bei 200 % abgeschnitten", layouts.none { l -> l.hasVisualOverflow })
+            assertTrue("$text cut off at 200 %", layouts.none { l -> l.hasVisualOverflow })
             compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         }
         val width = ctx.resources.displayMetrics.widthPixels
         segments.forEach { s ->
-            assertTrue("Segment ausserhalb des Bilds (${s.left / density} – ${s.right / density} dp)",
+            assertTrue("segment outside the image (${s.left / density} – ${s.right / density} dp)",
                 s.left >= 0f && s.right <= width + 1f)
         }
         segments.zipWithNext().forEach { (a, b) ->
@@ -261,11 +261,11 @@ class UisRulesTest {
         compose.onNodeWithTag("liste").performTouchInput { swipeUp() }
         compose.waitForIdle()
         val density = ctx.resources.displayMetrics.density
-        assertTrue("Die Liste rückt nach oben, wenn die Leiste weicht (${before / density} → ${top() / density} dp)",
+        assertTrue("the list moves up when the bar gives way (${before / density} → ${top() / density} dp)",
             top() < before - 40 * density)
         compose.onNodeWithTag("liste").performTouchInput { swipeDown() }
         compose.waitForIdle()
-        assertEquals("Zurückgerollt steht die Leiste wieder da", before, top(), density)
+        assertEquals("scrolled back, the bar is there again", before, top(), density)
     }
 
     @Test
@@ -363,7 +363,7 @@ class UisRulesTest {
             // The heading, not its text in capitals below: the section title carries both.
             val card = compose.onNode(hasText(title) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot.left - 16 * density
-            assertEquals("Preisverlauf beginnt wie die Kacheln (${card / density} / ${tile / density} dp)",
+            assertEquals("price history starts like the tiles (${card / density} / ${tile / density} dp)",
                 tile / density, card / density, 1f)
         } finally {
             world.close()
@@ -409,7 +409,7 @@ class UisRulesTest {
     private fun addNotViaList(description: String): List<Rect> {
         val list = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
         val buttons = compose.onAllNodesWithContentDescription(description).fetchSemanticsNodes().map { it.boundsInRoot }
-        assertTrue("Erfassen ist da", buttons.isNotEmpty())
+        assertTrue("add is there", buttons.isNotEmpty())
         return buttons.filter { it.bottom > list.top + 0.5f }
     }
 
@@ -425,9 +425,9 @@ class UisRulesTest {
             galleryWith(world, coil3.ImageLoader.Builder(ctx).build(), font = 2f)
             val names = listOf("Millennium Falcon", "Titanic", "Baumhaus")
             val whole = wholeVisible(names)
-            assertTrue("Nur $whole Set(s) ganz sichtbar", whole >= 2)
+            assertTrue("only $whole set(s) fully visible", whole >= 2)
             val beside = addNotViaList(ctx.getString(R.string.gallery_add_set))
-            assertTrue("Erfassen steht nicht über der Liste: $beside", beside.isEmpty())
+            assertTrue("add does not stand above the list: $beside", beside.isEmpty())
         } finally {
             world.close()
         }
@@ -445,9 +445,9 @@ class UisRulesTest {
             val names = vm.partsState.value.parts.mapNotNull { it.partName }
             assertTrue(names.size >= 3)
             val whole = wholeVisible(names)
-            assertTrue("Nur $whole Teil(e) ganz sichtbar", whole >= 2)
+            assertTrue("only $whole part(s) fully visible", whole >= 2)
             val beside = addNotViaList(ctx.getString(R.string.parts_add))
-            assertTrue("Erfassen steht nicht über der Liste: $beside", beside.isEmpty())
+            assertTrue("add does not stand above the list: $beside", beside.isEmpty())
         } finally {
             world.close()
         }
@@ -546,16 +546,16 @@ class UisRulesTest {
             val broken = coil3.ImageLoader.Builder(ctx).components {
                 add(object : Interceptor {
                     override suspend fun intercept(chain: Interceptor.Chain) =
-                        ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
+                        ErrorResult(null, chain.request, IllegalStateException("no image"))
                 })
             }.build()
             galleryWith(world, broken)
             val tiles = compose.onAllNodes(hasClickAction() and hasText("Millennium Falcon", substring = true))
                 .fetchSemanticsNodes().size
-            assertTrue("Die erste Kachel ist sichtbar", tiles >= 1)
+            assertTrue("the first tile is visible", tiles >= 1)
             val names = listOf("Millennium Falcon", "Titanic", "Baumhaus")
             val visible = names.count { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-            assertEquals("Ersatzbild je sichtbarer Kachel", visible, fallbackImages())
+            assertEquals("fallback image per visible tile", visible, fallbackImages())
         } finally {
             world.close()
         }
@@ -595,7 +595,7 @@ class UisRulesTest {
             val search = compose.onNode(androidx.compose.ui.test.hasSetTextAction())
                 .fetchSemanticsNode().boundsInRoot
             val button = scan[0].fetchSemanticsNode().boundsInRoot
-            assertTrue("Scannen steht in der Zeile der Suche", button.top < search.bottom && button.bottom > search.top)
+            assertTrue("scan stands in the row of the search", button.top < search.bottom && button.bottom > search.top)
         } finally {
             world.close()
         }
@@ -619,7 +619,7 @@ class UisRulesTest {
                 compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
                     .performScrollToNode(hasText(name) and hasClickAction())
                 val tile = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-                assertTrue("Kachel von $name nur ${tile.width / density} dp breit", tile.width / density >= 200f)
+                assertTrue("tile of $name only ${tile.width / density} dp wide", tile.width / density >= 200f)
                 // … and the name stands in full: the last visible line ends with the
                 // last character, without ellipsis. didOverflowWidth is no use: Robolectric
                 // reports it for 342 px text under a 1119 px limit, fully in one line.
@@ -628,7 +628,7 @@ class UisRulesTest {
                     .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
                 val text = outcome.single()
                 val last = text.lineCount - 1
-                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen, sichtbar bis " +
+                assertTrue("$name is cut off (${text.lineCount} lines, visible up to " +
                     "${text.getLineEnd(last, visibleEnd = true)}/${name.length})",
                     !text.isLineEllipsized(last) && text.getLineEnd(last, visibleEnd = true) == name.length)
             }
@@ -649,12 +649,12 @@ class UisRulesTest {
             show { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
-                assertTrue("Trans-Klar steht da", it.isNotEmpty())
+                assertTrue("Trans-Clear is shown", it.isNotEmpty())
             }
             compose.onAllNodesWithText("Trans-Clear", useUnmergedTree = true).assertCountEquals(0)
             val name = compose.onNodeWithText("Brick 2 x 4", useUnmergedTree = true).fetchSemanticsNode()
                 .config[SemanticsProperties.Text].single()
-            assertTrue("Teilename als Englisch ausgezeichnet: ${name.spanStyles}",
+            assertTrue("part name marked as English: ${name.spanStyles}",
                 name.spanStyles.any { it.item.localeList == LocaleList("en") })
         } finally {
             world.close()
@@ -672,7 +672,7 @@ class UisRulesTest {
             val history = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            assertTrue("Die Zeilen stehen rechts neben dem Verlauf ($history / $falcon)",
+            assertTrue("the rows stand right of the history ($history / $falcon)",
                 falcon.left > history.right)
         } finally {
             world.close()
@@ -690,7 +690,7 @@ class UisRulesTest {
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, number))
             .fetchSemanticsNode().boundsInRoot
         val density = ctx.resources.displayMetrics.density
-        assertTrue("PIN-Zeile nur ${pin.height / density} dp hoch", pin.height / density >= 47.5f)
+        assertTrue("PIN row only ${pin.height / density} dp high", pin.height / density >= 47.5f)
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, number)).assertCountEquals(0)
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, number)).performClick()
         compose.waitForIdle()
@@ -728,7 +728,7 @@ class UisRulesTest {
             }
             val density = ctx.resources.displayMetrics.density
             chips.zipWithNext().forEach { (a, b) ->
-                assertTrue("Chips stehen mit Abstand (${a.right / density} / ${b.left / density} dp)", b.left - a.right >= 4 * density)
+                assertTrue("chips stand with a gap (${a.right / density} / ${b.left / density} dp)", b.left - a.right >= 4 * density)
             }
             // The sorting does not stand as a chip with its name but behind the icon.
             val default = ctx.getString(R.string.gallery_sort_added_desc)
@@ -755,7 +755,7 @@ class UisRulesTest {
             show {
                 WantedRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), sideBySide = true,
-                    onScan = {}, onOpenSingle = { _, _ -> error("auf dem Tablet keine eigene Seite") })
+                    onScan = {}, onOpenSingle = { _, _ -> error("no page of its own on the tablet") })
             }
             wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
             val card = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
@@ -764,7 +764,7 @@ class UisRulesTest {
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_back)).assertCountEquals(0)
             val back = compose.onNodeWithContentDescription(ctx.getString(R.string.detail_close)).fetchSemanticsNode().boundsInRoot
             val list = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-            assertTrue("Das Detail steht rechts der Liste ($list / $back)", back.left >= list.right)
+            assertTrue("the detail stands right of the list ($list / $back)", back.left >= list.right)
             compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
                 SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
                 .fetchSemanticsNode()
@@ -798,7 +798,7 @@ class UisRulesTest {
         compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
             .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
         val t = outcome.single()
-        assertTrue("„$text“ steht in ${t.lineCount} Zeilen, sichtbar bis ${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}",
+        assertTrue("“$text” stands in ${t.lineCount} lines, visible up to ${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}",
             t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
     }
 
@@ -837,15 +837,15 @@ class UisRulesTest {
         val frame = compose.onNodeWithTag("wahl").fetchSemanticsNode().boundsInRoot
         val segments = states.map { text ->
             val node = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
-            assertEquals("$text ist ein Optionsfeld", Role.RadioButton, node.config.getOrNull(SemanticsProperties.Role))
+            assertEquals("$text is a radio button", Role.RadioButton, node.config.getOrNull(SemanticsProperties.Role))
             node.boundsInRoot
         }
         segments.forEach { s ->
-            assertTrue("Segment über die volle Breite (${s.width / density} von ${frame.width / density} dp)",
+            assertTrue("segment over the full width (${s.width / density} of ${frame.width / density} dp)",
                 kotlin.math.abs(s.width - frame.width) <= density)
         }
         val (top, bottom) = segments
-        assertTrue("Segmente stehen untereinander und stossen aneinander ($top / $bottom)",
+        assertTrue("segments stand one below the other and touch ($top / $bottom)",
             kotlin.math.abs(bottom.top - top.bottom) <= 2 * density)
     }
 
@@ -865,7 +865,7 @@ class UisRulesTest {
             compose.onNodeWithText(purchase, useUnmergedTree = true).fetchSemanticsNode()
             val profit = row.value!! - total
             compose.onAllNodesWithText(fmtMoney(profit, CurrencyCode("CHF")), substring = true, useUnmergedTree = true)
-                .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
+                .fetchSemanticsNodes().let { assertTrue("profit as an amount is shown", it.isNotEmpty()) }
         } finally {
             world.close()
         }
@@ -895,10 +895,10 @@ class UisRulesTest {
             assertTrue(costText, showsText(costText))
             val pnlText = ctx.getString(R.string.finance_pnl_row, "+" + fmtMoney(pnl.toDouble(), CurrencyCode("CHF")))
             assertTrue(pnlText, showsText(pnlText))
-            assertTrue("Marktwert", showsText(fmtMoney(value.toDouble(), CurrencyCode("CHF"))))
+            assertTrue("market value", showsText(fmtMoney(value.toDouble(), CurrencyCode("CHF"))))
             // The cost of ALL positions (with the tree house) would stand next to a market value without it.
             val all = ctx.getString(R.string.finance_cost_basis_row, fmtMoney(1680.0, CurrencyCode("CHF")))
-            assertTrue("kein Einstand aller Positionen", !showsText(all))
+            assertTrue("no cost basis of all positions", !showsText(all))
             val calculated = ctx.resources.getQuantityString(R.plurals.finance_basis_calculated, 3, 2, 3)
             val without = ctx.resources.getQuantityString(R.plurals.finance_basis_without_market, 1, 1, fmtMoney(180.0, CurrencyCode("CHF")))
             assertTrue(calculated, showsText(calculated, substring = true))

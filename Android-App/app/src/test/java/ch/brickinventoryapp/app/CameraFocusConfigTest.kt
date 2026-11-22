@@ -33,13 +33,13 @@ class CameraFocusConfigTest {
         val count = Regex("""\.setOnTouchListener""").findAll(setup()).count() +
             Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
         assert(Regex("""\btapToFocus\(""").findAll(code(scanner())).count() == 1) {
-            "Der Barcodescanner setzt den Tipper nicht genau einmal"
+            "the barcode scanner does not set the tapper exactly once"
         }
         assert(count == 1) {
-            "$count Touch-Listener auf previewView. setOnTouchListener ERSETZT — " +
-                "der zuletzt gesetzte gewinnt, und welcher das ist, hängt davon ab, " +
-                "wann der Kamera-Rückruf eintrifft. Genau daran ist der Autofokus " +
-                "gescheitert."
+            "$count touch listeners on previewView. setOnTouchListener REPLACES — " +
+                "the one set last wins, and which one that is depends on " +
+                "when the camera callback arrives. Exactly that is where autofocus " +
+                "failed."
         }
     }
 
@@ -70,10 +70,10 @@ class CameraFocusConfigTest {
         val hits = Sources.below("ui/screens")
             .filter { code(it.readText()).let { c -> c.contains("tapToFocus(") || c.contains("startFocusAndMetering(") } }
         assert(hits.size >= 2) {
-            "Nur ${hits.size} FileEntry(en) mit Tap-to-Focus gefunden. Erwartet " +
-                "werden mindestens der Barcodescanner und der SetupScreen — " +
-                "findet die Suche weniger, prüft dieser Test nichts und wäre " +
-                "trotzdem grün."
+            "Only ${hits.size} FileEntry(s) with tap-to-focus found. Expected " +
+                "are at least the barcode scanner and the SetupScreen — " +
+                "if the search finds fewer, this test checks nothing and would " +
+                "still be green."
         }
         return hits
     }
@@ -84,13 +84,13 @@ class CameraFocusConfigTest {
             // The tapper itself lives in CameraSetup.kt; it is checked there for every user.
             val c = code(file.readText()) + "\n" + setup()
             assert(c.contains("disableAutoCancel()")) {
-                "${file.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
-                    "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
-                    "stellt gezielt scharf, und es ist gleich wieder weg."
+                "${file.name}: Without disableAutoCancel() the camera falls back to its own choice after " +
+                    "a few seconds — the user " +
+                    "focuses on purpose, and it is gone right away."
             }
             assert(!c.contains("setAutoCancelDuration")) {
-                "${file.name}: setAutoCancelDuration ist da. Das ist das Gegenteil " +
-                    "von disableAutoCancel() und war schon einmal die Ursache."
+                "${file.name}: setAutoCancelDuration is there. That is the opposite " +
+                    "of disableAutoCancel() and was the cause once before."
             }
         }
     }
@@ -117,8 +117,8 @@ class CameraFocusConfigTest {
     fun `the camera setup lives only in CameraSetup`() {
         val files = Sources.below("ui/screens")
         assert(files.size >= 5) {
-            "Nur ${files.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
-                "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
+            "Only ${files.size} screen files found — the path is wrong, and an " +
+                "empty result would let this test pass silently."
         }
 
         for ((brand, was) in listOf(
@@ -129,9 +129,9 @@ class CameraFocusConfigTest {
         )) {
             val where = files.filter { code(it.readText()).contains(brand) }.map { it.name }
             assert(where == listOf("CameraSetup.kt")) {
-                "$was ($brand) steht in ${where.joinToString()} statt nur in CameraSetup.kt. " +
-                    "Jede weitere Stelle ist eine zweite Fassung derselben Regel — und genau " +
-                    "daran ist der Tap-to-Focus im SetupScreen hängengeblieben."
+                "$was ($brand) stands in ${where.joinToString()} instead of only in CameraSetup.kt. " +
+                    "Every further place is a second version of the same rule — and exactly " +
+                    "there tap-to-focus in the SetupScreen got stuck."
             }
         }
     }
@@ -145,8 +145,8 @@ class CameraFocusConfigTest {
         val src = code(Sources.read("ui/screens/CameraSetup.kt"))
         val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
         assert(n >= 2) {
-            "Der AF-Modus steht in CameraSetup.kt nur ${n}x — er muss an Vorschau UND " +
-                "Bildanalyse hängen. NICHT diesen Test anpassen, sondern die Stelle ergänzen."
+            "The AF mode stands in CameraSetup.kt only ${n}x — it must hang on preview AND " +
+                "image analysis. Do NOT adapt this test, add the place instead."
         }
     }
 
@@ -159,8 +159,8 @@ class CameraFocusConfigTest {
             .filter { code(it.readText()).contains("cameraBind(") }
             .map { it.name }
         assert(user.size >= 2) {
-            "Nur ${user.size} Bildschirm(e) rufen cameraBind() (${user.joinToString()}). " +
-                "Erwartet werden Barcodescanner und SetupScreen."
+            "Only ${user.size} screen(s) call cameraBind() (${user.joinToString()}). " +
+                "Expected are the barcode scanner and SetupScreen."
         }
     }
 
@@ -168,8 +168,8 @@ class CameraFocusConfigTest {
     fun `the tapper lives only in CameraSetup`() {
         // Like preview and binding: a copy in the screen missed the next fix.
         val own = withTapToFocus().filter { it.name != "CameraSetup.kt" && code(it.readText()).contains("startFocusAndMetering(") }
-        assert(own.isEmpty()) { "Eigener Tap-to-Focus statt tapToFocus(): ${own.joinToString { it.name }}" }
-        assert(setup().contains("startFocusAndMetering(")) { "CameraSetup.kt fokussiert beim Tippen nicht mehr" }
+        assert(own.isEmpty()) { "own tap-to-focus instead of tapToFocus(): ${own.joinToString { it.name }}" }
+        assert(setup().contains("startFocusAndMetering(")) { "CameraSetup.kt no longer focuses on tap" }
     }
 
     @Test
@@ -181,15 +181,15 @@ class CameraFocusConfigTest {
             """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tapToFocus)""")
         val files = withTapToFocus()
         assert(files.size >= 2) {
-            "Nur ${files.size} FileEntry(en) mit startFocusAndMetering gefunden — " +
-                "erwartet werden mindestens Barcodescanner und SetupScreen. " +
-                "Ein leeres Ergebnis wuerde diesen Test stillschweigend bestehen lassen."
+            "Only ${files.size} FileEntry(s) with startFocusAndMetering found — " +
+                "expected are at least the barcode scanner and SetupScreen. " +
+                "An empty result would let this test pass silently."
         }
         for (file in files) {
             assert(!pump.containsMatchIn(code(file.readText()))) {
-                "${file.name}: startFocusAndMetering laeuft in einer Schleife, hinter " +
-                    "einem Timer oder in einem Effekt (Fokus-Pump) — das zwingt die " +
-                    "Kamera dauernd in einen neuen Suchlauf."
+                "${file.name}: startFocusAndMetering runs in a loop, behind " +
+                    "a timer or in an effect (focus pump) — that forces the " +
+                    "camera into a new search run all the time."
             }
         }
     }

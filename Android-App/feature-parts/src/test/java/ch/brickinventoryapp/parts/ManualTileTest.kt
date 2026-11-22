@@ -41,8 +41,8 @@ class ManualTileTest {
     fun `the detail view shows value tiles, market price and price history, without a large price row`() {
         val s = code(read("parts/ui/screens/ManualItemDetailScreen.kt"))
         for (part in listOf("ValueTiles(", "MarketPriceByCondition(", "PriceChart(")) {
-            assert(s.contains(part)) { "$part fehlt in der Detailansicht" }
+            assert(s.contains(part)) { "$part missing in the detail view" }
         }
-        assert(!s.contains("headlineSmall")) { "wieder eine grosse Preiszeile neben den Kacheln" }
+        assert(!s.contains("headlineSmall")) { "again a large price row next to the tiles" }
     }
 }

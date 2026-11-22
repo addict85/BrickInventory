@@ -92,15 +92,15 @@ class DevicesSettingsViewModelTest {
         vm.alarmMessages(false)
         assertEquals(false, vm.alarmMessagesEnabled.value)
         assertEquals(listOf(true, false), planner.jobs)
-        assertNull("Ohne Fehlschlag keine Meldung", channel.text)
+        assertNull("no message without a failure", channel.text)
     }
 
     @Test
     fun `a failure when scheduling is reported`() {
-        planner.error = IllegalStateException("WorkManager fehlt")
+        planner.error = IllegalStateException("WorkManager is missing")
         vm.alarmMessages(true)
-        assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMessagesEnabled.value)
-        assertEquals(Message.Resource(R.string.alert_schedule_failed, listOf("IllegalStateException: WorkManager fehlt")),
+        assertEquals("the wish counts anyway", true, vm.alarmMessagesEnabled.value)
+        assertEquals(Message.Resource(R.string.alert_schedule_failed, listOf("IllegalStateException: WorkManager is missing")),
             channel.message.value)
     }
 
@@ -115,7 +115,7 @@ class DevicesSettingsViewModelTest {
 
     @Test
     fun `the preview store can be viewed and cleared`() {
-        assertTrue("Die belegte Ablage zeigt keine Bytes", vm.storeBytes.value > 0)
+        assertTrue("the occupied store shows no bytes", vm.storeBytes.value > 0)
         vm.clearStore()
         assertEquals(0L, vm.storeBytes.value)
         assertEquals(0L, preview.occupied())

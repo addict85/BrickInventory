@@ -82,7 +82,7 @@ class TokenBindingLockedTest {
             first.saveServerUrl(a)
             first.saveAuthToken("tA")
         }
-        assertFalse("Die Herkunft liegt nicht im Klartext", TokenStore.TOKEN_ORIGIN in plate().asMap())
+        assertFalse("The origin is not in plaintext", TokenStore.TOKEN_ORIGIN in plate().asMap())
         assertTrue(TokenStore.TOKEN_ORIGIN_SECRET in plate().asMap())
         assertEquals(NetworkPolicy.origin(a), runBlocking { first.tokenStatus().origin })
         end()
@@ -90,16 +90,16 @@ class TokenBindingLockedTest {
         // Restart: the first four openings (startup) are locked, memory reports "".
         val locked = start(Vault(4))
         runBlocking {
-            assertEquals("Der Anlauf meldet die Anmeldemaske", "", locked.tokenNow())
+            assertEquals("The startup reports the sign-in mask", "", locked.tokenNow())
             locked.saveServerUrl(b)
         }
         val p = plate()
-        assertFalse("Das Token von A liegt nach dem Wechsel noch da", TokenStore.AUTH_TOKEN_ENC in p.asMap())
+        assertFalse("A's token is still there after the switch", TokenStore.AUTH_TOKEN_ENC in p.asMap())
         assertFalse(TokenStore.AUTH_TOKEN in p.asMap())
         assertFalse(TokenStore.TOKEN_ORIGIN in p.asMap() || TokenStore.TOKEN_ORIGIN_SECRET in p.asMap())
         val job = runBlocking { locked.redemptionJob() }
-        assertTrue("Ein Auftrag für B trüge das Token von A dorthin: $job", job == null || job.serverUrl == a)
-        assertEquals("A wird nachgeholt abgemeldet, mit dem Token von A", listOf(a to "ENC:tA"),
+        assertTrue("A job for B would carry A's token there: $job", job == null || job.serverUrl == a)
+        assertEquals("A is signed out later, with A's token", listOf(a to "ENC:tA"),
             scheduled.map { it.serverUrl to it.tokenSecret })
         assertEquals(NetworkPolicy.origin(a), scheduled.single().origin)
         end()
@@ -120,7 +120,7 @@ class TokenBindingLockedTest {
         }
         val prefs = start(Vault(0))
         val expected = NetworkPolicy.origin("https://alt.example/brick")
-        assertTrue("Gebunden, und zwar verschlüsselt", TokenStore.TOKEN_ORIGIN_SECRET in plate().asMap())
+        assertTrue("Bound, and encrypted", TokenStore.TOKEN_ORIGIN_SECRET in plate().asMap())
         assertFalse(TokenStore.TOKEN_ORIGIN in plate().asMap())
         assertEquals(expected, prefs.tokenOriginState.value)
         assertEquals("alt", runBlocking { prefs.tokenNow() })

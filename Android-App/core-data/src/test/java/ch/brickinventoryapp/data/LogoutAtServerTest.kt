@@ -71,7 +71,7 @@ class LogoutAtServerTest {
         val begin = System.nanoTime()
         assertFalse(runBlocking { account.logoutAtServer(limitMs = 300) })
         val duration = (System.nanoTime() - begin) / 1_000_000
-        assertTrue("Abmelden dauerte $duration ms", duration < 1_500)
+        assertTrue("Signing out took $duration ms", duration < 1_500)
     }
 
     @Test

@@ -88,9 +88,9 @@ class TokenStoredValueTest {
         val store = Hesitant(real)
         val tokenStore = TokenStore(store, PlainVault, device, area).also { it.waitOnStart() }
         val address = "https://brick.example"
-        assertEquals("Die Adresse folgt erst der Platte", address,
+        assertEquals("The address only follows the disk", address,
             duringTheSpelling(store, { tokenStore.saveServerUrl(address) }) { tokenStore.serverUrlState.value })
-        assertEquals("Der Token folgt erst der Platte", "token-marco",
+        assertEquals("The token only follows the disk", "token-marco",
             duringTheSpelling(store, { tokenStore.saveAuthToken("token-marco") }) { tokenStore.authTokenState.value })
     }
 

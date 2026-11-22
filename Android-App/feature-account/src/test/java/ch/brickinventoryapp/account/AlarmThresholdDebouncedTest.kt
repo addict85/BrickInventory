@@ -64,13 +64,13 @@ class AlarmThresholdDebouncedTest {
         vm.setAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, "4")
         vm.setAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, "449,90")
         clock.advanceTimeBy(500)
-        assertTrue("Vor der Ruhezeit nichts gesendet", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isEmpty())
+        assertTrue("nothing sent before the quiet period", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isEmpty())
         clock.advanceTimeBy(500)
-        assertTrue("gespeichert", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
+        assertTrue("saved", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
         val puts = synchronized(paths.requests) {
             paths.requests.indices.filter { paths.requests[it] == "PUT /api/v1/sets/75192-1/alert" }.map { paths.bodyBytes[it] }
         }
-        assertEquals("Genau eine Anfrage: $puts", 1, puts.size)
-        assertTrue("Mit dem letzten Wert: ${puts.single()}", "449.9" in puts.single())
+        assertEquals("exactly one request: $puts", 1, puts.size)
+        assertTrue("with the last value: ${puts.single()}", "449.9" in puts.single())
     }
 }

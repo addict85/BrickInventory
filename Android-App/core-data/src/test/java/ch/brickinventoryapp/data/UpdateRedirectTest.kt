@@ -71,11 +71,11 @@ class UpdateRedirectTest {
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", foreign.url("/spiegel.apk")))
         try {
             fetch(start.url("/release").toString())
-            fail("Die Umleitung auf einen fremden Host ging durch")
+            fail("The redirect to a foreign host went through")
         } catch (_: IOException) {
             // expected
         }
-        assertEquals("Der fremde Host sah die Anfrage", 0, foreign.requestCount)
+        assertEquals("The foreign host saw the request", 0, foreign.requestCount)
     }
 
     @Test

@@ -74,7 +74,7 @@ class ManualTileDisplayTest {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); ready() }
         } catch (e: ComposeTimeoutException) {
-            throw AssertionError("$was: nach 10 s nicht da", e)
+            throw AssertionError("$was: not there after 10 s", e)
         }
         compose.waitForIdle()
     }
@@ -85,11 +85,11 @@ class ManualTileDisplayTest {
 
     private fun showsEverything(who: String) {
         for (text in listOf(ctx.getString(R.string.condition_new), ctx.getString(R.string.condition_used), "Anna", "Beat")) {
-            assertTrue("$who zeigt „$text“ nicht",
+            assertTrue("$who does not show “$text”",
                 compose.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         }
         val price = fmtMoney(5.0, CurrencyCode("CHF"))
-        assertTrue("$who zeigt nicht den gemittelten Kaufpreis $price",
+        assertTrue("$who does not show the averaged purchase price $price",
             compose.onAllNodesWithText(price, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }
 
@@ -126,7 +126,7 @@ class ManualTileDisplayTest {
         show { MinifigsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         val types = ctx.resources.getQuantityString(R.plurals.minifigs_stat_types, 2, "2")
-        assertTrue("Die Kennzahlen „$types“ fehlen",
+        assertTrue("the figures “$types” are missing",
             compose.onAllNodesWithText(types, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }
 }

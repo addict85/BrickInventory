@@ -38,7 +38,7 @@ class LayerRulesTest {
 
     private fun violations(which: (FileEntry) -> Boolean, forbidden: (String) -> Boolean): List<String> {
         val checked = files.filter(which)
-        assert(checked.isNotEmpty()) { "Keine Dateien geprüft — Muster veraltet?" }
+        assert(checked.isNotEmpty()) { "No files checked — pattern outdated?" }
         return checked.flatMap { d -> d.imports.filter(forbidden).map { "${d.module}/${d.name}: $it" } }
     }
 
@@ -52,13 +52,13 @@ class LayerRulesTest {
             it.startsWith("android.") || it.startsWith("okhttp3.") || it.startsWith("retrofit2.") ||
                 Regex("""\.ui\.(screens|components)\.""").containsMatchIn(it)
         }
-        assert(f.isEmpty()) { "ViewModels mit verbotenen Importen (M11, H3, N7):\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "ViewModels with forbidden imports (M11, H3, N7):\n  " + f.joinToString("\n  ") }
     }
 
     @Test
     fun `presentation fetches nothing from the network itself`() {
         val f = violations(::presentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
-        assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit:\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "presentation with OkHttp or Retrofit:\n  " + f.joinToString("\n  ") }
     }
 
     /**
@@ -70,13 +70,13 @@ class LayerRulesTest {
     @Test
     fun `an area does not know the Retrofit interfaces, only core-data knows the wire format`() {
         val f = violations(::presentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
-        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "areas or state with imports from data.api:\n  " + f.joinToString("\n  ") }
         val wire = violations({ it.module !in WIRE_MARKER }) { it.startsWith("ch.brickinventoryapp.contract.") }
-        assert(wire.isEmpty()) { "Importe aus core-contract ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
+        assert(wire.isEmpty()) { "imports from core-contract outside core-data:\n  " + wire.joinToString("\n  ") }
         val implementation = violations({ it.module !in setOf("core-data", "core-testing") }) {
             Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
         }
-        assert(implementation.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + implementation.joinToString("\n  ") }
+        assert(implementation.isEmpty()) { "repository implementations outside core-data and core-testing:\n  " + implementation.joinToString("\n  ") }
     }
 
     /** Texts and files come via Textquelle and FileReader from core-data, without exception. */
@@ -85,6 +85,6 @@ class LayerRulesTest {
         val f = violations({ it.module in setOf("core-state", "core-session") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
-        assert(f.isEmpty()) { "core-state oder core-session mit Context:\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "core-state or core-session with Context:\n  " + f.joinToString("\n  ") }
     }
 }

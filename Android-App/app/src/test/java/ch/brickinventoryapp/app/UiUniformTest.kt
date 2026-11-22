@@ -190,7 +190,7 @@ class UiUniformTest {
     private fun linksAbFormEdge(text: String, where: String) {
         val links = node(text).boundsInRoot.left / density
         // 1280 dp wide, 560 dp form centered: the content begins at 360 dp at the earliest.
-        assertTrue("$where: „$text“ beginnt bei $links dp, nicht in der mittigen Formularbreite", links >= 360f)
+        assertTrue("$where: “$text” starts at $links dp, not in the centered form width", links >= 360f)
     }
 
     @Test
@@ -231,7 +231,7 @@ class UiUniformTest {
         }
         val links = node("Millennium Falcon").boundsInRoot.left / density
         // In the row the image (96 dp) stands left of the name; as a tile it would stand at the edge.
-        assertTrue("Galerie bei 130 %: Der Name beginnt bei $links dp, also unter einem Bild über die ganze Breite",
+        assertTrue("gallery at 130 %: the name starts at $links dp, so below an image over the full width",
             links >= 100f)
     }
 
@@ -266,7 +266,7 @@ class UiUniformTest {
         showCatalog()
         val track = compose.onNodeWithContentDescription(ctx.getString(R.string.catalog_year_jump)).fetchSemanticsNode()
         val width = track.boundsInRoot.width / density
-        assertTrue("Jahresleiste ist $width dp breit, eine Tippfläche braucht 48 dp", width >= 47.5f)
+        assertTrue("year bar is $width dp wide, a tap area needs 48 dp", width >= 47.5f)
     }
 
     @Test
@@ -278,7 +278,7 @@ class UiUniformTest {
         compose.onNodeWithText("2023").performClick()
         compose.waitForIdle()
         // 2024 has two sets: the year 2023 begins at position 2.
-        assertEquals("Sprungmenü der Jahresleiste", listOf(2), jumpTargets)
+        assertEquals("jump menu of the year bar", listOf(2), jumpTargets)
     }
 
     // ── Texts: „hinzufügen“ as on the web, one name for the price comparison ──
@@ -288,14 +288,14 @@ class UiUniformTest {
         for (language in listOf("de-rCH", "en-rGB")) {
             RuntimeEnvironment.setQualifiers(language)
             val r = ApplicationProvider.getApplicationContext<Context>()
-            assertEquals("$language: Titel und Knopf beim Teil", r.getString(R.string.parts_add), r.getString(R.string.parts_add_title))
-            assertEquals("$language: Titel und Knopf bei der Figur", r.getString(R.string.minifigs_add), r.getString(R.string.minifigs_add_title))
-            assertEquals("$language: Ziel und Seite des Vergleichs", r.getString(R.string.comparison_title), r.getString(R.string.nav_comparison))
+            assertEquals("$language: title and button for the part", r.getString(R.string.parts_add), r.getString(R.string.parts_add_title))
+            assertEquals("$language: title and button for the figure", r.getString(R.string.minifigs_add), r.getString(R.string.minifigs_add_title))
+            assertEquals("$language: destination and side of the comparison", r.getString(R.string.comparison_title), r.getString(R.string.nav_comparison))
         }
         RuntimeEnvironment.setQualifiers("de-rCH")
         val de = ApplicationProvider.getApplicationContext<Context>()
         for (id in listOf(R.string.gallery_add_first, R.string.parts_add_title, R.string.minifigs_add_title)) {
-            assertTrue("„${de.getString(id)}“ sagt hinzufügen", de.getString(id).contains("hinzufügen"))
+            assertTrue("“${de.getString(id)}” says add", de.getString(id).contains("hinzufügen"))
         }
     }
 
@@ -305,7 +305,7 @@ class UiUniformTest {
         val t = layout(node(text))
         val colors = listOf(t.layoutInput.style.color) +
             t.layoutInput.text.spanStyles.filter { text in t.layoutInput.text.text.substring(it.start, it.end) }.map { it.item.color }
-        assertFalse("$where: „$text“ steht in Primärblau, ist aber nicht antippbar", mainColor in colors)
+        assertFalse("$where: “$text” stands in primary blue but is not tappable", mainColor in colors)
     }
 
     @Test
@@ -328,7 +328,7 @@ class UiUniformTest {
         show { GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {}) }
         compose.onNodeWithContentDescription(ctx.getString(R.string.filter_remove, "Star Wars")).performClick()
         compose.waitForIdle()
-        assertEquals("Der Chip nimmt den Themenfilter weg", "", vm.galleryState.value.galleryTheme)
+        assertEquals("the chip removes the theme filter", "", vm.galleryState.value.galleryTheme)
     }
 
     @Test
@@ -345,10 +345,10 @@ class UiUniformTest {
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.minifigs_order_number)).performClick()
         compose.waitForIdle()
-        assertEquals("Minifiguren nach Nummer", listOf("sw0001", "sw0002", "sw0003"),
+        assertEquals("minifigures by number", listOf("sw0001", "sw0002", "sw0003"),
             vm.minifigsState.value.minifigs.map { it.figNumber })
         vm.setMinifigsOrder(FigureOrder.QUANTITY)
-        assertEquals("Minifiguren nach Menge", "sw0002", vm.minifigsState.value.minifigs.first().figNumber)
+        assertEquals("minifigures by quantity", "sw0002", vm.minifigsState.value.minifigs.first().figNumber)
     }
 
     // ── Undo after deleting ──
@@ -361,10 +361,10 @@ class UiUniformTest {
         drive("Teile") { vm.partsState.value.manualParts?.isNotEmpty() == true }
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         drive("vorgemerkt") { true }
-        assertTrue("vorgemerkt fehlt in der Liste", vm.partsState.value.manualParts.orEmpty().isEmpty())
-        assertTrue("vor dem Ende der Snackbar nichts gelöscht", requests("DELETE /api/v1/parts/3001/5").isEmpty())
+        assertTrue("marked is missing in the list", vm.partsState.value.manualParts.orEmpty().isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/parts/3001/5").isEmpty())
         vm.delete.undo()
-        assertEquals("Rückgängig holt es zurück", 1, vm.partsState.value.manualParts.orEmpty().size)
+        assertEquals("undo brings it back", 1, vm.partsState.value.manualParts.orEmpty().size)
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         vm.delete.execute()
         drive("gelöscht") { requests("DELETE /api/v1/parts/3001/5").isNotEmpty() }
@@ -379,12 +379,12 @@ class UiUniformTest {
         drive("Lagerorte") { vm.storageState.value.own.size == 2 }
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         short()
-        assertEquals("vorgemerkt fehlt in der Liste", listOf(4), vm.storageState.value.own.map { it.id })
-        assertTrue("vor dem Ende der Snackbar nichts gelöscht", requests("DELETE /api/v1/storage/locations/3").isEmpty())
+        assertEquals("marked is missing in the list", listOf(4), vm.storageState.value.own.map { it.id })
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/storage/locations/3").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         short()
-        assertEquals("Rückgängig holt ihn zurück", 2, vm.storageState.value.own.size)
-        assertTrue("Rückgängig löscht nicht", requests("DELETE /api/v1/storage/locations/3").isEmpty())
+        assertEquals("undo brings it back", 2, vm.storageState.value.own.size)
+        assertTrue("undo does not delete", requests("DELETE /api/v1/storage/locations/3").isEmpty())
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         vm.locationRoute.execute()
         drive("gelöscht") { requests("DELETE /api/v1/storage/locations/3").isNotEmpty() }
@@ -397,12 +397,12 @@ class UiUniformTest {
         drive("Käufe") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
         vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
         short()
-        assertTrue("vorgemerkt fehlt in der Liste",
+        assertTrue("marked is missing in the list",
             compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isEmpty())
-        assertTrue("vor dem Ende der Snackbar nichts gelöscht", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         short()
-        assertTrue("Rückgängig löscht nicht", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
+        assertTrue("undo does not delete", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
         vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
         vm.purchaseRoute.execute()
         drive("gelöscht") { requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isNotEmpty() }
@@ -424,9 +424,9 @@ class UiUniformTest {
             ManualItemDetailRoute(purchases(), parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
                 imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
-        assertTrue("Teil ohne Marktpreis: „noch kein Preis“ statt eines Strichs",
+        assertTrue("part without market price: “no price yet” instead of a dash",
             compose.onAllNodes(hasText(ctx.getString(R.string.detail_price_none_yet))).fetchSemanticsNodes().isNotEmpty())
-        assertEquals("Kopf des selbst erfassten Teils", 200f, imageHeight("Brick 2 x 4"), 1f)
+        assertEquals("header of the self-entered part", 200f, imageHeight("Brick 2 x 4"), 1f)
     }
 
     @Test
@@ -446,9 +446,9 @@ class UiUniformTest {
         compose.onNode(hasText("Brick 2 x 4", substring = true) and hasClickAction()).performClick()
         drive("Teil offen") { vm.setItemState.value.header != null }
         compose.waitForIdle()
-        assertEquals("Kopf des Teils aus Sets", 200f, imageHeight("Brick 2 x 4"), 1f)
+        assertEquals("header of the part from sets", 200f, imageHeight("Brick 2 x 4"), 1f)
         // The chip shows the color in the app's language (de-CH), as for the self-added part.
-        assertTrue("Kennzahlen als Chips wie beim selbst erfassten Teil",
+        assertTrue("figures as chips as for the self-entered part",
             compose.onAllNodes(hasText(ctx.getString(R.string.setitem_color) + " Rot", substring = true), useUnmergedTree = true)
                 .fetchSemanticsNodes().isNotEmpty())
     }

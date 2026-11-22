@@ -93,21 +93,21 @@ class AddDialogTest {
     fun `without a part number the dialog stays open and the field says why`() {
         showPart()
         tap(R.string.parts_add_button)
-        assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
+        assertEquals("The dialog closed without an entry", 0, closed)
         assertEquals(emptyList<PartEntry>(), parts)
         compose.onNodeWithText(text(R.string.parts_number_missing)).assertExists()
 
         field(R.string.parts_part_number).performTextInput("3001")
         tap(R.string.parts_add_button)
         assertEquals(listOf("3001"), parts.map { it.number })
-        assertEquals("Erfolg schliesst über onAdd, nicht über Abbrechen", 0, closed)
+        assertEquals("Success closes via onAdd, not via cancel", 0, closed)
     }
 
     @Test
     fun `without a figure number the dialog stays open and the field says why`() {
         showMinifig()
         tap(R.string.minifigs_add_button)
-        assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
+        assertEquals("The dialog closed without an entry", 0, closed)
         compose.onNodeWithText(text(R.string.minifigs_number_missing)).assertExists()
 
         field(R.string.minifigs_fig_number).performTextInput("fig-007357")
@@ -131,7 +131,7 @@ class AddDialogTest {
         field(R.string.parts_part_number).performTextInput("3001")
         compose.waitForIdle()
         back()
-        assertEquals("Zurück verwarf das Getippte ohne Rückfrage", 0, closed)
+        assertEquals("Back discarded the typed text without asking", 0, closed)
         compose.onNodeWithText(text(R.string.record_discard_title)).assertExists()
         tap(R.string.record_discard)
         assertEquals(1, closed)
@@ -141,13 +141,13 @@ class AddDialogTest {
     fun `back closes an empty dialog immediately`() {
         showPart()
         back()
-        assertEquals("Ein leerer Dialog schliesst ohne Frage", 1, closed)
+        assertEquals("An empty dialog closes without asking", 1, closed)
     }
 
     @Test
     fun `tapping outside closes only an empty dialog`() {
         assertTrue(addClosable(changed = false).dismissOnClickOutside)
         assertFalse(addClosable(changed = true).dismissOnClickOutside)
-        assertTrue("Zurück bleibt an und fragt dann nach", addClosable(changed = true).dismissOnBackPress)
+        assertTrue("Back stays open and then asks", addClosable(changed = true).dismissOnBackPress)
     }
 }

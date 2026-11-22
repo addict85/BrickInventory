@@ -49,11 +49,11 @@ class ErrorTextsTest {
 
     @Test
     fun `every error kind has its own text`() {
-        assert(examples.map { name(it) }.toSet().size == 9) { "Nicht jede Art hat ein Beispiel" }
+        assert(examples.map { name(it) }.toSet().size == 9) { "not every kind has an example" }
         val assignment = examples.associate { name(it) to errorTextId(it) }
 
         assignment.forEach { (kind, id) ->
-            assert(id != 0) { "$kind hat keine Textressource" }
+            assert(id != 0) { "$kind has no text resource" }
         }
 
         // A break in the middle of the stream means the same thing to the user as no network
@@ -65,14 +65,14 @@ class ErrorTextsTest {
             .filterValues { it.size > 1 }
             .values.map { group -> group.joinToString { it.key } }
         assert(double.isEmpty()) {
-            "Diese Fehlerarten zeigen denselben Text: ${double.joinToString(" | ")}"
+            "These error kinds show the same text: ${double.joinToString(" | ")}"
         }
     }
 
     @Test
     fun `a break in the stream shows the network text`() {
         assert(errorTextId(Outcome.Failure.Cancelled) == errorTextId(Outcome.Failure.Network())) {
-            "Abgebrochen hiess bisher „kein Netz“ — ein neuer Satz wäre eine Änderung, kein Umbau"
+            "cancelled was called “kein Netz” so far — a new sentence would be a change, not a rebuild"
         }
     }
 
@@ -82,9 +82,9 @@ class ErrorTextsTest {
         // silently returns the same text — a wrong argument here
         // would thus go unnoticed anywhere. Conversely, a missing one in the
         // server-error case showed the placeholder „%1$d“ as plain text.
-        assert(errorTextArgument(Outcome.Failure.Server(503)) == 503) { "Server braucht den Status" }
+        assert(errorTextArgument(Outcome.Failure.Server(503)) == 503) { "the server needs the status" }
         examples.filter { it !is Outcome.Failure.Server }.forEach {
-            assert(errorTextArgument(it) == null) { "${name(it)} braucht keinen Code" }
+            assert(errorTextArgument(it) == null) { "${name(it)} needs no code" }
         }
     }
 
@@ -101,7 +101,7 @@ class ErrorTextsTest {
             "EmptyResponse" to ErrorClass.SERVER, "Abgewiesen" to ErrorClass.LOGIN,
             "Klartext" to ErrorClass.UNKNOWN, "Unbekannt" to ErrorClass.UNKNOWN, "Absage" to ErrorClass.UNKNOWN,
         )
-        assert(expected.keys == examples.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
+        assert(expected.keys == examples.map { name(it) }.toSet()) { "new error kind without a class" }
         examples.forEach { f -> assert(errorClass(f) == expected[name(f)]) { "${name(f)} ergab ${errorClass(f)}" } }
         assert(errorClass(Outcome.Failure.Rejected("Satz")) == ErrorClass.LOGIN)
         assert(errorClass(Outcome.Failure.Server(503, "Satz")) == ErrorClass.SERVER)

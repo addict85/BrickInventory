@@ -84,9 +84,9 @@ class ApiAreasTest {
         fun addresses(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
         val names = areas.flatMap { b -> addresses(b.java.declaredMethods) }
         val double = names.groupingBy { it }.eachCount().filterValues { it > 1 }
-        assertTrue("Doppelt deklariert: $double", double.isEmpty())
-        assertTrue("Nur ${names.size} Adressen — Bereiche verloren?", names.size >= 140)
-        assertEquals("Die Summe deckt alle Bereiche", names.toSet(),
+        assertTrue("Declared twice: $double", double.isEmpty())
+        assertTrue("Only ${names.size} addresses — areas lost?", names.size >= 140)
+        assertEquals("The sum covers all areas", names.toSet(),
             addresses(BrickApiService::class.java.methods).toSet())
     }
 

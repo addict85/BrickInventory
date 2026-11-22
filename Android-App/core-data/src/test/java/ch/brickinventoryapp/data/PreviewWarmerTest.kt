@@ -86,15 +86,15 @@ class PreviewWarmerTest {
         assertEquals(listOf(preview(3)), posed.map { it.url.toString() })
         val request = posed.single()
         assertEquals("GET", request.method)
-        assertTrue("Die Anfrage trägt die Marke des Vorwärmers nicht", request.tag(WarmUp::class.java) != null)
-        assertEquals("Die Marke reist als Kopfzeile zum Server", 0, request.headers.size)
+        assertTrue("The request does not carry the prewarmer's brand", request.tag(WarmUp::class.java) != null)
+        assertEquals("The brand travels to the server as a header", 0, request.headers.size)
     }
 
     @Test
     fun `when the limit is reached it stops after the running batch`() = runTest {
         afterRequest = { if (posed.size == 1) fillUntilToLimit() }
         prewarmer.prewarm((10..15).map(::preview))
-        assertEquals("Ein Schub von zwei, dann ist Schluss", 2, posed.size)
+        assertEquals("A batch of two, then it stops", 2, posed.size)
     }
 
     @Test
@@ -107,15 +107,15 @@ class PreviewWarmerTest {
     @Test
     fun `it starts only on an allowed network and with space`() = runTest {
         val responses = NetworkState.Kind.entries.associateWith { situation = it; prewarmer.mayStart() }
-        assertEquals("Vorgabe hier: nur WLAN", mapOf(NetworkState.Kind.NO_NETWORK to false, NetworkState.Kind.WIFI to true,
+        assertEquals("Default here: Wi-Fi only", mapOf(NetworkState.Kind.NO_NETWORK to false, NetworkState.Kind.WIFI to true,
             NetworkState.Kind.MOBILE to false, NetworkState.Kind.ROAMING to false), responses)
         allowed[PrewarmNetwork.MOBILE] = true
         situation = NetworkState.Kind.MOBILE
-        assertTrue("Mit Erlaubnis auch im Mobilfunk", prewarmer.mayStart())
-        assertEquals("Vorgewärmt wird bis vier Fünftel der Ablage", 0.8,
+        assertTrue("With permission also on mobile data", prewarmer.mayStart())
+        assertEquals("Prewarming goes up to four fifths of the store", 0.8,
             PreviewMemory.LIMIT_WARM_UP.toDouble() / PreviewMemory.MAX_BYTES, 1e-9)
         fillUntilToLimit()
-        assertFalse("Bei voller Ablage startet nichts", prewarmer.mayStart())
+        assertFalse("With a full store nothing starts", prewarmer.mayStart())
     }
 
     /**
@@ -127,11 +127,11 @@ class PreviewWarmerTest {
     fun `every network state follows its own permission`() = runTest {
         val assignment = mapOf(PrewarmNetwork.WIFI to NetworkState.Kind.WIFI, PrewarmNetwork.MOBILE to NetworkState.Kind.MOBILE,
             PrewarmNetwork.ROAMING to NetworkState.Kind.ROAMING)
-        assertEquals("jede Erlaubnis hat ihre Lage", PrewarmNetwork.entries.toSet(), assignment.keys)
+        assertEquals("every permission has its situation", PrewarmNetwork.entries.toSet(), assignment.keys)
         for (network in PrewarmNetwork.entries) {
             PrewarmNetwork.entries.forEach { allowed[it] = it == network }
             val started = NetworkState.Kind.entries.filter { situation = it; prewarmer.mayStart() }
-            assertEquals("nur $network erlaubt", listOf(assignment.getValue(network)), started)
+            assertEquals("only $network allowed", listOf(assignment.getValue(network)), started)
         }
     }
 
@@ -139,6 +139,6 @@ class PreviewWarmerTest {
     fun `between batches there is a pause`() = runTest {
         prewarmer.prewarm((20..23).map(::preview))
         assertEquals(4, posed.size)
-        assertTrue("Zwei Schübe ohne Pause ($currentTime ms)", currentTime >= 2 * 250)
+        assertTrue("Two batches without a pause ($currentTime ms)", currentTime >= 2 * 250)
     }
 }

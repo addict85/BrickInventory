@@ -203,15 +203,15 @@ class CertificatePinTest {
     fun `without a pin nothing goes out on first contact, it asks for the fingerprint`() {
         launch()
         assertFalse(fetch(system(ROOT)))
-        assertEquals("Keine Anfrage darf den Server erreichen", 0, server.requestCount)
+        assertEquals("No request may reach the server", 0, server.requestCount)
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, f.kind)
-        assertEquals("Angeboten wird die Wurzel, der das System vertraut", spkiFingerprint(cert(ROOT)), f.fingerprint)
+        assertEquals("Offered is the root the system trusts", spkiFingerprint(cert(ROOT)), f.fingerprint)
         assertEquals(own(), f.key)
 
         question.confirm(pins, copied())
         assertNull(question.open.value)
-        assertTrue("Nach der Bestätigung gilt der Pin", fetch(system(ROOT)))
+        assertTrue("After the confirmation the pin applies", fetch(system(ROOT)))
     }
 
     /** The last 24 hex characters, the way someone types them off from the web app. */
@@ -283,8 +283,8 @@ class CertificatePinTest {
         server = MockWebServer()
         launch(RENEWED_SHEET2_KEY, listOf(RENEWED_SHEET2, RENEWED_ROOT))
         pins.rememberPin(own(), pin)
-        assertTrue("Das neue Blatt unter derselben Wurzel gilt", fetch(system(FOREIGN)))
-        assertNull("Keine Warnung nach einer gewöhnlichen Erneuerung", question.open.value)
+        assertTrue("The new leaf under the same root applies", fetch(system(FOREIGN)))
+        assertNull("No warning after an ordinary renewal", question.open.value)
     }
 
     /**
@@ -307,9 +307,9 @@ class CertificatePinTest {
         server = MockWebServer()
         launch(PUB_SHEET_B_KEY, listOf(PUB_SHEET_B, PUB_ZW_B))
         pins.rememberPin(own(), pin)
-        assertTrue("Neue Zwischenstelle unter derselben Wurzel", fetch(system(PUB_ROOT)))
+        assertTrue("New intermediate under the same root", fetch(system(PUB_ROOT)))
         assertNull(question.open.value)
-        assertFalse("Ohne das System gilt der Wurzel-Pin nicht", fetch(system(FOREIGN)))
+        assertFalse("Without the system the root pin does not apply", fetch(system(FOREIGN)))
     }
 
     @Test
@@ -321,13 +321,13 @@ class CertificatePinTest {
         assertEquals(CertificateUnresolved.Kind.CHANGED, f.kind)
         val hex = fingerprintReadable(f.fingerprint)
 
-        assertFalse("Ein Tipp genügt nicht", question.confirm(pins))
-        assertFalse("Vier Zeichen genügen nicht", question.confirm(pins, hex.takeLast(5)))
-        assertFalse("16 Zeichen (64 Bit) genügen nicht", question.confirm(pins, hex.takeLast(23)))
-        assertFalse("23 Zeichen genügen nicht", question.confirm(pins, hex.replace(":", "").takeLast(23)))
-        assertFalse("Falsche Zeichen", question.confirm(pins, "00:11:22:33:44:55:66:77"))
-        assertEquals("Der alte Pin bleibt", spkiFingerprint(cert(FOREIGN)), pins.pin(own()))
-        assertEquals("Die Frage bleibt offen", f, question.open.value)
+        assertFalse("A tap is not enough", question.confirm(pins))
+        assertFalse("Four characters are not enough", question.confirm(pins, hex.takeLast(5)))
+        assertFalse("16 characters (64 bits) are not enough", question.confirm(pins, hex.takeLast(23)))
+        assertFalse("23 characters are not enough", question.confirm(pins, hex.replace(":", "").takeLast(23)))
+        assertFalse("Wrong characters", question.confirm(pins, "00:11:22:33:44:55:66:77"))
+        assertEquals("The old pin stays", spkiFingerprint(cert(FOREIGN)), pins.pin(own()))
+        assertEquals("The question stays open", f, question.open.value)
 
         assertTrue(question.confirm(pins, hex.takeLast(35).lowercase()))
         assertNull(question.open.value)
@@ -341,10 +341,10 @@ class CertificatePinTest {
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.UNKNOWN_CA, f.kind)
 
-        assertFalse("Ein Tipp genügt nicht", question.confirm(pins))
-        assertFalse("Falsche Zeichen", question.confirm(pins, "00:11:22:33:44:55:66:77"))
-        assertNull("Nichts gemerkt", pins.pin(own()))
-        assertFalse("Ohne Pin geht nichts hinaus", fetch(system(FOREIGN)))
+        assertFalse("A tap is not enough", question.confirm(pins))
+        assertFalse("Wrong characters", question.confirm(pins, "00:11:22:33:44:55:66:77"))
+        assertNull("Nothing remembered", pins.pin(own()))
+        assertFalse("Without a pin nothing goes out", fetch(system(FOREIGN)))
         assertEquals(0, server.requestCount)
 
         assertTrue(question.confirm(pins, copied()))
@@ -357,7 +357,7 @@ class CertificatePinTest {
         assertFalse(fetch(system(ROOT), ct = true))
         assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, question.open.value?.kind)
         assertFalse(question.open.value!!.transcriptNeeded)
-        assertTrue("Die Kette hat das System samt CT geprüft", question.confirm(pins))
+        assertTrue("The chain was checked by the system including CT", question.confirm(pins))
     }
 
     /** Android 11–15: without CT, a misissued chain from any public CA would get through with a tap. */
@@ -368,9 +368,9 @@ class CertificatePinTest {
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, f.kind)
         assertTrue(f.transcriptNeeded)
-        assertFalse("Ein Tipp genügt nicht", question.confirm(pins))
-        assertFalse("Falsch abgetippt", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
-        assertNull("Nichts gemerkt", pins.pin(own()))
+        assertFalse("A tap is not enough", question.confirm(pins))
+        assertFalse("Typed off wrongly", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertNull("Nothing remembered", pins.pin(own()))
         assertFalse(fetch(system(ROOT)))
         assertEquals(0, server.requestCount)
         assertTrue(question.confirm(pins, copied()))
@@ -397,7 +397,7 @@ class CertificatePinTest {
         assertTrue(fetch(system(ROOT), own = "brick.example.org:443"))
         assertNull(question.open.value)
         assertFalse(fetch(system(FOREIGN), own = "brick.example.org:443"))
-        assertNull("Für fremde Hosts gibt es nichts zu bestätigen", question.open.value)
+        assertNull("For foreign hosts there is nothing to confirm", question.open.value)
     }
 
     /** The user CA here is ROOT, the system only knows FOREIGN. */
@@ -405,13 +405,13 @@ class CertificatePinTest {
     fun `user CAs apply only to the own server, never to foreign hosts`() {
         launch()
         val withUserCa = ChoiceTrust(system = system(FOREIGN), withUser = lazy { system(ROOT) }, userAllowed = { true })
-        assertFalse("Ein fremder Host nimmt eine Nutzer-CA an",
+        assertFalse("A foreign host accepts a user CA",
             fetch(withUserCa, own = "brick.example.org:443", foreign = system(FOREIGN)))
         assertEquals(0, server.requestCount)
         assertNull(question.open.value)
 
-        assertFalse("Auch mit Nutzer-CA geht ohne Pin nichts hinaus", fetch(withUserCa, foreign = system(FOREIGN)))
-        assertEquals("Für den eigenen Server zählt die Nutzer-CA", CertificateUnresolved.Kind.USER_CA, question.open.value?.kind)
+        assertFalse("Even with a user CA nothing goes out without a pin", fetch(withUserCa, foreign = system(FOREIGN)))
+        assertEquals("For the own server the user CA counts", CertificateUnresolved.Kind.USER_CA, question.open.value?.kind)
     }
 
     /** The user CA is ROOT: whoever smuggles it in should not get through with a tap. */
@@ -421,10 +421,10 @@ class CertificatePinTest {
         val withUserCa = ChoiceTrust(system = system(FOREIGN), withUser = lazy { system(ROOT) }, userAllowed = { true })
         assertFalse(fetch(withUserCa, foreign = system(FOREIGN)))
         assertEquals(spkiFingerprint(cert(ROOT)), question.open.value!!.fingerprint)
-        assertFalse("Ein Tipp genügt nicht", question.confirm(pins))
+        assertFalse("A tap is not enough", question.confirm(pins))
         assertNull(pins.pin(own()))
         assertTrue(question.confirm(pins, copied()))
-        assertTrue("Danach gilt die gepinnte Nutzer-CA", fetch(withUserCa, foreign = system(FOREIGN)))
+        assertTrue("After that the pinned user CA applies", fetch(withUserCa, foreign = system(FOREIGN)))
     }
 
     /**
@@ -445,22 +445,22 @@ class CertificatePinTest {
         server = MockWebServer()
         launch(PUB2_SHEET_KEY, listOf(PUB2_SHEET))
         pins.rememberPin(own(), pin)
-        assertFalse("Eine andere öffentliche Wurzel geht nicht still durch", fetch(system(PUB_ROOT, PUB2_ROOT)))
+        assertFalse("Another public root does not pass silently", fetch(system(PUB_ROOT, PUB2_ROOT)))
         assertEquals(0, server.requestCount)
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.CHANGED, f.kind)
         assertEquals(pin, f.expected)
         assertEquals(spkiFingerprint(cert(PUB2_ROOT)), f.fingerprint)
-        assertFalse("Ein Tipp genügt nicht", question.confirm(pins))
-        assertTrue("Abgetippt gilt die neue Wurzel", question.confirm(pins, copied()))
+        assertFalse("A tap is not enough", question.confirm(pins))
+        assertTrue("Typed off, the new root applies", question.confirm(pins, copied()))
         assertTrue(fetch(system(PUB_ROOT, PUB2_ROOT)))
-        assertFalse("Ohne System-Gültigkeit kein Durchlass", fetch(system(PUB_ROOT)))
+        assertFalse("No passage without system validity", fetch(system(PUB_ROOT)))
 
         question.discard()
         pins.rememberPin(own(), spkiFingerprint(cert(RENEWED_ROOT)))
-        assertFalse("Eine eigene CA bleibt an ihren Schlüssel gebunden", fetch(system(PUB_ROOT, PUB2_ROOT)))
+        assertFalse("An own CA stays bound to its key", fetch(system(PUB_ROOT, PUB2_ROOT)))
         assertEquals(CertificateUnresolved.Kind.CHANGED, question.open.value?.kind)
-        assertEquals("Nur die eine bestätigte Anfrage kam an", 1, server.requestCount)
+        assertEquals("Only the one confirmed request arrived", 1, server.requestCount)
     }
 
     /**
@@ -483,12 +483,12 @@ class CertificatePinTest {
         server = MockWebServer()
         launch(FAM_SHEET2_KEY, listOf(FAM_SHEET2, FAM_ZW2))
         pins.rememberPin(own(), pin)
-        assertTrue("Neue Wurzel und Zwischenstelle desselben Betreibers", fetch(both))
-        assertNull("Keine Warnung beim Wechsel innerhalb der Familie", question.open.value)
-        assertEquals("Der Pin bleibt, wie er bestätigt wurde", pin, pins.pin(own()))
+        assertTrue("New root and intermediate of the same operator", fetch(both))
+        assertNull("No warning on a switch within the family", question.open.value)
+        assertEquals("The pin stays as it was confirmed", pin, pins.pin(own()))
 
         pins.holdBefore(own(), pin)
-        assertFalse("Ein Code verlangt genau seine Wurzel", fetch(both))
+        assertFalse("A code demands exactly its root", fetch(both))
         assertEquals(CertificateUnresolved.Kind.CODE_MISMATCH, question.open.value?.kind)
     }
 
@@ -513,12 +513,12 @@ class CertificatePinTest {
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }
         pins.rememberPin(own(), spkiFingerprint(cert(CADDY_ROOT)))
-        assertFalse("Die mitgeschickte Wurzel ersetzt die System-Prüfung", fetch(basis, foreign = withoutCt))
+        assertFalse("The root sent along replaces the system check", fetch(basis, foreign = withoutCt))
         assertEquals(0, server.requestCount)
         assertEquals(CertificateUnresolved.Kind.CHANGED, question.open.value?.kind)
 
         question.discard()
-        assertTrue("Mit bestandener System-Prüfung gilt der Pin", fetch(basis, foreign = basis))
+        assertTrue("With a passed system check the pin applies", fetch(basis, foreign = basis))
         assertNull(question.open.value)
     }
 
@@ -531,19 +531,19 @@ class CertificatePinTest {
         launch(PUB_SHEET_A_KEY, listOf(PUB_SHEET_A, PUB_ZW_A))
         val both = system(PUB_ROOT, PUB2_ROOT)
         pins.holdBefore(own(), spkiFingerprint(cert(PUB2_ROOT)))
-        assertFalse("Eine andere öffentliche Wurzel als im Code", fetch(both))
+        assertFalse("Another public root than in the code", fetch(both))
         assertEquals(0, server.requestCount)
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.CODE_MISMATCH, f.kind)
         assertEquals(spkiFingerprint(cert(PUB2_ROOT)), f.expected)
         assertEquals(spkiFingerprint(cert(PUB_ROOT)), f.fingerprint)
-        assertFalse("Ein Tipp bestätigt keine Abweichung vom Code", question.confirm(pins))
-        assertFalse("Auch abgetippt nicht", question.confirm(pins, copied()))
-        assertEquals("Der Code-Pin bleibt, nichts Neues gemerkt", spkiFingerprint(cert(PUB2_ROOT)), pins.pin(own()))
+        assertFalse("A tap confirms no deviation from the code", question.confirm(pins))
+        assertFalse("Not typed off either", question.confirm(pins, copied()))
+        assertEquals("The code pin stays, nothing new remembered", spkiFingerprint(cert(PUB2_ROOT)), pins.pin(own()))
 
         question.discard()
         pins.holdBefore(own(), spkiFingerprint(cert(PUB_ROOT)))
-        assertTrue("Die Wurzel aus dem Code trägt die Kette", fetch(both))
+        assertTrue("The root from the code carries the chain", fetch(both))
         assertNull(question.open.value)
     }
 
@@ -560,7 +560,7 @@ class CertificatePinTest {
         question.discard()
         pins.rememberPin(own(), spkiFingerprint(cert(FOREIGN)))
         assertFalse(fetch(system(ROOT)))
-        assertEquals("Ein gemerkter Pin fragt weiter nach", CertificateUnresolved.Kind.CHANGED, question.open.value?.kind)
+        assertEquals("A remembered pin keeps asking", CertificateUnresolved.Kind.CHANGED, question.open.value?.kind)
     }
 
     /** The version without a socket does not know the host; our own server's pin still applies. */
@@ -570,7 +570,7 @@ class CertificatePinTest {
         tm.checkServerTrusted(arrayOf(cert(FOREIGN)), "ECDHE_ECDSA")
         pins.rememberPin("nas:8443", spkiFingerprint(cert(INTER)))
         val declined = runCatching { tm.checkServerTrusted(arrayOf(cert(FOREIGN)), "ECDHE_ECDSA") }.isFailure
-        assertTrue("Eine System-CA ersetzt den Pin nicht", declined)
+        assertTrue("A system CA does not replace the pin", declined)
         tm.checkServerTrusted(arrayOf(cert(LEAF), cert(INTER)), "ECDHE_ECDSA")
     }
 
@@ -582,7 +582,7 @@ class CertificatePinTest {
         pins.rememberPin("nas:8443", spkiFingerprint(cert(PUB_ROOT)))
         tm.checkServerTrusted(arrayOf(cert(PUB_SHEET_A), cert(PUB_ZW_A)), "ECDHE_ECDSA")
         val foreign = runCatching { tm.checkServerTrusted(arrayOf(cert(PUB2_SHEET)), "ECDHE_ECDSA") }.isFailure
-        assertTrue("Eine andere öffentliche Wurzel ersetzt den Pin nicht", foreign)
+        assertTrue("Another public root does not replace the pin", foreign)
 
         pins.rememberPin("nas:8443", spkiFingerprint(cert(FAM_X1)))
         tm.checkServerTrusted(arrayOf(cert(FAM_SHEET2), cert(FAM_ZW2)), "ECDHE_ECDSA")
@@ -597,7 +597,7 @@ class CertificatePinTest {
         val declined = runCatching {
             tm.checkServerTrusted(arrayOf(cert(FOREIGN)), "ECDHE_ECDSA", null as Socket?)
         }.isFailure
-        assertTrue("Eine System-CA ersetzt den Pin nicht", declined)
+        assertTrue("A system CA does not replace the pin", declined)
         tm.checkServerTrusted(arrayOf(cert(LEAF), cert(INTER)), "ECDHE_ECDSA", null as Socket?)
     }
 
@@ -637,7 +637,7 @@ class CertificatePinTest {
         c.connectionPool.evictAll()
         allowed = false
         factory.renew()
-        assertFalse("Die alte Sitzung wurde ohne Prüfung wieder aufgenommen", fetch())
+        assertFalse("The old session was resumed without a check", fetch())
     }
 
     /** The dialog shows only the start before typing it off; what needs to be typed off is not shown. */
@@ -649,7 +649,7 @@ class CertificatePinTest {
         val shown = begin.uppercase().filter { it in "0123456789ABCDEF" }
         assertEquals(8, shown.length)
         assertFalse(RENEWED_ROOT_HEX.replace(":", "").takeLast(24).contains(shown))
-        assertFalse("Der Anfang allein bestätigt nichts", Transcript.confirmed(begin, fp))
+        assertFalse("The start alone confirms nothing", Transcript.confirmed(begin, fp))
     }
 
     /**
@@ -688,7 +688,7 @@ class CertificatePinTest {
     fun `a QR code with an unreadable fingerprint does not apply`() {
         assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"kurz"}"""))
         val fp = spkiFingerprint(cert(LEAF))
-        assertNull("Ein Pin über http ergibt nichts", parseQrPayload("""{"url":"http://nas:3000","token":"bim:abc","fp":"$fp"}"""))
+        assertNull("A pin over http yields nothing", parseQrPayload("""{"url":"http://nas:3000","token":"bim:abc","fp":"$fp"}"""))
         assertNull(parseQrPayload("""{"url":"https://nas","token":"fremd"}"""))
     }
 
@@ -709,23 +709,23 @@ class CertificatePinTest {
         launch(PUB_SHEET_A_KEY, listOf(PUB_SHEET_A, PUB_ZW_A))
         assertFalse(fetch(system(PUB_ROOT)))
         assertTrue(question.confirm(pins, copied()))
-        assertEquals("Mit dem Ja zur Wurzel ist auch das Blatt gemerkt",
+        assertEquals("With the yes to the root the leaf is remembered too",
             spkiFingerprint(cert(PUB_SHEET_A)), pins.pin(sheetPinKey(own())))
         assertTrue(fetch(system(PUB_ROOT)))
 
         newServer(PUB_SHEET_B_KEY, listOf(PUB_SHEET_B, PUB_ZW_B))
-        assertFalse("Ein anderer Serverschlüssel geht nicht still durch", fetch(system(PUB_ROOT)))
+        assertFalse("Another server key does not pass silently", fetch(system(PUB_ROOT)))
         assertEquals(0, server.requestCount)
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.KEY_NEW, f.kind)
         assertEquals(spkiFingerprint(cert(PUB_SHEET_A)), f.expected)
         assertEquals(spkiFingerprint(cert(PUB_SHEET_B)), f.fingerprint)
-        assertEquals("Der Wurzel-Pin bleibt", spkiFingerprint(cert(PUB_ROOT)), pins.pin(own()))
+        assertEquals("The root pin stays", spkiFingerprint(cert(PUB_ROOT)), pins.pin(own()))
         assertTrue(f.transcriptNeeded)
-        assertFalse("Ohne CT-Pflicht genügt ein Tipp nicht", question.confirm(pins))
-        assertFalse("Falsch abgetippt", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertFalse("Without CT obligation a tap is not enough", question.confirm(pins))
+        assertFalse("Typed off wrongly", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
         assertEquals(spkiFingerprint(cert(PUB_SHEET_A)), pins.pin(sheetPinKey(own())))
-        assertTrue("Abgetippt gilt der neue Schlüssel", question.confirm(pins, copied()))
+        assertTrue("Typed off, the new key applies", question.confirm(pins, copied()))
         assertEquals(spkiFingerprint(cert(PUB_SHEET_B)), pins.pin(sheetPinKey(own())))
         assertTrue(fetch(system(PUB_ROOT)))
     }
@@ -738,10 +738,10 @@ class CertificatePinTest {
         assertFalse(fetch(system(PUB_ROOT), ct = true))
         val f = question.open.value!!
         assertEquals(CertificateUnresolved.Kind.KEY_NEW, f.kind)
-        assertFalse("Das System hat CT geprüft", f.transcriptNeeded)
+        assertFalse("The system checked CT", f.transcriptNeeded)
         assertTrue(f.deviceConfirmationNeeded)
-        assertFalse("Ein Tipp allein wechselt den Schlüssel nicht", question.confirm(pins))
-        assertTrue("Nach der Displaysperre gilt der neue Schlüssel", question.confirm(pins, deviceConfirmed = true))
+        assertFalse("A tap alone does not change the key", question.confirm(pins))
+        assertTrue("After the screen lock the new key applies", question.confirm(pins, deviceConfirmed = true))
         assertTrue(fetch(system(PUB_ROOT), ct = true))
     }
 
@@ -749,7 +749,7 @@ class CertificatePinTest {
     fun `without a remembered server key it is recorded on the first pass`() {
         launch(PUB_SHEET_A_KEY, listOf(PUB_SHEET_A, PUB_ZW_A))
         pins.rememberPin(own(), spkiFingerprint(cert(PUB_ROOT)))
-        assertTrue("Ältere Fassung ohne zweiten Pin: keine Frage", fetch(system(PUB_ROOT)))
+        assertTrue("Older version without second pin: no question", fetch(system(PUB_ROOT)))
         assertNull(question.open.value)
         assertEquals(spkiFingerprint(cert(PUB_SHEET_A)), pins.pin(sheetPinKey(own())))
     }
@@ -769,7 +769,7 @@ class CertificatePinTest {
         launch(RENEWED_SHEET1_KEY, listOf(RENEWED_SHEET1, RENEWED_ROOT))
         pins.rememberPin(own(), spkiFingerprint(cert(RENEWED_ROOT)))
         pins.rememberPin(sheetPinKey(own()), spkiFingerprint(cert(RENEWED_SHEET2)))
-        assertTrue("Caddy erneuert sein internes Blatt alle paar Stunden", fetch(system(FOREIGN)))
+        assertTrue("Caddy renews its internal leaf every few hours", fetch(system(FOREIGN)))
         assertNull(question.open.value)
     }
 
@@ -778,13 +778,13 @@ class CertificatePinTest {
         launch(FAM_SHEET1_KEY, listOf(FAM_SHEET1, FAM_ZW1))
         val both = system(FAM_X1, FAM_X2, PUB_ROOT)
         pins.rememberPin(own(), spkiFingerprint(cert(FAM_X2)))
-        assertFalse("Gleiches O=, aber in keiner Familie", fetch(both, families = emptyMap()))
+        assertFalse("Same O=, but in no family", fetch(both, families = emptyMap()))
         assertEquals(CertificateUnresolved.Kind.CHANGED, question.open.value?.kind)
         question.discard()
-        assertTrue("Dieselben Wurzeln als Familie eingetragen", fetch(both))
+        assertTrue("The same roots registered as a family", fetch(both))
 
         assertEquals(CA_FAMILIES["C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="], CA_FAMILIES["diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI="])
-        assertFalse("ISRG und Google sind verschiedene Betreiber",
+        assertFalse("ISRG and Google are different operators",
             CA_FAMILIES["C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="] == CA_FAMILIES["hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc="])
         assertTrue(CA_FAMILIES.keys.all { Base64.getDecoder().decode(it).size == 32 })
     }
@@ -794,9 +794,9 @@ class CertificatePinTest {
         launch()
         assertFalse(fetch(system(ROOT), ct = true))
         assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, question.open.value?.kind)
-        assertFalse("Falsch abgetippt", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertFalse("Typed off wrongly", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
         assertNull(pins.pin(own()))
-        assertTrue("Richtig abgetippt", question.confirm(pins, copied()))
+        assertTrue("Typed off correctly", question.confirm(pins, copied()))
         assertTrue(fetch(system(ROOT), ct = true))
     }
 

@@ -107,7 +107,7 @@ class CatalogViewModelTest {
         advanceTimeBy(200)
         vm.setCatalogQuery("tit")
         advanceTimeBy(349)
-        assertEquals("Während des Tippens kein Abruf", emptyList<Any?>(), searched())
+        assertEquals("no fetch while typing", emptyList<Any?>(), searched())
         advanceUntilIdle()
         assertEquals(listOf<Any?>("tit"), searched())
         assertEquals(listOf("10294-1"), vm.state.value.loadedPages[1]?.map { it.setNumber })
@@ -152,13 +152,13 @@ class CatalogViewModelTest {
         vm.loadCatalogSets()
         advanceUntilIdle()
         assertEquals(Message.Resource(R.string.err_server, listOf(500)), vm.state.value.fetch.errorMessage)
-        assertNull("Ohne geladene Liste keine zweite Meldung", t.messages.text)
+        assertNull("without a loaded list no second message", t.messages.text)
 
         fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
         assertEquals(Message.Resource(R.string.err_set_not_found), vm.state.value.detail.errorMessage)
-        assertNull("Der Bildschirm zeigt den Fehler selbst", t.messages.text)
+        assertNull("the screen shows the error itself", t.messages.text)
     }
 
     @Test
@@ -166,7 +166,7 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSetDetail"] = 503
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("Ohne Grund bliebe der Kringel stehen",
+        assertEquals("without a reason the spinner would stay",
             Load.Failure(ErrorClass.SERVER, Message.Resource(R.string.err_server, listOf(503))), vm.state.value.detail)
 
         fake.codes.remove("getCatalogSetDetail")
@@ -174,7 +174,7 @@ class CatalogViewModelTest {
             set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("Der neue Versuch räumt den alten Fehler ab", "10305-1", vm.state.value.detail.dataOrNull()?.setNumber)
+        assertEquals("the new attempt clears the old error", "10305-1", vm.state.value.detail.dataOrNull()?.setNumber)
     }
 
     @Test
@@ -187,7 +187,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         backgroundScope.launch { vm.state.collect {} }
         advanceUntilIdle()
-        assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, searched().size)
+        assertEquals("the list is there, a second fetch would only be load", 1, searched().size)
     }
 
     /** The years only exist on the server; fetched with the same filters as the list. */
@@ -201,7 +201,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         val fetches = synchronized(fake.arguments) { fake.arguments.filter { it.first == "getCatalogYearDistribution" } }
         assertEquals(listOf<Any?>(null, 158, "year_desc"), fetches.last().second)
-        assertEquals("Jahrgänge ohne Jahr fallen weg, wie in der Webapp",
+        assertEquals("vintages without a year drop out, as in the web app",
             listOf(YearCountView(1999, 4), YearCountView(2024, 7)), vm.state.value.yearDistribution)
     }
 
@@ -234,7 +234,7 @@ class CatalogViewModelTest {
         fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("Das Detail holt die Merkliste in die Ablage", 1, fake.callsOf("getWantedList"))
+        assertEquals("the detail fetches the watchlist into the store", 1, fake.callsOf("getWantedList"))
         assertEquals("10305-1", vm.wanted("10305-1").first()?.setNumber)
         assertNull(vm.wanted("75192-1").first())
     }

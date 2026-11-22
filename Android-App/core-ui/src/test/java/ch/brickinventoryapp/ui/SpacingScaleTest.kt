@@ -81,17 +81,17 @@ class SpacingScaleTest {
         // across many files visible that the ratchet does report per file,
         // but doesn't tally up in total.
         val all = sources()
-        assert(all.size >= 30) { "Nur ${all.size} Bildschirmdateien gefunden — Ordner umbenannt?" }
+        assert(all.size >= 30) { "Only ${all.size} screen files found — folder renamed?" }
         val text = all.joinToString("\n") { it.second }
         val abst = Regex("""\bSpacing\.\w+""").findAll(text).count()
         val roles = Regex("""\bMaterialTheme\.typography\.\w+""").findAll(text).count()
         // GEMESSEN: 305 Abstands-Token beim Anlegen, 336 Typografie-Rollen am 28.10.
         assert(abst >= 280) {
-            "Nur $abst Abstands-Token im Baum (gemessen waren es 305). Wurde die " +
-                "Umstellung rueckgaengig gemacht? Die Ratsche unten faellt das nicht auf."
+            "Only $abst spacing tokens in the tree (305 were measured). Was the " +
+                "change reverted? The ratchet below does not notice that."
         }
         assert(roles >= 300) {
-            "Nur $roles Typografie-Rollen im Baum (gemessen waren es 336). Siehe oben."
+            "Only $roles typography roles in the tree (336 were measured). See above."
         }
     }
 
@@ -107,9 +107,9 @@ class SpacingScaleTest {
     @Test
     fun `there is only Material's type scale`() {
         val second = sources().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
-        assert(second.isEmpty()) { "Zweite Schriftskala benutzt in: $second — nimm MaterialTheme.typography." }
+        assert(second.isEmpty()) { "second type scale used in: $second — take MaterialTheme.typography." }
         assert(!File(Sources.root, "ui/theme/Schrift.kt").exists()) {
-            "ui/theme/Schrift.kt ist wieder da."
+            "`ui/theme/Schrift.kt` is back."
         }
     }
 
@@ -139,9 +139,9 @@ class SpacingScaleTest {
         // exist yet.
         val actual = count(spacingPattern)
         assert(actual <= 176) {
-            "$actual Abstaende stehen noch als Zahl da, gemessen waren es 176. " +
-                "Ein neuer Wert ausserhalb von Abstaende gehoert begruendet — oder " +
-                "in die Skala. Sinkt die Zahl, gehoert sie hier nachgezogen."
+            "$actual spacings still stand as a number, 176 were measured. " +
+                "A new value outside the spacings needs a reason — or belongs " +
+                "in the scale. If the number drops, it belongs updated here."
         }
     }
 
@@ -169,7 +169,7 @@ class SpacingScaleTest {
         // labelSmall instead of 8 sp.
         val actual = count(listOf(fontPattern))
         assert(actual <= 0) {
-            "$actual Schriftgroessen stehen als Zahl da. Nimm eine Rolle aus " +
+            "$actual font sizes stand as a number. Take a role from " +
                 "MaterialTheme.typography."
         }
     }

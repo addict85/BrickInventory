@@ -154,7 +154,7 @@ class SessionServiceTest {
         loggedIn()
         advanceUntilIdle()
         assertTrue(session.state.value.isLoggedIn)
-        assertEquals("Nach dem Anmelden wird vorgewärmt", 1, prewarmed)
+        assertEquals("after signing in it is warmed up", 1, prewarmed)
 
         expiredSignal.notifyExpired()
         advanceUntilIdle()
@@ -165,7 +165,7 @@ class SessionServiceTest {
         t.messages.acknowledge()
         expiredSignal.notifyExpired()
         advanceUntilIdle()
-        assertEquals("Abgemeldet meldet ein 401 nicht noch einmal ab", 1, logouts)
+        assertEquals("signed out, a 401 does not sign out once more", 1, logouts)
         assertNull(t.messages.text)
     }
 
@@ -187,7 +187,7 @@ class SessionServiceTest {
         advanceUntilIdle()
         assertEquals(0, logouts)
         assertEquals("t${R.string.vm_login_running_ab}", t.messages.text)
-        assertEquals("Das Konto lädt trotzdem", 1, fake.callsOf("getMe"))
+        assertEquals("the account loads anyway", 1, fake.callsOf("getMe"))
     }
 
     @Test
@@ -203,7 +203,7 @@ class SessionServiceTest {
         val now = System.currentTimeMillis()
         assertTrue(tokenEndsSoon(Instant.ofEpochMilli(now + 3 * tag), now))
         assertFalse(tokenEndsSoon(Instant.ofEpochMilli(now + 30 * tag), now))
-        assertFalse("Ohne Angabe sagt es nichts", tokenEndsSoon(null, now))
+        assertFalse("without information it says nothing", tokenEndsSoon(null, now))
     }
 
     @Test
@@ -223,7 +223,7 @@ class SessionServiceTest {
         val fetches = fake.callsOf("getMe")
         rights.report()
         advanceUntilIdle()
-        assertEquals("Ohne Verwalterrecht kein weiterer Abruf", fetches, fake.callsOf("getMe"))
+        assertEquals("without admin rights no further fetch", fetches, fake.callsOf("getMe"))
         assertNull(t.messages.text)
     }
 
@@ -241,7 +241,7 @@ class SessionServiceTest {
         loggedIn()
         advanceUntilIdle()
         assertEquals(Design.STUD, session.state.value.appTheme)
-        assertEquals("Das Design des Kontos überlebt den Kaltstart", Design.STUD, store.design.value)
+        assertEquals("the account's design survives the cold start", Design.STUD, store.design.value)
     }
 
     @Test
@@ -255,7 +255,7 @@ class SessionServiceTest {
         store.token.value = "anderes"
         advanceUntilIdle()
         assertEquals(CurrencyCode("USD"), session.state.value.currency)
-        assertEquals("die Ablage hält die Währung des neuen Kontos", CurrencyCode("USD"), store.currencyState.value)
+        assertEquals("the store holds the new account's currency", CurrencyCode("USD"), store.currencyState.value)
     }
 
     @Test
@@ -266,7 +266,7 @@ class SessionServiceTest {
         advanceUntilIdle()
         assertEquals(CurrencyCode.CHF, session.state.value.currency)
         assertEquals(Design.STUD, session.state.value.appTheme)
-        assertEquals("kein Spiegel zurück in die Ablage", 0, currencyWritten)
+        assertEquals("no mirror back into the store", 0, currencyWritten)
     }
 
     @Test
@@ -279,13 +279,13 @@ class SessionServiceTest {
         assertEquals(1, first)
 
         advanceTimeBy(2_001)
-        assertEquals("Alle zwei Sekunden eine Abfrage", 2, fake.callsOf("getStartupStatus"))
+        assertEquals("a query every two seconds", 2, fake.callsOf("getStartupStatus"))
 
         fake.responses["getStartupStatus"] = StartupStatus(ready = true)
         advanceTimeBy(2_001)
         assertNull(session.state.value.startupStatus)
         advanceTimeBy(60_000)
-        assertEquals("Fertig heisst: keine Abfrage mehr", 3, fake.callsOf("getStartupStatus"))
+        assertEquals("done means: no more queries", 3, fake.callsOf("getStartupStatus"))
     }
 
     @Test
@@ -303,7 +303,7 @@ class SessionServiceTest {
         withVm {
             val m = t.messages.message.value as Message.Resource
             assertEquals(R.string.logout_failed_text, m.id)
-            assertTrue("der Server steht im Satz: ${m.values}", m.values.single().toString().contains("alt.example"))
+            assertTrue("the server stands in the sentence: ${m.values}", m.values.single().toString().contains("alt.example"))
             assertTrue(store.failed.isEmpty())
         }
     }
@@ -315,7 +315,7 @@ class SessionServiceTest {
         withVm {
             advanceUntilIdle()
             assertEquals(1, logouts)
-            assertFalse("quittiert", expiredSignal.expired.value)
+            assertFalse("acknowledged", expiredSignal.expired.value)
         }
     }
 }

@@ -172,7 +172,7 @@ class NumericInputTest {
             .also {
                 // Lower bound: an empty file run would let any
                 // collective check below it pass silently.
-                check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${it.size}) — Pfad veraltet?" }
+                check(it.size >= 20) { "Too few Kotlin files found (${it.size}) — path outdated?" }
             }
         val hits = mutableListOf<Triple<String, Int, String>>()
         for (file in files) {
@@ -194,7 +194,7 @@ class NumericInputTest {
                 pos = j + 1
             }
         }
-        check(hits.size >= 10) { "Nur ${hits.size} Textfelder gefunden — greift die Suche noch?" }
+        check(hits.size >= 10) { "Only ${hits.size} text fields found — does the search still apply?" }
         return hits
     }
 
@@ -222,18 +222,18 @@ class NumericInputTest {
         // Three today: gallery ("Add set"), watchlist and
         // parts list. Fewer means: the search no longer catches it.
         assert(fields.size >= 3) {
-            "Nur ${fields.size} Setnummernfelder gefunden — greift die Suche noch?"
+            "Only ${fields.size} set number fields found — does the search still apply?"
         }
         val gaps = mutableListOf<String>()
         for ((file, row, block) in fields) {
             if (!block.contains("NumericInput.setNumber("))
-                gaps += "$file:$row (ohne Filter)"
+                gaps += "$file:$row (without filter)"
             if (!block.contains("keyboardOptions"))
-                gaps += "$file:$row (ohne Tastaturwahl)"
+                gaps += "$file:$row (without keyboard choice)"
         }
         assert(gaps.isEmpty()) {
-            "Setnummernfelder ohne das Paar aus NumericInput: " +
-                "${gaps.joinToString(", ")} — dort geht die Buchstabentastatur auf"
+            "Set number fields without the pair from NumericInput: " +
+                "${gaps.joinToString(", ")} — the letter keyboard opens there"
         }
     }
 
@@ -246,10 +246,10 @@ class NumericInputTest {
         for (file in files) {
             val s = code(file.readText())
             assert(!s.contains("filter(Char::isDigit)")) {
-                "${file.name} filtert Ziffern selbst — das gehört in NumericInput"
+                "${file.name} filters digits itself — that belongs in NumericInput"
             }
             assert(!s.contains("c.isDigit() || c == '.'")) {
-                "${file.name} filtert Preise selbst — das gehört in NumericInput"
+                "${file.name} filters prices itself — that belongs in NumericInput"
             }
         }
     }

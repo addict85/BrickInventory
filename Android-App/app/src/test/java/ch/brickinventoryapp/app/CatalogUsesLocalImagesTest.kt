@@ -31,7 +31,7 @@ class CatalogUsesLocalImagesTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -56,18 +56,18 @@ class CatalogUsesLocalImagesTest {
         // rememberTileImageWithFallback(...) counts as well:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "Die Katalog-Liste muss set.imageLocal durchreichen, nicht null"
+            "the catalog list must pass set.imageLocal on, not null"
         }
         assert(!list.contains("resolveThumbUrl(serverUrl, null, set.imageUrl)")) {
-            "Ein hart verdrahtetes null verhindert die Nutzung bereits vorhandener Dateien"
+            "a hard-wired null prevents using files that already exist"
         }
 
         val detail = code(read("catalog/ui/screens/CatalogDetailScreen.kt"))
         assert(detail.contains("resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)")) {
-            "Der Katalog-Detail-Dialog muss detail.imageLocal an resolveFullUrl() übergeben"
+            "the catalog detail dialog must pass detail.imageLocal to resolveFullUrl()"
         }
         assert(!detail.contains("resolveFullUrl(serverUrl, null, detail.imageUrl)")) {
-            "Ein hart verdrahtetes null verhindert die Nutzung bereits vorhandener Dateien"
+            "a hard-wired null prevents using files that already exist"
         }
     }
 
@@ -79,11 +79,11 @@ class CatalogUsesLocalImagesTest {
         // supplied with state.serverUrl at the only call site.
         val screenSrc = read("catalog/ui/screens/CatalogDetailScreen.kt").replace("\n", " ")
         assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
-            "serverUrl fehlt in der Funktionssignatur"
+            "serverUrl is missing in the function signature"
         }
         val graphSrc = code(read("catalog/ui/CatalogGraph.kt"))
         assert(graphSrc.contains("serverUrl = state.serverUrl")) {
-            "Der Aufrufer in CatalogGraph.kt muss serverUrl übergeben"
+            "the caller in CatalogGraph.kt must pass serverUrl"
         }
     }
 
@@ -106,10 +106,10 @@ class CatalogUsesLocalImagesTest {
         val src = read("catalog/ui/screens/CatalogScreen.kt")
         assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")
                 .containsMatchIn(src)) {
-            "Der Aufruf muss serverUrl an dritter Stelle übergeben"
+            "the call must pass serverUrl in third position"
         }
         assert(!src.contains("CatalogSetCard(set, imageLoader, onSetClick)")) {
-            "Der alte Aufruf ohne serverUrl darf nicht mehr vorkommen"
+            "the old call without serverUrl must no longer occur"
         }
     }
 
@@ -148,12 +148,12 @@ class CatalogUsesLocalImagesTest {
                     if (start > u) break
                     owner = start to name
                 }
-                assert(owner != null) { "$rel: keine umschliessende Top-Level-Funktion gefunden" }
+                assert(owner != null) { "$rel: no enclosing top-level function found" }
                 val (start, name) = owner!!
                 val sigWindow = raw.substring(start, minOf(start + 600, raw.length)).replace("\n", " ")
                 assert(sigWindow.contains("serverUrl: String")) {
-                    "$rel: Funktion '$name' benutzt resolveThumbUrl()/resolveFullUrl() mit serverUrl, " +
-                    "deklariert es aber nicht selbst als Parameter"
+                    "$rel: function '$name' uses resolveThumbUrl()/resolveFullUrl() with serverUrl, " +
+                    "but does not declare it as a parameter itself"
                 }
             }
         }
@@ -174,10 +174,10 @@ class CatalogUsesLocalImagesTest {
             val src = Sources.screen(rel)
             val count = Regex("""rememberTileImageWithFallback\(serverUrl""").findAll(src).count()
             assert(count == expectedCount) {
-                "$rel: $count statt $expectedCount Verwendungen von rememberTileImageWithFallback()"
+                "$rel: $count instead of $expectedCount uses of rememberTileImageWithFallback()"
             }
             assert(!Regex("""[^.]resolveThumbUrl\(serverUrl""").containsMatchIn(src)) {
-                "$rel: benutzt noch direkt resolveThumbUrl() statt des Rückfall-Helfers"
+                "$rel: still uses resolveThumbUrl() directly instead of the fallback helper"
             }
         }
     }

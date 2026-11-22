@@ -54,7 +54,7 @@ class RedOnlyForWarningTest {
                 "markt" to accentSurfaces(design, dark, s).market)
                 .filter { (_, c) -> red(c) }.map { (role, _) -> "$name.$role" }
         }
-        assertTrue("Rot auf einer Wert- oder Zustandsfläche: $error", error.isEmpty())
+        assertTrue("red on a value or state surface: $error", error.isEmpty())
     }
 
     /** The measurement itself: it detects error red, not blue, gray or sand. */

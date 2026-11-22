@@ -52,8 +52,8 @@ class PdfZoomAnchorTest {
 
     private fun samePlace(before: Pair<Int, Float>, after: Pair<Int, Float>, h: Float, tolerancePx: Float) {
         assert(before.first == after.first && abs(before.second - after.second) * h <= tolerancePx) {
-            "Unter den Fingern lag Seite ${before.first} bei ${"%.3f".format(before.second)}, " +
-                "danach Seite ${after.first} bei ${"%.3f".format(after.second)}"
+            "Under the fingers lay page ${before.first} at ${"%.3f".format(before.second)}, " +
+                "afterwards page ${after.first} at ${"%.3f".format(after.second)}"
         }
     }
 
@@ -74,7 +74,7 @@ class PdfZoomAnchorTest {
         var list = ListKind(1f, 7, 500)
         val start = list.place(y)
         repeat(28) { list = list.zoom(1.05f, y) }
-        assert(list.z > 3.8f) { "Vorbedingung: bis ueber 3.8x gezoomt, war ${list.z}" }
+        assert(list.z > 3.8f) { "precondition: zoomed beyond 3.8x, was ${list.z}" }
         samePlace(start, list.place(y), list.h, 15f)
     }
 
@@ -85,16 +85,16 @@ class PdfZoomAnchorTest {
         val before = ListKind(3f, 5, 100)
         val y = 400f
         val after = before.zoom(0.5f, y)
-        assert(after.first < 5) { "Die Liste beginnt noch mit Seite ${after.first}" }
-        assert(after.offset >= 0) { "Negativer Versatz ${after.offset}" }
+        assert(after.first < 5) { "the list still starts with page ${after.first}" }
+        assert(after.offset >= 0) { "negative offset ${after.offset}" }
         samePlace(before.place(y), after.place(y), after.h, 1.5f)
     }
 
     @Test
     fun `at the start of the document the list stays at the top`() {
         val (i, v) = zoomTargetY(ListKind(2f, 0, 0).visible(), 1000f, 0.5f, edge, spacing)!!
-        assert(i == 0 && v == 0) { "Erwartet Seite 0 ohne Versatz, war $i/$v" }
-        assert(zoomTargetY(emptyList(), 500f, 2f, edge, spacing) == null) { "Ohne Seiten gibt es kein Ziel" }
+        assert(i == 0 && v == 0) { "expected page 0 without offset, was $i/$v" }
+        assert(zoomTargetY(emptyList(), 500f, 2f, edge, spacing) == null) { "without pages there is no destination" }
     }
 
     @Test
@@ -107,8 +107,8 @@ class PdfZoomAnchorTest {
         val start = share()
         repeat(20) { scroll = zoomTargetX(scroll, x, edge.toFloat(), 1.08f); z *= 1.08f }
         assert(abs(share() - start) * width * z <= 12f) {
-            "Unter dem Finger lag ${"%.3f".format(start)} der Seitenbreite, danach ${"%.3f".format(share())}"
+            "under the finger lay ${"%.3f".format(start)} of the page width, afterwards ${"%.3f".format(share())}"
         }
-        assert(zoomTargetX(0, 500f, edge.toFloat(), 0.5f) == 0) { "Beim Herauszoomen links ueber den Anfang hinaus gerollt" }
+        assert(zoomTargetX(0, 500f, edge.toFloat(), 0.5f) == 0) { "zooming out scrolled left past the beginning" }
     }
 }

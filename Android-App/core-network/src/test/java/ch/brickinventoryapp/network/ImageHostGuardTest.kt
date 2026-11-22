@@ -68,7 +68,7 @@ class ImageHostGuardTest {
     @Test
     fun `a foreign host is not requested`() {
         assertEquals(403, fetch("https://evil.example/x.jpg"))
-        assertTrue("Die Anfrage ging trotzdem hinaus", seen.isEmpty())
+        assertTrue("the request went out anyway", seen.isEmpty())
     }
 
     @Test
@@ -87,7 +87,7 @@ class ImageHostGuardTest {
                            "https://img.bricklink.com/a.png")) {
             assertEquals(cdn, 403, fetch(cdn))
         }
-        assertTrue("Ein CDN wurde direkt angefragt: $seen", seen.isEmpty())
+        assertTrue("a CDN was asked directly: $seen", seen.isEmpty())
     }
 
     @Test
@@ -129,13 +129,13 @@ class ImageHostGuardTest {
         assertEquals("Bearer GEHEIM", server.takeRequest().getHeader("Authorization"))
         val foreign = server.takeRequest()
         assertEquals("/fremd/bild.png", foreign.path)
-        assertNull("Der Token verliess den Basispfad", foreign.getHeader("Authorization"))
+        assertNull("the token left the base path", foreign.getHeader("Authorization"))
         // Segment-wise: /brick does not cover /brickfremd.
         assertEquals(200, fetchWithBase("/brick", "/brick/a.png"))
         server.takeRequest()
         val neighbor = server.takeRequest()
         assertEquals("/brickfremd/bild.png", neighbor.path)
-        assertNull("Der Token ging an /brickfremd", neighbor.getHeader("Authorization"))
+        assertNull("the token went to /brickfremd", neighbor.getHeader("Authorization"))
     }
 
     @Test
@@ -161,7 +161,7 @@ class ImageHostGuardTest {
         val target = "http://localhost:${server.port}/images/a.jpg"
         server.enqueue(MockResponse().setBody("bild"))
         val release = withRule(development = false).newCall(Request.Builder().url(target).build()).execute().use { it.code }
-        assertEquals("Release-Build: localhost ist ein fremder Host", 403, release)
+        assertEquals("release build: localhost is a foreign host", 403, release)
         assertEquals(0, server.requestCount)
         val debug = withRule(development = true).newCall(Request.Builder().url(target).build()).execute().use { it.code }
         assertEquals(200, debug)

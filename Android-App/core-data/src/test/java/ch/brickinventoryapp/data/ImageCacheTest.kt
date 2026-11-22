@@ -75,15 +75,15 @@ class ImageCacheTest {
         // OkHttp names by the MD5 of the address (Cache.key); no name may carry it or „journal“.
         val md5 = Cache.key(address)
         val names = folder.listFiles()!!.map { it.name }
-        assertTrue("Der Zwischenspeicher hat nichts abgelegt: $names", names.size >= 3)
-        assertTrue("Lesbare Namen: $names", names.all { it.startsWith(EncryptedFileSystem.JITTERED) && md5 !in it && "journal" !in it })
+        assertTrue("The cache stored nothing: $names", names.size >= 3)
+        assertTrue("Readable names: $names", names.all { it.startsWith(EncryptedFileSystem.JITTERED) && md5 !in it && "journal" !in it })
 
         server.shutdown()
         val offline = Request.Builder().url(address).cacheControl(CacheControl.FORCE_CACHE).build()
-        c.newCall(offline).execute().use { assertArrayEquals("Offline kommt die Kopie trotzdem", image, it.body.bytes()) }
+        c.newCall(offline).execute().use { assertArrayEquals("Offline the copy comes anyway", image, it.body.bytes()) }
         cache.evictAll()
         // Only the journal (including backup) remains; a doubly hashed name would leave the entries lying.
-        assertTrue("Leeren findet die gestreuten Namen nicht: ${folder.list()?.toList()}", folder.listFiles()!!.size <= 2)
+        assertTrue("Clearing does not find the scattered names: ${folder.list()?.toList()}", folder.listFiles()!!.size <= 2)
     }
 
     @Test
@@ -99,17 +99,17 @@ class ImageCacheTest {
         first.cache!!.close()
 
         val files = folder.walkTopDown().filter { it.isFile }.toList()
-        assertTrue("Der Zwischenspeicher hat nichts abgelegt", files.size >= 3)
+        assertTrue("The cache stored nothing", files.size >= 3)
         for (f in files) {
             val raw = String(f.readBytes(), Charsets.ISO_8859_1)
-            assertFalse("${f.name} trägt das Bild im Klartext", "SAMMLUNG-75192" in raw)
-            assertFalse("${f.name} trägt die Adresse im Klartext", "75192-1" in raw)
+            assertFalse("${f.name} carries the image in plaintext", "SAMMLUNG-75192" in raw)
+            assertFalse("${f.name} carries the address in plaintext", "75192-1" in raw)
         }
 
         server.shutdown()
         val offline = Request.Builder().url(address).cacheControl(CacheControl.FORCE_CACHE).build()
         client().newCall(offline).execute().use {
-            assertEquals("Offline kommt die Kopie aus dem Zwischenspeicher", 200, it.code)
+            assertEquals("Offline the copy comes from the cache", 200, it.code)
             assertArrayEquals(image, it.body.bytes())
         }
     }
@@ -123,8 +123,8 @@ class ImageCacheTest {
         File(http, "abc.1").writeText("SAMMLUNG-75192")
         File(coil, "x.1").writeText("SAMMLUNG-75192")
         cleanPlaintextImageCachesOn(cacheDir)
-        assertFalse("Der Klartext-Zwischenspeicher von OkHttp bleibt liegen", http.exists())
-        assertFalse("Coils Klartext-Zwischenspeicher bleibt liegen", coil.exists())
+        assertFalse("OkHttp's plaintext cache stays behind", http.exists())
+        assertFalse("Coil's plaintext cache stays behind", coil.exists())
 
         val newValue = EncryptedFileSystem(FileSystem.SYSTEM, cipher, "bilder",
             EncryptedFileSystem.Jitter(http.apply { mkdirs() }.toOkioPath()) { ByteArray(32) { 8 } })
@@ -133,7 +133,7 @@ class ImageCacheTest {
         fs.sink(File(http, "0f343b0931126a20f133d67c2b018a3b.1").toOkioPath()).buffer().use { it.writeUtf8("x") }
         cleanPlaintextImageCachesOn(cacheDir)
         val stays = http.listFiles()!!.map { it.name }
-        assertEquals("Nur der gestreute Zwischenspeicher bleibt: $stays", 1, stays.size)
+        assertEquals("Only the scattered cache stays: $stays", 1, stays.size)
         assertTrue(stays.single().startsWith(EncryptedFileSystem.JITTERED))
     }
 
@@ -150,12 +150,12 @@ class ImageCacheTest {
         assertArrayEquals(content, read().getOrThrow())
         // Without the end marker (4 bytes length, 32 bytes identifier, IV and tag).
         f.writeBytes(whole.copyOf(whole.size - 36))
-        assertTrue("Ohne Endmarker gilt die Datei", read().exceptionOrNull() is IOException)
+        assertTrue("Without an end marker the file counts", read().exceptionOrNull() is IOException)
         // Only the first section (64 KiB plaintext) including length field.
         f.writeBytes(whole.copyOf(4 + 65_536 + 32))
-        assertTrue("Ein gekürztes Bild gilt", read().exceptionOrNull() is IOException)
+        assertTrue("A truncated image counts", read().exceptionOrNull() is IOException)
         f.writeBytes(ByteArray(0))
-        assertTrue("Eine leere Datei gilt", read().exceptionOrNull() is IOException)
+        assertTrue("An empty file counts", read().exceptionOrNull() is IOException)
 
         // The journal is flushed and continued after every line: every state ends with a marker.
         f.writeBytes(whole)
@@ -178,6 +178,6 @@ class ImageCacheTest {
         val b = File(folder, "b.0")
         File(folder, "a.0").copyTo(b)
         val read = runCatching { fs.source(b.toOkioPath()).buffer().use { it.readUtf8() } }
-        assertTrue("Die Kopie unter dem Namen b gilt als b", read.exceptionOrNull() is IOException)
+        assertTrue("The copy under the name b counts as b", read.exceptionOrNull() is IOException)
     }
 }

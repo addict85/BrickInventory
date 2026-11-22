@@ -34,10 +34,10 @@ class TrustCipherTest {
         assertFalse(name, "brick" in name || "443" in name)
         assertEquals("Derselbe Server, derselbe Name", name, cipher.name("brick.example.org:443"))
         assertNotEquals(name, cipher.name("nas.local:8443"))
-        assertNotEquals("Anderer Schlüssel, anderer Name", name, TrustCipher { ByteArray(32) { 9 } }.name("brick.example.org:443"))
-        assertTrue("Als Schlüssel einer Ablage brauchbar: $name", name.all { it.isLetterOrDigit() || it == '-' || it == '_' })
+        assertNotEquals("another key, another name", name, TrustCipher { ByteArray(32) { 9 } }.name("brick.example.org:443"))
+        assertTrue("usable as a key of a store: $name", name.all { it.isLetterOrDigit() || it == '-' || it == '_' })
         locked = true
-        assertEquals("Der Vertrauensschlüssel arbeitet auch gesperrt", name, cipher.name("brick.example.org:443"))
+        assertEquals("the trust key works even when locked", name, cipher.name("brick.example.org:443"))
     }
 
     @Test
@@ -46,7 +46,7 @@ class TrustCipherTest {
         assertFalse(secret, "brick" in secret)
         locked = true
         assertEquals(VaultFinding.LockedState, cipher.openDetail(secret, "server_url"))
-        assertNull("Gesperrt wird nichts abgelegt", cipher.encryptDetail("x", "server_url"))
+        assertNull("locked, nothing is stored", cipher.encryptDetail("x", "server_url"))
         locked = false
         assertEquals(VaultFinding.Readable("https://brick.example.org"), cipher.openDetail(secret, "server_url"))
     }
@@ -57,6 +57,6 @@ class TrustCipherTest {
         assertEquals(VaultFinding.Gone, cipher.openDetail(secret, "server_url"))
         assertEquals(VaultFinding.Gone, TrustCipher { trust }.openDetail(secret, "username"))
         assertEquals(VaultFinding.Gone, cipher.openDetail("kein-base64-%%%", "username"))
-        assertNull("Ein Pin-Geheimtext ist keine Angabe", cipher.decrypt(secret, "username"))
+        assertNull("a pin ciphertext is no statement", cipher.decrypt(secret, "username"))
     }
 }

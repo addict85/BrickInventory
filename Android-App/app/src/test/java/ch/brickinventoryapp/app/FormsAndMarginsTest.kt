@@ -201,7 +201,7 @@ class FormsAndMarginsTest {
             shadowOf(Looper.getMainLooper()).idle()
         }
         val window = ShadowDialog.getLatestDialog().window!!.decorView
-        return checkNotNull(composeRoot(window)) { "kein Compose im Dialogfenster" }.semanticsOwner.unmergedRootSemanticsNode
+        return checkNotNull(composeRoot(window)) { "no Compose in the dialog window" }.semanticsOwner.unmergedRootSemanticsNode
     }
 
     private fun composeRoot(v: View): ViewRootForTest? = when (v) {
@@ -216,7 +216,7 @@ class FormsAndMarginsTest {
             n.children.flatMap { texts(it) }
 
     private fun situation(texts: List<Pair<String, Rect>>, searched: String): Rect =
-        texts.firstOrNull { it.first == searched }?.second ?: error("„$searched“ fehlt in ${texts.map { it.first }}")
+        texts.firstOrNull { it.first == searched }?.second ?: error("“$searched” missing in ${texts.map { it.first }}")
 
     private fun entryVm() = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints,
         testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(), testCatalogRepository(world.t.api),
@@ -237,11 +237,11 @@ class FormsAndMarginsTest {
         }
         wait("Kaufpreise") { vm.manDetailState.value.acquisitions.isNotEmpty() }
         val rows = vm.manDetailState.value.acquisitions.size
-        assertEquals("Anzahl als Beschriftung je Zeile", rows,
+        assertEquals("quantity as a label per row", rows,
             compose.onAllNodes(hasSetTextAction() and hasText(text(R.string.common_quantity))).fetchSemanticsNodes().size)
-        assertEquals("Kaufpreis als Beschriftung je Zeile", rows,
+        assertEquals("purchase price as a label per row", rows,
             compose.onAllNodes(hasSetTextAction() and hasText(text(R.string.detail_purchase_price))).fetchSemanticsNodes().size)
-        assertEquals("Spaltenkopf „Zustand“ steht noch da", 0,
+        assertEquals("the column header “Zustand” is still shown", 0,
             compose.onAllNodesWithText(text(R.string.common_condition)).fetchSemanticsNodes().size)
     }
 
@@ -250,7 +250,7 @@ class FormsAndMarginsTest {
     /** What every form says below quantity, price and storage location; the quantity per item. */
     private fun checkHints(name: String, texts: List<String>, countHint: Int) {
         for (hint in listOf(text(countHint), text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
-            assertTrue("$name: Hinweis „$hint“ fehlt", hint in texts)
+            assertTrue("$name: hint “$hint” missing", hint in texts)
     }
 
     @Test
@@ -269,7 +269,7 @@ class FormsAndMarginsTest {
         }
         val all = texts(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()).map { it.first }
         checkHints("Teil", all, R.string.parts_quantity_hint)
-        assertTrue("Preis je Stück ausgeschrieben", text(R.string.common_unit_price) in all)
+        assertTrue("price per piece spelled out", text(R.string.common_unit_price) in all)
     }
 
     @Test
@@ -282,7 +282,7 @@ class FormsAndMarginsTest {
         val name = situation(all, "Millennium Falcon")
         val number = situation(all, "75192-1")
         val badge = situation(all, text(R.string.barcode_already_owned, 1))
-        assertTrue("Barcode: Nummer gleich unter dem Namen ($name / $number / $badge)",
+        assertTrue("barcode: number right below the name ($name / $number / $badge)",
             name.bottom <= number.top && number.bottom <= badge.top)
     }
 
@@ -305,7 +305,7 @@ class FormsAndMarginsTest {
                 networks, Design.CLASSIC, 0L), vm, CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
         // The one title stands in the bar (VerwaltungGraph); the content does not repeat it.
-        assertEquals("„Hintergrundarbeiten“ unter der Leiste noch einmal", 0,
+        assertEquals("“Hintergrundarbeiten” once more below the bar", 0,
             compose.onAllNodesWithText(text(R.string.nav_monitoring)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
         val jobs = links(R.string.background_jobs)
@@ -314,8 +314,8 @@ class FormsAndMarginsTest {
         for ((network, an) in listOf(R.string.monitoring_prewarm_wifi to ToggleableState.On,
                                   R.string.monitoring_prewarm_mobile to ToggleableState.Off)) {
             val node = compose.onNode(hasText(text(network))).fetchSemanticsNode()
-            assertEquals("${text(network)} ist kein Schalter", Role.Switch, node.config.getOrNull(SemanticsProperties.Role))
-            assertEquals("${text(network)} zeigt nicht, ob an", an, node.config.getOrNull(SemanticsProperties.ToggleableState))
+            assertEquals("${text(network)} is not a switch", Role.Switch, node.config.getOrNull(SemanticsProperties.Role))
+            assertEquals("${text(network)} does not show whether it is on", an, node.config.getOrNull(SemanticsProperties.ToggleableState))
         }
     }
 
@@ -325,10 +325,10 @@ class FormsAndMarginsTest {
     fun `creating vouchers floats, balance and PDF are in the bar's menu`() {
         show { Vouchers() }
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
-            assertEquals("„${text(id)}“ steht ohne Menü da", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
+            assertEquals("“${text(id)}” stands without a menu", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
         val create = compose.onNode(hasText(text(R.string.vouchers_add)) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val height = ctx.resources.displayMetrics.heightPixels
-        assertTrue("Anlegen schwebt nicht unten (${create.bottom} von $height)", create.bottom > height * 0.8f)
+        assertTrue("create does not float at the bottom (${create.bottom} of $height)", create.bottom > height * 0.8f)
         compose.onNodeWithContentDescription(text(R.string.vouchers_menu_cd)).performClick()
         compose.waitForIdle()
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
@@ -360,8 +360,8 @@ class FormsAndMarginsTest {
         val width = ctx.resources.displayMetrics.widthPixels
         val tile = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val value = compose.onNode(hasText(text(R.string.detail_pnl_tile)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        assertTrue("Detail nicht rechts der Liste ($tile / $value)", tile.right <= value.left)
-        assertTrue("Detail ausserhalb des Fensters ($value / $width)", value.right <= width + 1f && tile.left >= 0f)
+        assertTrue("detail not right of the list ($tile / $value)", tile.right <= value.left)
+        assertTrue("detail outside the window ($value / $width)", value.right <= width + 1f && tile.left >= 0f)
     }
 
     @Test
@@ -369,7 +369,7 @@ class FormsAndMarginsTest {
         galleryAndDetail(null)
         val tile = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val hint = compose.onNode(hasText(text(R.string.gallery_detail_empty))).fetchSemanticsNode().boundsInRoot
-        assertTrue("Hinweis nicht rechts der Liste ($tile / $hint)", tile.right <= hint.left)
+        assertTrue("hint not right of the list ($tile / $hint)", tile.right <= hint.left)
     }
 
     // ── Build list at 200 % ──
@@ -385,11 +385,11 @@ class FormsAndMarginsTest {
             return layouts.map { it.lineCount } + n.children.flatMap { rows(it) }
         }
         val bottom = compose.onNode(hasText(text(R.string.partslist_generate)), useUnmergedTree = true).fetchSemanticsNode()
-        assertTrue("„Bauliste erstellen“ bricht um: ${rows(bottom)}", rows(bottom).all { it == 1 })
+        assertTrue("“Bauliste erstellen” wraps: ${rows(bottom)}", rows(bottom).all { it == 1 })
         val count = ctx.resources.getQuantityString(R.plurals.partslist_generate_count, 2, 2)
-        assertTrue("Zahl der Sets fehlt am Knopf",
+        assertTrue("the number of sets is missing on the button",
             compose.onAllNodes(hasContentDescription(count), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue("Zahl steht als zweiter Text im Knopf",
+        assertTrue("the number stands as a second text in the button",
             button.config.getOrNull(SemanticsProperties.Text).orEmpty().none { it.text == count })
     }
 
@@ -410,7 +410,7 @@ class FormsAndMarginsTest {
         }
         wait("Preisalarme") { vm.alarmOverview.value.loaded && vm.alarmOverview.value.alerts.isNotEmpty() }
         // One choice each in the alert and in the creation form, not once more as a field name.
-        assertEquals("„Fällt unter“ doppelt", 2,
+        assertEquals("“Fällt unter” twice", 2,
             compose.onAllNodes(hasText(text(R.string.detail_alert_chip_below)), useUnmergedTree = true)
                 .fetchSemanticsNodes().count { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null })
         val front = text(R.string.alerts_delete_for, "§").substringBefore("§")
@@ -422,7 +422,7 @@ class FormsAndMarginsTest {
         // (40 dp, centered within) ends 4 dp before.
         val density = ctx.resources.displayMetrics.density
         val edge = delete.center.x + 24 * density
-        assertEquals("Feld endet nicht am Rand der Karte (${field.right} / $edge)", edge, field.right, density)
+        assertEquals("field does not end at the card edge (${field.right} / $edge)", edge, field.right, density)
     }
 
     // ── dark designs ──
@@ -440,7 +440,7 @@ class FormsAndMarginsTest {
         // Left of the image, which stands centered with „Fit“: only the surface.
         val point = image.getPixel(2, image.height / 2)
         val light = (Color.red(point) + Color.green(point) + Color.blue(point)) / 3
-        assertTrue("Bildfläche im Dunkeln hell (Grauwert $light)", light < 80)
+        assertTrue("image area light in the dark (grey value $light)", light < 80)
     }
 
     // ── Bar at 200 %, scanner ──
@@ -465,7 +465,7 @@ class FormsAndMarginsTest {
         val width = ctx.resources.displayMetrics.widthPixels
         val more = compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("„Mehr“ endet ${(width - more.right) / density} dp vor dem Rand", width - more.right >= 6 * density)
+        assertTrue("“Mehr” ends ${(width - more.right) / density} dp before the edge", width - more.right >= 6 * density)
     }
 
     @Test
@@ -473,7 +473,7 @@ class FormsAndMarginsTest {
         show { BarcodeScannerScreen(onResult = {}, onDismiss = {}, withoutCamera = true) }
         val width = ctx.resources.displayMetrics.widthPixels
         val too = compose.onNodeWithContentDescription(text(R.string.scanner_close)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Schliessen nicht links (${too.left} von $width)", too.right < width / 2f)
+        assertTrue("close not on the left (${too.left} of $width)", too.right < width / 2f)
         compose.onNode(hasText(text(R.string.scanner_torch_on)) and hasClickAction()).fetchSemanticsNode("Licht ist kein Knopf")
     }
 
@@ -487,7 +487,7 @@ class FormsAndMarginsTest {
     private fun checkEdge(name: String, root: SemanticsNode, title: String) {
         val density = ctx.resources.displayMetrics.density
         val width = ctx.resources.displayMetrics.widthPixels
-        val r = checkNotNull(frame(root, title)) { "$name: kein Fenster „$title“" }
+        val r = checkNotNull(frame(root, title)) { "$name: no window “$title”" }
         assertTrue("$name randlos (${r.left / density} / ${(width - r.right) / density} dp)",
             r.left >= 23 * density && width - r.right >= 23 * density)
     }

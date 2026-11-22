@@ -201,15 +201,15 @@ class ScreenStateTest {
             }
         }
         assertTrue(
-            "Diese Zustände gehen bei einer Bildschirmdrehung verloren — " +
-                "rememberSaveable statt remember:\n  " + missed.joinToString("\n  "),
+            "These states get lost on a screen rotation — " +
+                "rememberSaveable instead of remember:\n  " + missed.joinToString("\n  "),
             missed.isEmpty(),
         )
         val stale = (excepted - exceptionUsed).sorted()
         assertTrue(
-            "Diese Ausnahmen beschreiben nichts mehr: " + stale.joinToString(", ") +
-                " — die Datei hat keinen Zustand, den diese Pruefung ueberhaupt meldete. " +
-                "Raus damit, sonst sperrt der Eintrag sie auch fuer alles Kuenftige.",
+            "These exceptions no longer describe anything: " + stale.joinToString(", ") +
+                " — the file has no state that this check would report at all. " +
+                "Remove them, otherwise the entry blocks it for everything in the future too.",
             stale.isEmpty(),
         )
     }
@@ -227,11 +227,11 @@ class ScreenStateTest {
             }
         }
         assertTrue(
-            "Ein laufender Vorgang, ein Merker der Rollpositions-" +
-                "Wiederherstellung oder eine einmalig gemessene Belegung darf " +
-                "NICHT wiederhergestellt werden — der Ladekringel bliebe für " +
-                "immer stehen, die Rückkehr aus der Detailseite spränge nie " +
-                "mehr zurück, bzw. es stünde dauerhaft eine falsche Zahl da:\n  " +
+            "A running operation, a marker of the scroll position " +
+                "restoring or a one-time measured occupancy must " +
+                "NOT be restored — the spinner would stay " +
+                "forever, the return from the detail page would never " +
+                "jump back again, or a wrong number would be shown permanently:\n  " +
                 wrong.joinToString("\n  "),
             wrong.isEmpty(),
         )
@@ -249,8 +249,8 @@ class ScreenStateTest {
                 if ("rememberSaveable" in z) secured += "${f.name}:$zn  $name"
             }
         }
-        assertTrue("Keine Passwortfelder gefunden — greift die Suche?", "pwNew" in found && "password" in found)
-        assertTrue("remember statt rememberSaveable:\n  " + secured.joinToString("\n  "), secured.isEmpty())
+        assertTrue("No password fields found — does the search apply?", "pwNew" in found && "password" in found)
+        assertTrue("remember instead of rememberSaveable:\n  " + secured.joinToString("\n  "), secured.isEmpty())
     }
 
     @Test
@@ -259,12 +259,12 @@ class ScreenStateTest {
         // once before. A later batch conversion shouldn't
         // accidentally pick it up again.
         val f = File(uiRoot, "ScrollMemory.kt")
-        assertTrue("ScrollMemory.kt gibt es nicht mehr — diese Prüfung anpassen", f.exists())
+        assertTrue("ScrollMemory.kt no longer exists — adapt this check", f.exists())
         val rows = stateRows(f)
-        assertTrue("ScrollMemory.kt hat keinen remember-Zustand mehr", rows.isNotEmpty())
+        assertTrue("ScrollMemory.kt no longer has a remember state", rows.isNotEmpty())
         assertTrue(
-            "ScrollMemory.kt wurde auf rememberSaveable umgestellt. Genau das " +
-                "schaltete die Wiederherstellung nach dem ersten Betreten für immer ab.",
+            "ScrollMemory.kt was switched to rememberSaveable. Exactly that " +
+                "switched off the restoring for good after the first visit.",
             rows.none { "rememberSaveable" in it.second },
         )
     }

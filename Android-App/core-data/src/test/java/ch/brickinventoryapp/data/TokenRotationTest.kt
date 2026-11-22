@@ -140,7 +140,7 @@ class TokenRotationTest {
         assertEquals(200, fetch("/api/v1/sets"))
         assertEquals(listOf("/api/v1/sets alt", "/api/v1/auth/token-rotieren alt", "speichere neu", "/api/v1/sets neu"),
             events.toList())
-        assertEquals("Ein Tausch ist keine abgelaufene Sitzung", 0, expired)
+        assertEquals("A switch is not an expired session", 0, expired)
     }
 
     /**
@@ -206,7 +206,7 @@ class TokenRotationTest {
             val outcome = kotlinx.coroutines.runBlocking { swapping.swap("alt") }
             assertEquals(ExchangeOutcome.DISCARDED, outcome)
             assertTrue(events.any { it.startsWith("/api/v1/auth/token-rotieren alt") })
-            assertEquals("Der neue Server sah: $there", 0, there.size)
+            assertEquals("The new server saw: $there", 0, there.size)
             assertEquals("", saved)
         } finally {
             newer.shutdown()

@@ -59,7 +59,7 @@ class ReconcileOnRoomTest {
         network = true
         assertEquals(ReconcileOutcome.DONE, sync.send())
         assertEquals(listOf(1, 2, 3), sent)
-        assertEquals("der erste Posten trug bei beiden Versuchen denselben Schlüssel", 3, key.size)
+        assertEquals("the first item carried the same key in both attempts", 3, key.size)
         assertEquals(0, outbox.count("a").first())
     }
 
@@ -68,9 +68,9 @@ class ReconcileOnRoomTest {
         room.addRawOutboxRow("a", "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}", created = 1, key = "k0")
         outbox.enqueue("a", Editing.SetQuantity("1-1", 1), 2, "k1")
         assertEquals(Editing.SetQuantity("1-1", 1), outbox.first("a")!!.editing)
-        assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", outbox.first("a")!!.key)
+        assertEquals("the key comes back as it was stored", "k1", outbox.first("a")!!.key)
         assertEquals(1, outbox.all("a").size)
-        assertEquals("Lesen schreibt nicht: der unlesbare Posten liegt noch da", 2, outbox.count("a").first())
+        assertEquals("Reading does not write: the unreadable item is still there", 2, outbox.count("a").first())
 
         val sync = Reconcile(OfflineStore(stock, outbox, { "a" }), outbox) { _, _ -> SendOutcome.Accepted }
         assertEquals(ReconcileOutcome.DONE, sync.send())

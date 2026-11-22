@@ -57,7 +57,7 @@ class CopyCancellableTest {
             }
         }
         job.join()
-        assertTrue("Der Abbruch kam nicht an", cancelled)
-        assertEquals("Drei Stücke, dann Schluss", 30, target.size())
+        assertTrue("the cancellation did not arrive", cancelled)
+        assertEquals("three pieces, then stop", 30, target.size())
     }
 }

@@ -99,9 +99,9 @@ class SettingsViewModelTest {
     fun `a changed alert reloads the overview`() {
         val vm = vm()
         vm.loadAlarmOverview()
-        assertTrue("Übersicht", vm.alarmOverview.value.loaded)
+        assertTrue("overview", vm.alarmOverview.value.loaded)
         vm.changeAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, Money.from(450.0)!!)
-        assertEquals("neu geladen", 2, paths.requestsTo("GET /api/v1/alerts").size)
+        assertEquals("reloaded", 2, paths.requestsTo("GET /api/v1/alerts").size)
         assertTrue(paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
     }
 
@@ -115,9 +115,9 @@ class SettingsViewModelTest {
         assertEquals("Kiste", vm.storageState.value.own.single().name)
         paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
         vm.renameLocation(3, "Keller")
-        assertEquals("die eigenen Orte neu", "Keller", vm.storageState.value.own.single().name)
+        assertEquals("the own locations anew", "Keller", vm.storageState.value.own.single().name)
         val stored = runBlocking { t.sets().observeSets().first().list.single() }
-        assertEquals("ohne den Bestand neu zu holen", 1, paths.requestsTo("GET /api/v1/sets?").size)
+        assertEquals("without fetching the stock again", 1, paths.requestsTo("GET /api/v1/sets?").size)
         assertEquals("Keller", stored.storage)
     }
 
@@ -126,7 +126,7 @@ class SettingsViewModelTest {
         paths.codes["/api/v1/storage/locations/3"] = 401
         val vm = vm()
         vm.deleteLocation(3)
-        assertTrue("Antwort", paths.requestsTo("DELETE /api/v1/storage/locations/3").isNotEmpty())
+        assertTrue("Response", paths.requestsTo("DELETE /api/v1/storage/locations/3").isNotEmpty())
         assertNull(t.messages.text)
     }
 
@@ -147,7 +147,7 @@ class SettingsViewModelTest {
         paths.responses["/api/v1/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
         vm.saveUserDefaultCondition(Condition.USED)
-        assertTrue("Meldung", t.messages.text != null)
+        assertTrue("message", t.messages.text != null)
         assertEquals("t${R.string.vm_settings_saved}", t.messages.text)
         assertTrue(paths.bodyBytes.any { "\"U\"" in it })
     }
@@ -156,8 +156,8 @@ class SettingsViewModelTest {
     fun `a redeemed invitation loads status and household accounts`() {
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
-        assertTrue("Konten da", t.viewport.accounts.value.householdMembers.size == 2)
-        assertTrue("Status da", vm.householdState.value.status?.isSub == true)
+        assertTrue("accounts there", t.viewport.accounts.value.householdMembers.size == 2)
+        assertTrue("status there", vm.householdState.value.status?.isSub == true)
         assertTrue(paths.requestsTo("POST /api/v1/settings/household/redeem").single().isNotEmpty())
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
         assertEquals("""{"code":"ABC123","password":"geheim1234"}""", body)
@@ -171,7 +171,7 @@ class SettingsViewModelTest {
         paths.codes["/api/v1/settings/household/redeem"] = 400
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("Antwort", vm.householdState.value.fetch is Load.Failure)
+        assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
         assertTrue(vm.householdState.value.passwordWrong)
         assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.fetch.errorMessage.text)
         assertEquals(0, vm.householdState.value.redeemed)
@@ -184,7 +184,7 @@ class SettingsViewModelTest {
         vm.loadHousehold()
         assertTrue("Codefeld", vm.householdState.value.factorNeeded)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
-        assertTrue("eingeloest", paths.requests.any { "household/redeem" in it })
+        assertTrue("redeemed", paths.requests.any { "household/redeem" in it })
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
         assertEquals("""{"code":"ABC123","password":"geheim1234","faktor_code":"123456"}""", body)
     }
@@ -197,7 +197,7 @@ class SettingsViewModelTest {
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         assertFalse(vm.householdState.value.factorNeeded)
         vm.redeemHouseholdInvite("ABC123", "geheim1234")
-        assertTrue("Antwort", vm.householdState.value.fetch is Load.Failure)
+        assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
         assertTrue(vm.householdState.value.factorNeeded)
         assertTrue(vm.householdState.value.factorWrong)
         assertFalse(vm.householdState.value.passwordWrong)
@@ -211,12 +211,12 @@ class SettingsViewModelTest {
         paths.codes["/api/v1/settings/household/redeem"] = 429
         val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("Antwort", vm.householdState.value.fetch is Load.Failure)
+        assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.fetch.errorMessage.text)
         assertFalse(vm.householdState.value.passwordWrong)
 
         paths.responses["/api/v1/settings/household/redeem"] = """{"success":false}"""
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("zweite Antwort", vm.householdState.value.fetch.errorMessage.text == "t${R.string.household_redeem_locked}")
+        assertTrue("second answer", vm.householdState.value.fetch.errorMessage.text == "t${R.string.household_redeem_locked}")
     }
 }

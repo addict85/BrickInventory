@@ -91,7 +91,7 @@ class DateFormatTest {
             "2026-09-03",                 // only the day
         )) {
             assert(fmtDatum(input, DE) == expected) {
-                "fmtDatum(\"$input\") ergab ${fmtDatum(input, DE)}, erwartet $expected"
+                "fmtDatum(\"$input\") gave ${fmtDatum(input, DE)}, expected $expected"
             }
         }
     }
@@ -128,7 +128,7 @@ class DateFormatTest {
         )) {
             val u = fmtClockTime(input)
             assert(u != null && Regex("""\d\d:\d\d:\d\d""").matches(u)) {
-                "fmtClockTime(\"$input\") ergab $u, erwartet HH:MM:SS"
+                "fmtClockTime(\"$input\") gave $u, expected HH:MM:SS"
             }
             // Only the SECONDS, not minutes and seconds: there are zones with
             // half-hour offset (India +05:30), there the conversion
@@ -137,13 +137,13 @@ class DateFormatTest {
             // — an assertion that holds only by chance because here
             // and in the GitHub job UTC is set.
             assert(u!!.endsWith(":32")) {
-                "fmtClockTime(\"$input\") ergab $u — die Sekunden aendert keine Zone"
+                "fmtClockTime(\"$input\") gave $u — no zone changes the seconds"
             }
         }
         val early = fmtClockTime("2026-09-03T10:00:00Z")!!.take(2).toInt()
         val late = fmtClockTime("2026-09-03T11:00:00Z")!!.take(2).toInt()
         assert((late - early + 24) % 24 == 1) {
-            "Eine Stunde Unterschied ergab $early → $late"
+            "one hour difference gave $early → $late"
         }
     }
 
@@ -151,7 +151,7 @@ class DateFormatTest {
     fun `unusable times give null, not nonsense`() {
         for (input in listOf(null, "", "gleich", "2026-09-03")) {
             assert(fmtClockTime(input) == null) {
-                "fmtClockTime(\"$input\") ergab ${fmtClockTime(input)}, erwartet null"
+                "fmtClockTime(\"$input\") gave ${fmtClockTime(input)}, expected null"
             }
         }
     }
@@ -160,7 +160,7 @@ class DateFormatTest {
     fun `unusable inputs give null, not nonsense`() {
         for (input in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
             assert(fmtDatum(input, DE) == null) {
-                "fmtDatum(\"$input\") ergab ${fmtDatum(input, DE)}, erwartet null"
+                "fmtDatum(\"$input\") gave ${fmtDatum(input, DE)}, expected null"
             }
         }
     }

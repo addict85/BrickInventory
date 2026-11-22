@@ -91,7 +91,7 @@ class ManualItemsFirstTest {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); ready() }
         } catch (e: ComposeTimeoutException) {
-            throw AssertionError("$was: nach 10 s nicht da", e)
+            throw AssertionError("$was: not there after 10 s", e)
         }
         compose.waitForIdle()
     }
@@ -108,8 +108,8 @@ class ManualItemsFirstTest {
         val header = top(ctx.getString(R.string.parts_manual_section))
         val tile = top("Brick 1 x 1 manuell")
         val fromSets = top(ctx.getString(R.string.parts_sets_section))
-        assertTrue("Reihenfolge: Kopf $header, manuelles Teil $tile, „Aus Sets“ $fromSets", header < tile && tile < fromSets)
-        assertTrue("Das erste Teil aus Sets steht nicht unter „Aus Sets“", top("Brick 2 x 4") > fromSets)
+        assertTrue("order: header $header, manual part $tile, “From sets” $fromSets", header < tile && tile < fromSets)
+        assertTrue("the first part from sets does not stand below “From sets”", top("Brick 2 x 4") > fromSets)
     }
 
     @Test
@@ -122,8 +122,8 @@ class ManualItemsFirstTest {
         val header = top(ctx.getString(R.string.minifigs_manual_section))
         val tile = top("Prinzessin Leia manuell")
         val fromSets = top(ctx.getString(R.string.minifigs_sets_section))
-        assertTrue("Reihenfolge: Kopf $header, manuelle Figur $tile, „Aus Sets“ $fromSets", header < tile && tile < fromSets)
-        assertTrue("Die erste Figur aus Sets steht nicht unter „Aus Sets“",
+        assertTrue("order: header $header, manual figure $tile, “From sets” $fromSets", header < tile && tile < fromSets)
+        assertTrue("the first figure from sets does not stand below “From sets”",
             top("Luke Skywalker (Pilot Suit, White Helmet)") > fromSets)
     }
 
@@ -152,7 +152,7 @@ class ManualItemsFirstTest {
     fun `without a saved position the list moves up when entries arrive above`() {
         showRaster()
         stragglersCome()
-        assertEquals("Erster sichtbarer Eintrag", 0, raster.firstVisibleItemIndex)
+        assertEquals("first visible entry", 0, raster.firstVisibleItemIndex)
         compose.onNodeWithText("manuell-0").fetchSemanticsNode()
     }
 
@@ -160,9 +160,9 @@ class ManualItemsFirstTest {
     fun `a saved position stays, even when entries arrive above`() {
         memory.track("teile", 10, 0)
         showRaster()
-        assertEquals("Wiederhergestellt", 10, raster.firstVisibleItemIndex)
+        assertEquals("restored", 10, raster.firstVisibleItemIndex)
         stragglersCome()
-        assertTrue("Die Liste sprang von der gespeicherten Stelle weg: ${raster.firstVisibleItemIndex}",
+        assertTrue("the list jumped away from the saved position: ${raster.firstVisibleItemIndex}",
             raster.firstVisibleItemIndex >= 10)
     }
 
@@ -171,9 +171,9 @@ class ManualItemsFirstTest {
         showRaster()
         compose.onNodeWithTag("raster").performTouchInput { swipeUp() }
         compose.waitForIdle()
-        assertTrue("Die Geste hat nicht gerollt", raster.firstVisibleItemIndex > 0)
+        assertTrue("the gesture did not scroll", raster.firstVisibleItemIndex > 0)
         stragglersCome()
-        assertTrue("Die Korrektur riss die Liste nach oben", raster.firstVisibleItemIndex > 0)
+        assertTrue("the correction tore the list to the top", raster.firstVisibleItemIndex > 0)
     }
 
     @Test
@@ -183,9 +183,9 @@ class ManualItemsFirstTest {
         val graph = Sources.withoutComments(Sources.read("parts/ui/PartsGraph.kt"))
         for ((key, list) in listOf("PartsTarget.Parts.rollKey" to "manualParts", "PartsTarget.Minifigs.rollKey" to "manualFigs")) {
             val block = Sources.window(graph, "$key, ", 12)
-            assertTrue("Kein ScrollPositionKeeper für $key gefunden", block.isNotEmpty())
-            assertTrue("$key: `bereit` wartet nicht auf $list", block.contains("$list != null"))
-            assertTrue("$key: obenNachziehend fehlt", block.contains("topTrailing ="))
+            assertTrue("no ScrollPositionKeeper found for $key", block.isNotEmpty())
+            assertTrue("$key: `bereit` does not wait for $list", block.contains("$list != null"))
+            assertTrue("$key: obenNachziehend is missing", block.contains("topTrailing ="))
         }
     }
 }

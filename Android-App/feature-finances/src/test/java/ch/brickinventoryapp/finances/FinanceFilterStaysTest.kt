@@ -35,7 +35,7 @@ class FinanceFilterStaysTest {
     fun `an empty selection shows everything`() {
         val z = FinanceUiState()
         assert(z.shows("sets") && z.shows("parts") && z.shows("figs")) {
-            "Ohne Einschraenkung muessen alle drei Zeilenarten sichtbar sein"
+            "without a restriction all three row kinds must be visible"
         }
     }
 
@@ -46,10 +46,10 @@ class FinanceFilterStaysTest {
             .withToggledCategory("figs")
 
         assert(z.categories == setOf("sets", "figs")) {
-            "Zwei Klicks sollen sich haeufen, nicht einander ersetzen: ${z.categories}"
+            "two clicks should add up, not replace each other: ${z.categories}"
         }
-        assert(z.shows("sets") && z.shows("figs")) { "Beide gewaehlten Arten bleiben sichtbar" }
-        assert(!z.shows("parts")) { "Was nicht gewaehlt ist, faellt weg" }
+        assert(z.shows("sets") && z.shows("figs")) { "both chosen kinds stay visible" }
+        assert(!z.shows("parts")) { "what is not chosen drops out" }
     }
 
     @Test
@@ -58,12 +58,12 @@ class FinanceFilterStaysTest {
             .withToggledCategory("parts")
             .withToggledCategory("parts")
 
-        assert(z.categories.isEmpty()) { "Der zweite Klick raeumt die Wahl wieder weg" }
+        assert(z.categories.isEmpty()) { "the second click clears the choice again" }
         // And the empty set again means ALL — not "nothing". A view
         // that stayed empty after deselecting would not be a filter but a
         // blank page.
         assert(z.shows("sets") && z.shows("parts") && z.shows("figs")) {
-            "Die leere Auswahl muss wieder alles zeigen"
+            "the empty selection must show everything again"
         }
     }
 
@@ -73,16 +73,16 @@ class FinanceFilterStaysTest {
             Sources.read("finances/ui/screens/FinanceScreen.kt"))
 
         assert(!Regex("""remember\s*\{\s*mutableStateOf\("all"\)""").containsMatchIn(src)) {
-            "Der Kategoriefilter liegt wieder in einem remember des Bildschirms — " +
-                "damit ist er nach jedem Ausflug in einen Detail-Bildschirm weg"
+            "The category filter lies in a remember of the screen again — " +
+                "so it is gone after every trip into a detail screen"
         }
         assert(src.contains("financeState.shows(")) {
-            "Der Bildschirm soll die Sichtbarkeit aus dem Zustand lesen"
+            "the screen should read the visibility from the state"
         }
         // The rule "empty means all" may be written down only ONCE. Previously
         // it stood three times in the screen (showSets/showParts/showFigs).
         assert(!src.contains("categories.isEmpty() ||")) {
-            "Die Regel „leere Auswahl heisst alle\" steht wieder im Bildschirm statt " +
+            "The rule “empty selection means all” stands in the screen again instead of " +
                 "in FinanceUiState.shows()"
         }
     }

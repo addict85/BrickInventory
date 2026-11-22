@@ -26,7 +26,7 @@ abstract class ModuleEdgesCheck : DefaultTask() {
     fun check() {
         val all = edges.get().map { val (configuration, after) = it.split(" "); ModuleEdge(module.get(), configuration, after) }
         val violations = ModuleEdges.violations(all)
-        if (violations.isNotEmpty()) throw GradleException("Modulkanten verletzt:\n  " + violations.joinToString("\n  "))
+        if (violations.isNotEmpty()) throw GradleException("module edges violated:\n  " + violations.joinToString("\n  "))
     }
 }
 
@@ -34,7 +34,7 @@ abstract class ModuleEdgesCheck : DefaultTask() {
 internal fun Project.moduleEdgesCheck() {
     val task = tasks.register("moduleEdgesCheck", ModuleEdgesCheck::class.java) { t ->
         t.group = "verification"
-        t.description = "Prüft, ob das Modul nur von erlaubten Modulen abhängt (buildlogic/edges/ModuleEdges.kt)."
+        t.description = "Checks that the module only depends on allowed modules (buildlogic/edges/ModuleEdges.kt)."
         t.module.set(name)
         t.edges.set(provider {
             configurations.flatMap { c ->

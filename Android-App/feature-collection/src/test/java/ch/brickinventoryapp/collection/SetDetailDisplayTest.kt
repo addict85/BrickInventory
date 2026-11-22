@@ -125,7 +125,7 @@ class SetDetailDisplayTest {
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.cd_qty_decrease)).onFirst().performClick()
         compose.waitForIdle()
         assertEquals(listOf(-1), actions.steps)
-        assertEquals("der Regler zählt sofort", 1, count("4"))
+        assertEquals("the slider counts right away", 1, count("4"))
         // Someone else's copies cannot be taken away: the server caps it and reports 3.
         set = falcon.copy(quantity = 3)
         compose.waitForIdle()
@@ -152,6 +152,6 @@ class SetDetailDisplayTest {
         for (i in areas.fetchSemanticsNodes().indices) {
             try { areas[i].performScrollToNode(hasText(advice)); break } catch (_: AssertionError) { continue }
         }
-        assertEquals("Ohne Klasse stand nur „Laden fehlgeschlagen“", 1, count(advice))
+        assertEquals("without a class only “Laden fehlgeschlagen” was shown", 1, count(advice))
     }
 }

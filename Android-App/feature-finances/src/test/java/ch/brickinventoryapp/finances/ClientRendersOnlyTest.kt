@@ -30,7 +30,7 @@ class ClientRendersOnlyTest {
         // Lower bound: a file scan that finds nothing lets
         // every batch check below it pass silently.
         check(files.size >= 20) {
-            "Zu wenige Kotlin-Dateien unter ui/ (${files.size}) — Pfad veraltet?"
+            "Too few Kotlin files under ui/ (${files.size}) — path outdated?"
         }
         for (f in files) {
             val code = Sources.strip(f.readText())
@@ -40,9 +40,9 @@ class ClientRendersOnlyTest {
             }
         }
         assert(hits.isEmpty()) {
-            "Die Oberfläche bildet eine Geldsumme selbst:\n  " + hits.joinToString("\n  ") +
-                "\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). " +
-                "Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert."
+            "The UI forms a money sum itself:\n  " + hits.joinToString("\n  ") +
+                "\nThe server delivers such sums ready-made (total_value, totals.grand_total). " +
+                "Two ways of calculating mean two results as soon as the rule changes."
         }
     }
 
@@ -60,8 +60,8 @@ class ClientRendersOnlyTest {
         val sections = File(Sources.root,
             "finances/ui/screens/FinanceSections.kt").readText()
         assert(Regex("""financeTotals\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
-            "Eine Kopfkarte liest den Gesamtwert nicht mehr über financeTotals() — dann rechnet " +
-                "sie ihn wieder selbst, und die Webapp tut dasselbe auf ihre Art."
+            "A header card no longer reads the total value via financeTotals() — then it " +
+                "calculates it itself again, and the web app does the same in its own way."
         }
         // The model field must exist, otherwise the expression above reads into nothing.
         // All model files: previously a file name stood here,
@@ -71,7 +71,7 @@ class ClientRendersOnlyTest {
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }
         assert(models.contains("""@SerialName("grand_total")""")) {
-            "PnlTotals kennt grand_total nicht"
+            "PnlTotals does not know grand_total"
         }
     }
 }

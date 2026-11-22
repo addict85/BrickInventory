@@ -28,7 +28,7 @@ class FileLimitTest {
         var read = 0L
         override fun read(): Int {
             read++
-            if (read > atMost) throw AssertionError("über die Grenze hinaus gelesen: $read Bytes")
+            if (read > atMost) throw AssertionError("read beyond the limit: $read bytes")
             return 7
         }
     }
@@ -46,7 +46,7 @@ class FileLimitTest {
         val limit = 200_000L
         val stream = Endless(limit + 64 * 1024)
         assertNull(readLimited(stream, limit))
-        assertEquals("Gelesen wird die Grenze und ein Byte zur Probe", limit + 1, stream.read)
+        assertEquals("The limit is read plus one byte as a probe", limit + 1, stream.read)
     }
 
     @Test

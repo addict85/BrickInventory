@@ -19,7 +19,7 @@ class OutboxLockTest {
     @Test
     fun `without a token on a locked device the exit tries again later`() {
         assertTrue(ReconcileOutcome.NOT_SIGNED_IN.again(deviceLocked = true))
-        assertFalse("Abgemeldet bleibt der Lauf erledigt", ReconcileOutcome.NOT_SIGNED_IN.again(deviceLocked = false))
+        assertFalse("Signed out, the run stays done", ReconcileOutcome.NOT_SIGNED_IN.again(deviceLocked = false))
     }
 
     @Test

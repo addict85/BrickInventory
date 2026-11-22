@@ -71,7 +71,7 @@ class CatalogYearMathTest {
         var before = Int.MAX_VALUE
         for (i in 0..100) {
             val j = year(i / 100f)!!
-            assertTrue("Bei $i% springt das Jahr zurück: $before -> $j", j <= before)
+            assertTrue("at $i% the year jumps back: $before -> $j", j <= before)
             before = j
         }
     }
@@ -98,7 +98,7 @@ class CatalogYearMathTest {
             val offset = CatalogYearMath.thumbOffset(share, H, T)
             // Die Griffmitte an dieser Stelle ergibt wieder denselben Anteil.
             val back = CatalogYearMath.shareFrom(offset + T / 2f, H, T)
-            assertEquals("Anteil $share", share, back, 0.002f)
+            assertEquals("share $share", share, back, 0.002f)
         }
         assertEquals(0, CatalogYearMath.thumbOffset(0f, H, T))
         assertEquals(H - T, CatalogYearMath.thumbOffset(1f, H, T))

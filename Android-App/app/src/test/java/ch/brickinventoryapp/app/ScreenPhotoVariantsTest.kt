@@ -526,7 +526,7 @@ class ScreenPhotoVariantsTest {
         val looper = shadowOf(Looper.getMainLooper())
         repeat(10) { compose.mainClock.advanceTimeBy(50); looper.idle() }
         val window = ShadowDialog.getLatestDialog().window!!.decorView
-        val root = composeRoot(window) ?: error("$name: kein Compose im Dialogfenster")
+        val root = composeRoot(window) ?: error("$name: no Compose in the dialog window")
         val scales = mutableListOf<Float>()
         fun collect(n: SemanticsNode) {
             val outcome = mutableListOf<TextLayoutResult>()
@@ -535,7 +535,7 @@ class ScreenPhotoVariantsTest {
             n.children.forEach { collect(it) }
         }
         collect(root.semanticsOwner.unmergedRootSemanticsNode)
-        Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $scales)",
+        Assert.assertTrue("$name: font does not reach the dialog (scales $scales)",
             scales.isNotEmpty() && scales.all { it >= font - 0.05f })
         // Drawn ourselves: captureRoboImage(View) looks for the view via Espresso in the
         // activity and does not find the dialog window there.
@@ -789,16 +789,16 @@ class ScreenPhotoVariantsTest {
             // One pattern for all adding dialogs: the storage location is as wide as the set number.
             // Measured at the dialog window like the photo: the synchronization waited forever.
             val ctx = ApplicationProvider.getApplicationContext<Context>()
-            val root = composeRoot(ShadowDialog.getLatestDialog().window!!.decorView) ?: error("kein Compose im Dialog")
+            val root = composeRoot(ShadowDialog.getLatestDialog().window!!.decorView) ?: error("no Compose in the dialog")
             fun width(label: Int): Float {
                 val searched = ctx.getString(label)
                 fun search(n: SemanticsNode): SemanticsNode? =
                     if (SemanticsActions.SetText in n.config &&
                         n.config.getOrNull(SemanticsProperties.Text)?.any { it.text == searched } == true) n
                     else n.children.firstNotNullOfOrNull { search(it) }
-                return checkNotNull(search(root.semanticsOwner.rootSemanticsNode)) { "kein Feld „$searched“" }.boundsInRoot.width
+                return checkNotNull(search(root.semanticsOwner.rootSemanticsNode)) { "no field “$searched”" }.boundsInRoot.width
             }
-            Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
+            Assert.assertEquals("storage location as wide as the set number",
                 width(R.string.gallery_set_number),
                 width(R.string.detail_storage), 1f)
         }

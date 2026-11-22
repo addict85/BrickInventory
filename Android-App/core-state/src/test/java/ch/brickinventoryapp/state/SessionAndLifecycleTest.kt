@@ -21,7 +21,7 @@ class SessionAndLifecycleTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -49,8 +49,8 @@ class SessionAndLifecycleTest {
             val finances = testFinancesRepository(TestApi.forTarget(paths.server))
             val expired = runBlocking { finances.getStats() } as Outcome.Failure
             val broken = runBlocking { finances.getPnl() } as Outcome.Failure
-            assertTrue("Ein 401 trägt das Kennzeichen nicht", expired is Outcome.Failure.Rejected)
-            assertFalse("Ein 500 gilt als abgelaufene Sitzung", broken is Outcome.Failure.Rejected)
+            assertTrue("a 401 does not carry the marker", expired is Outcome.Failure.Rejected)
+            assertFalse("a 500 counts as an expired session", broken is Outcome.Failure.Rejected)
         } finally {
             paths.server.shutdown()
         }
@@ -62,17 +62,17 @@ class SessionAndLifecycleTest {
     fun `the ImageLoader is a singleton from the DI module`() {
         val di = code(Sources.di())
         assert(di.contains("fun provideImageLoader")) {
-            "Kein ImageLoader-Provider in AppModule"
+            "no ImageLoader provider in AppModule"
         }
         val act = code(read("app/MainActivity.kt"))
         assert(!act.contains("ImageLoader.Builder(")) {
-            "MainActivity baut wieder einen eigenen ImageLoader. Bei jeder " +
-                "Bildschirmdrehung entsteht dann eine zweite Instanz auf demselben " +
-                "Disk-Cache-Verzeichnis, und der Memory-Cache ist jedes Mal leer — " +
-                "alle sichtbaren Thumbnails werden neu dekodiert."
+            "MainActivity builds its own ImageLoader again. On every " +
+                "screen rotation a second instance then arises on the same " +
+                "disk cache directory, and the memory cache is empty every time — " +
+                "all visible thumbnails are decoded again."
         }
         assert(act.contains("@Inject lateinit var imageLoader")) {
-            "MainActivity injiziert den ImageLoader nicht"
+            "MainActivity does not inject the ImageLoader"
         }
     }
 
@@ -82,16 +82,16 @@ class SessionAndLifecycleTest {
     fun `the monitoring poll hangs on the lifecycle`() {
         val src = code(read("management/ui/screens/MonitoringScreen.kt"))
         assert(src.contains("repeatOnLifecycle")) {
-            "Die 5s-Schleife im Monitoring läuft ohne repeatOnLifecycle. Ein " +
-                "LaunchedEffect endet erst beim Verlassen des Screens, nicht beim " +
-                "Wechsel in den Hintergrund — die App pollt dann weiter."
+            "The 5 s loop in monitoring runs without repeatOnLifecycle. A " +
+                "LaunchedEffect only ends when leaving the screen, not when " +
+                "going to the background — the app then keeps polling."
         }
         // The loop itself lives in the ViewModel (holdCurrent, MonitoringViewModelBehaviorTest).
         val loop = src.indexOf("mon.holdCurrent()")
         val guard = src.indexOf("repeatOnLifecycle")
-        assert(loop >= 0) { "Poll-Schleife nicht gefunden — Test veraltet?" }
+        assert(loop >= 0) { "poll loop not found — test outdated?" }
         assert(guard in 1 until loop) {
-            "repeatOnLifecycle umschliesst die Poll-Schleife nicht"
+            "repeatOnLifecycle does not enclose the poll loop"
         }
     }
 }

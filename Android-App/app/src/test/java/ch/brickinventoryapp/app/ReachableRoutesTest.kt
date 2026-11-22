@@ -77,13 +77,13 @@ class ReachableRoutesTest {
         val graph = compose.runOnIdle {
             val environment = TargetEnvironment(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState()) {
                 // Only the destinations fetch the state when drawing; the graph alone does not need it.
-                error("Ziele werden hier nicht gezeichnet")
+                error("destinations are not drawn here")
             }
             nav.createGraph(startDestination = CollectionTarget.Gallery) { allTargets(environment) }
         }
         val registered = routes(graph).map { it.substringBefore('/').substringBefore('?') }.toSet()
-        assertTrue("Nur ${targets.size} Ziele gefunden — liest die Suche die Serialisierung noch?", targets.size >= 20)
-        assertEquals("Ziele ohne Platz im Graphen", emptySet<String>(), targets.keys - registered)
+        assertTrue("Only ${targets.size} destinations found — does the search still read the serialization?", targets.size >= 20)
+        assertEquals("destinations without a place in the graph", emptySet<String>(), targets.keys - registered)
     }
 
     @Test
@@ -104,15 +104,15 @@ class ReachableRoutesTest {
         // web app (wishlist before catalog) and “More”.
         assertEquals(listOf(CollectionTarget.Gallery, FinanceTarget.Finance, CollectionTarget.Wanted, CatalogTarget.Catalog, AppTarget.More),
             bar.map { it.target })
-        assertEquals("Jeder Eintrag auf „Mehr“ nennt genau ein Ziel", count, ofMore.size)
-        assertTrue("Die Einstellungen stehen auf „Mehr“", AccountTarget.Settings in ofMore)
-        assertFalse("Der Serverwechsel gehört in die Einstellungen, nicht auf „Mehr“", LoginTarget.Setup in ofMore)
+        assertEquals("every entry on “More” names exactly one destination", count, ofMore.size)
+        assertTrue("the settings are on “More”", AccountTarget.Settings in ofMore)
+        assertFalse("the server switch belongs in the settings, not on “More”", LoginTarget.Setup in ofMore)
 
         val reached = (ofMore + bar.map { it.target } + COLLECTION_TARGETS +
             StartTarget.entries.map(::startRoute)).map(::name).toSet()
         // Destinations with values are only opened by whoever has the values (a tile, a row).
         val withoutValues = targets.filterValues { it == StructureKind.OBJECT }.keys
-        assertTrue("Nur ${withoutValues.size} Ziele ohne Werte gefunden", withoutValues.size >= 15)
-        assertEquals("Ziele ohne Weg dorthin", emptySet<String>(), withoutValues - reached)
+        assertTrue("Only ${withoutValues.size} destinations without values found", withoutValues.size >= 15)
+        assertEquals("destinations without a way there", emptySet<String>(), withoutValues - reached)
     }
 }

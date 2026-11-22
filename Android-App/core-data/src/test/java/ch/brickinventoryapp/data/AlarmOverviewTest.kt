@@ -56,9 +56,9 @@ class AlarmOverviewTest {
             m.getAnnotation(PUT::class.java)?.value
                 ?: m.getAnnotation(DELETE::class.java)?.value
         }
-        assertTrue("Keine ändernden Adressen gefunden — Reflexion greift nicht?", changing.size > 10)
+        assertTrue("No changing addresses found — does reflection still work?", changing.size > 10)
         val secondRoute = changing.filter { it.startsWith("api/v1/alerts") }
-        assertTrue("Es ist ein zweiter Schreibweg entstanden: $secondRoute", secondRoute.isEmpty())
+        assertTrue("A second write path has appeared: $secondRoute", secondRoute.isEmpty())
     }
 
     /**
@@ -70,10 +70,10 @@ class AlarmOverviewTest {
     fun `the row shows the image like the finances`() {
         val s = source("account/ui/screens/SettingsAlarme.kt")
         assert(s.contains("FinanceImage(")) {
-            "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
+            "The row has no preview image — or its own instead of the finances' one."
         }
         assert(s.contains("resolveThumbUrl(")) {
-            "Die Bildadresse wird nicht ueber die gemeinsame Stelle gebildet."
+            "The image address is not built via the shared place."
         }
     }
 
@@ -87,7 +87,7 @@ class AlarmOverviewTest {
     fun `a missing besitzt field does not kill the row`() {
         val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
             """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
-        assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
+        assertTrue("Without the field the set counts as not present — the whole section would be dead", alarm.besitzt)
         val gone = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
         assertFalse(gone.besitzt)
     }
@@ -105,21 +105,21 @@ class AlarmOverviewTest {
     fun `the settings remember their scroll position`() {
         val graph = source("account/ui/AccountGraph.kt")
         assert(graph.contains("settingsScrollState")) {
-            "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
-                "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
+            "The settings still hold their scroll state themselves — after " +
+                "returning from the detail view one would be back at the very top."
         }
         assert(Regex("""AccountTarget\.Settings\.rollKey,\s*settingsScrollState""").containsMatchIn(graph)) {
-            "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
-                "springt zurueck."
+            "The scroll state is not remembered — it survives, but nobody " +
+                "jumps back."
         }
         // The ScrollMemory holds the position, not the state: it arises anew per visit.
         assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
-            "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
+            "The settings do not create their scroll state at the destination"
         }
         val screen = source("account/ui/screens/SettingsScreen.kt")
         assert(!screen.contains("rememberScrollState()")) {
-            "In SettingsScreen steht wieder ein eigenes rememberScrollState() — " +
-                "damit ist der durchgereichte Zustand wirkungslos."
+            "SettingsScreen has its own rememberScrollState() again — " +
+                "which makes the passed-in state ineffective."
         }
     }
 
@@ -144,7 +144,7 @@ class AlarmOverviewTest {
         // Until the settings were split, `val changed =` matched from the
         // account card; nothing was checked by that. The barrier is the comparison.
         assert(s.contains("number != a.threshold")) {
-            "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
+            "The save button stands there permanently again and looks like a state."
         }
 
         // ── The difference must not lie in the color ────────────────────────
@@ -158,19 +158,19 @@ class AlarmOverviewTest {
         val body = s.substring(s.indexOf("fun AlarmStateBadge("))
             .let { it.substring(0, minOf(1200, it.length)) }
         assert(body.contains("BorderStroke(")) {
-            "Die beiden Zustaende unterscheiden sich nicht in der Flaeche " +
-                "(gefuellt gegen umrandet) — dann bliebe nur die Farbe."
+            "The two states do not differ in the surface " +
+                "(filled versus outlined) — then only the color would be left."
         }
         assert(body.contains("FontWeight.SemiBold")) {
-            "Auch das Schriftgewicht unterscheidet die beiden nicht mehr."
+            "The font weight no longer tells the two apart either."
         }
         // No green against red, not even well-meant — that would be the same
         // error once more.
         for (forbidden in listOf("LocalStatusColors", "colorScheme.error",
                                 "colorScheme.tertiary")) {
             assert(!body.contains(forbidden)) {
-                "`$forbidden` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
-                    "die Plakette nicht mehr tun."
+                "`$forbidden` carries a meaning via the color. That is exactly what " +
+                    "the badge should no longer do."
             }
         }
     }

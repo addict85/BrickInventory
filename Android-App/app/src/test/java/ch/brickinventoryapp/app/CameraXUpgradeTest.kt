@@ -31,13 +31,13 @@ class CameraXUpgradeTest {
     @Test
     fun `CameraX is on a 16 KB capable version`() {
         val toml = File("../gradle/libs.versions.toml")
-        assert(toml.exists()) { "gradle/libs.versions.toml nicht gefunden" }
+        assert(toml.exists()) { "gradle/libs.versions.toml not found" }
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.(\d+)"""").find(toml.readText())
-        assert(m != null) { "camerax-Version nicht in libs.versions.toml gefunden" }
+        assert(m != null) { "camerax version not found in libs.versions.toml" }
         val (major, minor) = m!!.groupValues.let { it[1].toInt() to it[2].toInt() }
         assert(major > 1 || minor >= 4) {
-            "CameraX $major.$minor liegt unter 1.4. Erst ab 1.4.0 ist " +
-                "libimage_processing_util_jni.so auf 16-KB-Speicherseiten ausgerichtet."
+            "CameraX $major.$minor is below 1.4. Only from 1.4.0 on is " +
+                "libimage_processing_util_jni.so aligned to 16 KB memory pages."
         }
     }
 
@@ -51,12 +51,12 @@ class CameraXUpgradeTest {
         for (rel in screens) {
             val src = code(withAnalyse(rel))
             val idx = src.indexOf("val provider = future.get()")
-            assert(idx >= 0) { "$rel: future.get() nicht gefunden — Test veraltet?" }
+            assert(idx >= 0) { "$rel: future.get() not found — test outdated?" }
             assert(src.substring(0, idx).trimEnd().endsWith("try {")) {
-                "$rel: future.get() steht nicht direkt in einem try-Block. Seit " +
-                    "CameraX 1.4.0 wirft der Aufruf, wenn die Kamera nicht verfügbar " +
-                    "ist (andere App, Hardware-Fehler) — unter 1.3.4 gab es diese " +
-                    "Prüfung noch nicht, deshalb fällt es beim Sprung erst auf."
+                "$rel: future.get() does not stand directly in a try block. Since " +
+                    "CameraX 1.4.0 the call throws when the camera is not available " +
+                    "(another app, hardware error) — under 1.3.4 this " +
+                    "check did not exist yet, which is why it only shows up with the jump."
             }
         }
     }
@@ -81,9 +81,9 @@ class CameraXUpgradeTest {
     fun `image analysis stays on YUV`() {
         val src = code(withAnalyse("collection/ui/screens/BarcodeScannerScreen.kt"))
         assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
-            "Die ImageAnalysis läuft nicht mehr auf YUV_420_888. ML Kit bekommt das " +
-                "mediaImage bisher direkt; bei RGBA würde CameraX zusätzlich seine " +
-                "native Umwandlung laden und Rechenzeit je Bild kosten."
+            "The ImageAnalysis no longer runs on YUV_420_888. ML Kit gets the " +
+                "mediaImage directly so far; with RGBA CameraX would additionally load its " +
+                "native conversion and cost computing time per frame."
         }
     }
 }

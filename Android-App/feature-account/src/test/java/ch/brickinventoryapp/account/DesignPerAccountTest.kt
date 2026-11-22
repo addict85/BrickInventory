@@ -71,7 +71,7 @@ class DesignPerAccountTest {
     fun `the choice goes to the server and applies immediately in the whole app`() {
         val vm = vm()
         vm.chooseDesign(Design.STUD)
-        assertTrue("gewählt", vm.accountState.value.design != null)
+        assertTrue("chosen", vm.accountState.value.design != null)
         assertEquals(listOf("POST /api/v1/settings/user/theme"), paths.requests.toList())
         assertEquals("""{"theme":"noppe"}""", paths.bodyBytes.single())
         assertEquals(DesignChoice(Design.STUD, Design.CLASSIC, Design.STUD), vm.accountState.value.design)
@@ -80,7 +80,7 @@ class DesignPerAccountTest {
         // Back to the default: empty value, the response names the effective design.
         paths.responses["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
         vm.chooseDesign(null)
-        assertTrue("Vorgabe", vm.accountState.value.design?.own == null)
+        assertTrue("default", vm.accountState.value.design?.own == null)
         assertEquals("""{"theme":""}""", paths.bodyBytes.last())
         assertEquals(Design.CLASSIC, t.session.state.value.appTheme)
     }
@@ -90,7 +90,7 @@ class DesignPerAccountTest {
         paths.responses["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
         val vm = vm()
         vm.loadDesign()
-        assertTrue("Antwort", paths.requests.isNotEmpty())
+        assertTrue("Response", paths.requests.isNotEmpty())
         assertNull(vm.accountState.value.design)
     }
 

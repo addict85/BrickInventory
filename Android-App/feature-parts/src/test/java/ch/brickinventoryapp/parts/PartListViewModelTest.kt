@@ -124,7 +124,7 @@ class PartListViewModelTest {
         val vm = vm(source)
         vm.createNow("21318")
         advanceUntilIdle()
-        assertTrue("Während des Abrufs lädt die Liste", vm.uiState.value.generating.loading)
+        assertTrue("During the fetch the list loads", vm.uiState.value.generating.loading)
         assertEquals(R.string.partslist_loading_set, (vm.uiState.value.status as Message.Resource).id)
         source.brake!!.complete(Unit)
         advanceUntilIdle()
@@ -132,7 +132,7 @@ class PartListViewModelTest {
         assertFalse(z.generating.loading)
         assertTrue(z.generated)
         assertEquals(listOf("3001"), z.parts.map { it.partNumber })
-        assertEquals("Der Name aus dem Katalog steht am Set", listOf("Name 21318-1"), z.sets.map { it.name })
+        assertEquals("The name from the catalog stands at the set", listOf("Name 21318-1"), z.sets.map { it.name })
         assertEquals(listOf("21318-1"), source.asked)
     }
 
@@ -167,7 +167,7 @@ class PartListViewModelTest {
         advanceUntilIdle()
         val after = vm(wanted = wanted)
         assertEquals(listOf("10294-1"), after.uiState.value.sets.map { it.setNumber })
-        assertTrue("Tausend Zeilen gehören nicht ins Bundle", after.uiState.value.parts.isEmpty())
+        assertTrue("A thousand rows do not belong in the bundle", after.uiState.value.parts.isEmpty())
         assertFalse(after.uiState.value.generated)
     }
 
@@ -201,7 +201,7 @@ class PartListViewModelTest {
         advanceUntilIdle()
         assertEquals(file, vm.uiState.value.pdfFile)
         val job = export.jobs.single()
-        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), job.sets.map { it.number })
+        assertEquals("The job names the set", listOf("10294-1"), job.sets.map { it.number })
         assertEquals(listOf("3001" to 2), job.rows.map { it.number to it.quantity })
         vm.pdfOpened()
         assertNull(vm.uiState.value.pdfFile)
@@ -272,8 +272,8 @@ class PartListViewModelTest {
         assertFalse(vm.uiState.value.generated)
         vm.undoRemove(r)
         val z = vm.uiState.value
-        assertEquals("Wieder an seinem Platz", listOf("10294-1", "21318-1"), z.sets.map { it.setNumber })
-        assertTrue("Die Liste gilt wieder, nichts hat sich geändert", z.generated)
+        assertEquals("Back in its place", listOf("10294-1", "21318-1"), z.sets.map { it.setNumber })
+        assertTrue("The list applies again, nothing has changed", z.generated)
         assertNull(z.removed)
     }
 

@@ -86,7 +86,7 @@ class OldServerPinTest {
         launch(LEAF_KEY, listOf(LEAF, INTER))
         val pin = spkiFingerprint(cert(CADDY_ROOT))
         assertEquals(RedemptionOutcome.GIVE_UP, redeemer.redeem(oldServer(), "altes-token", pin))
-        assertEquals("Keine Anfrage darf den Server erreichen", 0, server.requestCount)
+        assertEquals("No request may reach the server", 0, server.requestCount)
     }
 
     @Test

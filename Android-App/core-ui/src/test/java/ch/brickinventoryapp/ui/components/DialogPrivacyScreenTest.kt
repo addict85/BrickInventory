@@ -40,7 +40,7 @@ class DialogPrivacyScreenTest {
     private fun guarded(window: Window?) =
         (checkNotNull(window).attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
-    private fun dialogWindow() = checkNotNull(ShadowDialog.getLatestDialog()) { "Kein Dialog offen" }.window
+    private fun dialogWindow() = checkNotNull(ShadowDialog.getLatestDialog()) { "no dialog open" }.window
 
     @Test
     fun `a revealed password in the dialog is protected immediately and free again afterwards`() {
@@ -53,15 +53,15 @@ class DialogPrivacyScreenTest {
         // Tapping rebuilds the dialog; after that only the eye changes its content.
         compose.onNode(hasSetTextAction()).performTextInput("geheim-123")
         compose.waitForIdle()
-        assertFalse("Verdeckt braucht der Dialog keinen Schutz", guarded(dialogWindow()))
+        assertFalse("covered, the dialog needs no protection", guarded(dialogWindow()))
 
         compose.onNodeWithContentDescription(text(R.string.cd_password_show)).performClick()
         compose.waitForIdle()
-        assertTrue("Das aufgedeckte Passwort stand ungeschützt im Dialogfenster", guarded(dialogWindow()))
+        assertTrue("the revealed password stood unprotected in the dialog window", guarded(dialogWindow()))
 
         compose.onNodeWithContentDescription(text(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertFalse("Wieder verdeckt bleibt der Dialog geschützt", guarded(dialogWindow()))
-        assertFalse("Die Seite darunter bleibt geschützt", guarded(compose.activity.window))
+        assertFalse("covered again, the dialog stays protected", guarded(dialogWindow()))
+        assertFalse("the page below stays protected", guarded(compose.activity.window))
     }
 }

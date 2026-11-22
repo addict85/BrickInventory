@@ -121,19 +121,19 @@ class CsvImportViewModelTest {
             // A second follower (say a second ViewModel) opens no second connection.
             val second = backgroundScope.launch { coordinator.sequence(t.session.state.map { it.isLoggedIn }) }
             runCurrent()
-            assertEquals("Mehrfach gestartet: eine Verbindung", 1, stream.connections.size)
+            assertEquals("started several times: one connection", 1, stream.connections.size)
             second.cancel()
-            assertEquals("Der Dienst startet beim Anlaufen, nicht je Zeile", 1, service.starts)
+            assertEquals("the service starts when starting up, not per row", 1, service.starts)
             assertEquals(3, vm.csvImportState.value.done)
             assertFalse(vm.csvImportState.value.jobRun.running)
 
             advanceTimeBy(4_999)
-            assertEquals("Der Balken steht noch", 3, vm.csvImportState.value.done)
+            assertEquals("the bar is still shown", 3, vm.csvImportState.value.done)
             assertEquals(0, service.stops)
             advanceTimeBy(2)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals(1, service.stops)
-            assertTrue("Nach dem Import holt die Ablage den Bestand", fake.callsOf("getSets") > before)
+            assertTrue("after the import the store fetches the stock", fake.callsOf("getSets") > before)
         }
     }
 
@@ -145,13 +145,13 @@ class CsvImportViewModelTest {
         withVm(stream, service) { vm ->
             fake.responses["getCsvImportStatus"] = CsvImportStatus(success = true, status = RunStatus.RUNNING, total = 5, done = 2)
             runCurrent()
-            assertEquals("Nach dem Abriss eine Abfrage", 1, fake.callsOf("getCsvImportStatus"))
-            assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
+            assertEquals("one query after the drop", 1, fake.callsOf("getCsvImportStatus"))
+            assertEquals("the query fills the bar", 2, vm.csvImportState.value.done)
             assertTrue(vm.csvImportState.value.jobRun.running)
             assertEquals(1, service.starts)
 
             advanceTimeBy(60_000)
-            assertEquals("5 s, dann 10 s, dann 20 s", listOf(0L, 5_000L, 15_000L, 35_000L), stream.connections)
+            assertEquals("5 s, then 10 s, then 20 s", listOf(0L, 5_000L, 15_000L, 35_000L), stream.connections)
         }
     }
 
@@ -168,9 +168,9 @@ class CsvImportViewModelTest {
             advanceUntilIdle()
             assertFalse(vm.csvImportState.value.jobRun.running)
             assertEquals(0, vm.csvImportState.value.done)
-            assertEquals("Der Dienst läuft nicht für das abgemeldete Konto weiter", 1, service.stops)
+            assertEquals("the service does not keep running for the signed-out account", 1, service.stops)
             advanceTimeBy(120_000)
-            assertEquals("Abgemeldet verbindet niemand neu", before, stream.connections.size)
+            assertEquals("signed out, nobody reconnects", before, stream.connections.size)
         }
     }
 
@@ -183,7 +183,7 @@ class CsvImportViewModelTest {
             NumbersTexts, t.messages, t.session)
         try {
             advanceTimeBy(60_000)
-            assertEquals("Abgemeldet öffnet das ViewModel keinen Strom", 0, stream.connections.size)
+            assertEquals("signed out, the ViewModel opens no stream", 0, stream.connections.size)
             t.session.loggedIn(admin = false)
             runCurrent()
             assertEquals(1, stream.connections.size)
@@ -198,7 +198,7 @@ class CsvImportViewModelTest {
         withVm(Stream(), Service()) { vm ->
             vm.cancelCsvImport()
             advanceUntilIdle()
-            assertEquals("Scheitert der Abbruch, sagt es die Meldung", "fehler", t.messages.text)
+            assertEquals("if cancelling fails, the message says so", "fehler", t.messages.text)
             t.messages.acknowledge()
             fake.responses["cancelCsvImport"] = GenericAdminResponse(success = true)
             vm.cancelCsvImport()

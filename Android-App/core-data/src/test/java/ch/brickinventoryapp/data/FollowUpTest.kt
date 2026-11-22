@@ -82,9 +82,9 @@ class FollowUpTest {
     @Test
     fun `quantity, storage location and owner of a set are in the store after the response`() = runBlocking {
         sets.setQuantity("10001-1", 5)
-        assertEquals("die Zahl des Servers, nicht die gewünschte", 3, set().quantity)
+        assertEquals("the server's number, not the requested one", 3, set().quantity)
         sets.setSetStorage("10001-1", "kiste 2")
-        assertEquals("der Ort, wie der Server ihn schreibt", "Kiste 2", set().storage)
+        assertEquals("the location as the server writes it", "Kiste 2", set().storage)
         sets.moveSet("10001-1", fromUserId = 1, toUserId = 2)
         assertEquals(listOf(2), set().owners.map { it.id })
         sets.deleteSet("10001-1")
@@ -96,7 +96,7 @@ class FollowUpTest {
         wantedList.moveWantedItem("20001-1", Condition.NEW, ofId = 1, toId = 2)
         wantedList.adoptWantedItem("20002-1", Condition.NEW, quantity = 2, ownerUserId = 1)
         assertEquals(listOf("20001-1|2"), store.read(Slots.WANTED_LIST)!!.list.map { "${it.setNumber}|${it.userId}" })
-        assertEquals("übernommen in die Galerie", listOf("20002-1" to 2, "10001-1" to 1),
+        assertEquals("taken over into the gallery", listOf("20002-1" to 2, "10001-1" to 1),
             store.read(Slots.SETS)!!.list.map { it.setNumber to it.quantity })
     }
 
@@ -128,7 +128,7 @@ class FollowUpTest {
             null
         }
         sets.setQuantity("10001-1", 5)
-        assertEquals("die Ablage des neuen Kontos", 1, set().quantity)
+        assertEquals("the new account's store", 1, set().quantity)
     }
 
     @Test

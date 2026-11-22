@@ -60,10 +60,10 @@ class VoucherPrivacyScreenDisplayTest {
             }
         }
         compose.waitForIdle()
-        assertTrue("Nummer und PIN stünden in Bildschirmfotos", guarded())
+        assertTrue("number and PIN would show in screenshots", guarded())
         visible.value = false
         compose.waitForIdle()
-        assertFalse("Nach dem Verlassen bleibt die App geschützt", guarded())
+        assertFalse("after leaving the app stays protected", guarded())
     }
 
     @Test
@@ -71,9 +71,9 @@ class VoucherPrivacyScreenDisplayTest {
         val address = mutableStateOf(voucherPdfAddress("https://brick.example/", 7))
         compose.setContent { VoucherPdfProtection(address.value) }
         compose.waitForIdle()
-        assertTrue("Ein Gutschein-PDF stünde in Bildschirmfotos", guarded())
+        assertTrue("a voucher PDF would show in screenshots", guarded())
         address.value = "https://brick.example/api/v1/instructions/42/file"
         compose.waitForIdle()
-        assertFalse("Eine Bauanleitung braucht keinen Schutz", guarded())
+        assertFalse("a building manual needs no protection", guarded())
     }
 }

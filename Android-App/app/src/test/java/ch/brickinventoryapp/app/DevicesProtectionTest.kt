@@ -100,9 +100,9 @@ class DevicesProtectionTest {
     fun `a partially obscured window triggers no click in the protected area`() {
         show(mutableStateOf(true))
         tap(MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED)
-        assertEquals("Der Tipp unter einem fremden Fenster kam an", 0, clicks)
+        assertEquals("the tap under a foreign window got through", 0, clicks)
         tap(0)
-        assertEquals("Ein gewöhnlicher Tipp kam nicht an", 1, clicks)
+        assertEquals("an ordinary tap did not get through", 1, clicks)
     }
 
     @Test
@@ -111,7 +111,7 @@ class DevicesProtectionTest {
         show(guarded)
         guarded.value = false
         compose.waitForIdle()
-        assertSame("Der Filter blieb am Fenster", compose.activity, compose.activity.window.callback)
+        assertSame("the filter stayed on the window", compose.activity, compose.activity.window.callback)
         tap(MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED)
         assertEquals(1, clicks)
     }
@@ -140,7 +140,7 @@ class DevicesProtectionTest {
         for ((name, expected) in listOf("sichtschutz" to true, "keine" to false, "schrittsperre" to true, "vorschau" to false)) {
             compose.runOnUiThread { page.value = name }
             compose.waitForIdle()
-            assertEquals("$name: Schutz vor Überlagerung", expected, window.filterTouchesWhenObscured)
+            assertEquals("$name: protection against overlays", expected, window.filterTouchesWhenObscured)
         }
     }
 
@@ -157,7 +157,7 @@ class DevicesProtectionTest {
         compose.waitForIdle()
         compose.onNodeWithText("Verwalteraktion").assertDoesNotExist()
         val next = confirm
-        assertTrue("Beim Öffnen wird nicht gefragt", next != null)
+        assertTrue("opening does not ask", next != null)
         compose.runOnUiThread { next?.invoke() }
         compose.waitForIdle()
         compose.onNodeWithText("Verwalteraktion").assertExists()
@@ -190,14 +190,14 @@ class DevicesProtectionTest {
             prefs.saveServerUrl("https://alt.example/brick")
             cancelled = 0
             prefs.saveServerUrl("https://ALT.example:443/brick/")
-            assertEquals("Derselbe Server bricht nichts ab", 0, cancelled)
+            assertEquals("the same server cancels nothing", 0, cancelled)
             prefs.saveServerUrl("https://alt.example/andere")
-            assertEquals("Ein anderer Pfad ist eine andere Anwendung", 1, cancelled)
+            assertEquals("another path is another application", 1, cancelled)
             prefs.saveServerUrl("https://neu.example")
             assertEquals(2, cancelled)
         }
         device.setUserCa(true)
-        assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, userCa)
+        assertEquals("the TLS context is rebuilt after switching", 1, userCa)
     }
 
     /** The token holds only the origin; the previous address contributes the path. */
@@ -208,7 +208,7 @@ class DevicesProtectionTest {
             prefs.saveServerUrl("https://geteilt.example/brick")
             prefs.saveAuthToken("token-brick")
             prefs.saveServerUrl("https://geteilt.example/brick/")
-            assertEquals("Derselbe Server behält den Token", "token-brick", prefs.tokenNow())
+            assertEquals("the same server keeps the token", "token-brick", prefs.tokenNow())
             prefs.saveServerUrl("https://geteilt.example/andere-app")
             assertEquals("", prefs.tokenNow())
         }
@@ -217,7 +217,7 @@ class DevicesProtectionTest {
     @Test
     fun `a new installation hides the preview until the user turns it off`() {
         val (_, prefs) = stores()
-        assertTrue("Ohne Wahl zeigt die App-Übersicht alles", prefs.hidePreview())
+        assertTrue("without a choice the app overview shows everything", prefs.hidePreview())
         prefs.applyPreviewHidden(false)
         assertFalse(prefs.hidePreview())
     }

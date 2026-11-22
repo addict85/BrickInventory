@@ -81,7 +81,7 @@ class PriceHistorySerializationTest {
         val chart = json.decodeFromString<PriceHistoryResponse>(payload).chart
         assertEquals(listOf("2026-01-01", "2026-02-01"), chart.x)
         val used = chart.values.first { it.name == "U" }
-        assertEquals("der Schlüssel heisst camelCase, nicht first_real_index",
+        assertEquals("the key is camelCase, not first_real_index",
             1, used.firstRealIndex)
         assertEquals(0.0, used.values[0].y, 0.0001)
     }

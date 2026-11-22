@@ -32,13 +32,13 @@ class AxesRoundTest {
         for (series in listOf(doubleArrayOf(787.0, 801.0, 816.0), doubleArrayOf(41.9, 44.5, 39.0), doubleArrayOf(1712.4, 1650.0, 1801.0))) {
             val b = PriceChartMath.bounds(PriceChartMath.buildLines(history(*series)))!!
             val ticks = PriceChartMath.yTicks(b)
-            assertTrue("Alle Werte im Bereich: $ticks", ticks.first() <= series.min() && ticks.last() >= series.max())
+            assertTrue("all values in range: $ticks", ticks.first() <= series.min() && ticks.last() >= series.max())
             // Round means: a multiple of the power of ten below a quarter of the span
             // (span 60 → tens, span 8 → ones).
             val power = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10((ticks.last() - ticks.first()) / 4)))
             for (t in ticks) {
                 val rest = Math.IEEEremainder(t, power)
-                assertTrue("$t ist kein Vielfaches von $power ($ticks)", kotlin.math.abs(rest) < 1e-6)
+                assertTrue("$t is not a multiple of $power ($ticks)", kotlin.math.abs(rest) < 1e-6)
             }
         }
     }

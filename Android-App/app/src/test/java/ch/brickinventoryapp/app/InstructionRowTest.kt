@@ -30,8 +30,8 @@ class InstructionRowTest {
      */
     private fun rows(): List<String> {
         assert(source.contains("fun LazyListScope.setDetailInstructionsSection")) {
-            "In dieser Datei steht der Anleitungs-Abschnitt nicht (mehr) — dann " +
-                "prueft hier nichts etwas, und zwar lautlos."
+            "The manual section is not (any more) in this file — then " +
+                "nothing here checks anything, and silently."
         }
         return source.lines()
     }
@@ -71,7 +71,7 @@ class InstructionRowTest {
         val z = rows()
         val i = z.indexOfFirst { it.contains(hits) }
         assert(i >= 0) {
-            "$hits steht nicht mehr in der Datei — diese Pruefung anpassen."
+            "$hits is no longer in the file — adapt this check."
         }
         return z.subList(maxOf(0, i - howMany), i).joinToString("\n")
     }
@@ -82,8 +82,8 @@ class InstructionRowTest {
         // growing explanatory paragraph has already broken a check four times in this series
         // that cut a fixed character window.
         assert(Regex("""clickable\([^)]*openInstruction""").containsMatchIn(source)) {
-            "Am `clickable` der Anleitungszeile haengt nicht `oeffneAnleitung`. " +
-                "Dann ist wieder nur ein Teil der Zeile antippbar — genau Marcos Befund."
+            "`oeffneAnleitung` does not hang on the `clickable` of the manual row. " +
+                "Then again only part of the row is tappable — exactly Marco's finding."
         }
     }
 
@@ -99,9 +99,9 @@ class InstructionRowTest {
             .filter { "IconButton(" in z[it] }
             .filter { i -> block(i).let { "onOpenPdf(" in it || "openInstruction" in it } }
         assert(guilty.isEmpty()) {
-            "Das Oeffnen der Anleitung haengt wieder an einem IconButton " +
-                "(Zeile " + guilty.joinToString { (it + 1).toString() } + "). " +
-                "Dann ist nur das Symbol antippbar und nicht die Zeile — genau " +
+            "Opening the manual hangs on an IconButton again " +
+                "(line " + guilty.joinToString { (it + 1).toString() } + "). " +
+                "Then only the icon is tappable and not the row — exactly " +
                 "Marcos Befund."
         }
     }
@@ -112,8 +112,8 @@ class InstructionRowTest {
         // that something opens here — tap areas are
         // invisible.
         assert(source.contains("Icons.AutoMirrored.Filled.OpenInNew")) {
-            "Das Oeffnen-Symbol ist aus der Anleitungszeile verschwunden. Dann " +
-                "ist nicht mehr zu sehen, dass die Zeile etwas tut."
+            "The open icon has disappeared from the manual row. Then " +
+                "it is no longer visible that the row does something."
         }
     }
 
@@ -124,7 +124,7 @@ class InstructionRowTest {
         // on which of two nested tap areas gets a
         // tap — and a mistap hurts here.
         assert(before("onInstructionDelete(id)", 3).contains("IconButton(")) {
-            "Das Loeschen einer Anleitung haengt an keinem eigenen Knopf mehr."
+            "Deleting a manual no longer hangs on a button of its own."
         }
     }
 }

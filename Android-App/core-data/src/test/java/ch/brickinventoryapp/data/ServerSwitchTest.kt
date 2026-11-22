@@ -110,7 +110,7 @@ class ServerSwitchTest {
         val pool = Executors.newSingleThreadExecutor()
         try {
             val f = pool.submit<Int> { c.newCall(request).execute().use { it.code } }
-            assertTrue("A hat die Anfrage nicht erhalten", arrived.await(5, TimeUnit.SECONDS))
+            assertTrue("A did not receive the request", arrived.await(5, TimeUnit.SECONDS))
             switch()
             approval.countDown()
             return f.get(10, TimeUnit.SECONDS)
@@ -125,8 +125,8 @@ class ServerSwitchTest {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
         assertEquals(401, status)
-        assertFalse("A erhielt den Token von B: $anA", anA.any { it?.contains("TOKEN-VON-B") == true })
-        assertEquals("Ein 401 ohne Token meldet nicht ab", 0, expired.get())
+        assertFalse("A received B's token: $anA", anA.any { it?.contains("TOKEN-VON-B") == true })
+        assertEquals("A 401 without a token does not sign out", 0, expired.get())
     }
 
     @Test
@@ -156,7 +156,7 @@ class ServerSwitchTest {
         duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/sets")).build()) {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
-        assertEquals("A hat die Sitzung bei B beendet", 0, expired.get())
+        assertEquals("A ended the session at B", 0, expired.get())
 
         // Counterpart without switch: the same 401 signs out, a 403 only_admins pulls rights along.
         token = "TOKEN-VON-B"
@@ -189,6 +189,6 @@ class ServerSwitchTest {
         }
         assertEquals(listOf(null, "Bearer TOKEN-VON-A"), anA.toList())
         assertEquals(401, status)
-        assertEquals("Mit Token abgewiesen ist der 401 echt", 1, expired.get())
+        assertEquals("Rejected with a token, the 401 is real", 1, expired.get())
     }
 }

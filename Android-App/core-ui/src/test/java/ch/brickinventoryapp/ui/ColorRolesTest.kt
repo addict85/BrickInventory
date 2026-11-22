@@ -74,7 +74,7 @@ class ColorRolesTest {
                 if (k < 4.5) error += "$d.$name %.2f".format(k)
             }
         }
-        assertTrue("Gewinnfarbe unter 4,5:1: $error", error.isEmpty())
+        assertTrue("profit color below 4.5:1: $error", error.isEmpty())
     }
 
     @Test
@@ -88,7 +88,7 @@ class ColorRolesTest {
                 if (role(s) == role(reason)) error += "$d.$name"
             }
         }
-        assertTrue("Aus der Material-Grundpalette geerbt: $error", error.isEmpty())
+        assertTrue("inherited from the Material base palette: $error", error.isEmpty())
     }
 
     @Test
@@ -109,7 +109,7 @@ class ColorRolesTest {
             val quiet = Contrast.ratio(s.outlineVariant.toArgb(), s.surface.toArgb())
             if (quiet >= Contrast.ratio(frame, s.surface.toArgb())) error += "$d.outlineVariant"
         }
-        assertTrue("Zu schwache Rahmen: $error", error.isEmpty())
+        assertTrue("frames too weak: $error", error.isEmpty())
     }
 
     /**
@@ -124,7 +124,7 @@ class ColorRolesTest {
             val k = Contrast.ratio(skeletonTone(f.schema).toArgb(), f.schema.background.toArgb())
             if (k < SKELETON_CONTRAST) error += "${f.name} %.2f".format(k)
         }
-        assertTrue("Ladekacheln zu blass: $error", error.isEmpty())
+        assertTrue("loading tiles too pale: $error", error.isEmpty())
     }
 
     private companion object {
@@ -142,7 +142,7 @@ class ColorRolesTest {
             // In the light every step gets darker, in the dark lighter.
             val correct = if (f.dark) levels.zipWithNext().all { (a, b) -> b > a }
                           else levels.zipWithNext().all { (a, b) -> b < a }
-            assertTrue("$d: Helligkeit der Stufen $levels", correct)
+            assertTrue("$d: brightness of the levels $levels", correct)
         }
     }
 
@@ -156,8 +156,8 @@ class ColorRolesTest {
     fun `Workbench and Classic dark differ in surface and accent`() {
         val workbench = colorScheme(Design.WORKBENCH)
         val classic = colorScheme(Design.CLASSIC, dark = true)
-        assertTrue("Werkbank-Fläche nicht warm: ${workbench.surface}", workbench.surface.red > workbench.surface.blue)
-        assertTrue("Klassisch dunkel nicht kühl: ${classic.surface}", classic.surface.blue > classic.surface.red)
-        assertTrue("Werkbank-Zweitfarbe nicht warm: ${workbench.secondary}", workbench.secondary.red > workbench.secondary.blue)
+        assertTrue("workbench surface not warm: ${workbench.surface}", workbench.surface.red > workbench.surface.blue)
+        assertTrue("classic dark not cool: ${classic.surface}", classic.surface.blue > classic.surface.red)
+        assertTrue("workbench secondary color not warm: ${workbench.secondary}", workbench.secondary.red > workbench.secondary.blue)
     }
 }

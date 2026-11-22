@@ -62,10 +62,10 @@ class PreviewTapTest {
         fetch(full)
 
         assertEquals(200, code)
-        assertArrayEquals("Der Aufrufer bekommt den Rumpf nicht mehr", image, body)
+        assertArrayEquals("The caller no longer gets the body", image, body)
         assertArrayEquals(image, memory.read(preview))
-        assertNull("Die volle Auflösung landet in der Ablage", memory.read(full))
-        assertNull("Der Abgriff setzt selbst eine bedingte Anfrage", server.takeRequest().getHeader("If-None-Match"))
+        assertNull("The full resolution lands in the store", memory.read(full))
+        assertNull("The tap sets a conditional request itself", server.takeRequest().getHeader("If-None-Match"))
     }
 
     @Test
@@ -101,8 +101,8 @@ class PreviewTapTest {
         fun old() = System.currentTimeMillis() - root.walkTopDown().single { it.isFile }.lastModified()
 
         fetch(preview, tag = true)
-        assertTrue("Vorgewärmt, aber mit frischem Zeitstempel abgelegt", old() > oneTag)
+        assertTrue("Prewarmed, but stored with a fresh timestamp", old() > oneTag)
         fetch(preview)
-        assertFalse("Angesehen, aber weiter als vorgewärmt abgelegt", old() > oneTag)
+        assertFalse("Viewed, but still stored as prewarmed", old() > oneTag)
     }
 }

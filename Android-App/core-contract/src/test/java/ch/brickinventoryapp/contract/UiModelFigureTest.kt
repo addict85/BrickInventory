@@ -50,8 +50,8 @@ class UiModelFigureTest {
         val half = StartupStatus(ready = false, step = "Katalog", progress = 5.0, total = 10).asView()
         assertEquals(0.5f, half.share!!, 0.0001f)
         assertEquals("Katalog", half.step)
-        assertNull("ohne Gesamtzahl gibt es keinen Anteil", StartupStatus(progress = 3.0, total = 0).asView().share)
-        assertEquals("nie über 100 %", 1f, StartupStatus(progress = 12.0, total = 10).asView().share!!, 0f)
+        assertNull("without a total there is no share", StartupStatus(progress = 3.0, total = 0).asView().share)
+        assertEquals("never over 100 %", 1f, StartupStatus(progress = 12.0, total = 10).asView().share!!, 0f)
     }
 
     @Test
@@ -73,10 +73,10 @@ class UiModelFigureTest {
         assertEquals(Money(1_203_333), purchase.purchasePrice)
         assertEquals(Money(2_406_666), purchase.effectivePrice!! * 2)
         assertEquals(Instant.parse("2026-09-03T15:00:32.194Z"), purchase.createdAt)
-        assertNull("kein Preis bleibt kein Preis, nicht 0", Acquisition(id = 1, quantity = 1).asView().purchasePrice)
-        assertEquals("ein blosser Tag ist sein Beginn in UTC", Instant.parse("2026-09-03T00:00:00Z"),
+        assertNull("no price stays no price, not 0", Acquisition(id = 1, quantity = 1).asView().purchasePrice)
+        assertEquals("a bare day is its start in UTC", Instant.parse("2026-09-03T00:00:00Z"),
             Acquisition(id = 1, quantity = 1, createdAt = "2026-09-03").asView().createdAt)
-        assertNull("unlesbar heisst kein Zeitpunkt", Acquisition(id = 1, quantity = 1, createdAt = "gestern").asView().createdAt)
+        assertNull("unreadable means no point in time", Acquisition(id = 1, quantity = 1, createdAt = "gestern").asView().createdAt)
         assertEquals(Origin.MANUAL, Minifig(figNumber = "sw0001", source = "manual").asView().source)
         assertEquals(Origin.SET, Minifig(figNumber = "sw0001", source = "irgendwas").asView().source)
     }
@@ -105,9 +105,9 @@ class UiModelFigureTest {
     @Test
     fun `profile, household and CSV state are prepared for the UI`() {
         assertTrue(Profil(id = 1, username = "m", emailVerified = true).asView().emailConfirmed)
-        assertFalse("false heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
+        assertFalse("false means unconfirmed", Profil(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
         val oldField = HouseholdStatusResponse(linkedTo = KontoName(id = 7, username = "haupt")).asView()
-        assertEquals("ohne parents gilt linked_to", listOf(AccountView(7, "haupt")), oldField.parentAccounts)
+        assertEquals("without parents linked_to applies", listOf(AccountView(7, "haupt")), oldField.parentAccounts)
         val state = CsvImportStatus(status = RunStatus.RUNNING, current = "75192-1").asView()
         assertEquals(listOf(0, 0, 0, 0, 0), listOf(state.total, state.done, state.ok, state.warn, state.err))
         assertEquals(RunStatus.RUNNING, state.status)
@@ -129,15 +129,15 @@ class UiModelFigureTest {
     @Test
     fun `every mapping carries every field of the same name unchanged`() {
         val figures = SampleFiller.figures().filter { it.parameterTypes[0].simpleName !in OWN_RULES }
-        assertTrue("Nur ${figures.size} Abbildungen gefunden — Suche veraltet?", figures.size >= 50)
+        assertTrue("Only ${figures.size} mappings found — search outdated?", figures.size >= 50)
         val without = sortedSetOf<String>()
         var compared = 0
         for (m in figures) {
             val dto = SampleFiller.fill(m.parameterTypes[0])
             compared += SampleFiller.compare(dto, m.invoke(null, dto), m.parameterTypes[0].simpleName, without)
         }
-        assertTrue("nur $compared Felder verglichen", compared >= 300)
-        assertEquals("Getter ohne Gegenstück im Server-Modell", WITHOUT_COUNTERPART, without)
+        assertTrue("only $compared fields compared", compared >= 300)
+        assertEquals("getter without a counterpart in the server model", WITHOUT_COUNTERPART, without)
     }
 
     @Test
@@ -153,7 +153,7 @@ class UiModelFigureTest {
         val withFigure = folder.listFiles().orEmpty()
             .filter { f -> f.name.endsWith(".kt") && Regex("""fun \S+\.asView\(""").containsMatchIn(f.readText()) }
             .map { it.name.removeSuffix(".kt") }.sorted()
-        assertTrue("keine Quelldatei unter ${folder.absolutePath}", withFigure.size >= 5)
+        assertTrue("no source file under ${folder.absolutePath}", withFigure.size >= 5)
         assertEquals(withFigure, SampleFiller.MAPPING_FILES.sorted())
     }
 

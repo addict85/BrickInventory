@@ -77,13 +77,13 @@ class MonitoringViewModelBehaviorTest {
     fun `a 403 only_admins ends the polling, another error does not`() = runTest {
         server.enqueue(response("""{"success":false,"error":"Serverfehler"}""", 500))
         vm.loadJobs()
-        assert(!vm.state.value.accessRevoked) { "Ein 500 ist kein Rechteentzug" }
+        assert(!vm.state.value.accessRevoked) { "a 500 is no withdrawal of rights" }
         server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
         vm.loadJobs()
-        assert(vm.state.value.accessRevoked) { "Nach nur_admins soll die Schleife enden" }
+        assert(vm.state.value.accessRevoked) { "after nur_admins the loop should end" }
         server.enqueue(response("""{"success":true,"jobs":{}}"""))
         vm.loadJobs()
-        assert(vm.state.value.accessRevoked) { "Der Entzug bleibt, bis die Seite verlassen wird" }
+        assert(vm.state.value.accessRevoked) { "the withdrawal stays until the page is left" }
     }
 
     @Test
@@ -93,8 +93,8 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
         server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
         vm.holdCurrent()
-        assert(vm.state.value.accessRevoked) { "Die Schleife endet erst mit dem Entzug" }
-        assert(server.requestCount == 4) { "Zwei Takte zu je zwei Abrufen erwartet, waren ${server.requestCount}" }
+        assert(vm.state.value.accessRevoked) { "the loop only ends with the withdrawal" }
+        assert(server.requestCount == 4) { "two ticks of two fetches each expected, were ${server.requestCount}" }
     }
 
     // ── Die Warteschlange ────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.loadQueue()
-        assert(vm.state.value.queue.dataOrNull()?.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
+        assert(vm.state.value.queue.dataOrNull()?.size == 2) { "precondition: two entries expected" }
 
         // Only ONE answer: on success it is deliberately NOT reloaded — the
         // anticipated state is then already the correct one, and a second
@@ -112,13 +112,13 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":true}"""))
         val ok = vm.removeEntry("75192") is Outcome.Success
 
-        assert(ok) { "Der Server hat zugestimmt, das Ergebnis müsste true sein" }
+        assert(ok) { "the server agreed, the result should be true" }
         assert(server.requestCount == 2) {
-            "Erwartet: Laden + Löschen. Es waren ${server.requestCount} Abrufe — " +
-                "wird bei Erfolg unnötig neu geladen?"
+            "Expected: load + delete. There were ${server.requestCount} fetches — " +
+                "is it reloaded needlessly on success?"
         }
         assert(vm.state.value.queue.dataOrNull()?.map { it.setNumber } == listOf("10294")) {
-            "Nach dem Löschen steht: ${vm.state.value.queue.dataOrNull()?.map { it.setNumber }}"
+            "after deleting it shows: ${vm.state.value.queue.dataOrNull()?.map { it.setNumber }}"
         }
     }
 
@@ -135,10 +135,10 @@ class MonitoringViewModelBehaviorTest {
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         val ok = vm.removeEntry("75192") is Outcome.Success
 
-        assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
+        assert(!ok) { "a 500 must not come back as success" }
         // THIS is the proof: the anticipated state was rolled back.
         assert(vm.state.value.queue.dataOrNull()?.map { it.setNumber } == listOf("75192", "10294")) {
-            "Der Eintrag bleibt verschwunden, obwohl der Server abgelehnt hat: " +
+            "The entry stays gone although the server refused: " +
                 "${vm.state.value.queue.dataOrNull()?.map { it.setNumber }}"
         }
     }
@@ -156,8 +156,8 @@ class MonitoringViewModelBehaviorTest {
         vm.removeEntry("75192")
 
         assert(vm.state.value.queue.dataOrNull()?.map { it.setNumber } == listOf("75192", "42100")) {
-            "Der zwischenzeitlich hinzugekommene Eintrag fehlt — es wurde eine " +
-                "alte Kopie zurückgeschrieben statt neu geladen: " +
+            "The entry added in the meantime is missing — an " +
+                "old copy was written back instead of reloaded: " +
                 "${vm.state.value.queue.dataOrNull()?.map { it.setNumber }}"
         }
     }
@@ -174,7 +174,7 @@ class MonitoringViewModelBehaviorTest {
     fun `the selection shows the default, not the own design`() = runTest {
         server.enqueue(response("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
         vm.loadDesignDefault()
-        assert(vm.state.value.defaultDesign == Design.STUD) { "Steht: ${vm.state.value.defaultDesign}" }
+        assert(vm.state.value.defaultDesign == Design.STUD) { "shows: ${vm.state.value.defaultDesign}" }
         assert(server.takeRequest().path == "/api/v1/settings/theme")
     }
 
@@ -184,10 +184,10 @@ class MonitoringViewModelBehaviorTest {
         vm.loadDesignDefault()
         server.enqueue(response("""{"success":true}"""))
         assert(vm.setDesign(Design.BRICK) is Outcome.Success)
-        assert(vm.state.value.defaultDesign == Design.BRICK) { "Steht: ${vm.state.value.defaultDesign}" }
+        assert(vm.state.value.defaultDesign == Design.BRICK) { "shows: ${vm.state.value.defaultDesign}" }
         server.enqueue(response("""{"error":"kaputt"}""", 500))
         assert(vm.setDesign(Design.GLOSSY) is Outcome.Failure)
-        assert(vm.state.value.defaultDesign == Design.BRICK) { "Steht: ${vm.state.value.defaultDesign}" }
+        assert(vm.state.value.defaultDesign == Design.BRICK) { "shows: ${vm.state.value.defaultDesign}" }
     }
 
     // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────
@@ -197,7 +197,7 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":true}"""))
         val ok = vm.setDefaultState(Condition.USED) is Outcome.Success
         assert(ok)
-        assert(vm.state.value.defaultState == Condition.USED) { "Steht: ${vm.state.value.defaultState}" }
+        assert(vm.state.value.defaultState == Condition.USED) { "shows: ${vm.state.value.defaultState}" }
     }
 
     @Test
@@ -206,10 +206,10 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"error":"kaputt"}""", 500))
         val ok = vm.setDefaultState(Condition.USED) is Outcome.Success
 
-        assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
+        assert(!ok) { "a 500 must not come back as success" }
         assert(vm.state.value.defaultState == before) {
-            "Die Oberfläche behauptet dauerhaft '${vm.state.value.defaultState}', " +
-                "obwohl nie etwas gespeichert wurde"
+            "The UI permanently claims '${vm.state.value.defaultState}', " +
+                "although nothing was ever saved"
         }
     }
 
@@ -219,17 +219,17 @@ class MonitoringViewModelBehaviorTest {
     fun `an error when fetching jobs does NOT delete the jobs already shown`() = runTest {
         server.enqueue(response("""{"success":true,"jobs":{"priceJob":{"status":"idle","label":"Preise"}}}"""))
         vm.loadJobs()
-        assert(vm.state.value.jobs.keys == setOf("priceJob")) { "Vorbedingung: ein Job erwartet" }
+        assert(vm.state.value.jobs.keys == setOf("priceJob")) { "precondition: one job expected" }
 
         server.enqueue(response("""{"error":"kaputt"}""", 500))
         vm.loadJobs()
 
         assert(vm.state.value.jobs.keys == setOf("priceJob")) {
-            "Ein einzelner fehlgeschlagener Abruf hat die Anzeige geleert — die " +
-                "Seite fragt alle fünf Sekunden, das flackerte bei jedem Aussetzer"
+            "A single failed fetch emptied the display — the " +
+                "page asks every five seconds, that flickered on every dropout"
         }
         assert(!vm.state.value.updated) {
-            "Der Ladekringel bleibt nach einem Fehler stehen"
+            "the spinner stays after an error"
         }
     }
 
@@ -243,12 +243,12 @@ class MonitoringViewModelBehaviorTest {
         vm.loadCacheAndLimits()
 
         val s = vm.state.value
-        assert(s.cacheStats?.prices == 7) { "Cache-Zahlen fehlen: ${s.cacheStats}" }
-        assert(s.apiLimits?.brickset == 300) { "Grenzwerte fehlen: ${s.apiLimits}" }
-        assert(s.cacheTtl == "48") { "Cache-Dauer steht auf ${s.cacheTtl}" }
-        assert(s.defaultState == Condition.USED) { "Vorgabe-Zustand steht auf ${s.defaultState}" }
+        assert(s.cacheStats?.prices == 7) { "cache figures missing: ${s.cacheStats}" }
+        assert(s.apiLimits?.brickset == 300) { "limits missing: ${s.apiLimits}" }
+        assert(s.cacheTtl == "48") { "cache duration shows ${s.cacheTtl}" }
+        assert(s.defaultState == Condition.USED) { "default state shows ${s.defaultState}" }
         assert(server.requestCount == 4) {
-            "Erwartet waren vier Abrufe, es waren ${server.requestCount}"
+            "four fetches were expected, there were ${server.requestCount}"
         }
     }
 
@@ -262,9 +262,9 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":true,"logs":[{"id":1,"level":"warn","message":"Probe","logged_at":"2026-10-27T10:00:00Z"}]}"""))
         vm.loadLog(30)
         val v = vm.managementState.value
-        assert(v.log.size == 1 && v.log[0].message == "Probe") { "Protokoll: ${v.log}" }
+        assert(v.log.size == 1 && v.log[0].message == "Probe") { "log: ${v.log}" }
         assert(v.logMinutes == 30 && !v.fetch.loading)
-        assert(server.takeRequest().path?.contains("30") == true) { "Der Zeitraum ging nicht mit" }
+        assert(server.takeRequest().path?.contains("30") == true) { "the period did not go along" }
     }
 
     @Test
@@ -272,7 +272,7 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"error":"kaputt"}""", 500))
         vm.loadLog(15)
         val v = vm.managementState.value
-        assert(!v.fetch.loading) { "Der Kreisel bleibt nach einem Fehler stehen" }
-        assert(v.fetch.errorMessage != null) { "Der Fehler wird nicht gezeigt" }
+        assert(!v.fetch.loading) { "the spinner stays after an error" }
+        assert(v.fetch.errorMessage != null) { "the error is not shown" }
     }
 }

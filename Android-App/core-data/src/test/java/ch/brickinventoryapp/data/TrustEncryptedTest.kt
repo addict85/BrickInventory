@@ -75,27 +75,27 @@ class TrustEncryptedTest {
         val g = start()
         g.rememberPin(host, fp)
         g.setUserCa(true)
-        assertEquals("Pin und Schalter liegen nicht im Klartext", emptyList<String>(), plaintextOnDisk())
+        assertEquals("Pin and switch are not in plaintext", emptyList<String>(), plaintextOnDisk())
         val newValue = start()
         assertEquals(fp, newValue.pin(host))
         assertTrue(newValue.userCaAllowed())
         newValue.setUserCa(false)
-        assertFalse("Aus bleibt aus", start().userCaAllowed())
+        assertFalse("Off stays off", start().userCaAllowed())
     }
 
     @Test
     fun `a changed value does not count, not even with a foreign key`() {
         start().apply { rememberPin(host, fp); setUserCa(true) }
-        assertNull("Fremder Schlüssel: kein Pin", start(testTrustCipher(8)).pin(host))
-        assertFalse("Fremder Schlüssel: Schalter aus", start(testTrustCipher(8)).userCaAllowed())
+        assertNull("Foreign key: no pin", start(testTrustCipher(8)).pin(host))
+        assertFalse("Foreign key: switch off", start(testTrustCipher(8)).userCaAllowed())
         val entry = start().pinEntry(host)!!
         mirror.edit(commit = true) {
             putString(DevicesStore.USER_CA_SECRET, flip(mirror.getString(DevicesStore.USER_CA_SECRET, null)!!))
             putString(entry, "kein-base64-%%%")
         }
         val g = start()
-        assertFalse("ein veraenderter Wert gilt nicht als „an“", g.userCaAllowed())
-        assertNull("ein unlesbarer Pin ist kein Pin — der Nutzer bestätigt neu", g.pin(host))
+        assertFalse("a changed value does not count as „on“", g.userCaAllowed())
+        assertNull("an unreadable pin is no pin — the user confirms anew", g.pin(host))
     }
 
     @Test
@@ -108,8 +108,8 @@ class TrustEncryptedTest {
             putString(DevicesStore.USER_CA_SECRET, secret)
         }
         val g = start()
-        assertNull("Der Pin eines anderen Servers gilt nicht für diesen", g.pin(host))
-        assertFalse("Ein Pin-Geheimtext schaltet die Nutzer-CAs nicht ein", g.userCaAllowed())
+        assertNull("Another server's pin does not count for this one", g.pin(host))
+        assertFalse("A pin ciphertext does not switch on the user CAs", g.userCaAllowed())
         assertEquals(fp, g.pin(other))
     }
 
@@ -121,8 +121,8 @@ class TrustEncryptedTest {
             putString(DevicesStore.PIN_PREFIX + host, fp)
         }
         val g = start()
-        assertEquals("Der alte Pin gilt weiter", fp, g.pin(host))
-        assertTrue("Der alte Schalter gilt weiter", g.userCaAllowed())
+        assertEquals("The old pin still applies", fp, g.pin(host))
+        assertTrue("The old switch still applies", g.userCaAllowed())
         assertEquals("plaintext is taken over once and deleted afterwards", emptyList<String>(), plaintextOnDisk())
         assertEquals(fp, start().pin(host))
     }
@@ -135,7 +135,7 @@ class TrustEncryptedTest {
             putString(DevicesStore.PIN_PREFIX + "boese.example.org:443", fp)
         }
         val g = start()
-        assertFalse("spaeter hingelegter Klartext gilt nicht", g.userCaAllowed())
+        assertFalse("plaintext put there later does not count", g.userCaAllowed())
         assertNull(g.pin("boese.example.org:443"))
         assertEquals(fp, g.pin(host))
         assertEquals(emptyList<String>(), plaintextOnDisk())
@@ -149,23 +149,23 @@ class TrustEncryptedTest {
             putBoolean(DevicesStore.USER_CA, true)
         }
         val g = start(broken)
-        assertFalse("Nicht übernommener Klartext gilt nicht", g.userCaAllowed())
+        assertFalse("Plaintext not taken over does not count", g.userCaAllowed())
         g.setUserCa(true)
-        assertFalse("Ein unverschlüsselbares „an“ wird nicht abgelegt", g.userCaAllowed())
+        assertFalse("An „on“ that cannot be encrypted is not stored", g.userCaAllowed())
         g.rememberPin(host, fp)
-        assertEquals("Bestätigt gilt der Pin bis zum Prozessende", fp, g.pin(host))
-        assertEquals("ohne Schluessel bleibt nichts im Klartext auf der Platte",
+        assertEquals("Confirmed, the pin applies until the process ends", fp, g.pin(host))
+        assertEquals("without a key nothing stays on disk in plaintext",
             listOf("${DevicesStore.USER_CA}=true"), plaintextOnDisk())
-        assertTrue("Mit Schlüssel wird der liegengebliebene Klartext übernommen", start().userCaAllowed())
-        assertNull("Der ungesicherte Pin überlebt den Neustart nicht", start().pin(host))
+        assertTrue("With a key the leftover plaintext is taken over", start().userCaAllowed())
+        assertNull("The unsecured pin does not survive the restart", start().pin(host))
     }
 
     @Test
     fun `no entry names the server`() {
         start().apply { rememberPin(host, fp); rememberPin("$host#blatt", fp) }
         val names = mirror.all.keys
-        assertTrue("Pins sind abgelegt: $names", names.count { it.startsWith(DevicesStore.PIN_NAME_PREFIX) } == 2)
-        assertFalse("Ein Name verrät den Server: $names", names.any { "example" in it || "443" in it })
+        assertTrue("Pins are stored: $names", names.count { it.startsWith(DevicesStore.PIN_NAME_PREFIX) } == 2)
+        assertFalse("A name reveals the server: $names", names.any { "example" in it || "443" in it })
     }
 
     @Test
@@ -178,7 +178,7 @@ class TrustEncryptedTest {
         mirror.edit(commit = true) { remove(entry); putString(DevicesStore.PIN_SECRET_PREFIX + host, secret) }
         val g = start()
         assertEquals(fp, g.pin(host))
-        assertFalse("Der alte Name ist weg", mirror.contains(DevicesStore.PIN_SECRET_PREFIX + host))
+        assertFalse("The old name is gone", mirror.contains(DevicesStore.PIN_SECRET_PREFIX + host))
         assertEquals(secret, mirror.getString(entry, null))
     }
 
@@ -204,6 +204,6 @@ class TrustEncryptedTest {
         assertTrue(g.fromCode(host))
         assertEquals(fp, g.pin(host))
         g.rememberPin(host, fp)
-        assertFalse("Gemerkt gilt er nicht mehr als Pin aus dem Code", g.fromCode(host))
+        assertFalse("Remembered, it no longer counts as a pin from the code", g.fromCode(host))
     }
 }

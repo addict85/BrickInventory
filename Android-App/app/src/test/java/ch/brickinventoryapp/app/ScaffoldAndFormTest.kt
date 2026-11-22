@@ -215,7 +215,7 @@ class ScaffoldAndFormTest {
         compose.waitForIdle()
         val button = compose.onNodeWithContentDescription(record).fetchSemanticsNode().boundsInRoot
         val snackbar = compose.onNodeWithText("Titanic entfernt").fetchSemanticsNode().boundsInRoot
-        assertTrue("Der Knopf steht über der Snackbar ($button / $snackbar)", button.bottom <= snackbar.top)
+        assertTrue("the button stands above the snackbar ($button / $snackbar)", button.bottom <= snackbar.top)
     }
 
     @Test
@@ -231,8 +231,8 @@ class ScaffoldAndFormTest {
         val state = compose.onNodeWithText(ctx.getString(R.string.offline_state, ""), substring = true,
             useUnmergedTree = true).fetchSemanticsNode()
         val row = compose.onNodeWithText(wait, useUnmergedTree = true).fetchSemanticsNode()
-        assertEquals("Stand und wartende Änderungen auf derselben Fläche", state.parent?.id, row.parent?.id)
-        assertTrue("Das Banner wird angesagt",
+        assertEquals("status and pending changes on the same surface", state.parent?.id, row.parent?.id)
+        assertTrue("the banner is announced",
             state.parent?.config?.contains(SemanticsProperties.LiveRegion) == true)
     }
 
@@ -242,7 +242,7 @@ class ScaffoldAndFormTest {
         show { Column { OfflineHint(1_793_000_000_000L, onAgain = { fetched++ }) } }
         compose.onNode(hasText(ctx.getString(R.string.common_retry)) and hasClickAction()).performClick()
         compose.waitForIdle()
-        assertEquals("Erneut versuchen holt die Liste", 1, fetched)
+        assertEquals("retry fetches the list", 1, fetched)
     }
 
     @Test
@@ -311,7 +311,7 @@ class ScaffoldAndFormTest {
     fun `start password form fills passwords automatically and shows them on request`() {
         show { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
         val fields = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
-        assertEquals("Aktuelles, neues und wiederholtes Passwort",
+        assertEquals("current, new and repeated password",
             listOf(ContentType.Password, ContentType.NewPassword, ContentType.NewPassword), fields.map(::autofill))
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.cd_password_show)).assertCountEquals(3)
         // The minimum length stands there before typing.
@@ -324,7 +324,7 @@ class ScaffoldAndFormTest {
         show { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
         val density = ctx.resources.displayMetrics.density
         val field = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
-        assertTrue("Feld ${field.width / density} dp breit", field.width / density <= 561f)
+        assertTrue("field ${field.width / density} dp wide", field.width / density <= 561f)
     }
 
     /** Account and price alerts are forms: reading width, and the amount field stays narrow. */
@@ -351,8 +351,8 @@ class ScaffoldAndFormTest {
             val density = ctx.resources.displayMetrics.density
             val field = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
             // Centered on 560 dp the card starts at 360 dp; in list width (840 dp) already at 220.
-            assertTrue("Die Karte steht in Formularbreite (Feld ab ${field.left / density} dp)", field.left / density >= 340f)
-            assertTrue("Das Betragsfeld ist ${field.width / density} dp breit", field.width / density <= 321f)
+            assertTrue("the card stands in form width (field from ${field.left / density} dp)", field.left / density >= 340f)
+            assertTrue("the amount field is ${field.width / density} dp wide", field.width / density <= 321f)
         } finally {
             world.close()
         }
@@ -367,7 +367,7 @@ class ScaffoldAndFormTest {
         // Measured unclipped: boundsInRoot would cut off a button below the fold at the edge.
         val next = compose.onNode(hasText(ctx.getString(R.string.setup_continue)) and hasClickAction()).fetchSemanticsNode()
         val bottom = next.positionInRoot.y + next.size.height
-        assertTrue("Weiter endet bei $bottom von $height", bottom <= height)
+        assertTrue("next ends at $bottom of $height", bottom <= height)
     }
 
     /** At 200 % the brand header stands small in one line; the first field stays at the top. */
@@ -376,7 +376,7 @@ class ScaffoldAndFormTest {
         show(font = 2f) { BrandsHeader() }
         val density = ctx.resources.displayMetrics.density
         val header = compose.onNodeWithText(ctx.getString(R.string.app_name)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Markenkopf endet erst bei ${header.bottom / density} dp", header.bottom / density <= 891f / 8)
+        assertTrue("brand header only ends at ${header.bottom / density} dp", header.bottom / density <= 891f / 8)
     }
 
     /** „Animationen entfernen“ (animator duration 0) is read; otherwise motion applies. */
@@ -386,7 +386,7 @@ class ScaffoldAndFormTest {
         Settings.Global.putFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         var calm: Boolean? = null
         show { calm = movementReduced() }
-        assertEquals("Mit Animator-Dauer 0 ruht alles", true, calm)
+        assertEquals("with animator duration 0 everything rests", true, calm)
         Settings.Global.putFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
 
@@ -398,13 +398,13 @@ class ScaffoldAndFormTest {
         Settings.Global.putFloat(resolution, duration, 1f)
         var calm: Boolean? = null
         show { calm = movementReduced() }
-        assertEquals("Mit Animator-Dauer 1 bewegt sich alles", false, calm)
+        assertEquals("with animator duration 1 everything moves", false, calm)
         try {
             Settings.Global.putFloat(resolution, duration, 0f)
             resolution.notifyChange(Settings.Global.getUriFor(duration), null)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             compose.waitForIdle()
-            assertEquals("Nach dem Umstellen ruht alles", true, calm)
+            assertEquals("after switching everything rests", true, calm)
         } finally {
             Settings.Global.putFloat(resolution, duration, 1f)
         }
@@ -418,7 +418,7 @@ class ScaffoldAndFormTest {
         val button = compose.onNode(hasText(ctx.getString(R.string.account_password_button)) and hasClickAction())
         button.assertIsEnabled().performClick()
         compose.waitForIdle()
-        assertEquals("Leer wird nichts abgeschickt", 0, replaced)
+        assertEquals("empty, nothing is sent", 0, replaced)
         compose.onNodeWithText(ctx.getString(R.string.login_password_missing)).fetchSemanticsNode()
         compose.onAllNodes(hasSetTextAction())[0].assertIsFocused()
         val fields = compose.onAllNodes(hasSetTextAction())
@@ -427,7 +427,7 @@ class ScaffoldAndFormTest {
         fields[2].performTextInput("neues-passwort-12")
         button.performClick()
         compose.waitForIdle()
-        assertEquals("Vollständig geht es ab", 1, replaced)
+        assertEquals("complete, it goes out", 1, replaced)
         compose.onAllNodesWithText(ctx.getString(R.string.login_password_missing)).assertCountEquals(0)
     }
 
@@ -462,7 +462,7 @@ class ScaffoldAndFormTest {
         metrics.forEach { (n, id) ->
             val text = ctx.resources.getQuantityString(id, n, fmtInt(n))
             val b = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            assertTrue("„$text“ ragt über den Rand ($b, Rand $edge)", b.right <= edge + 1f && b.width > 0f)
+            assertTrue("“$text” sticks out over the edge ($b, edge $edge)", b.right <= edge + 1f && b.width > 0f)
         }
     }
 
@@ -482,10 +482,10 @@ class ScaffoldAndFormTest {
         val text = l.layoutInput.text.text
         fun row(place: Int) = l.getLineForOffset(place)
         val bracket = text.indexOf('(')
-        assertTrue("Klammer beginnt eine Zeile: „$text“", bracket >= 0 && l.getLineStart(row(bracket)) == bracket)
+        assertTrue("a bracket starts a line: “$text”", bracket >= 0 && l.getLineStart(row(bracket)) == bracket)
         Regex("""\d+[\s\u00A0]\p{L}+""").findAll(text.substring(bracket)).forEach { m ->
             val of = bracket + m.range.first
-            assertEquals("„${m.value}“ bricht um in „$text“", row(of), row(bracket + m.range.last))
+            assertEquals("“${m.value}” wraps in “$text”", row(of), row(bracket + m.range.last))
         }
     }
 
@@ -503,7 +503,7 @@ class ScaffoldAndFormTest {
         val edge = 360f * ctx.resources.displayMetrics.density
         values.forEach { (label, value) ->
             val b = compose.onNodeWithText("$label $value", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            assertTrue("„$label $value“ ragt über den Rand ($b, Rand $edge)", b.right <= edge + 1f && b.width > 0f)
+            assertTrue("“$label $value” sticks out over the edge ($b, edge $edge)", b.right <= edge + 1f && b.width > 0f)
         }
     }
 
@@ -522,7 +522,7 @@ class ScaffoldAndFormTest {
         val image = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) and
             hasAnyDescendant(hasText(wait)), useUnmergedTree = true).captureToImage().toPixelMap()
         val p = image[image.width - 12, image.height / 2]
-        assertTrue("Banner-Fläche rötlich: $p", p.red - p.blue < 0.08f)
+        assertTrue("banner area reddish: $p", p.red - p.blue < 0.08f)
     }
 
     /** The chip above the sign-in switches the server: TalkBack hears that as a button. */
@@ -541,7 +541,7 @@ class ScaffoldAndFormTest {
         assertEquals(Role.Button, chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role))
         chip.performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp öffnet den Serverwechsel", 1, changed)
+        assertEquals("a tap opens the server switch", 1, changed)
     }
 
     private val catalogDetail = CatalogDetailView(
@@ -565,10 +565,10 @@ class ScaffoldAndFormTest {
         val year = compose.onNodeWithText(ctx.getString(R.string.catalog_detail_year)).fetchSemanticsNode().boundsInRoot
         val value = compose.onNodeWithText("2022").fetchSemanticsNode().boundsInRoot
         val row = (value.right - year.left) / density
-        assertTrue("Bezeichnung und Wert über $row dp", row <= ReadingWidth.valueRow.value + 1f)
+        assertTrue("label and value over $row dp", row <= ReadingWidth.valueRow.value + 1f)
         val take = compose.onNode(hasText(ctx.getString(R.string.catalog_add_to_gallery)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("Knopf ${take.width / density} dp breit",
+        assertTrue("button ${take.width / density} dp wide",
             take.width / density <= ReadingWidth.controls.value + 1f)
         compose.onNodeWithText(fmtInt(4514)).fetchSemanticsNode()
     }
@@ -585,14 +585,14 @@ class ScaffoldAndFormTest {
         val number = compose.onNodeWithText("10305-1").fetchSemanticsNode().boundsInRoot
         val image = compose.onNode(hasTestTag(IMAGE_FALLBACK), useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("Die Angaben stehen rechts vom Bild ($image / $number)", number.left >= image.right)
+        assertTrue("the details stand right of the image ($image / $number)", number.left >= image.right)
         val density = ctx.resources.displayMetrics.density
-        assertTrue("Das Bild bleibt bei höchstens 480 dp (${image.width / density})", image.width <= 481 * density)
+        assertTrue("the image stays at most 480 dp (${image.width / density})", image.width <= 481 * density)
         val take = compose.onNode(hasText(ctx.getString(R.string.catalog_add_to_gallery)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
         val bricklink = compose.onNode(hasText(ctx.getString(R.string.catalog_buy_bricklink)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("Die eigene Handlung steht vor dem Weg nach draussen", take.bottom <= bricklink.top)
+        assertTrue("one's own action stands before the way out", take.bottom <= bricklink.top)
     }
 
     @Test
@@ -606,7 +606,7 @@ class ScaffoldAndFormTest {
                 .fetchSemanticsNode().boundsInRoot
             val history = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
-            assertTrue("Kopfkachel ($header) vor dem Verlauf ($history)", header.bottom <= history.top)
+            assertTrue("header tile ($header) before the history ($history)", header.bottom <= history.top)
         } finally {
             world.close()
         }

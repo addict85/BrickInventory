@@ -49,7 +49,7 @@ class QuantityBadgeTest {
     @Test
     fun `all tiles get the badge from the same place`() {
         assert(code(read("shared/ui/ManualItemComposables.kt")).contains("quantityManual(quantity)")) {
-            "ManualTile schreibt die Menge wieder selbst"
+            "ManualTile writes the quantity itself again"
         }
         for ((file, who) in listOf(
             "parts/ui/screens/PartsCard.kt" to "ManualPartTile",
@@ -57,10 +57,10 @@ class QuantityBadgeTest {
         )) {
             val src = code(read(file))
             assert(src.contains("ManualTile(")) {
-                "$who baut seine Kachel wieder selbst statt ManualTile zu rufen — " +
-                    "dann laufen die beiden Ansichten wieder auseinander"
+                "$who builds its tile itself again instead of calling ManualTile — " +
+                    "then the two views drift apart again"
             }
-            assert(src.contains("Text(quantityFromSet(qty)")) { "$file schreibt die Set-Plakette wieder selbst" }
+            assert(src.contains("Text(quantityFromSet(qty)")) { "$file writes the set badge itself again" }
         }
     }
 
@@ -72,7 +72,7 @@ class QuantityBadgeTest {
         for (file in listOf("values/strings.xml", "values-de/strings.xml")) {
             val xml = File(Sources.res, "$file").readText()
             assert(!xml.contains("minifigs_qty_badge")) {
-                "$file traegt den Schluessel wieder — die Plakette gehoert direkt in den Quelltext"
+                "$file carries the key again — the badge belongs directly in the source"
             }
         }
     }

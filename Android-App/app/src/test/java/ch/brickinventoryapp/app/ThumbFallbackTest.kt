@@ -32,7 +32,7 @@ class ThumbFallbackTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -40,10 +40,10 @@ class ThumbFallbackTest {
     fun `rememberTileImageWithFallback exists`() {
         val src = read("ui/util/ImageRueckfall.kt")
         assert(src.contains("fun rememberTileImageWithFallback(")) {
-            "Der Rückfall-Helfer fehlt"
+            "the fallback helper is missing"
         }
         val fn = src.substring(src.indexOf("fun rememberTileImageWithFallback("))
-        assert(fn.contains("var useFallback by remember")) { "Der Zustand fehlt" }
+        assert(fn.contains("var useFallback by remember")) { "the state is missing" }
     }
 
     @Test
@@ -60,10 +60,10 @@ class ThumbFallbackTest {
     fun `GalleryScreen uses the fallback instead of an ineffective retry`() {
         val src = read("collection/ui/screens/GalleryCard.kt")
         assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "GalleryScreen muss den neuen Rückfall-Helfer benutzen"
+            "GalleryScreen must use the new fallback helper"
         }
         assert(src.contains("onImageError()")) {
-            "Der Fehlerfall muss den Rückfall auslösen"
+            "the error case must trigger the fallback"
         }
         // ── Adjusted ──────────────────────────────────────────
         // Two prohibitions stood here: no `retryNonce`, no `setParameter`
@@ -83,9 +83,9 @@ class ThumbFallbackTest {
         // The placeholder image stands in ONE place since ProductImage (ui/components); the
         // catalog tile only passes the error on to the fallback.
         val src = read("catalog/ui/screens/CatalogCard.kt")
-        assert(src.contains("ProductImage(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
+        assert(src.contains("ProductImage(")) { "the catalog tile uses the shared image with fallback" }
         assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
-            "Ein Fehler muss den Rückfall auf die volle Auflösung auslösen"
+            "an error must trigger the fallback to full resolution"
         }
     }
 }
@@ -113,10 +113,10 @@ class ImageClientLoggingTest {
         val start = src.indexOf("internal fun buildInterceptorClient")
         val fn = src.substring(start, minOf(src.length, start + 2000))
         assert(!fn.contains("if (isApiClient && BuildConfig.DEBUG)")) {
-            "Die alte Bedingung schloss den Bild-Client von der Protokollierung aus"
+            "the old condition excluded the image client from logging"
         }
         assert(fn.contains("if (BuildConfig.DEBUG) {")) {
-            "Beide Clients müssen im Debug-Build protokolliert werden"
+            "both clients must be logged in the debug build"
         }
         // The rewriting of the placeholder is checked by ServerGuardTest, executed.
     }
@@ -149,7 +149,7 @@ class FullResolutionBypassesProxyTest {
         // the full resolution carries no &thumb=1.
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fsets%2F1+2.jpg",
             resolveFullUrl(SERVER, null, "https://cdn.rebrickable.com/sets/1 2.jpg"))
-        assertEquals("ein Server-Pfad braucht keinen Proxy", "http://nas:3000/media/a.jpg",
+        assertEquals("a server path needs no proxy", "http://nas:3000/media/a.jpg",
             resolveFullUrl(SERVER, null, "/media/a.jpg"))
         assertNull(resolveFullUrl(SERVER, null, null))
     }
@@ -170,7 +170,7 @@ class FullResolutionBypassesProxyTest {
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -206,23 +206,23 @@ class PartsMinifigsFullResBypassProxyTest {
             // Self-proof: if the pattern finds nothing, the loop would be empty
             // and the test green without having checked anything.
             assert(places.size >= 2) {
-                "$rel: nur ${places.size} Aufruf(e) von rememberTileImageWithFallback gefunden — Muster veraltet?"
+                "$rel: only ${places.size} call(s) of rememberTileImageWithFallback found — pattern outdated?"
             }
             for (m in places) {
                 val row = src.substring(0, m.range.first).count { it == '\n' } + 1
                 assert(m.groupValues[1].contains("fullViaProxy = true")) {
-                    "$rel:$row — dieser Aufruf setzt fullViaProxy nicht. Teile und " +
-                    "Minifiguren holen die volle Aufloesung ueber den Proxy, weil " +
-                    "Rebrickable direkt nicht erreichbar ist."
+                    "$rel:$row — this call does not set fullViaProxy. Parts and " +
+                    "minifigures fetch the full resolution via the proxy because " +
+                    "Rebrickable cannot be reached directly."
                 }
             }
         }
 
         val gallery = Sources.gallery()
-        assert(!gallery.contains("fullViaProxy")) { "Die Galerie darf fullViaProxy nicht setzen — Sets bleiben direkt" }
+        assert(!gallery.contains("fullViaProxy")) { "the gallery must not set fullViaProxy — sets stay direct" }
 
         val catalog = Sources.screen("catalog/ui/screens/CatalogScreen.kt")
-        assert(!catalog.contains("fullViaProxy")) { "Der Katalog darf fullViaProxy nicht setzen — Katalog bleibt direkt" }
+        assert(!catalog.contains("fullViaProxy")) { "the catalog must not set fullViaProxy — the catalog stays direct" }
     }
 }
 
@@ -239,7 +239,7 @@ class PartsMinifigsFullResBypassProxyTest {
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
         val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -247,13 +247,13 @@ class SetDetailUsesFullResolutionTest {
     fun `SetDetailScreen shows the same full resolution for preview and zoom`() {
         val src = read("collection/ui/screens/SetDetailScreen.kt")
         assert(src.contains("val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "Das Hauptbild im Detail-Dialog muss resolveFullUrl() benutzen, nicht resolveThumbUrl()"
+            "the main image in the detail dialog must use resolveFullUrl(), not resolveThumbUrl()"
         }
         assert(!src.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "resolveThumbUrl() darf hier nicht mehr aufgerufen werden"
+            "resolveThumbUrl() must no longer be called here"
         }
         assert(!src.contains("import ch.brickinventoryapp.model.util.resolveThumbUrl")) {
-            "Der jetzt ungenutzte Import muss entfernt sein"
+            "the now unused import must be removed"
         }
     }
 }
@@ -283,9 +283,9 @@ class FullResolutionStripsThumbSuffixTest {
     @Test
     fun `resolveFullUrl removes an existing _thumb suffix`() {
         assertEquals("http://nas:3000/images/sets/10283-1.jpg", resolveFullUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
-        assertEquals("die Abfrage bleibt", "http://nas:3000/images/p/3001.png?v=2",
+        assertEquals("the query stays", "http://nas:3000/images/p/3001.png?v=2",
             resolveFullUrl(SERVER, "/images/p/3001_thumb.png?v=2", null))
-        assertEquals("nur das Suffix vor der Endung", "http://nas:3000/images/x_thumbnail.jpg",
+        assertEquals("only the suffix before the extension", "http://nas:3000/images/x_thumbnail.jpg",
             resolveFullUrl(SERVER, "/images/x_thumbnail.jpg", null))
     }
 

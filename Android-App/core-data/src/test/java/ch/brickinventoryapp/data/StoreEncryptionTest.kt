@@ -59,11 +59,11 @@ class StoreEncryptionTest {
         val k = first.fetch()
         assertEquals(32, k.size)
         assertTrue(first.newCreated)
-        assertTrue("Auf der Platte nur umhüllt", file.readText().startsWith("umhuellt:"))
+        assertTrue("On disk only wrapped", file.readText().startsWith("umhuellt:"))
         val second = StoreKey(file, vault)
-        assertArrayEquals("Nach dem Neustart derselbe", k, second.fetch())
+        assertArrayEquals("The same after the restart", k, second.fetch())
         assertFalse(second.newCreated)
-        assertNotEquals("Je Zweck ein eigener", second.forTarget("bestand.db").toList(), second.forTarget("antworten").toList())
+        assertNotEquals("One of its own per purpose", second.forTarget("bestand.db").toList(), second.forTarget("antworten").toList())
     }
 
     @Test
@@ -74,11 +74,11 @@ class StoreEncryptionTest {
         val old = k.fetch().copyOf()
         val secret = StoreCipher { k.forTarget("antworten") }.encrypt("Kaufpreis 499.99".toByteArray(), "a")
         k.renew()
-        assertEquals("Wer den Schlüssel hält, schliesst vorher", 1, closed)
+        assertEquals("Whoever holds the key closes first", 1, closed)
         assertNotEquals(old.toList(), k.fetch().toList())
-        assertTrue("Der neue Schlüssel ist als neu gemeldet", k.newCreated)
+        assertTrue("The new key is reported as new", k.newCreated)
         assertNull(StoreCipher { k.forTarget("antworten") }.decrypt(secret, "a"))
-        assertNull("Auch die Platte hat nur den neuen",
+        assertNull("The disk also has only the new one",
             StoreCipher { StoreKey(file, vault).forTarget("antworten") }.decrypt(secret, "a"))
     }
 
@@ -89,14 +89,14 @@ class StoreEncryptionTest {
         vault.situation = VaultFinding.LockedState
         try {
             StoreKey(file, vault).fetch()
-            fail("Gesperrt muss scheitern, nicht still einen neuen Schlüssel anlegen")
+            fail("Locked must fail, not silently create a new key")
         } catch (_: IOException) {
         }
         assertEquals(before, file.readText())
         vault.situation = VaultFinding.Gone
         val newValue = StoreKey(file, vault)
         newValue.fetch()
-        assertTrue("Weg heisst: neu anlegen und es sagen", newValue.newCreated)
+        assertTrue("Gone means: create anew and say so", newValue.newCreated)
         assertNotEquals(before, file.readText())
     }
 
@@ -106,10 +106,10 @@ class StoreEncryptionTest {
         val cipher = StoreCipher { k.forTarget("antworten") }
         val secret = cipher.encrypt("Kaufpreis 499.99".toByteArray(), "antworten/a/sets.json")
         assertEquals("Kaufpreis 499.99", cipher.decrypt(secret, "antworten/a/sets.json")!!.toString(Charsets.UTF_8))
-        assertNull("Klartext-Altbestand", cipher.decrypt("""{"preis":499.99}""".toByteArray(), "antworten/a/sets.json"))
-        assertNull("Anderer Schlüssel", StoreCipher { k.forTarget("widget") }.decrypt(secret, "antworten/a/sets.json"))
+        assertNull("Plaintext old stock", cipher.decrypt("""{"preis":499.99}""".toByteArray(), "antworten/a/sets.json"))
+        assertNull("Different key", StoreCipher { k.forTarget("widget") }.decrypt(secret, "antworten/a/sets.json"))
         secret[secret.size - 1] = (secret[secret.size - 1] + 1).toByte()
-        assertNull("Verändert", cipher.decrypt(secret, "antworten/a/sets.json"))
+        assertNull("Changed", cipher.decrypt(secret, "antworten/a/sets.json"))
     }
 
     @Test
@@ -117,7 +117,7 @@ class StoreEncryptionTest {
         val k = StoreKey(file, vault)
         val cipher = StoreCipher { k.forTarget("antworten") }
         val secret = cipher.encrypt("Kaufpreis 499.99".toByteArray(), "antworten/a/sets.json")
-        assertNull("Anderer Dateiname", cipher.decrypt(secret, "antworten/a/finanzen.json"))
-        assertNull("Anderes Fach", cipher.decrypt(secret, "antworten/b/sets.json"))
+        assertNull("Different file name", cipher.decrypt(secret, "antworten/a/finanzen.json"))
+        assertNull("Different compartment", cipher.decrypt(secret, "antworten/b/sets.json"))
     }
 }

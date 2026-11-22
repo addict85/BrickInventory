@@ -65,7 +65,7 @@ object ModuleEdges {
     /** The violation if [module] with [plugins] (catalog names as in the module script) switches on Compose. */
     fun uiViolation(module: String, plugins: Collection<String>): String? =
         (plugins.toSet() intersect uisPlugins).takeIf { module in withoutUi && it.isNotEmpty() }
-            ?.let { "$module liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
+            ?.let { "$module lies below the UI and switches on Compose: ${it.sorted()}" }
 
     /**
      * The ViewModels that may lie in core-state, each with a reason. A ViewModel that only one
@@ -73,18 +73,18 @@ object ModuleEdges {
      * areas share that must not know each other.
      */
     val stateViewModels: Map<String, String> = mapOf(
-        "AppViewModel" to "Sitzung, Snackbar und Pflichtmasken der Activity; Bereiche sehen ihn nur über die Bereichsumgebung",
-        "PurchasesViewModel" to "Käufe eines Eintrags: Sets (feature-collection) und eigene Teile/Figuren (feature-parts) " +
-            "zeigen sie; ein eigener Bereich bräuchte die Bildschirme beider",
-        "AppearanceViewModel" to "Design und Sprache: die Activity wendet sie an, Einstellungen (feature-account) ändert sie",
-        "TrustViewModel" to "Zertifikatsfrage über jedem Ziel (Activity) und in den Einstellungen (feature-account)",
-        "DevicesSettingsViewModel" to "Geräteschalter in feature-account und feature-management",
+        "AppViewModel" to "session, snackbar and mandatory masks of the activity; areas see it only via the area environment",
+        "PurchasesViewModel" to "purchases of an entry: sets (feature-collection) and own parts/figures (feature-parts) " +
+            "show them; an area of their own would need the screens of both",
+        "AppearanceViewModel" to "design and language: the activity applies them, settings (feature-account) changes them",
+        "TrustViewModel" to "certificate question above every destination (activity) and in the settings (feature-account)",
+        "DevicesSettingsViewModel" to "device switches in feature-account and feature-management",
     )
 
     /** What does not match between the ViewModels in core-state ([found]) and [stateViewModels]. */
     fun stateViewModelViolations(found: Collection<String>): List<String> =
-        (found.toSet() - stateViewModels.keys).map { "$it liegt in core-state ohne Grund in ModuleEdges.stateViewModels" } +
-            (stateViewModels.keys - found.toSet()).map { "$it steht in ModuleEdges.stateViewModels, liegt aber nicht in core-state" }
+        (found.toSet() - stateViewModels.keys).map { "$it lies in core-state without a reason in ModuleEdges.stateViewModels" } +
+            (stateViewModels.keys - found.toSet()).map { "$it stands in ModuleEdges.stateViewModels but does not lie in core-state" }
 
     /** Everything [module] builds on, directly or through other core modules. */
     fun below(module: String): Set<String> {
@@ -106,18 +106,18 @@ object ModuleEdges {
         when {
             // api passes a module on to everyone who knows this one; only core-model is a common language.
             k.configuration == "api" && k.after != "core-model" ->
-                "Modulkanten per api nur zu core-model: ${k.of} → ${k.after}"
-            k.onlyTest && reverseTest(k) -> "${k.of} testet mit ${k.after}, das auf ${k.of} aufbaut: der Test gehört nach ${k.after}"
+                "module edges via api only to core-model: ${k.of} → ${k.after}"
+            k.onlyTest && reverseTest(k) -> "${k.of} tests with ${k.after}, which builds on ${k.of}: the test belongs in ${k.after}"
             k.onlyTest -> null
             k.after == "core-contract" && k.of !in wireMarker ->
-                "${k.of} kennt das Wire-Format: Nur ${wireMarker.sorted().joinToString(" und ")} bildet es ab"
-            k.after == "core-testing" -> "${k.of} bindet core-testing nicht nur für Tests ein"
-            k.of.startsWith("feature-") && !k.after.startsWith("core-") -> "${k.of} hängt an ${k.after}"
+                "${k.of} knows the wire format: only ${wireMarker.sorted().joinToString(" and ")} maps it"
+            k.after == "core-testing" -> "${k.of} includes core-testing not only for tests"
+            k.of.startsWith("feature-") && !k.after.startsWith("core-") -> "${k.of} depends on ${k.after}"
             k.of.startsWith("feature-") && k.after in depthCores && k.of !in depthCores.getValue(k.after) ->
-                "${k.of} hängt an ${k.after}, das unter dem Zustand liegt"
+                "${k.of} depends on ${k.after}, which lies below the state"
             k.of.startsWith("core-") && k.after !in cores[k.of].orEmpty() ->
-                "layering of the core modules: ${k.of} hängt an ${k.after}" +
-                    if (k.of in cores) "" else " (${k.of} hat keine Regel in ModuleEdges.cores)"
+                "layering of the core modules: ${k.of} depends on ${k.after}" +
+                    if (k.of in cores) "" else " (${k.of} has no rule in ModuleEdges.cores)"
             else -> null
         }
     }.distinct()

@@ -120,7 +120,7 @@ class SampleDataTest {
         val f = figures.minifigsState.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
         assertTrue(f.minifigs.toString(), f.minifigs.all { !it.figName.isNullOrBlank() })
-        assertTrue("Ein Name ist lang genug zum Kürzen", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
+        assertTrue("a name is long enough to be shortened", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
     }
 
     /**
@@ -136,7 +136,7 @@ class SampleDataTest {
         val falcon = finances.financeState.value.valuation!!.sets.first { it.setNumber == Examples.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf(CurrencyCode.CHF), listOf(world.t.session.state.value.currency))
-        assertTrue("jeder Kauf hat einen Betrag", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
+        assertTrue("every purchase has an amount", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
         // The axis carries dates, not weekdays — chart.x matches point by point, and
         // translating happens only in the display language.
         val f = finances.financeState.value
@@ -190,7 +190,7 @@ class SampleDataTest {
             wantedList.wantedState.value.wantedItem.map { it.setNumber to it.imageLocal } +
             finances.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
         val without = addresses.filter { (_, a) -> a == null || SampleImages.resource(a) == null }
-        assertTrue("Ohne Beispielbild: $without", addresses.size >= 12 && without.isEmpty())
+        assertTrue("without a sample image: $without", addresses.size >= 12 && without.isEmpty())
     }
 
     /**
@@ -220,7 +220,7 @@ class SampleDataTest {
         val valued = rows.filter { it.value != null }
         assertEquals(2, valued.size)
         assertTrue(valued.toString(), valued.all { it.purchasePrice != null && it.condition != null && it.pnlPercent != null })
-        assertTrue("ohne Marktpreis, mit Kaufpreis", rows.single { it.value == null }.purchasePrice != null)
+        assertTrue("without market price, with purchase price", rows.single { it.value == null }.purchasePrice != null)
         val header = financeTotals(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).total
         assertEquals(0, header.compareTo(valued.sumOf { it.value!!.asBigDecimal() }))
     }
@@ -321,7 +321,7 @@ object Examples {
             SavedStateHandle(mapOf("setNumber" to SET))))
 
         /** The build list without network: [resolve] delivers name and parts per set number. */
-        fun buildList(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
+        fun buildList(resolve: (String) -> Pair<String, List<PlPart>> = { error("nothing to resolve") }) =
             t.track(PartListViewModel(t.session, t.hints, object : PartListsSource {
                 override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = Outcome.Success(resolve(setNumber))
                 override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = parts

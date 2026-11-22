@@ -64,15 +64,15 @@ class ReleaseCheckTest {
     fun `the stored certificate is accepted`() {
         assertEquals(0, check("zertifikat", apksigner(release).path, file("# Kommentar\n$release\n").path))
         val howKeytool = release.uppercase().chunked(2).joinToString(":")
-        assertEquals("Mit Doppelpunkten wie keytool", 0, check("zertifikat", apksigner(release).path, file(howKeytool).path))
+        assertEquals("with colons like keytool", 0, check("zertifikat", apksigner(release).path, file(howKeytool).path))
     }
 
     @Test
     fun `a foreign certificate is rejected, even next to the real one`() {
         assertEquals(1, check("zertifikat", apksigner(foreign).path, file(release).path))
         assertEquals(1, check("zertifikat", apksigner(release, foreign).path, file(release).path))
-        assertEquals("Ohne Zertifikat in der Ausgabe", 2, check("zertifikat", file("DOES NOT VERIFY").path, file(release).path))
-        assertEquals("Ohne Sollwert", 2, check("zertifikat", apksigner(release).path, file("# leer\n").path))
+        assertEquals("without a certificate in the output", 2, check("zertifikat", file("DOES NOT VERIFY").path, file(release).path))
+        assertEquals("without an expected value", 2, check("zertifikat", apksigner(release).path, file("# leer\n").path))
     }
 
     @Test
@@ -85,18 +85,18 @@ class ReleaseCheckTest {
         val old = pem()
         val newValue = pem()
         val app = file("# Kommentar\n$old$newValue").path
-        assertEquals("Einer der beiden Schlüssel der App", 0, check("schluessel", file(newValue).path, app))
-        assertEquals("Ein fremder Schlüssel", 1, check("schluessel", file(pem()).path, app))
-        assertEquals("Keine Beschreibungssignatur, obwohl die App eine verlangt", 1, check("schluessel", "/gibt/es/nicht.pem", app))
-        assertEquals("Die App kennt noch keinen: sie nähme nichts an, eigens gemeldet", 3,
+        assertEquals("one of the app's two keys", 0, check("schluessel", file(newValue).path, app))
+        assertEquals("a foreign key", 1, check("schluessel", file(pem()).path, app))
+        assertEquals("no description signature although the app requires one", 1, check("schluessel", "/gibt/es/nicht.pem", app))
+        assertEquals("the app knows none yet: it would accept nothing, reported separately", 3,
             check("schluessel", file(newValue).path, file("# leer\n").path))
-        assertEquals("Ein kaputter Block", 2, check("schluessel", file(newValue).path, file("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
+        assertEquals("a broken block", 2, check("schluessel", file(newValue).path, file("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
     }
 
     @Test
     fun `the app's key file is readable for the workflow`() {
         val returnValue = check("schluessel", "/gibt/es/nicht.pem", "../core-resources/src/main/res/raw/description_key.pem")
-        assertEquals("Der Workflow kann res/raw/description_key.pem nicht lesen", false, returnValue == 2)
+        assertEquals("the workflow cannot read res/raw/description_key.pem", false, returnValue == 2)
     }
 
     private fun version(code: Long, commit: String) = file("""{"versionCode":$code,"versionName":"x","commit":"$commit"}""").path
@@ -104,8 +104,8 @@ class ReleaseCheckTest {
     @Test
     fun `only a newer state becomes the newest APK`() {
         assertEquals(0, check("fassung", version(200001444, "aaa"), "200001445", "bbb"))
-        assertEquals("Noch nichts veröffentlicht", 0, check("fassung", "-", "200001445", "bbb"))
-        assertEquals("Derselbe Commit noch einmal", 0, check("fassung", version(200001444, "aaa"), "200001444", "aaa"))
+        assertEquals("nothing published yet", 0, check("fassung", "-", "200001445", "bbb"))
+        assertEquals("the same commit once more", 0, check("fassung", version(200001444, "aaa"), "200001444", "aaa"))
     }
 
     @Test
@@ -130,13 +130,13 @@ class ReleaseCheckTest {
                 """"ausgestellt":$now,"gueltigBis":${now + 30 * TAG}}"""
         ).path
         assertEquals(0, check("beschreibung", data(), apk.path, meta, "bbb", store))
-        assertEquals("Ein anderes APK", 1, check("beschreibung", data(), other.path, meta, "bbb", store))
-        assertEquals("Eine falsche Prüfsumme", 1, check("beschreibung", data(checksum = "0".repeat(64)), apk.path, meta, "bbb", store))
-        assertEquals("Der feste Link statt des Fassungsanhangs", 1,
+        assertEquals("another APK", 1, check("beschreibung", data(), other.path, meta, "bbb", store))
+        assertEquals("a wrong checksum", 1, check("beschreibung", data(checksum = "0".repeat(64)), apk.path, meta, "bbb", store))
+        assertEquals("the fixed link instead of the version attachment", 1,
             check("beschreibung", data(url = "https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk"),
                 apk.path, meta, "bbb", store))
-        assertEquals("Eine andere Fassung", 1, check("beschreibung", data(code = 200001444), apk.path, meta, "bbb", store))
-        assertEquals("Ein anderer Commit", 1, check("beschreibung", data(), apk.path, meta, "ccc", store))
+        assertEquals("another version", 1, check("beschreibung", data(code = 200001444), apk.path, meta, "bbb", store))
+        assertEquals("another commit", 1, check("beschreibung", data(), apk.path, meta, "ccc", store))
         assertEquals(2, check("beschreibung", file("kaputt").path, apk.path, meta, "bbb", store))
     }
 
@@ -153,11 +153,11 @@ class ReleaseCheckTest {
             """{"versionCode":200001445,"versionName":"1.2.3","commit":"bbb","apkUrl":"$store/BrickInventory-200001445.apk",""" +
                 """"apkSize":10,"apkSha256":"$sha"$deadline}""").path, apk.path, meta, "bbb", store)
         assertEquals(0, with(""","ausgestellt":$now,"gueltigBis":${now + 30 * TAG}"""))
-        assertEquals("Ohne Frist", 1, with(""))
-        assertEquals("Vor zwei Tagen ausgestellt", 1, with(""","ausgestellt":${now - 2 * TAG},"gueltigBis":${now + 28 * TAG}"""))
-        assertEquals("100 Tage gültig", 1, with(""","ausgestellt":$now,"gueltigBis":${now + 100 * TAG}"""))
-        assertEquals("Gültig bis vor der Ausstellung", 1, with(""","ausgestellt":$now,"gueltigBis":${now - 1}"""))
-        assertEquals("Als Text statt Zahl", 1, with(""","ausgestellt":"$now","gueltigBis":${now + TAG}"""))
+        assertEquals("without a deadline", 1, with(""))
+        assertEquals("issued two days ago", 1, with(""","ausgestellt":${now - 2 * TAG},"gueltigBis":${now + 28 * TAG}"""))
+        assertEquals("valid for 100 days", 1, with(""","ausgestellt":$now,"gueltigBis":${now + 100 * TAG}"""))
+        assertEquals("valid until before issuing", 1, with(""","ausgestellt":$now,"gueltigBis":${now - 1}"""))
+        assertEquals("as text instead of a number", 1, with(""","ausgestellt":"$now","gueltigBis":${now + TAG}"""))
     }
 
     private companion object {

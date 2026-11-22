@@ -29,7 +29,7 @@ class ScreenFetchesDataNotSelfTest {
         val all = files()
         // Untergrenze: Ein leerer Dateilauf liesse jede Sammelpruefung
         // stillschweigend bestehen.
-        assert(all.size >= 20) { "Nur ${all.size} Bildschirmdateien gefunden — Pfade veraltet?" }
+        assert(all.size >= 20) { "Only ${all.size} screen files found — paths outdated?" }
 
         val passthroughs = mutableListOf<String>()
         for (f in all) {
@@ -39,9 +39,9 @@ class ScreenFetchesDataNotSelfTest {
             }
         }
         assert(passthroughs.isEmpty()) {
-            "Diese Composables holen ihre Daten selbst, statt sie von einem " +
-                "ViewModel zu bekommen. Damit laesst sich die Ladelogik nur mit " +
-                "Compose-Laufzeit ausfuehren — also gar nicht pruefen:\n  " +
+            "These composables fetch their data themselves instead of getting it from a " +
+                "ViewModel. The loading logic then only runs with the " +
+                "Compose runtime — so it cannot be checked at all:\n  " +
                 passthroughs.joinToString("\n  ")
         }
     }
@@ -56,11 +56,11 @@ class ScreenFetchesDataNotSelfTest {
     @Test
     fun `no screen knows the server models`() {
         val screens = listOf("screens", "components", "dialogs", "shared/ui").flatMap { Sources.below(it) }
-        assert(screens.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
+        assert(screens.size >= 50) { "Screens not found — pattern outdated?" }
         val withModel = screens.filter { "brickinventoryapp.contract" in Sources.withoutComments(it.readText()) }.map { it.name }
         assert(withModel.isEmpty()) {
-            "Diese Bildschirme greifen auf das Wire-Format (vertrag) zu: $withModel — Fachtyp aus model.fach nehmen, " +
-                "die Abbildung gehört ins ViewModel."
+            "These screens access the wire format (contract): $withModel — take the domain type from model.domain, " +
+                "the mapping belongs in the ViewModel."
         }
     }
 }

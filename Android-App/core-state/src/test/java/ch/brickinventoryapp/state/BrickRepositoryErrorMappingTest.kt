@@ -88,7 +88,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     private fun error(r: Outcome<*>): Outcome.Failure {
-        assert(r is Outcome.Failure) { "Erwartet wurde ein Fehler, kam aber: $r" }
+        assert(r is Outcome.Failure) { "expected an error, but got: $r" }
         return r as Outcome.Failure
     }
 
@@ -102,10 +102,10 @@ class BrickRepositoryErrorMappingTest {
         )
         val e = error(repo.getMe())
         assert(e.message == "Für dieses Datum gibt es schon einen Kaufpreis") {
-            "Servermeldung ging verloren: '${e.message}'"
+            "server message got lost: '${e.message}'"
         }
         assert(e == Outcome.Failure.Server(409, "Für dieses Datum gibt es schon einen Kaufpreis")) {
-            "Bei vorhandener Servermeldung bleibt es ein Serverfehler mit ihrem Satz, war: $e"
+            "with a server message present it stays a server error with its sentence, was: $e"
         }
     }
 
@@ -113,9 +113,9 @@ class BrickRepositoryErrorMappingTest {
     fun `error code without body is classified as server error`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500).setBody(""))
         val e = error(repo.getMe())
-        assert(e is Outcome.Failure.Server && e.status == 500) { "Art war $e" }
+        assert(e is Outcome.Failure.Server && e.status == 500) { "kind was $e" }
         assert(e.message.isBlank()) {
-            "Die Datenschicht darf keinen Satz bauen, tat es aber: '${e.message}'"
+            "the data layer must not build a sentence, but did: '${e.message}'"
         }
     }
 
@@ -126,24 +126,24 @@ class BrickRepositoryErrorMappingTest {
         // an old response from disk.
         server.enqueue(MockResponse().setResponseCode(401).setBody(""))
         val e = error(repo.getMe())
-        assert(e is Outcome.Failure.Rejected) { "Art war $e" }
-        assert(!e.transient) { "401 darf nicht als vorübergehend gelten" }
+        assert(e is Outcome.Failure.Rejected) { "kind was $e" }
+        assert(!e.transient) { "401 must not count as temporary" }
     }
 
     @Test
     fun `timeout is temporary`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val e = error(buildRepo(readDeadlineMs = 300).getMe())
-        assert(e.transient) { "Zeitüberschreitung muss als vorübergehend gelten" }
-        assert(e == Outcome.Failure.Timeout) { "Art war $e" }
+        assert(e.transient) { "a timeout must count as temporary" }
+        assert(e == Outcome.Failure.Timeout) { "kind was $e" }
     }
 
     @Test
     fun `dropped connection is a network error and temporary`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
         val e = error(repo.getMe())
-        assert(e is Outcome.Failure.Network && e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
-        assert(e.message.isBlank()) { "Kein Satz aus der Datenschicht, war: '${e.message}'" }
+        assert(e is Outcome.Failure.Network && e.transient) { "a dropped connection must count as temporary, was: $e" }
+        assert(e.message.isBlank()) { "no sentence from the data layer, was: '${e.message}'" }
     }
 
     /**
@@ -162,9 +162,9 @@ class BrickRepositoryErrorMappingTest {
         }
         val guard = ServerGuard(situation, false, development = false, sessionExpired = {})
         val e = error(buildRepo(guard = guard).getMe())
-        assert(e == Outcome.Failure.Plaintext) { "Art war $e" }
-        assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
-        assert(server.requestCount == 0) { "Die Anfrage ging trotzdem hinaus" }
+        assert(e == Outcome.Failure.Plaintext) { "kind was $e" }
+        assert(!e.transient) { "a second attempt would go to http just the same" }
+        assert(server.requestCount == 0) { "the request went out anyway" }
     }
 
     @Test
@@ -178,8 +178,8 @@ class BrickRepositoryErrorMappingTest {
         // `when` instead of a cast: Ergebnis has exactly two variants, so it's
         // exhaustive — and the smart cast in the branch supplies the type along with it.
         when (val r = repo.getMe()) {
-            is Outcome.Success -> assert(r.data?.user == "marco") { "Konto nicht gelesen: ${r.data}" }
-            is Outcome.Failure   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
+            is Outcome.Success -> assert(r.data?.user == "marco") { "account not read: ${r.data}" }
+            is Outcome.Failure   -> assert(false) { "expected success, got: $r" }
         }
     }
 }

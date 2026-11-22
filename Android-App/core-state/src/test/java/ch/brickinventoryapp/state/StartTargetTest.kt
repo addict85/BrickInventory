@@ -18,7 +18,7 @@ class StartTargetTest {
     fun `an old http address leads into the setup, even signed in`() {
         assertEquals(StartTarget.SETUP, startTarget("http://nas:3000", loggedIn = true, development = false))
         assertEquals(StartTarget.SETUP, startTarget("http://192.168.1.50:3000", loggedIn = false, development = false))
-        assertEquals("Auch der Debug-Build nur zum Gerät und Emulator",
+        assertEquals("the debug build too only to the device and emulator",
             StartTarget.SETUP, startTarget("http://nas:3000", loggedIn = true, development = true))
     }
 

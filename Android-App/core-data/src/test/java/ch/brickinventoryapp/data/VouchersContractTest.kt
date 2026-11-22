@@ -52,7 +52,7 @@ class VouchersContractTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -116,7 +116,7 @@ class VouchersContractTest {
         assertEquals(4, paths.bodyBytes.size)
         for ((i, k) in paths.bodyBytes.withIndex()) {
             val o = JSONObject(k)
-            assertEquals("${paths.requests[i]}: Passwort", "geheim", o.getString("password"))
+            assertEquals("${paths.requests[i]}: password", "geheim", o.getString("password"))
             assertEquals("${paths.requests[i]}: Code", "123456", o.getString("code"))
         }
     }
@@ -129,7 +129,7 @@ class VouchersContractTest {
         assertEquals("6000111122223333", (r as Outcome.Success).data.number)
         val stored = folder.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
-        assertTrue("Klartext liegt auf der Platte: $stored", stored.isEmpty())
+        assertTrue("Plaintext is on disk: $stored", stored.isEmpty())
     }
 
     @Test
@@ -138,12 +138,12 @@ class VouchersContractTest {
         // both apps. A second reading logic in Kotlin would have to keep pace
         // with it, and the web app would need a third.
         assert(repo.contains("MultipartBody.Part.createFormData(\"file\"")) {
-            "Die Datei muss als multipart zum Server gehen."
+            "The file must go to the server as multipart."
         }
         for (forbidden in listOf("PdfRenderer", "inflate", "Tj", "zlib")) {
             assert(!feature.contains(forbidden) && !repo.contains(forbidden)) {
-                "Die App versucht, das PDF SELBST zu lesen ($forbidden). Das gehoert " +
-                    "auf den Server — sonst gibt es zwei Fassungen derselben Regel."
+                "The app tries to read the PDF ITSELF ($forbidden). That belongs " +
+                    "on the server — otherwise there are two versions of the same rule."
             }
         }
     }
@@ -160,7 +160,7 @@ class VouchersContractTest {
         // sent at all.
         for (forbidden in listOf("Regex(", "matches(", "length in ", "startsWith(\"50")) {
             assert(!feature.contains(forbidden)) {
-                "In der App steht eine eigene Pruefung der Gutscheinwerte ($forbidden)."
+                "The app has its own check of the voucher values ($forbidden)."
             }
         }
     }
@@ -172,11 +172,11 @@ class VouchersContractTest {
         // number was in the PDF after all — and would have to type nineteen digits
         // that the server already knows.
         assert(feature.contains("VoucherStorage.Incomplete") && repo.contains("a.gelesen")) {
-            "Die aus dem PDF gelesenen Werte werden nicht uebernommen."
+            "The values read from the PDF are not taken over."
         }
         assert(repo.contains("422")) {
-            "Der 422-Rumpf wird nicht ausgewertet — dann geht `gelesen` verloren, " +
-                "weil sicherAufrufen aus einem Fehlerrumpf nur `error` holt."
+            "The 422 body is not evaluated — then `gelesen` gets lost, " +
+                "because the safe call only takes `error` from an error body."
         }
     }
 
@@ -186,8 +186,8 @@ class VouchersContractTest {
         // signed in — but against the shoulder next to you. The reverse
         // is stated as well: it must also be revealable, otherwise the
         // PIN is useless.
-        assert(card.contains("\"••••\"")) { "Der PIN steht unverdeckt in der Liste." }
-        assert(card.contains("pinVisible")) { "Der PIN laesst sich nicht aufdecken." }
+        assert(card.contains("\"••••\"")) { "The PIN stands uncovered in the list." }
+        assert(card.contains("pinVisible")) { "The PIN cannot be revealed." }
     }
 
     @Test
@@ -198,7 +198,7 @@ class VouchersContractTest {
         // the same numbers — and one that survives sign-out at that.
         for (forbidden in listOf("cacheDir", "writeBytes", "getExternalFilesDir", "MediaStore")) {
             assert(!feature.contains(forbidden) && !repo.contains(forbidden)) {
-                "Das Gutschein-PDF wird auf dem Geraet abgelegt ($forbidden)."
+                "The voucher PDF is stored on the device ($forbidden)."
             }
         }
     }
@@ -209,18 +209,18 @@ class VouchersContractTest {
         // Both rows are KopierZeilen: whole row tappable (clickable), 48 dp high, with
         // copy icon. Height and description are checked by UisRulesTest on the screen.
         assert(card.contains("clickable(role = Role.Button, onClickLabel = description, onClick = onCopy)")) {
-            "Die Kopierzeile ist nicht mehr antippbar."
+            "The copy row is no longer tappable."
         }
-        assert(card.contains("{ onCopy(true) }")) {
-            "Die Gutscheinnummer laesst sich nicht durch Antippen kopieren."
+        assert(card.contains("{ events.copy(true) }")) {
+            "The voucher number cannot be copied by tapping."
         }
-        assert(card.contains("{ onCopy(false) }")) {
-            "Der PIN laesst sich nicht durch Antippen kopieren."
+        assert(card.contains("{ events.copy(false) }")) {
+            "The PIN cannot be copied by tapping."
         }
         // The RAW number, not the one shown in groups of four: the
         // grouping is a reading aid, a payment field does not accept it.
-        assert(!card.contains("onCopy(g.number.chunked")) {
-            "Kopiert wird die gruppierte Anzeige statt der echten Nummer."
+        assert(!card.contains("copy(g.number.chunked")) {
+            "The grouped display is copied instead of the real number."
         }
     }
 
@@ -230,7 +230,7 @@ class VouchersContractTest {
         // it does not answer.
         for (file in listOf(card, feature)) {
             assert(!file.contains("notiz") && !file.contains(".note")) {
-                "In der App steht noch eine Notiz am Gutschein."
+                "The app still has a note on the voucher."
             }
         }
     }
@@ -245,12 +245,12 @@ class VouchersContractTest {
         // The page draws the groups from 0; the first entry is the first of group 0.
         val source = code(read("app/MoreScreen.kt"))
         val page = source.substringAfter("fun MoreScreen(").substringBefore("fun MoreGroupContent(")
-        assert(Regex("""for \(i in 0 until""").containsMatchIn(page)) { "Die Seite Mehr beginnt nicht mit Gruppe 0" }
+        assert(Regex("""for \(i in 0 until""").containsMatchIn(page)) { "The More page does not start with group 0" }
         val groupNull = source.substringAfter("fun MoreGroupContent(").substringAfter("0 ->")
         val first = Regex("""MoreItem\(R\.string\.(\w+)""").find(groupNull)?.groupValues?.get(1)
         assert(first == "vouchers_title") {
-            "Der erste Eintrag der Seite Mehr fuehrt zu $first statt zu den " +
-                "GUTSCHEINEN — dann muss man fuer die Karten wieder suchen."
+            "The first entry of the More page leads to $first instead of the " +
+                "VOUCHERS — then one has to search for the cards again."
         }
     }
 
@@ -269,13 +269,13 @@ class VouchersContractTest {
         for (route in listOf("FinanceTarget.Gutscheine", "AccountTarget.Preisalarme", "AccountTarget.Lagerorte",
                              "AccountTarget.Haushalt", "AccountTarget.CsvImport", "AccountTarget.Konto")) {
             assert(!once.contains(route)) {
-                "SettingsScreen.kt fuehrt noch selbst zu $route — dann gibt es die " +
-                    "Rubrik zweimal, auf „Mehr“ und in den Einstellungen."
+                "SettingsScreen.kt still leads to $route itself — then the " +
+                    "section exists twice, on „Mehr“ and in the settings."
             }
         }
         assert(!once.contains("EinstellungsBereich")) {
-            "EinstellungsBereich steht noch in den Einstellungen — der Weg ueber " +
-                "die Liste ist nicht vollstaendig zurueckgebaut."
+            "The settings area is still in the settings — the route via " +
+                "the list is not completely dismantled."
         }
     }
 
@@ -287,6 +287,6 @@ class VouchersContractTest {
     fun `the list is not cached`() = withServer { _, repo, folder ->
         runBlocking { repo.list() }
         val stored = folder.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
-        assertTrue("Nummer und PIN liegen auf der Platte: $stored", stored.isEmpty())
+        assertTrue("Number and PIN are on disk: $stored", stored.isEmpty())
     }
 }

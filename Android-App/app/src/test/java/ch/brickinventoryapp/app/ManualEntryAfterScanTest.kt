@@ -30,13 +30,13 @@ class ManualEntryAfterScanTest {
         // checked as behavior in SubpagesTest.
         val g = code(read("collection/ui/screens/GalleryScreen.kt"))
         assert(g.contains("barcode.requestManualEntry") && g.contains("showAddDialog = true")) {
-            "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
+            "the gallery does not open manual entry after an unsuccessful scan"
         }
-        assert(g.contains("entryVm.acknowledgeManualEntry()")) { "Die Galerie quittiert nicht" }
+        assert(g.contains("entryVm.acknowledgeManualEntry()")) { "the gallery does not acknowledge" }
 
         val tg = code(read("parts/ui/PartsGraph.kt"))
         assert(tg.contains("requestManualEntry = scan.manualRecord")) {
-            "Der Graph reicht die Anforderung nicht an die Teileliste durch"
+            "the graph does not pass the request on to the parts list"
         }
     }
 
@@ -47,12 +47,12 @@ class ManualEntryAfterScanTest {
         // so it runs exactly once per display.
         val g = read("collection/ui/screens/GalleryRecord.kt")
         val i = g.indexOf("fun AddSetDialog(")
-        assert(i >= 0) { "AddSetDialog nicht gefunden" }
+        assert(i >= 0) { "AddSetDialog not found" }
         val fn = g.substring(i)
 
-        assert(fn.contains("FocusRequester()")) { "Kein Fokus-Anker im Dialog" }
+        assert(fn.contains("FocusRequester()")) { "no focus anchor in the dialog" }
         assert(Regex("""LaunchedEffect\(Unit\)[\s\S]{0,400}?requestFocus\(\)""").containsMatchIn(fn)) {
-            "Der Cursor wird nicht bei jeder Anzeige ins Set-Feld gesetzt"
+            "the cursor is not put into the set field on every showing"
         }
         // The anchor must hang on the SET field, not on quantity or price.
         val setField = fn.indexOf("value = setNumber")
@@ -60,7 +60,7 @@ class ManualEntryAfterScanTest {
         // In the same field means: before the next input field (quantity, price).
         val nextField = fn.indexOf("OutlinedTextField(", setField).let { if (it < 0) fn.length else it }
         assert(setField >= 0 && anchorAtSetField in (setField + 1) until nextField) {
-            "Der Fokus-Anker hängt nicht am Set-Feld"
+            "the focus anchor does not hang on the set field"
         }
     }
 }

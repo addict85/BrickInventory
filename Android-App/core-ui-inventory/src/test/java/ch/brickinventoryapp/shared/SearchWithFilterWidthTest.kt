@@ -42,6 +42,6 @@ class SearchWithFilterWidthTest {
         val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
         val width = field.width / compose.density.density
         // The filter button and margins need a good 100 dp; the rest belongs to the field (previously at most 720).
-        assertTrue("Das Suchfeld ist nur $width dp breit", width > 1000f)
+        assertTrue("the search field is only $width dp wide", width > 1000f)
     }
 }

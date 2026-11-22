@@ -75,8 +75,8 @@ class NoFileWideStateTest {
             }
         }
         assert(findings.isEmpty()) {
-            "Veraenderlicher Zustand auf Dateiebene ist prozessweit — er ueberlebt " +
-                "jede Instanz und wird zwischen allen geteilt:\n  " + findings.joinToString("\n  ")
+            "Mutable state at file level is process-wide — it survives " +
+                "every instance and is shared between all:\n  " + findings.joinToString("\n  ")
         }
     }
 
@@ -92,9 +92,9 @@ class NoFileWideStateTest {
             }
         }
         assert(dead.isEmpty()) {
-            "Diese Dateien stehen als offen in der Liste, halten aber keinen " +
-                "dateiweiten Zustand mehr — Eintrag loeschen, dann gilt die Regel " +
-                "auch fuer sie: ${dead.joinToString()}"
+            "These files are listed as open but no longer hold any " +
+                "file-wide state — delete the entry, then the rule applies " +
+                "to them too: ${dead.joinToString()}"
         }
     }
 }

@@ -55,7 +55,7 @@ class SectionCardWidthTest {
 
     @Test
     fun `single-column the card stays at reading width`() {
-        assertTrue("Breiter als die Lesebreite", contentWidth(column = false) <= 560f)
+        assertTrue("wider than the reading width", contentWidth(column = false) <= 560f)
     }
 
     @Test

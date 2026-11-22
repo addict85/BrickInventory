@@ -123,7 +123,7 @@ class CacheAreaTest {
         fill(r, 1999)
         area = b
         fill(r, 2024)
-        assertEquals("Nur das Fach des aktuellen Kontos bleibt", listOf(b), occupied(a, b))
+        assertEquals("Only the current account's compartment stays", listOf(b), occupied(a, b))
         area = a
         assertEquals(null, offlineYear(r))
     }
@@ -135,7 +135,7 @@ class CacheAreaTest {
         val b = "http://heim:3000\ntoken-b"
         areas.addAll(listOf(a, b))
         fill(r, 1999)
-        assertEquals("Abgelegt trotz Wechsel", emptyList<String>(), occupied(a, b))
+        assertEquals("Stored despite the switch", emptyList<String>(), occupied(a, b))
     }
 
     @Test
@@ -154,8 +154,8 @@ class CacheAreaTest {
         old.forEach { File(it.apply { mkdirs() }, "sets.json").writeText("{}") }
         val foreign = File(noBackup, "bestand.db").apply { parentFile!!.mkdirs(); writeText("x") }
         cleanOldResponseStore(noBackup, cache)
-        assertEquals("Der alte Antwortspeicher liegt noch", emptyList<File>(), old.filter { it.exists() })
-        assertTrue("Was nicht dazugehört, bleibt", foreign.exists())
+        assertEquals("The old response store is still there", emptyList<File>(), old.filter { it.exists() })
+        assertTrue("What does not belong stays", foreign.exists())
     }
 
     @Test

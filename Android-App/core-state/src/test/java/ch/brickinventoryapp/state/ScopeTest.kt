@@ -66,7 +66,7 @@ class ScopeTest {
         store.storage["parts"] = "Kiste 3"
         glance.loadFilter()
         assertEquals(AccountSelection.Own, glance.accountFor(ScopeFilter.View.GALLERY))
-        assertNull("„alle“ reist nicht als Parameter mit", glance.accountFor(ScopeFilter.View.PARTS))
+        assertNull("“all” does not travel along as a parameter", glance.accountFor(ScopeFilter.View.PARTS))
         assertEquals("Kiste 3", glance.storageFor(ScopeFilter.View.PARTS))
     }
 
@@ -85,7 +85,7 @@ class ScopeTest {
             {"id":1,"username":"marco","is_self":true},{"id":7,"username":"kind"}]}"""))
         glance.loadMembers()
         assertEquals(2, glance.accounts.value.householdMembers.size)
-        assertNull("Konto 9 gibt es nicht mehr", glance.accountFor(ScopeFilter.View.GALLERY))
+        assertNull("account 9 no longer exists", glance.accountFor(ScopeFilter.View.GALLERY))
         assertEquals(AccountSelection.Account(7), glance.accountFor(ScopeFilter.View.PARTS))
     }
 

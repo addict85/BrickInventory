@@ -72,14 +72,14 @@ class MetricsPluralTest {
     @Test
     fun `at 1 German shows the singular`() {
         val text = bar("de-rCH", 1)
-        assertEquals("Mehrzahl bei 1: $text", null, plural.find(text)?.value)
+        assertEquals("plural at 1: $text", null, plural.find(text)?.value)
         assertTrue(text, "1 Exemplar" in text && "1 Anleitung" in text && "1 Teilesorte" in text)
     }
 
     @Test
     fun `at 1 English shows the singular`() {
         val text = bar("en-rGB", 1)
-        assertEquals("Mehrzahl bei 1: $text", null, plural.find(text)?.value)
+        assertEquals("plural at 1: $text", null, plural.find(text)?.value)
         assertTrue(text, "1 copy" in text && "1 minifigure" in text && "1 color" in text)
     }
 

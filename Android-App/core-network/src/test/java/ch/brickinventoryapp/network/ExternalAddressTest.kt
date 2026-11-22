@@ -41,16 +41,16 @@ class ExternalAddressTest {
                              "https://nas.example.evil:8443/a.pdf", "content://x/a.pdf", "")) {
             assertFalse(foreign, pdfInViewer(foreign, "https://nas:8443"))
         }
-        assertFalse("Ohne Server kein Betrachter", pdfInViewer("https://nas:8443/a.pdf", ""))
+        assertFalse("without a server no viewer", pdfInViewer("https://nas:8443/a.pdf", ""))
     }
 
     @Test
     fun `a local_path stays on the own server`() {
         assertEquals("https://nas:8443/brick/uploads/a.pdf", ownAddress("https://nas:8443/brick/", "uploads/a.pdf"))
-        assertEquals("Unterpfad bleibt wie bei der Verkettung",
+        assertEquals("the sub-path stays as with the concatenation",
             "https://nas:8443/brick/uploads/a.pdf", ownAddress("https://nas:8443/brick", "/uploads/a.pdf"))
         assertEquals("https://nas:8443/uploads/a%20b.pdf", ownAddress("https://nas:8443", "/uploads/a b.pdf"))
-        assertEquals("Zwei Schrägstriche führen nicht zu einem anderen Host",
+        assertEquals("two slashes do not lead to another host",
             "https://nas:8443/fremd.example/a.pdf", ownAddress("https://nas:8443", "//fremd.example/a.pdf"))
         assertNull(ownAddress("https://nas:8443", "https://fremd.example/a.pdf"))
         assertNull(ownAddress("https://nas:8443", "http://nas:8443/a.pdf"))

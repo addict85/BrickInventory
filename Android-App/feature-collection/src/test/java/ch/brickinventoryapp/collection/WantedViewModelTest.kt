@@ -95,15 +95,15 @@ class WantedViewModelTest {
         vm.loadWanted()
         assertEquals(2, vm.wantedState.value.wantedItem.size)
         vm.deleteWantedItem("10294-1", Condition.NEW, 1)
-        assertTrue("aus der Liste", vm.wantedState.value.wantedItem.none { it.setNumber == "10294-1" })
+        assertTrue("out of the list", vm.wantedState.value.wantedItem.none { it.setNumber == "10294-1" })
         assertEquals("Titanic", vm.marked.value?.name)
-        assertTrue("Noch kein DELETE", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
+        assertTrue("no DELETE yet", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
         vm.wantedItemUndo()
-        assertTrue("wieder da", vm.wantedState.value.wantedItem.any { it.setNumber == "10294-1" })
-        assertTrue("nach Rückgängig kein DELETE", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
+        assertTrue("back again", vm.wantedState.value.wantedItem.any { it.setNumber == "10294-1" })
+        assertTrue("no DELETE after undo", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isEmpty())
         vm.deleteWantedItem("10294-1", Condition.NEW, 1)
         vm.executeWantedItemDelete()
-        assertTrue("DELETE gesendet", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isNotEmpty())
+        assertTrue("DELETE sent", paths.requestsTo("DELETE /api/v1/wanted/10294-1").isNotEmpty())
         assertEquals(null, vm.marked.value)
     }
 
@@ -139,7 +139,7 @@ class WantedViewModelTest {
         vm.setWantedSearch("Ti")
         vm.setWantedSearch("Tita")
         clock.advanceTimeBy(300)
-        assertEquals("Vor der Pause darf nichts hinausgehen", 0, paths.requestsTo("GET /api/v1/wanted").size)
+        assertEquals("nothing may go out before the pause", 0, paths.requestsTo("GET /api/v1/wanted").size)
         clock.advanceTimeBy(100)
         assertEquals(listOf("10294-1"), vm.wantedState.value.wantedItem.map { it.setNumber })
         assertEquals(1, paths.requestsTo("GET /api/v1/wanted").size)
@@ -149,11 +149,11 @@ class WantedViewModelTest {
     fun `a takeover removes the wishlist item from the store and creates the set there`() {
         val vm = vm()
         vm.loadWanted()
-        assertTrue("Liste geladen", vm.wantedState.value.wantedItem.isNotEmpty())
+        assertTrue("List loaded", vm.wantedState.value.wantedItem.isNotEmpty())
         vm.adoptWantedItem("10294-1", Condition.NEW, owner = 1, purchasePriceRaw = "499,90")
-        assertTrue("aus der Merkliste", vm.wantedState.value.wantedItem.isEmpty())
+        assertTrue("out of the watchlist", vm.wantedState.value.wantedItem.isEmpty())
         val gallery = runBlocking { t.sets().observeSets().first().list }
-        assertEquals("in der Galerie", listOf("10294-1"), gallery.map { it.setNumber })
+        assertEquals("in the gallery", listOf("10294-1"), gallery.map { it.setNumber })
         val takeover = paths.requestsTo("/uebernehmen").single()
         assertTrue(takeover, takeover.startsWith("POST"))
     }
@@ -161,14 +161,14 @@ class WantedViewModelTest {
     @Test
     fun `list and detail load as soon as someone shows them`() {
         val vm = vm()
-        assertTrue("ohne Beobachter kein Abruf", paths.requestsTo("GET /api/v1/wanted").isEmpty())
+        assertTrue("no fetch without an observer", paths.requestsTo("GET /api/v1/wanted").isEmpty())
         val list = CoroutineScope(Dispatchers.Main).launch { vm.wantedState.collect {} }
         assertEquals(listOf("10294-1"), vm.wantedState.value.wantedItem.map { it.setNumber })
         list.cancel()
         val detail = vm.wantedItemDetailOf("10294-1")
         val page = CoroutineScope(Dispatchers.Main).launch { detail.collect {} }
         assertEquals("10294-1", detail.value.setNumber)
-        assertTrue("Alarme des Postens geholt", paths.requestsTo("GET /api/v1/alerts").isNotEmpty())
+        assertTrue("alerts of the item fetched", paths.requestsTo("GET /api/v1/alerts").isNotEmpty())
         page.cancel()
     }
 
@@ -176,7 +176,7 @@ class WantedViewModelTest {
     fun `a price alert in the wishlist item is saved debounced and reloaded`() {
         val vm = vm()
         vm.loadWantedItemDetail("10294-1")
-        assertTrue("Detail geladen", !vm.wantedItemDetailState.value.fetch.loading)
+        assertTrue("detail loaded", !vm.wantedItemDetailState.value.fetch.loading)
         assertEquals(Money.from(500.0), vm.wantedItemDetailState.value.priceAlarms.single().threshold)
         val before = paths.requestsTo("GET /api/v1/alerts").size
 
@@ -186,11 +186,11 @@ class WantedViewModelTest {
         // without a reload it would stay at 500.
         paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}]}"""
         clock.advanceTimeBy(900)
-        assertEquals("Nur die letzte Eingabe wird gespeichert", 1, paths.requestsTo("PUT /api/v1/sets/10294-1/alert").size)
+        assertEquals("only the last input is saved", 1, paths.requestsTo("PUT /api/v1/sets/10294-1/alert").size)
         assertTrue("nachgeladen", paths.requestsTo("GET /api/v1/alerts").size > before)
-        assertEquals("gespeichert und nachgeladen", Money.from(450.0), vm.wantedItemDetailState.value.priceAlarms.single().threshold)
+        assertEquals("saved and reloaded", Money.from(450.0), vm.wantedItemDetailState.value.priceAlarms.single().threshold)
         val stored = runBlocking { t.alerts().observeAlerts("10294-1").first().list }
-        assertEquals("in der Ablage", listOf(Money.from(450.0)), stored.map { it.threshold })
+        assertEquals("in the store", listOf(Money.from(450.0)), stored.map { it.threshold })
     }
 
     @Test
@@ -198,20 +198,20 @@ class WantedViewModelTest {
         val store = t.store
         val vm = vm()
         vm.loadWanted()
-        assertTrue("Liste geladen", vm.wantedState.value.wantedItem.isNotEmpty())
+        assertTrue("List loaded", vm.wantedState.value.wantedItem.isNotEmpty())
         val fetches = paths.requestsTo("GET /api/v1/wanted").size
 
         runBlocking { store.applyChange(Editing.DeleteWantedItem("10294-1", Condition.NEW, 1)) }
-        assertTrue("offline gelöscht", vm.wantedState.value.wantedItem.isEmpty())
-        assertEquals("ohne neuen Abruf", fetches, paths.requestsTo("GET /api/v1/wanted").size)
+        assertTrue("deleted offline", vm.wantedState.value.wantedItem.isEmpty())
+        assertEquals("without a new fetch", fetches, paths.requestsTo("GET /api/v1/wanted").size)
 
         vm.setWantedSearch("10294")
         clock.advanceTimeBy(400)
-        assertTrue("Suche geladen", vm.wantedState.value.wantedItem.isNotEmpty())
+        assertTrue("search loaded", vm.wantedState.value.wantedItem.isNotEmpty())
         runBlocking { store.applyChange(Editing.CreateWantedItem(WantedRequest("99999-1", Condition.NEW, 1))) }
         runBlocking { store.applyChange(Editing.CreateWantedItem(WantedRequest("10294-1", Condition.USED, 1))) }
         clock.advanceTimeBy(100)
-        assertEquals("die Suche filtert auch offline Angelegtes", listOf("10294-1|U", "10294-1|N"),
+        assertEquals("the search also filters what was created offline", listOf("10294-1|U", "10294-1|N"),
             vm.wantedState.value.wantedItem.map { "${it.setNumber}|${it.condition.identifier}" })
     }
 }

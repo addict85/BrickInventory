@@ -37,7 +37,7 @@ class NetworkPolicyTest {
     fun `suffix attack is rejected`() {
         val base = "https://brick.example.com"
         assertFalse(
-            "Präfixvergleich-Lücke: Angreifer-Domain mit der Server-URL als Präfix",
+            "prefix comparison gap: attacker domain with the server URL as a prefix",
             NetworkPolicy.isSameOrigin("https://brick.example.com.angreifer.tld/api/v1/sets".toHttpUrl(), base)
         )
         assertFalse(NetworkPolicy.isSameOrigin("https://evil.tld/brick.example.com".toHttpUrl(), base))
@@ -80,7 +80,7 @@ class NetworkPolicyTest {
         assertEquals(NetworkPolicy.AddressError.PLAINTEXT, NetworkPolicy.addressError("HTTP://nas:3000", development = true))
         assertEquals(NetworkPolicy.AddressError.UNREADABLE, NetworkPolicy.addressError("https://", development = false))
         assertEquals(NetworkPolicy.AddressError.UNREADABLE, NetworkPolicy.addressError("https://nas:abc", development = false))
-        assertNull("Im Debug-Build der Emulator-Host", NetworkPolicy.addressError("http://10.0.2.2:3000", development = true))
+        assertNull("the emulator host in the debug build", NetworkPolicy.addressError("http://10.0.2.2:3000", development = true))
     }
 
     @Test
@@ -89,7 +89,7 @@ class NetworkPolicyTest {
         assertTrue(NetworkPolicy.plaintextLegacyStock("http://localhost:3000", development = false))
         assertFalse(NetworkPolicy.plaintextLegacyStock("http://localhost:3000", development = true))
         assertFalse(NetworkPolicy.plaintextLegacyStock("https://nas", development = false))
-        assertFalse("Noch nicht eingerichtet ist kein Altbestand", NetworkPolicy.plaintextLegacyStock("", development = false))
+        assertFalse("not set up yet is no legacy data", NetworkPolicy.plaintextLegacyStock("", development = false))
         assertTrue(NetworkPolicy.isHttps("https://nas:8443"))
         assertFalse(NetworkPolicy.isHttps("http://nas:3000"))
     }
@@ -100,6 +100,6 @@ class NetworkPolicyTest {
         assertTrue(NetworkPolicy.sameOrigin("http://nas:3000", "http://NAS:3000/"))
         assertFalse(NetworkPolicy.sameOrigin("http://nas:3000", "http://nas:3001"))
         assertFalse(NetworkPolicy.sameOrigin("http://nas:3000", "https://nas:3000"))
-        assertFalse("Eine leere Adresse ist kein Server", NetworkPolicy.sameOrigin("", ""))
+        assertFalse("an empty address is no server", NetworkPolicy.sameOrigin("", ""))
     }
 }

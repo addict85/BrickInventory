@@ -45,9 +45,9 @@ class PreviewEncryptedTest {
         val s = memory()
         s.write(address, image)
         assertTrue(s.has(address))
-        assertFalse("Das Bild liegt im Klartext auf der Platte", plaintextSomewhere())
+        assertFalse("The image is on disk in plaintext", plaintextSomewhere())
         assertArrayEquals(image, s.read(address))
-        assertArrayEquals("Ein neuer Prozess liest es ebenso", image, memory().read(address))
+        assertArrayEquals("A new process reads it likewise", image, memory().read(address))
     }
 
     @Test
@@ -55,7 +55,7 @@ class PreviewEncryptedTest {
         val old = File(root, "a".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(image) }
         val s = memory()
         assertNull(s.read(address))
-        assertFalse("Das Klartext-Bild der Vorfassung bleibt liegen", old.exists())
+        assertFalse("The plaintext image of the previous version stays behind", old.exists())
         assertFalse(plaintextSomewhere())
     }
 
@@ -63,14 +63,14 @@ class PreviewEncryptedTest {
     fun `the file name does not reveal the address, and the store with SHA-256 names disappears`() {
         val old = File(root, "v2/" + "b".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(byteArrayOf(1)) }
         memory().write(address, image)
-        assertFalse("Die v2-Ablage bleibt liegen", old.exists())
+        assertFalse("The v2 store stays behind", old.exists())
         val sha = MessageDigest.getInstance("SHA-256").digest(address.toByteArray()).joinToString("") { "%02x".format(it) }
         val name = root.walkTopDown().single { it.isFile }.name
-        assertFalse("Der Name ist der SHA-256 der Adresse", name == sha)
+        assertFalse("The name is the SHA-256 of the address", name == sha)
         val different = File(root.parentFile, root.name + "-b")
         try {
             PreviewMemory({ different }, StoreCipher { ByteArray(32) { 3 } }) { ByteArray(32) { 14 } }.write(address, image)
-            assertFalse("Der Name hängt nicht am Schlüssel", different.walkTopDown().single { it.isFile }.name == name)
+            assertFalse("The name does not depend on the key", different.walkTopDown().single { it.isFile }.name == name)
         } finally {
             different.deleteRecursively()
         }
@@ -85,7 +85,7 @@ class PreviewEncryptedTest {
         s.write(other, "x".toByteArray())
         val target = root.walkTopDown().single { it.isFile && it != real }
         real.copyTo(target, overwrite = true)
-        assertNull("Das Bild eines anderen Sets gilt nicht als dieses", s.read(other))
-        assertFalse("Die unlesbare Datei bleibt liegen und gilt beim Vorwärmen als da", s.has(other))
+        assertNull("Another set's image does not count as this one", s.read(other))
+        assertFalse("The unreadable file stays behind and counts as present when prewarming", s.has(other))
     }
 }

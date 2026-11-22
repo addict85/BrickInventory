@@ -74,9 +74,9 @@ class TileReadAloudTest {
     }
 
     private fun check(was: String, read: String, name: String, units: List<String>) {
-        assertEquals("$was: Name nicht genau einmal in „$read“", 1, read.windowed(name.length).count { it == name })
-        assertTrue("$was: Zeichen statt Wort in „$read“", '×' !in read && '✓' !in read)
-        units.forEach { assertTrue("$was: „$it“ fehlt in „$read“", it in read) }
+        assertEquals("$was: name not exactly once in “$read”", 1, read.windowed(name.length).count { it == name })
+        assertTrue("$was: symbol instead of word in “$read”", '×' !in read && '✓' !in read)
+        units.forEach { assertTrue("$was: “$it” missing in “$read”", it in read) }
     }
 
     @Test
@@ -142,7 +142,7 @@ class TileReadAloudTest {
             }
         }
         val small = listOf("Brick 2 x 4", "Brick 2 x 3", "Bricks").associateWith { size(it) }.filterValues { it < 12f }
-        assertTrue("Kerninformation unter 12 sp: $small", small.isEmpty())
+        assertTrue("core information below 12 sp: $small", small.isEmpty())
     }
 
     @Test

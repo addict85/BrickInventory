@@ -52,6 +52,6 @@ class MonitoringReloadTest {
         assertTrue(vm.emptyCache(everything = true) is Outcome.Success)
         val after = paths.requests.toList().drop(1)
         assertEquals("POST /api/v1/admin/cache-clear", paths.requests.first())
-        assertTrue("Die Cache-Zahlen werden nicht neu geholt: $after", "GET /api/v1/admin/cache-stats" in after)
+        assertTrue("the cache figures are not fetched again: $after", "GET /api/v1/admin/cache-stats" in after)
     }
 }

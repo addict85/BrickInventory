@@ -24,7 +24,7 @@ class LocationOnAddTest {
     /** The body of a function: from its name to the next one at the start of a column. */
     private fun body(source: String, header: String): String {
         val i = source.indexOf(header)
-        check(i >= 0) { "$header nicht gefunden — umbenannt?" }
+        check(i >= 0) { "$header not found — renamed?" }
         val rest = source.substring(i + header.length)
         val j = Regex("\\n(?:@Composable|private fun |internal fun |fun )").find(rest)?.range?.first
         return rest.substring(0, j ?: rest.length)
@@ -41,7 +41,7 @@ class LocationOnAddTest {
             Triple("shared/ui/ManualItemComposables.kt", "fun EntryFields(", "manuelle Teile und Figuren"),
             Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
-        check(routes.size >= 5) { "Nur ${routes.size} Wege — Liste unvollstaendig?" }
+        check(routes.size >= 5) { "Only ${routes.size} ways — list incomplete?" }
         val without = mutableListOf<String>()
         for ((file, header, name) in routes) {
             // Without comment lines: a paragraph that EXPLAINS the field necessarily
@@ -50,8 +50,8 @@ class LocationOnAddTest {
             if (!body(source, header).contains("StorageLocationEntry(")) without += name
         }
         assert(without.isEmpty()) {
-            "Diese Erfassungswege fragen nicht nach dem Lagerort: " +
-                "${without.joinToString(", ")} — er laesst sich dort erst nachtraeglich setzen."
+            "These entry ways do not ask for the storage location: " +
+                "${without.joinToString(", ")} — there it can only be set afterwards."
         }
     }
 
@@ -84,7 +84,7 @@ class LocationOnAddTest {
             Triple("parts/ui/screens/FiguresRecord.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
             Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
-        check(holder.size >= 6) { "Nur ${holder.size} Halter — Liste unvollstaendig?" }
+        check(holder.size >= 6) { "Only ${holder.size} holders — list incomplete?" }
         val empty = mutableListOf<String>()
         for ((file, header, name) in holder) {
             val source = Sources.withoutComments(Sources.read(file))
@@ -101,9 +101,9 @@ class LocationOnAddTest {
             else if (!row.contains("orgabe") && !row.contains("efault")) empty += "$name (kein Vorgabe-Wert)"
         }
         assert(empty.isEmpty()) {
-            "Diese Erfassungswege starten nicht bei der Vorgabe: " +
-                "${empty.joinToString(", ")} — Marcos Stern wirkt dort nicht, und " +
-                "man muesste den Ort jedes Mal von Hand waehlen."
+            "These entry ways do not start at the default: " +
+                "${empty.joinToString(", ")} — Marco's star has no effect there, and " +
+                "one would have to pick the location by hand every time."
         }
     }
 
@@ -114,8 +114,8 @@ class LocationOnAddTest {
         val source = Sources.withoutComments(Sources.read("catalog/ui/screens/CatalogDetailScreen.kt"))
         val bodyBytes = body(source, "fun WantedItemDialog(")
         assert(bodyBytes.contains("OwnerPicker(")) {
-            "Der Merkposten-Dialog im Katalog hat keine Kontowahl — ein Wunsch " +
-                "fuer das Kind landete damit still beim eigenen Konto."
+            "The watchlist dialog in the catalog has no account choice — a wish " +
+                "for the child would silently land on one's own account."
         }
     }
 }

@@ -68,7 +68,7 @@ class RoutesRoundTripTest {
         compose.waitForIdle()
         return compose.runOnIdle {
             val top = nav.currentBackStackEntry!!
-            checkNotNull(read[top.id]) { "Ziel für $target nicht aufgebaut (${top.destination.route})" }
+            checkNotNull(read[top.id]) { "destination for $target not built (${top.destination.route})" }
         }
     }
 
@@ -87,9 +87,9 @@ class RoutesRoundTripTest {
         build()
         for (t in title) {
             val part = PartsTarget.ManualItemDetail(ItemKind.PART, "3001 b", 4, t)
-            assertEquals("Teil „$t“", part, there(part))
+            assertEquals("part “$t”", part, there(part))
             val purchase = CollectionTarget.AcquisitionManagement(ItemKind.FIG, "sw0001+", 0, t)
-            assertEquals("Kauf „$t“", purchase, there(purchase))
+            assertEquals("purchase “$t”", purchase, there(purchase))
         }
     }
 

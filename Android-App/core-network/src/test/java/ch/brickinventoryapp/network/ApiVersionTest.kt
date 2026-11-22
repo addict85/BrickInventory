@@ -29,6 +29,6 @@ class ApiVersionTest {
     fun `fits, or the server says nothing`() {
         assertNull(versionsHint(serverApi = 1, minApp = 1, appApi = 1))
         assertNull(versionsHint(serverApi = 2, minApp = 1, appApi = 1))
-        assertNull("Ältere Server senden keine Kopfzeile", versionsHint(serverApi = null, minApp = null, appApi = 1))
+        assertNull("older servers send no header", versionsHint(serverApi = null, minApp = null, appApi = 1))
     }
 }

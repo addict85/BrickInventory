@@ -114,6 +114,6 @@ class StoreVersionTest {
     fun `an unknown version is unreadable instead of misread`() {
         val newValue = """{"fassung":2,"fig_number":"sw0001"}"""
         assertThrows(SerializationException::class.java) { Slots.FIGURES.form.decode(BrickJson, newValue) }
-        assertEquals("Fassung 1 trägt kein Feld", "sw0001", Slots.FIGURES.form.decode(BrickJson, """{"fassung":1,"fig_number":"sw0001"}""").figNumber)
+        assertEquals("version 1 carries no field", "sw0001", Slots.FIGURES.form.decode(BrickJson, """{"fassung":1,"fig_number":"sw0001"}""").figNumber)
     }
 }

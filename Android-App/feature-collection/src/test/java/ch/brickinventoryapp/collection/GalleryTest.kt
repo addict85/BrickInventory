@@ -88,7 +88,7 @@ class GalleryTest {
         q.store.value = Local(listOf(set(3), set(1, 3), set(2, theme = "Star Wars")), 2L)
         runCurrent()
         assertEquals(listOf("3-1x1", "1-1x3", "2-1x1"), short(g.state.value.sets))
-        assertEquals("ein Abruf je Laden, keiner je Änderung", 1, q.updated.size)
+        assertEquals("one fetch per load, none per change", 1, q.updated.size)
     }
 
     @Test
@@ -103,7 +103,7 @@ class GalleryTest {
         assertEquals(listOf("2-1x1"), short(g.state.value.sets))
         old.value = Local(listOf(set(9)), 2L)
         runCurrent()
-        assertEquals("die Quelle des alten Filters schreibt nicht mehr hinein", listOf("2-1x1"), short(g.state.value.sets))
+        assertEquals("the source of the old filter no longer writes into it", listOf("2-1x1"), short(g.state.value.sets))
     }
 
     @Test
@@ -152,7 +152,7 @@ class GalleryTest {
         val g = gallery(Source(Local(listOf(set(7)), 5L))) { Outcome.Failure.Network() }
         g.load(); advanceUntilIdle()
         assertEquals(listOf("7-1x1"), short(g.state.value.sets))
-        assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.fetch.errorMessage)
+        assertNull("without a network the store stays", g.state.value.fetch.errorMessage)
         assertEquals(5L, g.state.value.offlineStatus)
     }
 

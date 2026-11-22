@@ -38,21 +38,21 @@ class WithoutLockTest {
         val protection = DevicesStepProtection(activity) { "" }
         var next = 0
         compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { next++ } }
-        assertEquals("Ohne Sperre ging der Schritt still weiter", 0, next)
+        assertEquals("without a lock the step silently went on", 0, next)
 
         compose.setContent { BrickInventoryManagerTheme { WithoutLockWarning(protection.withoutLock) } }
         compose.onNodeWithText("Gutschein-PIN anzeigen", substring = true).assertExists()
         compose.onNodeWithText(compose.activity.getString(R.string.common_cancel)).performClick()
         compose.waitForIdle()
-        assertEquals("Abbrechen lässt nichts durch", 0, next)
+        assertEquals("cancel lets nothing through", 0, next)
         assertNull(protection.withoutLock.waiting)
 
         compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { next++ } }
         compose.onNodeWithText(compose.activity.getString(R.string.step_without_lock_next)).performClick()
         compose.waitForIdle()
-        assertEquals("Ungeschützt fortfahren führt den Schritt aus", 1, next)
+        assertEquals("continuing unprotected performs the step", 1, next)
 
         compose.runOnUiThread { protection.confirm("Verwaltung öffnen") { next++ } }
-        assertEquals("Das Ja gilt bis zur Frist wie eine Bestätigung", 2, next)
+        assertEquals("the yes counts as a confirmation until the deadline", 2, next)
     }
 }

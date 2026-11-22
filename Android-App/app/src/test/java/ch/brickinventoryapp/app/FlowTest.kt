@@ -141,7 +141,7 @@ class FlowTest {
         show { AddSetDialog(onDismiss = {}, onAdd = { recorded++ }, immediatelyFocus = false) }
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
-        assertEquals("Ohne Nummer wird nichts erfasst", 0, recorded)
+        assertEquals("without a number nothing is entered", 0, recorded)
         compose.onNodeWithText(ctx.getString(R.string.record_number_missing), useUnmergedTree = true).assertIsDisplayed()
     }
 
@@ -174,7 +174,7 @@ class FlowTest {
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("--")
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
-        assertEquals("Eine unsinnige Nummer wird nicht erfasst", 0, recorded)
+        assertEquals("a nonsensical number is not entered", 0, recorded)
         compose.onNodeWithText(ctx.getString(R.string.record_number_invalid), useUnmergedTree = true).assertIsDisplayed()
     }
 
@@ -217,14 +217,14 @@ class FlowTest {
         val trash = compose.onNodeWithContentDescription(ctx.getString(R.string.cd_set_delete, name))
         trash.performClick()
         compose.waitForIdle()
-        assertEquals("Mit Rückgängig sofort vorgemerkt", listOf(Examples.SET), deleted)
+        assertEquals("with undo marked right away", listOf(Examples.SET), deleted)
         compose.onNode(androidx.compose.ui.test.isDialog()).assertDoesNotExist()
 
         undo = false
         compose.waitForIdle()
         trash.performClick()
         compose.waitForIdle()
-        assertEquals("Ohne Rückgängig erst nach der Rückfrage", 1, deleted.size)
+        assertEquals("without undo only after the confirmation", 1, deleted.size)
         compose.onNode(androidx.compose.ui.test.isDialog()).assertExists()
     }
 
@@ -280,7 +280,7 @@ class FlowTest {
         compose.onNodeWithText("4711", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, "6061 2345 6789"))
             .performClick()
-        assertEquals("Ohne Bestätigung nichts kopiert", emptyList<String>(), copied)
+        assertEquals("nothing copied without confirmation", emptyList<String>(), copied)
         assertEquals(List(2) { ctx.getString(R.string.step_voucher) }, asked)
     }
 
@@ -292,7 +292,7 @@ class FlowTest {
         showVoucher({ reason, _ -> asked += reason }, copied)
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_number, "6061 2345 6789"))
             .performClick()
-        assertEquals("Ohne Bestätigung nichts kopiert", emptyList<String>(), copied)
+        assertEquals("nothing copied without confirmation", emptyList<String>(), copied)
         assertEquals(listOf(ctx.getString(R.string.step_voucher)), asked)
     }
 

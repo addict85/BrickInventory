@@ -23,8 +23,8 @@ class ScannerPerformanceTest {
     fun `tapping focuses`() {
         val c = code(src)
         assert(c.contains("tapToFocus(")) {
-            "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
-                "der bei nahen Vorlagen lange braucht"
+            "Without tap to focus only continuous autofocus remains, " +
+                "which takes long for close-up subjects"
         }
         // That the tapper also HOLDS the focus (disableAutoCancel) stood here
         // as a fifth copy of the same rule. It now stands completely in
@@ -33,7 +33,7 @@ class ScannerPerformanceTest {
         // slipped past. What remains here is what belongs to this file's topic: that
         // tapping exists at all.
         assert(c.contains("_cameraCtrl.set(")) {
-            "Die Kamerasteuerung wird dem Listener nie übergeben — Tippen bliebe wirkungslos"
+            "the camera control is never passed to the listener — tapping would have no effect"
         }
     }
 }

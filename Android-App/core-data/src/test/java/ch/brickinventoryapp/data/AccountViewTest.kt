@@ -66,7 +66,7 @@ class AccountViewTest {
         view.gallery.refresh(query())
         val path = paths.requestsTo("GET /api/v1/sets?").single()
         for (part in listOf("accounts=7", "search=falcon", "theme=Star%20Wars", "sort=price_desc", "storage=Regal%202")) {
-            assertTrue("$part fehlt: $path", part in path)
+            assertTrue("$part missing: $path", part in path)
         }
         assertEquals(listOf("10-1", "11-1"), view.gallery.observe(query()).first().list.map { it.setNumber })
     }
@@ -75,7 +75,7 @@ class AccountViewTest {
     fun `the account view does not end up in the store`() = runBlocking {
         view.gallery.refresh(query())
         val stored = sets.observeSets().first()
-        assertNull("nie geladen", stored.state)
+        assertNull("never loaded", stored.state)
         assertTrue(stored.list.isEmpty())
     }
 
@@ -104,7 +104,7 @@ class AccountViewTest {
         // The new request runs via the test server, thus on a foreign thread.
         withTimeoutOrNull(5_000) { while (paths.requestsTo("GET /api/v1/sets?").size <= before) delay(10) }
         observer.cancel()
-        assertEquals("neu gefragt", before + 1, paths.requestsTo("GET /api/v1/sets?").size)
+        assertEquals("asked anew", before + 1, paths.requestsTo("GET /api/v1/sets?").size)
     }
 
     @Test
@@ -124,9 +124,9 @@ class AccountViewTest {
         paths.codes["/api/v1/sets"] = 500
         assertTrue(sets.refreshSets() is Outcome.Failure)
         val stored = sets.observeSets(theme = null).first()
-        assertTrue("mit Stand", stored.state != null)
-        assertEquals("ein Fehler leert die Ablage nicht", listOf("10-1", "11-1"), stored.list.map { it.setNumber })
-        assertEquals("die Ablage beantwortet die Suche selbst", listOf("11-1"),
+        assertTrue("with state", stored.state != null)
+        assertEquals("an error does not empty the store", listOf("10-1", "11-1"), stored.list.map { it.setNumber })
+        assertEquals("the store answers the search itself", listOf("11-1"),
             sets.observeSets(search = "burg").first().list.map { it.setNumber })
     }
 }

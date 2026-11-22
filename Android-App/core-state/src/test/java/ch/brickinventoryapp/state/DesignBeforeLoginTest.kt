@@ -42,7 +42,7 @@ class CacheClearTest {
             admin.clearCache(everything = true)
         }
         assertEquals(listOf("POST /api/v1/admin/cache-clear", "POST /api/v1/admin/cache-clear"), paths.requests.toList())
-        assertEquals("Der Umfang (nur Preise / alles) wird nicht unterschieden",
+        assertEquals("the scope (prices only / everything) is not distinguished",
             listOf("{}", """{"all":true}"""), paths.bodyBytes.toList())
     }
 }

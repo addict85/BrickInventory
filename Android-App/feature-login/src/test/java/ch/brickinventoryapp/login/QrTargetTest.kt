@@ -24,8 +24,8 @@ class QrTargetTest {
 
     @Test
     fun `with a yes lock and typing still apply`() {
-        assertFalse("Klartext-Adresse", qrAdoptable(locked = true, targetConfirmed = true, type = false, input = ""))
-        assertFalse("Nichts abgetippt", qrAdoptable(locked = false, targetConfirmed = true, type = true, input = " "))
+        assertFalse("Plaintext address", qrAdoptable(locked = true, targetConfirmed = true, type = false, input = ""))
+        assertFalse("Nothing typed off", qrAdoptable(locked = false, targetConfirmed = true, type = true, input = " "))
         assertTrue(qrAdoptable(locked = false, targetConfirmed = true, type = true, input = "3F:A2"))
     }
 }

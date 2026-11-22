@@ -73,7 +73,7 @@ class TextContrastTest {
                 listOf("linie" to d.line, "neu" to d.new, "gebraucht" to d.used).mapNotNull { (n, c) ->
                     k(c, s.surface).takeIf { it < Contrast.FRAME }?.let { "${f.name}.$n/surface %.2f".format(it) } }
         }
-        assertTrue("Diagrammschrift oder -linie zu schwach: $error", error.isEmpty())
+        assertTrue("chart text or line too weak: $error", error.isEmpty())
     }
 
     /** Text on surface, the way Material3 pairs the roles; plus text in main, error and profit color. */
@@ -124,7 +124,7 @@ class TextContrastTest {
                 "markt" to (a.onMarket to a.market), "kauf" to (a.onPurchase to a.purchase))
                 .mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Unter 4,5:1: $error", error.isEmpty())
+        assertTrue("below 4.5:1: $error", error.isEmpty())
     }
 
     /**
@@ -139,7 +139,7 @@ class TextContrastTest {
             listOf("leiste" to a.bar, "detailBar" to a.detailBar, "markt" to a.market, "kauf" to a.purchase)
                 .mapNotNull { (n, c) -> Contrast.luminance(c.toArgb()).takeIf { it > 0.1 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Helle Fläche im Dunkeln: $error", error.isEmpty())
+        assertTrue("light surface in the dark: $error", error.isEmpty())
     }
 
     /** The market value is the detail page's most important value; its tile stands out more than the purchase price. */
@@ -150,7 +150,7 @@ class TextContrastTest {
             val market = k(a.market, f.s.surface); val purchase = k(a.purchase, f.s.surface)
             if (market < purchase * 1.2) "${f.name} %.2f gegen %.2f".format(market, purchase) else null
         }
-        assertTrue("Kaufpreis-Kachel kräftiger als der Marktwert: $error", error.isEmpty())
+        assertTrue("purchase price tile stronger than the market value: $error", error.isEmpty())
     }
 
     @Test
@@ -158,7 +158,7 @@ class TextContrastTest {
         val error = versions.flatMap { f ->
             textPairs(f).mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Unter 4,5:1: $error", error.isEmpty())
+        assertTrue("below 4.5:1: $error", error.isEmpty())
     }
 
     /** The navigation's selected destination is recognizable by its indicator's surface, not only by its hue. */
@@ -173,7 +173,7 @@ class TextContrastTest {
                 k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) }
             }
         }
-        assertTrue("Gewählter Reiter kaum erkennbar: $error", error.isEmpty())
+        assertTrue("selected tab hardly recognizable: $error", error.isEmpty())
     }
 
     /** Warning color draws bars and icons (monitoring, CSV report): graphics need 3:1. */
@@ -183,7 +183,7 @@ class TextContrastTest {
             listOf("surface" to f.s.surface, "background" to f.s.background, "surfaceContainer" to f.s.surfaceContainer)
                 .mapNotNull { (n, fl) -> k(f.status.warning, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.warnung/$n %.2f".format(it) } }
         }
-        assertTrue("Unter 3:1: $error", error.isEmpty())
+        assertTrue("below 3:1: $error", error.isEmpty())
     }
 
     @Test
@@ -194,7 +194,7 @@ class TextContrastTest {
                 "surfaceContainerHighest" to s.surfaceContainerHighest, "primaryContainer" to s.primaryContainer)
                 .mapNotNull { (n, fl) -> k(s.outline, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.outline/$n %.2f".format(it) } }
         }
-        assertTrue("Unter 3:1: $error", error.isEmpty())
+        assertTrue("below 3:1: $error", error.isEmpty())
     }
 
     /**
@@ -210,6 +210,6 @@ class TextContrastTest {
                 (a.blue - b.blue) * (a.blue - b.blue)).toDouble())
             if (d < 0.15) "${f.name} %.2f".format(d) else null
         }
-        assertTrue("Hauptfarbe zu nah an der Fehlerfarbe: $error", error.isEmpty())
+        assertTrue("main color too close to the error color: $error", error.isEmpty())
     }
 }

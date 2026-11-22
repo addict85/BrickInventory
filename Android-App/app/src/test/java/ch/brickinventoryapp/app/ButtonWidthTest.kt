@@ -125,7 +125,7 @@ class ButtonWidthTest {
             .walkTopDown().filter { it.extension == "kt" }.toList()
         // Lower bound: an empty file walk would let the check pass
         // silently.
-        check(files.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${files.size}) — Pfad veraltet?" }
+        check(files.size >= 20) { "Too few Kotlin files found (${files.size}) — path outdated?" }
 
         val flicker = mutableListOf<String>()
         var checked = 0
@@ -154,11 +154,11 @@ class ButtonWidthTest {
                 }
             }
         }
-        check(checked >= 3) { "Nur $checked Knoepfe mit Kreisel gefunden — greift die Suche noch?" }
+        check(checked >= 3) { "Only $checked buttons with a spinner found — does the search still apply?" }
         assert(flicker.isEmpty()) {
-            "Diese Knoepfe verlieren beim Druck ihre Beschriftung und schrumpfen dabei: " +
-                "${flicker.joinToString(", ")} — der Kreisel gehoert NEBEN die Beschriftung, " +
-                "nicht an ihre Stelle (siehe SettingsScreen, Knopf „Suchen\")"
+            "These buttons lose their label when pressed and shrink: " +
+                "${flicker.joinToString(", ")} — the spinner belongs NEXT TO the label, " +
+                "not in its place (see SettingsScreen, button “Suchen\")"
         }
     }
 }

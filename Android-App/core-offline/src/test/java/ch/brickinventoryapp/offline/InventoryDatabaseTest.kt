@@ -93,7 +93,7 @@ class InventoryDatabaseTest {
         // A second access to the same database, as after a restart of the app.
         assertEquals(listOf(item), RoomOutbox(db).discarded("a").first())
         assertEquals(emptyList<DiscardedItem>(), outbox.discarded("b").first())
-        assertEquals("keine Liste des Bestands sieht ihn", emptyList<LocalRow>(), stock.read("a", StockKind.SETS).list)
+        assertEquals("no list of the stock sees it", emptyList<LocalRow>(), stock.read("a", StockKind.SETS).list)
         outbox.acknowledgeDiscarded("a", "k1")
         assertEquals(emptyList<DiscardedItem>(), outbox.discarded("a").first())
         outbox.rememberDiscarded("a", item.copy(id = "k2"))

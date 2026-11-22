@@ -42,7 +42,7 @@ class RepoReferencesInTestsTest {
         val appCode = files(Sources.root)
             .joinToString("\n") { it.readText() }
         assert(appCode.contains("sets.refreshSets(")) {
-            "Der App-Code wurde nicht gelesen — dieser Test prüfte sonst gegen Leere"
+            "the app code was not read — this test would otherwise check against nothing"
         }
 
         val dead = mutableListOf<String>()
@@ -53,9 +53,9 @@ class RepoReferencesInTestsTest {
             }
         }
         assert(dead.isEmpty()) {
-            "Diese Testmuster suchen Aufrufe, die es im App-Code nicht (mehr) gibt. " +
-                "Entweder wurde umbenannt und der Test nicht nachgezogen, oder das " +
-                "Muster war von Anfang an falsch geschrieben:\n" + dead.joinToString("\n")
+            "These test patterns look for calls that do not exist (any more) in the app code. " +
+                "Either something was renamed and the test not updated, or the " +
+                "pattern was written wrongly from the start:\n" + dead.joinToString("\n")
         }
     }
 }

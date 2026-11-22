@@ -30,7 +30,7 @@ class PriceAlertMessageTest {
         val n = PriceAlarmWorker.message(ctx, "75192-1: CHF 612.00 (unter CHF 650.00)", null)
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         val public = n.publicVersion
-        assertNotNull("Ohne Ersatzfassung zeigt Android nur „Inhalt ausgeblendet“ oder alles", public)
+        assertNotNull("without a fallback version Android only shows “content hidden” or everything", public)
         val visible = listOf(Notification.EXTRA_TITLE, Notification.EXTRA_TEXT)
             .joinToString(" ") { public!!.extras.getCharSequence(it)?.toString().orEmpty() }
         assertFalse(visible, visible.contains("75192") || visible.contains("612"))

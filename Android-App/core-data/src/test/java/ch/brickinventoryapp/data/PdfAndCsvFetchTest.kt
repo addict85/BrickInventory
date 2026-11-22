@@ -42,7 +42,7 @@ class PdfAndCsvFetchTest {
     private fun rejected() = TestApi.response("""{"success":false,"error":"Token abgelaufen"}""", code = 401)
 
     private fun <T> error(r: Outcome<T>): Outcome.Failure {
-        assertTrue("erwartet ein Fehler, war $r", r is Outcome.Failure)
+        assertTrue("expected an error, was $r", r is Outcome.Failure)
         return r as Outcome.Failure
     }
 
@@ -52,7 +52,7 @@ class PdfAndCsvFetchTest {
         val all = listOf(sets.startPdfJob(PartListJob(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in all) {
             val f = error(r)
-            assertTrue("$f ist nicht vorübergehend", f.transient)
+            assertTrue("$f is not transient", f.transient)
         }
     }
 
@@ -62,7 +62,7 @@ class PdfAndCsvFetchTest {
         val all = listOf(sets.startPdfJob(PartListJob(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in all) {
             val f = error(r)
-            assertTrue("$f ist keine Abweisung", f is Outcome.Failure.Rejected)
+            assertTrue("$f is no rejection", f is Outcome.Failure.Rejected)
             assertEquals("Token abgelaufen", f.message)
         }
     }
@@ -78,7 +78,7 @@ class PdfAndCsvFetchTest {
         assertEquals(RunStatus.RUNNING, state.status)
         assertEquals(12.0, state.restSeconds)
         assertNull(state.error)
-        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(PartListJob(emptyList(), emptyList())) is Outcome.Failure.EmptyResponse)
+        assertTrue("no job without a number", sets.startPdfJob(PartListJob(emptyList(), emptyList())) is Outcome.Failure.EmptyResponse)
 
         val paths = List(3) { server.takeRequest().path }
         assertEquals(listOf("/api/v1/sets/partslist-pdf", "/api/v1/sets/partslist-pdf/status/j7", "/api/v1/sets/partslist-pdf"), paths)

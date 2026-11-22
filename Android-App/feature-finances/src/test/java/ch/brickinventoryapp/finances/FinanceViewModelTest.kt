@@ -75,7 +75,7 @@ class FinanceViewModelTest {
         val first = vm(wanted)
         first.toggleFinanceCategory("parts")
         first.loadPortfolioHistory("month")
-        assertTrue("Verlauf geladen", !first.financeState.value.history.loading)
+        assertTrue("history loaded", !first.financeState.value.history.loading)
 
         val newValue = vm(wanted).financeState.value
         assertEquals(setOf("parts"), newValue.categories)
@@ -85,12 +85,12 @@ class FinanceViewModelTest {
     @Test
     fun `whoever sees the finances loads valuation and history, the valuation once`() {
         val vm = vm()
-        assertTrue("Ohne Beobachter wird nichts geholt", paths.requestsTo("/finance/").isEmpty())
+        assertTrue("without observers nothing is fetched", paths.requestsTo("/finance/").isEmpty())
         val view = CoroutineScope(Dispatchers.Main).launch { vm.financeState.collect {} }
         view.cancel()
         CoroutineScope(Dispatchers.Main).launch { vm.financeState.collect {} }.cancel()
         assertEquals(1, paths.requestsTo("/finance/valuation").size)
-        assertTrue("Der Verlauf kommt mit", paths.requestsTo("/finance/portfolio-history").isNotEmpty())
+        assertTrue("the history comes along", paths.requestsTo("/finance/portfolio-history").isNotEmpty())
     }
 
     @Test
@@ -99,21 +99,21 @@ class FinanceViewModelTest {
         val vm = vm()
         // A different area fetches the sets into the store; the valuation follows it.
         runBlocking { t.sets().refreshSets() }
-        assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
+        assertTrue("valuation loaded", vm.financeState.value.valuation != null)
         assertEquals("75192-1", vm.financeState.value.valuation?.sets?.single()?.setNumber)
-        assertEquals("Die Währung des Kontos gilt für die ganze App", CurrencyCode.CHF, t.session.state.value.currency)
+        assertEquals("the account's currency applies to the whole app", CurrencyCode.CHF, t.session.state.value.currency)
     }
 
     @Test
     fun `the tab's account filter travels along and reloads valuation and history`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.FINANCE, "own")
-        assertTrue("beide Abrufe", paths.requestsTo("/finance/valuation").isNotEmpty() && paths.requestsTo("/portfolio-history").isNotEmpty())
+        assertTrue("both fetches", paths.requestsTo("/finance/valuation").isNotEmpty() && paths.requestsTo("/portfolio-history").isNotEmpty())
         assertTrue(paths.requestsTo("/finance/valuation").single().contains("accounts=own"))
         assertTrue(paths.requestsTo("/portfolio-history").single().contains("accounts=own"))
 
         // The filter of a DIFFERENT view loads nothing here.
-        assertTrue("Bewertung vollständig", paths.requestsTo("/finance/pnl").isNotEmpty())
+        assertTrue("valuation complete", paths.requestsTo("/finance/pnl").isNotEmpty())
         val before = paths.requests.size
         vm.setScope(ScopeFilter.View.GALLERY, "own")
         assertEquals(before, paths.requests.size)
@@ -124,7 +124,7 @@ class FinanceViewModelTest {
         val vm = vm()
         vm.loadValuation()
         vm.toggleFinanceCategory("sets")
-        assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
+        assertTrue("valuation loaded", vm.financeState.value.valuation != null)
         t.session.loggedOut()
         assertNull(vm.financeState.value.valuation)
         assertTrue(vm.financeState.value.categories.isEmpty())

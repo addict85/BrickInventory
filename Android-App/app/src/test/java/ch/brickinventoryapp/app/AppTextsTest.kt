@@ -43,12 +43,12 @@ class AppTextsTest {
     fun `the server's sentence takes precedence over any own one`() {
         val sentence = "Für dieses Datum gibt es schon einen Kaufpreis"
         assertEquals(sentence, texts.message(Outcome.Failure.Server(409, sentence)))
-        assertEquals("Auch bei 401", "Benutzername oder Passwort falsch",
+        assertEquals("also on 401", "Benutzername oder Passwort falsch",
             texts.message(Outcome.Failure.Rejected("Benutzername oder Passwort falsch")))
-        assertEquals("Auch mit Fehlercode", sentence, texts.message(Outcome.Failure.Server(429, sentence, ErrorCode.TOO_MANY_CONNECTIONS)))
+        assertEquals("also with an error code", sentence, texts.message(Outcome.Failure.Server(429, sentence, ErrorCode.TOO_MANY_CONNECTIONS)))
 
         val own = texts.message(Outcome.Failure.Server(500))
-        assertTrue("Ohne Satz des Servers steht keiner da", own.isNotBlank())
+        assertTrue("without a sentence from the server none is shown", own.isNotBlank())
         assertNotEquals(own, texts.message(Outcome.Failure.Server(429, "", ErrorCode.TOO_MANY_CONNECTIONS)))
     }
 }

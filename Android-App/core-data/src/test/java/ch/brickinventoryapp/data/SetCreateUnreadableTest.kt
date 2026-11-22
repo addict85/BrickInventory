@@ -38,7 +38,7 @@ class SetCreateUnreadableTest {
         }
 
         assertEquals(SetCreateStep.MasterData("Falke"), steps[0])
-        assertTrue("erwartet Fehler, war ${steps.last()}", steps.last() is SetCreateStep.Failure)
+        assertTrue("expected an error, was ${steps.last()}", steps.last() is SetCreateStep.Failure)
         assertEquals(2, steps.size)
     }
 }

@@ -145,11 +145,11 @@ object SampleFiller {
     /** Lists and maps entry by entry, everything else via [compare]. */
     private fun compareValue(d: Any?, a: Any?, path: String, without: MutableSet<String>): Int = when {
         a is List<*> && d is List<*> -> {
-            assertEquals("$path (Länge)", d.size, a.size)
+            assertEquals("$path (length)", d.size, a.size)
             a.indices.sumOf { compare(d[it], a[it], "$path[$it]", without) }
         }
         a is Map<*, *> && d is Map<*, *> -> {
-            assertEquals("$path (Schlüssel)", d.keys, a.keys)
+            assertEquals("$path (keys)", d.keys, a.keys)
             a.keys.sumOf { compare(d[it], a[it], "$path[$it]", without) }
         }
         else -> compare(d, a, path, without)

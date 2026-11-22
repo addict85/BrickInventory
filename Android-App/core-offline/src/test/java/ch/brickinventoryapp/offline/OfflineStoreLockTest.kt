@@ -62,7 +62,7 @@ class OfflineStoreLockTest {
         repeat(3) { yield() }
         gate.complete(Unit)
         joinAll(response, offline)
-        assertEquals("der wartende Schritt liegt über der Serverantwort", 2, quantity())
+        assertEquals("the waiting step lies over the server answer", 2, quantity())
     }
 
     @Test
@@ -86,6 +86,6 @@ class OfflineStoreLockTest {
         store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1")).map { it.asView() })
         assertEquals(listOf("10001-1"), store.observe(Slots.SETS).first().list.map { it.setNumber })
         session.value = null
-        assertEquals("abgemeldet zeigt nichts", emptyList<String>(), store.observe(Slots.SETS).first().list.map { it.setNumber })
+        assertEquals("signed out shows nothing", emptyList<String>(), store.observe(Slots.SETS).first().list.map { it.setNumber })
     }
 }

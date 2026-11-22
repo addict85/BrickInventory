@@ -45,7 +45,7 @@ class PathServerInTickTest {
         val thread = Thread.currentThread()
         try {
             runBlocking { api.getPartsValuation() }
-            fail("Die Antwort ohne total_value wurde gelesen")
+            fail("The answer without total_value was read")
         } catch (e: AssertionError) {
             assertSame(thread, Thread.currentThread())
             assertTrue(e.message, "parts-valuation" in e.message.orEmpty() && "total_value" in e.message.orEmpty())
@@ -62,7 +62,7 @@ class PathServerInTickTest {
 
     @Test
     fun `the cleanup names the unsuitable response`() {
-        assertSame("TestServices findet den Server über den Dienst", paths, PathServer.of(api))
+        assertSame("TestServices finds the server via the service", paths, PathServer.of(api))
         runCatching { runBlocking { api.getPartsValuation() } }
         try {
             paths.checkReadIn()
@@ -77,11 +77,11 @@ class PathServerInTickTest {
         paths.missing += "/api/v1/finance/minifigs-valuation"
         val fetch = launch { api.getMinifigsValuation() }
         runCurrent()
-        assertTrue("Der Abruf wartet noch", fetch.isActive)
+        assertTrue("The fetch is still waiting", fetch.isActive)
         assertTrue(paths.requests.isEmpty())
         paths.release()
         runCurrent()
-        assertTrue("Nach dem Freigeben ist er fertig", fetch.isCompleted)
+        assertTrue("After releasing it is done", fetch.isCompleted)
         assertEquals(listOf("GET /api/v1/finance/minifigs-valuation"), paths.requests.toList())
     }
 
@@ -93,7 +93,7 @@ class PathServerInTickTest {
         fetch.cancel()
         paths.release()
         runCurrent()
-        assertTrue("Der Server hat nichts gesehen: ${paths.requests}", paths.requests.isEmpty())
+        assertTrue("The server saw nothing: ${paths.requests}", paths.requests.isEmpty())
     }
 
     @Test

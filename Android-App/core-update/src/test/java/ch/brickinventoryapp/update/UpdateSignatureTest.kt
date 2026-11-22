@@ -64,7 +64,7 @@ class UpdateSignatureTest {
     @Test
     fun `the description signed by the description key applies`() {
         val b = checkedDescription(shell(sign(own)), key)
-        assertNotNull("Die wie mit openssl signierte Beschreibung wird nicht erkannt", b)
+        assertNotNull("the description signed as with openssl is not recognized", b)
         assertEquals(200001234, b!!.versionCode)
         assertEquals("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", b.apkSha256)
         assertTrue(isAllowedApkAddress(b.apkUrl))
@@ -73,7 +73,7 @@ class UpdateSignatureTest {
     @Test
     fun `a foreign key does not apply`() {
         assertNull(checkedDescription(shell(sign(ecKey())), key))
-        assertNull("Ohne Beschreibungsschlüssel gilt nichts", checkedDescription(shell(sign(own)), emptyList()))
+        assertNull("without a description key nothing counts", checkedDescription(shell(sign(own)), emptyList()))
     }
 
     @Test
@@ -101,12 +101,12 @@ class UpdateSignatureTest {
         val apkKey = CertificateFactory.getInstance("X.509")
             .generateCertificate(b64.decode(FOREIGN_CERT).inputStream()).publicKey.encoded
         val oldForm = """{"daten":"$DATA","signatur":"$FOREIGN_SIG"}"""
-        assertNull("Nur die APK-Signatur", checkedDescription(oldForm, key))
-        assertNull("Auch wenn die App den Schlüssel kennt", checkedDescription(oldForm, listOf(apkKey)))
-        assertNotNull("Als Beschreibungssignatur eines bekannten Schlüssels gilt dieselbe Signatur",
+        assertNull("only the APK signature", checkedDescription(oldForm, key))
+        assertNull("even if the app knows the key", checkedDescription(oldForm, listOf(apkKey)))
+        assertNotNull("the same signature counts as the description signature of a known key",
             checkedDescription(shell(FOREIGN_SIG), listOf(apkKey)))
         val both = """{"daten":"$DATA","signatur":"$FOREIGN_SIG","beschreibungssignatur":"${sign(own)}"}"""
-        assertNotNull("Ein überzähliges Feld älterer Releases stört nicht", checkedDescription(both, key))
+        assertNotNull("a surplus field of older releases does no harm", checkedDescription(both, key))
     }
 
     @Test
@@ -117,7 +117,7 @@ class UpdateSignatureTest {
         assertEquals(2, both.size)
         assertNotNull(checkedDescription(shell(sign(old)), both))
         assertNotNull(checkedDescription(shell(sign(newValue)), both))
-        assertNull("Nach dem Wechsel gilt der alte nicht mehr",
+        assertNull("after the change the old one no longer counts",
             checkedDescription(shell(sign(old)), descriptionKey(pem(newValue))))
     }
 
@@ -127,7 +127,7 @@ class UpdateSignatureTest {
         val file = File(Sources.project, "core-resources/src/main/res/raw/description_key.pem")
         val text = file.readText()
         val key = descriptionKey(text)
-        assertEquals("Ein Block ist kein lesbarer Schlüssel", text.split("-----BEGIN PUBLIC KEY-----").size - 1, key.size)
+        assertEquals("a block is not a readable key", text.split("-----BEGIN PUBLIC KEY-----").size - 1, key.size)
         for (s in key) KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(s))
     }
 
@@ -136,7 +136,7 @@ class UpdateSignatureTest {
         val file = File.createTempFile("update", ".apk").apply { deleteOnExit(); writeText("test") }
         assertTrue(checksumFits(file, "9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08"))
         assertFalse(checksumFits(file, "0".repeat(64)))
-        assertFalse("Ohne Angabe kein Ja", checksumFits(file, ""))
+        assertFalse("without information no yes", checksumFits(file, ""))
     }
 
     @Test

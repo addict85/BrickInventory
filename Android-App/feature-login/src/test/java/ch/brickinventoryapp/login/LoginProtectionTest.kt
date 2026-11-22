@@ -86,8 +86,8 @@ class LoginProtectionTest {
         }
         compose.onNodeWithText(ctx.getString(R.string.login_password)).performClick()
         compose.waitForIdle()
-        val info = checkNotNull(seen) { "Das Passwortfeld hat keine Eingabe gestartet" }
-        assertTrue("Die Tastatur darf das Passwort lernen",
+        val info = checkNotNull(seen) { "The password field started no input" }
+        assertTrue("the keyboard may learn the password",
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0)
     }
 
@@ -95,25 +95,25 @@ class LoginProtectionTest {
     fun `the scanner for the sign-in code gets into no screenshot`() {
         compose.setContent { BrickInventoryManagerTheme { QrSetupScannerScreen(onResult = {}, onDismiss = {}) } }
         compose.waitForIdle()
-        assertTrue("Das Kamerabild mit dem Anmeldecode ist nicht geschützt", guarded())
+        assertTrue("the camera image with the sign-in code is not protected", guarded())
     }
 
     @Test
     fun `the sign-in is protected against overlays, the passkey button too`() {
         show()
-        assertTrue("Berührungen durch ein fremdes Fenster kämen an", ctx.window.decorView.filterTouchesWhenObscured)
+        assertTrue("touches through a foreign window would get through", ctx.window.decorView.filterTouchesWhenObscured)
     }
 
     @Test
     fun `a visible password gets into no screenshot`() {
         show()
-        assertFalse("Ohne sichtbares Passwort braucht es keinen Sichtschutz", guarded())
+        assertFalse("without a visible password no privacy screen is needed", guarded())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
         compose.waitForIdle()
-        assertTrue("Das sichtbare Passwort ist nicht geschützt", guarded())
+        assertTrue("the visible password is not protected", guarded())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertFalse("Nach dem Verdecken bleibt der Schutz stehen", guarded())
+        assertFalse("after covering, the protection stays on", guarded())
     }
 
     @Test
@@ -124,6 +124,6 @@ class LoginProtectionTest {
         compose.waitForIdle()
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertTrue("Der Wunsch des Nutzers ging mit dem Passwort verloren", guarded())
+        assertTrue("the user's wish got lost with the password", guarded())
     }
 }

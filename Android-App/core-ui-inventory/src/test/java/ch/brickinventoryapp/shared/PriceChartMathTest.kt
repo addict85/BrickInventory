@@ -49,7 +49,7 @@ class PriceChartMathTest {
         val lines = PriceChartMath.buildLines(chart)
         assertEquals(2, lines.size)
         val used = lines.first { it.condition == Condition.USED }
-        assertEquals("nur der echte Wert bleibt übrig", 1, used.points.size)
+        assertEquals("only the real value remains", 1, used.points.size)
         assertEquals(80.0, used.points[0].value, 0.0001)
     }
 
@@ -74,7 +74,7 @@ class PriceChartMathTest {
             x = listOf("2026-01-01")
         )
         val lines = PriceChartMath.buildLines(chart)
-        assertEquals("keine Legendenzeile ohne Linie", 1, lines.size)
+        assertEquals("no legend row without a line", 1, lines.size)
         assertEquals(Condition.NEW, lines[0].condition)
     }
 
@@ -97,10 +97,10 @@ class PriceChartMathTest {
 
         assertEquals(0f, b.xFraction(newLine.points.first().day), 0.0001f)
         assertEquals(1f, b.xFraction(newLine.points.last().day), 0.0001f)
-        assertEquals("gemeinsamer letzter Tag → gleiche Position",
+        assertEquals("shared last day → same position",
             b.xFraction(newLine.points.last().day),
             b.xFraction(usedLine.points.first().day), 0.0001f)
-        assertTrue("die kürzere Reihe darf nicht gestreckt werden",
+        assertTrue("the shorter series must not be stretched",
             b.xFraction(usedLine.points.first().day) > 0.5f)
     }
 
@@ -131,7 +131,7 @@ class PriceChartMathTest {
         )
         val b = PriceChartMath.bounds(PriceChartMath.buildLines(chart))!!
         assertTrue(b.maxValue > b.minValue)
-        assertTrue("keine negative Achse", b.minValue >= 0.0)
+        assertTrue("no negative axis", b.minValue >= 0.0)
     }
 
     @Test
@@ -168,7 +168,7 @@ class PriceChartMathTest {
         assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(newValue.of, newValue.until))
         assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(newValue.begin, newValue.end, newValue.deep, newValue.high))
         val used = z.getValue(Condition.USED)
-        assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", used.of)
+        assertEquals("the padded zero does not count", "01.02.2026", used.of)
         assertEquals(70.0, used.deep, 0.0)
     }
 }

@@ -66,16 +66,16 @@ class UpdateFreshTest {
         assertEquals(UpdateFresh.CURRENT, check(store, description(120, issued = now)))
         assertEquals(UpdateStatus(120, now), store.state)
         assertFalse(sourceStale(UpdateFresh.CURRENT))
-        assertFalse("Vor der ersten Prüfung gibt es nichts zu melden", sourceStale(null))
+        assertFalse("before the first check there is nothing to report", sourceStale(null))
     }
 
     @Test
     fun `an older genuinely signed description reports a withholding`() {
         val store = Store(UpdateStatus(120, now - tag))
-        assertEquals("Ältere Fassung", UpdateFresh.RESET, check(store, description(110, issued = now - 5 * tag)))
-        assertEquals("Dieselbe Fassung, früher signiert", UpdateFresh.RESET,
+        assertEquals("older version", UpdateFresh.RESET, check(store, description(110, issued = now - 5 * tag)))
+        assertEquals("the same version, signed earlier", UpdateFresh.RESET,
             check(store, description(120, issued = now - 2 * tag)))
-        assertEquals("Die Messlatte sinkt nicht", UpdateStatus(120, now - tag), store.state)
+        assertEquals("the bar does not drop", UpdateStatus(120, now - tag), store.state)
         assertTrue(sourceStale(UpdateFresh.RESET))
         // Even without a remembered state: older than the installed version.
         assertEquals(UpdateFresh.RESET, check(Store(), description(90), running = 100))
@@ -84,11 +84,11 @@ class UpdateFreshTest {
     @Test
     fun `an expired or deadline-less description is never current`() {
         val store = Store()
-        assertEquals("Nach gueltigBis", UpdateFresh.EXPIRED,
+        assertEquals("after gueltigBis", UpdateFresh.EXPIRED,
             check(store, description(120, issued = now - 31 * tag)))
-        assertEquals("Ohne Frist (ältere Beschreibung)", UpdateFresh.EXPIRED,
+        assertEquals("without a deadline (older description)", UpdateFresh.EXPIRED,
             check(store, description(120, issued = 0)))
-        assertNull("Eine abgelaufene setzt keine Messlatte", store.state)
+        assertNull("an expired one sets no bar", store.state)
         assertTrue(sourceStale(UpdateFresh.EXPIRED))
     }
 
@@ -97,15 +97,15 @@ class UpdateFreshTest {
     fun `nothing is offered from a reset description`() {
         val newValue = description(120)
         assertEquals(newValue, offerableVersion(newValue, check(Store(), newValue), running = 100))
-        assertNull("Nicht neuer als die laufende", offerableVersion(description(100), UpdateFresh.CURRENT, 100))
+        assertNull("not newer than the running one", offerableVersion(description(100), UpdateFresh.CURRENT, 100))
 
         // 130 was already seen; someone replays the genuinely signed 120.
         val back = Store(UpdateStatus(130, now - tag))
         val old = description(120, issued = now - 5 * tag)
-        assertNull("Zurückgesetzt", offerableVersion(old, check(back, old), running = 100))
+        assertNull("reset", offerableVersion(old, check(back, old), running = 100))
         // Even expired, a description below the seen one stays rolled back.
         val oldAndExpired = description(120, issued = now - 40 * tag)
-        assertNull("Abgelaufen und älter", offerableVersion(oldAndExpired, check(back, oldAndExpired), running = 100))
+        assertNull("expired and older", offerableVersion(oldAndExpired, check(back, oldAndExpired), running = 100))
     }
 
     /** After seven days without a new label the device would otherwise stay stuck on the old version. */
@@ -116,9 +116,9 @@ class UpdateFreshTest {
         val freshness = check(store, expired)
         assertEquals(UpdateFresh.EXPIRED, freshness)
         assertEquals(expired, offerableVersion(expired, freshness, running = 100))
-        assertTrue("Der Hinweis „könnte Neueres geben“ bleibt", sourceStale(freshness))
-        assertEquals("Die Messlatte bleibt", UpdateStatus(110, now - 40 * tag), store.state)
-        assertNull("Nicht neuer als die laufende", offerableVersion(expired, freshness, running = 120))
+        assertTrue("the hint “there could be something newer” stays", sourceStale(freshness))
+        assertEquals("the bar stays", UpdateStatus(110, now - 40 * tag), store.state)
+        assertNull("not newer than the running one", offerableVersion(expired, freshness, running = 120))
     }
 
     @Test

@@ -102,6 +102,6 @@ class AppViewModelTest {
         assertEquals(true, vm.startPasswordNeeded.value)
         assertEquals(true, vm.secondFactorNeeded.value)
         assertEquals(3, vm.pendingChanges.value)
-        assertSame("dieselbe Sitzung wie die Bereiche", session.state, vm.state)
+        assertSame("the same session as the areas", session.state, vm.state)
     }
 }

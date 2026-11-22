@@ -129,7 +129,7 @@ class OfflineEditingTest {
         assertTrue(repo.refreshSets() is Outcome.Success)
         s.offline = true
         val r = repo.changeQuantityBy("10001-1", 1)
-        assertTrue("Erwartet: offline gespeichert, kam $r", r is Outcome.Success && r.buffered)
+        assertTrue("Expected: saved offline, got $r", r is Outcome.Success && r.buffered)
         assertEquals(2, store.read(Slots.SETS)!!.list.single().quantity)
         assertEquals(listOf(Editing.SetQuantity("10001-1", 1)), outbox.all("konto").map { it.editing })
 
@@ -146,9 +146,9 @@ class OfflineEditingTest {
         s.offline = true
         repo.changeQuantityBy("10001-1", 1)
         val r = repo.refreshSets()
-        assertTrue("Erwartet: ein vorübergehender Fehler, kam $r", r is Outcome.Failure && r.transient)
+        assertTrue("Expected: a transient error, got $r", r is Outcome.Failure && r.transient)
         val l = repo.observeSets().first()
-        assertTrue("mit dem Stand der letzten Serverantwort", l.state != null)
+        assertTrue("with the state of the last server response", l.state != null)
         assertEquals(2, l.list.single().quantity)
     }
 
@@ -194,12 +194,12 @@ class OfflineEditingTest {
         repo.refreshSets()
         s.responseLose = true
         val r = repo.changeQuantityBy("10001-1", 1)
-        assertTrue("Erwartet: gepuffert nach verlorener Antwort, kam $r", r is Outcome.Success && r.buffered)
+        assertTrue("Expected: buffered after a lost response, got $r", r is Outcome.Success && r.buffered)
         assertEquals(ReconcileOutcome.DONE, sync.send())
         val puts = s.key.filter { it.first == "PUT /api/v1/sets/10001-1" }.map { it.second }
         assertEquals(2, puts.size)
-        assertTrue("ohne Schlüssel: $puts", !puts[0].isNullOrBlank())
-        assertEquals("der Server muss die Wiederholung erkennen können", puts[0], puts[1])
+        assertTrue("without key: $puts", !puts[0].isNullOrBlank())
+        assertEquals("the server must be able to recognize the repetition", puts[0], puts[1])
     }
 
     @Test
@@ -208,8 +208,8 @@ class OfflineEditingTest {
         s.offline = true
         for (r in listOf(parts.deletePart("3001", 5, owner = 7), figures.deleteMinifig("sw0001", owner = 7),
                          wantedList.deleteWantedItem("20001-1", Condition.NEW, 7)))
-            assertTrue("Erwartet: offline gespeichert, kam $r", r is Outcome.Success && r.buffered)
-        assertEquals("das gelöschte Teil verschwindet sofort", listOf("3002"),
+            assertTrue("Expected: saved offline, got $r", r is Outcome.Success && r.buffered)
+        assertEquals("the deleted part disappears right away", listOf("3002"),
             store.read(Slots.MANUAL_PARTS)!!.list.map { it.partNumber })
         assertEquals(emptyList<String>(), store.read(Slots.MANUAL_FIGURES)!!.list.map { it.figNumber })
         assertEquals(emptyList<String>(), store.read(Slots.WANTED_LIST)!!.list.map { it.setNumber })
@@ -220,7 +220,7 @@ class OfflineEditingTest {
         val deleted = s.key.filter { it.first.startsWith("DELETE") }
         assertEquals(listOf("DELETE /api/v1/parts/3001/5", "DELETE /api/v1/minifigs/sw0001", "DELETE /api/v1/wanted/20001-1/N"),
             deleted.map { it.first })
-        assertTrue("jeder mit eigenem Schlüssel: $deleted", deleted.mapNotNull { it.second }.toSet().size == 3)
+        assertTrue("each with its own key: $deleted", deleted.mapNotNull { it.second }.toSet().size == 3)
         assertEquals(0, outbox.all("konto").size)
     }
 
@@ -245,7 +245,7 @@ class OfflineEditingTest {
         assertTrue(part, "\"quantity\":7" in part && "\"quantity_delta\":2" in part)
         val figure = s.requests.single { it.startsWith("PUT /api/v1/minifigs/sw0001") }
         assertTrue(figure, "\"quantity\":1" in figure && "\"quantity_delta\":-1" in figure)
-        assertEquals("die lokale Liste zeigt die neue Menge", 7,
+        assertEquals("the local list shows the new quantity", 7,
             store.read(Slots.MANUAL_PARTS)!!.list.first { it.partNumber == "3001" }.quantity)
     }
 }

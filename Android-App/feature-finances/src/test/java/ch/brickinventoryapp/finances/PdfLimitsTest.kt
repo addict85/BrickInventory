@@ -27,7 +27,7 @@ class PdfLimitsTest {
 
     @Test
     fun `a page count outside 1 to the upper limit counts as unreadable`() {
-        for (n in listOf(0, -1, Int.MIN_VALUE, PDF_MAX_PAGES + 1, Int.MAX_VALUE)) assertNull("$n Seiten", checkPageCount(n))
+        for (n in listOf(0, -1, Int.MIN_VALUE, PDF_MAX_PAGES + 1, Int.MAX_VALUE)) assertNull("$n pages", checkPageCount(n))
         assertEquals(1, checkPageCount(1))
         assertEquals(PDF_MAX_PAGES, checkPageCount(PDF_MAX_PAGES))
     }

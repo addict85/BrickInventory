@@ -55,13 +55,13 @@ class AddExistingSetTest {
             File(Sources.root, "collection/ui/CollectionGraph.kt").readText())
         // The FIELD is checked, not the name of the state before.
         assert(Regex("""\w+\.foundSet""").containsMatchIn(nav)) {
-            "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
+            "the gallery does not observe the trigger — then nothing happens at all"
         }
         assert(nav.contains("gallerySearchFoundConsumed()")) {
-            "der Auslöser wird nicht zurückgesetzt"
+            "the trigger is not reset"
         }
         assert(nav.contains("CollectionTarget.SetDetail(")) {
-            "es wird nicht zur Detailansicht navigiert"
+            "it does not navigate to the detail view"
         }
     }
 }

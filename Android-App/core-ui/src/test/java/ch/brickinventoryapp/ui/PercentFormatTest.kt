@@ -63,7 +63,7 @@ class PercentFormatTest {
         val de = fmtPercent(1234.5)
         Locale.setDefault(Locale.ENGLISH)
         val en = fmtPercent(1234.5)
-        assertTrue("de-CH und en-GB trennen Tausender verschieden: $de / $en", de != en)
+        assertTrue("de-CH and en-GB separate thousands differently: $de / $en", de != en)
     }
 
     @Test
@@ -71,6 +71,6 @@ class PercentFormatTest {
         val screens = Sources.below("ui/screens") + Sources.below("shared/ui")
         val ofHand = Regex("""%\.1f%%|"%\.1f"\s*,\s*pct|\+\s*" %"""")
         val hits = screens.filter { ofHand.containsMatchIn(it.readText()) }.map { it.name }
-        assertEquals("Prozente laufen über fmtPercent()", emptyList<String>(), hits)
+        assertEquals("percentages go through fmtPercent()", emptyList<String>(), hits)
     }
 }

@@ -65,7 +65,7 @@ class AppLockTest {
         s.gone(5 * AppLock.MINUTE_MS - 1)
         assertFalse(s.locked.value)
         s.gone(1_000)
-        assertFalse("Jede Rückkehr beginnt die Frist neu", s.locked.value)
+        assertFalse("every return restarts the deadline", s.locked.value)
     }
 
     @Test
@@ -74,7 +74,7 @@ class AppLockTest {
         s.gone(AppLock.MINUTE_MS)
         assertTrue(s.locked.value)
         s.gone(1_000)
-        assertTrue("Kurz weg und zurück entsperrt nicht", s.locked.value)
+        assertTrue("briefly away and back does not unlock", s.locked.value)
         s.unlocked()
         assertFalse(s.locked.value)
     }
@@ -103,35 +103,35 @@ class AppLockTest {
         starts = 8
         now += AppLock.MINUTE_MS
         s.inForeground()
-        assertTrue("Ein neuer Gerätestart sperrt, auch vor Ablauf der Frist", s.locked.value)
+        assertTrue("a new device boot locks, even before the deadline expires", s.locked.value)
     }
 
     @Test
     fun `an unreadable boot counter locks, an equal one does not`() {
         val s = lock().apply { setMinutes(30) }
         s.gone(AppLock.MINUTE_MS)
-        assertFalse("Derselbe Start und kurz weg: keine Rückfrage", s.locked.value)
+        assertFalse("the same boot and briefly away: no confirmation", s.locked.value)
         s.inBackground()
         starts = null
         now += AppLock.MINUTE_MS
         s.inForeground()
-        assertTrue("Ist der Zähler nicht mehr lesbar, ist ein Neustart nicht ausgeschlossen", s.locked.value)
+        assertTrue("if the counter is no longer readable, a reboot is not ruled out", s.locked.value)
     }
 
     @Test
     fun `the widget hides its amounts as soon as the lock can apply`() {
         val s = lock()
         s.inBackground()
-        assertFalse("Ohne Sperre zeigt es sie", AppLock.hiddenWidget(store))
+        assertFalse("without a lock it shows them", AppLock.hiddenWidget(store))
         s.inForeground()
         s.setMinutes(15)
-        assertFalse("Im Vordergrund und entsperrt", AppLock.hiddenWidget(store))
+        assertFalse("in the foreground and unlocked", AppLock.hiddenWidget(store))
         s.inBackground()
-        assertTrue("Im Hintergrund, auch vor Ablauf der Frist", AppLock.hiddenWidget(store))
+        assertTrue("in the background, even before the deadline expires", AppLock.hiddenWidget(store))
         now += 15 * AppLock.MINUTE_MS
         s.inForeground()
         assertTrue(s.locked.value)
-        assertTrue("Gesperrt im Vordergrund", AppLock.hiddenWidget(store))
+        assertTrue("locked in the foreground", AppLock.hiddenWidget(store))
         s.unlocked()
         assertFalse(AppLock.hiddenWidget(store))
     }
@@ -140,7 +140,7 @@ class AppLockTest {
     fun `newly installed with a screen lock the lock is on, otherwise it stays off`() {
         assertTrue(AppLock.DEFAULT_MINUTES in AppLock.CHOICE && AppLock.DEFAULT_MINUTES > 0)
         assertEquals(AppLock.DEFAULT_MINUTES, AppLock.default(newInstalled = true, deviceSecured = true))
-        assertEquals("Ohne Displaysperre liesse sich nicht entsperren", 0, AppLock.default(newInstalled = true, deviceSecured = false))
-        assertEquals("Ein Update stellt nichts um", 0, AppLock.default(newInstalled = false, deviceSecured = true))
+        assertEquals("without a screen lock it could not be unlocked", 0, AppLock.default(newInstalled = true, deviceSecured = false))
+        assertEquals("an update changes nothing", 0, AppLock.default(newInstalled = false, deviceSecured = true))
     }
 }

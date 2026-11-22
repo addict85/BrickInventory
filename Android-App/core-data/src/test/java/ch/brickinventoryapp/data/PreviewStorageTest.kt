@@ -46,8 +46,8 @@ class PreviewStorageTest {
     fun `only thumbnails belong in the store`() {
         assertTrue(memory.isPreview("$basis/set/75192-1?thumb=1"))
         assertTrue(memory.isPreview("$basis/set/75192-1?x=2&thumb=1"))
-        assertTrue("Die vom Server _thumb benannte Datei", memory.isPreview("https://brick.example/uploads/75192-1_thumb.jpg"))
-        assertFalse("Die volle Auflösung gehört nicht hierher", memory.isPreview("$basis/set/75192-1"))
+        assertTrue("The file named _thumb by the server", memory.isPreview("https://brick.example/uploads/75192-1_thumb.jpg"))
+        assertFalse("The full resolution does not belong here", memory.isPreview("$basis/set/75192-1"))
         assertFalse(memory.isPreview("https://brick.example/uploads/75192-1.jpg"))
     }
 
@@ -62,10 +62,10 @@ class PreviewStorageTest {
 
         memory.write("$basis/set/10179-1?thumb=1", image)
 
-        assertFalse("Das älteste Bild bleibt über der Obergrenze liegen", old.exists())
-        assertTrue("Aufgeräumt wird nur bis vier Fünftel, nicht alles", medium.exists() && newValue.exists())
+        assertFalse("The oldest image stays above the upper limit", old.exists())
+        assertTrue("Cleanup only goes down to four fifths, not everything", medium.exists() && newValue.exists())
         assertArrayEquals(image, memory.read("$basis/set/10179-1?thumb=1"))
-        assertTrue("Belegt ${memory.occupied()}", memory.occupied() <= PreviewMemory.MAX_BYTES)
+        assertTrue("Occupied ${memory.occupied()}", memory.occupied() <= PreviewMemory.MAX_BYTES)
     }
 
     @Test
@@ -78,7 +78,7 @@ class PreviewStorageTest {
 
         memory.write(prewarmed, "vorgewaermt".toByteArray(), speculative = true)
 
-        assertFalse("Das vorgewärmte Bild verdrängt beim Aufräumen das angesehene", memory.has(prewarmed))
-        assertTrue("Das angesehene Bild ist weg", memory.has(viewed))
+        assertFalse("On cleanup the prewarmed image displaces the viewed one", memory.has(prewarmed))
+        assertTrue("The viewed image is gone", memory.has(viewed))
     }
 }

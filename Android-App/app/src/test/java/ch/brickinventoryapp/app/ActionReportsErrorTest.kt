@@ -41,8 +41,8 @@ class ActionReportsErrorTest {
     private fun viewModelFunctions(): Map<String, String> {
         val files = Sources.below("ui").filter { it.name.endsWith("ViewModel.kt") }
         assert(files.size >= 10) {
-            "Nur ${files.size} *ViewModel.kt gefunden — der Pfad stimmt nicht, und ein " +
-                "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
+            "Only ${files.size} *ViewModel.kt found — the path is wrong, and an " +
+                "empty result would let this test pass silently."
         }
         val header = Regex("""\n    (?:override |private |internal |protected )?(?:suspend )?fun (\w+)\(""")
         val outcome = linkedMapOf<String, String>()
@@ -54,7 +54,7 @@ class ActionReportsErrorTest {
                 outcome["${file.name}:${m.groupValues[1]}"] = src.substring(m.range.first, end)
             }
         }
-        assert(outcome.size >= 40) { "Nur ${outcome.size} Funktionen gefunden — Muster veraltet?" }
+        assert(outcome.size >= 40) { "Only ${outcome.size} functions found — pattern outdated?" }
         return outcome
     }
 
@@ -75,15 +75,15 @@ class ActionReportsErrorTest {
         }
 
         assert(checked >= 15) {
-            "Nur $checked ändernde Funktionen erkannt — das Muster findet zu wenig, " +
-                "und ein leeres Ergebnis unten sagt dann nichts."
+            "Only $checked changing functions recognized — the pattern finds too little, " +
+                "and an empty result below then says nothing."
         }
 
         assert(silent.isEmpty()) {
             "Diese Handlungen scheitern lautlos:\n  " + silent.joinToString("\n  ") +
-                "\nDer Nutzer tippt, es passiert sichtbar nichts, und er erfährt " +
-                "keinen Grund. Fehler melden — über den Weg, den die Nachbarn " +
-                "derselben Datei benutzen."
+                "\nThe user taps, visibly nothing happens, and they learn " +
+                "no reason. Report errors — the way the neighbors " +
+                "in the same file use."
         }
     }
 }

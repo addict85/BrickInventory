@@ -78,10 +78,10 @@ class ErrorHintsTest {
         compose.onNodeWithText(ctx.getString(R.string.error_server_title)).fetchSemanticsNode("Keine Überschrift der Fehlerklasse")
         compose.onNodeWithText("Server antwortet mit 503").fetchSemanticsNode("Der Grund fehlt")
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_loading)).fetchSemanticsNodes()
-            .let { assertEquals("Der Kringel steht noch da", 0, it.size) }
+            .let { assertEquals("the spinner is still shown", 0, it.size) }
         compose.onNodeWithText(ctx.getString(R.string.common_retry)).performClick()
         compose.waitForIdle()
-        assertEquals("Erneut versuchen lädt dasselbe Set", listOf("10305-1", "10305-1"), loaded)
+        assertEquals("retry loads the same set", listOf("10305-1", "10305-1"), loaded)
     }
 
     @Test
@@ -94,7 +94,7 @@ class ErrorHintsTest {
         }
         compose.onNodeWithText(ctx.getString(R.string.scanner_camera_locked)).fetchSemanticsNode("Die Erklärung fehlt")
         compose.onAllNodesWithText(ctx.getString(R.string.scanner_allow)).fetchSemanticsNodes()
-            .let { assertEquals("Der tote Knopf steht noch da", 0, it.size) }
+            .let { assertEquals("the dead button is still shown", 0, it.size) }
         compose.onNodeWithText(ctx.getString(R.string.scanner_camera_settings)).performClick()
         assertEquals(1, typed)
     }
@@ -111,6 +111,6 @@ class ErrorHintsTest {
         }
         compose.onNodeWithText(purpose).fetchSemanticsNode("Der Zweck fehlt")
         compose.onNodeWithText(typeIn).performClick()
-        assertEquals("Eintippen führt nicht weiter", 1, typed)
+        assertEquals("typing does not lead on", 1, typed)
     }
 }

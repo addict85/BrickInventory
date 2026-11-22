@@ -129,7 +129,7 @@ class PartsTest {
         assertEquals(listOf("30", "Red", "11"), listOf(st.search, st.color.value, st.category.value))
         assertEquals(SparePartChoice.WITHOUT to ListView.TABLE, st.spare to st.view)
         assertEquals(listOf("3001"), t.state.value.parts.map { it.partNumber })
-        assertEquals("die manuellen Teile unter demselben Suchtext", "30", searchManual.last())
+        assertEquals("the manual parts under the same search text", "30", searchManual.last())
     }
 
     @Test
@@ -139,7 +139,7 @@ class PartsTest {
         t.filter { it.copy(spare = SparePartChoice.ONLY) }; t.filter { it.copy(search = "stein") }
         assertEquals(4, forget)
         t.filter { it.copy(color = ColorPicker.Color("5")) }
-        assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, forget)
+        assertEquals("The same color once more is no change", 4, forget)
         advanceUntilIdle()
     }
 
@@ -154,7 +154,7 @@ class PartsTest {
         runCurrent()
         assertEquals(listOf("neu" to 3), t.state.value.manualParts!!.map { it.partNumber to it.quantity })
         t.load(page = 2); runCurrent()
-        assertEquals("geblättert wird nicht mehr: Die Quelle hält alles", 1, partsFetches.size)
+        assertEquals("no more paging: the source holds everything", 1, partsFetches.size)
     }
 
     @Test
@@ -199,7 +199,7 @@ class PartsTest {
         val t = figureList()
         t.load(); runCurrent()
         assertEquals(listOf("sw0001"), t.uiState.value.minifigs.map { it.figNumber })
-        assertNull("ohne Netz bleiben die Figuren stehen", t.uiState.value.minifigsFetch.errorMessage)
+        assertNull("without network the figures stay", t.uiState.value.minifigsFetch.errorMessage)
         assertEquals(4L, t.uiState.value.minifigsOfflineStatus)
     }
 

@@ -24,11 +24,11 @@ class AbortByTest {
 
     @Test
     fun `catchUnlessCancelled passes the cancellation on and catches only exceptions`() = runTest {
-        assertTrue("fangeAusserAbbruch hat das Abbrechen verschluckt",
+        assertTrue("catchUnlessCancelled swallowed the cancellation",
             aborts { catchUnlessCancelled { throw CancellationException("weg") } })
         assertTrue(catchUnlessCancelled { throw IOException("weg") }.isFailure)
         assertEquals(3, catchUnlessCancelled { 3 }.getOrNull())
-        assertTrue("ein Error darf nicht gefangen werden",
+        assertTrue("an Error must not be caught",
             runCatching { catchUnlessCancelled { throw AssertionError("error") } }.exceptionOrNull() is AssertionError)
     }
 }

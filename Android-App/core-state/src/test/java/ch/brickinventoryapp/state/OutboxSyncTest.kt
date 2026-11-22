@@ -88,13 +88,13 @@ class OutboxSyncTest {
         var network = false
         val s = Sender { if (network) SendOutcome.Accepted else SendOutcome.Later }
         assertEquals(ReconcileOutcome.LATER, w.sync(s).send())
-        assertEquals("Nach dem ersten „später“ darf nichts weiter raus", listOf(1), numbers(s))
+        assertEquals("after the first “later” nothing more may go out", listOf(1), numbers(s))
         val front = w.outbox.first("konto-a")!!
-        assertEquals("Der Versuch zählt", 1, front.attempts)
+        assertEquals("the attempt counts", 1, front.attempts)
         network = true
         assertEquals(ReconcileOutcome.DONE, w.sync(s).send())
-        assertEquals("Wiederholt wird derselbe Posten, dann die übrigen", listOf(1, 1, 2, 3), numbers(s))
-        assertEquals("Die Wiederholung trägt denselben Schlüssel, die übrigen je einen eigenen",
+        assertEquals("the same item is repeated, then the others", listOf(1, 1, 2, 3), numbers(s))
+        assertEquals("the repetition carries the same key, the others one of their own each",
             listOf(true, false, false), s.key.zipWithNext { x, y -> x == y })
     }
 
@@ -116,7 +116,7 @@ class OutboxSyncTest {
         val discarded = sync.discarded().first().single()
         assertEquals("1002-1", discarded.target)
         assertEquals("gibt es nicht", discarded.message)
-        assertTrue("Die Liste wird neu geladen, damit die lokale Annahme verschwindet: $events",
+        assertTrue("the list is reloaded so the local assumption disappears: $events",
             events.any { it is ReconcileEvent.Sent })
         assertEquals(0, w.outbox.all("konto-a").size)
     }
@@ -134,7 +134,7 @@ class OutboxSyncTest {
         repeat(5) { yield() }
         s.brake!!.complete(Unit)
         first.await(); second.await()
-        assertEquals("Jeder Posten genau einmal", listOf(1, 2), numbers(s))
+        assertEquals("every item exactly once", listOf(1, 2), numbers(s))
     }
 
     @Test
@@ -144,7 +144,7 @@ class OutboxSyncTest {
         assertEquals(SendOutcome.Later, classify(Outcome.Failure.Server(503)))
         assertEquals(SendOutcome.Later, classify(Outcome.Failure.Network()))
         assertEquals(SendOutcome.Rejected("nein", 400), classify(Outcome.Failure.Server(400, "nein")))
-        assertEquals("2xx ohne Rumpf ist angekommen",
+        assertEquals("2xx without a body has arrived",
             SendOutcome.Accepted, classify(Outcome.Failure.EmptyResponse()))
     }
 
@@ -153,7 +153,7 @@ class OutboxSyncTest {
         assertEquals(SendOutcome.Accepted, deleteClassify(Outcome.Failure.Server(404, "weg")))
         assertEquals(SendOutcome.Rejected("nein", 403), deleteClassify(Outcome.Failure.Server(403, "nein")))
         assertEquals(SendOutcome.Later, deleteClassify(Outcome.Failure.Network()))
-        assertEquals("ausserhalb des Löschens bleibt 404 eine Ablehnung",
+        assertEquals("outside deleting 404 stays a rejection",
             SendOutcome.Rejected("weg", 404), classify(Outcome.Failure.Server(404, "weg")))
     }
 
@@ -181,7 +181,7 @@ class OutboxSyncTest {
         switchAfterQuery = true
         val s = Sender()
         assertEquals(ReconcileOutcome.NOT_SIGNED_IN, w.sync(s).send())
-        assertEquals("Kein Posten von konto-a geht mit dem Token von konto-b raus",
+        assertEquals("no item of konto-a goes out with the token of konto-b",
             emptyList<Editing>(), s.sent.toList())
         assertEquals(2, w.outbox.all("konto-a").size)
     }

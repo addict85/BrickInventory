@@ -23,10 +23,10 @@ class CauseVisibleTest {
     fun `with an unknown cause the technical message is included`() {
         val sentence = withTechnicalCause("Etwas ist schiefgelaufen", Outcome.Failure.Unknown("unexpected end of stream"))
         assertTrue(
-            "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $sentence",
+            "the technical cause is missing — then the message says nothing again: $sentence",
             sentence.contains("unexpected end of stream")
         )
-        assertTrue("Der verständliche Satz muss erhalten bleiben: $sentence",
+        assertTrue("the understandable sentence must stay: $sentence",
             sentence.startsWith("Etwas ist schiefgelaufen"))
     }
 
@@ -51,7 +51,7 @@ class CauseVisibleTest {
             // Netz and EmptyResponse already carry a technical text themselves; the rest
             // are listed so a future cause with a text stands out here.
             assertEquals(
-                "Bei $kind darf kein englischer Bibliothekstext an den Satz geraten",
+                "for $kind no English library text may get into the sentence",
                 "Keine Verbindung",
                 withTechnicalCause("Keine Verbindung", kind)
             )

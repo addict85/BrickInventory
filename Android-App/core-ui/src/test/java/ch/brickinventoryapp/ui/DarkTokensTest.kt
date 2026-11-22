@@ -41,8 +41,8 @@ class DarkTokensTest {
     fun `every design of the source has its dark version`() {
         val names = source.getJSONObject("designs").keys().asSequence().toSet()
         assertEquals(names, DarkTokens.designs.keys)
-        for (n in names) assertTrue(n, hasDarkVersion(checkNotNull(Design.from(n)) { "$n ist kein Design der App" }))
-        assertFalse("Werkbank ist schon dunkel", hasDarkVersion(Design.WORKBENCH))
+        for (n in names) assertTrue(n, hasDarkVersion(checkNotNull(Design.from(n)) { "$n is not a design of the app" }))
+        assertFalse("workbench is already dark", hasDarkVersion(Design.WORKBENCH))
     }
 
     @Test
@@ -50,7 +50,7 @@ class DarkTokensTest {
         for (t in listOf("b600", "b700", "chart-new", "ink")) {
             assertEquals(t, darkToken(Design.STUD, t), darkToken(Design.GLOSSY, t))
         }
-        assertEquals("Flächen kommen aus der Basis", DarkTokens.basis["bg"], darkToken(Design.BRICK, "bg"))
+        assertEquals("surfaces come from the base", DarkTokens.basis["bg"], darkToken(Design.BRICK, "bg"))
     }
 
     private fun k(a: Long, b: Long) = Contrast.ratio(a.toInt(), b.toInt())
@@ -71,7 +71,7 @@ class DarkTokensTest {
             )
             for ((name, p) in pairs) if (k(p.first, p.second) < 4.5) error += "$d.$name %.2f".format(k(p.first, p.second))
         }
-        assertTrue("Unter 4,5:1: $error", error.isEmpty())
+        assertTrue("below 4.5:1: $error", error.isEmpty())
     }
 
     @Test
@@ -86,7 +86,7 @@ class DarkTokensTest {
             }
             if (k(r.outlineVariant, r.surface) >= k(r.outline, r.surface)) error += "$d.outlineVariant"
         }
-        assertTrue("Zu schwache Rahmen: $error", error.isEmpty())
+        assertTrue("frames too weak: $error", error.isEmpty())
     }
 
     @Test
@@ -106,11 +106,11 @@ class DarkTokensTest {
     fun `the stone decoration becomes dark in the dark`() {
         val d = darkBrickDecor()
         assertEquals(argb(darkToken(Design.BRICK, "b400")!!), d.studs)
-        assertTrue("Die Noppen sind im Dunkeln dunkler als hell (SlateBlueStud, --b400 von brick)",
+        assertTrue("the studs are darker in the dark than in light (SlateBlueStud, --b400 of brick)",
             Contrast.luminance(d.studs.toInt()) < Contrast.luminance(SlateBlueStud.toArgb()))
         val card = darkRoles(Design.BRICK).surface
-        assertTrue("Die Noppen heben sich von der Karte ab", k(d.studs, card) >= Contrast.FRAME)
-        assertTrue("Schrift auf der Schieferkachel lesbar", k(d.onSlate, d.slate) >= 4.5)
+        assertTrue("the studs stand out from the card", k(d.studs, card) >= Contrast.FRAME)
+        assertTrue("text on the slate tile readable", k(d.onSlate, d.slate) >= 4.5)
     }
 
     /**
@@ -129,9 +129,9 @@ class DarkTokensTest {
             val r = darkRoles(checkNotNull(Design.from(design)))
             val second = hsb(r.secondaryContainer)
             val spacing = kotlin.math.abs(second[0] * 360f - hsb(r.primary)[0] * 360f).let { minOf(it, 360f - it) }
-            assertTrue("$design dunkel: Zweitfläche %.0f° neben der Hauptfarbe".format(spacing),
+            assertTrue("$design dark: secondary surface %.0f° next to the main color".format(spacing),
                 second[1] < 0.35f || spacing < 30f)
-            assertTrue("$design lesbar", k(r.onSecondaryContainer, r.secondaryContainer) >= 4.5)
+            assertTrue("$design readable", k(r.onSecondaryContainer, r.secondaryContainer) >= 4.5)
         }
     }
 }

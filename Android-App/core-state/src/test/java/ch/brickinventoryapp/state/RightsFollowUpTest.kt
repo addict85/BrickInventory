@@ -37,11 +37,11 @@ class RightsFollowUpTest {
     fun `a revoked right is followed up once, then no longer asked`() = runBlocking {
         paths.responses["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
         t.session.loggedIn(admin = true)
-        assertTrue("Beim Übergang gibt es eine Meldung", t.session.followUpRights(account))
+        assertTrue("on the transition there is a message", t.session.followUpRights(account))
         assertFalse(t.session.state.value.isAdmin)
-        assertTrue("Angemeldet bleibt man", t.session.state.value.isLoggedIn)
-        assertFalse("Ein zweites 403 meldet nichts mehr", t.session.followUpRights(account))
-        assertEquals("Höchstens ein /auth/me je Übergang", 1, paths.requestsTo("/auth/me").size)
+        assertTrue("one stays signed in", t.session.state.value.isLoggedIn)
+        assertFalse("a second 403 reports nothing any more", t.session.followUpRights(account))
+        assertEquals("at most one /auth/me per transition", 1, paths.requestsTo("/auth/me").size)
     }
 
     @Test

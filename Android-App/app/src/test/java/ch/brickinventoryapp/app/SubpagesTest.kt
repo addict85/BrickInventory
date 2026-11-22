@@ -153,11 +153,11 @@ class SubpagesTest {
         val logout = ctx.getString(R.string.main_menu_logout)
         compose.onNodeWithText(logout).performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp allein meldet nicht ab", 0, loggedOut)
+        assertEquals("a tap alone does not sign out", 0, loggedOut)
         compose.onNodeWithText(ctx.getString(R.string.logout_confirm_title)).fetchSemanticsNode()
         inDialog(logout).performClick()
         compose.waitForIdle()
-        assertEquals("Bestätigt meldet ab", 1, loggedOut)
+        assertEquals("confirmed, it signs out", 1, loggedOut)
     }
 
     /** Between „Einstellungen“ and the server group sign-out lay where one keeps tapping. */
@@ -167,7 +167,7 @@ class SubpagesTest {
         fun situation(id: Int) = compose.onNodeWithText(ctx.getString(id)).fetchSemanticsNode().boundsInRoot
         val logout = situation(R.string.main_menu_logout)
         for (id in listOf(R.string.nav_settings, R.string.main_menu_monitoring, R.string.account_title, R.string.vouchers_title)) {
-            assertTrue("„${ctx.getString(id)}“ steht unter Abmelden", situation(id).bottom <= logout.top)
+            assertTrue("“${ctx.getString(id)}” stands below sign out", situation(id).bottom <= logout.top)
         }
     }
 
@@ -195,7 +195,7 @@ class SubpagesTest {
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.common_delete)).performClick()
         compose.waitForIdle()
-        assertTrue("Gelöscht vor der Rückfrage: ${world.paths.requests}", world.paths.requests.none { it.startsWith("DELETE") })
+        assertTrue("deleted before the confirmation: ${world.paths.requests}", world.paths.requests.none { it.startsWith("DELETE") })
         compose.onNodeWithText(ctx.getString(R.string.storage_delete_title)).fetchSemanticsNode()
         // Confirmed is only marked: the location is missing, the server learns of it only when the
         // snackbar ends without „Rückgängig“. The clock stands still so that it does not expire by itself.
@@ -205,9 +205,9 @@ class SubpagesTest {
             compose.mainClock.advanceTimeBy(100)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
-        assertTrue("Keine Snackbar mit Rückgängig", message.currentSnackbarData != null)
+        assertTrue("no snackbar with undo", message.currentSnackbarData != null)
         compose.onAllNodesWithText("Keller").assertCountEquals(0)
-        assertTrue("Gelöscht vor Ablauf der Snackbar", world.paths.requests.none { it.startsWith("DELETE") })
+        assertTrue("deleted before the snackbar ran out", world.paths.requests.none { it.startsWith("DELETE") })
         message.currentSnackbarData?.dismiss()
         compose.mainClock.autoAdvance = true
         // The end of the snackbar continues the LaunchedEffect; it runs at the pace of the
@@ -235,7 +235,7 @@ class SubpagesTest {
 
         compose.onAllNodes(hasText(ctx.getString(R.string.household_remove)) and hasClickAction())[0].performClick()
         compose.waitForIdle()
-        assertTrue("Getrennt vor der Rückfrage", world.paths.requests.none { "household/unlink" in it })
+        assertTrue("disconnected before the confirmation", world.paths.requests.none { "household/unlink" in it })
         compose.onNodeWithText(ctx.getString(R.string.household_remove_text, "lena")).fetchSemanticsNode()
         inDialog(ctx.getString(R.string.household_remove)).performClick()
         wait("Trennen") { world.paths.requests.any { "household/unlink" in it } }
@@ -276,8 +276,8 @@ class SubpagesTest {
         val width = compose.onRoot().fetchSemanticsNode().boundsInRoot.width
         for (text in listOf(R.string.partslist_empty_title, R.string.partslist_empty_hint)) {
             val b = compose.onNodeWithText(ctx.getString(text)).fetchSemanticsNode().boundsInRoot
-            assertTrue("${ctx.getString(text)} klebt am Rand (${b.left / density} dp)", b.left >= 16 * density)
-            assertTrue("${ctx.getString(text)} steht nicht mittig ($b in $width)",
+            assertTrue("${ctx.getString(text)} sticks to the edge (${b.left / density} dp)", b.left >= 16 * density)
+            assertTrue("${ctx.getString(text)} is not centered ($b in $width)",
                 kotlin.math.abs((b.left + b.right) / 2 - width / 2) < 2 * density)
         }
     }
@@ -289,7 +289,7 @@ class SubpagesTest {
         show { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         wait("Lagerorte") { vm.storageState.value.own.size == 1 }
         val stern = compose.onNodeWithContentDescription(ctx.getString(R.string.storage_default_cd, "Keller")).fetchSemanticsNode()
-        assertEquals("TalkBack hört an/aus", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
+        assertEquals("TalkBack hears on/off", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
     }
 
     @Test
@@ -320,7 +320,7 @@ class SubpagesTest {
         wait("Alarme") { vm.alarmOverview.value.loaded }
         val name = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val number = compose.onNodeWithText("75192-1", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        assertTrue("Name ($name) über der Nummer ($number)", name.bottom <= number.top)
+        assertTrue("name ($name) above the number ($number)", name.bottom <= number.top)
         compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.alerts_confirm_delete, "Millennium Falcon")).fetchSemanticsNode()
@@ -348,7 +348,7 @@ class SubpagesTest {
         // Tappable; nothing is submitted, the cursor stands in the repetition.
         switch.performScrollTo().assertIsEnabled().performClick()
         compose.waitForIdle()
-        assertEquals("Mit falscher Wiederholung abgeschickt", 0, switched())
+        assertEquals("sent with a wrong repetition", 0, switched())
         field(R.string.register_password_repeat).assertIsFocused()
         field(R.string.register_password_repeat).performTextClearance()
         field(R.string.register_password_repeat).performTextInput("neues-passwort-12")
@@ -403,8 +403,8 @@ class SubpagesTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
         val dialog = ShadowDialog.getLatestDialog()
-        assertTrue("Kein Passwortdialog beim Speichern", dialog?.isShowing == true)
-        assertTrue("Gespeichert ohne Passwort: ${world.paths.requests}", world.paths.requests.none { it.startsWith("PUT") })
+        assertTrue("no password dialog when saving", dialog?.isShowing == true)
+        assertTrue("saved without a password: ${world.paths.requests}", world.paths.requests.none { it.startsWith("PUT") })
         dialog?.dismiss()
         Shadows.shadowOf(Looper.getMainLooper()).idle()
     }

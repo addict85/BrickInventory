@@ -23,7 +23,7 @@ class AlarmInputTest {
     fun `a valid threshold comes through as an amount`() {
         assert(AlarmInput.number("200") == Money(2_000_000))
         assert(AlarmInput.number("249.90") == Money(2_499_000))
-        assert(AlarmInput.number(" 249.90 ") == Money(2_499_000)) { "Leerzeichen sollten egal sein" }
+        assert(AlarmInput.number(" 249.90 ") == Money(2_499_000)) { "Spaces should not matter" }
     }
 
     @Test
@@ -41,7 +41,7 @@ class AlarmInputTest {
         // beginning is no number and thus the same.
         for (raw in listOf("", "   ", "-", "abc", ",")) {
             assert(AlarmInput.number(raw) == null) {
-                "\"$raw\" ergab ${AlarmInput.number(raw)} statt null"
+                "\"$raw\" gave ${AlarmInput.number(raw)} instead of null"
             }
         }
     }
@@ -69,7 +69,7 @@ class AlarmInputTest {
         // (pruefeEingabe in `utils/preisalarm.ts`).
         for (raw in listOf("0", "0.00", "-5", "-0.01")) {
             assert(AlarmInput.number(raw) == null) {
-                "\"$raw\" ergab ${AlarmInput.number(raw)} statt null"
+                "\"$raw\" gave ${AlarmInput.number(raw)} instead of null"
             }
         }
     }
@@ -85,8 +85,8 @@ class AlarmInputTest {
         // 350 ms is the search's quiet period; a search only SHOWS, an alert
         // CREATES SOMETHING and therefore gets more.
         assert(AlarmInput.QUIET_MS >= 500L) {
-            "RUHE_MS steht auf ${AlarmInput.QUIET_MS} ms — zu kurz, um eine " +
-                "Tippbewegung von \"2\" ueber \"24\" nach \"249\" zu ueberdauern."
+            "QUIET_MS is at ${AlarmInput.QUIET_MS} ms — too short to outlast a " +
+                "typing motion from \"2\" via \"24\" to \"249\"."
         }
     }
 }

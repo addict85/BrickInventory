@@ -169,7 +169,7 @@ class GalleryImageRetryTest {
 
     private fun read(rel: String): String {
         val f = File(Sources.root, rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -178,10 +178,10 @@ class GalleryImageRetryTest {
         val src = read("collection/ui/screens/GalleryCard.kt")
 
         assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {
-            "Der Wiederholzähler fehlt oder ist nicht je Kachel/Bild gebunden"
+            "the retry counter is missing or not bound per tile/image"
         }
         assert(src.contains("AsyncImagePainter.State.Error && retryNonce == 0")) {
-            "Der Wiederholversuch muss auf GENAU EINMAL begrenzt sein"
+            "the retry must be limited to EXACTLY ONCE"
         }
         // Coil 3 no longer knows this parameter; checked in the sources of
         // coil-core 3.3.0, memoryCacheKeyExtra is the successor. What is checked
@@ -189,11 +189,11 @@ class GalleryImageRetryTest {
         // the name of a library function — the name is only here because
         // a text comparison can do nothing else.
         assert(src.contains(".memoryCacheKeyExtra(\"retry\", source.retryNonce.toString())")) {
-            "Die Anfrage braucht ein unterscheidbares Merkmal, sonst könnte Coil " +
-            "sie mit dem fehlgeschlagenen Vorgänger verwechseln"
+            "The request needs a distinguishing feature, otherwise Coil could " +
+            "confuse it with the failed predecessor"
         }
         assert(src.contains("kotlinx.coroutines.delay(1000)")) {
-            "Der Wiederholversuch sollte verzögert erfolgen, nicht sofort im selben Moment"
+            "the retry should happen delayed, not right away at the same moment"
         }
     }
 }

@@ -73,7 +73,7 @@ class CacheClearAsksTest {
     fun `clearing asks first and then clears in the chosen scope`() {
         show()
         tap(R.string.monitoring_cache_clear_all)
-        assertEquals("Ein Tipp allein leert schon", emptyList<Boolean>(), emptied)
+        assertEquals("a tap alone already empties", emptyList<Boolean>(), emptied)
         compose.onNodeWithText(text(R.string.monitoring_cache_clear_hint)).fetchSemanticsNode()
         inDialog(R.string.monitoring_cache_clear_confirm).performClick()
         compose.waitForIdle()
@@ -85,7 +85,7 @@ class CacheClearAsksTest {
         inDialog(R.string.monitoring_cache_clear_confirm).performClick()
         compose.waitForIdle()
 
-        assertEquals("Alles, dann nach Abbrechen nichts, dann nur die Preise", listOf(true, false), emptied)
+        assertEquals("everything, then nothing after cancel, then only the prices", listOf(true, false), emptied)
     }
 
     @Test

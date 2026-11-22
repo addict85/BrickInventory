@@ -69,7 +69,7 @@ class KeyBindingTest {
 
     @Test
     fun `a device without attestation gets a message and sends nothing`() {
-        for (keystore in listOf(Keystore { error("Attestation nicht unterstützt") }, Keystore { listOf(sheet) })) {
+        for (keystore in listOf(Keystore { error("attestation not supported") }, Keystore { listOf(sheet) })) {
             val server = Server(KeyNonce.Nonce(nonce))
             assertEquals(KeyBinding.Outbox.WithoutAttestation, bind(server, keystore))
             assertTrue(server.chains.isEmpty())

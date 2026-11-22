@@ -36,7 +36,7 @@ class WidgetPreviewTest {
     private fun provider(): XmlResourceParser = ctx.resources.getXml(AppR.xml.collection_widget).apply {
         while (true) {
             val kind = next()
-            check(kind != XmlResourceParser.END_DOCUMENT) { "Kein <appwidget-provider>" }
+            check(kind != XmlResourceParser.END_DOCUMENT) { "no <appwidget-provider>" }
             if (kind == XmlResourceParser.START_TAG && name == "appwidget-provider") break
         }
     }
@@ -52,14 +52,14 @@ class WidgetPreviewTest {
         val info = provider()
         val description = info.getAttributeResourceValue(android, "description", 0)
         val preview = info.getAttributeResourceValue(android, "previewLayout", 0)
-        assertEquals("Beschreibung", ctx.getString(Texts.string.widget_description),
+        assertEquals("description", ctx.getString(Texts.string.widget_description),
             if (description == 0) null else ctx.getString(description))
-        assertNotEquals("Keine Vorschau", 0, preview)
+        assertNotEquals("no preview", 0, preview)
 
         val view = RemoteViews(ctx.packageName, preview).apply(ctx, FrameLayout(ctx))
         val shown = texts(view)
         for (id in listOf(Texts.string.widget_title, Texts.string.widget_value, Texts.string.widget_preview_value)) {
-            assertTrue("„${ctx.getString(id)}“ fehlt in der Vorschau: $shown", ctx.getString(id) in shown)
+            assertTrue("“${ctx.getString(id)}” missing in the preview: $shown", ctx.getString(id) in shown)
         }
     }
 }

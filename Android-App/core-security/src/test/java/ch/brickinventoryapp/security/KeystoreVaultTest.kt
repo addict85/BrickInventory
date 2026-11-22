@@ -23,7 +23,7 @@ class KeystoreVaultTest {
     @Test
     fun `the token's key works only unlocked, those of the stores always`() {
         assertTrue(vaultSpec("token", onlyUnlocked = true).build().isUnlockedDeviceRequired)
-        assertFalse("Ausgang und Pins brauchen ihre Schlüssel im Hintergrund",
+        assertFalse("outbox and pins need their keys in the background",
             vaultSpec("ablage", onlyUnlocked = false).build().isUnlockedDeviceRequired)
     }
 

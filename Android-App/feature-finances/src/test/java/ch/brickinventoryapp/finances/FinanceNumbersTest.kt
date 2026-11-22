@@ -188,7 +188,7 @@ class FinanceNumbersTest {
         val k = financeHeader(valuationLoad, null, null,
             pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 1.9}"""))
         assertEquals(false, k.baseKnown)
-        assertNull("kein Einstand: die alte Karte zeigte keinen", k.cost)
+        assertNull("no cost basis: the old card showed none", k.cost)
         assertNull(k.pnlAmount)
         assertEquals(0, BigDecimal("1712.40").compareTo(k.value))
         assertEquals(1.9, k.pnlPercent!!, 0.0)

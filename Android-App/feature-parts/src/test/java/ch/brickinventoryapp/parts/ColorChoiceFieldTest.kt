@@ -56,10 +56,10 @@ class ColorChoiceFieldTest {
     fun `without a name Unknown color stands in the font of the other values`() {
         show(emptyList(), null)
         assertEquals(compose.activity.getString(R.string.parts_color_unknown), fieldText())
-        assertFalse("Die Farbnummer steht im Feld: ${fieldText()}", fieldText().contains("5"))
+        assertFalse("The color number stands in the field: ${fieldText()}", fieldText().contains("5"))
         val layouts = mutableListOf<TextLayoutResult>()
         field().config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
-        assertEquals("Schriftgrösse des Feldes", value.fontSize, layouts.single().layoutInput.style.fontSize)
+        assertEquals("Font size of the field", value.fontSize, layouts.single().layoutInput.style.fontSize)
     }
 
     @Test

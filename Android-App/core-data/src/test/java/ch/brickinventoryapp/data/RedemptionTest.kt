@@ -89,7 +89,7 @@ class RedemptionTest {
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(LogoutPath.CAUGHT_UP to listOf(job), logout())
         server.shutdown()
-        assertEquals("Ohne Server ebenso", LogoutPath.CAUGHT_UP to listOf(job), logout())
+        assertEquals("Likewise without a server", LogoutPath.CAUGHT_UP to listOf(job), logout())
     }
 
     @Test
@@ -97,7 +97,7 @@ class RedemptionTest {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"x"}"""))
         assertEquals(LogoutPath.IMMEDIATE to emptyList<RedemptionJob>(), logout())
         server.enqueue(MockResponse().setResponseCode(404))
-        assertEquals("Ein Server ohne Abmelde-Endpunkt wird es nie haben",
+        assertEquals("A server without a sign-out endpoint will never have it",
             LogoutPath.WITHOUT_JOB to emptyList<RedemptionJob>(), logout())
     }
 
@@ -117,12 +117,12 @@ class RedemptionTest {
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(RedemptionOutcome.LATER, redeemer.redeem(basis, "altes-token"))
         server.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/andere-app/fang"))
-        assertEquals("Aus dem Pfad hinaus folgt er nicht", RedemptionOutcome.GIVE_UP, redeemer.redeem(basis, "altes-token"))
+        assertEquals("It does not follow out of the path", RedemptionOutcome.GIVE_UP, redeemer.redeem(basis, "altes-token"))
         server.takeRequest(1, TimeUnit.SECONDS); server.takeRequest(1, TimeUnit.SECONDS); server.takeRequest(1, TimeUnit.SECONDS)
         assertNull(server.takeRequest(200, TimeUnit.MILLISECONDS))
 
         val plaintext = Redeemer(OkHttpClient(), development = false)
-        assertEquals("Kein Token im Klartext, auch nicht später", RedemptionOutcome.GIVE_UP, plaintext.redeem(basis, "t"))
+        assertEquals("No token in plaintext, not later either", RedemptionOutcome.GIVE_UP, plaintext.redeem(basis, "t"))
         server.shutdown()
         assertEquals(RedemptionOutcome.LATER, redeemer.redeem(basis, "altes-token"))
     }
@@ -134,8 +134,8 @@ class RedemptionTest {
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(RedemptionOutcome.GIVE_UP, redeemer.redeem(b, "token-von-a", origin = "https://a.example"))
         assertEquals(RedemptionOutcome.GIVE_UP, redeemer.redeem(b, "token-von-a", origin = null))
-        assertEquals("Das Token von A ging an B", 0, server.requestCount)
-        assertEquals("Ohne Angabe gehört das Token dem Server des Auftrags",
+        assertEquals("A's token went to B", 0, server.requestCount)
+        assertEquals("Without a statement the token belongs to the job's server",
             NetworkPolicy.origin(b), RedemptionJob(b, "x").origin)
     }
 
@@ -145,7 +145,7 @@ class RedemptionTest {
         val redeem = { _: String -> called++; RedemptionOutcome.LATER }
         assertEquals(RedemptionStep.AGAIN, redemptionStep(VaultFinding.LockedState, 0, redeem = redeem))
         assertEquals(RedemptionStep.GIVEN_UP, redemptionStep(VaultFinding.Gone, 0, redeem = redeem))
-        assertEquals("Ohne Token kein Aufruf", 0, called)
+        assertEquals("No call without a token", 0, called)
         assertEquals(RedemptionStep.AGAIN, redemptionStep(VaultFinding.Readable("t"), 0, redeem = redeem))
         assertEquals(RedemptionStep.GIVEN_UP,
             redemptionStep(VaultFinding.Readable("t"), REDEMPTION_MAX_ATTEMPTS - 1, redeem = redeem))
@@ -163,7 +163,7 @@ class RedemptionTest {
             redemptionStep(VaultFinding.LockedState, last, deviceLocked = true, redeem = redeem))
         assertEquals(RedemptionStep.AGAIN,
             redemptionStep(VaultFinding.LockedState, last * 3, deviceLocked = true, redeem = redeem))
-        assertEquals("Entsperrt und weiter gesperrt: ein anderer Fehler, der aufgibt", RedemptionStep.GIVEN_UP,
+        assertEquals("Unlocked and still locked: a different error that gives up", RedemptionStep.GIVEN_UP,
             redemptionStep(VaultFinding.LockedState, last, deviceLocked = false, redeem = redeem))
     }
 }

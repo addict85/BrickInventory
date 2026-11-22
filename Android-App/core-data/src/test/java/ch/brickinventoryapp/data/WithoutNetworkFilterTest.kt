@@ -100,7 +100,7 @@ class WithoutNetworkFilterTest {
 
     private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: SetSort? = null) =
         runBlocking { setsRepo.observeSets(search, theme, storage, sort).first() }
-            .also { assertEquals("trägt den Stand", STATUS, it.state) }
+            .also { assertEquals("carries the state", STATUS, it.state) }
             .list.map { it.setNumber }
 
     private fun partsOffline(search: String? = null, color: String? = null, category: String? = null,
@@ -114,12 +114,12 @@ class WithoutNetworkFilterTest {
     fun `search, theme, storage location and sorting of the gallery work offline on the whole local list`() {
         loadSetsOnline()
         offline = true
-        assertEquals("Suche ohne Gross und Klein, über Seite 2 hinweg", listOf("10001-1", "10003-1"), setsOffline(search = "SEE"))
-        assertEquals("Suche im Jahr", listOf("10002-1"), setsOffline(search = "2010"))
-        assertEquals("Thema", listOf("10002-1", "21000-1"), setsOffline(theme = "City"))
-        assertEquals("Lagerort", listOf("10001-1", "10003-1"), setsOffline(storage = "Kiste 1"))
-        assertEquals("Thema und Lagerort zusammen", listOf("10001-1"), setsOffline(theme = "Castle", storage = "Kiste 1"))
-        assertEquals("Sortierung nach Name", listOf("21000-1", "10001-1", "10002-1", "30000-1", "10003-1"),
+        assertEquals("Search ignores case, across page 2", listOf("10001-1", "10003-1"), setsOffline(search = "SEE"))
+        assertEquals("Search in the year", listOf("10002-1"), setsOffline(search = "2010"))
+        assertEquals("Theme", listOf("10002-1", "21000-1"), setsOffline(theme = "City"))
+        assertEquals("Storage location", listOf("10001-1", "10003-1"), setsOffline(storage = "Kiste 1"))
+        assertEquals("Theme and storage location together", listOf("10001-1"), setsOffline(theme = "Castle", storage = "Kiste 1"))
+        assertEquals("Sorting by name", listOf("21000-1", "10001-1", "10002-1", "30000-1", "10003-1"),
             setsOffline(sort = SetSort.NAME))
     }
 
@@ -128,7 +128,7 @@ class WithoutNetworkFilterTest {
         loadSetsOnline()
         offline = true
         assertEquals(listOf("30000-1"), setsOffline(search = "50_%"))
-        assertEquals("„_“ ist kein Platzhalter für ein Zeichen", emptyList<String>(), setsOffline(search = "Burg_am"))
+        assertEquals("„_“ is no placeholder for a character", emptyList<String>(), setsOffline(search = "Burg_am"))
     }
 
     @Test
@@ -139,29 +139,29 @@ class WithoutNetworkFilterTest {
         assertEquals(listOf("3001/Red"), partsOffline(color = "Red", spare = SparePartChoice.WITHOUT))
         assertEquals(listOf("3023/Red"), partsOffline(spare = SparePartChoice.ONLY))
         assertEquals(listOf("3069b/Blue"), partsOffline(category = "19"))
-        assertEquals("Suche im Namen", listOf("3023/Red"), partsOffline(search = "plate"))
-        assertEquals("Suche in der BrickLink-Nummer", listOf("3069b/Blue"), partsOffline(search = "87079"))
+        assertEquals("Search in the name", listOf("3023/Red"), partsOffline(search = "plate"))
+        assertEquals("Search in the BrickLink number", listOf("3069b/Blue"), partsOffline(search = "87079"))
         assertEquals(listOf("3001/Red", "3001/Blue"), partsOffline(search = "3001"))
     }
 
     @Test
     fun `the gallery filters in Room, the fetch only fills the store`() = runBlocking {
         assertTrue(setsRepo.refreshSets() is Outcome.Success)
-        assertEquals("alle Sets in der Ablage", sets.size, setsRepo.observeSets().first().list.size)
+        assertEquals("all sets in the store", sets.size, setsRepo.observeSets().first().list.size)
         val city = setsRepo.observeSets(theme = "City", sort = SetSort.NUMBER).first().list.map { it.setNumber }
-        assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
+        assertEquals("the gallery filters in Room and sorts like the server", listOf("10002-1", "21000-1"), city)
         offline = true
-        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.refreshSets() is Outcome.Failure)
-        assertEquals("und die Ablage bleibt", sets.size, setsRepo.observeSets().first().list.size)
+        assertTrue("without network the fetch reports the error", setsRepo.refreshSets() is Outcome.Failure)
+        assertEquals("and the store stays", sets.size, setsRepo.observeSets().first().list.size)
     }
 
     @Test
     fun `the parts go into the store whole and filter there`() = runBlocking {
         assertTrue(partsRepo.refreshParts() is Outcome.Success)
-        assertEquals("alle Seiten der Teile in der Ablage", parts.size, partsRepo.observeParts().first().list.size)
-        assertEquals("die manuellen Teile ebenso", listOf("m1"), partsRepo.observeManualParts().first().list.map { it.partNumber })
+        assertEquals("all pages of the parts in the store", parts.size, partsRepo.observeParts().first().list.size)
+        assertEquals("the manual parts likewise", listOf("m1"), partsRepo.observeManualParts().first().list.map { it.partNumber })
         val red = partsRepo.observeParts(color = ColorPicker.Color("Red"), spareParts = SparePartChoice.WITHOUT).first().list.map { it.partNumber }
-        assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), red)
+        assertEquals("Color and spare parts filter in Room", listOf("3001"), red)
     }
 
     private companion object {

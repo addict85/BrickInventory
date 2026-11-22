@@ -24,9 +24,9 @@ class DesignTokensTest {
         assert(error.isEmpty()) {
             "Feste Eckenradien ausserhalb von $themeFolder/ (${error.size}):\n  " +
                 error.joinToString("\n  ") +
-                "\nDafür gibt es Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
-                "Passt keine, gehört eine NEUE dorthin — sonst ist die nächste " +
-                "Designänderung wieder eine Suche über den ganzen Baum."
+                "\nFor that there are Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
+                "If none fits, a NEW one belongs there — otherwise the next " +
+                "design change is again a search over the whole tree."
         }
     }
 
@@ -42,11 +42,11 @@ class DesignTokensTest {
             }
         }
         assert(error.isEmpty()) {
-            "Feste Farben ausserhalb von $themeFolder/ (${error.size}):\n  " +
+            "Fixed colors outside $themeFolder/ (${error.size}):\n  " +
                 error.joinToString("\n  ") +
-                "\nFür Zustände gibt es LocalStatusColors (erfolg/warnung/fehler), " +
-                "für das Diagramm LocalChartColors. Eine Farbe, die im Bildschirm " +
-                "steht, zieht beim Designwechsel nicht mit."
+                "\nFor states there is LocalStatusColors (erfolg/warnung/fehler), " +
+                "for the chart LocalChartColors. A color that stands in the screen " +
+                "does not follow a design change."
         }
     }
 
@@ -63,9 +63,9 @@ class DesignTokensTest {
             .filter { template.containsMatchIn(Sources.withoutComments(it.readText())) }
             .map { it.name }
         assert(error.isEmpty()) {
-            "Diese Dateien setzen die Karten-Erhebung als Zahl: ${error.joinToString()}. " +
-                "Dafür gibt es Formen.karteErhebung und Formen.karteErhebungHoch — " +
-                "oder gleich AppCard."
+            "These files set the card elevation as a number: ${error.joinToString()}. " +
+                "For that there are Formen.karteErhebung and Formen.karteErhebungHoch — " +
+                "or AppCard right away."
         }
     }
 
@@ -76,14 +76,14 @@ class DesignTokensTest {
         // In the stone design a Prussian blue would then stand next to
         // sage green again, only this time without anyone noticing.
         val theme = Sources.withoutComments(Sources.read("ui/theme/Theme.kt"))
-        assert(theme.contains("LocalStatusColors provides")) { "Statusfarben werden nicht bereitgestellt" }
+        assert(theme.contains("LocalStatusColors provides")) { "status colors are not provided" }
         assert(theme.contains("LocalChartColors  provides") || theme.contains("LocalChartColors provides")) {
-            "Diagrammfarben werden nicht bereitgestellt"
+            "chart colors are not provided"
         }
         val branches = Regex("""StatusColors\(""").findAll(theme).count()
         assert(branches >= 2) {
-            "Nur $branches StatusColors-Zweig(e) in Theme.kt — dann teilt sich " +
-                "mindestens ein Design die Farben eines anderen"
+            "Only $branches StatusColors branch(es) in Theme.kt — then " +
+                "at least one design shares the colors of another"
         }
     }
 
@@ -116,10 +116,10 @@ class DesignTokensTest {
                 }
             }
         }
-        assert(seen >= 30) { "Nur $seen Eingabefelder gefunden — greift die Suche noch?" }
+        assert(seen >= 30) { "Only $seen input fields found — does the search still apply?" }
         assert(error.isEmpty()) {
-            "Eingabefelder in der eckigen Vorgabe (${error.size}):\n  " + error.joinToString("\n  ") +
-                "\nshape = Shapes.field setzen — wie jedes andere Feld."
+            "Input fields in the square default (${error.size}):\n  " + error.joinToString("\n  ") +
+                "\nSet shape = Shapes.field — like every other field."
         }
     }
 
@@ -159,13 +159,13 @@ class DesignTokensTest {
                 }
             }
         }
-        assert(seen >= 20) { "Nur $seen umrandete Knöpfe gefunden — greift die Suche noch?" }
+        assert(seen >= 20) { "Only $seen outlined buttons found — does the search still apply?" }
         assert(error.isEmpty()) {
-            "Knöpfe mit eigener Form (${error.size}):\n  " + error.joinToString("\n  ") +
-                "\nKnöpfe tragen die Vorgabe des Themas; Formen.feld gilt nur für Eingabefelder."
+            "Buttons with their own shape (${error.size}):\n  " + error.joinToString("\n  ") +
+                "\nButtons carry the theme's default; Formen.feld only applies to input fields."
         }
         assert(secondaryButtons.isEmpty()) {
-            "Umrandete Knöpfe ohne secondaryButtonColors()/secondaryButtonRand() (${secondaryButtons.size}):\n  " +
+            "Outlined buttons without secondaryButtonColors()/secondaryButtonRand() (${secondaryButtons.size}):\n  " +
                 secondaryButtons.joinToString("\n  ")
         }
     }

@@ -126,7 +126,7 @@ class WrapGuardTest {
                 }
             }
         }
-        drive("$name (angezeigt)", ready)
+        drive("$name (shown)", ready)
         compose.waitForIdle()
         // Stop the clock and advance: fade-ins have then run to completion.
         compose.mainClock.autoAdvance = false
@@ -136,7 +136,7 @@ class WrapGuardTest {
         }
         val (texts, findings) = collect(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(), wholeRow)
         // Empty screens check nothing.
-        assertTrue("$name: nur $texts Textknoten — sind die Daten da?", texts >= 5)
+        assertTrue("$name: only $texts text nodes — is the data there?", texts >= 5)
         assertTrue("$name: ${findings.joinToString("; ")}", findings.isEmpty())
     }
 
@@ -330,7 +330,7 @@ class WrapGuardTest {
     }
 
     /** The place a counter-check breaks must have been checked: a missing node reports nothing. */
-    private fun inImage(name: String, text: String) = assertTrue("$name: kein Text mit „$text“ — die Stelle lag nicht im Bild",
+    private fun inImage(name: String, text: String) = assertTrue("$name: no text with “$text” — the spot was not in the picture",
         compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
     private fun login(font: Float) {

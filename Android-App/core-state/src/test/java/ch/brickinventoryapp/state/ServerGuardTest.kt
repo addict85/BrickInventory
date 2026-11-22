@@ -116,9 +116,9 @@ class ServerGuardTest {
         assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
         c.newCall(Request.Builder().url(basis() + "/api/v1/pdf").header("Authorization", "Bearer $TOKEN").build())
             .execute().close()
-        assertEquals("Ein ungebundener Token ging hinaus", listOf<String?>(null, null),
+        assertEquals("an unbound token went out", listOf<String?>(null, null),
             synchronized(requests) { requests.map { it.second } })
-        assertEquals("Ohne Token meldet ein 401 nicht ab", 0, expired.get())
+        assertEquals("without a token a 401 does not sign out", 0, expired.get())
     }
 
     @Test
@@ -156,8 +156,8 @@ class ServerGuardTest {
         codes["/api/v1/sets"] = 401
         val situation = State(basis(), origin = "http://anderer.example:3000")
         assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v1/sets"))
-        assertNull("Der alte Token ging an den neuen Server", requestsTo("/api/v1/sets").single().second)
-        assertEquals("Ohne Token ist ein 401 kein Ablauf", 0, expired.get())
+        assertNull("the old token went to the new server", requestsTo("/api/v1/sets").single().second)
+        assertEquals("without a token a 401 is no expiry", 0, expired.get())
     }
 
     @Test
@@ -181,7 +181,7 @@ class ServerGuardTest {
     fun `after sign-out no self-set header goes out, one bound to the own origin does`() {
         client(State(basis(), tokens = ArrayDeque(listOf("")))).newCall(Request.Builder().url(basis() + "/api/v1/csv")
             .header("Authorization", "Bearer alt").build()).execute().close()
-        assertNull("Abgemeldet: kein Token", requestsTo("/api/v1/csv").single().second)
+        assertNull("signed out: no token", requestsTo("/api/v1/csv").single().second)
 
         val own = NetworkPolicy.origin(basis())
         client(State(basis(), origin = own)).newCall(Request.Builder().url(basis() + "/api/v1/pdf")
@@ -213,7 +213,7 @@ class ServerGuardTest {
             .readTimeout(2, TimeUnit.SECONDS).build()
         assertEquals(426, fetch(c, basis() + "/api/v1/auth/profile"))
         assertEquals(426, fetch(c, basis() + "/api/v1/sets"))
-        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(VersionsHint.APP_TOO_OLD), hints.toList())
+        assertEquals("reported once, not per request", listOf(VersionsHint.APP_TOO_OLD), hints.toList())
         assertEquals(0, expired.get())
     }
 
@@ -236,7 +236,7 @@ class ServerGuardTest {
         fetch(client(situation), "http://localhost:3000/api/v1/sets")
         val an = requestsTo("/api/v1/sets")
         assertEquals(listOf(null, "Bearer $TOKEN"), an.map { it.second })
-        assertEquals("Nach dem Nachfassen ist der 401 echt", 1, expired.get())
+        assertEquals("after following up the 401 is genuine", 1, expired.get())
     }
 
     @Test
@@ -254,12 +254,12 @@ class ServerGuardTest {
         for (url in listOf("http://localhost:3000/api/v1/sets", basis() + "/images/sets/1.jpg")) {
             try {
                 fetch(c, url)
-                fail("$url darf nicht hinausgehen")
+                fail("$url must not go out")
             } catch (e: PlaintextRejected) {
                 assertEquals(server.url("/").host, e.host)
             }
         }
-        assertEquals("Weder Token noch Anfrage gingen hinaus", 0, server.requestCount)
+        assertEquals("neither token nor request went out", 0, server.requestCount)
         assertEquals(0, expired.get())
     }
 
@@ -269,7 +269,7 @@ class ServerGuardTest {
         for (address in listOf("http://nas:3000", "http://192.168.1.50:3000", "http://brick.example.org")) {
             try {
                 fetch(client(State(address)), "http://localhost:3000/api/v1/sets")
-                fail("$address darf nicht im Klartext erreicht werden")
+                fail("$address must not be reached in plain text")
             } catch (_: PlaintextRejected) { }
         }
         assertEquals(0, server.requestCount)
@@ -285,10 +285,10 @@ class ServerGuardTest {
         assertEquals(403, fetch(c, "http://localhost:3000/api/v1/admin/jobs"))
         assertEquals(403, fetch(c, "http://localhost:3000/api/v1/auth/passkey/registrieren/optionen"))
         assertEquals(1, revoked.get())
-        assertEquals("Ein 403 ist keine abgelaufene Sitzung", 0, expired.get())
+        assertEquals("a 403 is no expired session", 0, expired.get())
 
         fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/admin/jobs")
-        assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, revoked.get())
+        assertEquals("without a token a 403 says nothing about this account", 1, revoked.get())
     }
 
     @Test
@@ -301,8 +301,8 @@ class ServerGuardTest {
         assertEquals(403, fetch(c, "http://localhost:3000/api/v1/sets"))
         assertEquals(1, switch.get())
         fetch(c, "http://localhost:3000/api/v1/admin/jobs")
-        assertEquals("Ein anderes 403 verlangt keinen Wechsel", 1, switch.get())
-        assertEquals("Kein Abmelden", 0, expired.get())
+        assertEquals("another 403 requires no switch", 1, switch.get())
+        assertEquals("no sign-out", 0, expired.get())
     }
 
     @Test
@@ -315,12 +315,12 @@ class ServerGuardTest {
         assertEquals(403, fetch(c, "http://localhost:3000/api/v1/sets"))
         assertEquals(1, factor.get())
         fetch(c, "http://localhost:3000/api/v1/admin/jobs")
-        assertEquals("Ein anderes 403 verlangt keinen zweiten Faktor", 1, factor.get())
-        assertEquals("Kein Abmelden", 0, expired.get())
-        assertEquals("Kein entzogenes Recht", 0, revoked.get())
+        assertEquals("another 403 requires no second factor", 1, factor.get())
+        assertEquals("no sign-out", 0, expired.get())
+        assertEquals("no withdrawn right", 0, revoked.get())
 
         fetch(client(State(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/sets")
-        assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, factor.get())
+        assertEquals("without a token a 403 says nothing about this account", 1, factor.get())
     }
 
     @Test
@@ -331,7 +331,7 @@ class ServerGuardTest {
         bodies["/api/v1/sets"] = """{"success":false,"code":"token_ungueltig"}"""
         val c = client(State(basis()))
         assertEquals(401, fetch(c, "http://localhost:3000/api/v1/auth/zweiter-faktor/abschalten"))
-        assertEquals("Die Bestätigung fragt erneut, statt abzumelden", 0, expired.get())
+        assertEquals("the confirmation asks again instead of signing out", 0, expired.get())
         assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
         assertEquals(1, expired.get())
     }

@@ -35,11 +35,11 @@ class LockScreenMessageTest {
     fun `the failed sign-out names the server only when unlocked`() {
         val n = RedemptionWorker.message(ctx, "brick.example:8443")
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
-        assertNotNull("Ohne Ersatzfassung zeigt Android je nach Einstellung alles", n.publicVersion)
+        assertNotNull("Without a public version Android shows everything, depending on the setting", n.publicVersion)
         assertFalse(visible(n.publicVersion), "brick.example" in visible(n.publicVersion))
         assertEquals(ctx.getString(R.string.logout_failed_title),
             n.publicVersion.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
-        assertTrue("Entsperrt steht der Server in der Meldung", "brick.example" in visible(n))
+        assertTrue("Unlocked, the server stands in the notification", "brick.example" in visible(n))
     }
 
     @Test

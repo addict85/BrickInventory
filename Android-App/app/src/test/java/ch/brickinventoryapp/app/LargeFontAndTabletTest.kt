@@ -121,7 +121,7 @@ class LargeFontAndTabletTest {
 
     private fun wholeOneRow(text: String, where: String) {
         val t = layout(textNode(text))
-        assertTrue("$where: „$text“ steht in ${t.lineCount} Zeilen, sichtbar bis " +
+        assertTrue("$where: “$text” stands in ${t.lineCount} lines, visible up to " +
             "${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}/${text.length}",
             t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
     }
@@ -158,10 +158,10 @@ class LargeFontAndTabletTest {
             }
         }
         val visible = visibleLabels(targets)
-        assertTrue("Das gewählte Ziel ist nicht beschriftet", ctx.getString(R.string.nav_finance) in visible)
+        assertTrue("the chosen destination is not labeled", ctx.getString(R.string.nav_finance) in visible)
         visible.forEach { wholeOneRow(it, "Reiterleiste") }
         val sizes = visible.map { layout(textNode(it)).layoutInput.style.fontSize }.toSet()
-        assertTrue("Reiterleiste in verschiedenen Grössen: $sizes", sizes.size == 1)
+        assertTrue("tab bar in different sizes: $sizes", sizes.size == 1)
     }
 
     /** At 200 % the labels stand at least one and a half times as large as at 100 %. */
@@ -184,12 +184,12 @@ class LargeFontAndTabletTest {
             }
         }
         val visible = visibleLabels(targets)
-        assertTrue("Keine Beschriftung sichtbar", visible.isNotEmpty())
+        assertTrue("no label visible", visible.isNotEmpty())
         visible.forEach { text ->
             val t = layout(textNode(text))
             val set = t.layoutInput.style.fontSize.value * t.layoutInput.density.fontScale
-            assertTrue("„$text“ in $set statt mindestens ${1.5f * normal} Punkt", set >= 1.5f * normal - 0.01f)
-            assertTrue("„$text“ läuft über", !t.hasVisualOverflow)
+            assertTrue("“$text” in $set instead of at least ${1.5f * normal} points", set >= 1.5f * normal - 0.01f)
+            assertTrue("“$text” overflows", !t.hasVisualOverflow)
         }
     }
 
@@ -222,7 +222,7 @@ class LargeFontAndTabletTest {
         }
         visibleLabels(targets).forEach { text ->
             val style = layout(textNode(text)).layoutInput.style.fontSize.value
-            assertTrue("„$text“ in ${style * font} statt mindestens ${font * normal} Punkt", style * font >= font * normal - 0.01f)
+            assertTrue("“$text” in ${style * font} instead of at least ${font * normal} points", style * font >= font * normal - 0.01f)
         }
     }
 
@@ -280,15 +280,15 @@ class LargeFontAndTabletTest {
             }
         }
         val toLittle = ctx.getString(R.string.price_chart_too_few)
-        assertTrue("Preisverlauf mit zwei Punkten sagt, warum kein Diagramm",
+        assertTrue("price history with two points says why there is no chart",
             compose.onAllNodes(hasText(toLittle)).fetchSemanticsNodes().size == 1)
         val deepHigh = ctx.getString(R.string.price_chart_low_high,
             fmtMoney(710.0, CurrencyCode("CHF")), fmtMoney(720.0, CurrencyCode("CHF")))
-        assertTrue("Preisverlauf nennt Tief und Hoch",
+        assertTrue("price history names low and high",
             compose.onAllNodes(hasText(deepHigh)).fetchSemanticsNodes().size == 1)
         points.intValue = 3
         compose.waitForIdle()
-        assertTrue("Preisverlauf mit drei Punkten zeigt die Linie",
+        assertTrue("price history with three points shows the line",
             compose.onAllNodes(hasText(toLittle)).fetchSemanticsNodes().isEmpty())
     }
 
@@ -322,13 +322,13 @@ class LargeFontAndTabletTest {
             val too = compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.detail_close)))
                 .fetchSemanticsNode().boundsInRoot
             val list = compose.onNode(tile).fetchSemanticsNode().boundsInRoot
-            assertTrue("Tablet zeigt Teil rechts der Liste ($list / $too)", too.left >= list.right)
-            assertTrue("Tablet zeigt Teil ohne Dialog",
+            assertTrue("tablet shows the part right of the list ($list / $too)", too.left >= list.right)
+            assertTrue("tablet shows the part without a dialog",
                 compose.onAllNodes(androidx.compose.ui.test.isDialog()).fetchSemanticsNodes().isEmpty())
             // One pattern for all detail headers: close to the left of the title, the tile marked.
             val title = compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4") and
                 androidx.compose.ui.test.isHeading()).fetchSemanticsNode().boundsInRoot
-            assertTrue("Tablet zeigt Teil mit Schliessen links vom Titel ($too / $title)", too.right <= title.left)
+            assertTrue("tablet shows the part with close left of the title ($too / $title)", too.right <= title.left)
             compose.onNode(tile and SemanticsMatcher.expectValue(
                 SemanticsProperties.Selected, true)).fetchSemanticsNode("Kachel nicht markiert")
         } finally {

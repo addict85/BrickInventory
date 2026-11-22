@@ -177,8 +177,8 @@ class AccessibilityTest {
 
     private fun checkToggle(text: String, expected: Role, an: Boolean) {
         val node = compose.onNode(hasText(text) and isToggleable()).fetchSemanticsNode("„$text“ ist kein Schalter mit Namen")
-        assertEquals("$text: Rolle", expected, role(node))
-        assertEquals("$text: Zustand", if (an) ToggleableState.On else ToggleableState.Off,
+        assertEquals("$text: role", expected, role(node))
+        assertEquals("$text: state", if (an) ToggleableState.On else ToggleableState.Off,
             node.config.getOrNull(SemanticsProperties.ToggleableState))
     }
 
@@ -200,8 +200,8 @@ class AccessibilityTest {
         compose.onNode(hasText(onlyLose) and isToggleable()).performClick()
         compose.onNode(hasText(withBelow) and isToggleable()).performClick()
         compose.waitForIdle()
-        assertEquals("Tipp auf die Zeile schaltet „nur lose“", true, lose)
-        assertEquals("Tipp auf die Zeile schaltet „mit Unterkonten“", true, below)
+        assertEquals("a tap on the row toggles “loose only”", true, lose)
+        assertEquals("a tap on the row toggles “with sub-accounts”", true, below)
     }
 
     @Test
@@ -249,7 +249,7 @@ class AccessibilityTest {
             compose.onNode(hasText(userCa) and isToggleable()).performScrollTo()
             checkToggle(userCa, Role.Switch, false)
             compose.onNode(hasText(userCa) and isToggleable()).performClick()
-            assertEquals("Tipp auf den Text schaltet", true, ca)
+            assertEquals("a tap on the text toggles", true, ca)
         } finally {
             world.close()
         }
@@ -264,12 +264,12 @@ class AccessibilityTest {
         }
         val display = compose.onAllNodes(hasText(placeholder), useUnmergedTree = true).fetchSemanticsNodes()
             .first { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
-        assertTrue("Platzhalter bei 200 % abgeschnitten", !layout(display).hasVisualOverflow)
+        assertTrue("placeholder cut off at 200 %", !layout(display).hasVisualOverflow)
         compose.onNode(hasSetTextAction()).performTextInput("Falcon")
         compose.waitForIdle()
         val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
         val name = field.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
-        assertTrue("Feld ohne Namen nach der Eingabe: $name", placeholder in name)
+        assertTrue("field without a name after input: $name", placeholder in name)
     }
 
     @Test
@@ -286,14 +286,14 @@ class AccessibilityTest {
         compose.onNode(hasText("Lagerort") and isHeading()).fetchSemanticsNode("„Lagerort“ ist keine Überschrift")
         for ((text, chosen) in listOf("Alle Lagerorte" to true, lang to false)) {
             val chip = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
-            assertEquals("$text: Rolle", Role.RadioButton, role(chip))
-            assertEquals("$text: gewählt", chosen, chip.config.getOrNull(SemanticsProperties.Selected))
+            assertEquals("$text: role", Role.RadioButton, role(chip))
+            assertEquals("$text: selected", chosen, chip.config.getOrNull(SemanticsProperties.Selected))
         }
         compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.SelectableGroup))
             .fetchSemanticsNode("Die Chips stehen nicht in einer Gruppe")
         val text = compose.onAllNodes(hasText(lang), useUnmergedTree = true).fetchSemanticsNodes()
             .first { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
-        assertTrue("Chiptext bei 200 % abgeschnitten", !layout(text).hasVisualOverflow)
+        assertTrue("chip text cut off at 200 %", !layout(text).hasVisualOverflow)
     }
 
     @Test
@@ -367,13 +367,13 @@ class AccessibilityTest {
         }
         compose.runOnIdle { store.requestFocus() }
         compose.waitForIdle()
-        assertTrue("Ohne Fokus schon ein Rahmen", edgeColor() != mainColor)
+        assertTrue("a frame already without focus", edgeColor() != mainColor)
         card.performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitForIdle()
-        assertEquals("Fokusrahmen fehlt", mainColor, edgeColor())
+        assertEquals("focus frame is missing", mainColor, edgeColor())
         compose.runOnIdle { store.requestFocus() }
         compose.waitForIdle()
-        assertTrue("Rahmen bleibt nach dem Fokus", edgeColor() != mainColor)
+        assertTrue("frame stays after the focus", edgeColor() != mainColor)
     }
 
     @Test
@@ -384,9 +384,9 @@ class AccessibilityTest {
         val bar = compose.onNode(hasClickAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.StateDescription))
             .fetchSemanticsNode("Der Aufklapper nennt keinen Zustand")
         assertEquals(ctx.getString(R.string.state_collapsed), bar.config[SemanticsProperties.StateDescription])
-        assertTrue("Ohne Aufklappen-Aktion", bar.config.getOrNull(SemanticsActions.Expand) != null)
+        assertTrue("without an expand action", bar.config.getOrNull(SemanticsActions.Expand) != null)
         assertEquals(ctx.getString(R.string.csv_details_show), bar.config.getOrNull(SemanticsActions.OnClick)?.label)
-        assertTrue("Fortschritt mit Zeichen statt Worten: ${announced(bar)}", announced(bar).none { '/' in it })
+        assertTrue("progress with symbols instead of words: ${announced(bar)}", announced(bar).none { '/' in it })
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
             ProgressBarRangeInfo(3f, 0f..10f)), useUnmergedTree = true).fetchSemanticsNode("Fortschritt nicht als 3 von 10")
     }
@@ -409,10 +409,10 @@ class AccessibilityTest {
             val id = compose.onNode(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNode("Kachel „$name“").id
             val tile = compose.onNode(SemanticsMatcher("Knoten $id") { it.id == id }, useUnmergedTree = true).fetchSemanticsNode()
             val read = announced(tile).filter { it.isNotBlank() }
-            assertEquals("$name zuerst: $read", name, read.first())
-            assertEquals("$name genau einmal: $read", 1, read.count { it == name })
-            assertEquals("$name: Rolle", Role.Button, role(tile))
-            assertEquals("$name: Ziel", open, tile.config.getOrNull(SemanticsActions.OnClick)?.label)
+            assertEquals("$name first: $read", name, read.first())
+            assertEquals("$name exactly once: $read", 1, read.count { it == name })
+            assertEquals("$name: role", Role.Button, role(tile))
+            assertEquals("$name: target", open, tile.config.getOrNull(SemanticsActions.OnClick)?.label)
         }
     }
 
@@ -426,7 +426,7 @@ class AccessibilityTest {
         }
         val node = compose.onNode(hasText(title) and isHeading(), useUnmergedTree = true)
             .fetchSemanticsNode("Titel ist keine Überschrift")
-        assertTrue("Titel abgeschnitten", !layout(node).hasVisualOverflow)
+        assertTrue("title cut off", !layout(node).hasVisualOverflow)
     }
 
     @Test

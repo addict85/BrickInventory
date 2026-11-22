@@ -99,7 +99,7 @@ class SetDetailViewModelTest {
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":3}}"""
     }
 
-    private fun loaded(vm: SetDetailViewModel) = assertTrue("Detail geladen", vm.setDetailState.value.setDetail != null && vm.setDetailState.value.acquisitions.isNotEmpty())
+    private fun loaded(vm: SetDetailViewModel) = assertTrue("detail loaded", vm.setDetailState.value.setDetail != null && vm.setDetailState.value.acquisitions.isNotEmpty())
 
     @Test
     fun `the set comes from the SavedStateHandle and everything is loaded on creation`() {
@@ -107,7 +107,7 @@ class SetDetailViewModelTest {
         assertEquals("75192-1", vm.setNumber)
         loaded(vm)
         // The alerts arrive in the store via the account overview, not per set.
-        assertTrue("alle fünf Abrufe", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> paths.requests.any { p.removeSuffix("?") in it } })
+        assertTrue("all five fetches", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> paths.requests.any { p.removeSuffix("?") in it } })
         assertEquals("Falke", vm.setDetailState.value.setDetail?.name)
     }
 
@@ -120,9 +120,9 @@ class SetDetailViewModelTest {
         // Wanted 5, the server caps it to 3 (someone else's copies cannot
         // be taken away): its number applies, not the client's own assumption.
         vm.setQuantity("75192-1", 5)
-        assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
+        assertTrue("quantity there", vm.setDetailState.value.setDetail?.quantity == 3)
         val stored = runBlocking { t.sets().observeSets().first().list.single() }
-        assertEquals("die Galerie liest dieselbe Zahl aus der Ablage", 3, stored.quantity)
+        assertEquals("the gallery reads the same number from the store", 3, stored.quantity)
         assertTrue(paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty())
     }
 
@@ -132,12 +132,12 @@ class SetDetailViewModelTest {
         loaded(vm)
         serverHasThreeAfterwards()
         vm.changeQuantityBy("75192-1", -1)
-        assertTrue("PUT gesendet", paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty())
+        assertTrue("PUT sent", paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty())
         val i = paths.requests.indexOfFirst { "PUT /api/v1/sets/75192-1" in it }
         val body = paths.bodyBytes[i]
         assertTrue(body, "\"quantity_delta\":-1" in body)
         assertTrue(body, "\"quantity\":" !in body)
-        assertTrue("Menge vom Server", vm.setDetailState.value.setDetail?.quantity == 3)
+        assertTrue("quantity from the server", vm.setDetailState.value.setDetail?.quantity == 3)
     }
 
     @Test
@@ -154,7 +154,7 @@ class SetDetailViewModelTest {
 
         runBlocking { t.store.applyChange(FollowUp.SetSummary(SetTotals(setNumber = "75192-1", condition = Condition.USED, states = listOf(Condition.USED), used = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
-        assertTrue("neu geladen", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v1/sets/75192-1/acquisitions").size > before)
     }
 
     @Test
@@ -168,7 +168,7 @@ class SetDetailViewModelTest {
         clock.advanceTimeBy(900)
         assertEquals(1, paths.requestsTo("PUT /api/v1/sets/75192-1/alert").size)
         // The state reads the store only when loading: without a reload it would stay empty.
-        assertTrue("neu geladen", paths.requestsTo("GET /api/v1/alerts").size > before)
+        assertTrue("reloaded", paths.requestsTo("GET /api/v1/alerts").size > before)
         assertEquals(listOf(Money.from(450.0)), vm.setDetailState.value.priceAlarms.map { it.threshold })
     }
 
@@ -182,7 +182,7 @@ class SetDetailViewModelTest {
         paths.release()
         // The first fetch is cancelled and gets no answer anymore; only the second one arrives.
         assertEquals(1, priceFetches())
-        assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
+        assertTrue("price there", vm.setDetailState.value.setPrice != null)
         assertEquals(false, vm.setDetailState.value.priceFetch.loading)
     }
 
@@ -200,6 +200,6 @@ class SetDetailViewModelTest {
         vm.refresh()
         assertEquals(null, vm.setDetailState.value.priceFetch.errorMessage)
         assertEquals(null, vm.setDetailState.value.historyFetch.errorMessage)
-        assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
+        assertTrue("price there", vm.setDetailState.value.setPrice != null)
     }
 }

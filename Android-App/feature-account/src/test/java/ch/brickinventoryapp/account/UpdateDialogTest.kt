@@ -67,7 +67,7 @@ class UpdateDialogTest {
         compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(newerVersion = newValue), actions) } }
         compose.waitForIdle()
         compose.onNodeWithText(text(R.string.update_dialog_title)).fetchSemanticsNode()
-        assertEquals("Das Zeigen allein lädt schon", 0, actions.loaded)
+        assertEquals("showing alone already loads", 0, actions.loaded)
 
         compose.onNodeWithText(text(R.string.update_dialog_now)).performClick()
         compose.waitForIdle()

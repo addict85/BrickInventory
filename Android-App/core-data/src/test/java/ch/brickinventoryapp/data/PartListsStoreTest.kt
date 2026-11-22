@@ -48,9 +48,9 @@ class PartListsStoreTest {
         val plaintext = File(intern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
         val target = partListsStore(intern, extern)
         assertEquals(File(intern, "pdf/$PART_LIST_FILE"), target)
-        assertEquals("pdf/ angelegt", true, target.parentFile!!.isDirectory)
-        assertFalse("Die alte Kopie im externen Bereich bleibt liegen", old.exists())
-        assertFalse("Die Klartext-Liste älterer Fassungen bleibt liegen", plaintext.exists())
+        assertEquals("pdf/ created", true, target.parentFile!!.isDirectory)
+        assertFalse("The old copy in the external area stays behind", old.exists())
+        assertFalse("The plaintext list of older versions stays behind", plaintext.exists())
     }
 
     @Test
@@ -60,10 +60,10 @@ class PartListsStoreTest {
         val shared = File(extern, "pdf/anleitung.pdf").apply { parentFile!!.mkdirs(); writeText("pdf") }
         val stays = File(intern, "datastore/einstellungen.pb").apply { parentFile!!.mkdirs(); writeText("x") }
         cleanUpAccountFiles(intern, extern)
-        assertFalse("Die Teileliste überlebt das Abmelden", list.exists())
-        assertFalse("Das geladene Update bleibt liegen", apk.exists())
-        assertFalse("Geteilte PDFs im externen Bereich bleiben", shared.exists())
-        assertTrue("Anderes in filesDir gehört nicht dazu", stays.exists())
+        assertFalse("The parts list survives signing out", list.exists())
+        assertFalse("The downloaded update stays behind", apk.exists())
+        assertFalse("Shared PDFs in the external area stay", shared.exists())
+        assertTrue("Other things in filesDir do not belong to it", stays.exists())
         cleanUpAccountFiles(intern, null)
     }
 
@@ -73,13 +73,13 @@ class PartListsStoreTest {
         val list = partListsStore(intern, null).apply { writeText("Inventar") }
         val old = File(intern, "pdf/teileliste.pdf").apply { writeText("Inventar") }
         val written = list.lastModified()
-        assertFalse("Eine frische Teileliste bleibt für die Ziel-App",
+        assertFalse("A fresh parts list stays for the target app",
             cleanOldPartListOn(intern, written + PART_LIST_DEADLINE_MS - 1000))
         assertTrue(list.exists())
-        assertFalse("Die Klartext-Liste älterer Fassungen bleibt liegen", old.exists())
+        assertFalse("The plaintext list of older versions stays behind", old.exists())
         assertTrue(cleanOldPartListOn(intern, written + PART_LIST_DEADLINE_MS))
-        assertFalse("Das Inventar liegt nach der Frist noch da", list.exists())
-        assertFalse("Ohne Datei nichts zu tun", cleanOldPartListOn(intern, written + PART_LIST_DEADLINE_MS))
+        assertFalse("The inventory is still there after the deadline", list.exists())
+        assertFalse("Without a file nothing to do", cleanOldPartListOn(intern, written + PART_LIST_DEADLINE_MS))
     }
 
     @Test
@@ -94,15 +94,15 @@ class PartListsStoreTest {
         val pdf = "%PDF-1.7 Inventar 10294-1 Titanic".toByteArray()
         val file = vault.put(intern, extern, pdf)
         val raw = file.readBytes()
-        assertFalse("Das Inventar steht im Klartext auf der Platte",
+        assertFalse("The inventory is on disk in plaintext",
             String(raw, Charsets.ISO_8859_1).contains("Inventar"))
         assertArrayEquals(pdf, vault.read(intern))
-        assertFalse("Die Zwischendatei bleibt liegen", File(file.parentFile, file.name + ".tmp").exists())
+        assertFalse("The temporary file stays behind", File(file.parentFile, file.name + ".tmp").exists())
 
         val foreign = PartListVault(StoreCipher { ByteArray(32) { 7 } })
-        assertNull("Ein anderer Schlüssel liest die Liste", foreign.read(intern))
+        assertNull("A different key reads the list", foreign.read(intern))
         file.writeBytes(raw.copyOf(raw.size - 1))
-        assertNull("Eine gekürzte Liste gilt", vault.read(intern))
+        assertNull("A truncated list counts", vault.read(intern))
         file.delete()
         assertNull(vault.read(intern))
     }
@@ -113,8 +113,8 @@ class PartListsStoreTest {
         val target = ByteArray(4)
         assertEquals(4, readFromStorage(content, 0, 4, target))
         assertArrayEquals(byteArrayOf(0, 1, 2, 3), target)
-        assertEquals("Ab der Mitte springen", 2, readFromStorage(content, 8, 4, target))
+        assertEquals("Jump from the middle", 2, readFromStorage(content, 8, 4, target))
         assertArrayEquals(byteArrayOf(8, 9), target.copyOf(2))
-        assertEquals("Am Ende nichts mehr", 0, readFromStorage(content, 10, 4, target))
+        assertEquals("Nothing more at the end", 0, readFromStorage(content, 10, 4, target))
     }
 }

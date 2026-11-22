@@ -86,22 +86,22 @@ class ColorAloneTest {
         // empty set would always be a subset of the list — the rule would be
         // green forever without ever looking at anything.
         assert(user.size >= 5) {
-            "Nur ${user.size} Dateien benutzen LocalStatusColors — Muster veraltet?"
+            "Only ${user.size} files use LocalStatusColors — pattern outdated?"
         }
 
         val newValue = (user - checked).sorted()
         assert(newValue.isEmpty()) {
-            "Diese Dateien faerben neuerdings mit LocalStatusColors:\n  " +
+            "These files newly color with LocalStatusColors:\n  " +
                 newValue.joinToString("\n  ") +
-                "\nFarbe traegt dort BEDEUTUNG. Was sagt die Stelle jemandem, der " +
-                "Rot und Gruen nicht unterscheidet? Gibt es einen zweiten Traeger " +
-                "(Wort, Zeichen, Form), gehoert die Datei in `geprueft` — und wenn " +
-                "nicht, gehoert er gebaut."
+                "\nColor carries MEANING there. What does the spot tell someone who " +
+                "cannot tell red from green? If there is a second carrier " +
+                "(word, symbol, shape), the file belongs in `geprueft` — and if " +
+                "not, it needs to be built."
         }
         val gone = (checked - user).sorted()
         assert(gone.isEmpty()) {
-            "Diese Eintraege in `geprueft` faerben gar nicht mehr so: " +
-                gone.joinToString(", ") + " — raus damit."
+            "These entries in `geprueft` no longer color that way: " +
+                gone.joinToString(", ") + " — remove them."
         }
     }
 
@@ -115,14 +115,14 @@ class ColorAloneTest {
     fun `the quota row does not warn with color alone`() {
         val s = Sources.withoutComments(Sources.read("management/ui/screens/MonitoringKontingente.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
-        assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }
+        assert(i > 0) { "RateLimitRow is missing — pattern outdated?" }
         val body = s.substring(i, minOf(i + 2400, s.length))
         assert(body.contains("val tight = pct >")) {
-            "Die Zeile kennt die Schwelle nicht mehr als eigenen Wert."
+            "The row no longer knows the threshold as a value of its own."
         }
         assert(Regex("""if \(tight\) Icon\(Icons\.Default\.Warning""").containsMatchIn(body)) {
-            "Ohne Zeichen bleibt nur die Farbe — und gelb gegen rot ist genau " +
-                "das Paar, das bei einer Rot-Gruen-Schwaeche zusammenfaellt."
+            "Without a symbol only the color remains — and yellow against red is exactly " +
+                "the pair that merges with red-green color blindness."
         }
     }
 }

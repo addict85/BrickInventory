@@ -21,8 +21,8 @@ class PreviewStoreTest {
         // brought about in the test.
         val s = source("data/cache/PreviewMemory.kt")
         assert(s.contains(".tmp") && s.contains("renameTo")) {
-            "Geschrieben wird nicht ueber eine Nebendatei — ein Abbruch " +
-                "hinterlaesst dann eine halbe Datei, und die sieht aus wie ein Bild"
+            "Writing does not go through a side file — an abort " +
+                "then leaves half a file behind, and it looks like an image"
         }
     }
 
@@ -33,10 +33,10 @@ class PreviewStoreTest {
         // OUTSIDE, so that it also sees the 504 of the offline fallback.
         val store = s.indexOf(".addInterceptor(previewTap(preview))")
         val fallback = s.indexOf("CacheControl.FORCE_CACHE")
-        assert(store > 0 && fallback > 0) { "Ablage oder Offline-Rueckfall fehlen" }
+        assert(store > 0 && fallback > 0) { "Store or offline fallback missing" }
         assert(store < fallback) {
-            "Der Ablage-Abgriff sitzt HINTER dem Offline-Rueckfall. Dann sieht " +
-                "er dessen 504 nicht und springt genau dann nicht ein, wenn es darauf ankommt."
+            "The store tap sits BEHIND the offline fallback. Then " +
+                "it does not see its 504 and does not step in exactly when it matters."
         }
     }
 
@@ -44,10 +44,10 @@ class PreviewStoreTest {
     fun `the app start waits for the startup and asks before collecting`() {
         val fe = source("state/ui/Prewarm.kt")
         assert(fe.contains("delay(PreviewPrewarmer.RAMP_UP_MS)")) {
-            "Der Anlauf fehlt — das Vorwaermen startet dann mitten in Anmeldung und erster Kachelwand"
+            "The warm-up delay is missing — prewarming then starts in the middle of sign-in and the first tile wall"
         }
         assert(fe.contains("if (!prewarmer.mayStart()) return@launch")) {
-            "Das Sammeln fragt nicht mehr vorher, ob es ueberhaupt losgehen darf"
+            "Collecting no longer asks beforehand whether it may start at all"
         }
     }
 
@@ -55,7 +55,7 @@ class PreviewStoreTest {
     fun `the manifest allows reading the network state`() {
         // The hint about the metered Wi-Fi at the networks is checked by CacheClearAsksTest (app).
         assert(Sources.manifest.readText().contains("android.permission.ACCESS_NETWORK_STATE")) {
-            "ACCESS_NETWORK_STATE fehlt im Manifest — dann kann die App die Netzlage gar nicht erkennen"
+            "ACCESS_NETWORK_STATE missing in the manifest — then the app cannot detect the network state at all"
         }
     }
 }

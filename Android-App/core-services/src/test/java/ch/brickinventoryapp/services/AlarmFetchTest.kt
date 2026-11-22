@@ -57,12 +57,12 @@ class AlarmFetchTest {
                 response(alarm())
             }
             assert(e is AlarmFetch.Outcome.Marked) {
-                "marke=${without?.let { "\"$it\"" }}: $e statt Markiert — eine frisch " +
-                    "eingerichtete App wuerde mit alten Schwellen aufschlagen"
+                "marker=${without?.let { "\"$it\"" }}: $e instead of Marked — a freshly " +
+                    "set-up app would start with old thresholds"
             }
             assert((e as AlarmFetch.Outcome.Marked).newBrand == "2026-09-19T18:00:00.000Z")
             assert(askedWith == null) {
-                "Eine leere Marke wurde als `since` mitgeschickt: $askedWith"
+                "an empty marker was sent along as `since`: $askedWith"
             }
         }
     }
@@ -74,14 +74,14 @@ class AlarmFetchTest {
             askedWith = since
             response(alarm(), alarm(sn = "75192-1"))
         }
-        assert(e is AlarmFetch.Outcome.Fetched) { "$e statt Geholt" }
+        assert(e is AlarmFetch.Outcome.Fetched) { "$e instead of Fetched" }
         e as AlarmFetch.Outcome.Fetched
-        assert(e.messages.size == 2) { "${e.messages.size} Meldungen statt zwei" }
+        assert(e.messages.size == 2) { "${e.messages.size} messages instead of two" }
         // The new marker is the SERVER's, not the one passed in and not
         // the phone's clock. Otherwise clock drift would decide
         // whether a notification arrives twice or not at all.
         assert(e.newBrand == "2026-09-19T18:00:00.000Z") { "newBrand=${e.newBrand}" }
-        assert(askedWith == "2026-09-19T17:30:00.000Z") { "gefragt mit $askedWith" }
+        assert(askedWith == "2026-09-19T17:30:00.000Z") { "asked with $askedWith" }
     }
 
     @Test
@@ -89,7 +89,7 @@ class AlarmFetchTest {
         // Without this, the next run would query from the old timestamp again
         // — and the span would grow with every quiet hour.
         val e = AlarmFetch.fetch("2026-09-19T17:30:00.000Z") { response() }
-        assert(e is AlarmFetch.Outcome.Fetched) { "$e statt Geholt" }
+        assert(e is AlarmFetch.Outcome.Fetched) { "$e instead of Fetched" }
         e as AlarmFetch.Outcome.Fetched
         assert(e.messages.isEmpty())
         assert(e.newBrand == "2026-09-19T18:00:00.000Z")
@@ -108,7 +108,7 @@ class AlarmFetchTest {
         for ((why, r) in broken) {
             val e = AlarmFetch.fetch("2026-09-19T17:30:00.000Z") { r }
             assert(e is AlarmFetch.Outcome.Failed) {
-                "$why: $e statt Fehlgeschlagen — die Meldung waere verloren"
+                "$why: $e instead of Failed — the message would be lost"
             }
         }
     }

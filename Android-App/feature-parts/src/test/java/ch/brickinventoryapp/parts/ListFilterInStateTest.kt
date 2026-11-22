@@ -79,15 +79,15 @@ class ListFilterInStateTest {
         // Self-proof: if the pattern finds no loaders, the list would be empty and
         // the test green, without having checked anything.
         assert(loader >= 20) {
-            "Nur $loader Lader gefunden — das Muster 'fun loadXyz(' passt nicht mehr."
+            "Only $loader loaders found — the pattern 'fun loadXyz(' no longer matches."
         }
 
         assert(violations.isEmpty()) {
-            "Diese Lader nehmen einen Listenfilter als Argument:\n  " +
+            "These loaders take a list filter as an argument:\n  " +
                 violations.joinToString("\n  ") +
-                "\nDann kennt ihn nur, wer ihn mitgibt — jeder andere Ladeweg laedt " +
-                "ungefiltert und haengt das Ergebnis an eine gefilterte Liste. " +
-                "Der Filter gehoert in den UiState der Liste; der Lader liest ihn dort."
+                "\nThen only whoever passes it knows it — every other loading path loads " +
+                "unfiltered and appends the result to a filtered list. " +
+                "The filter belongs in the list's UiState; the loader reads it there."
         }
     }
 
@@ -110,12 +110,12 @@ class ListFilterInStateTest {
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Page 1 fetches the manual parts along; only load more after that, otherwise
             // loading more cancels this fetch.
-            assertTrue("manuelle Teile", vm.partsState.value.manualParts != null)
+            assertTrue("manual parts", vm.partsState.value.manualParts != null)
             vm.loadParts(page = 2)
-            assertTrue("zweite Seite", paths.requestsTo("page=2").isNotEmpty())
+            assertTrue("second page", paths.requestsTo("page=2").isNotEmpty())
             val fetches = paths.requestsTo("GET /api/v1/parts?") + paths.requestsTo("GET /api/v1/parts/manual")
-            assertTrue("Keine zwei Seiten: $fetches", fetches.count { it.startsWith("GET /api/v1/parts?") } >= 2)
-            for (a in fetches) for (part in listOf("accounts=own", "search=Stein")) assertTrue("$a ohne $part", part in a)
+            assertTrue("Not two pages: $fetches", fetches.count { it.startsWith("GET /api/v1/parts?") } >= 2)
+            for (a in fetches) for (part in listOf("accounts=own", "search=Stein")) assertTrue("$a without $part", part in a)
         } finally {
             t.cleanUp()
             Dispatchers.resetMain()
@@ -162,9 +162,9 @@ class ListFilterInStateTest {
             }
         }
 
-        assert(found >= 1) { "Kein Aufruf von $calls gefunden — Muster veraltet?" }
+        assert(found >= 1) { "No call of $calls found — pattern outdated?" }
         assert(missing.isEmpty()) {
-            "Diese Abrufe der Teileliste lassen etwas weg:\n  " + missing.joinToString("\n  ")
+            "These fetches of the parts list leave something out:\n  " + missing.joinToString("\n  ")
         }
     }
 
@@ -215,25 +215,25 @@ class ListFilterInStateTest {
         // the test green, without having checked anything. At least the one
         // justified spot is expected.
         assert(found.isNotEmpty()) {
-            "Kein einziges oertliches Filtern gefunden — das Muster passt nicht mehr."
+            "Not a single local filtering found — the pattern no longer matches."
         }
 
         val violations = found.filterNot { it.first in allowed }
         assert(violations.isEmpty()) {
-            "Hier wird im Bildschirm ueber eine geladene Liste gesucht:\n  " +
+            "Here the screen searches over a loaded list:\n  " +
                 violations.joinToString("\n  ") { "${it.first}:${it.second}" } +
-                "\nDann steht die Suchregel zweimal — hier und im Server-Handler — " +
-                "und beide treffen frueher oder spaeter etwas anderes. Der Suchtext " +
-                "gehoert in den UiState, der Lader gibt ihn dem Server mit. Ist die " +
-                "Liste vollstaendig geladen und blaettert nicht, gehoert sie mit " +
-                "Grund in die Liste `erlaubt` oben."
+                "\nThen the search rule exists twice — here and in the server handler — " +
+                "and sooner or later both hit something different. The search text " +
+                "belongs in the UiState, the loader passes it to the server. If the " +
+                "list is loaded completely and does not page, it belongs with a " +
+                "reason in the list `allowed` above."
         }
 
         // A line nobody needs anymore is a permission nobody
         // checks — the same rule as in the web app's guards.
         val stale = allowed.keys.filterNot { name -> found.any { it.first == name } }
         assert(stale.isEmpty()) {
-            "Diese Eintraege beschreiben kein oertliches Filtern mehr — streichen:\n  " +
+            "These entries no longer describe local filtering — strike them:\n  " +
                 stale.joinToString("\n  ")
         }
     }

@@ -78,8 +78,8 @@ class MessageChannelTest {
         }.map { it.first }
 
         assert(hits.isEmpty()) {
-            "Diese Dateien legen einen eigenen Snackbar-Fluss an: ${hits.joinToString()}.\n" +
-                "Eingesammelt wird nur der aus data/MessageChannel.kt — alles andere " +
+            "These files create their own snackbar flow: ${hits.joinToString()}.\n" +
+                "Only the one from data/MessageChannel.kt is collected — everything else " +
                 "endet nirgends, solange niemand es von Hand weiterleitet."
         }
     }
@@ -95,10 +95,10 @@ class MessageChannelTest {
         }.map { it.first }
 
         assert(hits.isEmpty()) {
-            "Diese Dateien sammeln einen Snackbar-Fluss ein, obwohl das " +
+            "These files collect a snackbar flow although the " +
                 "AppNavigation.kt tut: ${hits.joinToString()}.\n" +
-                "Eine zweite Sammelstelle heisst: Ob eine Meldung ankommt, haengt " +
-                "davon ab, welcher Bildschirm gerade offen ist."
+                "A second collecting point means: whether a message arrives depends " +
+                "on which screen happens to be open."
         }
     }
 
@@ -108,13 +108,13 @@ class MessageChannelTest {
         // tries builds its own again.
         val channel = MessageChannel()
         channel.show("gespeichert")
-        assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", channel.text)
+        assertEquals("AppNavigation.kt collects the read-only view", "gespeichert", channel.text)
         channel.acknowledge()
         assertEquals(null, channel.text)
         // Hilt builds it in LocalModule (internal to core-data), hence by name.
         val provider = Class.forName("ch.brickinventoryapp.data.di.LocalModule\$Companion").getMethod("messages")
-        assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
-            "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
+        assertTrue("Without @Singleton every ViewModel would get its own instance — then there are " +
+            "again as many channels as ViewModels, only invisible",
             provider.isAnnotationPresent(Singleton::class.java))
     }
 
@@ -126,17 +126,17 @@ class MessageChannelTest {
         val writer = allWithoutComments().filter { (name, s) ->
             name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmessages\.show\(""").containsMatchIn(s)
         }
-        assert(writer.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
+        assert(writer.isNotEmpty()) { "No ViewModel writes messages — pattern outdated?" }
         // The area ViewModels get it as Meldungen (Bereichshelfer.kt).
         val helper = allWithoutComments().single { it.first == "Bereichshelfer.kt" }.second
         assert(helper.contains("override fun show(text: String?) = channel.show(text)")) {
-            "Meldungen reicht nicht mehr in den Kanal der App weiter"
+            "messages are no longer passed on into the app's channel"
         }
         val withoutChannel = writer.filter { (_, s) ->
             !s.contains("MessageChannel") && !s.contains("messages: Messages")
         }.map { it.first }
         assert(withoutChannel.isEmpty()) {
-            "Diese ViewModels melden, holen sich den Kanal aber nicht: " +
+            "These ViewModels report but do not fetch the channel: " +
                 withoutChannel.joinToString()
         }
     }
@@ -153,11 +153,11 @@ class MessageChannelTest {
             val gallery = t.track(GalleryViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testSetsRepository(t.api),
                 t.accountView, testFinancesRepository(t.api), SavedStateHandle()))
             gallery.deleteSet("75192-1")
-            assertTrue("Meldung der Galerie", t.messages.text != null)
+            assertTrue("message of the gallery", t.messages.text != null)
             t.messages.acknowledge()
             val parts = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView, SavedStateHandle()))
             parts.setPartColor("3001", 5, 11)
-            assertTrue("Meldung der Teile", t.messages.text != null)
+            assertTrue("message of the parts", t.messages.text != null)
         } finally {
             t.cleanUp()
             Dispatchers.resetMain()

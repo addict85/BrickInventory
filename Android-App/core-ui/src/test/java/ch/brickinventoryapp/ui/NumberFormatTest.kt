@@ -56,21 +56,21 @@ class NumberFormatTest {
         for (f in screens) {
             val c = code(read(f))
             assert(!c.contains("fmtSwissAmount") && !c.contains("fmtSwissInt")) {
-                "$f benutzt noch die alte, fest auf de-CH genagelte Fassung"
+                "$f still uses the old version nailed to de-CH"
             }
             assert(!c.contains("Currency.getInstance")) {
-                "$f baut sich das Währungssymbol selbst — das gehört in fmtMoney(), " +
-                    "sonst steht es hier vor und anderswo hinter dem Betrag"
+                "$f builds the currency symbol itself — that belongs in fmtMoney(), " +
+                    "otherwise it stands before the amount here and after it elsewhere"
             }
             // The dollar sign is written as ${'$'} and not as a backslash-$.
             assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
-                "$f hängt den Währungscode von Hand an einen formatierten Betrag"
+                "$f appends the currency code by hand to a formatted amount"
             }
             assert(!c.contains("\"%,d\".format")) {
-                "$f formatiert eine Zahl von Hand statt über fmtInt()"
+                "$f formats a number by hand instead of via fmtInt()"
             }
             assert(!c.contains("\"%.2f\".format")) {
-                "$f formatiert einen Betrag in der Gerätesprache statt über fmtAmount()/fmtInput()"
+                "$f formats an amount in the device language instead of via fmtAmount()/fmtInput()"
             }
         }
     }
@@ -91,11 +91,11 @@ class NumberFormatTest {
     @Test
     fun `amounts contain number and currency`() {
         val s = fmtMoney(1234.5, CurrencyCode("CHF"))
-        assert(s.contains("1") && s.contains("234")) { "Der Betrag fehlt: $s" }
-        assert(s.contains("CHF") || s.contains("Fr")) { "Die Währung fehlt: $s" }
+        assert(s.contains("1") && s.contains("234")) { "the amount is missing: $s" }
+        assert(s.contains("CHF") || s.contains("Fr")) { "the currency is missing: $s" }
         // Two decimal places, as in the web app (minimumFractionDigits: 2).
         assert(Regex("""[.,]\d{2}(\D|$)""").containsMatchIn(s)) {
-            "Es fehlen die zwei Nachkommastellen: $s"
+            "the two decimal places are missing: $s"
         }
     }
 
@@ -105,23 +105,23 @@ class NumberFormatTest {
         // know. It used to fall into a catch that produced a SECOND
         // spelling — now the fallback is part of the same version.
         val s = fmtMoney(10.0, CurrencyCode("XYZ123"))
-        assert(s.contains("10")) { "Der Betrag muss auch ohne bekannte Währung erscheinen: $s" }
+        assert(s.contains("10")) { "the amount must appear even without a known currency: $s" }
     }
 
     @Test
     fun `a missing amount gives a dash`() {
         assertEquals("—", fmtMoneyOrDash(null as String?, CurrencyCode("CHF")))
         assertEquals("—", fmtMoneyOrDash("keine Zahl", CurrencyCode("CHF")))
-        assert(fmtMoneyOrDash("12.5", CurrencyCode("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
+        assert(fmtMoneyOrDash("12.5", CurrencyCode("CHF")).contains("12")) { "a valid value must get through" }
     }
 
     @Test
     fun `numbers without currency carry a thousands separator`() {
         val i = fmtInt(60000)
-        assert(i.length > 5) { "60000 sollte getrennt werden, war: $i" }
+        assert(i.length > 5) { "60000 should be separated, was: $i" }
         assert(i.contains("60")) { "unerwartete Ausgabe: $i" }
         val a = fmtAmount(1234.5)
-        assert(Regex("""[.,]\d{2}$""").containsMatchIn(a)) { "zwei Nachkommastellen erwartet: $a" }
+        assert(Regex("""[.,]\d{2}$""").containsMatchIn(a)) { "two decimal places expected: $a" }
     }
 
     // ── Part 3: the locale follows the device, as in the web ──────────────
@@ -153,7 +153,7 @@ class NumberFormatTest {
         assertEquals("de-CH", numbersLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
         assertEquals("de-CH", numbersLocale(de, de).toLanguageTag())
         assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
-        assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
+        assertEquals("the country comes from the device, the language from the app",
             "de-AT", numbersLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
         assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
@@ -173,7 +173,7 @@ class NumberFormatTest {
         withDevice("de-CH") {
             val s = fmtMoney(812.5, CurrencyCode("CHF"))
             assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
-            assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }
+            assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "double space: $s" }
         }
     }
 }

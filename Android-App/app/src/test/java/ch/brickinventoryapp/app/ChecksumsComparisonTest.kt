@@ -66,7 +66,7 @@ ${items.joinToString("\n")}
         val regex = text.indexOf("| `CCCC` | `^com[.]neu($\\|([.].*))` | * | * | **JA")
         val single = text.indexOf("| `BBBB` | `org.einzeln` | x | 1.0 | nein |")
         assertTrue(text, regex in 0 until single)
-        assertTrue("Der alte Schlüssel ist nicht neu", !text.contains("`AAAA`"))
+        assertTrue("the old key is not new", !text.contains("`AAAA`"))
     }
 
     @Test
@@ -82,6 +82,6 @@ ${items.joinToString("\n")}
         val text = compare(old, newValue)
         assertTrue(text, Regex("Neu \\(1\\)[^<]*</summary>\\s*- `d.kommt:x:3.0`").containsMatchIn(text))
         assertTrue(text, Regex("Entfernt \\(1\\)[^<]*</summary>\\s*- `b.geht:x:1.0`").containsMatchIn(text))
-        assertTrue("Ohne alte Datei ist alles neu", compare(File("fehlt.xml"), newValue).contains("| 3 | 0 | 0 |"))
+        assertTrue("without an old file everything is new", compare(File("fehlt.xml"), newValue).contains("| 3 | 0 | 0 |"))
     }
 }

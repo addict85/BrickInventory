@@ -60,22 +60,22 @@ class OutboxNotifierTest {
         val notifier = InitialObserver(situation, testStockReconciliation(fake.api, TestStore()), channel)
         notifier.launch(backgroundScope)
         runCurrent()
-        assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, situation.scheduled)
+        assertEquals("what waits from last time is scheduled at start", 1, situation.scheduled)
 
         situation.number.value = 1
         runCurrent()
         assertEquals(1, notifier.pending.value)
-        assertEquals("offline Gespeichertes wird gemeldet", Message.Quantity(R.plurals.offline_outbox, 1), channel.message.value)
+        assertEquals("what was saved offline is reported", Message.Quantity(R.plurals.offline_outbox, 1), channel.message.value)
 
         situation.reported.emit(ReconcileEvent.Sent(setOf(StockKind.SETS, StockKind.MANUAL_PARTS)))
         runCurrent()
-        assertEquals("gesendet holt die betroffenen Listen in die Ablage", listOf(1, 1, 0, 0),
+        assertEquals("sent, it fetches the affected lists into the store", listOf(1, 1, 0, 0),
             listOf("getSets", "getParts", "getMinifigs", "getWantedList").map { fake.callsOf(it) })
 
         channel.acknowledge()
         situation.discarded.value = listOf(DiscardedChange("k1", "10001-1", "", 404))
         runCurrent()
-        assertEquals("ohne Grund vom Server steht ein eigener Satz da",
+        assertEquals("without a reason from the server a sentence of our own is shown",
             Message.Resource(R.string.offline_discarded, listOf("10001-1", Message.Resource(R.string.offline_discarded_without_reason))),
             channel.message.value)
     }
@@ -90,7 +90,7 @@ class OutboxNotifierTest {
         InitialObserver(situation, testStockReconciliation(FakeApi().api, TestStore()), channel).launch(backgroundScope)
         runCurrent()
         assertEquals(Message.Resource(R.string.offline_discarded, listOf("10001-1", "gibt es nicht")), channel.message.value)
-        assertEquals("noch nicht gesehen: bleibt in der Ablage", listOf(first, second), situation.discarded.value)
+        assertEquals("not seen yet: stays in the store", listOf(first, second), situation.discarded.value)
         channel.acknowledge()
         runCurrent()
         assertEquals(Message.Resource(R.string.offline_discarded, listOf("10002-1", "gibt es auch nicht")), channel.message.value)

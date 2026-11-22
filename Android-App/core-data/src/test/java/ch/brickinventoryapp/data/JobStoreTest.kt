@@ -35,11 +35,11 @@ class JobStoreTest {
     fun `the job lies in the queue only encrypted and comes back whole`() {
         val secret = store.put(job)!!
         for (part in listOf("brick", "example", "8443", "inventar", "R0VIRUlNVEVYVA", "AAAABBBBCCCC"))
-            assertFalse("„$part“ steht lesbar im Auftrag: $secret", part in secret)
+            assertFalse("„$part“ stands readable in the job: $secret", part in secret)
         assertEquals(JobState.Da(job), store.read(secret))
 
         val without = RedemptionJob("https://nas.local", "e1:WA==", pin = null)
-        assertEquals("Ohne Pin, Herkunft wie der Server", JobState.Da(without), store.read(store.put(without)!!))
+        assertEquals("Without a pin, origin like the server", JobState.Da(without), store.read(store.put(without)!!))
     }
 
     @Test
@@ -47,12 +47,12 @@ class JobStoreTest {
         val secret = store.put(job)!!
         locked = true
         assertEquals(JobState.LockedState, store.read(secret))
-        assertNull("Gesperrt wird nichts in die Warteschlange gelegt", store.put(job))
+        assertNull("Locked, nothing is put into the queue", store.put(job))
         locked = false
         assertEquals(JobState.Unreadable, store.read("kein-base64-%%%"))
-        assertEquals("Unter anderem Namen gilt er nicht", JobState.Unreadable,
+        assertEquals("Under another name it does not count", JobState.Unreadable,
             store.read(cipher.encryptDetail("1\nhttps://x\nt\n\n", "server_url")!!))
-        assertEquals("Eine unbekannte Form gilt nicht", JobState.Unreadable,
+        assertEquals("An unknown form does not count", JobState.Unreadable,
             store.read(cipher.encryptDetail("2\nhttps://x\nt\n\n", "entwertungsauftrag")!!))
     }
 }

@@ -48,11 +48,11 @@ class TileDimensionsTest {
             }
         }
         assert(violations.isEmpty()) {
-            "Diese Stellen schreiben die Kachelmasse als Zahl:\n  " +
+            "These places write the tile dimensions as a number:\n  " +
                 violations.joinToString("\n  ") +
-                "\nSie gehoeren nach Formen (tileWidth/tileHeight/tileImageCorners). " +
-                "Zwei Zahlen fuer dasselbe Raster koennen auseinanderlaufen, und das " +
-                "faellt erst am Geraet auf."
+                "\nThey belong in Formen (tileWidth/tileHeight/tileImageCorners). " +
+                "Two numbers for the same grid can drift apart, and that " +
+                "only shows on the device."
         }
     }
 
@@ -65,12 +65,12 @@ class TileDimensionsTest {
             src.contains("Shapes.tileWidth") && src.contains("Shapes.tileHeight")
         }
         assert(user.size == 1) {
-            "Die Kachelmasse stehen in ${user.size} Dateien (${user.joinToString { it.name }}) " +
-                "— erwartet wird genau eine: die gemeinsame ManualTile. Mehr heisst, " +
-                "es gibt wieder zwei Kacheln; keine heisst, sie ist weg oder umbenannt."
+            "The tile dimensions stand in ${user.size} files (${user.joinToString { it.name }}) " +
+                "— exactly one is expected: the shared ManualTile. More means " +
+                "there are two tiles again; none means it is gone or renamed."
         }
         assert(user.single().name == "ManualItemComposables.kt") {
-            "Die Masse stehen in ${user.single().name} statt in ManualItemComposables.kt"
+            "the dimensions stand in ${user.single().name} instead of in ManualItemComposables.kt"
         }
     }
 
@@ -102,8 +102,8 @@ class TileDimensionsTest {
                 if (hits >= 0) violations += "${file.name}:${nr + hits + 1}"
             }
         }
-        Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", cards >= 10)
-        Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $violations", violations.isEmpty())
+        Assert.assertTrue("No card found — pattern outdated?", cards >= 10)
+        Assert.assertTrue("fixed card height instead of heightIn(min = …): $violations", violations.isEmpty())
     }
 
     /**
@@ -129,8 +129,8 @@ class TileDimensionsTest {
                 if (hits >= 0) violations += "${file.name}:${nr + hits + 1}"
             }
         }
-        Assert.assertTrue("Keine Knöpfe gefunden — Muster veraltet?", buttons >= 20)
-        Assert.assertTrue("Feste Höhe an Knopf oder Chip statt heightIn(min = …): $violations", violations.isEmpty())
+        Assert.assertTrue("No buttons found — pattern outdated?", buttons >= 20)
+        Assert.assertTrue("fixed height on a button or chip instead of heightIn(min = …): $violations", violations.isEmpty())
     }
 
     /**
@@ -144,7 +144,7 @@ class TileDimensionsTest {
         fun px(corner: CornerSize) = corner.toPx(size, density)
         Assert.assertEquals(px(Shapes.bar.topStart), px(Shapes.tileImageCorners.topStart), 0f)
         Assert.assertEquals(px(Shapes.bar.topEnd), px(Shapes.tileImageCorners.topEnd), 0f)
-        Assert.assertTrue("Die Leiste ist rund", px(Shapes.bar.topStart) > 0f)
-        Assert.assertEquals("unten hat das Bild keine Ecke", 0f, px(Shapes.tileImageCorners.bottomStart), 0f)
+        Assert.assertTrue("the bar is round", px(Shapes.bar.topStart) > 0f)
+        Assert.assertEquals("at the bottom the image has no corner", 0f, px(Shapes.tileImageCorners.bottomStart), 0f)
     }
 }

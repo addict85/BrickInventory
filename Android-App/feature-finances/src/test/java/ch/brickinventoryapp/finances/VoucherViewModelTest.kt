@@ -161,6 +161,6 @@ class VoucherViewModelTest {
         clock.advanceUntilIdle()
         until("neu geladen") { server.requestCount >= 3 }
         val paths = List(server.requestCount) { server.takeRequest().path.orEmpty() }
-        assertEquals("nach der Kontogrenze keine zweite Karte: $paths", 1, paths.count { "guthaben" in it })
+        assertEquals("no second card after the account limit: $paths", 1, paths.count { "guthaben" in it })
     }
 }

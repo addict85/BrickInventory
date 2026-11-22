@@ -68,7 +68,7 @@ class OfflineStoreTest {
         val s = store.read(Slots.SETS)!!.list.single()
         assertEquals(2, s.quantity)
         assertEquals("Neu vom Server", s.name)
-        assertTrue("Die Serverantwort setzt den Stand", store.read(Slots.SETS)!!.state != null)
+        assertTrue("The server response sets the state", store.read(Slots.SETS)!!.state != null)
     }
 
     @Test

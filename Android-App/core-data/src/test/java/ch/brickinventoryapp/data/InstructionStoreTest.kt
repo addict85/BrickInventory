@@ -53,8 +53,8 @@ class InstructionStoreTest {
         val f = file()
         put(f, pdf)
         val raw = String(f.readBytes(), Charsets.ISO_8859_1)
-        assertFalse("Die Datei trägt das PDF im Klartext", "%PDF" in raw)
-        assertFalse("Die Datei trägt die Setnummer im Klartext", "75192" in raw)
+        assertFalse("The file carries the PDF in plaintext", "%PDF" in raw)
+        assertFalse("The file carries the set number in plaintext", "75192" in raw)
         assertArrayEquals(pdf, read(f))
     }
 
@@ -67,7 +67,7 @@ class InstructionStoreTest {
         put(part, pdf.copyOfRange(100_000, pdf.size), resume = true)
         assertEquals(pdf.size.toLong(), store.plaintextLength(part))
         assertTrue(part.renameTo(f))
-        assertArrayEquals("Die fertige Datei trägt die ganze Anleitung", pdf, read(f))
+        assertArrayEquals("The finished file carries the whole instruction", pdf, read(f))
     }
 
     @Test
@@ -76,16 +76,16 @@ class InstructionStoreTest {
         put(f, pdf)
         val truncated = File(cache, "gekuerzt").apply { writeBytes(f.readBytes().copyOf(f.length().toInt() - 36)) }
         truncated.copyTo(f, overwrite = true)
-        assertTrue("Eine hinten gekürzte Anleitung wird gelesen", runCatching { read(f) }.exceptionOrNull() is IOException)
+        assertTrue("An instruction truncated at the end is read", runCatching { read(f) }.exceptionOrNull() is IOException)
 
         put(f, pdf)
         val other = pdfStore(cache, "$address?x", false)!!
         f.copyTo(other)
-        assertTrue("Die Kopie unter fremdem Namen gilt", runCatching { read(other) }.exceptionOrNull() is IOException)
+        assertTrue("The copy under a foreign name counts", runCatching { read(other) }.exceptionOrNull() is IOException)
 
         val part = File(f.path + ".part").apply { writeBytes(pdf.copyOf(5000)) }
-        assertEquals("Ein Klartext-Rest gilt als Fortsetzpunkt", 0L, store.plaintextLength(part))
-        assertFalse("Der unlesbare Rest bleibt liegen", part.exists())
+        assertEquals("A plaintext rest counts as a resume point", 0L, store.plaintextLength(part))
+        assertFalse("The unreadable rest stays behind", part.exists())
     }
 
     @Test
@@ -98,14 +98,14 @@ class InstructionStoreTest {
         val foreign = File(cache, "anderes.json").apply { writeText("{}") }
 
         cleanUpPlaintextInstructions(cache)
-        assertFalse("Klartext älterer Fassungen bleibt liegen", old.exists() || oldPart.exists())
-        assertFalse("Ein Anzeige-Rest bleibt liegen", display.exists())
-        assertTrue("Der Start löscht die verschlüsselten Anleitungen", encrypted.exists() && part.exists())
+        assertFalse("Plaintext of older versions stays behind", old.exists() || oldPart.exists())
+        assertFalse("A display rest stays behind", display.exists())
+        assertTrue("The start deletes the encrypted instructions", encrypted.exists() && part.exists())
 
         old.writeBytes(pdf)
         cleanUpInstructions(cache)
-        assertFalse("Abmelden lässt eine verschlüsselte Anleitung liegen", encrypted.exists() || part.exists())
-        assertFalse("Abmelden lässt Klartext liegen", old.exists())
-        assertTrue("Abmelden löscht Fremdes", foreign.exists())
+        assertFalse("Signing out leaves an encrypted instruction behind", encrypted.exists() || part.exists())
+        assertFalse("Signing out leaves plaintext behind", old.exists())
+        assertTrue("Signing out deletes foreign files", foreign.exists())
     }
 }

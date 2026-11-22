@@ -69,8 +69,8 @@ class SseStreamTest {
         val events = collect(sseStream(client, request()) { status(it) })
 
         assertEquals(SseEvent.Data("running"), events[0])
-        assertTrue("erwartet Unlesbar, war ${events[1]}", events[1] is SseEvent.Unreadable)
-        assertEquals("nach dem Unlesbaren kommt nichts mehr", 2, events.size)
+        assertTrue("expected Unreadable, was ${events[1]}", events[1] is SseEvent.Unreadable)
+        assertEquals("after the unreadable nothing more comes", 2, events.size)
     }
 
     @Test
@@ -81,7 +81,7 @@ class SseStreamTest {
 
         val error = events.single() as SseEvent.StreamFailed
         assertEquals(429, error.code)
-        assertTrue("Rumpf fehlt: ${error.body}", error.body!!.contains("zu_viele_verbindungen"))
+        assertTrue("Body missing: ${error.body}", error.body!!.contains("zu_viele_verbindungen"))
     }
 
     @Test
@@ -93,7 +93,7 @@ class SseStreamTest {
         assertEquals(1, (events[0] as CsvImportSseClient.Event.Status).status.done)
         val error = events[1] as CsvImportSseClient.Event.Failed
         // The server's end would be „stream closed by server“; here it must be the payload.
-        assertTrue("falscher Grund: ${error.technical}", error.technical!!.startsWith("unreadable event"))
+        assertTrue("wrong reason: ${error.technical}", error.technical!!.startsWith("unreadable event"))
         assertEquals(2, events.size)
     }
 }
