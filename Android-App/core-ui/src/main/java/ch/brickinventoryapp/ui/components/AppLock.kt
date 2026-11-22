@@ -11,56 +11,56 @@ import kotlinx.coroutines.flow.asStateFlow
  * After a device restart, though, it starts over; [devicesStart] (BOOT_COUNT)
  * detects this reliably, even when the new clock already stands past the old timestamp.
  */
-class AppLock(private val clock: () -> Long, private val ablage: Ablage, private val devicesStart: () -> Int? = { null }) {
+class AppLock(private val clock: () -> Long, private val store: Store, private val devicesStart: () -> Int? = { null }) {
 
-    /** Per device; [minuten] 0 means off. [gesperrt] lives here, so rotating or ending the process doesn't unlock. */
-    interface Ablage {
-        fun minuten(): Int
-        fun setMinutes(minuten: Int)
+    /** Per device; [minutes] 0 means off. [locked] lives here, so rotating or ending the process doesn't unlock. */
+    interface Store {
+        fun minutes(): Int
+        fun setMinutes(minutes: Int)
         fun backgroundSince(): Long?
-        fun rememberBackground(seit: Long?)
+        fun rememberBackground(since: Long?)
         fun backgroundStart(): Int?
         fun rememberBackgroundStart(start: Int?)
-        fun gesperrt(): Boolean
+        fun locked(): Boolean
         fun setLocked(an: Boolean)
     }
 
-    private val _minutes = MutableStateFlow(ablage.minuten())
-    val minuten: StateFlow<Int> = _minutes.asStateFlow()
+    private val _minutes = MutableStateFlow(store.minutes())
+    val minutes: StateFlow<Int> = _minutes.asStateFlow()
 
-    private val _locked = MutableStateFlow(ablage.gesperrt())
-    val gesperrt: StateFlow<Boolean> = _locked.asStateFlow()
+    private val _locked = MutableStateFlow(store.locked())
+    val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
-    fun setMinutes(minuten: Int) {
-        ablage.setMinutes(minuten)
-        _minutes.value = minuten
+    fun setMinutes(minutes: Int) {
+        store.setMinutes(minutes)
+        _minutes.value = minutes
     }
 
     /** onStop: an already locked app doesn't keep its earlier timestamp, it stays locked. */
     fun inBackground() {
         if (_locked.value) return
-        ablage.rememberBackgroundStart(devicesStart())
-        ablage.rememberBackground(clock())
+        store.rememberBackgroundStart(devicesStart())
+        store.rememberBackground(clock())
     }
 
     /** onStart (also after a restart of the process). */
     fun inForeground() {
-        val seit = ablage.backgroundSince() ?: return
-        val start = ablage.backgroundStart()
-        ablage.rememberBackground(null)
-        ablage.rememberBackgroundStart(null)
+        val since = store.backgroundSince() ?: return
+        val start = store.backgroundStart()
+        store.rememberBackground(null)
+        store.rememberBackgroundStart(null)
         val deadline = _minutes.value * MINUTE_MS
-        val jetzt = clock()
+        val now = clock()
         // After a device restart the clock starts at zero: whether the deadline expired is open.
         // An unreadable counter counts as a different start; without a remembered one (older store), only the clock counts.
         val restarted = start != null && devicesStart() != start
-        if (deadline > 0 && (restarted || jetzt < seit || jetzt - seit >= deadline)) setze(true)
+        if (deadline > 0 && (restarted || now < since || now - since >= deadline)) set(true)
     }
 
-    fun entsperrt() = setze(false)
+    fun unlocked() = set(false)
 
-    private fun setze(an: Boolean) {
-        ablage.setLocked(an)
+    private fun set(an: Boolean) {
+        store.setLocked(an)
         _locked.value = an
     }
 
@@ -76,7 +76,7 @@ class AppLock(private val clock: () -> Long, private val ablage: Ablage, private
          * Freshly installed and with a screen lock: on. An update changes nothing the user
          * had before; without a screen lock there would be nothing to unlock with.
          */
-        fun vorgabe(newInstalled: Boolean, deviceSecured: Boolean): Int =
+        fun default(newInstalled: Boolean, deviceSecured: Boolean): Int =
             if (newInstalled && deviceSecured) DEFAULT_MINUTES else 0
 
         /**
@@ -84,7 +84,7 @@ class AppLock(private val clock: () -> Long, private val ablage: Ablage, private
          * background with the lock turned on. The widget isn't redrawn when the deadline expires; if it
          * waited for that, the amounts would sit exposed on the home screen until the next run.
          */
-        fun hiddenWidget(ablage: Ablage): Boolean =
-            ablage.gesperrt() || ablage.minuten() > 0 && ablage.backgroundSince() != null
+        fun hiddenWidget(store: Store): Boolean =
+            store.locked() || store.minutes() > 0 && store.backgroundSince() != null
     }
 }

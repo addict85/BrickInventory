@@ -26,7 +26,7 @@ internal object PlaintextRemainder {
     /** The names begin with the view (ScopeFilter.View.key); the values were always text. */
     private val FILTER = listOf("scope_", "lager_")
 
-    fun entferne(prefs: MutablePreferences) {
+    fun remove(prefs: MutablePreferences) {
         DATASTORE.forEach { prefs.remove(it) }
         prefs.asMap().keys.map { it.name }.filter { n -> FILTER.any(n::startsWith) }
             .forEach { prefs.remove(stringPreferencesKey(it)) }

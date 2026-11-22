@@ -50,7 +50,7 @@ class ScopeFilterTest {
         assertEquals(4, opts.size)
     }
 
-    // Counter-check (measured on 28.10.): the earlier indentation by `tiefe`
+    // Counter-check (measured on 28.10.): the earlier indentation by `depth`
     // built in again → red with "   enkel" instead of "enkel".
     @Test
     fun `every sub-account is in it flat, even if an older server sends levels`() {

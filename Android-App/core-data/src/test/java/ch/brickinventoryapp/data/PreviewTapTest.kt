@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.WarmUp
-import ch.brickinventoryapp.data.di.vorschauAbgriff
+import ch.brickinventoryapp.data.di.previewTap
 import ch.brickinventoryapp.security.StoreCipher
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,7 +24,7 @@ import java.io.File
  * the server is silent or the cache comes up empty with 504, and stores the
  * warmer's requests as speculative.
  *
- * Counter-checks (patches under gegenproben/):
+ * Counter-checks (patches under counter-checks/):
  *   abgriff-ohne-rueckfall     in the catch throw again instead of from the store → red “without a server …”
  *   abgriff-504-durchgereicht  the 504 branch removed → red “a 504 …”
  *   abgriff-liest-rumpf        body.bytes() instead of peekBody → red “a fetched preview …”
@@ -33,76 +33,76 @@ import java.io.File
 class PreviewTapTest {
 
     private val root = File(System.getProperty("java.io.tmpdir"), "bim-abgriff-${System.nanoTime()}")
-    private val speicher = VorschauSpeicher({ root }, StoreCipher { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
+    private val memory = PreviewMemory({ root }, StoreCipher { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
     private val server = MockWebServer().apply { start() }
-    private val client = OkHttpClient.Builder().addInterceptor(vorschauAbgriff(speicher)).build()
-    private val bild = "JPEG-75192".toByteArray()
+    private val client = OkHttpClient.Builder().addInterceptor(previewTap(memory)).build()
+    private val image = "JPEG-75192".toByteArray()
 
     @After
-    fun zu() {
+    fun tearDown() {
         runCatching { server.shutdown() }
         root.deleteRecursively()
     }
 
-    private fun adresse(pfad: String) = server.url(pfad).toString()
+    private fun address(path: String) = server.url(path).toString()
 
     private fun fetch(url: String, tag: Boolean = false): Pair<Int, ByteArray> {
-        val anfrage = Request.Builder().url(url).apply { if (tag) tag(WarmUp::class.java, WarmUp) }.build()
-        return client.newCall(anfrage).execute().use { it.code to it.body.bytes() }
+        val request = Request.Builder().url(url).apply { if (tag) tag(WarmUp::class.java, WarmUp) }.build()
+        return client.newCall(request).execute().use { it.code to it.body.bytes() }
     }
 
     @Test
     fun `a fetched preview is stored, and the caller gets it whole`() {
-        server.enqueue(MockResponse().setBody(Buffer().write(bild)))
+        server.enqueue(MockResponse().setBody(Buffer().write(image)))
         server.enqueue(MockResponse().setBody("voll"))
-        val vorschau = adresse("/images/set/75192-1?thumb=1")
-        val voll = adresse("/images/set/75192-1")
+        val preview = address("/images/set/75192-1?thumb=1")
+        val full = address("/images/set/75192-1")
 
-        val (code, rumpf) = fetch(vorschau)
-        fetch(voll)
+        val (code, body) = fetch(preview)
+        fetch(full)
 
         assertEquals(200, code)
-        assertArrayEquals("Der Aufrufer bekommt den Rumpf nicht mehr", bild, rumpf)
-        assertArrayEquals(bild, speicher.lies(vorschau))
-        assertNull("Die volle Auflösung landet in der Ablage", speicher.lies(voll))
+        assertArrayEquals("Der Aufrufer bekommt den Rumpf nicht mehr", image, body)
+        assertArrayEquals(image, memory.read(preview))
+        assertNull("Die volle Auflösung landet in der Ablage", memory.read(full))
         assertNull("Der Abgriff setzt selbst eine bedingte Anfrage", server.takeRequest().getHeader("If-None-Match"))
     }
 
     @Test
     fun `without a server the preview comes from the store`() {
-        val vorschau = adresse("/images/set/10179-1?thumb=1")
-        speicher.schreibe(vorschau, bild)
+        val preview = address("/images/set/10179-1?thumb=1")
+        memory.write(preview, image)
         server.shutdown()
 
-        val (code, rumpf) = fetch(vorschau)
+        val (code, body) = fetch(preview)
 
         assertEquals(200, code)
-        assertArrayEquals(bild, rumpf)
+        assertArrayEquals(image, body)
     }
 
     @Test
     fun `a 504 of the cache is replaced from the store`() {
-        val vorschau = adresse("/images/set/10294-1?thumb=1")
-        speicher.schreibe(vorschau, bild)
+        val preview = address("/images/set/10294-1?thumb=1")
+        memory.write(preview, image)
         server.enqueue(MockResponse().setResponseCode(504))
 
-        val (code, rumpf) = fetch(vorschau)
+        val (code, body) = fetch(preview)
 
         assertEquals(200, code)
-        assertArrayEquals(bild, rumpf)
+        assertArrayEquals(image, body)
     }
 
     @Test
     fun `a request of the warmer is stored speculatively, a call as used`() {
-        server.enqueue(MockResponse().setBody(Buffer().write(bild)))
-        server.enqueue(MockResponse().setBody(Buffer().write(bild)))
-        val vorschau = adresse("/images/set/42115-1?thumb=1")
+        server.enqueue(MockResponse().setBody(Buffer().write(image)))
+        server.enqueue(MockResponse().setBody(Buffer().write(image)))
+        val preview = address("/images/set/42115-1?thumb=1")
         val oneTag = 24L * 3600 * 1000
-        fun alter() = System.currentTimeMillis() - root.walkTopDown().single { it.isFile }.lastModified()
+        fun old() = System.currentTimeMillis() - root.walkTopDown().single { it.isFile }.lastModified()
 
-        fetch(vorschau, tag = true)
-        assertTrue("Vorgewärmt, aber mit frischem Zeitstempel abgelegt", alter() > oneTag)
-        fetch(vorschau)
-        assertFalse("Angesehen, aber weiter als vorgewärmt abgelegt", alter() > oneTag)
+        fetch(preview, tag = true)
+        assertTrue("Vorgewärmt, aber mit frischem Zeitstempel abgelegt", old() > oneTag)
+        fetch(preview)
+        assertFalse("Angesehen, aber weiter als vorgewärmt abgelegt", old() > oneTag)
     }
 }

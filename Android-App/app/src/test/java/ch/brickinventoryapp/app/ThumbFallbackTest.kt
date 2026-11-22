@@ -9,7 +9,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /** Server address with a trailing slash: the helpers cut it off. */
 private const val SERVER = "http://nas:3000/"
@@ -31,14 +31,14 @@ private const val SERVER = "http://nas:3000/"
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
     @Test
     fun `rememberTileImageWithFallback exists`() {
-        val src = read("ui/util/BildRueckfall.kt")
+        val src = read("ui/util/ImageRueckfall.kt")
         assert(src.contains("fun rememberTileImageWithFallback(")) {
             "Der Rückfall-Helfer fehlt"
         }
@@ -58,7 +58,7 @@ class ThumbFallbackTest {
 
     @Test
     fun `GalleryScreen uses the fallback instead of an ineffective retry`() {
-        val src = read("collection/ui/screens/GalerieKarte.kt")
+        val src = read("collection/ui/screens/GalleryCard.kt")
         assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "GalleryScreen muss den neuen Rückfall-Helfer benutzen"
         }
@@ -80,10 +80,10 @@ class ThumbFallbackTest {
 
     @Test
     fun `CatalogSetCard falls back to the full resolution on an error`() {
-        // The placeholder image stands in ONE place since ProduktBild (ui/components); the
+        // The placeholder image stands in ONE place since ProductImage (ui/components); the
         // catalog tile only passes the error on to the fallback.
-        val src = read("catalog/ui/screens/KatalogKarte.kt")
-        assert(src.contains("ProduktBild(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
+        val src = read("catalog/ui/screens/CatalogCard.kt")
+        assert(src.contains("ProductImage(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
         assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
             "Ein Fehler muss den Rückfall auf die volle Auflösung auslösen"
         }
@@ -108,7 +108,7 @@ class ImageClientLoggingTest {
         // Hide comments BEFORE the window is cut: a
         // growing explanatory text otherwise pushed the checked line out of the 800
         // characters — the rule still applied, only the excerpt was too short.
-        val src = Quellen.di().lines()
+        val src = Sources.di().lines()
             .joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
         val start = src.indexOf("internal fun buildInterceptorClient")
         val fn = src.substring(start, minOf(src.length, start + 2000))
@@ -169,7 +169,7 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -201,27 +201,27 @@ class PartsMinifigsFullResBypassProxyTest {
             // rememberTileImageWithFallback()"). Without this step the
             // check reports exactly this mention as a call without
             // fullViaProxy — when recalculating that happened to me immediately.
-            val src = Quellen.withoutComments(Quellen.bildschirm(rel))
-            val stellen = call.findAll(src).toList()
+            val src = Sources.withoutComments(Sources.screen(rel))
+            val places = call.findAll(src).toList()
             // Self-proof: if the pattern finds nothing, the loop would be empty
             // and the test green without having checked anything.
-            assert(stellen.size >= 2) {
-                "$rel: nur ${stellen.size} Aufruf(e) von rememberTileImageWithFallback gefunden — Muster veraltet?"
+            assert(places.size >= 2) {
+                "$rel: nur ${places.size} Aufruf(e) von rememberTileImageWithFallback gefunden — Muster veraltet?"
             }
-            for (m in stellen) {
-                val zeile = src.substring(0, m.range.first).count { it == '\n' } + 1
+            for (m in places) {
+                val row = src.substring(0, m.range.first).count { it == '\n' } + 1
                 assert(m.groupValues[1].contains("fullViaProxy = true")) {
-                    "$rel:$zeile — dieser Aufruf setzt fullViaProxy nicht. Teile und " +
+                    "$rel:$row — dieser Aufruf setzt fullViaProxy nicht. Teile und " +
                     "Minifiguren holen die volle Aufloesung ueber den Proxy, weil " +
                     "Rebrickable direkt nicht erreichbar ist."
                 }
             }
         }
 
-        val gallery = Quellen.galerie()
+        val gallery = Sources.gallery()
         assert(!gallery.contains("fullViaProxy")) { "Die Galerie darf fullViaProxy nicht setzen — Sets bleiben direkt" }
 
-        val catalog = Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt")
+        val catalog = Sources.screen("catalog/ui/screens/CatalogScreen.kt")
         assert(!catalog.contains("fullViaProxy")) { "Der Katalog darf fullViaProxy nicht setzen — Katalog bleibt direkt" }
     }
 }
@@ -238,7 +238,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -297,7 +297,7 @@ class FullResolutionStripsThumbSuffixTest {
 
     @Test
     fun `preview and full resolution deliver different addresses for a preview path`() {
-        val pfad = "/images/sets/10283-1_thumb.jpg"
-        assertNotEquals(resolveThumbUrl(SERVER, pfad, null), resolveFullUrl(SERVER, pfad, null))
+        val path = "/images/sets/10283-1_thumb.jpg"
+        assertNotEquals(resolveThumbUrl(SERVER, path, null), resolveFullUrl(SERVER, path, null))
     }
 }

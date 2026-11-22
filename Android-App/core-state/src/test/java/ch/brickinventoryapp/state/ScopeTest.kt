@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.domain.Kontoauswahl
+import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.testing.testHouseholdRepository
 import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.state.ui.Scope
@@ -26,78 +26,78 @@ import ch.brickinventoryapp.testing.TestApi
  *      ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
  *   B  in loadFilter() taking over the storage filters removed → red „die
  *      gemerkten Filter kommen aus der Ablage“
- *   C  in loginBegins() `ablage.everythingForgotten()` removed → red „eine
+ *   C  in loginBegins() `store.forgetAll()` removed → red „eine
  *      Anmeldung beginnt mit allen Konten“
  */
 class ScopeTest {
 
     /** In-memory store that records what's written. */
-    private class Ablage : FilterStore {
-        val konten = mutableMapOf<String, String>()
-        val lager = mutableMapOf<String, String>()
-        override suspend fun konto(view: ScopeFilter.View) = konten[view.key] ?: ScopeFilter.ALL
-        override suspend fun lager(view: ScopeFilter.View) = lager[view.key] ?: ""
-        override suspend fun setAccount(view: ScopeFilter.View, wert: String) { konten[view.key] = wert }
-        override suspend fun setzeLager(view: ScopeFilter.View, wert: String) { lager[view.key] = wert }
-        override suspend fun everythingForgotten() { konten.clear(); lager.clear() }
+    private class Store : FilterStore {
+        val accounts = mutableMapOf<String, String>()
+        val storage = mutableMapOf<String, String>()
+        override suspend fun account(view: ScopeFilter.View) = accounts[view.key] ?: ScopeFilter.ALL
+        override suspend fun storage(view: ScopeFilter.View) = storage[view.key] ?: ""
+        override suspend fun setAccount(view: ScopeFilter.View, value: String) { accounts[view.key] = value }
+        override suspend fun applyStorage(view: ScopeFilter.View, value: String) { storage[view.key] = value }
+        override suspend fun forgetAll() { accounts.clear(); storage.clear() }
     }
 
     private lateinit var server: MockWebServer
     private lateinit var cacheDir: File
-    private lateinit var ablage: Ablage
-    private lateinit var blick: Scope
+    private lateinit var store: Store
+    private lateinit var glance: Scope
 
     @Before
-    fun auf() {
+    fun setUp() {
         server = MockWebServer().apply { start() }
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-blick-${System.nanoTime()}").apply { mkdirs() }
-        val api = TestApi.fuer(server)
-        ablage = Ablage()
-        blick = Scope(ablage, testHouseholdRepository(api), testPartsRepository(api))
+        val api = TestApi.forTarget(server)
+        store = Store()
+        glance = Scope(store, testHouseholdRepository(api), testPartsRepository(api))
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         server.shutdown()
         cacheDir.deleteRecursively()
     }
 
     @Test(timeout = 5000)
     fun `the remembered filters come from the store`() = runTest {
-        ablage.konten["gallery"] = "own"
-        ablage.lager["parts"] = "Kiste 3"
-        blick.loadFilter()
-        assertEquals(Kontoauswahl.Eigene, blick.accountFor(ScopeFilter.View.GALLERY))
-        assertNull("„alle“ reist nicht als Parameter mit", blick.accountFor(ScopeFilter.View.PARTS))
-        assertEquals("Kiste 3", blick.storageFor(ScopeFilter.View.PARTS))
+        store.accounts["gallery"] = "own"
+        store.storage["parts"] = "Kiste 3"
+        glance.loadFilter()
+        assertEquals(AccountSelection.Own, glance.accountFor(ScopeFilter.View.GALLERY))
+        assertNull("„alle“ reist nicht als Parameter mit", glance.accountFor(ScopeFilter.View.PARTS))
+        assertEquals("Kiste 3", glance.storageFor(ScopeFilter.View.PARTS))
     }
 
     @Test
     fun `a set filter is remembered and applies immediately`() = runTest {
-        blick.setAccount(ScopeFilter.View.FINANCE, "7")
-        assertEquals("7", ablage.konten["finance"])
-        assertEquals(Kontoauswahl.Konto(7), blick.accountFor(ScopeFilter.View.FINANCE))
+        glance.setAccount(ScopeFilter.View.FINANCE, "7")
+        assertEquals("7", store.accounts["finance"])
+        assertEquals(AccountSelection.Account(7), glance.accountFor(ScopeFilter.View.FINANCE))
     }
 
     @Test
     fun `a filter on an account that no longer belongs falls back to all`() = runTest {
-        blick.setAccount(ScopeFilter.View.GALLERY, "9")
-        blick.setAccount(ScopeFilter.View.PARTS, "7")
-        server.enqueue(TestApi.antwort("""{"success":true,"members":[
+        glance.setAccount(ScopeFilter.View.GALLERY, "9")
+        glance.setAccount(ScopeFilter.View.PARTS, "7")
+        server.enqueue(TestApi.response("""{"success":true,"members":[
             {"id":1,"username":"marco","is_self":true},{"id":7,"username":"kind"}]}"""))
-        blick.loadMembers()
-        assertEquals(2, blick.konten.value.householdMembers.size)
-        assertNull("Konto 9 gibt es nicht mehr", blick.accountFor(ScopeFilter.View.GALLERY))
-        assertEquals(Kontoauswahl.Konto(7), blick.accountFor(ScopeFilter.View.PARTS))
+        glance.loadMembers()
+        assertEquals(2, glance.accounts.value.householdMembers.size)
+        assertNull("Konto 9 gibt es nicht mehr", glance.accountFor(ScopeFilter.View.GALLERY))
+        assertEquals(AccountSelection.Account(7), glance.accountFor(ScopeFilter.View.PARTS))
     }
 
     @Test
     fun `a sign-in starts with all accounts`() = runTest {
-        blick.setAccount(ScopeFilter.View.GALLERY, "own")
-        blick.setzeLager(ScopeFilter.View.GALLERY, "Regal")
-        blick.loginBegins()
-        assertTrue(ablage.konten.isEmpty() && ablage.lager.isEmpty())
-        assertNull(blick.accountFor(ScopeFilter.View.GALLERY))
-        assertNull(blick.storageFor(ScopeFilter.View.GALLERY))
+        glance.setAccount(ScopeFilter.View.GALLERY, "own")
+        glance.applyStorage(ScopeFilter.View.GALLERY, "Regal")
+        glance.loginBegins()
+        assertTrue(store.accounts.isEmpty() && store.storage.isEmpty())
+        assertNull(glance.accountFor(ScopeFilter.View.GALLERY))
+        assertNull(glance.storageFor(ScopeFilter.View.GALLERY))
     }
 }

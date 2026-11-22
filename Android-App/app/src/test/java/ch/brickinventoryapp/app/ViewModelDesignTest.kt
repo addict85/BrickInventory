@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * All ViewModels are ordinary ViewModels — none inherits its context.
@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ── Why that is more than uniformity ─────────────────────────────────────────
  * `MainViewModel` was the ONLY `AndroidViewModel` in the tree. CatalogViewModel
  * and MonitoringViewModel are ordinary `ViewModel`s and get the
- * context injected — just like VorschauSpeicher, PreferencesManager and
+ * context injected — just like PreviewMemory, PreferencesManager and
  * PdfExportManager. So two patterns for the same thing, and the rarer one was
  * the more expensive:
  *
@@ -34,20 +34,20 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class ViewModelDesignTest {
 
-    private fun viewModelFiles() = Quellen.alle()
+    private fun viewModelFiles() = Sources.all()
         .filter { it.name.endsWith("ViewModel.kt") }
-        .map { it.name to Quellen.withoutComments(it.readText()) }
+        .map { it.name to Sources.withoutComments(it.readText()) }
 
     @Test
     fun `no ViewModel inherits its context`() {
-        val dateien = viewModelFiles()
-        assert(dateien.size >= 3) {
+        val files = viewModelFiles()
+        assert(files.size >= 3) {
             "Nur ${'$'}{dateien.size} ViewModel-Dateien gefunden — Muster veraltet? " +
                 "Eine leere Suche wäre still grün."
         }
-        val treffer = dateien.filter { (_, s) -> s.contains("AndroidViewModel") }.map { it.first }
-        assert(treffer.isEmpty()) {
-            "Diese ViewModels erben von AndroidViewModel: ${'$'}{treffer.joinToString()}.\n" +
+        val hits = files.filter { (_, s) -> s.contains("AndroidViewModel") }.map { it.first }
+        assert(hits.isEmpty()) {
+            "Diese ViewModels erben von AndroidViewModel: ${'$'}{hits.joinToString()}.\n" +
                 "AndroidViewModel verlangt eine echte Application im Konstruktor — die Klasse " +
                 "lässt sich damit in keinem JVM-Test bauen. Den Context gibt es über " +
                 "@ApplicationContext, wie in CatalogViewModel und in der ganzen Datenschicht."

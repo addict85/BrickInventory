@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.domain.UsageView
 import ch.brickinventoryapp.state.ui.loadError
 import kotlinx.coroutines.CoroutineScope
@@ -19,34 +19,34 @@ import kotlinx.coroutines.launch
  */
 internal class SetItemFlow(
     private val scope: CoroutineScope,
-    private val art: Postenart,
-    private val abfrage: suspend (nummer: String, farbe: Int) -> Ergebnis<UsageView>,
-    private val afterHeader: (besitzer: List<Int>) -> Unit,
+    private val kind: ItemKind,
+    private val query: suspend (number: String, color: Int) -> Outcome<UsageView>,
+    private val afterHeader: (owner: List<Int>) -> Unit,
 ) {
-    private val _zustand = MutableStateFlow(SetItemUiState())
-    val zustand: StateFlow<SetItemUiState> = _zustand.asStateFlow()
+    private val _uiState = MutableStateFlow(SetItemUiState())
+    val uiState: StateFlow<SetItemUiState> = _uiState.asStateFlow()
 
-    fun oeffne(nummer: String, colorId: Int) {
-        _zustand.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, abruf = Laden.Loads)
+    fun open(number: String, colorId: Int) {
+        _uiState.value = SetItemUiState(kind = kind, number = number, colorId = colorId, fetch = Load.Loads)
         scope.launch {
-            val r = abfrage(nummer, colorId)
+            val r = query(number, colorId)
             // A different one opened in the meantime? Then the answer no longer belongs here.
-            val jetzt = _zustand.value
-            if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
+            val now = _uiState.value
+            if (now.kind != kind || now.number != number || now.colorId != colorId) return@launch
             when (r) {
-                is Ergebnis.Erfolg -> {
-                    _zustand.update { it.copy(abruf = Laden.Daten(Unit), kopf = r.data.kopf, sets = r.data.sets) }
+                is Outcome.Success -> {
+                    _uiState.update { it.copy(fetch = Load.Data(Unit), header = r.data.header, sets = r.data.sets) }
                     // The suggestions for the storage location field belong to the owner, not the viewer.
-                    afterHeader(r.data.kopf?.ownerIds ?: emptyList())
+                    afterHeader(r.data.header?.ownerIds ?: emptyList())
                 }
-                is Ergebnis.Fehler -> _zustand.update { it.copy(abruf = loadError(r)) }
+                is Outcome.Failure -> _uiState.update { it.copy(fetch = loadError(r)) }
             }
         }
     }
 
-    fun withLocation(ort: String?) = _zustand.update { z -> z.copy(kopf = z.kopf?.copy(storage = ort)) }
+    fun withLocation(location: String?) = _uiState.update { z -> z.copy(header = z.header?.copy(storage = location)) }
 
-    fun schliesse() {
-        _zustand.value = SetItemUiState()
+    fun shutDown() {
+        _uiState.value = SetItemUiState()
     }
 }

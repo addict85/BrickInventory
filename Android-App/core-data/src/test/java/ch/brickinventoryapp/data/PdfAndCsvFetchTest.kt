@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.domain.Teilelistenauftrag
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.model.domain.PartListJob
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.testing.testSetFilesRepository
 import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.runBlocking
@@ -18,11 +18,11 @@ import org.junit.Test
 import java.io.File
 
 /**
- * PDF job and CSV status run like every fetch through sicherAufrufen: a
+ * PDF job and CSV status run like every fetch through safeCall: a
  * network error is temporary, a 401 a rejection, and none carries token or
  * address itself — those are set by the guard (here replaced by the test server).
  *
- * Counter-check (gegenproben/pdf-ohne-sicheraufrufen.patch, only measurable in CI):
+ * Counter-check (counter-checks/pdf-ohne-sicheraufrufen.patch, only measurable in CI):
  *   startPdfJob catches exceptions itself again and turns them into Unbekannt → red
  *   “a network error is temporary …”
  */
@@ -30,55 +30,55 @@ class PdfAndCsvFetchTest {
 
     private val server = MockWebServer().apply { start() }
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-pdf-${System.nanoTime()}").apply { mkdirs() }
-    private val sets: SetDateienRepository = testSetFilesRepository(TestApi.fuer(server))
+    private val sets: SetFilesRepository = testSetFilesRepository(TestApi.forTarget(server))
 
     @After
-    fun zu() {
+    fun tearDown() {
         runCatching { server.shutdown() }
         folder.deleteRecursively()
     }
 
     private fun teardown() = MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)
-    private fun abgewiesen() = TestApi.antwort("""{"success":false,"error":"Token abgelaufen"}""", code = 401)
+    private fun rejected() = TestApi.response("""{"success":false,"error":"Token abgelaufen"}""", code = 401)
 
-    private fun <T> fehler(r: Ergebnis<T>): Ergebnis.Fehler {
-        assertTrue("erwartet ein Fehler, war $r", r is Ergebnis.Fehler)
-        return r as Ergebnis.Fehler
+    private fun <T> error(r: Outcome<T>): Outcome.Failure {
+        assertTrue("erwartet ein Fehler, war $r", r is Outcome.Failure)
+        return r as Outcome.Failure
     }
 
     @Test
     fun `a network error is temporary, for every fetch of job and status`() = runBlocking {
         repeat(4) { server.enqueue(teardown()) }
-        val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
-        for (r in alle) {
-            val f = fehler(r)
+        val all = listOf(sets.startPdfJob(PartListJob(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
+        for (r in all) {
+            val f = error(r)
             assertTrue("$f ist nicht vorübergehend", f.transient)
         }
     }
 
     @Test
     fun `a 401 is a rejection with the server's sentence`() = runBlocking {
-        repeat(4) { server.enqueue(abgewiesen()) }
-        val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
-        for (r in alle) {
-            val f = fehler(r)
-            assertTrue("$f ist keine Abweisung", f is Ergebnis.Fehler.Abgewiesen)
+        repeat(4) { server.enqueue(rejected()) }
+        val all = listOf(sets.startPdfJob(PartListJob(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
+        for (r in all) {
+            val f = error(r)
+            assertTrue("$f ist keine Abweisung", f is Outcome.Failure.Rejected)
             assertEquals("Token abgelaufen", f.message)
         }
     }
 
     @Test
     fun `the state of a job comes as a domain value, the number from the model`() = runBlocking {
-        server.enqueue(TestApi.antwort("""{"success":true,"jobId":"j7"}"""))
-        server.enqueue(TestApi.antwort("""{"success":true,"status":"running","etaSeconds":12,"missingImages":3}"""))
-        server.enqueue(TestApi.antwort("""{"success":true,"jobId":""}"""))
+        server.enqueue(TestApi.response("""{"success":true,"jobId":"j7"}"""))
+        server.enqueue(TestApi.response("""{"success":true,"status":"running","etaSeconds":12,"missingImages":3}"""))
+        server.enqueue(TestApi.response("""{"success":true,"jobId":""}"""))
 
-        assertEquals(Ergebnis.Erfolg("j7"), sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())))
-        val stand = (sets.getPdfJobStatus("j7") as Ergebnis.Erfolg).data
-        assertEquals(Laufstatus.LAEUFT, stand.status)
-        assertEquals(12.0, stand.restSeconds)
-        assertNull(stand.fehler)
-        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())) is Ergebnis.Fehler.LeereAntwort)
+        assertEquals(Outcome.Success("j7"), sets.startPdfJob(PartListJob(emptyList(), emptyList())))
+        val state = (sets.getPdfJobStatus("j7") as Outcome.Success).data
+        assertEquals(RunStatus.RUNNING, state.status)
+        assertEquals(12.0, state.restSeconds)
+        assertNull(state.error)
+        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(PartListJob(emptyList(), emptyList())) is Outcome.Failure.EmptyResponse)
 
         val paths = List(3) { server.takeRequest().path }
         assertEquals(listOf("/api/v1/sets/partslist-pdf", "/api/v1/sets/partslist-pdf/status/j7", "/api/v1/sets/partslist-pdf"), paths)

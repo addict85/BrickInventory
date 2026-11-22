@@ -19,12 +19,12 @@ import org.robolectric.annotation.Config
  * app knows the manifest of the whole app; in a feature module it would only see its
  * own.
  *
- * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
  *   widerrufsdienst-exportiert  tools:node="remove" removed from RevocationBoundService →
  *                               red “the revocation service of Google sign-in …”
  *   profilempfaenger-exportiert tools:node="remove" removed from ProfileInstallReceiver →
  *                               red “the profile installer …”
- *   pdf-renderer-im-app-prozess isolatedProcess removed from PdfRenderDienst → red
+ *   pdf-renderer-im-app-prozess isolatedProcess removed from PdfRenderService → red
  *                               “the PDF renderer runs isolated …”
  */
 @RunWith(RobolectricTestRunner::class)
@@ -33,9 +33,9 @@ class LibraryComponentsTest {
 
     private val ctx = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun fehlt(name: String, holen: (ComponentName) -> Unit) {
+    private fun missing(name: String, fetch: (ComponentName) -> Unit) {
         try {
-            holen(ComponentName(ctx.packageName, name))
+            fetch(ComponentName(ctx.packageName, name))
             fail("$name steht im Manifest")
         } catch (_: PackageManager.NameNotFoundException) {
             // erwartet: herausgenommen
@@ -44,17 +44,17 @@ class LibraryComponentsTest {
 
     @Test
     fun `the revocation service of Google sign-in is not in the manifest`() =
-        fehlt("com.google.android.gms.auth.api.signin.RevocationBoundService") { ctx.packageManager.getServiceInfo(it, 0) }
+        missing("com.google.android.gms.auth.api.signin.RevocationBoundService") { ctx.packageManager.getServiceInfo(it, 0) }
 
     @Test
     fun `the profile installer is not in the manifest`() =
-        fehlt("androidx.profileinstaller.ProfileInstallReceiver") { ctx.packageManager.getReceiverInfo(it, 0) }
+        missing("androidx.profileinstaller.ProfileInstallReceiver") { ctx.packageManager.getReceiverInfo(it, 0) }
 
     @Test
     fun `the check sees the manifest at all`() {
         // Otherwise both tests above would be green because the PackageManager knows nothing at all.
         val info = ctx.packageManager.getReceiverInfo(
-            ComponentName(ctx.packageName, "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger"), 0)
+            ComponentName(ctx.packageName, "ch.brickinventoryapp.app.widget.CollectionWidgetReceiver"), 0)
         assertTrue(info.exported)
     }
 
@@ -68,6 +68,6 @@ class LibraryComponentsTest {
 
     private companion object {
         // The class is internal in feature-finances; the manifest names it by name.
-        const val PDF_SERVICE = "ch.brickinventoryapp.finances.ui.pdf.PdfRenderDienst"
+        const val PDF_SERVICE = "ch.brickinventoryapp.finances.ui.pdf.PdfRenderService"
     }
 }

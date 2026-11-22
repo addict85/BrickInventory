@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
@@ -107,7 +107,7 @@ class PriceHistorySerializationTest {
             "chart": {"x": [], "values": []}
         }""")
         assertEquals(1, r.byCondition.present().size)
-        assertEquals(Zustand.NEU, r.byCondition.present()[0].first)
+        assertEquals(Condition.NEW, r.byCondition.present()[0].first)
         assertNull(r.byCondition.used)
         assertTrue(r.chart.values.isEmpty())
     }
@@ -179,8 +179,8 @@ class PriceHistorySerializationTest {
                       "max_purchase_price": 160.0, "avg_purchase_price": 120.0}]
         }""")
         val set = r.sets.first()
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), set.conditions)
-        assertEquals(Zustand.GEBRAUCHT, set.condition)
+        assertEquals(listOf(Condition.NEW, Condition.USED), set.conditions)
+        assertEquals(Condition.USED, set.condition)
         // The weighted purchase price, not the maximum: 2x100 and 1x160 → 120.
         assertEquals(120.0, set.avgPurchasePrice!!, 0.0001)
     }
@@ -202,7 +202,7 @@ class PriceHistorySerializationTest {
                       "conditions": ["N", "U"], "source": "manual",
                       "avg_purchase_price": 12.5}]
         }""")
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), r.figs.first().conditions)
+        assertEquals(listOf(Condition.NEW, Condition.USED), r.figs.first().conditions)
         assertEquals(12.5, r.figs.first().avgPurchasePrice!!, 0.0001)
     }
 
@@ -226,7 +226,7 @@ class PriceHistorySerializationTest {
         }""")
         val part = v.parts.first()
         assertEquals(2, part.acquisitions.size)
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), part.conditions)
+        assertEquals(listOf(Condition.NEW, Condition.USED), part.conditions)
         // Quantity 2 in ONE row — two entries on the same day in the same
         // condition are merged by the server (utils/acquisitions.ts).
         assertEquals(2, part.acquisitions[0].quantity)

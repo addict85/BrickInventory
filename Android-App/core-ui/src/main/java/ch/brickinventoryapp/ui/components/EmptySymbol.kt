@@ -22,11 +22,11 @@ import androidx.compose.ui.unit.dp
  * because the text next to it carries the meaning.
  */
 @Composable
-fun EmptySymbol(bild: ImageVector, groesse: Dp = 40.dp) {
+fun EmptySymbol(image: ImageVector, size: Dp = 40.dp) {
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
-        Box(Modifier.size(groesse * 2), contentAlignment = Alignment.Center) {
-            Icon(bild, contentDescription = null, modifier = Modifier.size(groesse))
+        Box(Modifier.size(size * 2), contentAlignment = Alignment.Center) {
+            Icon(image, contentDescription = null, modifier = Modifier.size(size))
         }
     }
 }

@@ -17,8 +17,8 @@ class NavigationModeTest {
 
     @Test
     fun `a phone in portrait has the bar at the bottom`() {
-        assertEquals(NavigationMode.LEISTE_UNTEN, navigationMode(360f))
-        assertEquals(NavigationMode.LEISTE_UNTEN, navigationMode(599.5f))
+        assertEquals(NavigationMode.BAR_BOTTOM, navigationMode(360f))
+        assertEquals(NavigationMode.BAR_BOTTOM, navigationMode(599.5f))
     }
 
     @Test
@@ -42,9 +42,9 @@ class NavigationModeTest {
 
     @Test
     fun `two columns only from 840 dp`() {
-        assertEquals(false, twoSpaltig(600f))
-        assertEquals(false, twoSpaltig(839.5f))
-        assertEquals(true, twoSpaltig(840f))
-        assertEquals(true, twoSpaltig(1280f))
+        assertEquals(false, twoColumn(600f))
+        assertEquals(false, twoColumn(839.5f))
+        assertEquals(true, twoColumn(840f))
+        assertEquals(true, twoColumn(1280f))
     }
 }

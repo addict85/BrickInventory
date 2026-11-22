@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.file.Gelesen
+import ch.brickinventoryapp.model.file.Read
 import ch.brickinventoryapp.data.file.readLimited
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
@@ -25,37 +25,37 @@ class FileLimitTest {
 
     /** Delivers without end; counts, and throws as soon as reading goes far beyond the limit. */
     private class Endless(private val atMost: Long) : InputStream() {
-        var gelesen = 0L
+        var read = 0L
         override fun read(): Int {
-            gelesen++
-            if (gelesen > atMost) throw AssertionError("über die Grenze hinaus gelesen: $gelesen Bytes")
+            read++
+            if (read > atMost) throw AssertionError("über die Grenze hinaus gelesen: $read Bytes")
             return 7
         }
     }
 
     @Test
     fun `up to the limit the whole content comes, one byte more does not`() {
-        val genau = ByteArray(1000) { it.toByte() }
-        assertArrayEquals(genau, readLimited(ByteArrayInputStream(genau), 1000))
+        val exact = ByteArray(1000) { it.toByte() }
+        assertArrayEquals(exact, readLimited(ByteArrayInputStream(exact), 1000))
         assertNull(readLimited(ByteArrayInputStream(ByteArray(1001)), 1000))
         assertArrayEquals(ByteArray(0), readLimited(ByteArrayInputStream(ByteArray(0)), 0))
     }
 
     @Test
     fun `an endless stream is not read beyond the limit`() {
-        val grenze = 200_000L
-        val strom = Endless(grenze + 64 * 1024)
-        assertNull(readLimited(strom, grenze))
-        assertEquals("Gelesen wird die Grenze und ein Byte zur Probe", grenze + 1, strom.gelesen)
+        val limit = 200_000L
+        val stream = Endless(limit + 64 * 1024)
+        assertNull(readLimited(stream, limit))
+        assertEquals("Gelesen wird die Grenze und ein Byte zur Probe", limit + 1, stream.read)
     }
 
     @Test
     fun `a reader without its own limit reports a too large file as too large`() {
         val reader = object : FileReader {
-            override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = "text/csv" to ByteArray(11)
+            override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = "text/csv" to ByteArray(11)
         }
-        assertEquals(Gelesen.ToLarge, runBlocking { reader.readAtMost(FileRef("content://x"), 10) })
-        val inhalt = runBlocking { reader.readAtMost(FileRef("content://x"), 11) }
-        assertTrue(inhalt is Gelesen.Inhalt && inhalt.typ == "text/csv" && inhalt.bytes.size == 11)
+        assertEquals(Read.ToLarge, runBlocking { reader.readAtMost(FileRef("content://x"), 10) })
+        val content = runBlocking { reader.readAtMost(FileRef("content://x"), 11) }
+        assertTrue(content is Read.Content && content.type == "text/csv" && content.bytes.size == 11)
     }
 }

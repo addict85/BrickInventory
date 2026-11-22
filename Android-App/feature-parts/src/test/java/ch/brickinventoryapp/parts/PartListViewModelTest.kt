@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.domain.Teilelistenauftrag
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.domain.PartListJob
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.resources.R
@@ -14,7 +14,7 @@ import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
 import kotlinx.coroutines.flow.Flow
@@ -39,8 +39,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The build list lives in the ViewModel: list, running fetch and status survive
@@ -48,16 +48,16 @@ import ch.brickinventoryapp.testing.TestDienste
  * the source and export) and with StandardTestDispatcher instead of waiting.
  *
  * Counter-checks:
- *   A  in erstelle() the key `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
+ *   A  in createNow() the key `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
  *      replaced with `"${p.partNumber}|${p.colorName}|${combined.size}"`
- *      (gegenproben/bauliste-ohne-zusammenfassen.patch) → red “identical parts
+ *      (counter-checks/bauliste-ohne-zusammenfassen.patch) → red “identical parts
  *      across several sets are counted together”
- *   B  in aendere() the remembering in the SavedStateHandle removed → red “the set numbers
+ *   B  in applyChangeTo() the remembering in the SavedStateHandle removed → red “the set numbers
  *      survive a process end …”
  *   C  zuruecksetzen() not overridden → red “a sign-out empties the build list”
- *   D  in exportiere() the file not taken into the state → red “a finished
+ *   D  in export() the file not taken into the state → red “a finished
  *      PDF is offered once …”
- *   E  gegenproben/pdf-fehler-leer.patch: errorText() for a failed
+ *   E  counter-checks/pdf-fehler-leer.patch: errorText() for a failed
  *      job again returns only the server's sentence (even empty) → red “an error always has
  *      a sentence …” (measurable only in the CI)
  *   F  undoRemove() without the branch for an unchanged list (always re-inserting with
@@ -68,240 +68,240 @@ import ch.brickinventoryapp.testing.TestDienste
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartListViewModelTest {
 
-    private val takt = StandardTestDispatcher()
-    private lateinit var paths: PfadServer
-    private lateinit var t: TestDienste
-    private val erzeugt = mutableListOf<PartListViewModel>()
+    private val tick = StandardTestDispatcher()
+    private lateinit var paths: PathServer
+    private lateinit var t: TestServices
+    private val created = mutableListOf<PartListViewModel>()
 
     @Before
     fun an() {
-        Dispatchers.setMain(takt)
-        paths = PfadServer()
-        t = TestDienste(paths.server)
+        Dispatchers.setMain(tick)
+        paths = PathServer()
+        t = TestServices(paths.server)
     }
 
     @After
-    fun aus() {
-        erzeugt.forEach { it.viewModelScope.cancel() }
-        takt.scheduler.advanceUntilIdle()
+    fun from() {
+        created.forEach { it.viewModelScope.cancel() }
+        tick.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
 
-    private class Quelle(val teile: Map<String, List<PlPart>> = emptyMap()) : PartListsSource {
-        val gefragt = mutableListOf<String>()
+    private class Source(val parts: Map<String, List<PlPart>> = emptyMap()) : PartListsSource {
+        val asked = mutableListOf<String>()
         var brake: CompletableDeferred<Unit>? = null
-        var bestand: List<PlPart>? = null
+        var stock: List<PlPart>? = null
         override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
-            gefragt += setNumber
+            asked += setNumber
             brake?.await()
-            return "Name $setNumber" to teile[setNumber].orEmpty()
+            return "Name $setNumber" to parts[setNumber].orEmpty()
         }
-        override suspend fun withInventory(teile: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = bestand
-        override fun sortiert(teile: Collection<PlPart>) = teile.sortedBy { it.partNumber }
+        override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = stock
+        override fun sorted(parts: Collection<PlPart>) = parts.sortedBy { it.partNumber }
     }
 
     private class Export(
-        val ergebnis: ExportResult,
-        override val fortschritt: Flow<PdfProgress?> = flowOf(null),
+        val outcome: ExportResult,
+        override val progress: Flow<PdfProgress?> = flowOf(null),
     ) : PartListsExport {
-        val auftraege = mutableListOf<Teilelistenauftrag>()
-        override suspend fun erzeuge(job: Teilelistenauftrag): ExportResult { auftraege += job; return ergebnis }
+        val jobs = mutableListOf<PartListJob>()
+        override suspend fun generate(job: PartListJob): ExportResult { jobs += job; return outcome }
     }
 
     private fun vm(
-        quelle: Quelle = Quelle(),
-        export: Export = Export(ExportResult.Fehler(PdfFailure.Abruf(Ergebnis.Fehler.Netz()))),
-        gemerkt: SavedStateHandle = SavedStateHandle(),
-    ) = PartListViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
+        source: Source = Source(),
+        export: Export = Export(ExportResult.Failure(PdfFailure.Fetch(Outcome.Failure.Network()))),
+        wanted: SavedStateHandle = SavedStateHandle(),
+    ) = PartListViewModel(t.session, t.hints, source, export, wanted).also { created += it }
 
-    private fun teil(nr: String, menge: Int, farbe: String = "Rot") =
-        PlPart(partNumber = nr, partName = nr, colorName = farbe, colorHex = null, quantity = menge, imageUrl = null)
+    private fun part(nr: String, quantity: Int, color: String = "Rot") =
+        PlPart(partNumber = nr, partName = nr, colorName = color, colorHex = null, quantity = quantity, imageUrl = null)
 
     @Test
-    fun `the fetch runs in the ViewModel and delivers the list`() = runTest(takt) {
-        val quelle = Quelle(mapOf("21318-1" to listOf(teil("3001", 4)))).apply { brake = CompletableDeferred() }
-        val vm = vm(quelle)
-        vm.erstelle("21318")
+    fun `the fetch runs in the ViewModel and delivers the list`() = runTest(tick) {
+        val source = Source(mapOf("21318-1" to listOf(part("3001", 4)))).apply { brake = CompletableDeferred() }
+        val vm = vm(source)
+        vm.createNow("21318")
         advanceUntilIdle()
-        assertTrue("Während des Abrufs lädt die Liste", vm.zustand.value.erzeugen.laedt)
-        assertEquals(R.string.partslist_loading_set, (vm.zustand.value.status as Meldung.Resource).id)
-        quelle.brake!!.complete(Unit)
+        assertTrue("Während des Abrufs lädt die Liste", vm.uiState.value.generating.loading)
+        assertEquals(R.string.partslist_loading_set, (vm.uiState.value.status as Message.Resource).id)
+        source.brake!!.complete(Unit)
         advanceUntilIdle()
-        val z = vm.zustand.value
-        assertFalse(z.erzeugen.laedt)
+        val z = vm.uiState.value
+        assertFalse(z.generating.loading)
         assertTrue(z.generated)
         assertEquals(listOf("3001"), z.parts.map { it.partNumber })
         assertEquals("Der Name aus dem Katalog steht am Set", listOf("Name 21318-1"), z.sets.map { it.name })
-        assertEquals(listOf("21318-1"), quelle.gefragt)
+        assertEquals(listOf("21318-1"), source.asked)
     }
 
     @Test
-    fun `equal parts of several sets are added up`() = runTest(takt) {
-        val quelle = Quelle(mapOf(
-            "10294-1" to listOf(teil("3001", 2), teil("3002", 1)),
-            "21318-1" to listOf(teil("3001", 3), teil("3001", 1, farbe = "Blau")),
+    fun `equal parts of several sets are added up`() = runTest(tick) {
+        val source = Source(mapOf(
+            "10294-1" to listOf(part("3001", 2), part("3002", 1)),
+            "21318-1" to listOf(part("3001", 3), part("3001", 1, color = "Blau")),
         ))
-        val vm = vm(quelle)
+        val vm = vm(source)
         vm.addAdd("10294")
-        vm.erstelle("21318-1")
+        vm.createNow("21318-1")
         advanceUntilIdle()
-        val quantities = vm.zustand.value.parts.associate { "${it.partNumber}|${it.colorName}" to it.quantity }
+        val quantities = vm.uiState.value.parts.associate { "${it.partNumber}|${it.colorName}" to it.quantity }
         assertEquals(mapOf("3001|Rot" to 5, "3002|Rot" to 1, "3001|Blau" to 1), quantities)
     }
 
     @Test
-    fun `a number appears only once in the list`() = runTest(takt) {
+    fun `a number appears only once in the list`() = runTest(tick) {
         val vm = vm()
         vm.addAdd("10294")
         vm.addAdd("10294-1")
-        assertEquals(listOf("10294-1"), vm.zustand.value.sets.map { it.setNumber })
-        assertEquals(Meldung.Resource(R.string.partslist_set_already_added), vm.zustand.value.status)
+        assertEquals(listOf("10294-1"), vm.uiState.value.sets.map { it.setNumber })
+        assertEquals(Message.Resource(R.string.partslist_set_already_added), vm.uiState.value.status)
     }
 
     @Test
-    fun `the set numbers survive the process end, the parts do not`() = runTest(takt) {
-        val gemerkt = SavedStateHandle()
-        val vorher = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), gemerkt = gemerkt)
-        vorher.erstelle("10294")
+    fun `the set numbers survive the process end, the parts do not`() = runTest(tick) {
+        val wanted = SavedStateHandle()
+        val before = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)))), wanted = wanted)
+        before.createNow("10294")
         advanceUntilIdle()
-        val after = vm(gemerkt = gemerkt)
-        assertEquals(listOf("10294-1"), after.zustand.value.sets.map { it.setNumber })
-        assertTrue("Tausend Zeilen gehören nicht ins Bundle", after.zustand.value.parts.isEmpty())
-        assertFalse(after.zustand.value.generated)
+        val after = vm(wanted = wanted)
+        assertEquals(listOf("10294-1"), after.uiState.value.sets.map { it.setNumber })
+        assertTrue("Tausend Zeilen gehören nicht ins Bundle", after.uiState.value.parts.isEmpty())
+        assertFalse(after.uiState.value.generated)
     }
 
     @Test
-    fun `the stock names what is missing`() = runTest(takt) {
-        val quelle = Quelle(mapOf("10294-1" to listOf(teil("3001", 4), teil("3002", 1))))
-        val vm = vm(quelle)
-        vm.erstelle("10294")
+    fun `the stock names what is missing`() = runTest(tick) {
+        val source = Source(mapOf("10294-1" to listOf(part("3001", 4), part("3002", 1))))
+        val vm = vm(source)
+        vm.createNow("10294")
         advanceUntilIdle()
-        quelle.bestand = listOf(teil("3001", 4).copy(vorhanden = 1), teil("3002", 1).copy(vorhanden = 1))
+        source.stock = listOf(part("3001", 4).copy(present = 1), part("3002", 1).copy(present = 1))
         vm.loadInventory()
         advanceUntilIdle()
         // Three copies missing, of one part: the quantity form with the number of copies.
-        assertEquals("m${R.plurals.partslist_owned_missing}:3", vm.zustand.value.status.text)
-        assertEquals(listOf(1, 1), vm.zustand.value.parts.map { it.vorhanden })
-        quelle.bestand = null
+        assertEquals("m${R.plurals.partslist_owned_missing}:3", vm.uiState.value.status.text)
+        assertEquals(listOf(1, 1), vm.uiState.value.parts.map { it.present })
+        source.stock = null
         vm.loadInventory()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.partslist_owned_error), vm.zustand.value.status)
-        assertEquals(Vorgang.Fertig, vm.zustand.value.bestand)
+        assertEquals(Message.Resource(R.string.partslist_owned_error), vm.uiState.value.status)
+        assertEquals(Operation.Done, vm.uiState.value.stock)
     }
 
     @Test
-    fun `a finished PDF is offered once, an error reported`() = runTest(takt) {
-        val datei = File("teileliste.pdf")
-        val export = Export(ExportResult.Datei(datei))
-        val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), export)
-        vm.erstelle("10294")
+    fun `a finished PDF is offered once, an error reported`() = runTest(tick) {
+        val file = File("teileliste.pdf")
+        val export = Export(ExportResult.FileEntry(file))
+        val vm = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)))), export)
+        vm.createNow("10294")
         advanceUntilIdle()
-        vm.exportiere()
+        vm.export()
         advanceUntilIdle()
-        assertEquals(datei, vm.zustand.value.pdfFile)
-        val job = export.auftraege.single()
-        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), job.sets.map { it.nummer })
-        assertEquals(listOf("3001" to 2), job.zeilen.map { it.nummer to it.menge })
+        assertEquals(file, vm.uiState.value.pdfFile)
+        val job = export.jobs.single()
+        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), job.sets.map { it.number })
+        assertEquals(listOf("3001" to 2), job.rows.map { it.number to it.quantity })
         vm.pdfOpened()
-        assertNull(vm.zustand.value.pdfFile)
+        assertNull(vm.uiState.value.pdfFile)
 
-        val ohne = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))))
-        ohne.erstelle("10294")
+        val without = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)))))
+        without.createNow("10294")
         advanceUntilIdle()
-        ohne.exportiere()
+        without.export()
         advanceUntilIdle()
         // The fetch speaks like every fetch (errorMessage), not empty.
-        assertTrue(ohne.zustand.value.pdf is Vorgang.Fehlgeschlagen)
-        ohne.pdfErrorSeen()
-        assertEquals(Vorgang.Fertig, ohne.zustand.value.pdf)
+        assertTrue(without.uiState.value.pdf is Operation.Failed)
+        without.pdfErrorSeen()
+        assertEquals(Operation.Done, without.uiState.value.pdf)
     }
 
     @Test
-    fun `an error always has a sentence, even without the server's sentence`() = runTest(takt) {
-        for ((grund, erwartet) in listOf(
-            PdfFailure.Auftrag(null) to "t${R.string.pdfexp_server_error}",
-            PdfFailure.Auftrag("") to "t${R.string.pdfexp_server_error}",
-            PdfFailure.Auftrag("Bild fehlt") to "Bild fehlt",
-            PdfFailure.Abruf(Ergebnis.Fehler.Abgewiesen()) to "t${R.string.err_session_expired}",
+    fun `an error always has a sentence, even without the server's sentence`() = runTest(tick) {
+        for ((reason, expected) in listOf(
+            PdfFailure.Job(null) to "t${R.string.pdfexp_server_error}",
+            PdfFailure.Job("") to "t${R.string.pdfexp_server_error}",
+            PdfFailure.Job("Bild fehlt") to "Bild fehlt",
+            PdfFailure.Fetch(Outcome.Failure.Rejected()) to "t${R.string.err_session_expired}",
         )) {
-            val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), Export(ExportResult.Fehler(grund)))
-            vm.erstelle("10294")
+            val vm = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)))), Export(ExportResult.Failure(reason)))
+            vm.createNow("10294")
             advanceUntilIdle()
-            vm.exportiere()
+            vm.export()
             advanceUntilIdle()
-            assertEquals("$grund", erwartet, vm.zustand.value.pdf.errorMessage.text)
+            assertEquals("$reason", expected, vm.uiState.value.pdf.errorMessage.text)
         }
     }
 
     @Test
-    fun `the state of the export becomes a sentence, the remaining time only while it lasts`() = runTest(takt) {
-        val stand = MutableStateFlow<PdfProgress?>(PdfProgress(PdfStep.CREATED, 12))
-        val vm = vm(export = Export(ExportResult.Datei(File("x.pdf")), stand))
+    fun `the state of the export becomes a sentence, the remaining time only while it lasts`() = runTest(tick) {
+        val state = MutableStateFlow<PdfProgress?>(PdfProgress(PdfStep.CREATED, 12))
+        val vm = vm(export = Export(ExportResult.FileEntry(File("x.pdf")), state))
         backgroundScope.launch { vm.pdfExportStatus.collect {} }
         advanceUntilIdle()
         assertEquals("t${R.string.pdfexp_creating_eta}", vm.pdfExportStatus.value)
-        stand.value = PdfProgress(PdfStep.CREATED, 0)
+        state.value = PdfProgress(PdfStep.CREATED, 0)
         advanceUntilIdle()
         assertEquals("t${R.string.pdfexp_almost_done}", vm.pdfExportStatus.value)
-        stand.value = null
+        state.value = null
         advanceUntilIdle()
         assertNull(vm.pdfExportStatus.value)
     }
 
     @Test
-    fun `a sign-out empties the build list`() = runTest(takt) {
-        val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))))
-        vm.erstelle("10294")
+    fun `a sign-out empties the build list`() = runTest(tick) {
+        val vm = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)))))
+        vm.createNow("10294")
         advanceUntilIdle()
-        t.sitzung.abgemeldet()
+        t.session.loggedOut()
         advanceUntilIdle()
-        assertTrue(vm.zustand.value.sets.isEmpty())
-        assertTrue(vm.zustand.value.parts.isEmpty())
+        assertTrue(vm.uiState.value.sets.isEmpty())
+        assertTrue(vm.uiState.value.parts.isEmpty())
     }
 
     @Test
-    fun `undo after removing brings back the generated list`() = runTest(takt) {
-        val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)), "21318-1" to listOf(teil("3002", 1)))))
+    fun `undo after removing brings back the generated list`() = runTest(tick) {
+        val vm = vm(Source(mapOf("10294-1" to listOf(part("3001", 2)), "21318-1" to listOf(part("3002", 1)))))
         vm.addAdd("10294")
-        vm.erstelle("21318")
+        vm.createNow("21318")
         advanceUntilIdle()
-        vm.entferne(0)
-        val r = vm.zustand.value.removed!!
-        assertEquals(listOf("21318-1"), vm.zustand.value.sets.map { it.setNumber })
-        assertFalse(vm.zustand.value.generated)
+        vm.remove(0)
+        val r = vm.uiState.value.removed!!
+        assertEquals(listOf("21318-1"), vm.uiState.value.sets.map { it.setNumber })
+        assertFalse(vm.uiState.value.generated)
         vm.undoRemove(r)
-        val z = vm.zustand.value
+        val z = vm.uiState.value
         assertEquals("Wieder an seinem Platz", listOf("10294-1", "21318-1"), z.sets.map { it.setNumber })
         assertTrue("Die Liste gilt wieder, nichts hat sich geändert", z.generated)
         assertNull(z.removed)
     }
 
     @Test
-    fun `undo after a change re-inserts the set, the list must be created anew`() = runTest(takt) {
+    fun `undo after a change re-inserts the set, the list must be created anew`() = runTest(tick) {
         val vm = vm()
         vm.addAdd("10294")
         vm.addAdd("21318")
-        vm.entferne(0)
-        val r = vm.zustand.value.removed!!
+        vm.remove(0)
+        val r = vm.uiState.value.removed!!
         vm.addAdd("42100")
         vm.undoRemove(r)
-        assertEquals(listOf("10294-1", "21318-1", "42100-1"), vm.zustand.value.sets.map { it.setNumber })
-        assertFalse(vm.zustand.value.generated)
+        assertEquals(listOf("10294-1", "21318-1", "42100-1"), vm.uiState.value.sets.map { it.setNumber })
+        assertFalse(vm.uiState.value.generated)
     }
 
     @Test
-    fun `a newer removal keeps its undo`() = runTest(takt) {
+    fun `a newer removal keeps its undo`() = runTest(tick) {
         val vm = vm()
         vm.addAdd("10294")
         vm.addAdd("21318")
-        vm.entferne(0)
-        val erste = vm.zustand.value.removed!!
-        vm.entferne(0)
-        val zweite = vm.zustand.value.removed!!
-        vm.removalSeen(erste)
-        assertEquals(zweite, vm.zustand.value.removed)
-        vm.removalSeen(zweite)
-        assertNull(vm.zustand.value.removed)
+        vm.remove(0)
+        val first = vm.uiState.value.removed!!
+        vm.remove(0)
+        val second = vm.uiState.value.removed!!
+        vm.removalSeen(first)
+        assertEquals(second, vm.uiState.value.removed)
+        vm.removalSeen(second)
+        assertNull(vm.uiState.value.removed)
     }
 }

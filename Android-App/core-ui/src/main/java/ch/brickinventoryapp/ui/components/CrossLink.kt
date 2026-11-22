@@ -12,7 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The way to a related page in another area (watchlist → price alerts, finances → vouchers):
@@ -22,7 +22,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun CrossLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     TextButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)) {
         Text(text)
-        Spacer(Modifier.width(Abstaende.tiny))
+        Spacer(Modifier.width(Spacing.tiny))
         Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(withFont(16.dp)))
     }
 }

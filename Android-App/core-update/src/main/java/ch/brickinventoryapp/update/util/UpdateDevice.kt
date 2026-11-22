@@ -8,7 +8,7 @@ import java.io.File
  * running the PackageManager; on the device, AndroidUpdateDevice (AppUpdate.kt).
  */
 interface UpdateDevice {
-    /** SPKI of the description keys from res/raw/beschreibungs_schluessel.pem. */
+    /** SPKI of the description keys from res/raw/description_key.pem. */
     fun descriptionKey(): List<ByteArray>
     fun updateFile(): File
     fun signatureFits(apk: File): Boolean

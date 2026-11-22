@@ -21,7 +21,7 @@ import org.robolectric.RobolectricTestRunner
  * "hide preview" is off: from Android 13 via setRecentsScreenshotEnabled(false),
  * below that via FLAG_SECURE. Without the lock both stay free.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   uebersicht-ohne-sperrschutz    AppOverviewProtection() does nothing → red in both tests
  *   uebersicht-flag-ab-33          only FLAG_SECURE even from Android 13 → red „ab Android 13 …“
  */
@@ -30,18 +30,18 @@ class AppOverviewProtectionTest {
 
     /** Records the calls instead of handing them to the system service, which Robolectric doesn't replicate. */
     class OverviewProbe : ComponentActivity() {
-        val vorschau = mutableListOf<Boolean>()
-        override fun setRecentsScreenshotEnabled(enabled: Boolean) { vorschau += enabled }
+        val preview = mutableListOf<Boolean>()
+        override fun setRecentsScreenshotEnabled(enabled: Boolean) { preview += enabled }
     }
 
-    private class Speicher(var minuten: Int) : AppLock.Ablage {
-        override fun minuten() = minuten
-        override fun setMinutes(minuten: Int) { this.minuten = minuten }
+    private class Memory(var storedMinutes: Int) : AppLock.Store {
+        override fun minutes() = storedMinutes
+        override fun setMinutes(minutes: Int) { this.storedMinutes = minutes }
         override fun backgroundSince(): Long? = null
-        override fun rememberBackground(seit: Long?) = Unit
+        override fun rememberBackground(since: Long?) = Unit
         override fun backgroundStart(): Int? = null
         override fun rememberBackgroundStart(start: Int?) = Unit
-        override fun gesperrt() = false
+        override fun locked() = false
         override fun setLocked(an: Boolean) = Unit
     }
 
@@ -49,14 +49,14 @@ class AppOverviewProtectionTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val probe = Robolectric.buildActivity(OverviewProbe::class.java).setup().get()
-    private val lock = AppLock({ 0L }, Speicher(minuten = 0))
-    private val stufe = mutableIntStateOf(33)
+    private val lock = AppLock({ 0L }, Memory(storedMinutes = 0))
+    private val level = mutableIntStateOf(33)
 
-    private fun sicher() = (probe.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+    private fun safe() = (probe.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
-    private fun zeige() {
+    private fun show() {
         compose.setContent {
-            CompositionLocalProvider(LocalContext provides probe, LocalSdkLevel provides stufe.intValue) {
+            CompositionLocalProvider(LocalContext provides probe, LocalSdkLevel provides level.intValue) {
                 AppOverviewProtection(lock)
             }
         }
@@ -65,31 +65,31 @@ class AppOverviewProtectionTest {
 
     @Test
     fun `from Android 13 the lock hides only the thumbnail, off releases it`() {
-        zeige()
-        assertEquals("Ohne Sperre kein Eingriff", emptyList<Boolean>(), probe.vorschau)
+        show()
+        assertEquals("Ohne Sperre kein Eingriff", emptyList<Boolean>(), probe.preview)
 
         lock.setMinutes(5)
         compose.waitForIdle()
-        assertEquals("Mit Sperre kein Vorschaubild", listOf(false), probe.vorschau)
-        assertFalse("Bildschirmfotos bleiben erlaubt", sicher())
+        assertEquals("Mit Sperre kein Vorschaubild", listOf(false), probe.preview)
+        assertFalse("Bildschirmfotos bleiben erlaubt", safe())
 
         lock.setMinutes(0)
         compose.waitForIdle()
-        assertEquals("Sperre aus: Vorschaubild wieder frei", listOf(false, true), probe.vorschau)
+        assertEquals("Sperre aus: Vorschaubild wieder frei", listOf(false, true), probe.preview)
     }
 
     @Test
     fun `below Android 13 the lock protects the window with FLAG_SECURE`() {
-        stufe.intValue = 32
-        zeige()
-        assertFalse("Ohne Sperre kein Schutz", sicher())
+        level.intValue = 32
+        show()
+        assertFalse("Ohne Sperre kein Schutz", safe())
 
         lock.setMinutes(1)
         compose.waitForIdle()
-        assertTrue("Mit Sperre zeigt die Übersicht nichts", sicher())
+        assertTrue("Mit Sperre zeigt die Übersicht nichts", safe())
 
         lock.setMinutes(0)
         compose.waitForIdle()
-        assertFalse("Sperre aus: wieder frei", sicher())
+        assertFalse("Sperre aus: wieder frei", safe())
     }
 }

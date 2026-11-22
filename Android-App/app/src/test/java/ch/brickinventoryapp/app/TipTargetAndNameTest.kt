@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.login.ui.AnmeldeFormular
+import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.data.SetCreateStep
@@ -19,20 +19,20 @@ import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
-import ch.brickinventoryapp.catalog.ui.viewmodel.KatalogAktionen
+import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.account.ui.ZweiterFaktorUiState
-import ch.brickinventoryapp.account.ui.screens.EinstellungenZustand
+import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.account.ui.screens.ZweiterFaktorPflichtMaske
-import ch.brickinventoryapp.account.ui.viewmodel.EinstellungenAktionen
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateAktionen
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.domain.KatalogSetAnsicht
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
@@ -44,7 +44,7 @@ import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungAktionen
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.After
@@ -64,7 +64,7 @@ import java.util.Locale
  * (text, description or field); a role alone only says „Schaltfläche“, not which one.
  * Replaces the source search for small IconButtons (TouchTargetSizeTest).
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   tippziel-klein         „Nach Update suchen“ without heightIn, Material button 40 dp → red “einstellungen”
  *                          (a 40 dp row without its own shape stayed green: touchBoundsInRoot stretches it to 48 dp)
  *   tippziel-ohne-namen    add button without description → red “galerie” (without name)
@@ -78,46 +78,46 @@ class TipTargetAndNameTest {
     val compose = createComposeRule()
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val world = Examples.Welt(ContextTexts())
-    private val bilder = SampleImages.loader(ctx)
-    private val vorher = Locale.getDefault()
+    private val world = Examples.World(ContextTexts())
+    private val images = SampleImages.loader(ctx)
+    private val before = Locale.getDefault()
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
     /** An interface whose calls do nothing; only returns without a value are needed. */
-    private inline fun <reified T> keine(): T =
+    private inline fun <reified T> none(): T =
         Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, _, _ -> null } as T
 
-    /** Shows [inhalt] as soon as [bereit] holds, and checks every tappable element. */
-    private fun pruefe(name: String, bereit: () -> Boolean = { true }, inhalt: @Composable () -> Unit) {
-        driveUntil(name, requests = { world.paths.requests.size }, bereit = bereit)
+    /** Shows [content] as soon as [ready] holds, and checks every tappable element. */
+    private fun check(name: String, ready: () -> Boolean = { true }, content: @Composable () -> Unit) {
+        driveUntil(name, requests = { world.paths.requests.size }, ready = ready)
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
-                Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
         }
-        driveUntil("$name (angezeigt)", requests = { world.paths.requests.size }, bereit = bereit)
+        driveUntil("$name (angezeigt)", requests = { world.paths.requests.size }, ready = ready)
         compose.waitForIdle()
-        val dichte = ctx.resources.displayMetrics.density
-        val mindest = 48 * dichte - 0.5f
-        val antippbar = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes()
-        assertTrue("$name: nichts Antippbares gefunden — greift die Suche noch?", antippbar.isNotEmpty())
-        val klein = antippbar.filter { n ->
-            val ziel = n.touchBoundsInRoot
-            maxOf(n.size.width.toFloat(), ziel.width) < mindest || maxOf(n.size.height.toFloat(), ziel.height) < mindest
-        }.map { "${describe(it)} (${(it.size.width / dichte).toInt()}×${(it.size.height / dichte).toInt()} dp)" }
-        val nameless = antippbar.filter { !hatNames(it) }.map { describe(it) }
-        assertTrue("$name: Tippziel unter 48 dp: $klein", klein.isEmpty())
+        val density = ctx.resources.displayMetrics.density
+        val min = 48 * density - 0.5f
+        val tappable = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes()
+        assertTrue("$name: nichts Antippbares gefunden — greift die Suche noch?", tappable.isNotEmpty())
+        val small = tappable.filter { n ->
+            val target = n.touchBoundsInRoot
+            maxOf(n.size.width.toFloat(), target.width) < min || maxOf(n.size.height.toFloat(), target.height) < min
+        }.map { "${describe(it)} (${(it.size.width / density).toInt()}×${(it.size.height / density).toInt()} dp)" }
+        val nameless = tappable.filter { !hasNames(it) }.map { describe(it) }
+        assertTrue("$name: Tippziel unter 48 dp: $small", small.isEmpty())
         assertTrue("$name: ohne Namen: $nameless", nameless.isEmpty())
     }
 
-    private fun hatNames(n: SemanticsNode): Boolean {
+    private fun hasNames(n: SemanticsNode): Boolean {
         val c = n.config
         return c.getOrNull(SemanticsProperties.Text).orEmpty().any { it.text.isNotBlank() } ||
             c.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.isNotBlank() } ||
@@ -131,98 +131,98 @@ class TipTargetAndNameTest {
         return "„$text“ #${n.id}"
     }
 
-    private fun erfassung() = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise,
-        testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(), testCatalogRepository(world.t.api),
+    private fun entryVm() = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints,
+        testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(), testCatalogRepository(world.t.api),
         object : SetCreator {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
+            override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
         }))
 
     @Test
-    fun galerie() {
-        val vm = world.galerie().also { it.loadSets(); it.loadStats() }
-        pruefe("Galerie", { vm.galleryState.value.sets.isNotEmpty() }) {
-            GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+    fun gallery() {
+        val vm = world.gallery().also { it.loadSets(); it.loadStats() }
+        check("Galerie", { vm.galleryState.value.sets.isNotEmpty() }) {
+            GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
     }
 
     @Test
     fun setDetail() {
         val vm = world.setDetail()
-        pruefe("Set-Detail", { vm.setDetailState.value.let { it.setDetail != null && !it.priceFetch.laedt } }) {
-            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+        check("Set-Detail", { vm.setDetailState.value.let { it.setDetail != null && !it.priceFetch.loading } }) {
+            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
         }
     }
 
     @Test
-    fun teile() {
-        val vm = world.teile().also { it.loadParts() }
-        pruefe("Teile", { vm.teileState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = bilder) }
+    fun parts() {
+        val vm = world.parts().also { it.loadParts() }
+        check("Teile", { vm.partsState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
-    fun figuren() {
-        val vm = world.figuren().also { it.loadMinifigs() }
-        pruefe("Figuren", { vm.minifigsState.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
+    fun figures() {
+        val vm = world.figures().also { it.loadMinifigs() }
+        check("Figuren", { vm.minifigsState.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
-    fun finanzen() {
-        val vm = world.finanzen().also { it.loadValuation() }
-        pruefe("Finanzen", { vm.financeState.value.valuation != null }) { FinanceRoute(vm = vm, imageLoader = bilder) }
+    fun finances() {
+        val vm = world.finances().also { it.loadValuation() }
+        check("Finanzen", { vm.financeState.value.valuation != null }) { FinanceRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
-    fun merkliste() {
-        val vm = world.merkliste().also { it.loadWanted() }
-        pruefe("Merkliste", { vm.wantedState.value.merkposten.isNotEmpty() }) {
-            WantedRoute(vm = vm, imageLoader = bilder, onScan = {}, onOpenSingle = { _, _ -> })
+    fun wantedList() {
+        val vm = world.wantedList().also { it.loadWanted() }
+        check("Merkliste", { vm.wantedState.value.wantedItem.isNotEmpty() }) {
+            WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
     }
 
     @Test
-    fun katalog() {
-        val sets = (1..4).map { KatalogSetAnsicht(setNumber = "1030$it-1", name = "Beispielset $it", year = 2020 + it, numParts = 500 * it) }
-        pruefe("Katalog") {
+    fun catalog() {
+        val sets = (1..4).map { CatalogSetView(setNumber = "1030$it-1", name = "Beispielset $it", year = 2020 + it, numParts = 500 * it) }
+        check("Katalog") {
             CatalogScreen(CatalogUiState(loadedPages = mapOf(1 to sets), total = sets.size), serverUrl = "",
-                katalog = keine<KatalogAktionen>(), imageLoader = bilder, onSetClick = {})
+                catalog = none<CatalogActions>(), imageLoader = images, onSetClick = {})
         }
     }
 
     @Test
-    fun gutscheine() = pruefe("Gutscheine") { Gutscheine() }
+    fun vouchers() = check("Gutscheine") { Vouchers() }
 
     @Test
-    fun einstellungen() = pruefe("Einstellungen") {
+    fun settings() = check("Einstellungen") {
         SettingsScreen(
-            zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
+            condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
                 "system", Design.CLASSIC, false, false, false, false),
-            aktionen = keine<EinstellungenAktionen>(), update = keine<UpdateAktionen>(),
-            darstellung = keine<DarstellungAktionen>(), onNutzerCa = {}, onLogout = {}, onServerWechseln = {},
+            actions = none<SettingsActions>(), update = none<UpdateActions>(),
+            appearance = none<AppearanceActions>(), onUserCa = {}, onLogout = {}, onServerSwitch = {},
             scrollState = androidx.compose.foundation.rememberScrollState(),
         )
     }
 
     @Test
-    fun anmelden() = pruefe("Anmelden") { login(AnmeldeFormular.ANMELDEN) }
+    fun logIn() = check("Anmelden") { login(LoginForm.LOGIN) }
 
     @Test
-    fun registrieren() = pruefe("Registrieren") { login(AnmeldeFormular.REGISTER) }
+    fun register() = check("Registrieren") { login(LoginForm.REGISTER) }
 
     @Test
-    fun einrichten() = pruefe("Einrichten") { SetupScreen(currentUrl = "https://brick.example.org", onSave = {}, entwicklung = false) }
+    fun setUp() = check("Einrichten") { SetupScreen(currentUrl = "https://brick.example.org", onSave = {}, development = false) }
 
     @Test
-    fun startpasswort() = pruefe("Startpasswort") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
+    fun startPassword() = check("Startpasswort") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
 
     @Test
-    fun zweiterFaktor() = pruefe("Zweiter Faktor") { ZweiterFaktorPflichtMaske(ZweiterFaktorUiState(aktiv = false), {}, {}, {}, {}) }
+    fun secondFactor() = check("Zweiter Faktor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
 
     @Composable
-    private fun login(formular: AnmeldeFormular) = LoginScreen(
-        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
-        formular = formular, registrierungOffen = true, kontoLaeuft = false,
-        kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> }, onFormular = {},
-        onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+    private fun login(form: LoginForm) = LoginScreen(
+        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
+        form = form, registrationOpen = true, accountRunning = false,
+        accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
+        onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
     )
 }

@@ -6,13 +6,13 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.contract.AppThemeResponse
 import ch.brickinventoryapp.model.domain.AccountSettings
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.model.domain.Waehrung
-import ch.brickinventoryapp.data.Sitzungsablage
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.data.SessionStore
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.session.Kontowerte
-import ch.brickinventoryapp.session.Sitzung
+import ch.brickinventoryapp.session.AccountValues
+import ch.brickinventoryapp.session.Session
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import ch.brickinventoryapp.contract.MeResponse
@@ -22,8 +22,8 @@ import ch.brickinventoryapp.contract.TokenInfo
 import ch.brickinventoryapp.session.tokenEndsSoon
 import java.time.Instant
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.session.Abmeldevorgang
-import ch.brickinventoryapp.session.SitzungsDienst
+import ch.brickinventoryapp.session.LogoutProcess
+import ch.brickinventoryapp.session.SessionService
 import ch.brickinventoryapp.session.WarmUp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,13 +49,13 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.TestServices
 import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Message
 
 /**
- * SitzungsDienst put to the test: signing out on 401 and on a too-old sign-in,
+ * SessionService put to the test: signing out on 401 and on a too-old sign-in,
  * right revocation, theme and server startup. Without a network (FakeApi) and in virtual
  * time (StandardTestDispatcher), so „nothing happens“ is testable without waiting.
  *
@@ -66,12 +66,12 @@ import ch.brickinventoryapp.model.ui.Meldung
  *   serverstart-ohne-ende           `r.data.ready` removed from the stop condition → red „der Serverstart …“
  *   abgelaufen-vor-dem-start        the 401 collector with drop(1) → red „ein 401 vor dem Start …“
  *   anmeldung-ohne-abbruch          in sequenceLogin `collect` instead of `collectLatest` and the
- *                                   steps in `bereich` instead of the sign-in's own scope → red
+ *                                   steps in `area` instead of the sign-in's own scope → red
  *                                   „eine späte Antwort des alten Kontos …“ (CHF instead of USD)
- *   waehrung-zurueckgespiegelt      in starte() restored `sitzung.state.map { it.currency }…
+ *   waehrung-zurueckgespiegelt      in launch() restored `sitzung.state.map { it.currency }…
  *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design
  *                                   kommen aus der Ablage …“ (one write instead of none)
- *   ablauf-ohne-hinweis             the loginExpiresSoon() check in anmeldung() removed → red
+ *   ablauf-ohne-hinweis             the loginExpiresSoon() check in login() removed → red
  *                                   „a sign-in near its end asks …“ (no notification)
  *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end
  *                                   within a week …“
@@ -79,35 +79,35 @@ import ch.brickinventoryapp.model.ui.Meldung
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionServiceTest {
 
-    private val takt = StandardTestDispatcher()
+    private val tick = StandardTestDispatcher()
     private val fake = FakeApi()
-    private val ablage = StorageSessionStore()
+    private val store = StorageSessionStore()
     private var currencyWritten = 0
 
     /** The store, as the service sees it; counts whether it writes the currency back. */
-    private val prefs = object : Sitzungsablage by ablage {
-        override suspend fun saveCurrency(cur: Waehrung) { currencyWritten++; ablage.saveCurrency(cur) }
+    private val prefs = object : SessionStore by store {
+        override suspend fun saveCurrency(cur: CurrencyCode) { currencyWritten++; store.saveCurrency(cur) }
     }
 
     /** Currency and theme from the same store, like StoreAccountValues on the device. */
-    private val sitzung = Sitzung(object : Kontowerte {
-        override val waehrung: StateFlow<Waehrung> = ablage.waehrung
-        override val design: StateFlow<Design> = ablage.design
-        override fun setCurrency(w: Waehrung) { ablage.waehrung.value = w }
-        override fun setzeDesign(d: Design) { ablage.design.value = d }
+    private val session = Session(object : AccountValues {
+        override val currency: StateFlow<CurrencyCode> = store.currencyState
+        override val design: StateFlow<Design> = store.design
+        override fun setCurrency(w: CurrencyCode) { store.currencyState.value = w }
+        override fun setDesign(d: Design) { store.design.value = d }
     })
 
     /** One response to /settings per sign-in: delay and currency. */
-    private val einstellungen = ArrayDeque<Pair<Long, Waehrung>>()
+    private val settings = ArrayDeque<Pair<Long, CurrencyCode>>()
     private val expiredSignal = SessionExpiredSignal()
     private val rights = RightsSignal()
-    private lateinit var t: TestDienste
-    private var signOuts = 0
-    private var vorgewaermt = 0
+    private lateinit var t: TestServices
+    private var logouts = 0
+    private var prewarmed = 0
 
-    @Before fun auf() {
-        Dispatchers.setMain(takt)
-        t = TestDienste(fake.api, io = takt)
+    @Before fun setUp() {
+        Dispatchers.setMain(tick)
+        t = TestServices(fake.api, io = tick)
     }
 
     @After fun ab() {
@@ -115,209 +115,209 @@ class SessionServiceTest {
     }
 
     /** Creates and starts the service, runs [block], and ends its coroutines. */
-    private fun withVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
-        val bereich = CoroutineScope(SupervisorJob() + takt)
-        val echt = testAccountRepository(fake.api)
-        val konto = object : AccountRepository by echt {
-            override suspend fun getSettings(): Ergebnis<AccountSettings> {
-                val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
-                delay(dauer)
-                return Ergebnis.Erfolg(AccountSettings(waehrung, Zustand.NEU, Zustand.NEU, Zustand.NEU))
+    private fun withVm(block: suspend TestScope.(SessionService) -> Unit) = runTest(tick) {
+        val area = CoroutineScope(SupervisorJob() + tick)
+        val real = testAccountRepository(fake.api)
+        val account = object : AccountRepository by real {
+            override suspend fun getSettings(): Outcome<AccountSettings> {
+                val (duration, currency) = settings.removeFirstOrNull() ?: return real.getSettings()
+                delay(duration)
+                return Outcome.Success(AccountSettings(currency, Condition.NEW, Condition.NEW, Condition.NEW))
             }
         }
-        val dienst = SitzungsDienst(
-            konto = konto, verwaltung = testManagementRepository(fake.api), prefs = prefs, sessionExpired = expiredSignal, rights = rights,
-            meldungen = t.meldungen, sitzung = sitzung, blickfeld = t.blickfeld,
-            sync = t.sync, zweiterFaktorPflicht = SecondFactorRequired(),
-            abmeldevorgang = Abmeldevorgang {
-                signOuts++
-                ablage.token.value = ""
-                sitzung.abgemeldet()
+        val service = SessionService(
+            account = account, admin = testManagementRepository(fake.api), prefs = prefs, sessionExpired = expiredSignal, rights = rights,
+            messages = t.messages, session = session, viewport = t.viewport,
+            sync = t.sync, secondFactorRequired = SecondFactorRequired(),
+            logoutProcess = LogoutProcess {
+                logouts++
+                store.token.value = ""
+                session.loggedOut()
                 null
             },
-            vorwaermen = WarmUp { vorgewaermt++ },
-            bereich = bereich,
+            prewarm = WarmUp { prewarmed++ },
+            area = area,
         )
         try {
-            dienst.starte()
-            block(dienst)
+            service.launch()
+            block(service)
         } finally {
-            bereich.cancel()
+            area.cancel()
         }
     }
 
-    private fun angemeldet() {
-        ablage.server.value = "https://brick.example"
-        ablage.token.value = "token"
+    private fun loggedIn() {
+        store.server.value = "https://brick.example"
+        store.token.value = "token"
     }
 
     @Test
     fun `a 401 signs out the signed-in session, a second one stays silent`() = withVm {
-        angemeldet()
+        loggedIn()
         advanceUntilIdle()
-        assertTrue(sitzung.state.value.isLoggedIn)
-        assertEquals("Nach dem Anmelden wird vorgewärmt", 1, vorgewaermt)
+        assertTrue(session.state.value.isLoggedIn)
+        assertEquals("Nach dem Anmelden wird vorgewärmt", 1, prewarmed)
 
         expiredSignal.notifyExpired()
         advanceUntilIdle()
-        assertEquals(1, signOuts)
-        assertFalse(sitzung.state.value.isLoggedIn)
-        assertEquals("t${R.string.vm_session_expired}", t.meldungen.text)
+        assertEquals(1, logouts)
+        assertFalse(session.state.value.isLoggedIn)
+        assertEquals("t${R.string.vm_session_expired}", t.messages.text)
 
-        t.meldungen.acknowledge()
+        t.messages.acknowledge()
         expiredSignal.notifyExpired()
         advanceUntilIdle()
-        assertEquals("Abgemeldet meldet ein 401 nicht noch einmal ab", 1, signOuts)
-        assertNull(t.meldungen.text)
+        assertEquals("Abgemeldet meldet ein 401 nicht noch einmal ab", 1, logouts)
+        assertNull(t.messages.text)
     }
 
     @Test
     fun `a too old sign-in signs out without loading the account`() = withVm {
-        ablage.abgelaufen = true
-        angemeldet()
+        store.expired = true
+        loggedIn()
         advanceUntilIdle()
-        assertEquals(1, signOuts)
-        assertEquals("t${R.string.vm_anmeldung_zu_alt}", t.meldungen.text)
+        assertEquals(1, logouts)
+        assertEquals("t${R.string.vm_login_too_old}", t.messages.text)
         assertEquals(0, fake.callsOf("getMe"))
-        assertEquals(0, vorgewaermt)
+        assertEquals(0, prewarmed)
     }
 
     @Test
     fun `a sign-in near its end asks for a new one and keeps loading`() = withVm {
-        ablage.laeuftBaldAb = true
-        angemeldet()
+        store.expiresSoon = true
+        loggedIn()
         advanceUntilIdle()
-        assertEquals(0, signOuts)
-        assertEquals("t${R.string.vm_anmeldung_laeuft_ab}", t.meldungen.text)
+        assertEquals(0, logouts)
+        assertEquals("t${R.string.vm_login_running_ab}", t.messages.text)
         assertEquals("Das Konto lädt trotzdem", 1, fake.callsOf("getMe"))
     }
 
     @Test
     fun `a server end within a week asks for a new sign-in, a later one does not`() = withVm {
         val tag = 24L * 60 * 60 * 1000
-        val bald = Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna"),
-            tokenInfo = TokenInfo(scope = "app", hardExpiresAt = bald, neverExpires = false))
-        angemeldet()
+        val soon = Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
+        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna"),
+            tokenInfo = TokenInfo(scope = "app", hardExpiresAt = soon, neverExpires = false))
+        loggedIn()
         advanceUntilIdle()
-        assertEquals(0, signOuts)
-        assertEquals("t${R.string.vm_anmeldung_laeuft_ab}", t.meldungen.text)
-        val jetzt = System.currentTimeMillis()
-        assertTrue(tokenEndsSoon(Instant.ofEpochMilli(jetzt + 3 * tag), jetzt))
-        assertFalse(tokenEndsSoon(Instant.ofEpochMilli(jetzt + 30 * tag), jetzt))
-        assertFalse("Ohne Angabe sagt es nichts", tokenEndsSoon(null, jetzt))
+        assertEquals(0, logouts)
+        assertEquals("t${R.string.vm_login_running_ab}", t.messages.text)
+        val now = System.currentTimeMillis()
+        assertTrue(tokenEndsSoon(Instant.ofEpochMilli(now + 3 * tag), now))
+        assertFalse(tokenEndsSoon(Instant.ofEpochMilli(now + 30 * tag), now))
+        assertFalse("Ohne Angabe sagt es nichts", tokenEndsSoon(null, now))
     }
 
     @Test
     fun `revoked admin rights apply immediately and are reported once`() = withVm {
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
-        angemeldet()
+        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
+        loggedIn()
         advanceUntilIdle()
-        assertTrue(sitzung.state.value.isAdmin)
+        assertTrue(session.state.value.isAdmin)
 
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
-        rights.melde()
+        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
+        rights.report()
         advanceUntilIdle()
-        assertFalse(sitzung.state.value.isAdmin)
-        assertEquals("t${R.string.vm_rechte_entzogen}", t.meldungen.text)
+        assertFalse(session.state.value.isAdmin)
+        assertEquals("t${R.string.vm_rights_revoked}", t.messages.text)
 
-        t.meldungen.acknowledge()
+        t.messages.acknowledge()
         val fetches = fake.callsOf("getMe")
-        rights.melde()
+        rights.report()
         advanceUntilIdle()
         assertEquals("Ohne Verwalterrecht kein weiterer Abruf", fetches, fake.callsOf("getMe"))
-        assertNull(t.meldungen.text)
+        assertNull(t.messages.text)
     }
 
     @Test
     fun `the server's design applies and is remembered, without a response the remembered one stays`() = withVm {
-        ablage.design.value = Design.BRICK
-        ablage.server.value = "https://brick.example"
+        store.design.value = Design.BRICK
+        store.server.value = "https://brick.example"
         fake.codes["getAppTheme"] = 500
         advanceUntilIdle()
-        assertEquals(Design.BRICK, sitzung.state.value.appTheme)
-        assertEquals(Design.BRICK, ablage.design.value)
+        assertEquals(Design.BRICK, session.state.value.appTheme)
+        assertEquals(Design.BRICK, store.design.value)
 
         fake.codes.clear()
-        fake.antworten["getAppTheme"] = AppThemeResponse(success = true, theme = Design.NOPPE)
-        angemeldet()
+        fake.responses["getAppTheme"] = AppThemeResponse(success = true, theme = Design.STUD)
+        loggedIn()
         advanceUntilIdle()
-        assertEquals(Design.NOPPE, sitzung.state.value.appTheme)
-        assertEquals("Das Design des Kontos überlebt den Kaltstart", Design.NOPPE, ablage.design.value)
+        assertEquals(Design.STUD, session.state.value.appTheme)
+        assertEquals("Das Design des Kontos überlebt den Kaltstart", Design.STUD, store.design.value)
     }
 
     @Test
     fun `a late response of the old account does not write into the new session`() = withVm {
-        einstellungen.addLast(1_000L to Waehrung.CHF)
-        einstellungen.addLast(10L to Waehrung("USD"))
-        angemeldet()
+        settings.addLast(1_000L to CurrencyCode.CHF)
+        settings.addLast(10L to CurrencyCode("USD"))
+        loggedIn()
         runCurrent()
         advanceTimeBy(100)
         // A different account signs in before the old one got its settings.
-        ablage.token.value = "anderes"
+        store.token.value = "anderes"
         advanceUntilIdle()
-        assertEquals(Waehrung("USD"), sitzung.state.value.currency)
-        assertEquals("die Ablage hält die Währung des neuen Kontos", Waehrung("USD"), ablage.waehrung.value)
+        assertEquals(CurrencyCode("USD"), session.state.value.currency)
+        assertEquals("die Ablage hält die Währung des neuen Kontos", CurrencyCode("USD"), store.currencyState.value)
     }
 
     @Test
     fun `currency and design come from the store, the session writes nothing back`() = withVm {
         advanceUntilIdle()
-        ablage.waehrung.value = Waehrung.CHF
-        ablage.design.value = Design.NOPPE
+        store.currencyState.value = CurrencyCode.CHF
+        store.design.value = Design.STUD
         advanceUntilIdle()
-        assertEquals(Waehrung.CHF, sitzung.state.value.currency)
-        assertEquals(Design.NOPPE, sitzung.state.value.appTheme)
+        assertEquals(CurrencyCode.CHF, session.state.value.currency)
+        assertEquals(Design.STUD, session.state.value.appTheme)
         assertEquals("kein Spiegel zurück in die Ablage", 0, currencyWritten)
     }
 
     @Test
     fun `the server start is followed at intervals until the server is ready`() = withVm {
-        ablage.server.value = "https://brick.example"
-        fake.antworten["getStartupStatus"] = StartupStatus(ready = false, step = "Katalog", progress = 2.0, total = 8)
+        store.server.value = "https://brick.example"
+        fake.responses["getStartupStatus"] = StartupStatus(ready = false, step = "Katalog", progress = 2.0, total = 8)
         runCurrent()
-        assertNotNull(sitzung.state.value.startupStatus)
-        val erste = fake.callsOf("getStartupStatus")
-        assertEquals(1, erste)
+        assertNotNull(session.state.value.startupStatus)
+        val first = fake.callsOf("getStartupStatus")
+        assertEquals(1, first)
 
         advanceTimeBy(2_001)
         assertEquals("Alle zwei Sekunden eine Abfrage", 2, fake.callsOf("getStartupStatus"))
 
-        fake.antworten["getStartupStatus"] = StartupStatus(ready = true)
+        fake.responses["getStartupStatus"] = StartupStatus(ready = true)
         advanceTimeBy(2_001)
-        assertNull(sitzung.state.value.startupStatus)
+        assertNull(session.state.value.startupStatus)
         advanceTimeBy(60_000)
         assertEquals("Fertig heisst: keine Abfrage mehr", 3, fake.callsOf("getStartupStatus"))
     }
 
     @Test
     fun `without a response no server starts, the polling stops`() = withVm {
-        ablage.server.value = "https://falsch-getippt.example"
+        store.server.value = "https://falsch-getippt.example"
         fake.codes["getStartupStatus"] = 503
         advanceTimeBy(10_000)
-        assertNull(sitzung.state.value.startupStatus)
+        assertNull(session.state.value.startupStatus)
         assertEquals(1, fake.callsOf("getStartupStatus"))
     }
 
     @Test
     fun `a finally failed sign-out at the server is reported once`() {
-        ablage.gescheitert += "https://alt.example"
+        store.failed += "https://alt.example"
         withVm {
-            val m = t.meldungen.meldung.value as Meldung.Resource
-            assertEquals(R.string.abmeldung_gescheitert_text, m.id)
-            assertTrue("der Server steht im Satz: ${m.werte}", m.werte.single().toString().contains("alt.example"))
-            assertTrue(ablage.gescheitert.isEmpty())
+            val m = t.messages.message.value as Message.Resource
+            assertEquals(R.string.logout_failed_text, m.id)
+            assertTrue("der Server steht im Satz: ${m.values}", m.values.single().toString().contains("alt.example"))
+            assertTrue(store.failed.isEmpty())
         }
     }
 
     @Test
     fun `a 401 before the start is not lost`() {
-        angemeldet()
+        loggedIn()
         expiredSignal.notifyExpired()
         withVm {
             advanceUntilIdle()
-            assertEquals(1, signOuts)
-            assertFalse("quittiert", expiredSignal.abgelaufen.value)
+            assertEquals(1, logouts)
+            assertFalse("quittiert", expiredSignal.expired.value)
         }
     }
 }

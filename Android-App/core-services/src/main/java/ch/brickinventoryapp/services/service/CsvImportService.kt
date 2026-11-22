@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -11,8 +11,8 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.SetFilesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -29,14 +29,14 @@ import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.util.LanguageManager
 
 /** The foreground service of a running CSV import; a counter in the test. */
-interface CsvImportDienst {
+interface CsvImportRunner {
     fun start()
     fun stop()
 }
 
 internal class AndroidCsvImportService @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-) : CsvImportDienst {
+) : CsvImportRunner {
     override fun start() = CsvImportService.start(ctx)
     override fun stop() = CsvImportService.stop(ctx)
 }
@@ -71,7 +71,7 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var dateien: SetDateienRepository
+    @Inject lateinit var files: SetFilesRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service context in the chosen app language: setApplicationLocales()
@@ -96,7 +96,7 @@ class CsvImportService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        fangeAusserAbbruch {
+        catchUnlessCancelled {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
@@ -122,7 +122,7 @@ class CsvImportService : Service() {
         pollJob = serviceScope.launch {
             var errors = 0
             while (isActive) {
-                val sseFailed = !folgeStrom(sseClient.stream()) { status ->
+                val sseFailed = !followStream(sseClient.stream()) { status ->
                     errors = 0
                     applyStatus(status)
                 }
@@ -155,11 +155,11 @@ class CsvImportService : Service() {
     private enum class PollResult { RUNNING, FINISHED, ERROR }
 
     /** One status query of the fallback. */
-    private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
-        when (val resp = dateien.getCsvImportStatus()) {
-            is Ergebnis.Erfolg ->
+    private suspend fun pollOnce(): PollResult = catchUnlessCancelled {
+        when (val resp = files.getCsvImportStatus()) {
+            is Outcome.Success ->
                 if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-            is Ergebnis.Fehler -> PollResult.ERROR
+            is Outcome.Failure -> PollResult.ERROR
         }
     }.getOrElse { PollResult.ERROR }
 
@@ -170,7 +170,7 @@ class CsvImportService : Service() {
      * @return true as long as the import is running, false once it's done.
      */
     private fun applyStatus(s: CsvImportStatusView): Boolean {
-        val running = s.status?.laeuft == true
+        val running = s.status?.running == true
         val done    = s.done
         val total   = s.total
         val current = s.current ?: ""

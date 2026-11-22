@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Message
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineScope
 import org.junit.Assert.assertTrue
 import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.AlarmPlanner
 import ch.brickinventoryapp.data.DevicesSettings
-import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.viewmodel.GeraeteEinstellungenViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +33,7 @@ import ch.brickinventoryapp.testing.text
  * is stored, the alert scheduled, and a scheduling failure comes
  * with class and message into the notification channel.
  *
- * Counter-checks (gegenproben/, measured locally with fakes):
+ * Counter-checks (counter-checks/, measured locally with fakes):
  *   geraet-alarm-nicht-eingeplant  alarmMessages() doesn't schedule
  *                                  → red „the switch saves and schedules“
  *   geraet-fehler-verschluckt      the scheduling error doesn't go into the channel
@@ -44,42 +44,42 @@ import ch.brickinventoryapp.testing.text
 @OptIn(ExperimentalCoroutinesApi::class)
 class DevicesSettingsViewModelTest {
 
-    private class Ablage : DevicesSettings {
+    private class Store : DevicesSettings {
         val alarm = MutableStateFlow(false)
-        val networks = VorwaermNetwork.entries.associateWith { MutableStateFlow(it == VorwaermNetwork.WLAN) }
-        override val alarmMessagesAn: Flow<Boolean> = alarm
+        val networks = PrewarmNetwork.entries.associateWith { MutableStateFlow(it == PrewarmNetwork.WIFI) }
+        override val alarmMessagesEnabled: Flow<Boolean> = alarm
         override suspend fun setAlarmMessages(an: Boolean) { alarm.value = an }
-        override fun warmUpAllowed(netz: VorwaermNetwork): Flow<Boolean> = networks.getValue(netz)
-        override suspend fun warmUpSet(netz: VorwaermNetwork, erlaubt: Boolean) { networks.getValue(netz).value = erlaubt }
+        override fun warmUpAllowed(network: PrewarmNetwork): Flow<Boolean> = networks.getValue(network)
+        override suspend fun warmUpSet(network: PrewarmNetwork, allowed: Boolean) { networks.getValue(network).value = allowed }
     }
 
     private class Planner : AlarmPlanner {
-        val auftraege = mutableListOf<Boolean>()
-        var fehler: Throwable? = null
-        override suspend fun einplanen(an: Boolean): Throwable? { auftraege += an; return fehler }
+        val jobs = mutableListOf<Boolean>()
+        var error: Throwable? = null
+        override suspend fun schedule(an: Boolean): Throwable? { jobs += an; return error }
     }
 
-    private val ablage = Ablage()
+    private val store = Store()
     private val planner = Planner()
-    private val kanal = MeldungsKanal()
+    private val channel = MessageChannel()
     private val root = Files.createTempDirectory("vorschau").toFile()
-    private val vorschau = VorschauSpeicher({ root }, StoreCipher { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
-    private lateinit var vm: GeraeteEinstellungenViewModel
+    private val preview = PreviewMemory({ root }, StoreCipher { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
+    private lateinit var vm: DevicesSettingsViewModel
     private lateinit var collector: Job
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        vorschau.schreibe("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
-        vm = GeraeteEinstellungenViewModel(ablage, planner, kanal, vorschau)
+        preview.write("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
+        vm = DevicesSettingsViewModel(store, planner, channel, preview)
         collector = CoroutineScope(Dispatchers.Main).launch {
-            launch { vm.alarmMessagesAn.collect {} }
-            launch { vm.vorwaermen.collect {} }
+            launch { vm.alarmMessagesEnabled.collect {} }
+            launch { vm.prewarm.collect {} }
         }
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         collector.cancel()
         Dispatchers.resetMain()
         root.deleteRecursively()
@@ -88,29 +88,29 @@ class DevicesSettingsViewModelTest {
     @Test
     fun `the switch saves and schedules`() {
         vm.alarmMessages(true)
-        assertEquals(true, vm.alarmMessagesAn.value)
+        assertEquals(true, vm.alarmMessagesEnabled.value)
         vm.alarmMessages(false)
-        assertEquals(false, vm.alarmMessagesAn.value)
-        assertEquals(listOf(true, false), planner.auftraege)
-        assertNull("Ohne Fehlschlag keine Meldung", kanal.text)
+        assertEquals(false, vm.alarmMessagesEnabled.value)
+        assertEquals(listOf(true, false), planner.jobs)
+        assertNull("Ohne Fehlschlag keine Meldung", channel.text)
     }
 
     @Test
     fun `a failure when scheduling is reported`() {
-        planner.fehler = IllegalStateException("WorkManager fehlt")
+        planner.error = IllegalStateException("WorkManager fehlt")
         vm.alarmMessages(true)
-        assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMessagesAn.value)
-        assertEquals(Meldung.Resource(R.string.alert_schedule_failed, listOf("IllegalStateException: WorkManager fehlt")),
-            kanal.meldung.value)
+        assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMessagesEnabled.value)
+        assertEquals(Message.Resource(R.string.alert_schedule_failed, listOf("IllegalStateException: WorkManager fehlt")),
+            channel.message.value)
     }
 
     @Test
     fun `the networks can be set individually`() {
-        assertEquals(GeraeteEinstellungenViewModel.WARM_UP_DEFAULT, vm.vorwaermen.value)
-        vm.vorwaermen(VorwaermNetwork.ROAMING, true)
-        vm.vorwaermen(VorwaermNetwork.WLAN, false)
-        assertEquals(mapOf(VorwaermNetwork.WLAN to false, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to true),
-            vm.vorwaermen.value)
+        assertEquals(DevicesSettingsViewModel.WARM_UP_DEFAULT, vm.prewarm.value)
+        vm.prewarm(PrewarmNetwork.ROAMING, true)
+        vm.prewarm(PrewarmNetwork.WIFI, false)
+        assertEquals(mapOf(PrewarmNetwork.WIFI to false, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to true),
+            vm.prewarm.value)
     }
 
     @Test
@@ -118,7 +118,7 @@ class DevicesSettingsViewModelTest {
         assertTrue("Die belegte Ablage zeigt keine Bytes", vm.storeBytes.value > 0)
         vm.clearStore()
         assertEquals(0L, vm.storeBytes.value)
-        assertEquals(0L, vorschau.belegt())
-        assertEquals(Meldung.Resource(R.string.monitoring_cache_saved), kanal.meldung.value)
+        assertEquals(0L, preview.occupied())
+        assertEquals(Message.Resource(R.string.monitoring_cache_saved), channel.message.value)
     }
 }

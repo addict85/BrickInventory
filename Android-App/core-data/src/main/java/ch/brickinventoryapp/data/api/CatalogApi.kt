@@ -33,7 +33,7 @@ interface CatalogApi {
     suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
 
     @GET("api/v1/catalog/year-verteilung")
-    suspend fun getCatalogYearVerteilung(
+    suspend fun getCatalogYearDistribution(
         @Query("q") q: String? = null,
         @Query("theme_id") themeId: Int? = null,
         @Query("sort") sort: String? = null

@@ -12,10 +12,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Changing a manually entered part's color after the fact — the app side.
@@ -34,7 +34,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *
  * ── Counter-checks ─────────────────────────────────────────────────────────────
  *
- * Cases 1 and 4 run against a PfadServer without network (PartsViewModel, PartsRepository),
+ * Cases 1 and 4 run against a PathServer without network (PartsViewModel, PartsRepository),
  * cases 2 and 3 read the screen and the graph. Measured:
  *   A  in PartsApi the address to "…/colour" → red “the app calls the same
  *      service as the web app”
@@ -42,28 +42,28 @@ import ch.brickinventoryapp.testing.TestDienste
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartColorChangeTest {
 
-    private val paths = PfadServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
-    private val t = TestDienste(paths.imTakt(), io = Dispatchers.Main)
+    private val paths = PathServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
+    private val t = TestServices(paths.onTick(), io = Dispatchers.Main)
 
     @Before
-    fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @After
-    fun zu() {
-        t.aufraeumen()
+    fun tearDown() {
+        t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
 
-    private fun vm() = t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testPartsRepository(t.api), t.kontosicht, SavedStateHandle()))
+    private fun vm() = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView, SavedStateHandle()))
     private val screen by lazy {
-        Quellen.withoutComments(Quellen.lies("parts/ui/screens/ManualItemDetailScreen.kt"))
+        Sources.withoutComments(Sources.read("parts/ui/screens/ManualItemDetailScreen.kt"))
     }
     private val graph by lazy {
-        Quellen.withoutComments(Quellen.lies("parts/ui/TeileGraph.kt"))
+        Sources.withoutComments(Sources.read("parts/ui/PartsGraph.kt"))
     }
-    private val feld by lazy {
-        Quellen.withoutComments(Quellen.lies("parts/ui/screens/FarbWahlFeld.kt"))
+    private val field by lazy {
+        Sources.withoutComments(Sources.read("parts/ui/screens/ColorChoiceField.kt"))
     }
 
     /**
@@ -74,14 +74,14 @@ class PartColorChangeTest {
      */
     @Test
     fun `the app calls the same service as the web app`() {
-        var geoeffnet: Int? = null
-        vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
-        assertTrue("neu geöffnet", geoeffnet != null)
+        var opened: Int? = null
+        vm().setPartColor("3001", 5, 11, owner = 7) { opened = it }
+        assertTrue("neu geöffnet", opened != null)
         // The store fetches the color itself afterward; only the call is counted.
-        assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), paths.requestsAn("/color"))
-        val koerper = paths.koerper[paths.requests.indexOfFirst { "/color" in it }]
-        assertTrue(koerper, koerper.contains("\"color_id\":11"))
-        assertEquals("Der Bildschirm öffnet mit der neuen Farbe", 11, geoeffnet)
+        assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), paths.requestsTo("/color"))
+        val bodyBytes = paths.bodyBytes[paths.requests.indexOfFirst { "/color" in it }]
+        assertTrue(bodyBytes, bodyBytes.contains("\"color_id\":11"))
+        assertEquals("Der Bildschirm öffnet mit der neuen Farbe", 11, opened)
         assertTrue("Der Bildschirm reicht den Besitzer der Karte nicht weiter",
             Regex("""owner\s*=\s*part\?\.userId""").containsMatchIn(screen))
     }
@@ -90,15 +90,15 @@ class PartColorChangeTest {
     fun `after the change the screen opens with the new color`() {
         assertTrue(
             "Der Bildschirm wird nach der Aenderung nicht neu geoeffnet: In " +
-                "TeileGraph.kt fehlt onFarbeGeaendert. Die Farbe ist Teil der " +
+                "PartsGraph.kt fehlt onColorChanged. Die Farbe ist Teil der " +
                 "Route und der Suche nach der Zeile — der Bildschirm stuende leer da, " +
                 "obwohl die Aenderung geklappt hat.",
-            graph.contains("onFarbeGeaendert")
+            graph.contains("onColorChanged")
         )
         assertTrue(
             "onFarbeGeaendert navigiert nicht auf ManualItemDetail mit der neuen Farbe.",
             Regex(
-                """onFarbeGeaendert\s*=\s*\{[^}]*navigate\(ziel\.copy\(colorId\s*=\s*neueFarbe\)\)""",
+                """onColorChanged\s*=\s*\{[^}]*navigate\(target\.copy\(colorId\s*=\s*newColor\)\)""",
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )
@@ -109,33 +109,33 @@ class PartColorChangeTest {
             "Vor dem neuen Aufruf fehlt das popBackStack() — der alte Eintrag mit " +
                 "der falschen Farbe bliebe im Rueckweg stehen.",
             Regex(
-                """onFarbeGeaendert\s*=\s*\{[^}]*popBackStack\(\)[^}]*navigate""",
+                """onColorChanged\s*=\s*\{[^}]*popBackStack\(\)[^}]*navigate""",
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )
         assertTrue(
             "Der Screen gibt onFarbeGeaendert nicht an setzeTeilFarbe weiter — dann " +
                 "wird nach der Aenderung nichts neu geoeffnet.",
-            Regex("""onFertig\s*=\s*onFarbeGeaendert""").containsMatchIn(screen)
+            Regex("""onDone\s*=\s*onColorChanged""").containsMatchIn(screen)
         )
     }
 
     @Test
     fun `the color row does not depend on an existing color name`() {
-        // The call to FarbWahlFeld must not stand under a condition
+        // The call to ColorChoiceField must not stand under a condition
         // that demands the color name. What is checked is the block BEFORE the call:
         // the next condition above it is `if (!isFig) {` — and nothing
         // else.
-        val i = screen.indexOf("FarbWahlFeld(")
+        val i = screen.indexOf("ColorChoiceField(")
         assertTrue(
-            "FarbWahlFeld wird im Detailbildschirm nicht aufgerufen — dann gibt es " +
+            "ColorChoiceField wird im Detailbildschirm nicht aufgerufen — dann gibt es " +
                 "keine Moeglichkeit, die Farbe zu korrigieren.",
             i > 0
         )
-        val davor = screen.substring(0, i)
-        val lastCondition = Regex("""if \(([^)\n]*)\)\s*\{[^{}]*$""").find(davor)
+        val before = screen.substring(0, i)
+        val lastCondition = Regex("""if \(([^)\n]*)\)\s*\{[^{}]*$""").find(before)
             ?.groupValues?.get(1)
-            ?: Regex("""if \(([^)\n]*)\)""").findAll(davor).lastOrNull()?.groupValues?.get(1) ?: ""
+            ?: Regex("""if \(([^)\n]*)\)""").findAll(before).lastOrNull()?.groupValues?.get(1) ?: ""
         assertTrue(
             "Die Farbzeile steht hinter der Bedingung „$lastCondition\". Verlangt sie " +
                 "einen Farbnamen, zeigt ausgerechnet das Teil ohne Farbnamen nichts an — " +
@@ -145,14 +145,14 @@ class PartColorChangeTest {
         // And the opposite direction, in the field itself: without a color list (no network, no
         // Rebrickable key) today's color must still be shown.
         assertTrue(
-            "FarbWahlFeld faellt ohne Farbliste nicht auf den heutigen Namen zurueck — " +
+            "ColorChoiceField faellt ohne Farbliste nicht auf den heutigen Namen zurueck — " +
                 "dann stuende dort ein leeres Feld.",
-            feld.contains("aktuellerName")
+            field.contains("currentName")
         )
         assertTrue(
-            "FarbWahlFeld nennt keinen Rueckfall fuer eine Farbe ohne Namen — dann " +
+            "ColorChoiceField nennt keinen Rueckfall fuer eine Farbe ohne Namen — dann " +
                 "waere das Feld bei genau diesen Teilen leer.",
-            feld.contains("parts_color_unknown")
+            field.contains("parts_color_unknown")
         )
     }
 
@@ -165,11 +165,11 @@ class PartColorChangeTest {
         // The server rejects the case anyway, without changing anything — but
         // "the server will catch it" is no reason to send a request
         // whose answer is a rebuild of the screen.
-        vm().setzeTeilFarbe("3001", 5, 5)
-        assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${paths.requests}", paths.requestsAn("/color").isEmpty())
+        vm().setPartColor("3001", 5, 5)
+        assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${paths.requests}", paths.requestsTo("/color").isEmpty())
         assertTrue(
-            "FarbWahlFeld ruft onWahl auch fuer die bereits gewaehlte Farbe.",
-            Regex("""if \(c\.id != aktuell\) onWahl\(c\)""").containsMatchIn(feld)
+            "ColorChoiceField ruft onWahl auch fuer die bereits gewaehlte Farbe.",
+            Regex("""if \(c\.id != current\) onChoice\(c\)""").containsMatchIn(field)
         )
     }
 }

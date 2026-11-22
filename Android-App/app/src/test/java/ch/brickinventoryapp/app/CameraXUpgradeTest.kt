@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Safeguarding of the CameraX jump 1.3.4 → 1.6.1.
@@ -25,8 +25,8 @@ class CameraXUpgradeTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Camera screen including analysis and common setup — see [Quellen.cameraSource]. */
-    private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
+    /** Camera screen including analysis and common setup — see [Sources.cameraSource]. */
+    private fun withAnalyse(rel: String): String = Sources.cameraSource(rel)
 
     @Test
     fun `CameraX is on a 16 KB capable version`() {
@@ -65,7 +65,7 @@ class CameraXUpgradeTest {
     // CONTROL_AF_MODE_CONTINUOUS_PICTURE per screen file plus the search for
     // a timed focus trigger. Both now live in
     // CameraFocusConfigTest, structurally instead of counting: the AF mode
-    // has had exactly ONE place since KameraAufbau.kt, and every preview gets it
+    // has had exactly ONE place since CameraSetup.kt, and every preview gets it
     // there.
     //
     // The duplication stood out when the camera setup was merged

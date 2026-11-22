@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
  * button stands collapsed in the header row, as in the web app; a finished import shows
  * none.
  *
- * Counter-check (gegenproben/csv-abbrechen-versteckt.patch, Robolectric, measured by CI): the
+ * Counter-check (counter-checks/csv-abbrechen-versteckt.patch, Robolectric, measured by CI): the
  * button only with an expanded bar → red “a running import …”.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -34,20 +34,20 @@ class CsvCancelButtonTest {
 
     @Test
     fun `a running import can be cancelled while collapsed, a finished one cannot`() {
-        var abgebrochen = 0
-        val laeuft = mutableStateOf(true)
+        var cancelled = 0
+        val running = mutableStateOf(true)
         compose.setContent {
             BrickInventoryManagerTheme {
                 CsvImportBanner(done = 3, total = 10, current = "75192-1", ok = 3, warn = 0, err = 0,
-                    running = laeuft.value, onAbbrechen = { abgebrochen++ })
+                    running = running.value, onCancel = { cancelled++ })
             }
         }
         val button = compose.activity.getString(R.string.csv_cancel)
         compose.onNodeWithContentDescription(button).performClick()
         compose.waitForIdle()
-        assertEquals(1, abgebrochen)
+        assertEquals(1, cancelled)
 
-        laeuft.value = false
+        running.value = false
         compose.waitForIdle()
         compose.onAllNodesWithContentDescription(button).assertCountEquals(0)
     }

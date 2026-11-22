@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The WHOLE instruction row opens the PDF — not only the icon on the right.
@@ -15,25 +15,25 @@ import ch.brickinventoryapp.testing.Quellen
  * before.
  *
  * Therefore the STRUCTURE is checked and not that „clickable" occurs
- * somewhere: the action (`oeffneAnleitung`) hangs on it, NO second button hangs
+ * somewhere: the action (`openInstruction`) hangs on it, NO second button hangs
  * on the icon any more, and the trash keeps its own.
  */
 class InstructionRowTest {
 
-    private val quelle by lazy {
-        Quellen.withoutComments(Quellen.lies("collection/ui/screens/SetDetailAnleitungen.kt"))
+    private val source by lazy {
+        Sources.withoutComments(Sources.read("collection/ui/screens/SetDetailInstructions.kt"))
     }
 
     /**
      * Self-proof against the silent zero: if this check reads the wrong
      * file, it finds nothing and would be green without having checked anything.
      */
-    private fun zeilen(): List<String> {
-        assert(quelle.contains("fun LazyListScope.setDetailInstructionsSection")) {
+    private fun rows(): List<String> {
+        assert(source.contains("fun LazyListScope.setDetailInstructionsSection")) {
             "In dieser Datei steht der Anleitungs-Abschnitt nicht (mehr) — dann " +
                 "prueft hier nichts etwas, und zwar lautlos."
         }
-        return quelle.lines()
+        return source.lines()
     }
 
     /**
@@ -52,26 +52,26 @@ class InstructionRowTest {
      * Therefore the block is now read instead of estimating a surrounding.
      */
     private fun block(ab: Int): String {
-        val z = zeilen()
-        var tiefe = 0
+        val z = rows()
+        var depth = 0
         val sb = StringBuilder()
         for (i in ab until z.size) {
             sb.append(z[i]).append('\n')
             for (c in z[i]) when (c) {
-                '(', '{' -> tiefe++
-                ')', '}' -> tiefe--
+                '(', '{' -> depth++
+                ')', '}' -> depth--
             }
-            if (i > ab && tiefe <= 0) break
+            if (i > ab && depth <= 0) break
         }
         return sb.toString()
     }
 
     /** The lines BEFORE a match, comments are already out. */
-    private fun davor(treffer: String, howMany: Int): String {
-        val z = zeilen()
-        val i = z.indexOfFirst { it.contains(treffer) }
+    private fun before(hits: String, howMany: Int): String {
+        val z = rows()
+        val i = z.indexOfFirst { it.contains(hits) }
         assert(i >= 0) {
-            "$treffer steht nicht mehr in der Datei — diese Pruefung anpassen."
+            "$hits steht nicht mehr in der Datei — diese Pruefung anpassen."
         }
         return z.subList(maxOf(0, i - howMany), i).joinToString("\n")
     }
@@ -81,7 +81,7 @@ class InstructionRowTest {
         // Measured in LINES and not in characters (see Quellen): a
         // growing explanatory paragraph has already broken a check four times in this series
         // that cut a fixed character window.
-        assert(Regex("""clickable\([^)]*oeffneAnleitung""").containsMatchIn(quelle)) {
+        assert(Regex("""clickable\([^)]*openInstruction""").containsMatchIn(source)) {
             "Am `clickable` der Anleitungszeile haengt nicht `oeffneAnleitung`. " +
                 "Dann ist wieder nur ein Teil der Zeile antippbar — genau Marcos Befund."
         }
@@ -94,10 +94,10 @@ class InstructionRowTest {
         // next to it would be a second target for the same thing, and the screen reader
         // would name it as a separate control next to the row that already
         // does the same.
-        val z = zeilen()
+        val z = rows()
         val guilty = z.indices
             .filter { "IconButton(" in z[it] }
-            .filter { i -> block(i).let { "onOpenPdf(" in it || "oeffneAnleitung" in it } }
+            .filter { i -> block(i).let { "onOpenPdf(" in it || "openInstruction" in it } }
         assert(guilty.isEmpty()) {
             "Das Oeffnen der Anleitung haengt wieder an einem IconButton " +
                 "(Zeile " + guilty.joinToString { (it + 1).toString() } + "). " +
@@ -111,7 +111,7 @@ class InstructionRowTest {
         // Without it the row looks like text. It is the only hint
         // that something opens here — tap areas are
         // invisible.
-        assert(quelle.contains("Icons.AutoMirrored.Filled.OpenInNew")) {
+        assert(source.contains("Icons.AutoMirrored.Filled.OpenInNew")) {
             "Das Oeffnen-Symbol ist aus der Anleitungszeile verschwunden. Dann " +
                 "ist nicht mehr zu sehen, dass die Zeile etwas tut."
         }
@@ -123,7 +123,7 @@ class InstructionRowTest {
         // tappable area, as a sibling and not as a child. That way nothing depends
         // on which of two nested tap areas gets a
         // tap — and a mistap hurts here.
-        assert(davor("onAnleitungLoeschen(id)", 3).contains("IconButton(")) {
+        assert(before("onInstructionDelete(id)", 3).contains("IconButton(")) {
             "Das Loeschen einer Anleitung haengt an keinem eigenen Knopf mehr."
         }
     }

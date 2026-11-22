@@ -15,7 +15,7 @@ import org.junit.Test
 /**
  * What the isolated PDF renderer reports counts as untrusted: the main process checks
  * page count and page edges, and sets the shared memory's size itself.
- * (That no Bitmap parcel is ever unpacked is checked by ModulgrenzenTest.)
+ * (That no Bitmap parcel is ever unpacked is checked by ModuleBoundariesTest.)
  *
  * Counter-checks (measured locally with kotlinc):
  *   pdf-seitenzahl-ungeprueft  checkPageCount() lets every number through → red “a page count
@@ -41,13 +41,13 @@ class PdfLimitsTest {
     @Test
     fun `the dimensions follow the width and stay below the area limit`() {
         val a4 = pagesDimensions(1080, 595, 842)!!
-        assertEquals(bitmapDimensions(1080, 842f / 595), a4.breite to a4.hoehe)
-        assertEquals(a4.breite * a4.hoehe * 4, a4.bytes)
-        for (breite in listOf(1, 400, 1080, 4000, 20_000, Int.MAX_VALUE))
+        assertEquals(bitmapDimensions(1080, 842f / 595), a4.width to a4.height)
+        assertEquals(a4.width * a4.height * 4, a4.bytes)
+        for (width in listOf(1, 400, 1080, 4000, 20_000, Int.MAX_VALUE))
             for ((w, h) in listOf(1 to PDF_PAGE_MAX_PT, PDF_PAGE_MAX_PT to 1, 595 to 842, PDF_PAGE_MAX_PT to PDF_PAGE_MAX_PT)) {
-                val m = pagesDimensions(breite, w, h)!!
-                assertTrue("$breite px, $w x $h pt: ${m.breite} x ${m.hoehe}",
-                    m.breite in 1..PDF_EDGE_MAX_PX && m.hoehe in 1..PDF_EDGE_MAX_PX && m.breite.toLong() * m.hoehe <= PDF_BITMAP_MAX_PX)
+                val m = pagesDimensions(width, w, h)!!
+                assertTrue("$width px, $w x $h pt: ${m.width} x ${m.height}",
+                    m.width in 1..PDF_EDGE_MAX_PX && m.height in 1..PDF_EDGE_MAX_PX && m.width.toLong() * m.height <= PDF_BITMAP_MAX_PX)
             }
     }
 }

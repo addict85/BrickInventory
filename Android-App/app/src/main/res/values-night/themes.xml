@@ -2,6 +2,6 @@
 <resources>
     <!-- Dunkles Systemthema: Das Fenster bleibt bis zum ersten Bild dunkel. -->
     <style name="Theme.BrickInventoryManager" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/fenster_hintergrund</item>
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
 </resources>

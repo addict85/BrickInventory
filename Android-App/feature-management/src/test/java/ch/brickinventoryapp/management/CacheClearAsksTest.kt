@@ -14,7 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.management.ui.screens.CacheAndLimitsSection
@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config
  * everyone else. Confirming happens in the chosen scope, cancel clears nothing. For the
  * pre-warming networks, the note about the measured Wi-Fi stands there.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   cache-leeren-ohne-frage    „Alles leeren“ clears right away → red “clearing asks …”
  *   vorwaermen-hinweis-fehlt   the note about the measured Wi-Fi is missing → red “at the networks …”
  */
@@ -45,16 +45,16 @@ class CacheClearAsksTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private fun text(id: Int) = compose.activity.getString(id)
-    private val geleert = mutableListOf<Boolean>()
+    private val emptied = mutableListOf<Boolean>()
 
-    private fun zeige() {
-        val events = CacheEvents(defaultState = {}, clearStore = {}, netz = { _, _ -> }, design = {},
-            cacheDuration = {}, cacheLeeren = { geleert += it }, limits = { _, _, _ -> })
+    private fun show() {
+        val events = CacheEvents(defaultState = {}, clearStore = {}, network = { _, _ -> }, design = {},
+            cacheDuration = {}, cacheClear = { emptied += it }, limits = { _, _, _ -> })
         compose.setContent {
             BrickInventoryManagerTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     CacheAndLimitsSection(MonitoringUiState(),
-                        mapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false),
+                        mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false),
                         Design.CLASSIC, 0L, events)
                 }
             }
@@ -71,9 +71,9 @@ class CacheClearAsksTest {
 
     @Test
     fun `clearing asks first and then clears in the chosen scope`() {
-        zeige()
+        show()
         tap(R.string.monitoring_cache_clear_all)
-        assertEquals("Ein Tipp allein leert schon", emptyList<Boolean>(), geleert)
+        assertEquals("Ein Tipp allein leert schon", emptyList<Boolean>(), emptied)
         compose.onNodeWithText(text(R.string.monitoring_cache_clear_hint)).fetchSemanticsNode()
         inDialog(R.string.monitoring_cache_clear_confirm).performClick()
         compose.waitForIdle()
@@ -85,12 +85,12 @@ class CacheClearAsksTest {
         inDialog(R.string.monitoring_cache_clear_confirm).performClick()
         compose.waitForIdle()
 
-        assertEquals("Alles, dann nach Abbrechen nichts, dann nur die Preise", listOf(true, false), geleert)
+        assertEquals("Alles, dann nach Abbrechen nichts, dann nur die Preise", listOf(true, false), emptied)
     }
 
     @Test
     fun `the networks show the hint about metered Wi-Fi`() {
-        zeige()
-        compose.onNodeWithText(text(R.string.monitoring_vorwaermen_hinweis)).performScrollTo()
+        show()
+        compose.onNodeWithText(text(R.string.monitoring_prewarm_hint)).performScrollTo()
     }
 }

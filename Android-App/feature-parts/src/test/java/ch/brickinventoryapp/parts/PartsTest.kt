@@ -1,24 +1,24 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Kategoriewahl
+import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.domain.FigurAnsicht
+import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.TeilAnsicht
+import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.FilterColorView
 import ch.brickinventoryapp.model.domain.CategoryView
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.parts.ui.Figuren
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.parts.ui.Figures
 import ch.brickinventoryapp.parts.ui.MinifigsLocal
-import ch.brickinventoryapp.parts.ui.Teile
-import ch.brickinventoryapp.parts.ui.Teilefilter
+import ch.brickinventoryapp.parts.ui.Parts
+import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.PartsLocal
 import ch.brickinventoryapp.parts.ui.PartsUiState
 import ch.brickinventoryapp.parts.ui.PartsSource
@@ -37,7 +37,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.ui.ListView
 
 /**
@@ -45,16 +45,16 @@ import ch.brickinventoryapp.model.ui.ListView
  * the store or the account view, chosen by the ViewModel); the fetch only fills
  * the source and here records which state it was called for.
  *
- * Counter-checks (kotlinc against Teile.kt, version with one load mode):
+ * Counter-checks (kotlinc against Parts.kt, version with one load mode):
  *   A  in loadParts() the state read before the debounce → red “the state's
  *      filters reach the source and the fetch” (search missing)
- *   B  vergissScroll() removed in setFilter() → red “a filter change forgets
+ *   B  forgetScroll() removed in setFilter() → red “a filter change forgets
  *      the scroll position”
  *   C  the figure key figures put into the same job as the list → red “the
  *      figures list does not wait for the key figures”
- *   D  in Listenfolge.abbrechen() `folgen.forEach { it.cancel() }` removed → red “after
+ *   D  in Listenfolge.cancel() `follow.forEach { it.cancel() }` removed → red “after
  *      a filter change the old source no longer writes into it”
- *   E  in ausgang() the branch "without network, with a cached state" removed → red “without network
+ *   E  in outbox() the branch "without network, with a cached state" removed → red “without network
  *      the figures stay as they are”
  *   F  in folge() the check on the cached state removed → red “a source
  *      never loaded shows nothing and empties nothing”
@@ -62,31 +62,31 @@ import ch.brickinventoryapp.model.ui.ListView
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsTest {
 
-    private class Kennzahlen : PartsSource {
+    private class Metrics : PartsSource {
         var minifigFetches = 0
         var minifigDuration = 0L
-        override suspend fun partsMetrics(): Ergebnis<PartsMetricsView?> = Ergebnis.Fehler.Server(503, "aus")
-        override suspend fun filterColors() = Ergebnis.Erfolg(emptyList<FilterColorView>())
-        override suspend fun kategorien() = Ergebnis.Erfolg(emptyList<CategoryView>())
-        override suspend fun allColors() = Ergebnis.Erfolg(emptyList<ColorView>())
-        suspend fun minifigMetrics(): Ergebnis<MinifigsMetricsView> {
+        override suspend fun partsMetrics(): Outcome<PartsMetricsView?> = Outcome.Failure.Server(503, "aus")
+        override suspend fun filterColors() = Outcome.Success(emptyList<FilterColorView>())
+        override suspend fun categories() = Outcome.Success(emptyList<CategoryView>())
+        override suspend fun allColors() = Outcome.Success(emptyList<ColorView>())
+        suspend fun minifigMetrics(): Outcome<MinifigsMetricsView> {
             minifigFetches++
             delay(minifigDuration)
-            return Ergebnis.Fehler.Server(500, "Zählung gescheitert")
+            return Outcome.Failure.Server(500, "Zählung gescheitert")
         }
     }
 
-    private val metrics = Kennzahlen()
-    private val teile = MutableStateFlow(Local(listOf(TeilAnsicht(partNumber = "3001", partName = "Brick", colorName = "Red"),
-        TeilAnsicht(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
-    private val manuelleTeile = MutableStateFlow(Local(emptyList<ManualPartView>(), 1L))
-    private val figuren = MutableStateFlow(Local(listOf(FigurAnsicht(figNumber = "sw0001")), 4L))
+    private val metrics = Metrics()
+    private val parts = MutableStateFlow(Local(listOf(PartView(partNumber = "3001", partName = "Brick", colorName = "Red"),
+        PartView(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
+    private val manualParts = MutableStateFlow(Local(emptyList<ManualPartView>(), 1L))
+    private val figures = MutableStateFlow(Local(listOf(FigureView(figNumber = "sw0001")), 4L))
     private val manualMinifigs = MutableStateFlow(Local(emptyList<ManualMinifigView>(), 4L))
     private val partsFetches = mutableListOf<PartsUiState>()
     private val searchManual = mutableListOf<String>()
     private val minifigFetches = mutableListOf<String>()
-    private var minifigsResponse: Ergebnis<Unit> = Ergebnis.Erfolg(Unit)
-    private var vergessen = 0
+    private var minifigsResponse: Outcome<Unit> = Outcome.Success(Unit)
+    private var forget = 0
 
     /**
      * In the foreground of the clock, so that advanceUntilIdle also waits out the fetches
@@ -95,78 +95,78 @@ class PartsTest {
     private fun TestScope.foreground() = CoroutineScope(coroutineContext + Job(backgroundScope.coroutineContext[Job]))
 
     // Like the filter columns in Room: the search text matches the number or name, the color the color name.
-    private fun TestScope.teile() = Teile(
-        scope = foreground(), quelle = metrics, reportError = {}, vergissScroll = { vergessen++ },
-        listen = PartsLocal(
-            teile = { st -> val f = st.filter; teile.map { l -> l.copy(liste = l.liste.filter {
-                (f.suche.isBlank() || it.partNumber.contains(f.suche) || it.partName.orEmpty().contains(f.suche)) &&
-                    (f.farbe == ColorPicker.Alle || it.colorName == f.farbe.wert) }) } },
-            manuelleTeile = { st -> searchManual += st.filter.suche; manuelleTeile },
-            refresh = { st -> partsFetches += st; Ergebnis.Erfolg(Unit) },
+    private fun TestScope.parts() = Parts(
+        scope = foreground(), source = metrics, reportError = {}, forgetScroll = { forget++ },
+        lists = PartsLocal(
+            parts = { st -> val f = st.filter; parts.map { l -> l.copy(list = l.list.filter {
+                (f.search.isBlank() || it.partNumber.contains(f.search) || it.partName.orEmpty().contains(f.search)) &&
+                    (f.color == ColorPicker.All || it.colorName == f.color.value) }) } },
+            manualParts = { st -> searchManual += st.filter.search; manualParts },
+            refresh = { st -> partsFetches += st; Outcome.Success(Unit) },
         ),
     )
 
-    private fun TestScope.figurenliste() = Figuren(
+    private fun TestScope.figureList() = Figures(
         scope = foreground(), reportError = {},
-        listen = MinifigsLocal(
-            figuren = { figuren },
+        lists = MinifigsLocal(
+            figures = { figures },
             manualMinifigs = { manualMinifigs },
             refresh = { st -> minifigFetches += st.minifigsQuery; minifigsResponse },
             metrics = { metrics.minifigMetrics() },
         ),
     )
 
-    private fun Teile.filtere(aenderung: (Teilefilter) -> Teilefilter) = setFilter(aenderung(state.value.filter))
+    private fun Parts.filter(change: (PartsFilter) -> PartsFilter) = setFilter(change(state.value.filter))
 
     @Test
     fun `the filters of the state reach source and fetch`() = runTest {
-        val t = teile()
-        t.filtere { it.copy(farbe = ColorPicker.Farbe("Red")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
-        t.filtere { it.copy(ersatz = Ersatzteilwahl.OHNE) }; t.filtere { it.copy(ansicht = ListView.TABLE) }
-        t.filtere { it.copy(suche = "30") }
+        val t = parts()
+        t.filter { it.copy(color = ColorPicker.Color("Red")) }; t.filter { it.copy(category = CategoryChoice.Category("11")) }
+        t.filter { it.copy(spare = SparePartChoice.WITHOUT) }; t.filter { it.copy(view = ListView.TABLE) }
+        t.filter { it.copy(search = "30") }
         advanceUntilIdle()
         val st = partsFetches.last().filter
-        assertEquals(listOf("30", "Red", "11"), listOf(st.suche, st.farbe.wert, st.kategorie.wert))
-        assertEquals(Ersatzteilwahl.OHNE to ListView.TABLE, st.ersatz to st.ansicht)
+        assertEquals(listOf("30", "Red", "11"), listOf(st.search, st.color.value, st.category.value))
+        assertEquals(SparePartChoice.WITHOUT to ListView.TABLE, st.spare to st.view)
         assertEquals(listOf("3001"), t.state.value.parts.map { it.partNumber })
         assertEquals("die manuellen Teile unter demselben Suchtext", "30", searchManual.last())
     }
 
     @Test
     fun `a filter change forgets the scroll position`() = runTest {
-        val t = teile()
-        t.filtere { it.copy(farbe = ColorPicker.Farbe("5")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
-        t.filtere { it.copy(ersatz = Ersatzteilwahl.NUR) }; t.filtere { it.copy(suche = "stein") }
-        assertEquals(4, vergessen)
-        t.filtere { it.copy(farbe = ColorPicker.Farbe("5")) }
-        assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, vergessen)
+        val t = parts()
+        t.filter { it.copy(color = ColorPicker.Color("5")) }; t.filter { it.copy(category = CategoryChoice.Category("11")) }
+        t.filter { it.copy(spare = SparePartChoice.ONLY) }; t.filter { it.copy(search = "stein") }
+        assertEquals(4, forget)
+        t.filter { it.copy(color = ColorPicker.Color("5")) }
+        assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, forget)
         advanceUntilIdle()
     }
 
     @Test
     fun `the list follows the source, even without a fetch`() = runTest {
-        val t = teile()
-        t.laden(); runCurrent()
+        val t = parts()
+        t.load(); runCurrent()
         // The default is "by color" (TeileOrdnung): blue before red, not the source's order.
         assertEquals(listOf("3023", "3001"), t.state.value.parts.map { it.partNumber })
         // Entered offline: the store changes, the list follows.
-        manuelleTeile.value = Local(listOf(ManualPartView(partNumber = "neu", quantity = 3)), 2L)
+        manualParts.value = Local(listOf(ManualPartView(partNumber = "neu", quantity = 3)), 2L)
         runCurrent()
         assertEquals(listOf("neu" to 3), t.state.value.manualParts!!.map { it.partNumber to it.quantity })
-        t.laden(seite = 2); runCurrent()
+        t.load(page = 2); runCurrent()
         assertEquals("geblättert wird nicht mehr: Die Quelle hält alles", 1, partsFetches.size)
     }
 
     @Test
     fun `after a filter change the old source no longer writes into it`() = runTest {
-        val alt = MutableStateFlow(Local(listOf(TeilAnsicht(partNumber = "alt")), 1L))
-        val neu = MutableStateFlow(Local(listOf(TeilAnsicht(partNumber = "neu")), 1L))
-        val t = Teile(scope = foreground(), quelle = metrics, reportError = {}, vergissScroll = {},
-            listen = PartsLocal(teile = { st -> if (st.filter.farbe == ColorPicker.Alle) alt else neu },
-                manuelleTeile = { manuelleTeile }, refresh = { Ergebnis.Erfolg(Unit) }))
-        t.laden(); runCurrent()
-        t.filtere { it.copy(farbe = ColorPicker.Farbe("Red")) }; runCurrent()
-        alt.value = Local(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
+        val old = MutableStateFlow(Local(listOf(PartView(partNumber = "alt")), 1L))
+        val newValue = MutableStateFlow(Local(listOf(PartView(partNumber = "neu")), 1L))
+        val t = Parts(scope = foreground(), source = metrics, reportError = {}, forgetScroll = {},
+            lists = PartsLocal(parts = { st -> if (st.filter.color == ColorPicker.All) old else newValue },
+                manualParts = { manualParts }, refresh = { Outcome.Success(Unit) }))
+        t.load(); runCurrent()
+        t.filter { it.copy(color = ColorPicker.Color("Red")) }; runCurrent()
+        old.value = Local(listOf(PartView(partNumber = "spaet")), 2L)
         runCurrent()
         assertEquals(listOf("neu"), t.state.value.parts.map { it.partNumber })
     }
@@ -174,20 +174,20 @@ class PartsTest {
     @Test
     fun `the figure list does not wait for the key figures and a failure leaves it`() = runTest {
         metrics.minifigDuration = 5_000
-        val t = figurenliste()
-        t.laden()
+        val t = figureList()
+        t.load()
         advanceTimeBy(10); runCurrent()
-        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
-        assertFalse(t.zustand.value.minifigsFetch.laedt)
+        assertEquals(listOf("sw0001"), t.uiState.value.minifigs.map { it.figNumber })
+        assertFalse(t.uiState.value.minifigsFetch.loading)
         advanceUntilIdle()
-        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
-        assertEquals(MinifigsMetricsView(), t.zustand.value.minifigStats)
+        assertEquals(listOf("sw0001"), t.uiState.value.minifigs.map { it.figNumber })
+        assertEquals(MinifigsMetricsView(), t.uiState.value.minifigStats)
     }
 
     @Test
     fun `while typing the figure list asks once and does not recount`() = runTest {
-        val t = figurenliste()
-        t.setzeSuche("lu"); t.setzeSuche("luk"); t.setzeSuche("luke")
+        val t = figureList()
+        t.setSearch("lu"); t.setSearch("luk"); t.setSearch("luke")
         advanceUntilIdle()
         assertEquals(listOf("luke"), minifigFetches)
         assertEquals(0, metrics.minifigFetches)
@@ -195,29 +195,29 @@ class PartsTest {
 
     @Test
     fun `without network the figures stay, with their state`() = runTest {
-        minifigsResponse = Ergebnis.Fehler.Netz()
-        val t = figurenliste()
-        t.laden(); runCurrent()
-        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
-        assertNull("ohne Netz bleiben die Figuren stehen", t.zustand.value.minifigsFetch.errorMessage)
-        assertEquals(4L, t.zustand.value.minifigsOfflineStatus)
+        minifigsResponse = Outcome.Failure.Network()
+        val t = figureList()
+        t.load(); runCurrent()
+        assertEquals(listOf("sw0001"), t.uiState.value.minifigs.map { it.figNumber })
+        assertNull("ohne Netz bleiben die Figuren stehen", t.uiState.value.minifigsFetch.errorMessage)
+        assertEquals(4L, t.uiState.value.minifigsOfflineStatus)
     }
 
     @Test
     fun `a never loaded source shows nothing and empties nothing`() = runTest {
-        figuren.value = Local(listOf(FigurAnsicht(figNumber = "alt")), null)
-        val t = figurenliste()
-        t.laden(); runCurrent()
-        assertEquals(emptyList<String>(), t.zustand.value.minifigs.map { it.figNumber })
-        figuren.value = Local(listOf(FigurAnsicht(figNumber = "sw0002")), 5L)
+        figures.value = Local(listOf(FigureView(figNumber = "alt")), null)
+        val t = figureList()
+        t.load(); runCurrent()
+        assertEquals(emptyList<String>(), t.uiState.value.minifigs.map { it.figNumber })
+        figures.value = Local(listOf(FigureView(figNumber = "sw0002")), 5L)
         runCurrent()
-        assertEquals(listOf("sw0002"), t.zustand.value.minifigs.map { it.figNumber })
+        assertEquals(listOf("sw0002"), t.uiState.value.minifigs.map { it.figNumber })
     }
 
     @Test
     fun `sign-out cleans up, and a late response does not come back`() = runTest {
-        val t = teile()
-        t.filtere { it.copy(farbe = ColorPicker.Farbe("Red")) }; runCurrent()
+        val t = parts()
+        t.filter { it.copy(color = ColorPicker.Color("Red")) }; runCurrent()
         t.reset()
         advanceUntilIdle()
         assertEquals(PartsUiState(), t.state.value)

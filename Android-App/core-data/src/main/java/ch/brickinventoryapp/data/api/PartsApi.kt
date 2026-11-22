@@ -32,7 +32,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import ch.brickinventoryapp.contract.ManualPartsResponse
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * Query the parts list — for the parts tab and the content of a set;
@@ -64,14 +64,14 @@ interface PartsQueryApi {
 }
 
 /** Der Wert von `spare`; null heisst alle. */
-internal fun Ersatzteilwahl.asQuery(): String? = when (this) {
-    Ersatzteilwahl.ALLE -> null
-    Ersatzteilwahl.OHNE -> "0"
-    Ersatzteilwahl.NUR -> "1"
+internal fun SparePartChoice.asQuery(): String? = when (this) {
+    SparePartChoice.ALL -> null
+    SparePartChoice.WITHOUT -> "0"
+    SparePartChoice.ONLY -> "1"
 }
 
 /** `with_sets=1` or no parameter. */
-internal fun withSetsAsQuery(mitSets: Boolean): String? = if (mitSets) "1" else null
+internal fun withSetsAsQuery(withSets: Boolean): String? = if (withSets) "1" else null
 
 /**
  * Single parts, colors and storage locations (PartsRepository). Storage locations stand here
@@ -152,12 +152,12 @@ interface PartsApi : PartsQueryApi {
     ): Response<LagerortVorratResponse>
 
     @POST("api/v1/storage/locations")
-    suspend fun putLocationAn(
+    suspend fun createLocation(
         @Body request: LagerortNameRequest,
     ): Response<LagerortEintragResponse>
 
     @PUT("api/v1/storage/locations/{id}")
-    suspend fun nameLocationUm(
+    suspend fun renameLocation(
         @Path("id") id: Int,
         @Body request: LagerortNameRequest,
     ): Response<LagerortEintragResponse>
@@ -170,7 +170,7 @@ interface PartsApi : PartsQueryApi {
     // The star: the storage location that is already preselected when adding.
     // ONE endpoint for setting and switching off (id = null), because it is a
     // setting with exactly one value. It is not read here,
-    // but as the field `vorgabe` of the supply response above.
+    // but as the field `default` of the supply response above.
     @PUT("api/v1/storage/default")
     suspend fun setLocationDefault(
         @Body request: LagerortVorgabeRequest,
@@ -191,7 +191,7 @@ interface PartsApi : PartsQueryApi {
     @POST("api/v1/parts")
     suspend fun addPart(
         @Body request: AddPartRequest,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<AddPartResponse>
 
     @PUT("api/v1/parts/{partNumber}/{colorId}")
@@ -201,7 +201,7 @@ interface PartsApi : PartsQueryApi {
         @Body request: UpdateManualItemRequest,
         // Wessen Karte gemeint war — siehe deletePart.
         @Query("owner") owner: Int? = null,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/parts/{partNumber}/{colorId}")
@@ -211,7 +211,7 @@ interface PartsApi : PartsQueryApi {
         // Whose card was meant. null = own account (behavior as
         // before); whether a foreign one is allowed is decided by the server.
         @Query("owner") owner: Int? = null,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>
 
     /**

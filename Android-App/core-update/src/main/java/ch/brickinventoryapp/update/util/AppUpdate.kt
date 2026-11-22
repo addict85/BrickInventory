@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.security.MessageDigest
 import ch.brickinventoryapp.data.util.UPDATE_FOLDER
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 
 /**
  * The app updates itself from the GitHub release: check silently on start,
@@ -66,7 +66,7 @@ internal const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
  * file is the dangerous spot of any self-updater.
  */
 @Serializable
-data class UpdateBeschreibung(
+data class UpdateDescription(
     @SerialName("versionCode") val versionCode: Int,
     @SerialName("versionName") val versionName: String,
     @SerialName("apkUrl") val apkUrl: String,
@@ -88,8 +88,8 @@ data class UpdateBeschreibung(
      * them, an older, genuinely signed description could be re-uploaded
      * unnoticed ([valueFresh]); if missing, the description counts as expired.
      */
-    @SerialName("ausgestellt") val ausgestellt: Long = 0,
-    @SerialName("gueltigBis") val gueltigBis: Long = 0,
+    @SerialName("ausgestellt") val issued: Long = 0,
+    @SerialName("gueltigBis") val validUntil: Long = 0,
 )
 
 /**
@@ -97,23 +97,23 @@ data class UpdateBeschreibung(
  * downgrade after a reverted build, which Android rejects with
  * INSTALL_FAILED_VERSION_DOWNGRADE.
  */
-internal fun isNew(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
+internal fun isNew(running: Int, reported: Int): Boolean = reported > running
 
 /**
  * Does the address point into our release store — the newest, or a version's
- * label? Compared parsed, see [liesBelow].
+ * label? Compared parsed, see [isBelow].
  */
 fun isAllowedApkAddress(url: String): Boolean {
-    if (liesBelow(url, UPDATE_RELEASE_BASE)) return true
-    val etikett = url.toHttpUrlOrNull()?.pathSegments?.dropLast(1)?.lastOrNull() ?: return false
-    return VERSION_LABEL.matches(etikett) && liesBelow(url, "$UPDATE_RELEASE_ROOT/$etikett")
+    if (isBelow(url, UPDATE_RELEASE_BASE)) return true
+    val tag = url.toHttpUrlOrNull()?.pathSegments?.dropLast(1)?.lastOrNull() ?: return false
+    return VERSION_LABEL.matches(tag) && isBelow(url, "$UPDATE_RELEASE_ROOT/$tag")
 }
 
 /**
  * An APK's signature as a fingerprint. `null` if unreadable or not
  * signed — then it isn't installed; "unknown" never counts as "matches".
  */
-private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
+private fun fingerprints(ctx: Context, apk: File): Signature? {
     val pm = ctx.packageManager
     val info = pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
     // The package name must match, otherwise a foreign package signed with
@@ -129,7 +129,7 @@ fun apkVersion(ctx: Context, apk: File): Long? =
         ?.let { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it) }
 
 /** The same lookup for the INSTALLED app. */
-private fun ownFingerprints(ctx: Context): Signatur? {
+private fun ownFingerprints(ctx: Context): Signature? {
     val pm = ctx.packageManager
     val info = runCatching { pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES) }.getOrNull() ?: return null
     return signatures(info)
@@ -139,14 +139,14 @@ private fun ownFingerprints(ctx: Context): Signatur? {
  * The signature from a PackageInfo including its ancestry (v3 rotation). `null` if
  * there's no signature: "unknown" never counts as "matches".
  */
-private fun signatures(info: android.content.pm.PackageInfo): Signatur? {
+private fun signatures(info: android.content.pm.PackageInfo): Signature? {
     fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
         MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
     }
     val si = info.signingInfo ?: return null
-    val aktuell = hex(si.apkContentsSigners)
+    val current = hex(si.apkContentsSigners)
     val ancestors = if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory)
-    return Signatur(aktuell.toSet(), ancestors).takeIf { aktuell.isNotEmpty() }
+    return Signature(current.toSet(), ancestors).takeIf { current.isNotEmpty() }
 }
 
 /**
@@ -155,9 +155,9 @@ private fun signatures(info: android.content.pm.PackageInfo): Signatur? {
  * through when in doubt is no check at all.
  */
 fun signatureFits(ctx: Context, apk: File): Boolean {
-    val neu = fingerabdruecke(ctx, apk) ?: return false
-    val alt = ownFingerprints(ctx) ?: return false
-    return signatureFollows(alt, neu)
+    val newValue = fingerprints(ctx, apk) ?: return false
+    val old = ownFingerprints(ctx) ?: return false
+    return signatureFollows(old, newValue)
 }
 
 /**
@@ -186,29 +186,29 @@ fun install(ctx: Context, apk: File) {
     val id = installer.createSession(parameter)
     var passed = false
     try {
-        installer.openSession(id).use { sitzung ->
-            apk.inputStream().use { ein ->
-                sitzung.openWrite("BrickInventory", 0, apk.length()).use { aus ->
-                    ein.copyTo(aus)
-                    sitzung.fsync(aus)
+        installer.openSession(id).use { session ->
+            apk.inputStream().use { one ->
+                session.openWrite("BrickInventory", 0, apk.length()).use { from ->
+                    one.copyTo(from)
+                    session.fsync(from)
                 }
             }
             // MUTABLE from Android 12, because the system fills in the status; the target is named explicitly.
-            val antwort = PendingIntent.getBroadcast(ctx, id,
-                Intent(ctx, InstallationsEmpfaenger::class.java).setPackage(ctx.packageName),
+            val response = PendingIntent.getBroadcast(ctx, id,
+                Intent(ctx, InstallReceiver::class.java).setPackage(ctx.packageName),
                 PendingIntent.FLAG_UPDATE_CURRENT or
                     (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0))
-            sitzung.commit(antwort.intentSender)
+            session.commit(response.intentSender)
         }
         passed = true
     } finally {
-        if (!passed) fangeAusserAbbruch { installer.abandonSession(id) }
+        if (!passed) catchUnlessCancelled { installer.abandonSession(id) }
     }
 }
 
 /** What the installation reports on failure; UpdateViewModel displays it. */
-object Installationsmeldung {
-    val fehler = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+object InstallMessage {
+    val error = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 }
 
 /** The confirmation dialog action of an installer session (named only as SystemApi in the SDK). */
@@ -221,37 +221,37 @@ internal const val INSTALLATION_CONFIRM = "android.content.pm.action.CONFIRM_INS
  * Uri permissions included. Only the checked component is then launched.
  */
 @Suppress("DEPRECATION") // the versions with ResolveInfoFlags only exist from API 33
-internal fun installerZiel(pm: PackageManager, confirmation: Intent): ComponentName? {
+internal fun installerTarget(pm: PackageManager, confirmation: Intent): ComponentName? {
     val rights = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
     if (confirmation.flags and rights != 0 || confirmation.selector != null) return null
-    val ziel = pm.resolveActivity(confirmation, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return null
+    val target = pm.resolveActivity(confirmation, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return null
     val installer = pm.queryIntentActivities(Intent(INSTALLATION_CONFIRM), PackageManager.MATCH_DEFAULT_ONLY)
         .mapNotNull { it.activityInfo }
         .filter { (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM != 0 }
         .map { it.packageName }
-    return ComponentName(ziel.packageName, ziel.name).takeIf { ziel.packageName in installer }
+    return ComponentName(target.packageName, target.name).takeIf { target.packageName in installer }
 }
 
 /**
  * The installer session's response. If the system demands confirmation, it
  * shows its own dialog for that (EXTRA_INTENT), but only if it leads to the
- * system installer ([installerZiel]).
+ * system installer ([installerTarget]).
  */
-internal class InstallationsEmpfaenger : BroadcastReceiver() {
+internal class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val dialog = confirmation(intent)
-                val ziel = dialog?.let { installerZiel(ctx.packageManager, it) }
-                if (dialog != null && ziel != null) {
-                    ctx.startActivity(Intent(dialog).setComponent(ziel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val target = dialog?.let { installerTarget(ctx.packageManager, it) }
+                if (dialog != null && target != null) {
+                    ctx.startActivity(Intent(dialog).setComponent(target).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } else {
-                    Installationsmeldung.fehler.value = ctx.getString(R.string.update_installer_fremd)
+                    InstallMessage.error.value = ctx.getString(R.string.update_installer_foreign)
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
-            else -> Installationsmeldung.fehler.value =
+            else -> InstallMessage.error.value =
                 intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "Status $status"
         }
     }
@@ -269,7 +269,7 @@ fun updateFile(ctx: Context): File =
 /** The device functions of this file, behind [UpdateDevice]. */
 internal class AndroidUpdateDevice @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateDevice {
     override fun descriptionKey(): List<ByteArray> = descriptionKey(
-        ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
+        ctx.resources.openRawResource(R.raw.description_key).bufferedReader().use { it.readText() })
     override fun updateFile(): File = updateFile(ctx)
     override fun signatureFits(apk: File): Boolean = signatureFits(ctx, apk)
     override fun apkVersion(apk: File): Long? = apkVersion(ctx, apk)

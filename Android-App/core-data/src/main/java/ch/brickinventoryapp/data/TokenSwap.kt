@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -14,22 +14,22 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ch.brickinventoryapp.network.di.Rotationsanlass
+import ch.brickinventoryapp.network.di.RotationReason
 
 /**
  * How a swap ended. DISCARDED: during the swap there was a sign-out, a new
  * sign-in or a server switch; the new token no longer belongs here.
  */
-internal enum class Tauschergebnis { GETAUSCHT, ALREADY_SWAPPED, LATER, NEW_PAIR, DISCARDED }
+internal enum class ExchangeOutcome { EXCHANGED, ALREADY_SWAPPED, LATER, NEW_PAIR, DISCARDED }
 
 /** What the swap sees of the store; [generation] counts sign-in, sign-out and server switch. */
-data class TokenStatus(val token: String, val herkunft: String?, val generation: Long)
+data class TokenStatus(val token: String, val origin: String?, val generation: Long)
 
 /**
  * The new token and the origin of the request that brought it (after rewriting and redirect).
  * Only these two values: the swap needs no more, and the wire format stays in core-data.
  */
-data class SwappedToken(val token: String?, val herkunft: String?)
+data class SwappedToken(val token: String?, val origin: String?)
 
 /**
  * Lock and generation for every write of the token. A swap can retry for up to
@@ -44,17 +44,17 @@ internal class TokenLimit {
         private set
 
     /** For sign-in, sign-out, server switch: [newSession] ends running swaps. */
-    suspend fun <T> schreibe(newSession: suspend () -> Boolean = { true }, block: suspend () -> T): T =
+    suspend fun <T> write(newSession: suspend () -> Boolean = { true }, block: suspend () -> T): T =
         lock.withLock {
             if (newSession()) generation++
             block()
         }
 
-    /** Writes only if [jetzt] is still [vorher] and the token came from its origin. */
-    suspend fun replaceIf(vorher: TokenStatus, requestOrigin: String?, jetzt: suspend () -> TokenStatus,
-                             speichere: suspend () -> Unit): Boolean = lock.withLock {
-        if (requestOrigin == null || requestOrigin != vorher.herkunft || jetzt() != vorher) return@withLock false
-        speichere()
+    /** Writes only if [now] is still [before] and the token came from its origin. */
+    suspend fun replaceIf(before: TokenStatus, requestOrigin: String?, now: suspend () -> TokenStatus,
+                             persist: suspend () -> Unit): Boolean = lock.withLock {
+        if (requestOrigin == null || requestOrigin != before.origin || now() != before) return@withLock false
+        persist()
         true
     }
 
@@ -65,19 +65,19 @@ internal class TokenLimit {
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun <P, R, T> mirror(
-        strom: Flow<P>,
-        jetzt: suspend () -> P,
-        roh: (P) -> R,
-        lies: suspend (R, suspend (T) -> Unit) -> Unit,
-        setze: (T) -> Unit,
-        gelesen: () -> Unit,
+        stream: Flow<P>,
+        now: suspend () -> P,
+        raw: (P) -> R,
+        read: suspend (R, suspend (T) -> Unit) -> Unit,
+        set: (T) -> Unit,
+        onRead: () -> Unit,
     ) {
-        var erster = true
-        strom.map(roh).distinctUntilChanged()
-            .transformLatest { r -> lies(r) { emit(r to it) } }
-            .collect { (r, wert) ->
-                lock.withLock { if (roh(jetzt()) == r) setze(wert) }
-                if (erster) { erster = false; gelesen() }
+        var first = true
+        stream.map(raw).distinctUntilChanged()
+            .transformLatest { r -> read(r) { emit(r to it) } }
+            .collect { (r, value) ->
+                lock.withLock { if (raw(now()) == r) set(value) }
+                if (first) { first = false; onRead() }
             }
     }
 }
@@ -95,11 +95,11 @@ internal const val LOGIN_WARNING_DAYS = 7L
 
 private const val DAY_MS = 24L * 60 * 60 * 1000
 
-internal fun loginOverdue(signedInAt: Long, jetzt: Long): Boolean =
-    jetzt - signedInAt > TOKEN_MAX_DURATION_DAYS * DAY_MS
+internal fun loginOverdue(loggedInAt: Long, now: Long): Boolean =
+    now - loggedInAt > TOKEN_MAX_DURATION_DAYS * DAY_MS
 
-internal fun loginDueSoon(signedInAt: Long, jetzt: Long): Boolean =
-    !loginOverdue(signedInAt, jetzt) && jetzt - signedInAt > (TOKEN_MAX_DURATION_DAYS - LOGIN_WARNING_DAYS) * DAY_MS
+internal fun loginDueSoon(loggedInAt: Long, now: Long): Boolean =
+    !loginOverdue(loggedInAt, now) && now - loggedInAt > (TOKEN_MAX_DURATION_DAYS - LOGIN_WARNING_DAYS) * DAY_MS
 
 /**
  * Swaps the token when the server requires it (header `X-Token-Rotation:
@@ -108,27 +108,27 @@ internal fun loginDueSoon(signedInAt: Long, jetzt: Long): Boolean =
  * only the old one would remain — and after the swap it only applies for 5 min.
  */
 internal class TokenSwap(
-    private val stand: suspend () -> TokenStatus,
-    private val ersetze: suspend (vorher: TokenStatus, neu: String, requestOrigin: String?) -> Boolean,
-    private val rotiere: suspend (alterToken: String) -> Ergebnis<SwappedToken>,
+    private val state: suspend () -> TokenStatus,
+    private val replace: suspend (before: TokenStatus, newValue: String, requestOrigin: String?) -> Boolean,
+    private val rotate: suspend (oldToken: String) -> Outcome<SwappedToken>,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
-    /** For [faellig]: the application scope, so that the swap survives leaving a screen. */
-    private val hintergrund: CoroutineScope,
-    /** This is how long noetig() holds a thread of the OkHttp dispatcher. */
-    private val warten: Long = NEEDED_WAIT_MS,
+    private val pauses: List<Long> = listOf(2_000, 10_000, 30_000),
+    /** For [due]: the application scope, so that the swap survives leaving a screen. */
+    private val background: CoroutineScope,
+    /** This is how long needed() holds a thread of the OkHttp dispatcher. */
+    private val wait: Long = NEEDED_WAIT_MS,
     /**
      * May a swap happen now? Not with a locked device: only a key without an unlock
-     * condition would accept the new token, and that no longer exists (EntsperrVault).
+     * condition would accept the new token, and that no longer exists (UnlockVault).
      */
-    private val bereit: () -> Boolean = { true },
-) : Rotationsanlass {
+    private val ready: () -> Boolean = { true },
+) : RotationReason {
     private val lock = Mutex()
 
     /** For the header: do not wait, the request itself succeeded. */
-    override fun faellig(alterToken: String) {
+    override fun due(oldToken: String) {
         if (lock.isLocked) return
-        hintergrund.launch { tausche(alterToken) }
+        background.launch { swap(oldToken) }
     }
 
     /**
@@ -137,54 +137,54 @@ internal class TokenSwap(
      * „signed in elsewhere meanwhile“ — hence only a token of the same
      * origin and generation as the rejected request.
      */
-    override fun noetig(alterToken: String, herkunft: String?, generation: Long): String? = runBlocking {
-        neededWaiting(alterToken, herkunft, generation)
+    override fun needed(oldToken: String, origin: String?, generation: Long): String? = runBlocking {
+        neededWaiting(oldToken, origin, generation)
     }
 
     /**
-     * The network thread waits at most [warten]; the swap itself keeps running in the
+     * The network thread waits at most [wait]; the swap itself keeps running in the
      * application scope so that an already received token still gets saved.
      */
-    suspend fun neededWaiting(alterToken: String, herkunft: String?, generation: Long): String? {
-        val tausch = hintergrund.async { tausche(alterToken) }
-        return when (withTimeoutOrNull(warten) { tausch.await() }) {
+    suspend fun neededWaiting(oldToken: String, origin: String?, generation: Long): String? {
+        val swapping = background.async { swap(oldToken) }
+        return when (withTimeoutOrNull(wait) { swapping.await() }) {
             null -> null
-            Tauschergebnis.GETAUSCHT, Tauschergebnis.ALREADY_SWAPPED -> stand()
-                .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }
-                ?.token?.takeIf { it != alterToken && it.isNotBlank() }
-            Tauschergebnis.LATER, Tauschergebnis.NEW_PAIR, Tauschergebnis.DISCARDED -> null
+            ExchangeOutcome.EXCHANGED, ExchangeOutcome.ALREADY_SWAPPED -> state()
+                .takeIf { origin != null && it.origin == origin && it.generation == generation }
+                ?.token?.takeIf { it != oldToken && it.isNotBlank() }
+            ExchangeOutcome.LATER, ExchangeOutcome.NEW_PAIR, ExchangeOutcome.DISCARDED -> null
         }
     }
 
-    suspend fun tausche(alterToken: String): Tauschergebnis = lock.withLock { swapLocked(alterToken) }
+    suspend fun swap(oldToken: String): ExchangeOutcome = lock.withLock { swapLocked(oldToken) }
 
-    private suspend fun swapLocked(alterToken: String): Tauschergebnis {
-        val vorher = stand()
-        if (vorher.token != alterToken) return Tauschergebnis.ALREADY_SWAPPED
-        if (!bereit()) return Tauschergebnis.LATER
-        val beginn = clock()
-        for (attempt in 0..pausen.size) {
+    private suspend fun swapLocked(oldToken: String): ExchangeOutcome {
+        val before = state()
+        if (before.token != oldToken) return ExchangeOutcome.ALREADY_SWAPPED
+        if (!ready()) return ExchangeOutcome.LATER
+        val begin = clock()
+        for (attempt in 0..pauses.size) {
             // Signed out or different server: the old token does not go out once more.
-            if (attempt > 0 && stand() != vorher) return Tauschergebnis.DISCARDED
-            when (val r = rotiere(alterToken)) {
-                is Ergebnis.Erfolg -> return succeeded(vorher, r.data)
-                is Ergebnis.Fehler -> {
+            if (attempt > 0 && state() != before) return ExchangeOutcome.DISCARDED
+            when (val r = rotate(oldToken)) {
+                is Outcome.Success -> return succeeded(before, r.data)
+                is Outcome.Failure -> {
                     // 401: the old token no longer applies (overlap over, revoked).
-                    if (r is Ergebnis.Fehler.Abgewiesen) return Tauschergebnis.NEW_PAIR
-                    if (!r.transient) return Tauschergebnis.LATER
-                    val pause = pausen.getOrNull(attempt) ?: break
-                    if (clock() - beginn + pause > OVERLAP_MS) break
+                    if (r is Outcome.Failure.Rejected) return ExchangeOutcome.NEW_PAIR
+                    if (!r.transient) return ExchangeOutcome.LATER
+                    val pause = pauses.getOrNull(attempt) ?: break
+                    if (clock() - begin + pause > OVERLAP_MS) break
                     delay(pause)
                 }
             }
         }
-        return Tauschergebnis.LATER
+        return ExchangeOutcome.LATER
     }
 
     /** A response without a new token is no swap; if the state no longer fits, it is discarded. */
-    private suspend fun succeeded(vorher: TokenStatus, antwort: SwappedToken): Tauschergebnis {
-        val neu = antwort.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.LATER
-        return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.DISCARDED
+    private suspend fun succeeded(before: TokenStatus, response: SwappedToken): ExchangeOutcome {
+        val newValue = response.token?.takeIf { it.isNotBlank() } ?: return ExchangeOutcome.LATER
+        return if (replace(before, newValue, response.origin)) ExchangeOutcome.EXCHANGED else ExchangeOutcome.DISCARDED
     }
 
     companion object {

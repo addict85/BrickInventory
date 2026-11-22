@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.catalog.ui.screens
 
-import ch.brickinventoryapp.model.domain.Katalogsortierung
+import ch.brickinventoryapp.model.domain.CatalogSort
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
-import ch.brickinventoryapp.ui.components.AuswahlChip
+import ch.brickinventoryapp.ui.components.SelectionChip
 
 /**
  * The catalog page's sections: search field, filter row (theme, year, sort order)
@@ -35,10 +35,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.SortierMenu
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.components.SortMenu
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.components.Suchfeld
+import ch.brickinventoryapp.ui.components.SearchField
 
 /**
  * Filter row: theme and year; sorting goes through the menu next to search. Deliberate
@@ -53,7 +53,7 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
         modifier = Modifier.padding(bottom = 6.dp)
     ) {
         item {
-            AuswahlChip(
+            SelectionChip(
                 selected = state.themeId != null,
                 onClick = { showThemeSheet.value = true },
                 label = {
@@ -65,7 +65,7 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
             )
         }
         item {
-            AuswahlChip(
+            SelectionChip(
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
@@ -77,22 +77,22 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
 
 /** The search field above the list, sort order next to it. */
 @Composable
-internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (Katalogsortierung) -> Unit) {
+internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (CatalogSort) -> Unit) {
     // Search field — the same building block as in gallery, parts and minifigures
-    // (TabellenZeile.kt), so the clear button is named the same everywhere.
+    // (TableRow.kt), so the clear button is named the same everywhere.
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Suchfeld(
-            wert = state.query,
+        SearchField(
+            value = state.query,
             onValue = onQueryChange,
-            platzhalter = stringResource(R.string.catalog_search_placeholder),
+            placeholder = stringResource(R.string.catalog_search_placeholder),
             modifier = Modifier.weight(1f),
         )
-        SortierMenu(
-            optionen = Katalogsortierung.entries.map { it to it.beschriftung() },
-            gewaehlt = state.sort,
-            onWahl = onSortChange,
-            modifier = Modifier.padding(end = Abstaende.edge),
-            vorgabe = Katalogsortierung.DEFAULT,
+        SortMenu(
+            options = CatalogSort.entries.map { it to it.label() },
+            chosen = state.sort,
+            onChoice = onSortChange,
+            modifier = Modifier.padding(end = Spacing.edge),
+            default = CatalogSort.DEFAULT,
         )
     }
 }
@@ -103,10 +103,10 @@ internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -
 internal fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
-            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
+            Column(Modifier.padding(horizontal = Spacing.large).padding(bottom = Spacing.veryLarge)) {
                 Text(stringResource(R.string.catalog_filter_year), Modifier.semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(Abstaende.klein))
+                Spacer(Modifier.height(Spacing.small))
                 val years = remember(state.yearMin, state.yearMax) {
                     val max = state.yearMax ?: 0; val min = state.yearMin ?: 0
                     if (max >= min && max > 0) (max downTo min).toList() else emptyList()
@@ -136,15 +136,15 @@ internal fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableSta
     if (showThemeSheet.value) {
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }
-            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
+            Column(Modifier.padding(horizontal = Spacing.large).padding(bottom = Spacing.veryLarge)) {
                 Text(stringResource(R.string.catalog_filter_theme), Modifier.semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 // The shared building block, so this field too has a clear button like every
                 // other search field.
-                Suchfeld(
-                    wert = themeFilter,
+                SearchField(
+                    value = themeFilter,
                     onValue = { themeFilter = it },
-                    platzhalter = stringResource(R.string.catalog_theme_search),
+                    placeholder = stringResource(R.string.catalog_theme_search),
                 )
                 val filteredThemes = remember(state.themes, themeFilter) {
                     if (themeFilter.isBlank()) state.themes

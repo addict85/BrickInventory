@@ -16,60 +16,60 @@ import javax.net.ssl.X509ExtendedTrustManager
  * then is the CA store read at all.
  *
  * Counter-checks:
- *   A  wahl() always `withUser.value` → red “without the setting only the system applies”
+ *   A  choice() always `withUser.value` → red “without the setting only the system applies”
  *      and “with the setting the user CAs apply, immediately”
- *   B  checkClientTrusted on wahl() instead of on system → red “client checks
+ *   B  checkClientTrusted on choice() instead of on system → red “client checks
  *      stay with the system”
  */
 class ServerTrustTest {
 
-    /** Accepts only if [takesAn]; records which check came. */
-    private class Checker(val name: String, val takesAn: Boolean, val log: MutableList<String>) : X509ExtendedTrustManager() {
-        private fun pruefe(art: String) {
-            log += "$name:$art"
-            if (!takesAn) throw CertificateException("$name vertraut nicht")
+    /** Accepts only if [accepts]; records which check came. */
+    private class Checker(val name: String, val accepts: Boolean, val log: MutableList<String>) : X509ExtendedTrustManager() {
+        private fun check(kind: String) {
+            log += "$name:$kind"
+            if (!accepts) throw CertificateException("$name vertraut nicht")
         }
-        override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = pruefe("server")
-        override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = pruefe("server")
-        override fun checkServerTrusted(c: Array<X509Certificate>, a: String) = pruefe("server")
-        override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = pruefe("client")
-        override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = pruefe("client")
-        override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = pruefe("client")
+        override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = check("server")
+        override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = check("server")
+        override fun checkServerTrusted(c: Array<X509Certificate>, a: String) = check("server")
+        override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = check("client")
+        override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = check("client")
+        override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = check("client")
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
 
     private val log = mutableListOf<String>()
-    private var gelesen = false
-    private var erlaubt = false
-    private val vertrauen = ChoiceTrust(
-        system = Checker("system", takesAn = false, log),
-        withUser = lazy { gelesen = true; Checker("nutzer", takesAn = true, log) },
-        userAllowed = { erlaubt },
+    private var read = false
+    private var allowed = false
+    private val trust = ChoiceTrust(
+        system = Checker("system", accepts = false, log),
+        withUser = lazy { read = true; Checker("nutzer", accepts = true, log) },
+        userAllowed = { allowed },
     )
 
     private fun serverChecked(): Boolean =
-        runCatching { vertrauen.checkServerTrusted(emptyArray(), "RSA", null as Socket?) }.isSuccess
+        runCatching { trust.checkServerTrusted(emptyArray(), "RSA", null as Socket?) }.isSuccess
 
     @Test
     fun `without the setting only the system applies`() {
         assertFalse("Ein selbst ausgestelltes Zertifikat ginge ohne Einstellung durch", serverChecked())
         assertEquals(listOf("system:server"), log)
-        assertFalse("Der CA-Speicher wird ohne Bedarf nicht gelesen", gelesen)
+        assertFalse("Der CA-Speicher wird ohne Bedarf nicht gelesen", read)
     }
 
     @Test
     fun `with the setting the user CAs apply, immediately`() {
         assertFalse(serverChecked())
-        erlaubt = true
+        allowed = true
         assertTrue(serverChecked())
-        erlaubt = false
+        allowed = false
         assertFalse("Ausschalten wirkt ohne Neustart", serverChecked())
     }
 
     @Test
     fun `client checks stay with the system`() {
-        erlaubt = true
-        runCatching { vertrauen.checkClientTrusted(emptyArray(), "RSA", null as Socket?) }
+        allowed = true
+        runCatching { trust.checkClientTrusted(emptyArray(), "RSA", null as Socket?) }
         assertEquals(listOf("system:client"), log)
     }
 }

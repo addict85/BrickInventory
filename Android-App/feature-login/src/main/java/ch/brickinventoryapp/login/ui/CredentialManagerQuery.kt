@@ -22,17 +22,17 @@ internal class CredentialManagerQuery(context: Context) : PasskeyQuery {
         .firstOrNull { it is android.app.Activity } ?: context
 
     override suspend fun fetch(optionsJson: String): PasskeyResult = try {
-        val antwort = CredentialManager.create(activity).getCredential(
+        val response = CredentialManager.create(activity).getCredential(
             activity, GetCredentialRequest(listOf(GetPublicKeyCredentialOption(optionsJson))))
-        when (val c = antwort.credential) {
-            is PublicKeyCredential -> PasskeyResult.Antwort(c.authenticationResponseJson)
-            else -> PasskeyResult.Fehler(c.type)
+        when (val c = response.credential) {
+            is PublicKeyCredential -> PasskeyResult.Response(c.authenticationResponseJson)
+            else -> PasskeyResult.Failure(c.type)
         }
     } catch (_: GetCredentialCancellationException) {
-        PasskeyResult.Abgebrochen
+        PasskeyResult.Cancelled
     } catch (_: NoCredentialException) {
         PasskeyResult.NoPasskey
     } catch (e: GetCredentialException) {
-        PasskeyResult.Fehler(e.type)
+        PasskeyResult.Failure(e.type)
     }
 }

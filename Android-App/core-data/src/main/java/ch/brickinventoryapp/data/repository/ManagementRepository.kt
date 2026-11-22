@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.ApiLimitsView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.CacheMetricsView
@@ -14,63 +14,63 @@ import ch.brickinventoryapp.model.ui.theme.Design
 
 /**
  * The management of the server (admins only), in views: the wire format stays
- * behind the implementation (VerwaltungRepositoryImpl). Actions without a usable response
- * deliver Unit; a `success: false` of the server comes as [Ergebnis.Fehler.Absage].
+ * behind the implementation (AdminRepositoryImpl). Actions without a usable response
+ * deliver Unit; a `success: false` of the server comes as [Outcome.Failure.Refusal].
  */
 interface ManagementRepository {
-    suspend fun importCsv(art: CsvImportKind, fileName: String, inhalt: ByteArray): Ergebnis<CsvResultView>
+    suspend fun importCsv(kind: CsvImportKind, fileName: String, content: ByteArray): Outcome<CsvResultView>
 
-    suspend fun getLog(minuten: Int): Ergebnis<List<LogRowView>>
+    suspend fun getLog(minutes: Int): Outcome<List<LogRowView>>
 
-    suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Ergebnis<Unit>
+    suspend fun setJobSchedule(name: String, time: String? = null, minutes: Int? = null): Outcome<Unit>
 
-    suspend fun queueCatalogImages(): Ergebnis<Unit>
+    suspend fun queueCatalogImages(): Outcome<Unit>
 
-    suspend fun setAppTheme(theme: Design): Ergebnis<Unit>
+    suspend fun setAppTheme(theme: Design): Outcome<Unit>
 
-    suspend fun getStartupStatus(): Ergebnis<StartStateView>
+    suspend fun getStartupStatus(): Outcome<StartStateView>
 
-    suspend fun getJobs(): Ergebnis<JobsView>
+    suspend fun getJobs(): Outcome<JobsView>
 
-    suspend fun getCacheStats(): Ergebnis<CacheMetricsView>
+    suspend fun getCacheStats(): Outcome<CacheMetricsView>
 
     /** The cache duration in hours, as the server writes it. */
-    suspend fun getCacheTtl(): Ergebnis<String>
+    suspend fun getCacheTtl(): Outcome<String>
 
-    suspend fun setCacheTtl(hours: Int): Ergebnis<Unit>
+    suspend fun setCacheTtl(hours: Int): Outcome<Unit>
 
-    suspend fun clearCache(alles: Boolean = false): Ergebnis<Unit>
+    suspend fun clearCache(everything: Boolean = false): Outcome<Unit>
 
-    suspend fun getApiLimits(): Ergebnis<ApiLimitsView>
+    suspend fun getApiLimits(): Outcome<ApiLimitsView>
 
-    suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<Unit>
+    suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Outcome<Unit>
 
-    suspend fun getBricksetQueue(): Ergebnis<List<BricksetEntryView>>
+    suspend fun getBricksetQueue(): Outcome<List<BricksetEntryView>>
 
-    suspend fun retryBricksetEntry(setNumber: String): Ergebnis<Unit>
+    suspend fun retryBricksetEntry(setNumber: String): Outcome<Unit>
 
-    suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<Unit>
+    suspend fun deleteBricksetEntry(setNumber: String): Outcome<Unit>
 
-    suspend fun redownloadMissingImages(): Ergebnis<Unit>
+    suspend fun redownloadMissingImages(): Outcome<Unit>
 
-    suspend fun getAuftraege(status: String? = null, art: String? = null): Ergebnis<BackgroundView>
+    suspend fun getBackgroundJobs(status: String? = null, kind: String? = null): Outcome<BackgroundView>
 
-    suspend fun abortJobAb(id: String): Ergebnis<Unit>
+    suspend fun requestJobCancel(id: String): Outcome<Unit>
 
-    suspend fun repeatJob(id: String): Ergebnis<Unit>
+    suspend fun repeatJob(id: String): Outcome<Unit>
 
     /** true if a job was really created; false if one was already running. */
-    suspend fun starteAuftragsArt(art: String): Ergebnis<Boolean>
+    suspend fun startJobKind(kind: String): Outcome<Boolean>
 
     /** How many waiting jobs were removed. */
-    suspend fun emptyJobKind(art: String): Ergebnis<Int>
+    suspend fun emptyJobKind(kind: String): Outcome<Int>
 
-    suspend fun triggerCsvSync(): Ergebnis<Unit>
+    suspend fun triggerCsvSync(): Outcome<Unit>
 
     /** How many sets were queued for re-reading. */
-    suspend fun reimportInstructions(): Ergebnis<Int>
+    suspend fun reimportInstructions(): Outcome<Int>
 
-    suspend fun triggerPriceJob(): Ergebnis<Unit>
+    suspend fun triggerPriceJob(): Outcome<Unit>
 
-    suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit>
+    suspend fun setDefaultCondition(condition: Condition): Outcome<Unit>
 }

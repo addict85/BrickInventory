@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Messages appear in the APP's language, not in the system's.
@@ -16,7 +16,7 @@ import ch.brickinventoryapp.testing.Quellen
  * `ctx.getString(...)` on the application context stood there. Whoever had their phone set to
  * German and the app to English thus got EVERY
  * snackbar and EVERY error message in German anyway — of all things via
- * `meldung()`, the function that only exists so that error messages do not come out in
+ * `message()`, the function that only exists so that error messages do not come out in
  * a language the user did not choose.
  *
  * This can hardly stand out here: the app is developed in German, the
@@ -55,24 +55,24 @@ class LanguageTheMessagesTest {
 
     /** Files in which the context does NOT come from an activity. */
     private fun affectedFiles(): List<Pair<String, String>> =
-        Quellen.alle()
+        Sources.all()
             .filter { f ->
                 val p = f.absolutePath.replace('\\', '/')
                 ("/ui/" in p || "/service/" in p) && "/ui/screens/" !in p && "/gemeinsam/ui/" !in p
             }
-            .map { it.name to Quellen.withoutComments(it.readText()) }
+            .map { it.name to Sources.withoutComments(it.readText()) }
 
     @Test
     fun `resource texts come from the localized context`() {
-        val dateien = affectedFiles()
-        assert(dateien.size >= 15) {
-            "Nur ${dateien.size} Dateien gefunden — der Pfadfilter stimmt nicht mehr, " +
+        val files = affectedFiles()
+        assert(files.size >= 15) {
+            "Nur ${files.size} Dateien gefunden — der Pfadfilter stimmt nicht mehr, " +
                 "und die Pruefung waere still gruen."
         }
 
-        val fehler = mutableListOf<String>()
-        var geprueft = 0
-        for ((name, s) in dateien) {
+        val error = mutableListOf<String>()
+        var checked = 0
+        for ((name, s) in files) {
             // Receivers that come from localizedContext(...) in this file.
             // Both spellings, and across the line: the services
             // bind it as `private val loc: Context by lazy { … }`, the
@@ -82,38 +82,38 @@ class LanguageTheMessagesTest {
                 .findAll(s).map { it.groupValues[1] }.toSet()
             // The expression can also be called directly:
             //   localizedContext(ctx).getString(...)
-            val direkt = Regex("""localizedContext\([^)]*\)\s*\.getString\(""")
+            val direct = Regex("""localizedContext\([^)]*\)\s*\.getString\(""")
 
             for (m in Regex("""(\w+)\s*\.getString\(""").findAll(s)) {
-                geprueft++
+                checked++
                 val recipient = m.groupValues[1]
                 if (recipient in localized) continue
                 // Line with a direct call?
-                val zeile = s.substring(s.lastIndexOf('\n', m.range.first) + 1,
+                val row = s.substring(s.lastIndexOf('\n', m.range.first) + 1,
                                         (s.indexOf('\n', m.range.first).takeIf { it >= 0 } ?: s.length))
-                if (direkt.containsMatchIn(zeile)) continue
-                fehler += "$name: $recipient.getString(...)"
+                if (direct.containsMatchIn(row)) continue
+                error += "$name: $recipient.getString(...)"
             }
         }
-        assert(geprueft > 0) { "Kein einziger getString-Aufruf gefunden — Muster veraltet?" }
-        assert(fehler.isEmpty()) {
+        assert(checked > 0) { "Kein einziger getString-Aufruf gefunden — Muster veraltet?" }
+        assert(error.isEmpty()) {
             "Diese Stellen holen Texte ueber einen Context, der unterhalb von " +
                 "Android 13 die SYSTEM-Sprache traegt statt der eingestellten App-Sprache:\n  " +
-                fehler.distinct().joinToString("\n  ") +
-                "\nRichtig ist LanguageManager.localizedContext(...) — siehe Textquelle.text()."
+                error.distinct().joinToString("\n  ") +
+                "\nRichtig ist LanguageManager.localizedContext(...) — siehe TextSource.text()."
         }
     }
 
     @Test
     fun `the text source has the helper and uses it`() {
         // Without the helper the next caller writes ctx.getString() again.
-        for (datei in listOf("data/util/Textquelle.kt")) {
-            val s = Quellen.withoutComments(Quellen.lies(datei))
+        for (file in listOf("data/util/TextSource.kt")) {
+            val s = Sources.withoutComments(Sources.read(file))
             assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
-                "$datei hat keinen text()-Helfer mehr"
+                "$file hat keinen text()-Helfer mehr"
             }
             assert(s.contains("localizedContext")) {
-                "$datei holt den lokalisierten Context nicht mehr"
+                "$file holt den lokalisierten Context nicht mehr"
             }
         }
     }
@@ -124,10 +124,10 @@ class LanguageTheMessagesTest {
         // single percent sign — say a percentage — would throw an
         // exception there instead of being shown, and only at runtime
         // and only for exactly this text.
-        for (datei in listOf("data/util/Textquelle.kt")) {
-            val s = Quellen.withoutComments(Quellen.lies(datei))
+        for (file in listOf("data/util/TextSource.kt")) {
+            val s = Sources.withoutComments(Sources.read(file))
             assert(s.contains("if (args.isEmpty()) c.getString(id) else c.getString(id, *args)")) {
-                "$datei formatiert auch ohne Argumente — siehe Textquelle.text()"
+                "$file formatiert auch ohne Argumente — siehe TextSource.text()"
             }
         }
     }

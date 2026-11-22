@@ -23,10 +23,10 @@ import java.util.concurrent.TimeUnit
  */
 class ManifestCheckTest {
 
-    private fun komponente(art: String, name: String, exportiert: Boolean, right: String? = null) = buildString {
-        append("      E: $art (line=10)\n")
+    private fun component(kind: String, name: String, exported: Boolean, right: String? = null) = buildString {
+        append("      E: $kind (line=10)\n")
         append("        A: http://schemas.android.com/apk/res/android:name(0x01010003)=\"$name\" (Raw: \"$name\")\n")
-        append("        A: http://schemas.android.com/apk/res/android:exported(0x01010010)=$exportiert\n")
+        append("        A: http://schemas.android.com/apk/res/android:exported(0x01010010)=$exported\n")
         if (right != null) append("        A: http://schemas.android.com/apk/res/android:permission(0x01010006)=\"$right\" (Raw: \"$right\")\n")
     }
 
@@ -44,14 +44,14 @@ class ManifestCheckTest {
             "      A: http://schemas.android.com/apk/res/android:allowBackup(0x01010280)=false\n" +
             application + components.joinToString("")
 
-    private val gut = arrayOf(
-        komponente("activity", "ch.brickinventoryapp.app.MainActivity", true),
-        komponente("activity", "ch.brickinventoryapp.app.MeldungsEinstieg", false),
-        komponente("receiver", "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger", true, "android.permission.BIND_APPWIDGET"),
-        komponente("service", "androidx.work.impl.background.systemjob.SystemJobService", true, "android.permission.BIND_JOB_SERVICE"),
+    private val good = arrayOf(
+        component("activity", "ch.brickinventoryapp.app.MainActivity", true),
+        component("activity", "ch.brickinventoryapp.app.MessageEntryPoint", false),
+        component("receiver", "ch.brickinventoryapp.app.widget.CollectionWidgetReceiver", true, "android.permission.BIND_APPWIDGET"),
+        component("service", "androidx.work.impl.background.systemjob.SystemJobService", true, "android.permission.BIND_JOB_SERVICE"),
     )
 
-    private fun pruefe(text: String): Pair<Int, String> {
+    private fun check(text: String): Pair<Int, String> {
         val f = File.createTempFile("manifest", ".txt").apply { deleteOnExit(); writeText(text) }
         val p = ProcessBuilder("python3", "../tools/manifest-check.py", f.path, "../tools/manifest-exported.txt",
             "../tools/manifest-permissions.txt")
@@ -63,17 +63,17 @@ class ManifestCheckTest {
 
     @Test
     fun `the expected manifest passes`() {
-        val (code, text) = pruefe(manifest(*gut))
+        val (code, text) = check(manifest(*good))
         assertEquals(text, 0, code)
     }
 
     @Test
     fun `a foreign exported component stands out, even with a wrong permission`() {
-        val (code, text) = pruefe(manifest(*gut, komponente("provider", "com.beispiel.Offen", true)))
+        val (code, text) = check(manifest(*good, component("provider", "com.beispiel.Offen", true)))
         assertEquals(1, code)
         assertTrue(text, "com.beispiel.Offen" in text)
-        val (code2, text2) = pruefe(manifest(komponente("activity", "ch.brickinventoryapp.app.MainActivity", true),
-            komponente("receiver", "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger", true)))
+        val (code2, text2) = check(manifest(component("activity", "ch.brickinventoryapp.app.MainActivity", true),
+            component("receiver", "ch.brickinventoryapp.app.widget.CollectionWidgetReceiver", true)))
         assertEquals(1, code2)
         assertTrue(text2, "BIND_APPWIDGET" in text2)
     }
@@ -81,12 +81,12 @@ class ManifestCheckTest {
     /** Both come from libraries; the manifest removes them. */
     @Test
     fun `removed library components are not in the allow list`() {
-        for ((art, name, right) in listOf(
+        for ((kind, name, right) in listOf(
             Triple("receiver", "androidx.profileinstaller.ProfileInstallReceiver", "android.permission.DUMP"),
             Triple("service", "com.google.android.gms.auth.api.signin.RevocationBoundService",
                 "com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"),
         )) {
-            val (code, text) = pruefe(manifest(*gut, komponente(art, name, true, right)))
+            val (code, text) = check(manifest(*good, component(kind, name, true, right)))
             assertEquals(text, 1, code)
         }
     }
@@ -94,41 +94,41 @@ class ManifestCheckTest {
     @Test
     fun `a debuggable APK, backup or cleartext stand out`() {
         val debuggable = "      A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true\n"
-        assertEquals(1, pruefe(manifest(*gut, application = debuggable)).first)
-        val klartext = "      A: http://schemas.android.com/apk/res/android:usesCleartextTraffic(0x010104ec)=true\n"
-        assertEquals(1, pruefe(manifest(*gut, application = klartext)).first)
-        val backup = manifest(*gut).replace("allowBackup(0x01010280)=false", "allowBackup(0x01010280)=true")
-        assertEquals(1, pruefe(backup).first)
+        assertEquals(1, check(manifest(*good, application = debuggable)).first)
+        val plaintext = "      A: http://schemas.android.com/apk/res/android:usesCleartextTraffic(0x010104ec)=true\n"
+        assertEquals(1, check(manifest(*good, application = plaintext)).first)
+        val backup = manifest(*good).replace("allowBackup(0x01010280)=false", "allowBackup(0x01010280)=true")
+        assertEquals(1, check(backup).first)
     }
 
     @Test
     fun `without recognizable components the format is wrong, not the manifest good`() {
-        assertEquals(1, pruefe(manifest()).first)
-        assertEquals(1, pruefe("irgendwas\n").first)
+        assertEquals(1, check(manifest()).first)
+        assertEquals(1, check("irgendwas\n").first)
     }
 
     @Test
     fun `a permission outside the list or testOnly stands out`() {
-        val (code, text) = pruefe(manifest(*gut, rights = listOf("android.permission.INTERNET", "android.permission.READ_PHONE_STATE")))
+        val (code, text) = check(manifest(*good, rights = listOf("android.permission.INTERNET", "android.permission.READ_PHONE_STATE")))
         assertEquals(text, 1, code)
         assertTrue(text, "READ_PHONE_STATE" in text)
         val testOnly = "      A: http://schemas.android.com/apk/res/android:testOnly(0x01010272)=true\n"
-        assertEquals(1, pruefe(manifest(*gut, application = testOnly)).first)
+        assertEquals(1, check(manifest(*good, application = testOnly)).first)
     }
 
     /** ML Kit reports usage data via Google's datatransport; the app removes its backend. */
     @Test
     fun `a telemetry backend of ML Kit stands out, the service without backend does not`() {
-        val dienst = komponente("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)
+        val service = component("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)
         val backend = "        E: meta-data (line=6)\n" +
             "          A: http://schemas.android.com/apk/res/android:name(0x01010003)=" +
             "\"backend:com.google.android.datatransport.cct.CctBackendFactory\" " +
             "(Raw: \"backend:com.google.android.datatransport.cct.CctBackendFactory\")\n" +
             "          A: http://schemas.android.com/apk/res/android:value(0x01010024)=\"cct\" (Raw: \"cct\")\n"
-        val (ohne, text) = pruefe(manifest(*gut, dienst))
-        assertEquals(text, 0, ohne)
-        val (mit, text2) = pruefe(manifest(*gut, dienst + backend))
-        assertEquals(text2, 1, mit)
+        val (without, text) = check(manifest(*good, service))
+        assertEquals(text, 0, without)
+        val (with, text2) = check(manifest(*good, service + backend))
+        assertEquals(text2, 1, with)
         assertTrue(text2, "CctBackendFactory" in text2)
     }
 }

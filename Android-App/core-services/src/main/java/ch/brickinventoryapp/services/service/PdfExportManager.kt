@@ -2,17 +2,17 @@ package ch.brickinventoryapp.services.service
 
 import android.content.Context
 import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.domain.Teilelistenauftrag
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.data.service.PdfJobStream
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.util.Teilelistentresor
+import ch.brickinventoryapp.data.util.PartListVault
 import ch.brickinventoryapp.model.domain.PdfJobStatus
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -30,9 +30,9 @@ import kotlin.math.roundToLong
 /** Where the export stands, as field values; the records form parts list and service. */
 internal sealed interface PdfExportState {
     data object Idle : PdfExportState
-    data class Running(val fortschritt: PdfProgress) : PdfExportState
+    data class Running(val progress: PdfProgress) : PdfExportState
     data class Done(val file: File) : PdfExportState
-    data class Error(val grund: PdfFailure) : PdfExportState
+    data class Error(val reason: PdfFailure) : PdfExportState
 }
 
 /**
@@ -42,9 +42,9 @@ internal sealed interface PdfExportState {
  */
 @Singleton
 internal class PdfExportManager @Inject constructor(
-    private val dateien: SetDateienRepository,
-    private val strom: PdfJobStream,
-    private val teilelistentresor: Teilelistentresor,
+    private val files: SetFilesRepository,
+    private val stream: PdfJobStream,
+    private val partListVault: PartListVault,
     private val areas: Scopes,
     @param:ApplicationContext private val context: Context,
 ) {
@@ -54,117 +54,117 @@ internal class PdfExportManager @Inject constructor(
     private var job: Job? = null
 
     /** A new job replaces a running one; the state immediately switches to „starting“. */
-    fun commission(anfrage: Teilelistenauftrag) {
+    fun commission(request: PartListJob) {
         job?.cancel()
-        _state.value = PdfExportState.Running(PdfProgress(PdfStep.STARTET))
-        job = areas.application.launch(areas.io) { runFrom(anfrage) }
+        _state.value = PdfExportState.Running(PdfProgress(PdfStep.STARTING))
+        job = areas.application.launch(areas.io) { runFrom(request) }
     }
 
     /** Five attempts with a growing pause: the finished PDF is sometimes only ready shortly after the notification. */
-    private suspend fun loadPdf(jobId: String): Ergebnis<ByteArray> {
-        var ergebnis: Ergebnis<ByteArray> = dateien.downloadPdf(jobId)
+    private suspend fun loadPdf(jobId: String): Outcome<ByteArray> {
+        var outcome: Outcome<ByteArray> = files.downloadPdf(jobId)
         var pause = 2000L
         repeat(4) {
-            if (ergebnis is Ergebnis.Erfolg) return ergebnis
+            if (outcome is Outcome.Success) return outcome
             delay(pause); pause = minOf(pause * 2, 30_000L)
-            ergebnis = dateien.downloadPdf(jobId)
+            outcome = files.downloadPdf(jobId)
         }
-        return ergebnis
+        return outcome
     }
 
-    suspend fun runFrom(anfrage: Teilelistenauftrag) {
-        fangeAusserAbbruch {
-            val jobId = when (val r = dateien.startPdfJob(anfrage)) {
-                is Ergebnis.Erfolg -> r.data
-                is Ergebnis.Fehler -> { fail(PdfFailure.Abruf(r)); return }
+    suspend fun runFrom(request: PartListJob) {
+        catchUnlessCancelled {
+            val jobId = when (val r = files.startPdfJob(request)) {
+                is Outcome.Success -> r.data
+                is Outcome.Failure -> { fail(PdfFailure.Fetch(r)); return }
             }
             _state.value = PdfExportState.Running(PdfProgress(PdfStep.IMAGES_LOAD))
-            val lauf = Lauf()
+            val jobRun = JobRun()
             // Alongside the waiting, a ticker: from the server's estimate (etaSeconds ≈
             // missing images), the remaining time every second, but only while it's still being created.
-            val grund = coroutineScope {
+            val reason = coroutineScope {
                 val ticker = launch {
                     while (isActive) {
                         delay(1000)
-                        val deadline = lauf.deadlineMs
-                        if (lauf.erstellt && deadline > 0L) {
+                        val deadline = jobRun.deadlineMs
+                        if (jobRun.created && deadline > 0L) {
                             val rest = ((deadline - System.currentTimeMillis() + 999) / 1000L).toInt()
                             _state.value = PdfExportState.Running(PdfProgress(PdfStep.CREATED, rest))
                         }
                     }
                 }
-                try { waitOnJob(jobId, lauf) } finally { ticker.cancel() }
+                try { waitOnJob(jobId, jobRun) } finally { ticker.cancel() }
             }
-            if (grund != null) { fail(grund); return }
+            if (reason != null) { fail(reason); return }
 
             _state.value = PdfExportState.Running(PdfProgress(PdfStep.DOWNLOAD))
             when (val r = loadPdf(jobId)) {
-                is Ergebnis.Erfolg -> {
-                    val file = teilelistentresor.put(context.filesDir, context.getExternalFilesDir(null), r.data)
+                is Outcome.Success -> {
+                    val file = partListVault.put(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Even encrypted, the inventory only stays as long as someone wants to open it.
-                    runCatching { PartListsAufraeumer.plane(context) }
+                    runCatching { PartListsCleaner.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
-                is Ergebnis.Fehler -> fail(PdfFailure.Abruf(r))
+                is Outcome.Failure -> fail(PdfFailure.Fetch(r))
             }
-        }.onFailure { e -> fail(PdfFailure.Abruf(Ergebnis.Fehler.Unbekannt(technical = e.message))) }
+        }.onFailure { e -> fail(PdfFailure.Fetch(Outcome.Failure.Unknown(technical = e.message))) }
     }
 
-    private fun fail(grund: PdfFailure) { _state.value = PdfExportState.Error(grund) }
+    private fun fail(reason: PdfFailure) { _state.value = PdfExportState.Error(reason) }
 
     /** Waits for completion via SSE, otherwise via polling. Null means done, otherwise the reason. */
-    private suspend fun waitOnJob(jobId: String, lauf: Lauf): PdfFailure? {
-        var ausgang: Ausgang? = null
-        strom.observe(jobId).takeWhile { e ->
+    private suspend fun waitOnJob(jobId: String, jobRun: JobRun): PdfFailure? {
+        var outbox: Outbox? = null
+        stream.observe(jobId).takeWhile { e ->
             when (e) {
-                is PdfJobStream.Ereignis.Stand -> { ausgang = applyAn(e.stand, lauf); ausgang == null }
-                PdfJobStream.Ereignis.Weg -> false
-                is PdfJobStream.Ereignis.Rejected -> { ausgang = Ausgang(PdfFailure.Abruf(e.fehler)); false }
+                is PdfJobStream.Event.State -> { outbox = applyChange(e.state, jobRun); outbox == null }
+                PdfJobStream.Event.Gone -> false
+                is PdfJobStream.Event.Rejected -> { outbox = Outbox(PdfFailure.Fetch(e.error)); false }
             }
         }.collect { }
-        return (ausgang ?: questionAbUntilDone(jobId, lauf)).grund
+        return (outbox ?: questionAbUntilDone(jobId, jobRun)).reason
     }
 
     /** Null: still running. */
-    private fun applyAn(stand: PdfJobStatus, lauf: Lauf): Ausgang? {
-        lauf.rememberDeadline(stand.restSeconds)
-        return when (stand.status) {
-            Laufstatus.FERTIG -> {
-                lauf.erstellt = false
+    private fun applyChange(state: PdfJobStatus, jobRun: JobRun): Outbox? {
+        jobRun.rememberDeadline(state.restSeconds)
+        return when (state.status) {
+            RunStatus.DONE -> {
+                jobRun.created = false
                 _state.value = PdfExportState.Running(PdfProgress(PdfStep.COMPLETION))
-                Ausgang(null)
+                Outbox(null)
             }
-            Laufstatus.FEHLER -> { lauf.erstellt = false; Ausgang(PdfFailure.Auftrag(stand.fehler)) }
-            Laufstatus.LAEUFT -> { lauf.erstellt = true; null }
-            Laufstatus.RUHT, Laufstatus.WARTET, Laufstatus.ABGEBROCHEN, Laufstatus.UNBEKANNT -> null
+            RunStatus.ERROR -> { jobRun.created = false; Outbox(PdfFailure.Job(state.error)) }
+            RunStatus.RUNNING -> { jobRun.created = true; null }
+            RunStatus.IDLE, RunStatus.WAITING, RunStatus.CANCELLED, RunStatus.UNKNOWN -> null
         }
     }
 
     /** Fallback without a stream: query every 3s, at most ten minutes, at most ten errors in a row. */
-    private suspend fun questionAbUntilDone(jobId: String, lauf: Lauf): Ausgang {
-        var fehler = 0
-        val bis = System.currentTimeMillis() + 10 * 60 * 1000L
-        var zuletzt: Ergebnis.Fehler = Ergebnis.Fehler.Zeitueberschreitung
-        while (System.currentTimeMillis() < bis) {
+    private suspend fun questionAbUntilDone(jobId: String, jobRun: JobRun): Outbox {
+        var error = 0
+        val until = System.currentTimeMillis() + 10 * 60 * 1000L
+        var last: Outcome.Failure = Outcome.Failure.Timeout
+        while (System.currentTimeMillis() < until) {
             delay(3000)
-            when (val r = dateien.getPdfJobStatus(jobId)) {
-                is Ergebnis.Erfolg -> { fehler = 0; applyAn(r.data, lauf)?.let { return it } }
-                is Ergebnis.Fehler -> { zuletzt = r; if (++fehler >= 10) return Ausgang(PdfFailure.Abruf(r)) }
+            when (val r = files.getPdfJobStatus(jobId)) {
+                is Outcome.Success -> { error = 0; applyChange(r.data, jobRun)?.let { return it } }
+                is Outcome.Failure -> { last = r; if (++error >= 10) return Outbox(PdfFailure.Fetch(r)) }
             }
         }
-        return Ausgang(PdfFailure.Abruf(zuletzt))
+        return Outbox(PdfFailure.Fetch(last))
     }
 
-    /** How a job ended: [grund] null means done. */
-    private class Ausgang(val grund: PdfFailure?)
+    /** How a job ended: [reason] null means done. */
+    private class Outbox(val reason: PdfFailure?)
 
     /** What a single job knows about its own time; new for each job. */
-    private class Lauf {
+    private class JobRun {
         /** When the PDF will be done according to the first estimate, 0 without an estimate. */
         @Volatile var deadlineMs = 0L
 
         /** Only while the server is still creating it does the ticker show a remaining time. */
-        @Volatile var erstellt = false
+        @Volatile var created = false
 
         fun rememberDeadline(seconds: Double?) {
             if (deadlineMs == 0L && seconds != null && seconds > 0) deadlineMs = System.currentTimeMillis() + (seconds * 1000).roundToLong()

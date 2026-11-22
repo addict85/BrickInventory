@@ -2,14 +2,14 @@ package ch.brickinventoryapp.collection.ui.screens
 
 import ch.brickinventoryapp.model.ui.errorKind
 import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.model.domain.Setsortierung
-import ch.brickinventoryapp.model.domain.Merksortierung
-import ch.brickinventoryapp.model.domain.Erfassungswunsch
-import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.WantedSort
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.model.domain.MetricsView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -37,17 +37,17 @@ import ch.brickinventoryapp.collection.ui.GalleryDisplay
 import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.galleryDisplay
 import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.state.ui.Filterzahl
-import ch.brickinventoryapp.state.ui.LagerUiState
+import ch.brickinventoryapp.state.ui.FilterCount
+import ch.brickinventoryapp.state.ui.StorageUiState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.components.EmptySymbol
 import ch.brickinventoryapp.ui.components.Moved
 import ch.brickinventoryapp.ui.components.SkeletonRaster
-import ch.brickinventoryapp.ui.components.SortierMenu
+import ch.brickinventoryapp.ui.components.SortMenu
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.BarcodeSymbol
 import ch.brickinventoryapp.ui.components.AddFab
@@ -72,22 +72,22 @@ import ch.brickinventoryapp.collection.ui.TilePrice
 /** What the gallery shows; the route gathers it from the ViewModels' flows. */
 internal data class GalleryState(
     val app: AppUiState,
-    val blick: ScopeUiState,
-    val galerie: GalleryUiState,
-    val preise: Map<String, TilePrice>,
+    val glance: ScopeUiState,
+    val gallery: GalleryUiState,
+    val prices: Map<String, TilePrice>,
     val barcode: BarcodeUiState,
-    val lager: LagerUiState,
+    val storage: StorageUiState,
 )
 
 /** What the gallery triggers; the route wires it to GalleryViewModel and EntryViewModel. */
 internal class GalleryEvents(
-    val suche: (String) -> Unit,
-    val thema: (String) -> Unit,
-    val sorting: (Setsortierung) -> Unit,
-    val konto: (String) -> Unit,
-    val lagerort: (String) -> Unit,
-    val aktualisieren: () -> Unit,
-    val setErfassen: (Erfassungswunsch) -> Unit,
+    val search: (String) -> Unit,
+    val theme: (String) -> Unit,
+    val sorting: (SetSort) -> Unit,
+    val account: (String) -> Unit,
+    val storageLocation: (String) -> Unit,
+    val refresh: () -> Unit,
+    val setRecord: (EntryRequest) -> Unit,
     val manualEntryAcknowledged: () -> Unit,
 )
 
@@ -98,17 +98,17 @@ internal class GalleryEvents(
  */
 @Composable
 internal fun GalleryUndoRoute(vm: GalleryViewModel, snackbarHostState: SnackbarHostState) {
-    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
-    val text = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
-    val rueckgaengig = stringResource(R.string.common_undo)
-    LaunchedEffect(vorgemerkt) {
-        val v = vorgemerkt ?: return@LaunchedEffect
-        var zurueck = false
+    val marked by vm.marked.collectAsStateWithLifecycle()
+    val text = marked?.let { stringResource(R.string.vm_set_deleted, it.name) }
+    val undo = stringResource(R.string.common_undo)
+    LaunchedEffect(marked) {
+        val v = marked ?: return@LaunchedEffect
+        var back = false
         try {
-            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+            back = snackbarHostState.showSnackbar(text ?: v.name, undo,
                 duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
         } finally {
-            if (zurueck) vm.rueckgaengig(v) else vm.executeDelete(v)
+            if (back) vm.undo(v) else vm.executeDelete(v)
         }
     }
 }
@@ -118,7 +118,7 @@ internal fun GalleryUndoRoute(vm: GalleryViewModel, snackbarHostState: SnackbarH
 fun GalleryRoute(
     vm: GalleryViewModel,
     /** This destination's entry flow; the graph binds it to its entry. */
-    erfassung: EntryViewModel,
+    entryVm: EntryViewModel,
     imageLoader: ImageLoader,
     /** Open the barcode scanner — only the graph knows the NavController. */
     onScanBarcode: () -> Unit,
@@ -128,28 +128,28 @@ fun GalleryRoute(
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val glance by vm.viewport.collectAsStateWithLifecycle()
     // Its own flow for the gallery: paging, searching and refetching only change
     // THIS state (see GalleryUiState).
-    val galerie by vm.galleryState.collectAsStateWithLifecycle()
-    val preise by vm.preise.collectAsStateWithLifecycle()
-    val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
+    val gallery by vm.galleryState.collectAsStateWithLifecycle()
+    val prices by vm.prices.collectAsStateWithLifecycle()
+    val barcodeState by entryVm.barcodeState.collectAsStateWithLifecycle()
     val storageState by vm.storageState.collectAsStateWithLifecycle()
-    val events = remember(vm, erfassung) {
+    val events = remember(vm, entryVm) {
         GalleryEvents(
-            suche = vm::setGalleryQuery,
-            thema = vm::setGalleryTheme,
+            search = vm::setGalleryQuery,
+            theme = vm::setGalleryTheme,
             sorting = vm::setGallerySort,
-            konto = { vm.setScope(ScopeFilter.View.GALLERY, it) },
-            lagerort = { vm.setStorageFilter(ScopeFilter.View.GALLERY, it) },
+            account = { vm.setScope(ScopeFilter.View.GALLERY, it) },
+            storageLocation = { vm.setStorageFilter(ScopeFilter.View.GALLERY, it) },
             // The filter lists too: otherwise they'd only load on start.
-            aktualisieren = vm::aktualisieren,
-            setErfassen = erfassung::addSet,
-            manualEntryAcknowledged = { erfassung.manuelleErfassungQuittieren() },
+            refresh = vm::refresh,
+            setRecord = entryVm::addSet,
+            manualEntryAcknowledged = { entryVm.acknowledgeManualEntry() },
         )
     }
     GalleryScreen(
-        zustand = GalleryState(state, blick, galerie, preise, barcodeState, storageState),
+        condition = GalleryState(state, glance, gallery, prices, barcodeState, storageState),
         events = events,
         imageLoader = imageLoader,
         onScanBarcode = onScanBarcode,
@@ -161,14 +161,14 @@ fun GalleryRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun GalleryScreen(
-    zustand: GalleryState,
+    condition: GalleryState,
     events: GalleryEvents,
     imageLoader: ImageLoader,
     onScanBarcode: () -> Unit,
     onSetClick: (String) -> Unit,
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val galerie = zustand.galerie
+    val gallery = condition.gallery
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // ── An unsuccessful scan opens manual entry ──
@@ -176,8 +176,8 @@ internal fun GalleryScreen(
     // The unsuccessful paths (EAN not resolvable, no set number, text recognition with no
     // hit) report via a field in the state; collected and acknowledged here,
     // otherwise the dialog would open again on the next recomposition.
-    LaunchedEffect(zustand.barcode.manuelleErfassungAnfordern) {
-        if (zustand.barcode.manuelleErfassungAnfordern) {
+    LaunchedEffect(condition.barcode.requestManualEntry) {
+        if (condition.barcode.requestManualEntry) {
             showAddDialog = true
             events.manualEntryAcknowledged()
         }
@@ -186,16 +186,16 @@ internal fun GalleryScreen(
     // debouncing and the fetch live in the ViewModel, because the
     // filter generation also lives there. If the value changes from outside (sign-in,
     // reset), the field follows.
-    var searchInput by remember(galerie.galleryQuery) { mutableStateOf(galerie.galleryQuery) }
+    var searchInput by remember(gallery.galleryQuery) { mutableStateOf(gallery.galleryQuery) }
     var showFilter by rememberSaveable { mutableStateOf(false) }
 
     // No local filtering and no theme list from `sets`: the screen shows what the
     // server delivered — a second search here would know neither year nor sorting,
     // and the themes would come from the loaded page instead of the whole inventory.
 
-    val anzeige = galleryDisplay(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
+    val display = galleryDisplay(gallery, filtered = searchInput.isNotBlank() || gallery.galleryTheme.isNotEmpty())
     // From large font size on, Add sits in the button row below the search (SearchWithFilter).
-    val gross = largeFont()
+    val large = largeFont()
     val addText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -203,72 +203,72 @@ internal fun GalleryScreen(
             // sorting live in the sheet; the figures scroll with the grid. Scanning
             // sits next to it, so only ONE button floats at the bottom. Not in the error state:
             // without a collection there's nothing to search.
-            if (anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) GallerySearch(
-                zustand, events, searchInput, { searchInput = it }, onScanBarcode,
-                onFilter = { showFilter = true }, erfassen = addText to { showAddDialog = true },
+            if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) GallerySearch(
+                condition, events, searchInput, { searchInput = it }, onScanBarcode,
+                onFilter = { showFilter = true }, record = addText to { showAddDialog = true },
             )
 
-            OfflineHint(galerie.offlineStatus, onErneut = events.aktualisieren)
+            OfflineHint(gallery.offlineStatus, onAgain = events.refresh)
             // The drag spinner only over a list: on the first load the
             // skeleton already shows that something is coming, two loading indicators stacked felt restless.
-            PullToRefreshBox(isRefreshing = galerie.abruf.laedt && anzeige == GalleryDisplay.LISTE,
-                             onRefresh = events.aktualisieren, modifier = Modifier.fillMaxSize()) {
-                GalleryContent(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
-                    onScanBarcode, addOn = { showAddDialog = true }, onRefresh = events.aktualisieren)
+            PullToRefreshBox(isRefreshing = gallery.fetch.loading && display == GalleryDisplay.LIST,
+                             onRefresh = events.refresh, modifier = Modifier.fillMaxSize()) {
+                GalleryContent(display, condition, searchInput, imageLoader, gridState, onSetClick,
+                    onScanBarcode, addOn = { showAddDialog = true }, onRefresh = events.refresh)
             }
         }
 
         // Add only once the collection is there: in the error state, attention belongs to the
         // reason and "Try again", not a button that would go nowhere.
         // Not empty either: the empty message itself offers Add and Scan.
-        if (!gross && anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) AddFab(
+        if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) AddFab(
             addText, { showAddDialog = true },
-            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+            Modifier.align(Alignment.BottomEnd).padding(Spacing.large),
         )
     }
 
-    if (showFilter) GalerieFilter(zustand, events, onSchliessen = { showFilter = false })
-    if (showAddDialog) GalerieErfassen(zustand, events, onSchliessen = { showAddDialog = false })
+    if (showFilter) GalleryFilter(condition, events, onClose = { showFilter = false })
+    if (showAddDialog) GalleryRecord(condition, events, onClose = { showAddDialog = false })
 }
 
 /** The gallery's account scope and chosen storage location. */
 internal fun GalleryState.accountChoice(): String =
-    blick.scopeModes[ScopeFilter.View.GALLERY] ?: ScopeFilter.ALL
+    glance.scopeModes[ScopeFilter.View.GALLERY] ?: ScopeFilter.ALL
 
 internal fun GalleryState.storageChoice(): String =
-    lager.modi[ScopeFilter.View.GALLERY] ?: ""
+    storage.modes[ScopeFilter.View.GALLERY] ?: ""
 
 /** Search, filter button, scan and sort above the grid. */
 @Composable
 private fun GallerySearch(
-    zustand: GalleryState,
+    condition: GalleryState,
     events: GalleryEvents,
-    suchtext: String,
+    searchText: String,
     onSearchText: (String) -> Unit,
     onScanBarcode: () -> Unit,
     onFilter: () -> Unit,
-    erfassen: Pair<String, () -> Unit>,
+    record: Pair<String, () -> Unit>,
 ) {
-    val galerie = zustand.galerie
+    val gallery = condition.gallery
     SearchWithFilter(
-        wert = suchtext,
-        onValue = { onSearchText(it); events.suche(it) },
-        platzhalter = stringResource(R.string.gallery_search_placeholder),
-        activeFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.accountChoice(), zustand.lager.orte,
-            zustand.storageChoice(), galerie.galleryTheme),
+        value = searchText,
+        onValue = { onSearchText(it); events.search(it) },
+        placeholder = stringResource(R.string.gallery_search_placeholder),
+        activeFilter = FilterCount.gallery(condition.glance.householdMembers, condition.accountChoice(), condition.storage.locations,
+            condition.storageChoice(), gallery.galleryTheme),
         onFilter = onFilter,
         scanOn = onScanBarcode,
-        erfassen = erfassen,
-        aktive = listOfNotNull(
-            accountFilter(zustand.blick.householdMembers, zustand.accountChoice()) { events.konto(ScopeFilter.ALL) },
-            storageFilter(zustand.lager.orte, zustand.storageChoice()) { events.lagerort("") },
-            galerie.galleryTheme.takeIf { it.isNotBlank() }?.let { ActiveFilter(it) { events.thema("") } },
+        record = record,
+        active = listOfNotNull(
+            accountFilter(condition.glance.householdMembers, condition.accountChoice()) { events.account(ScopeFilter.ALL) },
+            storageFilter(condition.storage.locations, condition.storageChoice()) { events.storageLocation("") },
+            gallery.galleryTheme.takeIf { it.isNotBlank() }?.let { ActiveFilter(it) { events.theme("") } },
         ),
         sorting = {
-            SortierMenu(
-                optionen = Setsortierung.entries.map { it to it.beschriftung() },
-                gewaehlt = galerie.gallerySort, onWahl = events.sorting,
-                vorgabe = Setsortierung.DEFAULT,
+            SortMenu(
+                options = SetSort.entries.map { it to it.label() },
+                chosen = gallery.gallerySort, onChoice = events.sorting,
+                default = SetSort.DEFAULT,
             )
         },
     )
@@ -277,9 +277,9 @@ private fun GallerySearch(
 /** What sits below the search: skeleton, error, empty collection, no hits, or the grid. */
 @Composable
 private fun GalleryContent(
-    anzeige: GalleryDisplay,
-    zustand: GalleryState,
-    suchtext: String,
+    display: GalleryDisplay,
+    condition: GalleryState,
+    searchText: String,
     imageLoader: ImageLoader,
     gridState: LazyGridState,
     onSetClick: (String) -> Unit,
@@ -287,25 +287,25 @@ private fun GalleryContent(
     addOn: () -> Unit,
     onRefresh: () -> Unit,
 ) {
-    val galerie = zustand.galerie
-    val stats = galerie.stats
-    when (anzeige) {
-        GalleryDisplay.LOADS -> SkeletonRaster(ReadableColumns(160.dp), kachelHoehe = 252.dp,
+    val gallery = condition.gallery
+    val stats = gallery.stats
+    when (display) {
+        GalleryDisplay.LOADS -> SkeletonRaster(ReadableColumns(160.dp), tileHeight = 252.dp,
             headerRow = true, imageRatio = IMAGE_ASPECT_RATIO)
         // Error and empty collection look different and offer
         // different things: here the reason and a retry.
-        GalleryDisplay.FEHLER -> GalleryHint {
-            ErrorHint(galerie.abruf.errorMessage?.satz(), onRefresh,
-                galerie.abruf.errorKind)
+        GalleryDisplay.ERROR -> GalleryHint {
+            ErrorHint(gallery.fetch.errorMessage?.sentence(), onRefresh,
+                gallery.fetch.errorKind)
         }
-        GalleryDisplay.LEER -> GalleryEmpty(addOn, onScanBarcode)
+        GalleryDisplay.EMPTY -> GalleryEmpty(addOn, onScanBarcode)
         GalleryDisplay.NO_HITS -> GalleryHint {
             // The figures refer to the whole collection — even with no hits.
             if (stats != null) GalleryMetrics(stats)
             EmptySymbol(Icons.Default.SearchOff)
-            Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.gallery_no_results, searchText), fontWeight = FontWeight.SemiBold)
         }
-        GalleryDisplay.LISTE -> GalleryRaster(zustand, imageLoader, gridState, onSetClick)
+        GalleryDisplay.LIST -> GalleryRaster(condition, imageLoader, gridState, onSetClick)
     }
 }
 
@@ -323,12 +323,12 @@ private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
         ButtonStack {
             Button(onClick = addOn, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
-                Spacer(Modifier.width(Abstaende.klein))
+                Spacer(Modifier.width(Spacing.small))
                 Text(stringResource(R.string.gallery_add_first))
             }
-            OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+            OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
                 Icon(BarcodeSymbol, null, Modifier.size(withFont(18.dp)))
-                Spacer(Modifier.width(Abstaende.klein))
+                Spacer(Modifier.width(Spacing.small))
                 Text(stringResource(R.string.gallery_scan_barcode))
             }
         }
@@ -338,40 +338,40 @@ private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
 /** Figures and tiles; the set whose detail is open next to it is marked. */
 @Composable
 private fun GalleryRaster(
-    zustand: GalleryState,
+    condition: GalleryState,
     imageLoader: ImageLoader,
     gridState: LazyGridState,
     onSetClick: (String) -> Unit,
 ) {
-    val galerie = zustand.galerie
-    val stats = galerie.stats
-    val gewaehlt = LocalOpenDetail.current
-    val spalten = ReadableColumns(160.dp)
+    val gallery = condition.gallery
+    val stats = gallery.stats
+    val chosen = LocalOpenDetail.current
+    val columns = ReadableColumns(160.dp)
     // List rows as soon as only one column fits or the font is large: at 130%
     // a tile otherwise stood across the full width, the image took two thirds of the height
     // and one set filled the screen.
     BoxWithConstraints {
-    val dichte = LocalDensity.current
-    val singleColumn = with(spalten) { dichte.anzahl(maxWidth - Abstaende.mittel * 2, Abstaende.klein) } <= 1
-    val zeile = largeFont() || singleColumn
+    val density = LocalDensity.current
+    val singleColumn = with(columns) { density.count(maxWidth - Spacing.medium * 2, Spacing.small) } <= 1
+    val row = largeFont() || singleColumn
     LazyVerticalGrid(
-        columns = spalten,
+        columns = columns,
         state = gridState,
-        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
+        contentPadding = PaddingValues(start = Spacing.medium, top = Spacing.medium, end = Spacing.medium,
             bottom = FabSpace),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalArrangement = Arrangement.spacedBy(Spacing.small)
     ) {
         if (stats != null) {
             item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
                 GalleryMetrics(stats)
             }
         }
-        itemsIndexed(galerie.sets, key = { _, s -> s.setNumber }) { index, set ->
+        itemsIndexed(gallery.sets, key = { _, s -> s.setNumber }) { index, set ->
             Moved {
-                SetCard(set, zustand.app.serverUrl, imageLoader, onSetClick, index,
-                    preis = zustand.preise[set.setNumber], waehrung = zustand.app.currency,
-                    ausgewaehlt = set.setNumber == gewaehlt, zeile = zeile)
+                SetCard(set, condition.app.serverUrl, imageLoader, onSetClick, index,
+                    price = condition.prices[set.setNumber], currency = condition.app.currency,
+                    picked = set.setNumber == chosen, row = row)
             }
         }
     }
@@ -399,37 +399,37 @@ private fun GalleryMetrics(stats: MetricsView) {
  * pulling to refresh keeps working.
  */
 @Composable
-private fun GalleryHint(inhalt: @Composable ColumnScope.() -> Unit) {
+private fun GalleryHint(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.huge),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.huge),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.CenterVertically),
-        content = inhalt,
+        verticalArrangement = Arrangement.spacedBy(Spacing.small, Alignment.CenterVertically),
+        content = content,
     )
 }
 
 /** Label of a sort order; spelled out so a new value here stands out. */
 @Composable
-internal fun Setsortierung.beschriftung(): String = stringResource(when (this) {
-    Setsortierung.NEUESTE -> R.string.gallery_sort_added_desc
-    Setsortierung.AELTESTE -> R.string.gallery_sort_added_asc
-    Setsortierung.NAME -> R.string.gallery_sort_name
-    Setsortierung.NUMMER -> R.string.gallery_sort_number
-    Setsortierung.JAHR -> R.string.gallery_sort_year_desc
-    Setsortierung.PREIS_ABSTEIGEND -> R.string.gallery_sort_price_desc
-    Setsortierung.PREIS_AUFSTEIGEND -> R.string.gallery_sort_price_asc
-    Setsortierung.MENGE_ABSTEIGEND -> R.string.gallery_sort_qty_desc
-    Setsortierung.MENGE_AUFSTEIGEND -> R.string.gallery_sort_qty_asc
+internal fun SetSort.label(): String = stringResource(when (this) {
+    SetSort.NEWEST -> R.string.gallery_sort_added_desc
+    SetSort.OLDEST -> R.string.gallery_sort_added_asc
+    SetSort.NAME -> R.string.gallery_sort_name
+    SetSort.NUMBER -> R.string.gallery_sort_number
+    SetSort.YEAR -> R.string.gallery_sort_year_desc
+    SetSort.PRICE_DESCENDING -> R.string.gallery_sort_price_desc
+    SetSort.PRICE_ASCENDING -> R.string.gallery_sort_price_asc
+    SetSort.QUANTITY_DESCENDING -> R.string.gallery_sort_qty_desc
+    SetSort.QUANTITY_ASCENDING -> R.string.gallery_sort_qty_asc
 })
 
 /** The same labels for the watchlist; without a quantity there. */
 @Composable
-internal fun Merksortierung.beschriftung(): String = stringResource(when (this) {
-    Merksortierung.NEUESTE -> R.string.gallery_sort_added_desc
-    Merksortierung.AELTESTE -> R.string.gallery_sort_added_asc
-    Merksortierung.NAME -> R.string.gallery_sort_name
-    Merksortierung.NUMMER -> R.string.gallery_sort_number
-    Merksortierung.JAHR -> R.string.gallery_sort_year_desc
-    Merksortierung.PREIS_ABSTEIGEND -> R.string.gallery_sort_price_desc
-    Merksortierung.PREIS_AUFSTEIGEND -> R.string.gallery_sort_price_asc
+internal fun WantedSort.label(): String = stringResource(when (this) {
+    WantedSort.NEWEST -> R.string.gallery_sort_added_desc
+    WantedSort.OLDEST -> R.string.gallery_sort_added_asc
+    WantedSort.NAME -> R.string.gallery_sort_name
+    WantedSort.NUMBER -> R.string.gallery_sort_number
+    WantedSort.YEAR -> R.string.gallery_sort_year_desc
+    WantedSort.PRICE_DESCENDING -> R.string.gallery_sort_price_desc
+    WantedSort.PRICE_ASCENDING -> R.string.gallery_sort_price_asc
 })

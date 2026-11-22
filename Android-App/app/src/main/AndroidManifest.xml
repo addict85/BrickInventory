@@ -16,7 +16,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!--
       Nur um zu ERKENNEN, ob das Geraet im WLAN, im Mobilfunknetz oder im
-      Roaming haengt (data/Netzlage.kt). Das Vorwaermen der Vorschaubilder
+      Roaming haengt (data/NetworkState.kt). Das Vorwaermen der Vorschaubilder
       richtet sich danach; ohne diese Erlaubnis wuesste es nicht, wann es
       Datenvolumen kostet. Eine normale Erlaubnis — sie fragt niemanden.
     -->
@@ -58,7 +58,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Nur um zu sehen, ob es eine Authenticator-App gibt (zweiter Faktor,
-         EinstellungenKonto.kt); sonst bleibt der Schlüssel zum Kopieren. -->
+         SettingsAccount.kt); sonst bleibt der Schlüssel zum Kopieren. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -255,34 +255,34 @@
           der Übersicht; er reicht an MainActivity weiter und schliesst sich.
         -->
         <activity
-            android:name=".app.MeldungsEinstieg"
+            android:name=".app.MessageEntryPoint"
             android:exported="false"
             android:taskAffinity=""
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <!--
-          Startbildschirm-Widget (widget/SammlungsWidget.kt): Wert und G&V.
+          Startbildschirm-Widget (widget/CollectionWidget.kt): Wert und G&V.
           Exportiert, weil der AppWidget-Dienst des Systems es anspricht;
           BIND_APPWIDGET hält nur das System, eine fremde App kann so weder
           Aktualisierung noch onEnabled/onDisabled auslösen.
         -->
         <receiver
-            android:name=".app.widget.SammlungsWidgetEmpfaenger"
+            android:name=".app.widget.CollectionWidgetReceiver"
             android:exported="true"
             android:permission="android.permission.BIND_APPWIDGET"
-            android:label="@string/widget_titel">
+            android:label="@string/widget_title">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/sammlungs_widget" />
+                android:resource="@xml/collection_widget" />
         </receiver>
 
         <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
         <service
-            android:name="ch.brickinventoryapp.finances.ui.pdf.PdfRenderDienst"
+            android:name="ch.brickinventoryapp.finances.ui.pdf.PdfRenderService"
             android:isolatedProcess="true"
             android:process=":pdf"
             android:exported="false" />
@@ -290,13 +290,13 @@
         <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
              nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
         <receiver
-            android:name="ch.brickinventoryapp.update.util.InstallationsEmpfaenger"
+            android:name="ch.brickinventoryapp.update.util.InstallReceiver"
             android:exported="false" />
 
         <!-- Die Teileliste liegt verschlüsselt; der Provider gibt sie nur aus dem Speicher
              weiter, und nur an die App, der die Auswahl das Leserecht gibt. -->
         <provider
-            android:name="ch.brickinventoryapp.data.service.TeilelistenProvider"
+            android:name="ch.brickinventoryapp.data.service.PartListsProvider"
             android:authorities="${applicationId}.teileliste"
             android:exported="false"
             android:grantUriPermissions="true" />

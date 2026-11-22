@@ -37,20 +37,20 @@ internal class UpdateStore @Inject constructor(
         return UpdateStatus(code, p[UPDATE_ISSUED] ?: 0L)
     }
 
-    override suspend fun rememberUpdateStatus(stand: UpdateStatus) {
+    override suspend fun rememberUpdateStatus(state: UpdateStatus) {
         dataStore.edit {
-            it[UPDATE_HIGHEST_CODE] = stand.highestCode
-            it[UPDATE_ISSUED] = stand.ausgestellt
+            it[UPDATE_HIGHEST_CODE] = state.highestCode
+            it[UPDATE_ISSUED] = state.issued
         }
     }
 
     /** Synchronously readable like the design: mirroring DevicesStore. */
-    private val spiegel by lazy {
+    private val mirror by lazy {
         context.getSharedPreferences(DevicesStore.DESIGN_MIRROR_FILE, Context.MODE_PRIVATE)
     }
 
-    override fun startpruefungAn(): Boolean = spiegel.getBoolean(UPDATE_ON_START, true)
-    override fun setStartpruefung(an: Boolean) {
-        spiegel.edit { putBoolean(UPDATE_ON_START, an) }
+    override fun startCheckEnabled(): Boolean = mirror.getBoolean(UPDATE_ON_START, true)
+    override fun setStartCheck(an: Boolean) {
+        mirror.edit { putBoolean(UPDATE_ON_START, an) }
     }
 }

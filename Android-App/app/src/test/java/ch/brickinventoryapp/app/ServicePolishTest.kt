@@ -2,27 +2,27 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Safeguarding of the cleanup round: localized service notifications,
  * status icon and the parts list without FileProvider. That the PDF download goes via the
- * api client is checked by AnleitungsDownloadTest, executed.
+ * api client is checked by InstructionDownloadTest, executed.
  *
  * All checks only read source and resource files.
  *
  * Counter-check: in the manifest the FileProvider put next to the
- * TeilelistenProvider → red “the parts list goes out only via the own
- * provider” (gegenproben/fileprovider-extern.patch).
+ * PartListsProvider → red “the parts list goes out only via the own
+ * provider” (counter-checks/fileprovider-extern.patch).
  */
 class ServicePolishTest {
 
     private fun read(rel: String): String {
         // Sources and resources across all modules; the manifest lies in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.root, rel.removePrefix("java/ch/brickinventoryapp/"))
-            rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
-            else -> File(Quellen.project, "app/src/main/$rel")
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Sources.root, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("res/") -> File(Sources.res, rel.removePrefix("res/"))
+            else -> File(Sources.project, "app/src/main/$rel")
         }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
@@ -96,7 +96,7 @@ class ServicePolishTest {
 
     @Test
     fun `notifications use the monochrome status icon`() {
-        assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
+        assert(File(Sources.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
         for (rel in listOf(
@@ -124,13 +124,13 @@ class ServicePolishTest {
             "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
                 "die Teileliste läge dann wieder offen in filesDir"
         }
-        val entry = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
-            ?: error("Der TeilelistenProvider fehlt im Manifest")
-        assert(entry.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        val entry = Regex("""<provider[^>]*PartListsProvider[^>]*>""").find(manifest)?.value
+            ?: error("Der PartListsProvider fehlt im Manifest")
+        assert(entry.contains("android:exported=\"false\"")) { "Der PartListsProvider ist exportiert" }
         assert(entry.contains("android:grantUriPermissions=\"true\"")) {
             "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
-        assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
+        assert(!File(Sources.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
     }
 
     // ── ProGuard ─────────────────────────────────────────────────────────────

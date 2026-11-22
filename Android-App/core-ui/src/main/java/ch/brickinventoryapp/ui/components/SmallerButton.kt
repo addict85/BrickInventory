@@ -27,10 +27,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 
 /**
- * A button that looks small ([flaeche] in [form]) and yet has a 48 × 48 dp tap area.
+ * A button that looks small ([surface] in [form]) and yet has a 48 × 48 dp tap area.
  * Material only enlarges the layout around small buttons; the node that
  * taps and TalkBack see would stay as small as the shape. Here it is the whole area,
  * the ripple shows on the shape.
@@ -40,28 +40,28 @@ fun SmallerButton(
     onClick: () -> Unit,
     form: Shape,
     modifier: Modifier = Modifier,
-    flaeche: Modifier = Modifier,
-    farbe: Color = Color.Transparent,
-    inhaltFarbe: Color = LocalContentColor.current,
+    surface: Modifier = Modifier,
+    color: Color = Color.Transparent,
+    contentColor: Color = LocalContentColor.current,
     edge: BorderStroke? = null,
-    innen: PaddingValues = PaddingValues(0.dp),
-    inhalt: @Composable RowScope.() -> Unit,
+    inner: PaddingValues = PaddingValues(0.dp),
+    content: @Composable RowScope.() -> Unit,
 ) {
-    val quelle = remember { MutableInteractionSource() }
+    val source = remember { MutableInteractionSource() }
     Box(
         modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .clickable(interactionSource = quelle, indication = null, role = Role.Button, onClick = onClick),
+            .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            flaeche.clip(form).background(farbe, form)
+            surface.clip(form).background(color, form)
                 .then(if (edge != null) Modifier.border(edge, form) else Modifier)
-                .indication(quelle, ripple())
-                .padding(innen),
+                .indication(source, ripple())
+                .padding(inner),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CompositionLocalProvider(LocalContentColor provides inhaltFarbe) { inhalt() }
+            CompositionLocalProvider(LocalContentColor provides contentColor) { content() }
         }
     }
 }
@@ -70,9 +70,9 @@ fun SmallerButton(
 @Composable
 fun QuantitiesButton(onClick: () -> Unit, symbol: @Composable RowScope.() -> Unit) = SmallerButton(
     onClick = onClick,
-    form = Formen.etikett,
-    flaeche = Modifier.size(40.dp),
-    farbe = MaterialTheme.colorScheme.secondaryContainer,
-    inhaltFarbe = MaterialTheme.colorScheme.onSecondaryContainer,
-    inhalt = symbol,
+    form = Shapes.tag,
+    surface = Modifier.size(40.dp),
+    color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    content = symbol,
 )

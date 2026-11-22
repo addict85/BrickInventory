@@ -12,12 +12,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.dialogs.UpdateDialog
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalAppVersion
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.update.util.UpdateBeschreibung
+import ch.brickinventoryapp.update.util.UpdateDescription
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  * app run. That "Later" lands in the state and expires on sign-out is
  * checked by UpdateViewModelTest.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   update-dialog-laedt-selbst   LaunchedEffect loads on show → red "der Hinweis fragt …"
  *   update-spaeter-vergessen     dialogRejected ignored → red "nach Später …"
  *   version-leer                 versionsName() without a fallback → red "ohne bekannte Version …"
@@ -45,65 +45,65 @@ class UpdateDialogTest {
 
     private fun text(id: Int) = compose.activity.getString(id)
 
-    private val neu = UpdateBeschreibung(versionCode = 20, versionName = "2.20",
+    private val newValue = UpdateDescription(versionCode = 20, versionName = "2.20",
         apkUrl = "https://github.com/x/y/releases/download/android-v2.20/BrickInventory.apk")
 
     /** Counts what the dialog triggers; "Later" sets the state like the ViewModel does. */
-    private class Aktionen(val spaeter: () -> Unit = {}) : UpdateAktionen {
-        var geladen = 0
+    private class Actions(val later: () -> Unit = {}) : UpdateActions {
+        var loaded = 0
         var closed = 0
-        override fun pruefeAufUpdate(still: Boolean) = Unit
-        override fun pruefeBeimStart() = Unit
-        override fun setStartpruefung(an: Boolean) = Unit
-        override fun closeUpdateHint() { closed++; spaeter() }
-        override fun ladeUpdate() { geladen++ }
+        override fun checkOnUpdate(still: Boolean) = Unit
+        override fun checkOnStart() = Unit
+        override fun setStartCheck(an: Boolean) = Unit
+        override fun closeUpdateHint() { closed++; later() }
+        override fun loadUpdate() { loaded++ }
         override fun cancelLoad() = Unit
         override fun startInstallation() = Unit
     }
 
     @Test
     fun `the hint asks, loading starts only on the click`() {
-        val aktionen = Aktionen()
-        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(newerVersion = neu), aktionen) } }
+        val actions = Actions()
+        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(newerVersion = newValue), actions) } }
         compose.waitForIdle()
         compose.onNodeWithText(text(R.string.update_dialog_title)).fetchSemanticsNode()
-        assertEquals("Das Zeigen allein lädt schon", 0, aktionen.geladen)
+        assertEquals("Das Zeigen allein lädt schon", 0, actions.loaded)
 
         compose.onNodeWithText(text(R.string.update_dialog_now)).performClick()
         compose.waitForIdle()
-        assertEquals(1, aktionen.geladen)
+        assertEquals(1, actions.loaded)
     }
 
     @Test
     fun `after Later the hint does not ask again in this run`() {
-        var zustand by mutableStateOf(UpdateUiState(newerVersion = neu))
-        val aktionen = Aktionen { zustand = zustand.copy(dialogRejected = true) }
-        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(zustand, aktionen) } }
+        var condition by mutableStateOf(UpdateUiState(newerVersion = newValue))
+        val actions = Actions { condition = condition.copy(dialogRejected = true) }
+        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(condition, actions) } }
         compose.waitForIdle()
 
         compose.onNodeWithText(text(R.string.update_dialog_later)).performClick()
         compose.waitForIdle()
 
-        assertEquals(1, aktionen.closed)
-        assertEquals(0, aktionen.geladen)
+        assertEquals(1, actions.closed)
+        assertEquals(0, actions.loaded)
         compose.onAllNodesWithText(text(R.string.update_dialog_title)).assertCountEquals(0)
     }
 
     @Test
     fun `without a known version unknown is shown, otherwise the version`() {
-        var fassung by mutableStateOf(AppVersion("", 0))
+        var version by mutableStateOf(AppVersion("", 0))
         compose.setContent {
             BrickInventoryManagerTheme {
-                CompositionLocalProvider(LocalAppVersion provides fassung) {
-                    UpdateDialog(UpdateUiState(newerVersion = neu), Aktionen())
+                CompositionLocalProvider(LocalAppVersion provides version) {
+                    UpdateDialog(UpdateUiState(newerVersion = newValue), Actions())
                 }
             }
         }
         compose.waitForIdle()
-        val unbekannt = text(R.string.update_version_unbekannt)
-        compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", unbekannt))
+        val unknown = text(R.string.update_version_unknown)
+        compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", unknown))
             .fetchSemanticsNode("Die installierte Version bleibt leer")
-        fassung = AppVersion("2.10", 10)
+        version = AppVersion("2.10", 10)
         compose.waitForIdle()
         compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", "2.10")).fetchSemanticsNode()
     }

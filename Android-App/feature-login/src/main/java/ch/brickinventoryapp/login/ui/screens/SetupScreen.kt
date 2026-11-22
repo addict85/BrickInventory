@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.login.ui.screens
 
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -29,8 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.login.ui.QrLoginPayload
 import ch.brickinventoryapp.login.ui.parseQrPayload
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.AppKarte
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.LocalAppVersion
@@ -38,7 +38,7 @@ import ch.brickinventoryapp.ui.components.LocalAppLock
 import ch.brickinventoryapp.ui.components.AppLockChoice
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 
 /**
  * Set up a server: via QR code or by hand, https only. If an
@@ -48,13 +48,13 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    /** Second value: the typed-off fingerprint, if [mussAbtippen] demands it, otherwise null. */
+    /** Second value: the typed-off fingerprint, if [mustTypeIn] demands it, otherwise null. */
     onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
-    entwicklung: Boolean = NetworkPolicy.entwicklung,
+    development: Boolean = NetworkPolicy.development,
     /** The remembered pin for the code's address and fingerprint, if it deviates. */
-    bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
-    /** Whether the code's fingerprint needs to be typed off (AnmeldungViewModel.mussAbtippen); when in doubt, yes. */
-    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean = { _, fp -> fp != null },
+    previousPin: (url: String, fingerprint: String?) -> String? = { _, _ -> null },
+    /** Whether the code's fingerprint needs to be typed off (LoginViewModel.mustTypeIn); when in doubt, yes. */
+    mustTypeIn: (url: String, fingerprint: String?) -> Boolean = { _, fp -> fp != null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -66,12 +66,12 @@ fun SetupScreen(
     // rotation, one simply scans it again.
     var qrSuggestion  by remember { mutableStateOf<QrLoginPayload?>(null) }
     val keyboard     = LocalSoftwareKeyboardController.current
-    val altbestand   = NetworkPolicy.plaintextLegacyStock(currentUrl, entwicklung)
-    val fehler       = if (url.isBlank()) null else NetworkPolicy.addressError(url, entwicklung)
-    val addressReady = url.isNotBlank() && fehler == null
+    val legacyStock   = NetworkPolicy.plaintextLegacyStock(currentUrl, development)
+    val error       = if (url.isBlank()) null else NetworkPolicy.addressError(url, development)
+    val addressReady = url.isNotBlank() && error == null
 
     fun save() {
-        if (url.isBlank() || fehler != null) return
+        if (url.isBlank() || error != null) return
         keyboard?.hide(); onSave(NetworkPolicy.normalize(url))
     }
 
@@ -92,18 +92,18 @@ fun SetupScreen(
         return
     }
 
-    qrSuggestion?.let { vorschlag ->
-        QrVorschlagDialog(
-            vorschlag = vorschlag,
+    qrSuggestion?.let { suggestion ->
+        QrSuggestionDialog(
+            suggestion = suggestion,
             currentUrl = currentUrl,
-            entwicklung = entwicklung,
-            bisherigerPin = bisherigerPin,
-            mussAbtippen = mussAbtippen,
-            onAbbrechen = { qrSuggestion = null },
-            onUebernehmen = { abgetippt ->
+            development = development,
+            previousPin = previousPin,
+            mustTypeIn = mustTypeIn,
+            onCancel = { qrSuggestion = null },
+            onAdopt = { typed ->
                 qrSuggestion = null
-                url = vorschlag.url
-                onQrScanned?.invoke(vorschlag, abgetippt)
+                url = suggestion.url
+                onQrScanned?.invoke(suggestion, typed)
             },
         )
     }
@@ -113,8 +113,8 @@ fun SetupScreen(
     val headerPart: @Composable ColumnScope.() -> Unit = {
         BrandsHeader(subtitle = stringResource(R.string.setup_subtitle))
 
-        if (altbestand) {
-            Spacer(Modifier.height(Abstaende.gross))
+        if (legacyStock) {
+            Spacer(Modifier.height(Spacing.large))
             // A hint with instructions, not an error: a neutral surface with a border and lock,
             // because it is about encryption. primaryContainer was pink in Noppe and looked
             // like a malfunction with the info icon. The steps as a list instead of flowing text.
@@ -124,77 +124,77 @@ fun SetupScreen(
                     contentColor = MaterialTheme.colorScheme.onSurface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
-                Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                Row(Modifier.padding(Spacing.large), horizontalArrangement = Arrangement.spacedBy(Spacing.medium)) {
                     Icon(Icons.Default.Lock, null, Modifier.size(withFont(24.dp)),
                         tint = MaterialTheme.colorScheme.primary)
-                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.setup_altbestand_text, currentUrl),
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+                        Text(stringResource(R.string.setup_legacy_stock_title), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.setup_legacy_stock_text, currentUrl),
                             style = MaterialTheme.typography.bodyMedium)
-                        listOf(R.string.setup_altbestand_schritt_qr, R.string.setup_altbestand_schritt_adresse)
-                            .forEachIndexed { i, schritt ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        listOf(R.string.setup_legacy_stock_step_qr, R.string.setup_legacy_stock_step_address)
+                            .forEachIndexed { i, step ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
                                     // A fixed digit column with tabular figures: "1." is narrower than
                                     // "2.", and the steps started at different distances from the left.
                                     Text("${i + 1}.", Modifier.width(withFont(20.dp)),
                                         style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                         fontWeight = FontWeight.SemiBold)
-                                    Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
+                                    Text(stringResource(step), style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
-                        Text(stringResource(R.string.setup_altbestand_danach), style = MaterialTheme.typography.bodyMedium,
+                        Text(stringResource(R.string.setup_legacy_stock_after), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
     }
-    val handlungsPart: @Composable ColumnScope.() -> Unit = {
-        Spacer(Modifier.height(Abstaende.huge))
+    val actionPart: @Composable ColumnScope.() -> Unit = {
+        Spacer(Modifier.height(Spacing.huge))
 
         // The QR code is the recommended path (address and certificate in one step) and
         // is therefore filled, until an address stands there by hand: then „Weiter“ is the path.
-        Hauptknopf(
-            haupt = !addressReady,
+        MainButton(
+            main = !addressReady,
             onClick = { scanInvalid = false; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(withFont(20.dp)))
-            Spacer(Modifier.width(Abstaende.klein))
+            Spacer(Modifier.width(Spacing.small))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
 
         if (scanInvalid) {
-            Spacer(Modifier.height(Abstaende.klein))
+            Spacer(Modifier.height(Spacing.small))
             Text(stringResource(R.string.setup_invalid_qr), Modifier.announce(), color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall)
         }
 
-        Spacer(Modifier.height(Abstaende.gross))
+        Spacer(Modifier.height(Spacing.large))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
             // The spacing comes from the padding, not from spaces in the text; otherwise the lines would touch.
             Text(stringResource(R.string.setup_or_manual), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Abstaende.mittel))
+                modifier = Modifier.padding(horizontal = Spacing.medium))
             HorizontalDivider(Modifier.weight(1f))
         }
 
-        Spacer(Modifier.height(Abstaende.gross))
+        Spacer(Modifier.height(Spacing.large))
 
-        // The shared card (AppKarte) instead of one of its own: a surface with elevation like every
+        // The shared card (AppCard) instead of one of its own: a surface with elevation like every
         // card in the app, inner spacing from the scale.
-        AppKarte {
-            Column(Modifier.padding(Abstaende.gross)) {
+        AppCard {
+            Column(Modifier.padding(Spacing.large)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(Abstaende.klein))
+                    Spacer(Modifier.width(Spacing.small))
                     Text(stringResource(R.string.setup_server_url), fontWeight = FontWeight.SemiBold)
                 }
-                Spacer(Modifier.height(Abstaende.mittel))
+                Spacer(Modifier.height(Spacing.medium))
                 OutlinedTextField(
-                    shape = Formen.feld,
+                    shape = Shapes.field,
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(stringResource(R.string.setup_url_label)) },
@@ -204,21 +204,21 @@ fun SetupScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { save() }),
                     supportingText = {
-                        when (fehler) {
+                        when (error) {
                             NetworkPolicy.AddressError.PLAINTEXT ->
-                                Text(stringResource(R.string.setup_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
-                            NetworkPolicy.AddressError.UNLESBAR ->
-                                Text(stringResource(R.string.setup_url_unlesbar), color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.setup_plaintext_declined), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.AddressError.UNREADABLE ->
+                                Text(stringResource(R.string.setup_url_unreadable), color = MaterialTheme.colorScheme.error)
                             NetworkPolicy.AddressError.USER_INPUT ->
-                                Text(stringResource(R.string.setup_url_benutzerangabe), color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.setup_url_user_input), color = MaterialTheme.colorScheme.error)
                             NetworkPolicy.AddressError.EXTRA ->
-                                Text(stringResource(R.string.setup_url_zusatz), color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.setup_url_extra), color = MaterialTheme.colorScheme.error)
                             null -> Text(stringResource(R.string.setup_url_supporting))
                         }
                     },
-                    isError = fehler != null,
+                    isError = error != null,
                 )
-                Spacer(Modifier.height(Abstaende.gross))
+                Spacer(Modifier.height(Spacing.large))
                 // Filled: tonal, it sat almost invisible on the card (1.02:1) and looked active
                 // when it was actually disabled. Disabled, it stays pale until the address is valid.
                 Button(
@@ -230,22 +230,22 @@ fun SetupScreen(
         // Offered here because hardly anyone searches the settings after setup.
         // Without a provider (preview, test) the card is missing, as in the settings.
         LocalAppLock.current?.let { lock ->
-            Spacer(Modifier.height(Abstaende.gross))
-            AppKarte {
-                Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            Spacer(Modifier.height(Spacing.large))
+            AppCard {
+                Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
                     AppLockChoice(lock)
-                    Text(stringResource(R.string.app_sperre_einrichten), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.app_lock_set_up), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         // From the app's build info instead of as a literal: versionName is generated on every build
         // (app/build.gradle.kts). Without a name (preview, test) only "Build " would be left standing.
-        val fassung = LocalAppVersion.current.name
-        if (fassung.isNotBlank()) {
-            Spacer(Modifier.height(Abstaende.gross))
+        val version = LocalAppVersion.current.name
+        if (version.isNotBlank()) {
+            Spacer(Modifier.height(Spacing.large))
             Text(
-                stringResource(R.string.setup_build, fassung),
+                stringResource(R.string.setup_build, version),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -257,40 +257,40 @@ fun SetupScreen(
     // as long as it fits, and on the tablet no wider than a form.
     BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
         // In Row and Column lambdas, BoxWithConstraints's receiver is locked (DslMarker).
-        val hoehe = maxHeight
-        if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
+        val height = maxHeight
+        if (maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {
             Row(
-                Modifier.fillMaxSize().centeredUntil(Lesebreite.formular * 2)
-                    .padding(horizontal = Abstaende.huge),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.huge),
+                Modifier.fillMaxSize().centeredUntil(ReadingWidth.form * 2)
+                    .padding(horizontal = Spacing.huge),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.huge),
             ) {
-                listOf(headerPart, handlungsPart).forEach { teil ->
+                listOf(headerPart, actionPart).forEach { part ->
                     Column(
-                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                            .padding(vertical = Abstaende.huge),
+                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = height)
+                            .padding(vertical = Spacing.huge),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
-                        content = teil,
+                        content = part,
                     )
                 }
             }
         } else Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .centeredUntil(Lesebreite.formular).padding(Abstaende.huge),
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = height)
+                .centeredUntil(ReadingWidth.form).padding(Spacing.huge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             headerPart()
-            handlungsPart()
+            actionPart()
         }
     }
 }
 
 /** Filled as the main action, otherwise tonal: there is always only ONE filled action. */
 @Composable
-private fun Hauptknopf(haupt: Boolean, onClick: () -> Unit, modifier: Modifier, inhalt: @Composable RowScope.() -> Unit) {
-    if (haupt) Button(onClick = onClick, modifier = modifier, content = inhalt)
-    else FilledTonalButton(onClick = onClick, modifier = modifier, content = inhalt)
+private fun MainButton(main: Boolean, onClick: () -> Unit, modifier: Modifier, content: @Composable RowScope.() -> Unit) {
+    if (main) Button(onClick = onClick, modifier = modifier, content = content)
+    else FilledTonalButton(onClick = onClick, modifier = modifier, content = content)
 }
 
 /** From this width on, header and action sit side by side in landscape. */

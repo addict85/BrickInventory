@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.login
 
 import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.login.ui.qrAddressInvalid
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
-import ch.brickinventoryapp.login.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,11 +23,11 @@ import ch.brickinventoryapp.testing.testHouseholdRepository
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.state.ui.Scope
 import java.util.Collections
-import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.SessionFake
 import ch.brickinventoryapp.testing.StorageStore
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The QR dialog is the only hurdle against a planted code. Checked
@@ -40,7 +40,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *      does not accept an address with user info”
  *   B  in qrAddressInvalid() the check for blank/control characters removed → red
  *      “whitespace at the edge of a code …”
- *   C  in NetworkPolicy.ansicht() `url.host` replaced with the host's raw text
+ *   C  in NetworkPolicy.view() `url.host` replaced with the host's raw text
  *      (Unicode instead of Punycode) → red “an international host appears in Punycode …”
  *   D  qrSwitchesServer() always returns null → red “a code for a different
  *      host names the previous one …”
@@ -62,15 +62,15 @@ class QrAddressTest {
     fun `user info, line break and backslash make the code invalid`() {
         for (url in deceptive) {
             assertTrue("angenommen: $url", qrAddressInvalid(url))
-            assertTrue("von Hand angenommen: $url", NetworkPolicy.addressError(url, entwicklung = false) != null)
+            assertTrue("von Hand angenommen: $url", NetworkPolicy.addressError(url, development = false) != null)
         }
         assertEquals(NetworkPolicy.AddressError.USER_INPUT,
-            NetworkPolicy.addressError("https://brick.meinserver.ch@evil.example", entwicklung = false))
+            NetworkPolicy.addressError("https://brick.meinserver.ch@evil.example", development = false))
         assertEquals(NetworkPolicy.AddressError.EXTRA,
-            NetworkPolicy.addressError("https://evil.example/x\n\nbrick.meinserver.ch", entwicklung = false))
+            NetworkPolicy.addressError("https://evil.example/x\n\nbrick.meinserver.ch", development = false))
         // What a real server needs stays allowed: port, subpath, capitalization.
-        for (gut in listOf("https://brick.meinserver.ch", "https://nas:8443/brick", "HTTPS://Brick.Example.org/")) {
-            assertFalse(gut, qrAddressInvalid(gut))
+        for (good in listOf("https://brick.meinserver.ch", "https://nas:8443/brick", "HTTPS://Brick.Example.org/")) {
+            assertFalse(good, qrAddressInvalid(good))
         }
     }
 
@@ -78,20 +78,20 @@ class QrAddressTest {
     fun `whitespace at the edge of a code makes it invalid, by hand it does not`() {
         assertTrue(qrAddressInvalid("https://evil.example\n"))
         assertTrue(qrAddressInvalid(" https://evil.example"))
-        assertNull("Von Hand getippt trägt der Rand nichts", NetworkPolicy.addressError(" brick.fritz.box ", entwicklung = false))
+        assertNull("Von Hand getippt trägt der Rand nichts", NetworkPolicy.addressError(" brick.fritz.box ", development = false))
     }
 
     @Test
     fun `an international host appears in punycode and with a warning`() {
-        val a = NetworkPolicy.ansicht("https://brіck.meinserver.ch")!!   // kyrillisches і
+        val a = NetworkPolicy.view("https://brіck.meinserver.ch")!!   // kyrillisches і
         assertEquals("xn--brck-m9d.meinserver.ch", a.host)
-        assertEquals("https://xn--brck-m9d.meinserver.ch", a.adresse)
+        assertEquals("https://xn--brck-m9d.meinserver.ch", a.address)
         assertTrue(a.international)
-        val echt = NetworkPolicy.ansicht("https://Brick.MeinServer.ch:8443/brick/")!!
-        assertEquals("brick.meinserver.ch", echt.host)
-        assertEquals("https://brick.meinserver.ch:8443/brick", echt.adresse)
-        assertFalse(echt.international)
-        assertEquals("https://brick.meinserver.ch", NetworkPolicy.ansicht("https://brick.meinserver.ch:443")!!.adresse)
+        val real = NetworkPolicy.view("https://Brick.MeinServer.ch:8443/brick/")!!
+        assertEquals("brick.meinserver.ch", real.host)
+        assertEquals("https://brick.meinserver.ch:8443/brick", real.address)
+        assertFalse(real.international)
+        assertEquals("https://brick.meinserver.ch", NetworkPolicy.view("https://brick.meinserver.ch:443")!!.address)
     }
 
     @Test
@@ -104,50 +104,50 @@ class QrAddressTest {
 
     // ── The ViewModel as a second line ─────────────────────────────────────────
 
-    private class Ablage : Anmeldeablage {
-        val protokoll = Collections.synchronizedList(mutableListOf<String>())
-        override suspend fun serverUrlJetzt() = "https://brick.meinserver.ch"
-        override suspend fun saveServerUrl(url: String) { protokoll += "url:$url" }
-        override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
-        override suspend fun saveUsername(name: String) { protokoll += "name:$name" }
-        override fun rememberPin(schluessel: String, fingerabdruck: String) { protokoll += "pin" }
-        override fun rememberedPin(schluessel: String): String? = null
-        override fun holdBefore(schluessel: String, fingerabdruck: String) { protokoll += "vor" }
-        override fun forgetRetained(schluessel: String) = Unit
-        override fun kopplungsziel(url: String?) { protokoll += "ziel:$url" }
+    private class Store : LoginStore {
+        val log = Collections.synchronizedList(mutableListOf<String>())
+        override suspend fun serverUrlNow() = "https://brick.meinserver.ch"
+        override suspend fun saveServerUrl(url: String) { log += "url:$url" }
+        override suspend fun saveAuthToken(token: String) { log += "token:$token" }
+        override suspend fun saveUsername(name: String) { log += "name:$name" }
+        override fun rememberPin(key: String, fingerprint: String) { log += "pin" }
+        override fun rememberedPin(key: String): String? = null
+        override fun holdBefore(key: String, fingerprint: String) { log += "vor" }
+        override fun forgetRetained(key: String) = Unit
+        override fun pairingTarget(url: String?) { log += "ziel:$url" }
     }
 
-    private lateinit var paths: PfadServer
-    private lateinit var t: TestDienste
+    private lateinit var paths: PathServer
+    private lateinit var t: TestServices
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        paths = PfadServer()
-        t = TestDienste(paths.imTakt(), io = Dispatchers.Main)
+        paths = PathServer()
+        t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
 
     @After
-    fun zu() {
-        t.aufraeumen()
+    fun tearDown() {
+        t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
 
     @Test
     fun `the ViewModel does not accept an address with user info`() {
-        val ablage = Ablage()
-        val abmelden = SessionFake()
-        val blickfeld = Scope(StorageStore(),
+        val store = Store()
+        val logout = SessionFake()
+        val viewport = Scope(StorageStore(),
             testHouseholdRepository(t.api),
             testPartsRepository(t.api))
-        val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            testAccountRepository(t.api), ablage, CertificateQuestion(), { false }))
+        val vm = t.track(LoginViewModel(t.session, viewport, t.hints, logout,
+            testAccountRepository(t.api), store, CertificateQuestion(), { false }))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
-        assertEquals(emptyList<String>(), ablage.protokoll.toList())
-        assertEquals("Nichts abgemeldet", 0, abmelden.signOuts)
-        assertTrue("kein qr-login", paths.requestsAn("qr-login").isEmpty())
-        assertTrue(vm.anmeldeState.value.anmeldung.errorMessage != null)
+        assertEquals(emptyList<String>(), store.log.toList())
+        assertEquals("Nichts abgemeldet", 0, logout.logouts)
+        assertTrue("kein qr-login", paths.requestsTo("qr-login").isEmpty())
+        assertTrue(vm.loginState.value.login.errorMessage != null)
     }
 }

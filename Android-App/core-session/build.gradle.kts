@@ -19,5 +19,5 @@ dependencies {
     implementation(project(":core-resources"))
     // Own flows (AbgeleiteterZustand); without this entry Gradle resolves to an old version.
     implementation(libs.kotlinx.coroutines.android)
-    // SitzungsDienst is tested in core-state: its tests assemble it together with the Blickfeld.
+    // SessionService is tested in core-state: its tests assemble it together with the Blickfeld.
 }

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * An unsuccessful scan leads to manual adding — everywhere.
@@ -10,35 +10,35 @@ import ch.brickinventoryapp.testing.Quellen
  * All four lie in the ViewModel:
  *
  * Instead of putting a call into every screen, they report via
- * `manuelleErfassungAnfordern` in the state. Whoever embeds the scanner reads the
+ * `requestManualEntry` in the state. Whoever embeds the scanner reads the
  * field and opens THEIR adding — the gallery a dialog, the parts list
  * puts the cursor into its input field (there is no dialog there).
  */
 class ManualEntryAfterScanTest {
 
     // A common version instead of an own copy per test file — see
-    // Quellen.kt.
-    private fun lies(rel: String) = Quellen.lies(rel)
-    private fun code(src: String) = Quellen.withoutComments(src)
+    // Sources.kt.
+    private fun read(rel: String) = Sources.read(rel)
+    private fun code(src: String) = Sources.withoutComments(src)
 
     @Test
     fun `every scanner entry reacts to it`() {
         // The gallery opens its dialog, the parts list sets the cursor.
         // Both acknowledge.
-        val g = code(lies("collection/ui/screens/GalleryScreen.kt"))
-        assert(g.contains("barcode.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
+        val g = code(read("collection/ui/screens/GalleryScreen.kt"))
+        assert(g.contains("barcode.requestManualEntry") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
-        assert(g.contains("erfassung.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
+        assert(g.contains("entryVm.acknowledgeManualEntry()")) { "Die Galerie quittiert nicht" }
 
-        val pl = code(lies("parts/ui/screens/PartsListScreen.kt"))
-        assert(pl.contains("manuelleErfassungAnfordern") && pl.contains("setFeldFokus.requestFocus()")) {
+        val pl = code(read("parts/ui/screens/PartsListScreen.kt"))
+        assert(pl.contains("requestManualEntry") && pl.contains("setFieldFocus.requestFocus()")) {
             "Die Teileliste setzt den Cursor nach einem erfolglosen Scan nicht ins Feld"
         }
-        assert(pl.contains("onManuelleErfassungQuittiert()")) { "Die Teileliste quittiert nicht" }
+        assert(pl.contains("onManualEntryAcknowledged()")) { "Die Teileliste quittiert nicht" }
 
-        val tg = code(lies("parts/ui/TeileGraph.kt"))
-        assert(tg.contains("manuelleErfassungAnfordern = scan.manuellErfassen")) {
+        val tg = code(read("parts/ui/PartsGraph.kt"))
+        assert(tg.contains("requestManualEntry = scan.manualRecord")) {
             "Der Graph reicht die Anforderung nicht an die Teileliste durch"
         }
     }
@@ -48,7 +48,7 @@ class ManualEntryAfterScanTest {
         // “This should always be so when the form is shown" — hence
         // LaunchedEffect(Unit): the dialog is composed anew on every opening,
         // so it runs exactly once per display.
-        val g = lies("collection/ui/screens/GalerieErfassen.kt")
+        val g = read("collection/ui/screens/GalleryRecord.kt")
         val i = g.indexOf("fun AddSetDialog(")
         assert(i >= 0) { "AddSetDialog nicht gefunden" }
         val fn = g.substring(i)
@@ -59,7 +59,7 @@ class ManualEntryAfterScanTest {
         }
         // The anchor must hang on the SET field, not on quantity or price.
         val setField = fn.indexOf("value = setNumber")
-        val anchorAtSetField = fn.indexOf("focusRequester(setFeldFokus)")
+        val anchorAtSetField = fn.indexOf("focusRequester(setFieldFocus)")
         // In the same field means: before the next input field (quantity, price).
         val nextField = fn.indexOf("OutlinedTextField(", setField).let { if (it < 0) fn.length else it }
         assert(setField >= 0 && anchorAtSetField in (setField + 1) until nextField) {

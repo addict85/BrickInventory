@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
 /** Where the tabs sit: at the bottom on the phone, as a side rail on wide windows. */
-enum class NavigationMode { LEISTE_UNTEN, SIDEBAR }
+enum class NavigationMode { BAR_BOTTOM, SIDEBAR }
 
 /**
  * From the Material width class „medium" (600 dp) onward, the tabs sit on the left:
@@ -9,7 +9,7 @@ enum class NavigationMode { LEISTE_UNTEN, SIDEBAR }
  * apart. Without Android classes, so the threshold is testable.
  */
 fun navigationMode(windowWidthDp: Float): NavigationMode =
-    if (windowWidthDp >= MIDDLE_WIDTH_DP) NavigationMode.SIDEBAR else NavigationMode.LEISTE_UNTEN
+    if (windowWidthDp >= MIDDLE_WIDTH_DP) NavigationMode.SIDEBAR else NavigationMode.BAR_BOTTOM
 
 /** Lower bound of the width class „medium" per Material Design. */
 const val MIDDLE_WIDTH_DP = 600f
@@ -25,4 +25,4 @@ const val LARGE_WIDTH_DP = 840f
 fun listAndDetail(windowWidthDp: Float): Boolean = windowWidthDp >= LARGE_WIDTH_DP
 
 /** From „expanded" onward, a detail page spreads across two columns. */
-fun twoSpaltig(windowWidthDp: Float): Boolean = windowWidthDp >= LARGE_WIDTH_DP
+fun twoColumn(windowWidthDp: Float): Boolean = windowWidthDp >= LARGE_WIDTH_DP

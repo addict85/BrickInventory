@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * No statement depends on color alone.
@@ -10,7 +10,7 @@ import ch.brickinventoryapp.testing.Quellen
  * in the color (for the price alert “armed” green against gray) does not exist
  * for them.
  *
- * [LocalStatusFarben] is the
+ * [LocalStatusColors] is the
  * place where color carries MEANING (success, warning, error) — unlike
  * the Material scheme that colors surfaces. Whoever uses it says
  * something with it, and that statement needs a second carrier.
@@ -43,18 +43,18 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * ── Counter-checks ─────────────────────────────────────
  *
- * Branch claude/gegenproben-farbe, two interventions:
+ * Branch claude/counter-checks-farbe, two interventions:
  *
- *   a) MerklisteScreen newly colors with LocalStatusFarben — a
+ *   a) WantedListScreen newly colors with LocalStatusColors — a
  *      SEVENTH file, without anyone having asked what the place says
  *        → “whoever uses status colors is on the checked list" red
- *   b) the warning symbol removed from RateLimitRow, but `val eng` left in place
+ *   b) the warning symbol removed from RateLimitRow, but `val tight` left in place
  *        → “the quota row does not warn with color alone" red
  *
  * Result: 503 tests, EXACTLY 2 red. The baseline run 295 on the same state
  * was green.
  *
- * In b) `val eng` was left in place on purpose. Had the intervention removed threshold
+ * In b) `val tight` was left in place on purpose. Had the intervention removed threshold
  * AND symbol at once, one could no longer tell from the red test
  * what it depends on — and a counter-check that breaks two things at once
  * proves neither of them.
@@ -62,7 +62,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ColorAloneTest {
 
     /** The files whose color statement demonstrably has a second carrier. */
-    private val geprueft = setOf(
+    private val checked = setOf(
         "MonitoringScreen.kt",
         "MonitoringKontingente.kt",
         "SetupQr.kt",
@@ -71,37 +71,37 @@ class ColorAloneTest {
         "SetDetailComponents.kt",
         "CsvImportBanner.kt",
         // P&L on the set card: sign and number as with the PnlBadge.
-        "GalerieKarte.kt",
-        // P&L badge of the finance card: fmtProzent writes the sign along.
+        "GalleryCard.kt",
+        // P&L badge of the finance card: fmtPercent writes the sign along.
         "FinanceSections.kt",
     )
 
     @Test
     fun `whoever uses status colors is on the checked list`() {
-        val nutzer = Quellen.alle()
-            .filter { Quellen.withoutComments(it.readText()).contains("LocalStatusFarben.current") }
+        val user = Sources.all()
+            .filter { Sources.withoutComments(it.readText()).contains("LocalStatusColors.current") }
             .map { it.name }
             .toSet()
         // Self-proof: does the search find anything at all? Without that an
         // empty set would always be a subset of the list — the rule would be
         // green forever without ever looking at anything.
-        assert(nutzer.size >= 5) {
-            "Nur ${nutzer.size} Dateien benutzen LocalStatusFarben — Muster veraltet?"
+        assert(user.size >= 5) {
+            "Nur ${user.size} Dateien benutzen LocalStatusColors — Muster veraltet?"
         }
 
-        val neu = (nutzer - geprueft).sorted()
-        assert(neu.isEmpty()) {
-            "Diese Dateien faerben neuerdings mit LocalStatusFarben:\n  " +
-                neu.joinToString("\n  ") +
+        val newValue = (user - checked).sorted()
+        assert(newValue.isEmpty()) {
+            "Diese Dateien faerben neuerdings mit LocalStatusColors:\n  " +
+                newValue.joinToString("\n  ") +
                 "\nFarbe traegt dort BEDEUTUNG. Was sagt die Stelle jemandem, der " +
                 "Rot und Gruen nicht unterscheidet? Gibt es einen zweiten Traeger " +
                 "(Wort, Zeichen, Form), gehoert die Datei in `geprueft` — und wenn " +
                 "nicht, gehoert er gebaut."
         }
-        val weg = (geprueft - nutzer).sorted()
-        assert(weg.isEmpty()) {
+        val gone = (checked - user).sorted()
+        assert(gone.isEmpty()) {
             "Diese Eintraege in `geprueft` faerben gar nicht mehr so: " +
-                weg.joinToString(", ") + " — raus damit."
+                gone.joinToString(", ") + " — raus damit."
         }
     }
 
@@ -113,14 +113,14 @@ class ColorAloneTest {
      */
     @Test
     fun `the quota row does not warn with color alone`() {
-        val s = Quellen.withoutComments(Quellen.lies("management/ui/screens/MonitoringKontingente.kt"))
+        val s = Sources.withoutComments(Sources.read("management/ui/screens/MonitoringKontingente.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
         assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }
-        val rumpf = s.substring(i, minOf(i + 2400, s.length))
-        assert(rumpf.contains("val eng = pct >")) {
+        val body = s.substring(i, minOf(i + 2400, s.length))
+        assert(body.contains("val tight = pct >")) {
             "Die Zeile kennt die Schwelle nicht mehr als eigenen Wert."
         }
-        assert(Regex("""if \(eng\) Icon\(Icons\.Default\.Warning""").containsMatchIn(rumpf)) {
+        assert(Regex("""if \(tight\) Icon\(Icons\.Default\.Warning""").containsMatchIn(body)) {
             "Ohne Zeichen bleibt nur die Farbe — und gelb gegen rot ist genau " +
                 "das Paar, das bei einer Rot-Gruen-Schwaeche zusammenfaellt."
         }

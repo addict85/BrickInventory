@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Every adding path asks for the storage location — and the wishlist item for the account.
@@ -22,10 +22,10 @@ import ch.brickinventoryapp.testing.Quellen
 class LocationOnAddTest {
 
     /** The body of a function: from its name to the next one at the start of a column. */
-    private fun rumpf(quelle: String, kopf: String): String {
-        val i = quelle.indexOf(kopf)
-        check(i >= 0) { "$kopf nicht gefunden — umbenannt?" }
-        val rest = quelle.substring(i + kopf.length)
+    private fun body(source: String, header: String): String {
+        val i = source.indexOf(header)
+        check(i >= 0) { "$header nicht gefunden — umbenannt?" }
+        val rest = source.substring(i + header.length)
         val j = Regex("\\n(?:@Composable|private fun |internal fun |fun )").find(rest)?.range?.first
         return rest.substring(0, j ?: rest.length)
     }
@@ -35,23 +35,23 @@ class LocationOnAddTest {
         // Five paths, five files. Fewer than five means: the search no longer
         // applies, and the rule would be silently satisfied.
         val routes = listOf(
-            Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("collection/ui/screens/GalleryRecord.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("collection/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
-            Triple("shared/ui/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
+            Triple("collection/ui/screens/WantedListDialogs.kt", "fun AdoptionDialog(", "Merkliste → Galerie"),
+            Triple("shared/ui/ManualItemComposables.kt", "fun EntryFields(", "manuelle Teile und Figuren"),
             Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(routes.size >= 5) { "Nur ${routes.size} Wege — Liste unvollstaendig?" }
-        val ohne = mutableListOf<String>()
-        for ((datei, kopf, name) in routes) {
+        val without = mutableListOf<String>()
+        for ((file, header, name) in routes) {
             // Without comment lines: a paragraph that EXPLAINS the field necessarily
             // names it — and the rule would thus be blind to its absence.
-            val quelle = Quellen.withoutComments(Quellen.lies(datei))
-            if (!rumpf(quelle, kopf).contains("LagerortErfassung(")) ohne += name
+            val source = Sources.withoutComments(Sources.read(file))
+            if (!body(source, header).contains("StorageLocationEntry(")) without += name
         }
-        assert(ohne.isEmpty()) {
+        assert(without.isEmpty()) {
             "Diese Erfassungswege fragen nicht nach dem Lagerort: " +
-                "${ohne.joinToString(", ")} — er laesst sich dort erst nachtraeglich setzen."
+                "${without.joinToString(", ")} — er laesst sich dort erst nachtraeglich setzen."
         }
     }
 
@@ -72,37 +72,37 @@ class LocationOnAddTest {
      * The STATE is checked and not the field: the preset stands in
      * the line that creates it. Six holders and not five paths, because
      * manual adding has two — part and minifigure share the field
-     * (ErfassungsFelder) but each hold the state themselves.
+     * (EntryFields) but each hold the state themselves.
      */
     @Test
     fun `every adding path starts at the default storage location`() {
         val holder = listOf(
-            Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("collection/ui/screens/GalleryRecord.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("collection/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("collection/ui/screens/WantedListDialogs.kt", "fun AdoptionDialog(", "Merkliste → Galerie"),
             Triple("parts/ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),
-            Triple("parts/ui/screens/FigurenErfassen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
+            Triple("parts/ui/screens/FiguresRecord.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
             Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(holder.size >= 6) { "Nur ${holder.size} Halter — Liste unvollstaendig?" }
-        val leer = mutableListOf<String>()
-        for ((datei, kopf, name) in holder) {
-            val quelle = Quellen.withoutComments(Quellen.lies(datei))
-            val koerper = rumpf(quelle, kopf)
-            // The line that creates the storage location state. `lagerort` also hits
+        val empty = mutableListOf<String>()
+        for ((file, header, name) in holder) {
+            val source = Sources.withoutComments(Sources.read(file))
+            val bodyBytes = body(source, header)
+            // The line that creates the storage location state. `storageLocation` also hits
             // `barcodeLocation` — intentionally, it is the same thing.
-            val zeile = koerper.lines().firstOrNull {
+            val row = bodyBytes.lines().firstOrNull {
                 Regex("""var \w*(?:[Ll]agerort|[Ll]ocation)\b.*mutableStateOf\(""").containsMatchIn(it)
             }
-            if (zeile == null) { leer += "$name (kein Zustand gefunden)"; continue }
+            if (row == null) { empty += "$name (kein Zustand gefunden)"; continue }
             // `mutableStateOf("")` is the old state: start at empty. A
             // default is recognized by a NAME standing there.
-            if (Regex("""mutableStateOf\(\s*""\s*\)""").containsMatchIn(zeile)) leer += name
-            else if (!zeile.contains("orgabe") && !zeile.contains("efault")) leer += "$name (kein Vorgabe-Wert)"
+            if (Regex("""mutableStateOf\(\s*""\s*\)""").containsMatchIn(row)) empty += name
+            else if (!row.contains("orgabe") && !row.contains("efault")) empty += "$name (kein Vorgabe-Wert)"
         }
-        assert(leer.isEmpty()) {
+        assert(empty.isEmpty()) {
             "Diese Erfassungswege starten nicht bei der Vorgabe: " +
-                "${leer.joinToString(", ")} — Marcos Stern wirkt dort nicht, und " +
+                "${empty.joinToString(", ")} — Marcos Stern wirkt dort nicht, und " +
                 "man muesste den Ort jedes Mal von Hand waehlen."
         }
     }
@@ -111,9 +111,9 @@ class LocationOnAddTest {
     fun `the wishlist item dialog asks for the account`() {
         // The server always accepted owner_user_id (routes/api_v1/wanted.ts),
         // and the web app asked for it (cat-m-owner) — only this dialog did not.
-        val quelle = Quellen.withoutComments(Quellen.lies("catalog/ui/screens/CatalogDetailScreen.kt"))
-        val koerper = rumpf(quelle, "fun MerkpostenDialog(")
-        assert(koerper.contains("OwnerPicker(")) {
+        val source = Sources.withoutComments(Sources.read("catalog/ui/screens/CatalogDetailScreen.kt"))
+        val bodyBytes = body(source, "fun WantedItemDialog(")
+        assert(bodyBytes.contains("OwnerPicker(")) {
             "Der Merkposten-Dialog im Katalog hat keine Kontowahl — ein Wunsch " +
                 "fuer das Kind landete damit still beim eigenen Konto."
         }

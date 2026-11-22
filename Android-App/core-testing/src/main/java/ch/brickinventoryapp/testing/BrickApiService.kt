@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.api.ManagementApi
 
 /**
  * All scopes together, for tests only: a test server builds every
- * repository with it. The app injects an interface per scope (NetzModule), so
+ * repository with it. The app injects an interface per scope (NetworkModule), so
  * no repository sees more than its own scope.
  */
 interface BrickApiService : AccountApi, ManagementApi, CatalogApi, SetsApi, PartsApi, MinifigsApi,

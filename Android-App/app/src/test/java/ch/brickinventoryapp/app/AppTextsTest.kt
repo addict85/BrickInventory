@@ -2,11 +2,11 @@ package ch.brickinventoryapp.app
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.Anmeldestand
-import ch.brickinventoryapp.model.util.Textquelle
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.domain.Fehlercode
-import ch.brickinventoryapp.state.ui.viewmodel.AppTexte
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.model.util.TextSource
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.state.ui.viewmodel.AppTexts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  * in the account's language —, also for 401 and with an error code. Without a sentence
  * the app formulates itself.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   servermeldung-ohne-vorrang   the check for fehler.message removed → red “the server's sentence …”
  *   servermeldung-nach-code      the error code before the server message → red “the server's sentence …”
  */
@@ -32,23 +32,23 @@ import org.robolectric.annotation.Config
 class AppTextsTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val texts = AppTexte(object : Textquelle {
+    private val texts = AppTexts(object : TextSource {
         override fun text(id: Int, vararg args: Any?) = ctx.getString(id, *args)
-        override fun menge(id: Int, anzahl: Int, vararg args: Any?) = ctx.resources.getQuantityString(id, anzahl, *args)
-    }, object : Anmeldestand {
+        override fun quantity(id: Int, count: Int, vararg args: Any?) = ctx.resources.getQuantityString(id, count, *args)
+    }, object : LoginState {
         override val authTokenState: StateFlow<String?> = MutableStateFlow("token")
     })
 
     @Test
     fun `the server's sentence takes precedence over any own one`() {
-        val satz = "Für dieses Datum gibt es schon einen Kaufpreis"
-        assertEquals(satz, texts.meldung(Ergebnis.Fehler.Server(409, satz)))
+        val sentence = "Für dieses Datum gibt es schon einen Kaufpreis"
+        assertEquals(sentence, texts.message(Outcome.Failure.Server(409, sentence)))
         assertEquals("Auch bei 401", "Benutzername oder Passwort falsch",
-            texts.meldung(Ergebnis.Fehler.Abgewiesen("Benutzername oder Passwort falsch")))
-        assertEquals("Auch mit Fehlercode", satz, texts.meldung(Ergebnis.Fehler.Server(429, satz, Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+            texts.message(Outcome.Failure.Rejected("Benutzername oder Passwort falsch")))
+        assertEquals("Auch mit Fehlercode", sentence, texts.message(Outcome.Failure.Server(429, sentence, ErrorCode.TOO_MANY_CONNECTIONS)))
 
-        val own = texts.meldung(Ergebnis.Fehler.Server(500))
+        val own = texts.message(Outcome.Failure.Server(500))
         assertTrue("Ohne Satz des Servers steht keiner da", own.isNotBlank())
-        assertNotEquals(own, texts.meldung(Ergebnis.Fehler.Server(429, "", Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+        assertNotEquals(own, texts.message(Outcome.Failure.Server(429, "", ErrorCode.TOO_MANY_CONNECTIONS)))
     }
 }

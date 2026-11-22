@@ -6,7 +6,7 @@ import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The number and PIN of vouchers do not appear in screenshots and not
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Counter-checks:
  *   A  showsVouchers() checks "/vouchers/export" instead of "/api/v1/vouchers/" → red
  *      “a single voucher and the export need a privacy screen”
- *   C  Sichtschutz() removed from the branch `zfZustand.geheimnis != null` in
+ *   C  PrivacyShield() removed from the branch `secondFactorUiState.secret != null` in
  *      EinstellungenZweiterFaktor → red “second-factor keys and codes …”
  */
 class VoucherPrivacyScreenTest {
@@ -38,10 +38,10 @@ class VoucherPrivacyScreenTest {
     /** The same rule for the TOTP key and the recovery codes. */
     @Test
     fun `key and codes of the second factor request the privacy screen`() {
-        val konto = Quellen.withoutComments(Quellen.lies("account/ui/screens/EinstellungenZweiterFaktor.kt"))
-        for (branch in listOf("zfZustand.codes.isNotEmpty() ->", "zfZustand.geheimnis != null ->")) {
+        val account = Sources.withoutComments(Sources.read("account/ui/screens/SettingsSecondFactor.kt"))
+        for (branch in listOf("secondFactorUiState.codes.isNotEmpty() ->", "secondFactorUiState.secret != null ->")) {
             assertTrue("Ohne Sichtschutz: $branch", Regex(Regex.escape(branch) +
-                """\s*\{\s*(?:ch\.brickinventoryapp\.ui\.components\.)?Sichtschutz\(\)""").containsMatchIn(konto))
+                """\s*\{\s*(?:ch\.brickinventoryapp\.ui\.components\.)?PrivacyShield\(\)""").containsMatchIn(account))
         }
     }
 }
