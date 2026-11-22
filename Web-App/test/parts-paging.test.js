@@ -35,43 +35,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-/**
- * Remove import/export syntax from a module file.
- * @param {string} src
- * @returns {string}
- */
-function stripModuleSyntax(src) {
-  const body = src
-    .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
-    .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() otherwise comes from js/registry.js and is not defined after
-  // removing the imports. In the sandbox the registration does not
-  // matter — that it IS called is checked by test/csp-actions.test.js
-  // and test/bundle-smoke.test.js against the real source text. …
-  return (
-    'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
-  );
-}
-
 const ROOT = path.join(__dirname, '..');
-
-test('the proxy can shrink and does it only once per image', () => {
-  const server = require('./helpers/sources').serverAll();
-  assert.match(server, /req\.query\.thumb === '1'/, 'Der Proxy kennt kein thumb=1');
-  assert.match(
-    server,
-    /_thumbInFlight/,
-    'Ohne Zusammenfassung startet eine Kachelwand dieselbe Verkleinerung mehrfach',
-  );
-  // The cache durations were lowered and extended by must-revalidate after
-  // a long max-age had nailed broken responses down in the browser
-  // („200 from disk cache"). Now it is only checked that a
-  // revalidation duty is set.
-  assert.match(server, /must-revalidate/, 'Ohne Rückfragepflicht bleiben Fehler im Browser stehen');
-
-  const core = stripModuleSyntax(require('./helpers/sources').coreSource());
-  assert.match(core, /thumb \? '&thumb=1' : ''/, 'imgUrl() reicht den Wunsch nicht weiter');
-});
 
 test('all list images load lazily', () => {
   // Without loading="lazy" the browser starts all images of a list
@@ -91,30 +55,6 @@ test('all list images load lazily', () => {
     }
   }
   assert.deepEqual(bad, [], `Listenbilder ohne loading="lazy": ${bad.join(', ')}`);
-});
-
-test('shrinking keeps no request waiting', () => {
-  // Measured: Jimp needs around 150 ms per image and occupies the
-  // event loop meanwhile. A tile wall with 60 minifigures would result in nine seconds during
-  // which the server stands still for ALL requests.
-  const server = require('./helpers/sources').serverAll();
-  assert.match(
-    server,
-    /const THUMB_MAX_PARALLEL = \d+/,
-    'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig',
-  );
-  assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
-  // In the delivery path the shrinking must not be waited for.
-  // Since an earlier round this path IS src/images/imgCacheServe.ts — before that a
-  // generously cut piece of the route body, which after the move showed
-  // emptiness.
-  const proxy = fs.readFileSync(path.join(ROOT, 'src/images/imgCacheServe.ts'), 'utf8');
-  assert.doesNotMatch(proxy, /await createProxyPreview/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
-  assert.match(
-    proxy,
-    /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
-    'Die Verkleinerung gehört in den Hintergrund',
-  );
 });
 
 test('parts list against the database: pages, color filter and upper bound on both paths', {

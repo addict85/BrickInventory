@@ -3,6 +3,11 @@
  *
  * Counter-check (carried out): the LEFT JOIN including multiplication set back to
  * `SUM(p.quantity)` → step 1 turns red, the others stay green.
+ *
+ * Counter-checks (22.11.2026, each alone, in public/js/init.js):
+ *   A  the demand merged by `${blNum}|…` again → red “demand and inventory …” (one row)
+ *   B  data-part with p.part_number instead of the BrickLink number → red the same test
+ *   C  plFillStock sends the parts tab's stored filter instead of the own choice → red “the inventory reconciliation …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -151,34 +156,56 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
  * Counter-check (carried out): key set back to `${blNum}|…` →
  * this step turns red.
  */
-test('demand and inventory are merged via the same number', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
+/** The part list in the real bundle: one set whose two mold variants share one BrickLink number. */
+async function partListUi() {
+  const { openUi, warte } = require('./helpers/ui');
+  const part = (pn, q) => ({
+    part_number: pn,
+    bl_part_number: '3001',
+    color_id: 5,
+    color_name: 'Rot',
+    part_name: 'Brick 2x4',
+    total_quantity: q,
+  });
+  const ui = await openUi({
+    '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+    '/v2/parts/bl-color-map': { success: true, map: { 5: 5 } },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: [part('3001a', 2), part('3001b', 3)] },
+    '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v2/parts/owned': {
+      success: true,
+      holding: { '3001a|5': { total: 2, loose: 2 }, '3001b|5': { total: 1, loose: 1 } },
+    },
+  });
+  const { d } = ui;
+  d.getElementById('pl-setnr').value = '10294-1';
+  d.getElementById('pl-setnr').dispatchEvent(new ui.w.KeyboardEvent('keydown', { key: 'Enter' }));
+  assert.ok(await warte(() => d.querySelectorAll('.pl-have-input').length === 2), 'the two variants are not listed');
+  return ui;
+}
 
-  assert.match(
-    src,
-    /const key = `\$\{p\.part_number\}\|\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Der Bedarf wird nicht (mehr) nach der Rebrickable-Nummer zusammengefasst. ' +
-      'Fasst er nach der BrickLink-Nummer zusammen, laufen Formvarianten zu einer ' +
-      'Zeile zusammen, deren Bestand nur für eine der beiden Nummern gesucht wird.',
-  );
-  assert.ok(!/const key = `\$\{blNum\}/.test(src), 'Der alte BrickLink-Schlüssel steht wieder da');
-
-  // The demand side: the same component, so that both match.
-  assert.match(
-    src,
-    /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer',
-  );
-
-  // And the display stays BrickLink — exactly Marco's specification.
-  assert.match(
-    src,
-    /data-part="\$\{p\.bl_part_number\s*\|\|\s*p\.part_number\}"/,
-    'Die Anzeige zeigt nicht mehr die BrickLink-Nummer',
-  );
+test('demand and inventory are merged via the same number', async () => {
+  // Merged by the Rebrickable number: two variants stay two rows, each finds its own holding.
+  const { w, d, warte } = await partListUi();
+  try {
+    const rows = [...d.querySelectorAll('.pl-have-input')];
+    assert.deepEqual(
+      rows.map(el => [el.dataset.key, el.dataset.part, el.dataset.need]),
+      [
+        ['3001a__5', '3001', '2'],
+        ['3001b__5', '3001', '3'],
+      ],
+      'the display shows the BrickLink number, the key stays Rebrickable',
+    );
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await warte(() => rows[0].value === '2'));
+    assert.deepEqual(
+      rows.map(el => el.value),
+      ['2', '1'],
+    );
+  } finally {
+    w.close();
+  }
 });
 
 /**
@@ -186,23 +213,25 @@ test('demand and inventory are merged via the same number', () => {
  *
  * Counter-check (carried out): `scopeQuery('parts')` reinserted → red.
  */
-test('the inventory reconciliation reads its scope from its own choice', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ohneKommentare } = require('./helpers/sources');
-  const js = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-
-  assert.ok(js.includes("G('pl-stock-subs')"), 'Die Wahl „Unterkonten mit einbeziehen" wird nicht gelesen');
-  assert.ok(
-    js.includes("'?accounts=own'"),
-    'Ohne Haken muss `accounts=own` mitreisen — sonst zählt der Haushalt immer mit',
-  );
-  assert.ok(
-    !js.includes("scopeQuery('parts')"),
-    'Der Abgleich hängt wieder am Kontofilter des Teile-Reiters. Der steht nach ' +
-      'jeder Anmeldung auf „Alle Konten" und beantwortet hier eine Frage, die ' +
-      'niemand an dieser Stelle gestellt hat.',
-  );
-  assert.ok(html.includes('id="pl-stock-subs"'), 'Die Wahl fehlt im Markup');
+test('the inventory reconciliation reads its scope from its own choice', async () => {
+  // Not the parts tab's account filter: without the tick only the own account, with it the household.
+  const { w, d, warte, aufrufe } = await partListUi();
+  const owned = () => aufrufe.filter(a => a.url.includes('/v2/parts/owned')).map(a => a.url.replace(/^.*\/api/, ''));
+  try {
+    w.localStorage.setItem('bim_scope_parts', '7');
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await warte(() => owned().length === 1));
+    assert.ok(await warte(() => !d.getElementById('btn-pl-stock').disabled), 'the button stays busy');
+    d.getElementById('pl-stock-subs').checked = true;
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await warte(() => owned().length === 2));
+    assert.deepEqual(owned(), ['/v2/parts/owned?accounts=own', '/v2/parts/owned']);
+    const body = JSON.parse(aufrufe.find(a => a.url.includes('/v2/parts/owned')).body);
+    assert.deepEqual(body.parts, [
+      { part_number: '3001a', color_id: 5 },
+      { part_number: '3001b', color_id: 5 },
+    ]);
+  } finally {
+    w.close();
+  }
 });

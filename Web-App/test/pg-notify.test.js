@@ -11,6 +11,11 @@
  *      Leerzeichen wird abgewiesen“ (afterwards the run hangs on the invalid channel)
  *   C  `listen('csv_sync_trigger', …)` again in startup/jobsProcess.ts →
  *      red: “no scheduler asks for triggers any more”
+ * Counter-checks (22.11.2026, each alone):
+ *   D  notifyVia builds `SELECT pg_notify('${channel}', '${payload}')` → red “when sending, channel and
+ *      payload are bound …” (nothing arrives)
+ *   E  scheduleReconnect without Math.min(30_000, …) → red “own connection, with capped reconnect” (32000)
+ *   F  the doubling removed → red the same test (always 1000)
  *
  * @superuser (ratchet in test/roles-separation-db.test.js)
  */
@@ -25,7 +30,11 @@ const _req = buildAndRequire();
 const { noDb } = require('./helpers/db');
 const { bis } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
-const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
+test.after(() =>
+  testData()
+    .pool.end()
+    .catch(() => {}),
+);
 test('no scheduler asks for triggers any more', () => {
   // Kicks and schedules are jobs (src/jobQueue/schedule.ts); the old
   // trigger entries with their own channel are gone.
@@ -47,7 +56,6 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   const pgNotify = testAccess().notification;
   t.after(async () => {
     await pgNotify.close();
-    await db.pool.end().catch(() => {});
   });
   const CHANNEL = `ae_probe_${process.pid}`;
   const bekommen = [];
@@ -80,19 +88,52 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 
-test('when sending, the channel is bound, not inserted', () => {
-  assert.match(
-    NOTIFY,
-    /pg_notify\(\$1, \$2\)/,
-    'Beim Senden lässt sich der Kanal binden — dort gehört kein String-Bau hin',
-  );
+test('when sending, channel and payload are bound, not inserted', { concurrency: 1 }, async t => {
+  // A payload with quotes and a semicolon arrives unchanged; built into the SQL it would break it.
+  const db = testData();
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    noDb(t, e);
+    return;
+  }
+  const pgNotify = testAccess().notification;
+  t.after(() => pgNotify.close());
+  const CHANNEL = `bind_probe_${process.pid}`;
+  const got = [];
+  pgNotify.listen(CHANNEL, payload => {
+    if (payload != null) got.push(payload);
+  });
+  assert.ok(await bis(() => pgNotify.listensTo(CHANNEL), 5000), 'not listening');
+  const payload = `it's "quoted"; SELECT 1 --`;
+  await pgNotify.notify(CHANNEL, payload);
+  assert.ok(await bis(() => got.length > 0, 5000), 'the signal did not arrive');
+  assert.deepEqual(got, [payload]);
 });
 
-test('own connection, with capped reconnect', () => {
-  assert.match(NOTIFY, /new Client\(/, 'Ein dauerhaft lauschender Client wäre im Pool blockiert');
-  assert.match(
-    NOTIFY,
-    /Math\.min\(30_000, (?:this\.)?_retryMs \* 2\)/,
-    'Reconnect ohne Deckelung und Backoff hämmert bei DB-Ausfall dagegen',
-  );
+test('own connection, with capped reconnect', async t => {
+  // Against a port nobody listens on: every failed attempt doubles the wait, at most 30 s.
+  const { Notification } = _req('db/pgNotify.js');
+  const net = require('node:net');
+  const closed = await new Promise(r => {
+    const s = net.createServer().listen(0, '127.0.0.1', () => {
+      const port = s.address().port;
+      s.close(() => r(port));
+    });
+  });
+  const waits = [];
+  const realTimeout = globalThis.setTimeout;
+  t.mock.method(globalThis, 'setTimeout', (fn, ms, ...rest) => {
+    if (ms >= 1000 && waits.length < 8) {
+      waits.push(ms);
+      return realTimeout(fn, 0, ...rest);
+    }
+    return realTimeout(fn, ms, ...rest);
+  });
+  t.mock.method(console, 'error', () => {});
+  const n = new Notification({ host: '127.0.0.1', port: closed, user: 'x', database: 'x' }, async () => {});
+  t.after(() => n.close());
+  n.listen('probe', () => {});
+  assert.ok(await bis(() => waits.length >= 8, 5000), `only ${waits.length} attempts`);
+  assert.deepEqual(waits, [1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000]);
 });
