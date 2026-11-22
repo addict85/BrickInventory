@@ -1,7 +1,7 @@
 Gegenprobe: Die Frage nach einem neuen Serverschlüssel erfährt nie, dass das System CT prüft
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: with CT requirement a tap suffices for a new server key
+Rot: with CT requirement a new server key needs the screen lock, not a transcript
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 index 6ec1f8a..0789922 100644

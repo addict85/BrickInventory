@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.BorderStroke
 import ch.brickinventoryapp.ui.components.withFont
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
@@ -206,7 +207,7 @@ private fun ScannerOverlay(
 
 /** A secondary action on the camera image: the same white outline as the torch button. */
 @Composable
-private fun OverlayButton(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, onClick: () -> Unit) {
+private fun OverlayButton(icon: ImageVector, text: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         border = BorderStroke(1.dp, Color.White),

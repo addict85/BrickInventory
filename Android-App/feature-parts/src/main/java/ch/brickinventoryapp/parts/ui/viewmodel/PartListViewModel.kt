@@ -20,7 +20,7 @@ import ch.brickinventoryapp.parts.ui.TeilelisteUiState
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet
-import ch.brickinventoryapp.parts.ui.RemovedSet
+import ch.brickinventoryapp.parts.ui.TeilelisteUiState.RemovedSet
 import ch.brickinventoryapp.parts.ui.normalized
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
