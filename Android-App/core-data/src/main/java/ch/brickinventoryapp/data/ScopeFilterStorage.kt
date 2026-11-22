@@ -37,7 +37,7 @@ class ScopeFilterStorage @Inject constructor() {
         values.value = emptyMap()
     }
 
-    // ═══ Storage location filter — per view, like the account filter (public/js/account-filter.js) ═══
+    // ═══ Storage location filter — per view, like the account filter (`public/js/account-filter.js`) ═══
 
     private fun storageKey(view: ScopeFilter.View) = "lager_${view.key}"
 

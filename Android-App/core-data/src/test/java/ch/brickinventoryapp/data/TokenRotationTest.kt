@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit
  * The swap of the token in the real network path: guard, account repository and
  * TokenSwap via one client, against a test server that rejects the old token
  * or requests the swap via header. The test server speaks http
- * on localhost; the guard therefore runs as in the debug build (entwicklung = true).
+ * on localhost; the guard therefore runs as in the debug build (development = true).
  *
  * Counter-checks:
  *   A  in ServerGuard the branch for 401 `token_rotation_noetig` removed →

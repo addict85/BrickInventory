@@ -13,12 +13,10 @@ import org.junit.Test
  * replace the running one (even after a key rotation)?
  *
  * Counter-checks:
- *   A  the host comparison removed from isBelow() → red „nur Adressen in
- *      der Release-Ablage“ (foreign host with the same path)
+ *   A  the host comparison removed from isBelow() → red „nur Adressen in der Release-Ablage“ (foreign host with the same path)
  *   B  `target.pathSegments.size == folder.size + 1` removed from isBelow() →
  *      red „only addresses in the release store“ (subfolder)
- *   C  signatureFollows() as `old.current == newValue.current` → red „ein rotierter
- *      Schluessel mit dem laufenden in der Ahnenreihe passt“
+ *   C  signatureFollows() as `old.current == newValue.current` → red „ein rotierter Schluessel mit dem laufenden in der Ahnenreihe passt“
  *   D  in the single-signer branch the OLD one's ancestry checked
  *      (`newValue.current.single() in old.ancestors`) → red „ein Rueckschritt …“
  */

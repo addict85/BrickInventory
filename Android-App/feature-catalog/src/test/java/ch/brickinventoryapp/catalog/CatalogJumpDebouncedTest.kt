@@ -41,7 +41,7 @@ import org.junit.Test
  *
  * The stillness now lives in the viewport loader. It covers both paths, because
  * both end up there. That's exactly what the web app has always done
- * (js/katalog.js, `_ladeSichtbareSeiten`, 150 ms) — and exactly why
+ * (`js/katalog.js`, `_ladeSichtbareSeiten`, 150 ms) — and exactly why
  * the web app is fast.
  *
  * ── How it's checked ───────────────────────────────────────────────────────
@@ -51,8 +51,7 @@ import org.junit.Test
  *
  * Counter-checks:
  *   A  `collectLatest` replaced by `collect`
- *      (counter-checks/sichtfenster-ohne-entprellung.patch) → red "der
- *      Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
+ *      (counter-checks/sichtfenster-ohne-entprellung.patch) → red "der Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
  *   B  `delay(restMs)` removed → red, the same case (loads before the stillness)
  *   C  the lead `(of - 1)..(until + 1)` shortened to `of..until` → red, the same case
  */

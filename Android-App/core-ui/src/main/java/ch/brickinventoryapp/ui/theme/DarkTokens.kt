@@ -5,9 +5,9 @@ package ch.brickinventoryapp.ui.theme
  *
  * The dark variant PER theme, active with <html data-dunkel> (device
  * choice “dark when the system is dark”). Before, whoever wanted dark got
- * the theme “werkbank” — i.e. a different theme. 'basis' assigns surfaces,
+ * the theme `werkbank` — i.e. a different theme. 'basis' assigns surfaces,
  * gray axis and status colors for all themes (the same roles as in
- * themes/werkbank.css); per theme only the brand colors stand here,
+ * `themes/werkbank.css`); per theme only the brand colors stand here,
  * lightened so that text and lines in them stay readable on a dark
  * background. Text on the brand color is then dark (--auf-primaer).
  * Werkbank is already dark and has no variant. Both UIs read this section:

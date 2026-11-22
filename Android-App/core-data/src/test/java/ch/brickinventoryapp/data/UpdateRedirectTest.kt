@@ -73,7 +73,7 @@ class UpdateRedirectTest {
             fetch(start.url("/release").toString())
             fail("Die Umleitung auf einen fremden Host ging durch")
         } catch (_: IOException) {
-            // erwartet
+            // expected
         }
         assertEquals("Der fremde Host sah die Anfrage", 0, foreign.requestCount)
     }

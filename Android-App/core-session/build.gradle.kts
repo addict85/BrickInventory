@@ -16,7 +16,7 @@ android {
 dependencies {
     api(project(":core-model"))
     implementation(project(":core-data"))
-    // NetworkPolicy: Adresse einer gescheiterten Abmeldung, Klartext-Altbestand.
+    // NetworkPolicy: address of a failed sign-out, plaintext legacy stock.
     implementation(project(":core-network"))
     implementation(project(":core-resources"))
     // Own flows (the session's StateFlow); without this entry Gradle resolves to an old version.

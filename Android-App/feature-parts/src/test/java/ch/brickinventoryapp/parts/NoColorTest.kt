@@ -30,7 +30,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * "Keine Farbe" is 9999 as on the server (utils/validate.ts, NO_COLOR);
+ * "Keine Farbe" is 9999 as on the server (`utils/validate.ts`, NO_COLOR);
  * 0 is black. The app sends 9999 for a part without a color, shows 9999 as
  * "keine Farbe" and does not take a missing color_id as black.
  *

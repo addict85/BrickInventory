@@ -54,7 +54,7 @@ import javax.inject.Inject
  * Wishlist and wishlist-item detail — what one would like to have, separate from ownership.
  *
  * How a wishlist item is created, taken over or filtered is decided by the
- * server (utils/merkliste.ts); here it is only asked for and shown. Search,
+ * server (`utils/merkliste.ts`); here it is only asked for and shown. Search,
  * condition and sorting live in the [SavedStateHandle].
  */
 @HiltViewModel

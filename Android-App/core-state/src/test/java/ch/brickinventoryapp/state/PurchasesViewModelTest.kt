@@ -37,23 +37,20 @@ import org.junit.Test
  * Counter-checks (measured 28.10.2026, kotlinc against PurchasesViewModel.kt):
  *   A  in setChanged() the summary not taken over (always fetches the whole inventory
  *      instead) → red „ein geänderter Kauf eines Sets schreibt seine Zusammenfassung …“
- *   B  on a rejected date change, doesn't reload → red „eine
- *      abgelehnte Datumsänderung lädt die Liste neu“
+ *   B  on a rejected date change, doesn't reload → red „eine abgelehnte Datumsänderung lädt die Liste neu“
  *   C  on an owner change, the response's numbers replaced with 0, or dropped the catching-up
  *      of the store → red „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in load() left another entry's history standing → red
  *      „the price history of another entry does not stay“
  *   E  in changeForPiece() `purchasePrice = price` instead of
- *      `unitPrice = price` → red „ein Set schickt purchase_price, Teile und
- *      Figuren unit_price“ (part)
+ *      `unitPrice = price` → red „ein Set schickt purchase_price, Teile und Figuren unit_price“ (part)
  *   F  in HouseholdRepository.updateAcquisition() changeForPiece instead of changeForSet →
  *      red at the same spot (set)
  *   G  in updateManualAcquisition() the body built by hand,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → red at
  *      the same spot (part)
  *   H  in loadManualPriceHistory() always getPartPriceHistory
- *      (counter-checks/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für
- *      Teile und Figuren …“ (figure without history; only measurable in CI)
+ *      (counter-checks/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für Teile und Figuren …“ (figure without history; only measurable in CI)
  *   kaeufe-laden-nicht-beim-zeigen  (counter-checks/) purchasesOf without a fetch on the first observer
  *      → red „die Kaeufe eines Eintrags laden, sobald …“
  */

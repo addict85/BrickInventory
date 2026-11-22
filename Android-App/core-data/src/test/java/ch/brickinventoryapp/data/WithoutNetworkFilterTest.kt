@@ -38,7 +38,7 @@ import java.net.ConnectException
  *
  * Counter-checks (counter-checks/, the CI job `counter-checks` requires red):
  *   ohne-netz-suche-als-muster `%` and `_` not escaped → red „ein Prozentzeichen …“
- *   ohne-netz-filter-spalte    the thema column gets the storage location → red „Suche, Thema …“
+ *   ohne-netz-filter-spalte    the theme column gets the storage location → red „Suche, Thema …“
  *   galerie-ablage-ungefiltert observeSets passes no filter columns → red „die Galerie filtert in Room …“
  *   teile-nur-seite-eins       refreshPaged stops after page 1 → red „alle Seiten der Teile …“
  *   teile-farbwahl-verloren    observeParts doesn't pass the color choice on → red „Farbe, Kategorie, Ersatzteile …“

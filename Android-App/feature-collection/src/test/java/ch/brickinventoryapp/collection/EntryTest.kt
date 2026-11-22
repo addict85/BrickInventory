@@ -11,7 +11,7 @@ import org.junit.Test
  * The check display before adding: show it and clear it again.
  *
  * Counter-check (measured 27.10., kotlinc against Entry.kt): done() with no
- * effect → red: „done clears the display, even after a phase change".
+ * effect → red: „done clears the display, even after a phase change“.
  */
 class EntryTest {
 

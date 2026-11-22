@@ -40,14 +40,14 @@ import java.io.File
  * password (and code), the plain text only in the ViewModel. Against a test server.
  *
  * Counter-checks:
- *  A  In bestaetige() `codeNeeded = … || error.code in FACTOR_CODES` reset
+ *  A  In confirm() `codeNeeded = … || error.code in FACTOR_CODES` reset
  *     to `it.confirmation.codeNeeded` → red “revealing a PIN …”
  *     (code field does not appear).
  *  B  In verlange() the plain-text shortcut removed (always a new prompt) → red
  *     “revealing a PIN …” (copying asks again instead of copying).
  *  C  forgetPlaintext() does not clear `plaintext` → red “revealing a PIN …”.
- *  D  In bestaetige() the offline message on deleting removed (always
- *     texte.meldung) → red “offline it is not deleted …”.
+ *  D  In confirm() the offline message on deleting removed (always
+ *     texts.message) → red “offline it is not deleted …”.
  *  E  withTicket() does not attach the ticket → red “PDF and export …”.
  *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
  *     “editing sends the mask …” (the PIN would be cleared or missing).

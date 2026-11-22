@@ -37,7 +37,7 @@ import java.io.File
 class CacheAreaTest {
 
     /**
-     * What lies on the device is classified by data class (INVARIANTEN.md,
+     * What lies on the device is classified by data class (`INVARIANTEN.md`,
      * „Daten auf dem Gerät“). A new compartment must be classified there before
      * this test is green again.
      */

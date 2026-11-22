@@ -61,7 +61,7 @@ data class SetDetailUiState(
     val acquisitions: List<PurchaseView> = emptyList(),
     /**
      * Total row of the purchases — calculated by the server, not here.
-     * The view only displays it; the rule lives in utils/acquisitions.ts.
+     * The view only displays it; the rule lives in `utils/acquisitions.ts`.
      */
     val acquisitionTotals: PurchaseSumsView = PurchaseSumsView(),
     val purchasesFetch: Load<Unit> = Load.Data(Unit),

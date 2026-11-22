@@ -15,7 +15,7 @@ interface MessageChannel {
     val message: StateFlow<Message?>
     fun show(message: Message?)
 
-    /** Ein fertiger Satz; null zeigt nichts. */
+    /** A finished sentence; null shows nothing. */
     fun show(text: String?) = show(text?.let(Message::Text))
     fun acknowledge()
 

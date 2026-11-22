@@ -22,10 +22,10 @@ private const val SERVER = "http://nas:3000/"
  * the server (no direct CDN access any more). Cause: after
  * a CSV import the server stores original images immediately, but creates the
  * "_thumb.jpg" variants only AFTERWARDS in its own, slow
- * queue (server.ts, "Generate missing thumbnails"). The previous
+ * queue (`server.ts`, "Generate missing thumbnails"). The previous
  * retry requested the same (missing) preview file a second time
  * — the same 404, no improvement. The web app falls back to the full resolution in exactly this case
- * (public/js/actions.js, data-orig); Android
+ * (`public/js/actions.js`, data-orig); Android
  * did not have this behavior so far.
  */
 class ThumbFallbackTest {
@@ -186,8 +186,8 @@ class PartsMinifigsFullResBypassProxyTest {
         //
         // Here stood `partsCount == 2`. The number was right as long as there
         // were exactly two call sites — with the table view a third one came into each
-        // of the two screens, and the test reported „3
-        // statt 2", although the third place does it JUST as right.
+        // of the two screens, and the test reported „3 statt 2“
+        // , although the third place does it JUST as right.
         //
         // The rule stands in the name of this test: in these two screens
         // the full resolution runs via the proxy. So EVERY call
@@ -197,8 +197,8 @@ class PartsMinifigsFullResBypassProxyTest {
         val call = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
         for (rel in listOf("parts/ui/screens/PartsScreen.kt", "parts/ui/screens/MinifigsScreen.kt")) {
             // withoutComments: both files MENTION the helper in an
-            // explanatory comment („siehe model/util/ImageUrls.kt,
-            // rememberTileImageWithFallback()"). Without this step the
+            // explanatory comment („siehe model/util/ImageUrls.kt, rememberTileImageWithFallback()“
+            // ). Without this step the
             // check reports exactly this mention as a call without
             // fullViaProxy — when recalculating that happened to me immediately.
             val src = Sources.withoutComments(Sources.screen(rel))
@@ -232,7 +232,7 @@ class PartsMinifigsFullResBypassProxyTest {
  *
  * An earlier comment claimed that the web app makes the same thumb/full
  * distinction in the detail dialog as the tile — that was not true.
- * public/js/admin.js always shows fullUrl() for "m-img" (the main image in the detail dialog),
+ * `public/js/admin.js` always shows fullUrl() for "m-img" (the main image in the detail dialog),
  * never a preview. Android wrongly showed
  * resolveThumbUrl() there.
  */
@@ -270,7 +270,7 @@ class SetDetailUsesFullResolutionTest {
  * resolveThumbUrl() AND resolveFullUrl() delivered exactly the same value
  * with imageLocal set, as soon as the server returned a preview path — the
  * normal case for already downloaded sets. The same reversal as
- * fullUrl() in the web app (public/js/01-core.js).
+ * fullUrl() in the web app (`public/js/01-core.js`).
  *
  * The address checks of this file call the helpers instead of reading their
  * source. Counter-checks:

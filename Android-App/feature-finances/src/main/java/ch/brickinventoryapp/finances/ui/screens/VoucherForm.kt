@@ -127,7 +127,7 @@ internal fun VoucherFormSheet(
 
         // ── Der PDF-Weg ──
         //
-        // Nur beim Anlegen: Ein Gutschein bekommt sein PDF einmal.
+        // Only when creating: a voucher gets its PDF once.
         if (condition.edited == null) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {

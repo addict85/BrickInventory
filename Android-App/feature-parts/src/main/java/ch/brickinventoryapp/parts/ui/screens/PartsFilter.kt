@@ -48,9 +48,9 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * addresses with different field names, but look the same and are handled
  * the same — two versions had drifted apart.
  *
- * @param wert   What travels along as `color=` or `category=`. "" means "all".
- * @param anzahl Distinct parts — the same number the web app shows.
- * @param farbe  Color dot, only for the color list.
+ * @param value  What travels along as `color=` or `category=`. "" means "all".
+ * @param count  Distinct parts — the same number the web app shows.
+ * @param color  Color dot, only for the color list.
  */
 internal data class PartsFilterEntry(
     val value: String,
@@ -61,7 +61,7 @@ internal data class PartsFilterEntry(
 
 /**
  * Color and category as two expandable filters — like the web app's two
- * filter lists (teile.js, `loadPartsFilters` → `#color-filter` and
+ * filter lists (`teile.js`, `loadPartsFilters` → `#color-filter` and
  * `#cat-filter`), each with the count next to it. `getParts` passes `color` and
  * `category` to the server.
  */

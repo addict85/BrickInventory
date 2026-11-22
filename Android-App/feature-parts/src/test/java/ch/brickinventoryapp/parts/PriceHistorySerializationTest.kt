@@ -228,7 +228,7 @@ class PriceHistorySerializationTest {
         assertEquals(2, part.acquisitions.size)
         assertEquals(listOf(Condition.NEW, Condition.USED), part.conditions)
         // Quantity 2 in ONE row — two entries on the same day in the same
-        // condition are merged by the server (utils/acquisitions.ts).
+        // condition are merged by the server (`utils/acquisitions.ts`).
         assertEquals(2, part.acquisitions[0].quantity)
         val sum = part.acquisitions.sumOf { it.totalAvg!!.toDouble() }
         assertEquals(part.displayValue!!.toDouble(), sum, 0.0001)

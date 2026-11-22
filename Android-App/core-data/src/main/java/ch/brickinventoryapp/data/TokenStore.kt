@@ -80,7 +80,7 @@ class TokenStore @Inject constructor(
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         /** Plaintext of older versions, like [SERVER_URL]. */
         val TOKEN_ORIGIN = stringPreferencesKey("token_herkunft")
-        /** The server that issued the token (NetworkPolicy.herkunft); it goes only there. */
+        /** The server that issued the token (NetworkPolicy's origin); it goes only there. */
         val TOKEN_ORIGIN_SECRET = stringPreferencesKey("token_herkunft_geheim")
         /** Plaintext of older versions: taken over once into [SIGNED_IN_SECRET] (loggedInAt). */
         val SIGNED_IN_AT = longPreferencesKey("angemeldet_am")

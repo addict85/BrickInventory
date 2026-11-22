@@ -20,12 +20,12 @@ import java.io.File
 import java.time.Instant
 
 /**
- * The mappings of server models to domain types (model.fach): what the
+ * The mappings of server models to domain types (model.domain): what the
  * UI gets is already prepared — shares computed, direction as a
  * boolean, the CSV kind there and back without loss.
  *
  * Counter-checks:
- *   A  in StartStateView.anteil the check `total > 0` removed → red
+ *   A  in StartStateView.share the check `total > 0` removed → red
  *      “without a total there is none” (Infinity instead of null)
  *   B  in CsvImportKind.asData TEILE → CsvKind.SETS → red “every CSV kind arrives
  *      unchanged”
@@ -35,7 +35,7 @@ import java.time.Instant
  *   E  „TeileAbbildungen“ deleted from Beispielfueller.ABBILDUNGSDATEIEN → red
  *      “every file with mappings is in the list“ and „Nur 48 Abbildungen“
  *   F  in Profil.asView `emailConfirmed = emailVerified` → `= !emailVerified`
- *      → red “profile, household and CSV state …”; elternkonten from `parents` → red „ohne parents gilt linked_to“
+ *      → red “profile, household and CSV state …”; parent accounts from `parents` → red „ohne parents gilt linked_to“
  *   G  counter-checks/geld-auf-rappen-gerundet.patch: Geld.aus rounds to centimes instead of four places
  *      → red “amounts come as Money to four places …”
  *   H  counter-checks/kauf-ohne-zeitpunkt.patch: Acquisition.asView does not pass createdAt on → red, the same test
@@ -119,7 +119,7 @@ class UiModelFigureTest {
     }
 
     /**
-     * Every mapping `asView()` to model.fach, against a server model in which
+     * Every mapping `asView()` to model.domain, against a server model in which
      * every field carries its own value: every field of the view with the same
      * name arrives unchanged, nested views and lists likewise.
      * Getters without counterpart stand in [WITHOUT_COUNTERPART] and are checked individually above.

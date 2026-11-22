@@ -90,7 +90,7 @@ internal fun RegisterFields(
         val complete = user.isNotBlank() && email.isNotBlank() && pw1.isNotBlank()
         LoadButton(stringResource(R.string.register_button), running = running, active = complete, missing = reqFields) {
             // The same checks as in the web form, in the same order; the
-            // length limit (PASSWORD_MIN_CHARS) is the server's (routes/auth.ts). Anticipated
+            // length limit (PASSWORD_MIN_CHARS) is the server's (`routes/auth.ts`). Anticipated
             // here, so that it needs no round trip over the network.
             ownError = when {
                 passwordToShort(pw1) -> toShort

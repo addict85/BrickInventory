@@ -16,7 +16,7 @@ object Spacing {
     /** The app's most common spacing: between siblings in a row. */
     val small = 8.dp
 
-    /** Zwischen Gruppen innerhalb einer Karte. */
+    /** Between groups within a card. */
     val medium = 12.dp
 
     /** The inner padding of a card, the margin of a list. */

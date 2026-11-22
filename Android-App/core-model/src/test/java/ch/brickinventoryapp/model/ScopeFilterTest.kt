@@ -40,8 +40,7 @@ class ScopeFilterTest {
 
     @Test
     fun `no collective sub-accounts entry any more`() {
-        // Dropped: the entry only answered „not
-        // me" and stood between two entries that answer the same question more
+        // Dropped: the entry only answered „not me“ and stood between two entries that answer the same question more
         // precisely. Even with several children it must not show up
         // again.
         val opts = accountOptions(
@@ -56,7 +55,7 @@ class ScopeFilterTest {
     fun `every sub-account is in it flat, even if an older server sends levels`() {
         // Rights apply only along direct links; every account in the
         // list is a direct sub-account. An older server still sends
-        // tiefe = 2 — indented, that would look like a hierarchy that
+        // depth = 2 — indented, that would look like a hierarchy that
         // no longer exists.
         val opts = accountOptions(
             listOf(m(1, "eltern", self = true),

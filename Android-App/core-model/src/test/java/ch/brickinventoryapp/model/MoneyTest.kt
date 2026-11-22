@@ -14,7 +14,7 @@ import java.time.Instant
 import java.util.Locale
 
 /**
- * Money calculates in ten-thousandths like the server (Web-App/src/infra/geld.ts), points in time
+ * Money calculates in ten-thousandths like the server (`Web-App/src/infra/geld.ts`), points in time
  * read every form the server writes, and the calendar day stays that of the server.
  *
  * Counter-checks (patches under counter-checks/):

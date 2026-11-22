@@ -84,7 +84,7 @@ class SixteenKbAlignmentTest {
         //      a later version again, the bolt stays closed
         //      anyway. If ANOTHER library falls back, nobody notices.
         //
-        // This is now measured on the RESULT: tools/apk-alignment.py reads
+        // This is now measured on the RESULT: `tools/apk-alignment.py` reads
         // the ELF headers of all .so in the built APK and reports every alignment
         // below 16 KB. The action calls it after the release build.
         //

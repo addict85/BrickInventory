@@ -307,7 +307,7 @@ fun MarketPriceByCondition(
             val value: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    // The price in text color instead of primary: in „noppe“ primary was red, a price
+                    // The price in text color instead of primary: in „`noppe`“ primary was red, a price
                     // looked like an error. Without a price, a word instead of a dash.
                     val market = data.marketPrice
                     if (market != null) {

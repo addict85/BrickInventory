@@ -95,7 +95,7 @@ class ListFilterInStateTest {
      * Run: the first page, loading more, and the manual parts section
      * carry the view and the search text (PartsViewModel against a PathServer without network).
      * Counter-check: in PartsViewModel.manualParts
-     * `teileSicht` → `null` → red “… ohne accounts=own”.
+     * `teileSicht` → `null` → red “… without accounts=own”.
      */
     @Test
     fun `first page, loading more and manual parts carry view and search text`() {
@@ -125,12 +125,12 @@ class ListFilterInStateTest {
 
     /**
      * As structure: the filtered parts list fetches only the account view
-     * (core-data, Kontosicht.teileliste); its call names both.
+     * (core-data, AccountView's parts list); its call names both.
      */
     @Test
     fun `every fetch of the parts list carries view and search text`() {
         val calls = listOf("parts.getParts(")
-        // The parts API does not know theme and sort (utils/handlers/parts.ts,
+        // The parts API does not know theme and sort (`utils/handlers/parts.ts`,
         // getParts reads color, category, search, spare, set_number, page).
         val required = listOf("accounts", "search")
         val missing = mutableListOf<String>()
@@ -179,7 +179,7 @@ class ListFilterInStateTest {
      *                   it.figName?.contains(search, ignoreCase = true) == true }
      *
      * That meant the same search rule stood twice in the tree — once here, once in
-     * utils/handlers/minifigs.ts. And they were not identical: the
+     * `utils/handlers/minifigs.ts`. And they were not identical: the
      * server searches BEFORE grouping, across every fig_name row, the
      * screen afterward only across the one that MAX(fig_name) leaves behind.
      *

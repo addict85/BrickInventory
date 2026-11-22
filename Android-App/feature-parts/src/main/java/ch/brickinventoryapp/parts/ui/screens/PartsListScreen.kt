@@ -372,7 +372,7 @@ fun PartsListScreen(
 
                 // Live countdown while the PDF is being created (only while an export is running).
                 pdfStatus?.let { txt ->
-                    // Sichtbar jede Sekunde, angesagt alle zehn.
+                    // Visible every second, announced every ten.
                     ThrottledAnnouncement(txt)
                     Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)

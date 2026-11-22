@@ -322,7 +322,7 @@ fun SettingsScreen(
     }
 }
 
-/** Die Unterschrift einer Einstellung innerhalb einer Karte. */
+/** The caption of a setting within a card. */
 @Composable
 private fun Signature(text: String) {
     Text(text,
@@ -488,7 +488,7 @@ private fun StartCheckRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
     }
 }
 
-/** Who the app talks to (MASVS-PRIVACY): the same list as in PLAYSTORE.md. */
+/** Who the app talks to (MASVS-PRIVACY): the same list as in `PLAYSTORE.md`. */
 @Composable
 private fun PrivacyCard(startCheck: Boolean, onStartCheck: (Boolean) -> Unit) {
     SettingsCard(title = stringResource(R.string.privacy_title), icon = Icons.Default.PrivacyTip) {

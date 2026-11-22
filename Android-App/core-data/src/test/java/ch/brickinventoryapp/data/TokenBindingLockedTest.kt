@@ -59,7 +59,7 @@ class TokenBindingLockedTest {
     /** One file per test; DataStore allows only one instance per file in the process. */
     private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "bindung-${System.nanoTime()}.preferences_pb") }
 
-    /** Ein Prozessstart: neue Instanz, eigener Bereich, dieselbe Platte. */
+    /** A process start: new instance, own scope, the same disk. */
     private fun start(vault: TokenEncryption): TokenStore {
         val area = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { areas += it }
         return TokenStore(store, vault, DevicesStore(ctx, store, testTrustCipher()), area) { RedemptionPlanner { scheduled += it } }

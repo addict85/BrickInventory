@@ -45,13 +45,13 @@ import javax.inject.Inject
 
 /**
  * How large an instruction manual may be — the same value as `limits.fileSize` in
- * routes/sets.ts. The app must know the limit before it sends 80 MB over
+ * `routes/sets.ts`. The app must know the limit before it sends 80 MB over
  * the mobile network.
  */
 internal const val INSTRUCTION_MAX_BYTES = 50L * 1024 * 1024
 
 /**
- * The types the server accepts (INSTR_EXT_BY_MIME in routes/sets.ts). It
+ * The types the server accepts (INSTR_EXT_BY_MIME in `routes/sets.ts`). It
  * derives the file extension from them; the app already filters the selection.
  */
 internal val INSTRUCTION_TYPES = arrayOf("application/pdf", "image/jpeg", "image/png")
@@ -120,7 +120,7 @@ class SetDetailViewModel @Inject constructor(
         saved = { sn -> if (sn == setNumber) loadPriceAlerts() },
     )
 
-    // At the end of the fields: the fetches need laufend and alarmInput already assigned.
+    // At the end of the fields: the fetches need the running jobs and alarmInput already assigned.
     init { refresh() }
 
     /** Fetch everything the view shows anew; on creation and on „Erneut versuchen“. */

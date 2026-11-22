@@ -46,15 +46,19 @@ internal object AlarmFetch {
     /**
      * Run one pass. The query is a parameter so a unit test can supply it
      * without Retrofit and the disk cache — otherwise exactly what is decided here would only be observable in production. As with
-     * the server's mail dispatch (utils/preisalarm.ts): whoever decides gets the how
+     * the server's mail dispatch (`utils/preisalarm.ts`): whoever decides gets the how
      * handed in.
      *
-     * @param marke the time of the last successful run, empty on the
+     * @param brand the time of the last successful run, empty on the
      *         very first one
      */
     suspend fun fetch(brand: String?, question: Question): Outcome {
         val r = question(brand?.takeIf { it.isNotBlank() })
-        val response = (r as? FetchOutcome.Success)?.data ?: return Outcome.Failed
+        // A failed fetch is the worker's retry, not a silent success.
+        val response = when (r) {
+            is FetchOutcome.Success -> r.data
+            is FetchOutcome.Failure -> return Outcome.Failed
+        }
         // Without `now` there is no new marker — and without a new marker, better store
         // nothing at all than a wrong one. A server that doesn't know the field
         // is an older version; then it stays with mail dispatch.

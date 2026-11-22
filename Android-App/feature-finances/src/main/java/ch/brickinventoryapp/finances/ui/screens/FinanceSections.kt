@@ -59,7 +59,7 @@ import coil3.ImageLoader
  * — that would mean "may be missing" instead of "is always there here".
  */
 internal fun LazyListScope.financeGrandTotal(valuation: ValuationView, partsValuation: PartsValuationView?, figsValuation: FiguresValuationView?, pnl: ProfitView?, fmtPrice: (String?) -> String) {
-        // ── Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren ───────────
+        // ── Grand total: sets + manually entered parts + minifigures───────────
         item {
             // All summands from the server; the app's own addition only for older servers (financeTotals).
             val sums = financeTotals(valuation, partsValuation, figsValuation, pnl)
@@ -94,7 +94,7 @@ internal fun LazyListScope.financeGrandTotal(valuation: ValuationView, partsValu
         }
 }
 
-/** Manuell erfasste Minifiguren, einzeln aufgelistet. */
+/** Manually entered minifigures, listed one by one. */
 internal fun LazyListScope.financeFigRows(figsValuation: FiguresValuationView?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Money?) -> String, onManualClick: (type: ItemKind, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manually entered minifigures — list individually, like the sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
@@ -132,7 +132,7 @@ internal fun LazyListScope.financeFigRows(figsValuation: FiguresValuationView?, 
     }
 }
 
-/** Manuell erfasste Teile, einzeln aufgelistet. */
+/** Manually entered parts, listed one by one. */
 internal fun LazyListScope.financePartRows(partsValuation: PartsValuationView?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Money?) -> String, onManualClick: (type: ItemKind, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manually entered parts — list individually, like the sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()

@@ -42,7 +42,7 @@ fun CsvImportBanner(
     /**
      * Cancel — visible only while the import runs.
      *
-     * The web app has always had the button (collection.js, btn-cancel-import).
+     * The web app has always had the button (`collection.js`, btn-cancel-import).
      * The app showed the same bar and no way out: an accidentally
      * started import of hundreds of sets fetches the master data for each and
      * had to be sat out.

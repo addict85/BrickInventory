@@ -53,7 +53,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
     // Moved to /api/v1: since the merge there is only ONE
     // address space. The router behind it is the same as before — only the address
-    // has changed (see server.ts).
+    // has changed (see `server.ts`).
     @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<CsvImportStatus>
 
@@ -107,7 +107,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     @GET("api/v1/sets")
     /**
      * Gallery — filtered, sorted and paged on the server, with the same
-     * rule as the web app (utils/handlers.ts, getSets); an own search on the device
+     * rule as the web app (`utils/handlers.ts`, getSets); an own search on the device
      * knew neither year nor sorting.
      */
     suspend fun getSets(
@@ -152,7 +152,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      */
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //
-    // Ohne `accounts=`: Ein Alarm gehoert genau EINEM Konto (siehe Preisalarm).
+    // Without `accounts=`: an alert belongs to exactly ONE account (see the price alert).
 
     /**
      * What has triggered since `since`. Without `since` the server delivers nothing
@@ -221,7 +221,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
     /**
      * Change the owner of a wishlist item. PUT because nothing new arises; the
-     * rule (date added stays, alert moves along) stands in utils/merkliste.ts.
+     * rule (date added stays, alert moves along) stands in `utils/merkliste.ts`.
      */
     @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
     suspend fun moveWantedItem(
@@ -292,7 +292,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
     /**
      * Move a set or individual purchase prices into another account; `acquisition_ids`
-     * empty = the whole set. What moves along is decided by the server (utils/setMove.ts).
+     * empty = the whole set. What moves along is decided by the server (`utils/setMove.ts`).
      */
     @POST("api/v1/sets/{setNumber}/move")
     suspend fun moveSet(

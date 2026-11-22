@@ -157,7 +157,7 @@ internal suspend fun <T : Any, E : T?> OfflineStore.reconciledSingle(domain: Dom
 /**
  * A Retrofit response as Ergebnis: server message and code are kept,
  * transport errors are marked as temporary. Top-level because the
- * outbox (data/lokal) also sends with it without being a repository.
+ * outbox (data/local) also sends with it without being a repository.
  */
 @Suppress("TooGenericExceptionCaught") // The boundary: every error becomes Ergebnis here.
 internal suspend fun <T> safeCall(call: suspend () -> Response<T>): Outcome<T> {

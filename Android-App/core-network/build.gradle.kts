@@ -10,7 +10,7 @@ android {
     namespace = "ch.brickinventoryapp.core.network"
 
     buildFeatures {
-        // NetworkPolicy.entwicklung liest BuildConfig.DEBUG dieses Moduls.
+        // NetworkPolicy's development flag reads this module's BuildConfig.DEBUG.
         buildConfig = true
     }
 }

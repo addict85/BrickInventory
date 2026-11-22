@@ -92,7 +92,7 @@ internal class SetCreateSseClient @Inject constructor(
 
     /**
      * An event of the stream; null for unknown ones. The same step names as in the
-     * web app (public/js/collection.js): a protocol between two programs.
+     * web app (`public/js/collection.js`): a protocol between two programs.
      */
     private fun step(obj: JsonObject): SetCreateStep? = when (obj["step"]?.jsonPrimitive?.content) {
         "meta" -> SetCreateStep.MasterData(obj["set"]?.jsonPrimitive?.content)

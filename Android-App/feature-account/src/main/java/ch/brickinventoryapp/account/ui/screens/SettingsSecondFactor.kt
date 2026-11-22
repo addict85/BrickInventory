@@ -155,7 +155,7 @@ internal fun SecondFactorCard(
         }
 
         when {
-            // 1. Frische Codes: einmal zeigen, dann wegraeumen. Kein Bildschirmfoto davon.
+            // 1. Fresh codes: show once, then clear away. No screen capture of them.
             secondFactorUiState.codes.isNotEmpty() -> {
                 PrivacyShield()
                 Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
@@ -216,7 +216,7 @@ internal fun SecondFactorCard(
                         border = secondaryButtonRand(zfPassword.isNotBlank() && zfCode.isNotBlank() && !secondFactorUiState.fetch.loading)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
-            // 4. Nicht eingerichtet.
+            // 4. Not set up.
             secondFactorUiState.active == false -> {
                 passwordField()
                 Button(onClick = { protection.confirm(codesReason) { onSetUp(zfPassword) } }, enabled = zfPassword.isNotBlank() && !secondFactorUiState.fetch.loading,

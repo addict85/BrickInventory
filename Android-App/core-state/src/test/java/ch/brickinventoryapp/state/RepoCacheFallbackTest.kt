@@ -25,8 +25,7 @@ import java.io.File
  *   A  the old rule restored („bei jedem Fehler ausser 401 die Platte“) →
  *      red: „a server error is not hidden by old data“ and
  *      „a 404 is not hidden by old data“
- *   B  in the fallback `state = state` left out → red: „ohne Verbindung kommen
- *      die gespeicherten Daten, als veraltet gekennzeichnet“
+ *   B  in the fallback `state = state` left out → red: „ohne Verbindung kommen die gespeicherten Daten, als veraltet gekennzeichnet“
  *   C  the transient condition left out (fallback on every error) →
  *      red: „an expired session is not hidden by the cache“, plus
  *      the two from A

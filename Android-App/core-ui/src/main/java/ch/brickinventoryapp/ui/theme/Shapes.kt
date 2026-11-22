@@ -70,9 +70,9 @@ object Shapes {
      */
     val tileHeight  = 208.dp
 
-    /** Erhebung einer flachen Karte (Listen, Abschnitte). */
+    /** Elevation of a flat card (lists, sections). */
     val cardElevation = 1.dp
-    /** Erhebung einer hervorgehobenen Karte (Anmeldung, Dialoge, Kennzahlen). */
+    /** Elevation of a highlighted card (sign-in, dialogs, key figures). */
     val cardElevationHigh = 2.dp
 }
 

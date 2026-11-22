@@ -48,8 +48,8 @@ interface ManagementApi {
     suspend fun importMinifigsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // The wishlist does NOT lie under an own old router like sets,
-    // parts and minifigures, but completely in routes/api_v1/wanted.ts —
-    // hence its import stands there and not under api/v1/merkliste/.
+    // parts and minifigures, but completely in `routes/api_v1/wanted.ts` —
+    // hence its import stands there and not under the wishlist routes.
     @Multipart
     @POST("api/v1/wanted/import/csv")
     suspend fun importWantedCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>

@@ -875,7 +875,6 @@ schrittfreigabe
 schrittschutz
 schrittsperre
 schwelle
-screenshots
 seit
 seite
 seiten
@@ -885,7 +884,6 @@ sekunden
 selbst
 sendeergebnis
 senden
-separates
 serversicht
 serverstart
 serverwechsel

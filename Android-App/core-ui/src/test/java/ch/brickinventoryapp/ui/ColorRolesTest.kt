@@ -18,20 +18,20 @@ import org.junit.Test
  * read, with its own colors instead of Material3's purple base palette.
  *
  * Counter-check: `.let { supplementRoles(…) }` removed from colorScheme() — both
- * tests red (surfaceContainer* equal to the base palette, and in the dark werkbank
+ * tests red (surfaceContainer* equal to the base palette, and in the dark `werkbank`
  * design the steps also reversed). tertiaryContainer removed from StudColors
- * — the first test red for "noppe" and "hochglanz".
+ * — the first test red for `noppe` and `hochglanz`.
  *
  * Counter-check for borders (Oct 28, measured on a rebuild without the Android SDK: the same
  * formula in Python, surface steps mixed in Oklab like Compose): with the old
  * outline values red for classic (1.00:1 against surfaceContainerHighest), brick
- * (1.19), werkbank (1.03) and farbfaecher (1.01); noppe stayed green (13.8).
+ * (1.19), `werkbank` (1.03) and `farbfaecher` (1.01); `noppe` stayed green (13.8).
  */
 class ColorRolesTest {
 
     private val light = Design.entries
 
-    /** Jedes Design, dazu seine dunkle Fassung (DarkTokens.kt): Name, Schema, Statusfarben, dunkel? */
+    /** Every design and its dark version (DarkTokens.kt): name, scheme, status colors, dark? */
     private data class Version(val name: String, val schema: ColorScheme, val success: Int, val dark: Boolean)
 
     private val versions: List<Version> = light.map {
@@ -58,8 +58,8 @@ class ColorRolesTest {
 
     /**
      * Counter-check:
-     * with the old #16A34A red for classic (3.30:1 on surface), farbfaecher
-     * and noppe; with #15803D red for noppe (4.43:1 on background).
+     * with the old #16A34A red for classic (3.30:1 on surface), `farbfaecher`
+     * and `noppe`; with #15803D red for `noppe` (4.43:1 on background).
      */
     @Test
     fun `profit color is readable as text on every surface`() {
@@ -115,7 +115,7 @@ class ColorRolesTest {
     /**
      * The loading skeleton (Skelett.kt) draws skeletonTone on background.
      * Counter-check: skeletonTone returning surfaceVariant →
-     * red „Ladekacheln heben sich …“ (classic 1.05, brick 1.03, farbfaecher 1.05, noppe 1.07).
+     * red „Ladekacheln heben sich …“ (classic 1.05, brick 1.03, `farbfaecher` 1.05, `noppe` 1.07).
      */
     @Test
     fun `loading tiles stand out from the background`() {
@@ -148,8 +148,8 @@ class ColorRolesTest {
 
     /**
      * Werkbank is its own design, not "classic dark" under another name: warm
-     * graphite and brass against cool anthracite and blue, as in themes/werkbank.css.
-     * Counter-check werkbank-wie-klassisch-dunkel: werkbank given the cool surfaces again
+     * graphite and brass against cool anthracite and blue, as in `themes/werkbank.css`.
+     * Counter-check werkbank-wie-klassisch-dunkel: `werkbank` given the cool surfaces again
      * with light blue as the secondary color → red.
      */
     @Test

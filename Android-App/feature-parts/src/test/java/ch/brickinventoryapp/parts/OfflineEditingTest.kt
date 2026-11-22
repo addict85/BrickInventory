@@ -39,16 +39,16 @@ import java.util.Collections
  * a test server that can drop the connection on request.
  *
  * Counter-checks:
- *   A  in Offlineablage.schreibe (Fetch.kt) the branch for transient errors removed → red
+ *   A  in the store's write (Fetch.kt) the branch for transient errors removed → red
  *      “without a connection the quantity goes into the outbox” (Ergebnis.Fehler instead of buffered)
- *   B  in Offlineablage.schreibe (Fetch.kt) the check `store.waiting()` removed → red
+ *   B  in the store's write (Fetch.kt) the check `store.waiting()` removed → red
  *      “if something waits, new things go behind it” (the second change went out directly)
  *   C  in ServerSender for SetQuantity `quantity = step` instead of `quantityDelta` →
  *      red “what is sent is the step”
  *   D  in Offlineablage.refreshPaged (Fetch.kt) the empty list taken over even on an
  *      error → red “without a connection the list stays in the store”
  *   (E–I measured)
- *   E  in Offlineablage.schreibe (Fetch.kt) take a new key when buffering after the direct
+ *   E  in the store's write (Fetch.kt) take a new key when buffering after the direct
  *      attempt (`buffer(editing)`) → red “… the same key”
  *   F  in PartsRepository.deletePart back to directly `safeCall` instead of `write` →
  *      red “deleted offline …” (Ergebnis.Fehler instead of buffered)

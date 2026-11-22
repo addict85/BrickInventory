@@ -11,8 +11,7 @@ import java.io.File
 /**
  * All images run via the server — never directly from the device to the CDN.
  *
- * User request: "As I see it, the Android app should source all content, including
- * all images, via the web app." Previously several screens bypassed the
+ * User request: "As I see it, the Android app should source all content, including all images, via the web app." Previously several screens bypassed the
  * server proxy and loaded raw CDN addresses directly from the device — that was
  * the actual cause of the Cloudflare detection, the concurrency
  * problems and the AVIF crash of the last three rounds: each of these

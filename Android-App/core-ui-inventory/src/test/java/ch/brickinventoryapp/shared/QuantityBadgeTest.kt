@@ -17,11 +17,11 @@ import java.io.File
  *     man-tile   → <span class="qbadge">×N</span>    manually captured
  *     part-card  → <div class="part-qty">N×</div>    from a set
  *
- * (public/js/minifigs.js lines 327 and 486 for the manual tiles,
- * public/js/parts.js line 300 and minifigs.js line 272 for the ones from
+ * (`public/js/minifigs.js` lines 327 and 486 for the manual tiles,
+ * `public/js/parts.js` line 300 and `minifigs.js` line 272 for the ones from
  * sets.) Of the app's four places, exactly ONE matched this rule.
  *
- * The text resource `minifigs_qty_badge` is gone, without a replacement: „%1$d×" stood
+ * The text resource `minifigs_qty_badge` is gone, without a replacement: „%1$d×“ stood
  * identical in both languages. An arithmetic symbol is not a sentence, and the
  * eleven other quantity figures in the app also write it in directly.
  */

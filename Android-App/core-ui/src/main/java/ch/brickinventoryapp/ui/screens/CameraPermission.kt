@@ -110,9 +110,9 @@ private fun openAppSettings(context: Context) {
  * It says what the camera is for, and offers the path without it: whoever doesn't
  * want to allow it shouldn't be stuck in a dead end.
  *
- * @param zweck what the camera is for (barcode, QR code)
- * @param eintippen label for the path without the camera, [typeInOn] follows it
- * @param verweigert [CameraPermission.permanentDenied]: then the hint says where to
+ * @param purpose what the camera is for (barcode, QR code)
+ * @param typeIn label for the path without the camera, [typeInOn] follows it
+ * @param denied [CameraPermission.permanentDenied]: then the hint says where to
  *        allow it, otherwise „Allow“ would look like a dead button.
  * @param onAllow [CameraPermission.allow]
  */
@@ -149,7 +149,7 @@ fun CameraPermissionHint(
 /**
  * The overlay over the camera image: a frame in the middle, below it a dark banner with
  * the hint text — one design for barcode scanner and QR setup (weight 0.2 / 0.8,
- * so the frame sits slightly above center; black at 72% opacity, Formen.kachel,
+ * so the frame sits slightly above center; black at 72% opacity, Shapes.tile,
  * white text at 13 sp).
  */
 @Composable

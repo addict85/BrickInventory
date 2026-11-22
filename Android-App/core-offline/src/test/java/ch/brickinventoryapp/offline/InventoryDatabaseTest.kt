@@ -24,7 +24,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-checks: to be measured in CI as soon as the run is green —
  *   A  in InventoryDao.beobachte remove `ORDER BY position` → “keeps the order”
- *   counter-checks/ablage-aendert-ganze-liste.patch (Offlineablage.aendere replaces the
+ *   counter-checks/ablage-aendert-ganze-liste.patch (OfflineStore's change replaces the
  *      whole list again) → red “a local edit writes only the affected row”
  *   counter-checks/verworfen-nie-quittiert.patch (RoomOutbox.acknowledgeDiscarded deletes nothing)
  *      → red “a discarded item stays in the database until …”

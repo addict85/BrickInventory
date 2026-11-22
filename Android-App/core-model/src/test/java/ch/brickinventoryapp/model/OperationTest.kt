@@ -18,7 +18,7 @@ import org.junit.Test
  *
  * Counter-checks (counter-checks/, :core-model:test):
  *   vorgang-wegraeumen-haelt-an  withoutError() always returns Fertig → red “clearing an error …”
- *   vorgang-beendet-ohne-grund   beendet(null) gives a failure → red “ended without a reason …”
+ *   vorgang-beendet-ohne-grund   ended(null) gives a failure → red “ended without a reason …”
  */
 class OperationTest {
 

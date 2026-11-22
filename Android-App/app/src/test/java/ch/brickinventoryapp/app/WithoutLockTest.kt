@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
  * and management no longer open silently there, the app first says that they are
  * unprotected. Robolectric by itself reports no secured device.
  *
- * Counter-check: in DevicesStepProtection.bestaetige() without lock again `next()`
+ * Counter-check: in DevicesStepProtection.confirm() without lock again `next()`
  * instead of `withoutLock.question(…)` → red “without a screen lock the step guard warns
  * …” (the step went on silently); counter-checks/ohne-sperre-still.patch
  */

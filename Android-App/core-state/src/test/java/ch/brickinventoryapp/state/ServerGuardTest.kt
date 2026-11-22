@@ -29,34 +29,26 @@ import java.util.concurrent.atomic.AtomicInteger
  * plaintext ban with both values.
  *
  * Counter-checks (measured 29.10.2026, kotlinc against network/di/ServerGuard.kt):
- *   B  `tokenBelongsHere` always true → red „der Token geht nur an den Server,
- *      der ihn ausgab“ and „ein selbst gesetzter Kopf …“
+ *   B  `tokenBelongsHere` always true → red „der Token geht nur an den Server, der ihn ausgab“ and „ein selbst gesetzter Kopf …“
  *   C  `ourServer` without isSameOrigin (only serverUrl.isNotBlank()) → red
  *      „a foreign host gets neither token nor language“
  *   D  the retry removed → red „a request without a token reaches for the new one“
- *   E  the 401 report without `tokenSentAlong` → red „ein 401 ohne Token meldet
- *      nicht ab“ and „the token goes only to the server that issued it“
- *   F  the server's path left out while rewriting the placeholder → red „der Platzhalter
- *      wird auf den Server samt Pfad umgeschrieben“
- *   G  ownHeaders() not called → red „der eigene Server bekommt Sprache
- *      und Fassung“
+ *   E  the 401 report without `tokenSentAlong` → red „ein 401 ohne Token meldet nicht ab“ and „the token goes only to the server that issued it“
+ *   F  the server's path left out while rewriting the placeholder → red „der Platzhalter wird auf den Server samt Pfad umgeschrieben“
+ *   G  ownHeaders() not called → red „der eigene Server bekommt Sprache und Fassung“
  *   I  the check connectionAllowed() removed in the guard → red
- *      „im Release-Build erreicht keine http-Anfrage den Server …“ and „auch der
- *      Debug-Build schickt http nur …“
- *   K  in the guard `development` fixed to true → red „im
- *      Release-Build erreicht keine http-Anfrage den Server …“
+ *      „im Release-Build erreicht keine http-Anfrage den Server …“ and „auch der Debug-Build schickt http nur …“
+ *   K  in the guard `development` fixed to true → red „im Release-Build erreicht keine http-Anfrage den Server …“
  *   H  /settings/theme excluded from the token (`withToken` false for
  *      paths at "/settings/theme") → red „the account's design is fetched with the token“
- *   J  in the guard the report via versionsHint() removed → red „ein
- *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (empty list instead of APP_TOO_OLD)
+ *   J  in the guard the report via versionsHint() removed → red „ein Server mit hoeherer Mindestfassung meldet App zu alt …“ (empty list instead of APP_TOO_OLD)
  *   L  rightsRevoked() on every 403 → red „ein 403 only_admins …“
  *   M  CONFIRMATION_NEEDED not honored (every 401 signs out) →
  *      red „eine falsche Passwortbestaetigung meldet nicht ab“
  *   N  in the guard the line for PASSWORD_SWITCH_NEEDED removed →
  *      red „ein 403 password_switch_needed verlangt das neue Passwort …“
  *   O  the old rule restored (a self-set header is only removed if it
- *      is the current token) → red „ein selbst gesetzter Kopf mit einem aelteren
- *      Token …“ and „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
+ *      is the current token) → red „ein selbst gesetzter Kopf mit einem aelteren Token …“ and „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  only `!tokenBelongsHere` instead of `!withToken` → red „nach dem Abmelden …“
  *   R  `origin == null ||` restored in tokenBelongsHere →
  *      red „a token without binding goes to no server“ (counter-checks/token-ohne-bindung-gesendet.patch)

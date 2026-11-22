@@ -11,8 +11,7 @@ import org.junit.Test
  * settings and the certificate dialog). Turning off needs none.
  *
  * Counter-checks:
- *   A  anfragen() turns it on directly (`set(true)`) → red „anfragen schaltet
- *      nichts ein“ and „cancelling leaves everything off“
+ *   A  request() turns it on directly (`set(true)`) → red „anfragen schaltet nichts ein“ and „cancelling leaves everything off“
  *   B  in confirm() the check `if (!_question.value) return` removed → red
  *      „without an open question nothing confirms“
  *   C  cancel() calls `set(true)` → red „cancelling leaves everything off“

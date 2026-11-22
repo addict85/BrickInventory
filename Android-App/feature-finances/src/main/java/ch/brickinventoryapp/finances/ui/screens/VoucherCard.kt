@@ -38,7 +38,7 @@ import ch.brickinventoryapp.ui.util.fmtTag
  * cannot be read off at the checkout), amount and balance-query status, a menu on the right with
  * balance, PDF, edit and delete. A tap copies number and PIN. Every
  * action goes through EXACTLY ONE callback; the device lock before it is set by VouchersCard
- * (geschuetzt).
+ * (protected).
  */
 @Composable
 internal fun VoucherCard(

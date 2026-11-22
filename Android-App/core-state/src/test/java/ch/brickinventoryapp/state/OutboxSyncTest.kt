@@ -30,22 +30,19 @@ import java.util.Collections
  * and a sender that records what it receives.
  *
  * Counter-checks:
- *   A  in OutboxStorage.erster `minByOrNull` → `maxByOrNull` → red, among others, „eine
- *      Ablehnung verwirft …“ (sent [3, 2, 1] instead of [1, 2, 3])
+ *   A  in OutboxStorage.first `minByOrNull` → `maxByOrNull` → red, among others, „eine Ablehnung verwirft …“ (sent [3, 2, 1] instead of [1, 2, 3])
  *   B  in Abgleich for Spaeter `return` left out (continues with the next one) →
  *      red „what goes later holds up everything behind it“ (FERTIG instead of LATER)
  *   C  in Abgleich the lock removed (`lock.withLock` → `run`) → red
  *      „two runs at once send nothing twice“ (sent [1, 1, 2])
- *   D  in einordnen 401 taken out of the exception list → red „eine abgelaufene
- *      Sitzung verwirft nichts“
+ *   D  in einordnen 401 taken out of the exception list → red „eine abgelaufene Sitzung verwirft nichts“
  *   E  in Abgleich.verwirf the recording left out (counter-checks/verworfen-nicht-
  *      festgehalten.patch) → red „eine Ablehnung verwirft und hält sie fest …“
  *   (F and G measured)
- *   F  in Abgleich.lauf `p.key` → `java.util.UUID.randomUUID().toString()`
+ *   F  in Reconcile.send `p.key` → `java.util.UUID.randomUUID().toString()`
  *      → red „Die Wiederholung trägt denselben Schlüssel“
  *   G  in deleteClassify the 404 exception removed → red „beim Löschen …“
- *   H  in Abgleich.lauf the scope check removed before sending → red „ein
- *      Konto-Wechsel vor dem Senden …“ (counter-checks/ausgang-ohne-pruefung-vor-senden.patch)
+ *   H  in Reconcile.send the scope check removed before sending → red „ein Konto-Wechsel vor dem Senden …“ (counter-checks/ausgang-ohne-pruefung-vor-senden.patch)
  */
 class OutboxSyncTest {
 

@@ -170,7 +170,7 @@ internal fun FinanceScreen(
 
     // The category filter comes from the tab's state, not from a
     // `remember` — otherwise it would reset to „alle“ after every excursion into a detail
-    // (see FinanceUiState.kategorien). An empty set means: no restriction.
+    // (see FinanceUiState.categories). An empty set means: no restriction.
     val categories = financeState.categories
     val showSets  = financeState.shows("sets")
     val showParts = financeState.shows("parts")
@@ -261,7 +261,7 @@ internal fun ManualFinanceRow(
     /**
      * Purchase price of this entry, already formatted; null = none on record. As in
      * the set row (FinanceSections.kt) and in both tables of the web app
-     * (public/js/finanzen.js, pmRow, `detail.purchase_price`), so that the rows
+     * (`public/js/finanzen.js`, pmRow, `detail.purchase_price`), so that the rows
      * say the same amount of information.
      */
     purchaseStr: String? = null,

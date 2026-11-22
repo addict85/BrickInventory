@@ -18,7 +18,7 @@ class RepoReferencesInTestsTest {
         if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it
     }
 
-    /** Zeichenketten-Inhalte: erst dreifach zitierte, dann einfach zitierte. */
+    /** String contents: triple-quoted first, then single-quoted. */
     private val literals = Regex("\"\"\"(.*?)\"\"\"|\"((?:[^\"\\\\\\n]|\\\\.)*)\"", RegexOption.DOT_MATCHES_ALL)
 
     /** `repo.x(`, `repo.y.x(` — with singly or doubly escaped dots. */
@@ -47,7 +47,7 @@ class RepoReferencesInTestsTest {
 
         val dead = mutableListOf<String>()
         for (file in files(Sources.tests)) {
-            if (file.name == "RepoReferencesInTestsTest.kt") continue // eigene Beispiele
+            if (file.name == "RepoReferencesInTestsTest.kt") continue // own examples
             for (v in referencesIn(file.readText())) {
                 if (!appCode.contains(v)) dead += "${file.name}: $v"
             }

@@ -203,7 +203,7 @@ private fun NavGraphBuilder.partListsTarget(navigation: PartsNavigation) {
                 // Erfolgloser Scan → Cursor ins Set-Feld.
                 requestManualEntry = scan.manualRecord,
                 onManualEntryAcknowledged = scan.manualAcknowledged,
-                // The same rule as in the web app (sammlung.js): more than
+                // The same rule as in the web app (`sammlung.js`): more than
                 // one member in the household means "there are sub-accounts".
                 hasSubAccounts = glance.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,

@@ -266,8 +266,8 @@ class ScaffoldAndFormTest {
             }
             wait("Alarme") { vm.alarmOverview.value.loaded }
             // „750.00“ like every amount (de-CH), not the raw number „750.0“; the field is called „Schwelle“,
-            // the direction stands selected in the choice above (N2 of the second UX review). „Steigt
-            // über“, because the creation form preselects „Fällt unter“.
+            // the direction stands selected in the choice above (N2 of the second UX review). „Steigt über“
+            // , because the creation form preselects „Fällt unter“.
             compose.onNode(hasSetTextAction() and hasText("750.00")).fetchSemanticsNode()
             compose.onNode(hasSetTextAction() and hasText("750.00") and hasText(ctx.getString(R.string.alerts_threshold)))
                 .fetchSemanticsNode()

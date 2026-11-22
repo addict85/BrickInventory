@@ -173,7 +173,7 @@ private val MORE_TWO_COLUMN_MIN_WIDTH = 840.dp
 private fun MoreGroup(title: Int, separator: Boolean) =
     GroupTitle(stringResource(title), separator = separator)
 
-/** Ein Eintrag: Symbol, Text, ganze Zeile antippbar (mindestens 56 dp hoch). */
+/** One entry: icon, text, the whole row tappable (at least 56 dp high). */
 @Composable
 private fun MoreItem(
     title: Int, symbol: ImageVector, point: Boolean = false, color: Color = Color.Unspecified, onClick: () -> Unit,

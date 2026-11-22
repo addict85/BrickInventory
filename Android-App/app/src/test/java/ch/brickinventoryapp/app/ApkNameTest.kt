@@ -15,8 +15,8 @@ import java.io.File
  *     (afterwards) BrickInventory.apk      ← from the workflow
  *
  * Two versions of the same rule, in two spellings: `build.gradle.kts`
- * put a copy under „Brickinventory.apk", the workflow then renamed
- * `app-release.apk` to „BrickInventory.apk". On Linux these are
+ * put a copy under „Brickinventory.apk“, the workflow then renamed
+ * `app-release.apk` to „BrickInventory.apk“. On Linux these are
  * two files. Only the workflow's was uploaded — the Gradle copy
  * was dead weight, and the README named the one name in one place and
  * the other in two others.
@@ -35,7 +35,7 @@ import java.io.File
  * records that it stays that way.
  *
  * ── Counter-check ───────────────────────────────
- * `build.gradle.kts` wrote „Brickinventory.apk" again — i.e. the state from
+ * `build.gradle.kts` wrote „Brickinventory.apk“ again — i.e. the state from
  * before. Result: `354 tests completed, 1 failed`, namely
  * `ApkNameTest > Gradle and workflow mean the same file`.
  *
@@ -45,7 +45,7 @@ import java.io.File
  *
  * The patterns here previously had two errors of their own, both found by a
  * local mirror instead of a ten-minute run:
- *   - `File(dir, "…")` found THREE „target names", because the source names of
+ *   - `File(dir, "…")` found THREE „target names“, because the source names of
  *     AGP stand next to it in the same spelling. Now `val target = File(dir, …)`.
  */
 class ApkNameTest {
@@ -71,7 +71,7 @@ class ApkNameTest {
      * Searched is `val target = File(dir, "…")`, not every `File(dir, …)`:
      * next to it stand the SOURCE names of AGP (app-release.apk and
      * app-release-unsigned.apk) in the same spelling. The broader pattern
-     * found three „target names" and was thus useless.
+     * found three „target names“ and was thus useless.
      */
     private fun targetName(): String {
         val hits = Regex("""val target = File\(dir,\s*"([^"]+\.apk)"\)""")
@@ -133,7 +133,7 @@ class ApkNameTest {
      * there. Comment lines are already out via workflow().
      *
      * Counting starts only FROM `steps:` — the `paths:` lists under `on:` have
-     * the same indentation. The local mirror reported that: 20 „steps"
+     * the same indentation. The local mirror reported that: 20 „steps“
      * for 15. A number that counts something other than it claims is
      * useless as a self-proof too.
      */

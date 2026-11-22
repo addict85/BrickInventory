@@ -14,7 +14,7 @@ import org.junit.Test
  * takes the modifier along and notices nothing, because everything still looks as
  * before.
  *
- * Therefore the STRUCTURE is checked and not that „clickable" occurs
+ * Therefore the STRUCTURE is checked and not that „clickable“ occurs
  * somewhere: the action (`openInstruction`) hangs on it, NO second button hangs
  * on the icon any more, and the trash keeps its own.
  */

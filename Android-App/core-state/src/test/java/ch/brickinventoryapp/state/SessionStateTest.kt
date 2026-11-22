@@ -13,8 +13,7 @@ import org.junit.Test
  * Currency and theme have one source, the store: the session follows it without a
  * copy of its own, and its own steps apply before the call returns.
  *
- * Counter-check: `.launchIn(scope)` in the init of SessionState removed → red "currency and
- * theme from the store reach the session" (EUR instead of CHF).
+ * Counter-check: `.launchIn(scope)` in the init of SessionState removed → red "currency and theme from the store reach the session" (EUR instead of CHF).
  */
 class SessionStateTest {
 

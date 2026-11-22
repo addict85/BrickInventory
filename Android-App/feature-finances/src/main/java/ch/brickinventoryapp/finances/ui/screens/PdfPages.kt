@@ -110,7 +110,7 @@ internal class ZoomAnchor {
     var finger: Offset? = null
     /** At which zoom the list was last measured. */
     var measuredAt = 0f
-    /** Waagerechtes Ziel, gesetzt beim Messen, eingeloest beim Platzieren. */
+    /** Horizontal target, set while measuring, redeemed while placing. */
     var pendingX: Int? = null
 }
 

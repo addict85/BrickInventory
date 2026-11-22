@@ -80,7 +80,7 @@ internal class AdminRepositoryImpl @Inject constructor(
             })
         }.managed { }
 
-    /** Fehlende Katalogbilder einreihen — siehe ManagementApi.queueCatalogImages. */
+    /** Queue missing catalog images — see ManagementApi.queueCatalogImages. */
     override suspend fun queueCatalogImages(): Outcome<Unit> = safeCall { api.queueCatalogImages() }.managed { }
 
     /** Switch the global design (admins only). */

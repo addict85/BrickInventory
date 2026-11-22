@@ -109,7 +109,7 @@ class LocationOnAddTest {
 
     @Test
     fun `the wishlist item dialog asks for the account`() {
-        // The server always accepted owner_user_id (routes/api_v1/wanted.ts),
+        // The server always accepted owner_user_id (`routes/api_v1/wanted.ts`),
         // and the web app asked for it (cat-m-owner) — only this dialog did not.
         val source = Sources.withoutComments(Sources.read("catalog/ui/screens/CatalogDetailScreen.kt"))
         val bodyBytes = body(source, "fun WantedItemDialog(")

@@ -83,7 +83,7 @@ class DevicesStore @Inject constructor(
         /**
          * The most recently known design of the server. Remembered because /settings only comes after
          * sign-in and the sign-in and setup screens would otherwise appear in the default design
-         * and switch — stage one as in public/js/theme-boot.js.
+         * and switch — stage one as in `public/js/theme-boot.js`.
          * Global, therefore it survives sign-out.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")

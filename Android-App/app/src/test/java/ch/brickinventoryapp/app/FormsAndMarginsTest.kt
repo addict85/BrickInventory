@@ -426,7 +426,7 @@ class FormsAndMarginsTest {
         assertEquals("Feld endet nicht am Rand der Karte (${field.right} / $edge)", edge, field.right, density)
     }
 
-    // ── dunkle Designs ──
+    // ── dark designs ──
 
     @Test
     fun `in the dark the image lies on a dark surface`() {

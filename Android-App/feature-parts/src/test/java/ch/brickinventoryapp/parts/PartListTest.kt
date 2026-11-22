@@ -79,7 +79,7 @@ class PartListTest {
         assertEquals("Millennium Falcon", name)
         assertEquals(listOf("3001", "970c00", "970c11", "sw0001"), rows.map { it.partNumber })
         assertEquals(5, rows.single { it.partNumber == "3001" }.quantity)
-        // Gleiche BrickLink-Nummer, verschiedene Rebrickable-Teile: zwei Zeilen.
+        // Same BrickLink number, different Rebrickable parts: two rows.
         assertEquals("970c00", rows.single { it.partNumber == "970c11" }.blPartNumber)
         val figure = rows.single { it.isFig }
         assertEquals(2, figure.quantity)

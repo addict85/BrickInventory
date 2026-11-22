@@ -56,7 +56,7 @@ import org.junit.Test
  *      a filter change the old source no longer writes into it”
  *   E  in outbox() the branch "without network, with a cached state" removed → red “without network
  *      the figures stay as they are”
- *   F  in folge() the check on the cached state removed → red “a source
+ *   F  in follow() the check on the cached state removed → red “a source
  *      never loaded shows nothing and empties nothing”
  */
 @OptIn(ExperimentalCoroutinesApi::class)

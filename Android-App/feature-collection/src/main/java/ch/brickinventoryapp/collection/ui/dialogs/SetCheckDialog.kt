@@ -41,7 +41,7 @@ internal fun SetCheckDialog(entryVm: EntryUiState, actions: EntryActions) {
     AlertDialog(
         containerColor = windowSurface(),
         modifier = Modifier.semantics { paneTitle = title },
-        // Can't be dismissed by tapping outside: the halt IS the point. Whoever
+        // Can't be dismissed by tapping outside: the stop IS the point. Whoever
         // really wants to continue uses the button — then it's a decision
         // and not a slipped finger.
         onDismissRequest = { },

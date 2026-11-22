@@ -164,7 +164,7 @@ private fun protectedStep(): (() -> Unit) -> Unit {
     return { step -> protection.confirm(reason, StepAction.VOUCHER, step) }
 }
 
-/** Die Karten untereinander, ab Tabletbreite ([wide]) je zwei gleich hoch nebeneinander. */
+/** The cards one below the other; from tablet width ([wide]) two of equal height side by side. */
 @Composable
 private fun VoucherRaster(
     vouchers: List<VoucherView>,

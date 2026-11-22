@@ -23,8 +23,7 @@ import java.util.Locale
  *      like a price crash that never happened.
  *
  * Plus the description for TalkBack. Counter-checks:
- *   A  in summary() start and end by index instead of by day → red „die
- *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
+ *   A  in summary() start and end by index instead of by day → red „die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
  *   B  the semantics on the canvas is checked by PriceChartDescriptionTest (app), drawn;
  *      counter-checks/preisdiagramm-stumm.patch
  */

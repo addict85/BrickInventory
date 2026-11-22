@@ -139,7 +139,7 @@ internal fun WantedItemDetailRoute(
 /**
  * The watchlist — as a list, because it's read and worked through: number, year,
  * condition and price alert side by side, as in the web app. The rules live on the
- * server (utils/merkliste.ts); the screen shows and calls.
+ * server (`utils/merkliste.ts`); the screen shows and calls.
  */
 @Composable
 internal fun WantedListScreen(

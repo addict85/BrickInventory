@@ -84,7 +84,7 @@ internal class TokenLimit {
 
 /**
  * Maximum duration of a sign-in, the server's default hard deadline for app tokens
- * (Web-App/src/account/tokenRequest.ts; the swap inherits it). The check here is the
+ * (`Web-App/src/account/tokenRequest.ts`; the swap inherits it). The check here is the
  * second line: the app signs itself out and invalidates the token instead of only
  * noticing at the 401 that the chain has ended. A shorter server deadline still ends with that 401.
  */

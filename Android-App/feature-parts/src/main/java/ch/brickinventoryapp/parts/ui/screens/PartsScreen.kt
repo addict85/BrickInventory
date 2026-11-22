@@ -167,7 +167,7 @@ internal fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var showFilter by rememberSaveable { mutableStateOf(false) }
-    // Color and category — the web app's two filter lists (teile.js,
+    // Color and category — the web app's two filter lists (`teile.js`,
     // loadPartsFilters). The conversion to the shared shape lives here: the two
     // answers carry different field names, everything else is the same.
     val color = colorTranslator()

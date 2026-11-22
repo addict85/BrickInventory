@@ -33,7 +33,7 @@ import org.junit.Test
  *   startknopf-bleibt-gestartet      resetting after STARTED_MS removed → red “a start button shows …”
  *   startknopf-fehlschlag-still      failure without a message → red “a failed start reports …”
  *   warteschlange-fehler-verschluckt queue error treated as an empty list → red “a failed queue …”
- *   The cause dropped from a failure (Meldung.Resource(satz) without werte) → red “a failed start
+ *   The cause dropped from a failure (Message.Resource(sentence) without values) → red “a failed start
  *   reports …”, “a failed removal names …” and “a failed save names …” (not locally runnable,
  *   to be checked in CI).
  */

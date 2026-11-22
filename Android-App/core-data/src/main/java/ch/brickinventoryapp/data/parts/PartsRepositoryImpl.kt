@@ -114,7 +114,7 @@ internal class PartsRepositoryImpl @Inject constructor(
                 parts.mapNotNull { t -> r.bestand["${t.number}|${t.color}"]?.let { t to PartInventory(it.gesamt, it.lose) } }.toMap()
             }
 
-    /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
+    /** Set a part's storage location; an empty text deletes it. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, location: String): Outcome<String?> =
         store.caughtUp({ r -> FollowUp.PartLocation(partNumber, colorId, r.storage).takeIf { r.success } }) {
             safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(storage = location)) }

@@ -79,7 +79,7 @@ internal class AccountRepositoryImpl @Inject constructor(
     /**
      * If the server requires the second factor, it answers with 401 and
      * `zweiter_faktor: true`. That is bent here into an ordinary response with
-     * success=false (like VouchersRepository.guthaben), otherwise
+     * success=false (like the voucher balance), otherwise
      * flag and sentence would be lost in safeCall. [passkey] replaces the code.
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,

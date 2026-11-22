@@ -52,7 +52,7 @@ interface PartsQueryApi {
         @Query("accounts") accounts: String? = null,
         // "0" = without spare parts, "1" = only spare parts, null = all.
         // The same three values as the web app's select field (parts-spare);
-        // the server reads them in utils/handlers/parts.ts.
+        // the server reads them in `utils/handlers/parts.ts`.
         @Query("spare") spare: String? = null,
         // "1" additionally fetches in which sets the part is. Costs the
         // server its own query — hence only in the table view,
@@ -199,7 +199,7 @@ interface PartsApi : PartsQueryApi {
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
         @Body request: UpdateManualItemRequest,
-        // Wessen Karte gemeint war — siehe deletePart.
+        // Whose card was meant — see deletePart.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>
@@ -217,7 +217,7 @@ interface PartsApi : PartsQueryApi {
     /**
      * The manually added parts, with search text and storage location: the screen has a
      * search field over manual and set parts, and both should follow it. Filtering
-     * happens on the server (utils/handlers/parts.ts); without parameters everything comes.
+     * happens on the server (`utils/handlers/parts.ts`); without parameters everything comes.
      */
     @GET("api/v1/parts/manual")
     suspend fun getManualParts(

@@ -21,7 +21,7 @@ import retrofit2.http.PUT
  * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
  * Counter-check (counter-checks/alarm-besitzt-vorgabe-falsch.patch): default of `owns`
- * to false → red “a missing besitzt field …”. Loading, changing, deleting after confirmation,
+ * to false → red “a missing owns field …”. Loading, changing, deleting after confirmation,
  * click and state words are checked, drawn, by PriceAlertsDisplayTest.
  */
 class AlarmOverviewTest {
@@ -79,8 +79,8 @@ class AlarmOverviewTest {
 
     /**
      * A missing field does not switch off the section. An older server does not send
-     * `owns`; with the default `false` „field missing" would mean the same as „set
-     * does not exist", and no row would be clickable any more. When in doubt, try: a click
+     * `owns`; with the default `false` „field missing“ would mean the same as „set does not exist“
+     * , and no row would be clickable any more. When in doubt, try: a click
      * that ends in an error message is better than a list in which nothing works.
      */
     @Test
@@ -149,7 +149,7 @@ class AlarmOverviewTest {
 
         // ── The difference must not lie in the color ────────────────────────
         //
-        // Red-green deficiency is common; „armed" against „no longer armed" must not
+        // Red-green deficiency is common; „armed“ against „no longer armed“ must not
         // depend on green against gray alone.
         //
         // A statement that only stands in the
@@ -175,7 +175,7 @@ class AlarmOverviewTest {
         }
     }
 
-    // The opposite direction — „does the WEB APP have the section too?" — deliberately does
+    // The opposite direction — „does the WEB APP have the section too?“ — deliberately does
     // NOT stand here. It has its own rule there: Web-App/test/
     // webapp-endpoints.test.js requires that an address only the web app
     // calls is either caught up by the app or carries a reason with it.

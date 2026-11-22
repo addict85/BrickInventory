@@ -37,27 +37,18 @@ import org.junit.Test
  *
  * Counter-checks (measured on Oct 28, 2026, kotlinc against SettingsViewModel.kt
  * and HouseholdViewModel.kt):
- *   A  the check for > 0 removed from changeAlarmThreshold() → red "eine
- *      Schwelle von null geht nicht hinaus"
- *   B  `alertsNew()` removed from alarmLock() → red "ein geänderter Alarm lädt
- *      die Übersicht nach"
- *   C  the old name left empty in renameLocation() → red "ein umbenannter
- *      Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
+ *   A  the check for > 0 removed from changeAlarmThreshold() → red "eine Schwelle von null geht nicht hinaus"
+ *   B  `alertsNew()` removed from alarmLock() → red "ein geänderter Alarm lädt die Übersicht nach"
+ *   C  the old name left empty in renameLocation() → red "ein umbenannter Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
  *   D  saveSettings() only pulling the sets along → red "eine andere Währung …"
- *   E  the household accounts not reloaded in accountsChanged() → red "eine
- *      eingelöste Einladung lädt Status und Haushaltskonten"
- *   F  the password not sent in the repository → red "eine eingelöste
- *      Einladung …" (body without password)
- *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein
- *      falsches Passwort beim Einlösen markiert das Feld"
- *   H  the lockout branch removed from redeemError() → red "nach zu
- *      vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
- *   I  `faktor_code` not in the body in the repository → red "bei
- *      aktivem zweitem Faktor geht dessen Code …"
+ *   E  the household accounts not reloaded in accountsChanged() → red "eine eingelöste Einladung lädt Status und Haushaltskonten"
+ *   F  the password not sent in the repository → red "eine eingelöste Einladung …" (body without password)
+ *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein falsches Passwort beim Einlösen markiert das Feld"
+ *   H  the lockout branch removed from redeemError() → red "nach zu vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
+ *   I  `faktor_code` not in the body in the repository → red "bei aktivem zweitem Faktor geht dessen Code …"
  *   J  `r.data.active` → `false` in checkSecondFactor() → red
  *      "bei aktivem zweitem Faktor …" (code field timed out)
- *   K  `factorNeeded` not set in the error branch → red "verlangt
- *      der Server den Code …"
+ *   K  `factorNeeded` not set in the error branch → red "verlangt der Server den Code …"
  *   L  the success message removed from saveUserDefaultCondition() →
  *      red "the default condition reports the saving" (message timed out)
  */

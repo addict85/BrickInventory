@@ -22,7 +22,7 @@ import org.junit.Test
  *
  * ── Counter-check ───────────────────────────────
  * In the counter-check commit `csvSequence()` always returned NACHLADEN in the case
- * „finished", i.e. without `wasBeforeActive`.
+ * „finished“, i.e. without `wasBeforeActive`.
  * Result: `351 tests completed, 1 failed`, namely
  * `an import finished hours ago does not reload` (line 74).
  *
@@ -47,7 +47,7 @@ class CsvStatusReloadTest {
 
     @Test
     fun `an import finished hours ago does not reload`() {
-        // The jump back: the stream keeps reporting „done" without anything
+        // The jump back: the stream keeps reporting „done“ without anything
         // having run before.
         for (status in listOf("done", "cancelled", "finished")) {
             assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
@@ -91,7 +91,7 @@ class CsvStatusReloadTest {
 
     @Test
     fun `a message without state triggers nothing`() {
-        // status == null does not mean „finished" but „incomplete message".
+        // status == null does not mean „finished“ but „incomplete message“.
         assert(csvSequence(wasBeforeActive = true, status = null) == CsvSequence.NOTHING)
         assert(csvSequence(wasBeforeActive = false, status = null) == CsvSequence.NOTHING)
     }

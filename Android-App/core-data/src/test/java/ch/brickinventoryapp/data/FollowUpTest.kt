@@ -30,7 +30,7 @@ import org.junit.Test
  *
  * Counter-checks (kotlinc and JUnit against the repositories and LocalApplication.kt):
  *   A  in SetsRepositoryImpl.setSetStorage again only `safeCall` → red “quantity, storage location …”
- *   B  in LocalApplication.merkliste the branch WantedItemMoved removed → red
+ *   B  in LocalApplication's wishlist the branch WantedItemMoved removed → red
  *      “a moved and a taken-over wishlist item …”
  *   C  in LocalApplication the branch PartColor set to `list` → red “storage location and
  *      color of a part …”

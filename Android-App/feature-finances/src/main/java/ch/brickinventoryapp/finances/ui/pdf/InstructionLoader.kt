@@ -50,7 +50,7 @@ internal class InstructionLoader @Inject constructor(
 ) : PdfLoader {
 
     override suspend fun load(pdfUrl: String, open: PdfHolder, onUiState: (PdfLoadState) -> Unit): Pair<PdfSource, Int> {
-        // A voucher PDF carries number and PIN: no file (ablage == null), only a
+        // A voucher PDF carries number and PIN: no file (store == null), only a
         // memory area that dies with the viewer.
         val confidential = showsVouchers(pdfUrl)
         val store = pdfStore(ctx.cacheDir, pdfUrl, confidential)

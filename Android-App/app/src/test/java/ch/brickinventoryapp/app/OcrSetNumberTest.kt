@@ -16,7 +16,7 @@ import java.io.File
  * KNOWN LIMIT, deliberately left so: if two numbers are equally plausible,
  * the wrong one can win. Against that stands the confirmation dialog with image and
  * name — and it explicitly says that the number is
- * guessed (BarcodeUiState.unsicher). It is part of the design, not just
+ * guessed (the uncertain flag of BarcodeUiState). It is part of the design, not just
  * politeness.
  */
 class OcrSetNumberTest {

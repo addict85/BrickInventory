@@ -35,7 +35,7 @@ interface MinifigsQueryApi {
 }
 
 /**
- * Minifiguren: manuell erfasste Figuren, Kennzahlen, Lagerort (MinifigsRepository).
+ * Minifigures: manually entered figures, key figures, storage location (MinifigsRepository).
  */
 interface MinifigsApi : MinifigsQueryApi {
 
@@ -64,7 +64,7 @@ interface MinifigsApi : MinifigsQueryApi {
     suspend fun updateMinifig(
         @Path("figNumber") figNumber: String,
         @Body request: UpdateManualItemRequest,
-        // Wessen Karte gemeint war — siehe deletePart.
+        // Whose card was meant — see deletePart.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>

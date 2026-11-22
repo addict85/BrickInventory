@@ -10,8 +10,7 @@ import org.junit.Test
  * setup with instructions for https, even with a token present.
  *
  * Counter-check: in startTarget() the condition
- * plaintextLegacyStock() removed → red „eine alte http-Adresse führt in die
- * Einrichtung …“ (SAMMLUNG instead of EINRICHTUNG).
+ * plaintextLegacyStock() removed → red „eine alte http-Adresse führt in die Einrichtung …“ (SAMMLUNG instead of EINRICHTUNG).
  */
 class StartTargetTest {
 

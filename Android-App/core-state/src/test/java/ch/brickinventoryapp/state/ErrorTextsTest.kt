@@ -23,7 +23,7 @@ import org.junit.Test
  * Counter-checks:
  *   fehlertext-zeit-wie-netz      timeout mapped onto err_network → red
  *                                 „every error kind has its own text“
- *   fehlerklasse-401-unbekannt    Abgewiesen in fehlerklasse() mapped onto UNBEKANNT → red
+ *   fehlerklasse-401-unbekannt    Rejected in errorClass() mapped onto UNKNOWN → red
  *                                 „every error kind has a matching class“
  */
 class ErrorTextsTest {
@@ -81,7 +81,7 @@ class ErrorTextsTest {
         // getString() with a surplus argument doesn't throw, but
         // silently returns the same text — a wrong argument here
         // would thus go unnoticed anywhere. Conversely, a missing one in the
-        // server-error case showed the placeholder „%1$d" as plain text.
+        // server-error case showed the placeholder „%1$d“ as plain text.
         assert(errorTextArgument(Outcome.Failure.Server(503)) == 503) { "Server braucht den Status" }
         examples.filter { it !is Outcome.Failure.Server }.forEach {
             assert(errorTextArgument(it) == null) { "${name(it)} braucht keinen Code" }

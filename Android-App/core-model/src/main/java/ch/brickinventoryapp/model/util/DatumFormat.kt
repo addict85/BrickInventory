@@ -17,7 +17,7 @@ import java.util.Locale
  *
  * @param iso e.g. "2026-09-03T15:00:32.194Z" or "2026-09-03"
  * @param locale the app's number locale (appNumberLocale() in core-ui)
- * @param jahr [DateYear.FULL], [DateYear.SHORT] („03.09.26“) or [DateYear.WITHOUT] („03.09.“)
+ * @param year [DateYear.FULL], [DateYear.SHORT] („03.09.26“) or [DateYear.WITHOUT] („03.09.“)
  * @return the formatted date, or null if nothing usable is there
  */
 fun fmtDatum(iso: String?, locale: Locale, year: DateYear = DateYear.FULL): String? {
@@ -49,7 +49,7 @@ enum class DateYear { FULL, SHORT, WITHOUT }
 
 /**
  * ISO timestamp from a server response as time of day — HH:MM:SS, for the
- * admin log as in the web app (public/js/logviewer.js): without a time
+ * admin log as in the web app (`public/js/logviewer.js`): without a time
  * „just now or from yesterday?“ cannot be answered.
  */
 fun fmtClockTime(

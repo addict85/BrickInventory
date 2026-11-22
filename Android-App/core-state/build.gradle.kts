@@ -15,7 +15,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    // Innen: Die Bereiche nennen core-data selbst.
+    // Internal: the areas name core-data themselves.
     implementation(project(":core-data"))
     implementation(project(":core-session"))
     implementation(project(":core-security"))

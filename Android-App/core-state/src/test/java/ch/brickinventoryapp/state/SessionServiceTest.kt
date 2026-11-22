@@ -68,13 +68,11 @@ import java.time.Instant
  *   anmeldung-ohne-abbruch          in sequenceLogin `collect` instead of `collectLatest` and the
  *                                   steps in `area` instead of the sign-in's own scope → red
  *                                   „eine späte Antwort des alten Kontos …“ (CHF instead of USD)
- *   waehrung-zurueckgespiegelt      in launch() restored `sitzung.state.map { it.currency }…
- *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design
- *                                   kommen aus der Ablage …“ (one write instead of none)
+ *   waehrung-zurueckgespiegelt      in launch() restored `session.state.map { it.currency }…
+ *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design kommen aus der Ablage …“ (one write instead of none)
  *   ablauf-ohne-hinweis             the loginExpiresSoon() check in login() removed → red
  *                                   „a sign-in near its end asks …“ (no notification)
- *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end
- *                                   within a week …“
+ *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end within a week …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionServiceTest {

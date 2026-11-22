@@ -58,15 +58,15 @@ fun CatalogSetCard(
     imageLoader: ImageLoader,
     serverUrl: String,
     onClick: (String) -> Unit,
-    /** Position in the tile wall — only for the cap color of the "noppe" design. */
+    /** Position in the tile wall — only for the cap color of the `noppe` design. */
     position: Int = 0
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
-    // The theme tone of the "farbfaecher" design — the same formula as
-    // --faecher-ton in js/katalog.js. Without a theme number there is no
+    // The theme tone of the `farbfaecher` design — the same formula as
+    // --faecher-ton in `js/katalog.js`. Without a theme number there is no
     // stripe, instead of a wrong one.
     val tone = if (LocalIsColorSlotsTheme.current) slotsTone(set.themeId) else null
     val ownership = set.ownedQuantity.coerceAtLeast(1)

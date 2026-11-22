@@ -226,8 +226,8 @@ fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compos
  * The first is quantity-weighted across all captured purchases; the second is only the most recently
  * written single price.
  *
- * @param preis    raw amount; null = none stored, then it says „noch kein Preis“
- * @param waehrung currency code from settings
+ * @param price    raw amount; null = none stored, then it says „noch kein Preis“
+ * @param currency currency code from settings
  */
 @Composable
 fun ManualTileFooter(price: Money?, currency: CurrencyCode) {
@@ -395,7 +395,7 @@ fun ManualTile(
                 }
                 Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, condition) }
                 // Who owns the entry? The server only attaches owners when
-                // several accounts are in the Blickfeld — in a single account, „gehört mir" would sit on
+                // several accounts are in the Blickfeld — in a single account, "mine" would sit on
                 // every single tile.
                 OwnerBadges(owner, Modifier.padding(top = Spacing.hairline))
                 ManualTileFooter(price = price, currency = currency)

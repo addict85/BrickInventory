@@ -45,10 +45,10 @@ import coil3.request.crossfade
  * below.
  *
  * @param imageUrl     preview image, or null
- * @param nummer      part or figure number (monospace)
+ * @param number      part or figure number (monospace)
  * @param name        label
- * @param menge       quantity shown on the right
- * @param farbe       color dot before the name (parts only)
+ * @param quantity    quantity shown on the right
+ * @param color       color dot before the name (parts only)
  * @param secondRow category/sets resp. capture date, or null
  * @param onImageError fallback to the full resolution
  *         (rememberTileImageWithFallback)
@@ -167,7 +167,7 @@ fun ConditionRow(
     condition: Condition,
     onUiState: (Condition) -> Unit,
     modifier: Modifier = Modifier,
-    /** Durchgereicht an [ConditionToggle] — siehe dort. */
+    /** Passed on to [ConditionToggle] — see there. */
     options: List<Pair<Condition, Int>> = STATE_NEW_USED,
 ) {
     // From 130% text size the label sits above the choice: in the fixed column

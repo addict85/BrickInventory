@@ -122,7 +122,7 @@ class CatalogViewModel @Inject constructor(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
             )
-            if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
+            if (gen != catalogGeneration) return@launch   // a new filter in the meantime
             when (r) {
                 is Outcome.Success -> {
                     _catalogState.update {

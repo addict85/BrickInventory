@@ -29,7 +29,7 @@ import org.junit.Test
  *
  * Counter-checks (patches under counter-checks/):
  *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` without SerialName → red „eine alte Zeile …“
- *   ablage-kauf-feld-vertauscht     in Ablagezeilen.kauf avgPrice and purchasePrice swapped → red „jedes Feld …“
+ *   ablage-kauf-feld-vertauscht     in the purchase store row avgPrice and purchasePrice swapped → red "every field …"
  *   ablage-fassung-ignoriert        dekodiere() reads every version with today's reader → red „eine unbekannte Fassung …“
  */
 class StoreVersionTest {

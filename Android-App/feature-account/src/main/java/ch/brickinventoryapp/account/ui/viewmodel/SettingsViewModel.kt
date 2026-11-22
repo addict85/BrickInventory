@@ -50,7 +50,7 @@ import javax.inject.Inject
 
 /**
  * How large a CSV file may be — the same value as CSV_MAX_BYTES in
- * utils/dateiEmpfang.ts. The app must know the limit before sending 20 MB over
+ * `utils/dateiEmpfang.ts`. The app must know the limit before sending 20 MB over
  * a mobile network only to get a rejection.
  */
 internal const val CSV_MAX_BYTES = 15L * 1024 * 1024

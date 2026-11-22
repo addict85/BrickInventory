@@ -10,8 +10,8 @@ import org.junit.Test
  * only what counts; the cursor stays behind the same typed character.
  *
  * Counter-checks (12.11.2026, kotlinc against TranscriptShape.kt):
- *   A  pairTranscriptIn() without `chunked(2).joinToString(":")` → red „die Abschrift
- *      bekommt Doppelpunkte …“; counter-checks/abschrift-ohne-doppelpunkte.patch
+ *   A  pairTranscriptIn() without `chunked(2).joinToString(":")` → red „die Abschrift bekommt Doppelpunkte …“
+ * ; counter-checks/abschrift-ohne-doppelpunkte.patch
  *   B  Cursor back to `before` (without the inserted colons) → red there
  *      ("3F:A2:B" with cursor at 5 instead of 7); counter-checks/abschrift-cursor-vor-dem-ende.patch
  */

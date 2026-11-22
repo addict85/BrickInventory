@@ -33,9 +33,9 @@ import org.junit.Test
  * that merges. The number stands next to it, but the purpose of the
  * coloring was to catch the eye, not to inform. It now has a symbol.
  *
- * ── Why a list and not a search for „is there text next to it" ──────────────
+ * ── Why a list and not a search for „is there text next to it“ ──────────────
  *
- * Whether a text REALLY carries the statement, no pattern sees. „⏳ running"
+ * Whether a text REALLY carries the statement, no pattern sees. „⏳ running“
  * carries it, a text that happens to stand next to it does not. The list is
  * therefore a claim a human made, and the test only records
  * that nobody adds a NEW place without having asked the same
@@ -108,8 +108,8 @@ class ColorAloneTest {
     /**
      * The one place that really depended only on color during the review.
      *
-     * It stands here on its own because the list above only says „someone
-     * looked". What came out of it must hold too.
+     * It stands here on its own because the list above only says „someone looked“
+     * . What came out of it must hold too.
      */
     @Test
     fun `the quota row does not warn with color alone`() {

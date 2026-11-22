@@ -868,7 +868,7 @@ class UisRulesTest {
             wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading } }
             val row = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.quantity > 1 && it.purchasePrice != null && it.value != null }
-            // Computed ourselves, not from purchaseTotal/gewinn: otherwise the test would check the calculation with itself.
+            // Computed ourselves, not from purchaseTotal/profit: otherwise the test would check the calculation with itself.
             val total = row.purchasePrice!! * row.quantity
             val purchase = ctx.getString(R.string.finance_purchase_total, fmtMoney(total, CurrencyCode("CHF")))
             compose.onNodeWithText(purchase, useUnmergedTree = true).fetchSemanticsNode()

@@ -257,7 +257,7 @@ fun TabScaffold(
         snackbarHostState = environment.snackbar,
         csvImportState = csvImport.csvImportState,
         onCsvCancel = { csvImport.cancelCsvImport() },
-        // Reiter angetippt → oben anfangen.
+        // Tab tapped → start at the top.
         onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) },
         // The silent start check has a result — here it gets a place.
         updateAvailable = updateUiState.newerVersion != null,

@@ -33,10 +33,8 @@ import java.io.File
  * texts through an interface instead of through the Context.
  *
  * Counter-checks:
- *  - In persist() the 422 takeover removed (message only): "what was read
- *    from the PDF ends up in the form" red — number empty.
- *  - The PDF check `type != "application/pdf"` removed: "a non-PDF file
- *    does not go to the server" red — one fetch instead of none.
+ *  - In persist() the 422 takeover removed (message only): "what was read from the PDF ends up in the form" red — number empty.
+ *  - The PDF check `type != "application/pdf"` removed: "a non-PDF file does not go to the server" red — one fetch instead of none.
  *  - In the finally of queryAllBalances() back to `load()` instead of
  *    `loadVouchers()`: "a cancelled run cleans up and reloads" red — the
  *    cancelled coroutine no longer loads (two fetches instead of three).
@@ -134,7 +132,7 @@ class VoucherViewModelTest {
         vm.loadVouchers()
         until("Liste") { vm.state.value.vouchers.size == 2 }
 
-        // Die Schranke meldet „abstand": Das ViewModel wartet sichtbar.
+        // The limit reports `abstand`: the ViewModel visibly waits.
         server.enqueue(response("""{"success":false,"code":"guthaben_abstand","grund":"abstand","wartenSek":30}""", 429))
         server.enqueue(response(twoCards))
         vm.queryAllBalances()
@@ -149,7 +147,7 @@ class VoucherViewModelTest {
     }
 
     // Counter-check (measured 02.11.2026): `|| d.reason == "account"` removed in the ViewModel
-    // → red, /vouchers/2/guthaben was also queried (2 instead of 1).
+    // → red, the balance of voucher 2 was also queried (2 instead of 1).
     @Test
     fun `the account limit aborts the pass`() {
         server.enqueue(response(twoCards))

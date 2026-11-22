@@ -16,7 +16,7 @@ import java.math.BigDecimal
  * The app does not recompute any money amounts — it shows what the server delivers.
  *
  * ── What this check does NOT flag ─────────────────────────────────────
- * Sums over quantities (`sumOf { it.quantity }`). Those are display: „x7"
+ * Sums over quantities (`sumOf { it.quantity }`). Those are display: „x7“
  * next to a row. Only where MONEY is summed does a second version of a
  * business rule arise.
  */

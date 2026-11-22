@@ -31,9 +31,9 @@ import org.junit.Test
  * splits quantities per account — and never ends up in the store.
  *
  * Counter-checks (kotlinc against AccountView.kt, Fetch.kt and SetsRepositoryImpl.kt):
- *   A  in Kontosicht.galerie `a.search` replaced by `null` → red “every filter of the
+ *   A  in AccountView's gallery `a.search` replaced by `null` → red “every filter of the
  *      account view is in the request”
- *   B  in Serversicht.aktualisiere additionally taken into the store → red “the
+ *   B  in the server view's refresh additionally taken into the store → red “the
  *      account view does not end up in the store”
  *   C  in allPages the rows not merged by key (list instead of map)
  *      → red “the account view fetches all pages and no row twice”

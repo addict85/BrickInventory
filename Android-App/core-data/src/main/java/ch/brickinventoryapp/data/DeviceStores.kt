@@ -77,7 +77,7 @@ interface TokenMirror {
     val serverUrlState: StateFlow<String?>
     val authTokenState: StateFlow<String?>
     val tokenOriginState: StateFlow<String?>
-    /** During a QR pairing with another server its address, otherwise null (Anmeldeablage.kopplungsziel). */
+    /** During a QR pairing with another server its address, otherwise null (the login store's pairing target). */
     val pairingTargetState: StateFlow<String?>
     fun tokenGeneration(): Long
     fun waitOnStart()

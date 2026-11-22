@@ -17,7 +17,7 @@ import java.security.Signature
 import java.util.Base64
 
 /**
- * INVARIANTEN.md refers to source files and test classes; a reference to
+ * `INVARIANTEN.md` refers to source files and test classes; a reference to
  * something that was renamed or deleted misleads readers. Only checked
  * is that they exist, not whether the test still fully carries the rule.
  *
@@ -30,7 +30,7 @@ import java.util.Base64
  *   invarianten-fileprovider-zurueck  „FileProvider nur `pdf/`“ again in INVARIANTEN → red, the same test
  *   invarianten-unsigniert-gilt    checkedDescription() accepts a wrapper without signature → red
  *                                  “no unsigned or foreign-signed description applies“
- *   invarianten-teileliste-klartext  Teilelistentresor.lege() writes the plaintext → red “the
+ *   invarianten-teileliste-klartext  PartListVault's write stores the plaintext → red “the
  *                                  parts list lies on disk only encrypted”
  */
 class InvariantsReferencesTest {

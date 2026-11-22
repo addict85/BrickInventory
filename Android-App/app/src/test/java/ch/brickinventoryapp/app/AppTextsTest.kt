@@ -24,7 +24,7 @@ import org.robolectric.annotation.Config
  * the app formulates itself.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   servermeldung-ohne-vorrang   the check for fehler.message removed → red “the server's sentence …”
+ *   servermeldung-ohne-vorrang   the check for failure.message removed → red “the server's sentence …”
  *   servermeldung-nach-code      the error code before the server message → red “the server's sentence …”
  */
 @RunWith(RobolectricTestRunner::class)

@@ -29,7 +29,7 @@ class PriceAlarmWorker @AssistedInject constructor(
     private val pickup: PriceAlertRepository,
 ) : CoroutineWorker(context, params) {
 
-    // erfolg=false means ONLY „the server was not reachable“. Everything else
+    // success=false means ONLY „the server was not reachable“. Everything else
     // — disabled, signed out, nothing new — is a successful
     // run that had nothing to do.
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =

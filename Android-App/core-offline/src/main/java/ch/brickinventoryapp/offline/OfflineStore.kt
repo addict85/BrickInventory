@@ -78,7 +78,7 @@ object Slots {
         FilterColumns(searchText(it.setNumber, it.name), condition = it.condition.identifier)
     }
 
-    /** Der eigene Vorrat an Lagerorten samt Vorgabe. */
+    /** The own supply of storage locations including the default. */
     val STORAGE_LOCATIONS = Domain(StockKind.STORAGE_LOCATIONS, StoreShape(StockRow.serializer(), StoreRows::stock, StoreRows::stock),
         { it.location.id.toString() }, LocalApplication::storageLocations) {
         FilterColumns(searchText(it.location.name))
@@ -355,7 +355,7 @@ class OfflineStore(
         outbox.empty()
     }
 
-    /** Call only under the lock of ([b], fach.art). */
+    /** Call only under the lock of ([b], slot kind). */
     private suspend fun <T : Any> applyChangeTo(domain: Domain<T>, b: String, w: Effect) {
         val old = decode(domain, stock.read(b, domain.kind))
         stock.syncRows(b, domain.kind, encode(domain, domain.apply(old.list, w)))

@@ -17,14 +17,11 @@ import java.util.Locale
  * Numbers and amounts come from ONE version — and it follows the app language.
  *
  * Counter-checks part 3:
- *   A  numbersLocale() fixed back to de-CH/en-GB → red „de-DE schreibt Punkt und
- *      Komma …“ and „ohne passende Landesform …“ (de-AT)
+ *   A  numbersLocale() fixed back to de-CH/en-GB → red „de-DE schreibt Punkt und Komma …“ and „ohne passende Landesform …“ (de-AT)
  *   B  the country taken without a language check → red „ohne passende Landesform …“
  *      (de with device en-US gave de-US)
- *   C  isGroupingUsed not turned off in fmtInput() → red „ein Eingabefeld
- *      bekommt den Betrag ohne Tausendertrennung zurück“
- *   D  "%.2f".format back in AcquisitionManagementScreen.kt → red „keine
- *      Ansicht setzt Betrag und Währung selbst zusammen“
+ *   C  isGroupingUsed not turned off in fmtInput() → red „ein Eingabefeld bekommt den Betrag ohne Tausendertrennung zurück“
+ *   D  "%.2f".format back in AcquisitionManagementScreen.kt → red „keine Ansicht setzt Betrag und Währung selbst zusammen“
  */
 class NumberFormatTest {
 

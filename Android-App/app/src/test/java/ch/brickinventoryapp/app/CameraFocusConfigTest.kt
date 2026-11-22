@@ -13,8 +13,7 @@ import java.io.File
  * overwrote the first.
  *
  * Effective was thus the version with `setAutoCancelDuration(3, SECONDS)` — and
- * exactly that is what the comment in the code warns about: „Bewusst mit disableAutoCancel():
- * Ohne das fällt die Kamera nach wenigen Sekunden auf ihre eigene Wahl zurück."
+ * exactly that is what the comment in the code warns about: „Bewusst mit disableAutoCancel(): Ohne das fällt die Kamera nach wenigen Sekunden auf ihre eigene Wahl zurück.“
  * One taps, it becomes sharp, and seconds later it is gone again.
  */
 class CameraFocusConfigTest {
@@ -103,7 +102,7 @@ class CameraFocusConfigTest {
      * At the very beginning this test counted occurrences of the string
      * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in the individual screen files:
      *
-     * Then it read „whoever builds a preview must set the AF mode" —
+     * Then it read „whoever builds a preview must set the AF mode“ —
      * the version for a world with two copies. Since the BINDING
      * has also been merged (19 of 23 lines were character-identical), nobody
      * except CameraSetup.kt builds a preview, an image analysis or a

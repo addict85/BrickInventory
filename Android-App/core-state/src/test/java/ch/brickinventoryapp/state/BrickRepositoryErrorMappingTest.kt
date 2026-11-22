@@ -150,7 +150,7 @@ class BrickRepositoryErrorMappingTest {
      * A stored http address: the release build's guard rejects it, and
      * that becomes a dedicated message with instructions instead of „no connection“.
      * Counter-check: removed the branch for PlaintextRejected in
-     * safeCall() → red (Netz, vorübergehend).
+     * safeCall() → red (network, transient).
      */
     @Test
     fun `a rejected http request is not a network error and not temporary`() = runTest {

@@ -270,7 +270,7 @@ private fun LightButton(an: Boolean, toggleOn: () -> Unit) {
 
 /**
  * Words that mark a number as a quantity — word-for-word the same as QUANTITY_WORD in
- * produkttitel.ts. `(?iu)`, because IGNORE_CASE without `u` only knows ASCII.
+ * `produkttitel.ts`. `(?iu)`, because IGNORE_CASE without `u` only knows ASCII.
  */
 private val QUANTITY_WORD = Regex(
     "(?iu)^\\s*(?:x\\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|" +
@@ -279,14 +279,14 @@ private val QUANTITY_WORD = Regex(
 
 /**
  * Digit counts in descending quality. Unknown lengths land after them.
- * Must match `QUALITY` in Web-App/utils/produkttitel.ts.
+ * Must match `QUALITY` in `Web-App/utils/produkttitel.ts`.
  */
 internal val QUALITY = listOf(5, 4, 6, 7, 3)
 
 /**
  * Three to seven digits, optionally with a leading `#` and a variant suffix. At the
  * top rather than in the function, because it runs every 700 ms in the camera loop. Word-for-word
- * the same as `pattern` in produkttitel.ts.
+ * the same as `pattern` in `produkttitel.ts`.
  */
 private val SET_NUMBER_PATTERN = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
 

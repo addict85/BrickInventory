@@ -56,7 +56,7 @@ class UpdateViewModel @Inject constructor(
     val updateState = _state.asStateFlow()
     override val uiState: StateFlow<UpdateUiState> get() = updateState
 
-    /** Der laufende Download; [cancelLoad] beendet ihn samt Teildatei. */
+    /** The running download; [cancelLoad] ends it together with the partial file. */
     private var loadJob: Job? = null
 
     init {

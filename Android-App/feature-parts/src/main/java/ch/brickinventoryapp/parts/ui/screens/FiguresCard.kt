@@ -171,7 +171,7 @@ fun MinifigCard(fig: FigureView, serverUrl: String, imageLoader: ImageLoader,
 
 /**
  * A figure as a table row: image, number, name, quantity, entry date — what
- * the web app's table shows (renderFigs in minifigs.js). No columns
+ * the web app's table shows (renderFigs in `minifigs.js`). No columns
  * for "source" or trash can: this list only loads `source=set`, and both would be
  * constant.
  */

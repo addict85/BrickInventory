@@ -290,7 +290,7 @@ internal fun DesignCard(design: DesignChoice?, onChoice: (Design?) -> Unit) {
             chosen = design.own,
             onChoice = { value -> if (value != design.own) onChoice(value) },
         )
-        // What defines the chosen design — telling werkbank apart from the dark classic
+        // What defines the chosen design — telling `werkbank` apart from the dark classic
         // image alone was hardly possible.
         (design.own ?: design.default).description().let {
             Text(stringResource(it), style = MaterialTheme.typography.bodySmall,

@@ -23,12 +23,9 @@ import java.io.File
  * against an in-memory store and a test server.
  *
  * Counter-checks (measured 28.10.2026, kotlinc against Blickfeld.kt):
- *   A  in loadMembers() the fallback to ALL removed → red „ein Filter auf
- *      ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
- *   B  in loadFilter() taking over the storage filters removed → red „die
- *      gemerkten Filter kommen aus der Ablage“
- *   C  in loginBegins() `store.forgetAll()` removed → red „eine
- *      Anmeldung beginnt mit allen Konten“
+ *   A  in loadMembers() the fallback to ALL removed → red „ein Filter auf ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
+ *   B  in loadFilter() taking over the storage filters removed → red „die gemerkten Filter kommen aus der Ablage“
+ *   C  in loginBegins() `store.forgetAll()` removed → red „eine Anmeldung beginnt mit allen Konten“
  */
 class ScopeTest {
 

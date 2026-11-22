@@ -39,7 +39,7 @@ import java.io.IOException
  *                                   “saving stores only encrypted now”
  *   abmelden-laesst-geheimtext      clearSession() without remove(AUTH_TOKEN_ENC) → red
  *                                   “sign-out removes both entries”
- *   altbestand-nicht-umgeschluesselt  adoptOldToken() without umschluesseln(prefs) → red
+ *   altbestand-nicht-umgeschluesselt  adoptOldToken() without re-encrypting (prefs) → red
  *                                   “a token under the old key goes under the strict one at start”
  *   klartext-token-gilt-wieder      the mirror reads AUTH_TOKEN as token again → red
  *                                   “a plaintext token of older versions never counts …”

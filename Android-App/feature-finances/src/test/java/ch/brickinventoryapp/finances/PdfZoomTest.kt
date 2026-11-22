@@ -34,7 +34,7 @@ import org.junit.Test
  */
 class PdfZoomTest {
 
-    private val A4 = 1.4142f      // Hoehe / Breite einer A4-Seite
+    private val A4 = 1.4142f      // height / width of an A4 page
 
     @Test
     fun `without zoom it renders at single width, with zoom higher`() {

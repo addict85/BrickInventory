@@ -16,7 +16,7 @@ import java.util.Locale
 
 /*
  * Numbers and amounts — one version for the whole app, kept in step with
- * the web app (locale() in public/i18n.js), so the same amount looks the
+ * the web app (locale() in `public/i18n.js`), so the same amount looks the
  * same everywhere. Amounts go through the platform's currency formatting:
  * the placement of symbol and amount is not something to get right by hand.
  */
@@ -35,7 +35,7 @@ fun appNumberLocale(): Locale {
 }
 
 /**
- * Amount WITH currency — the counterpart to fmtN() in public/js/01-core.js.
+ * Amount WITH currency — the counterpart to fmtN() in `public/js/01-core.js`.
  *
  * @param currencyCode ISO code from the server response (CHF, EUR, …). An
  *        unknown code must not break the display: then the code stands

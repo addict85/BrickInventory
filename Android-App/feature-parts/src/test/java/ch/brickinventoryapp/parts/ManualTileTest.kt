@@ -26,7 +26,7 @@ class ManualTileTest {
         // `unit_price` in the master row is only the MOST RECENTLY written
         // unit price. Anyone who bought once for 2.- and once for 8.-
         // would see 8.- there instead of 5.-. The server computes it correctly
-        // (utils/handlers/shared.ts) — the app simply did not read that field.
+        // (`utils/handlers/shared.ts`) — the app simply did not read that field.
         val part = BrickJson.decodeFromString(PartValuationItem.serializer(),
             """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
         val figure = BrickJson.decodeFromString(FigValuationItem.serializer(),

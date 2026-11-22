@@ -89,7 +89,7 @@ class ScreenStateTest {
      */
     private val transient = Regex("""(?i)load|loading|busy|running|running|load|pending|saving|saves|scanning|scannt|progress|progress|zieh|drag|export|focus|focus|finger""")
 
-    // ── „finger" was added with the zoom in the PDF viewer ────────────────────
+    // ── „finger“ was added with the zoom in the PDF viewer ────────────────────
     //
     // `twoFinger` in PdfViewerScreen.kt records whether two fingers are
     // CURRENTLY on the glass; as long as they are, the list doesn't scroll, so

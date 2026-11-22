@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  *     (no node with the remove label)
  *   `enabled = count > 0 && !isLoading` on the main button again → red “create with nothing …”
  *     (assertIsEnabled fails)
- *   creating() without the check for anzahl == 0 → red “create with nothing …” (onCreate called)
+ *   creating() without the check for count == 0 → red “create with nothing …” (onCreate called)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")

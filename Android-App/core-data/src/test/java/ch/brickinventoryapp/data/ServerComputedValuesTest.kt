@@ -41,7 +41,7 @@ class ServerComputedValuesTest {
         assert(acq.contains("totals.quantity")) { "Die Menge muss aus totals kommen" }
         assert(acq.contains("totals.amount")) { "Der Betrag muss aus totals kommen" }
         // Opposite direction: `amount` is nullable, and the view must not make a
-        // 0 of it — „nothing recorded" and „bought for nothing" are different.
+        // 0 of it — „nothing recorded“ and „bought for nothing“ are different.
         assert(acq.contains("totals.amount?.let")) {
             "Der fehlende Betrag muss als null behandelt werden, nicht als 0"
         }

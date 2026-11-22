@@ -25,15 +25,12 @@ import java.io.File
  * (`generate-design-tokens.js --verify` in the Android run, job vertrag).
  *
  * Counter-checks:
- *   B  the "farbfaecher" entry renamed → red „jedes Design der Quelle hat
- *      seine dunkle Fassung“
- *   C  `erbt` not resolved in darkToken() → red „hochglanz erbt die Farben
- *      von noppe“ and the three role checks (b600 missing, classic kicks in)
+ *   B  the `farbfaecher` entry renamed → red „jedes Design der Quelle hat seine dunkle Fassung“
+ *   C  `erbt` not resolved in darkToken() → red „`hochglanz` erbt die Farben von `noppe`“ and the three role checks (b600 missing, classic kicks in)
  *   D  outline at s400 instead of s500 → red „borders stand out with 3 to 1“
  *   E  onPrimary at "txt" instead of "auf-primaer" → red „Text auf Flächen ist lesbar“
  * Counter-checks:
- *   F  darkBrickDecor() with the light studs (#6d94b8) → red „die
- *      Stein-Dekoration wird im Dunkeln dunkel“
+ *   F  darkBrickDecor() with the light studs (#6d94b8) → red „die Stein-Dekoration wird im Dunkeln dunkel“
  *   G  the text on the slate tile left white → red there too
  */
 class DarkTokensTest {

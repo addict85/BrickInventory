@@ -78,7 +78,7 @@ interface AccountApi {
     // ── Create account and forgot password ──
     //
     // Without sign-in, because they are needed before there is a token; the server
-    // keeps them before requireLogin (routes/auth.ts).
+    // keeps them before requireLogin (`routes/auth.ts`).
     @GET("api/v1/auth/registration-status")
     suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
 
@@ -88,7 +88,7 @@ interface AccountApi {
     @POST("api/v1/auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
 
-    // ── Das eigene Konto ────────────────────────────────────────────────────
+    // ── The own account ────────────────────────────────────────────────────
     @GET("api/v1/auth/profile")
     suspend fun getProfile(): Response<ProfilResponse>
 

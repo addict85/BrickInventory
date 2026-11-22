@@ -31,16 +31,15 @@ import java.util.Base64
  *
  * Counter-checks:
  *   A  checkedDescription() without the line `if (!real) return null`
- *      → red „ein fremder Schluessel …“, „veraenderte Daten …“ and „eine
- *      unsignierte version.json …“; counter-checks/update-beschreibung-ungeprueft.patch
+ *      → red „ein fremder Schluessel …“, „veraenderte Daten …“ and „eine unsignierte version.json …“
+ * ; counter-checks/update-beschreibung-ungeprueft.patch
  *   B  checksumFits() compares only as a prefix (`startsWith`) and without the
  *      empty check → red „the APK must carry the signed checksum“
  *   C  isAllowedApkAddress() without VERSION_LABEL.matches → red „nur Fassungsetiketten …“
  *   D  SignedDescription reads the `signature` field as the description signature again
  *      (`@SerialName("signature")`) → red „the signature of the APK key no longer applies“;
  *      counter-checks/beschreibung-ohne-schluesseltrennung.patch
- *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend
- *      eines Schluesselwechsels gelten alter und neuer Schluessel“
+ *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend eines Schluesselwechsels gelten alter und neuer Schluessel“
  */
 class UpdateSignatureTest {
 

@@ -69,7 +69,7 @@ internal fun YearScrubber(
     val thumbOffsetY = CatalogYearMath.thumbOffset(share, heightPx, thumbHeightPx)
     val tag = CatalogYearMath.yearFor(share, total, distribution, yearLoaded)
 
-    /** Beruehrung -> Anteil -> rollen. Wie js/rollbalken.js -> roles(). */
+    /** Touch → share → scroll, as in `js/rollbalken.js`. */
     fun roles(y: Float) {
         dragShare = CatalogYearMath.shareFrom(y, heightPx, thumbHeightPx)
         onScrollTo(CatalogYearMath.numberFrom(dragShare, total))

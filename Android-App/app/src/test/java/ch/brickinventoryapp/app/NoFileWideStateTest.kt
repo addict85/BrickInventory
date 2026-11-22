@@ -17,7 +17,7 @@ import org.junit.Test
  *     private var gallerySearchJob, galleryListJob, galleryGeneration
  *
  * That is process-wide mutable state. The comment in
- * CatalogFeature.kt even said so itself: „Job-Referenz prozessweit am VM".
+ * CatalogFeature.kt even said so itself: „Job-Referenz prozessweit am VM“.
  * It only works as long as there is exactly one instance per process. Two would
  * share cancellation jobs and generation — one load would cancel the other,
  * and nobody would think of looking there.

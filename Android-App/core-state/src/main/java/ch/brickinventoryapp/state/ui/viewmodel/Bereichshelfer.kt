@@ -28,7 +28,7 @@ import javax.inject.Inject
 
 /** Notifications into the app's one channel, along with the strings they're built from. */
 interface Messages : Texts {
-    /** Null zeigt nichts. */
+    /** Null shows nothing. */
     fun show(text: String?)
 
     /** Retract an outdated notification, e.g. after a successful second scan. */

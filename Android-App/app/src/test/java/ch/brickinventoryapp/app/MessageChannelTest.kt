@@ -30,9 +30,9 @@ import javax.inject.Singleton
  * it ends nowhere — unless someone builds a forwarding into EVERY place where
  * this ViewModel is used:
  *
- *     val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
+ *     val catalogMessage by catalog.snackbar.collectAsStateWithLifecycle()
  *     LaunchedEffect(katMeldung) {
- *         katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
+ *         catalogMessage?.let { vm.showSnackbar(it); catalog.snackbarRead() }
  *     }
  *
  * Exactly that stood TWICE in CatalogGraph.kt. And that is the dangerous part:

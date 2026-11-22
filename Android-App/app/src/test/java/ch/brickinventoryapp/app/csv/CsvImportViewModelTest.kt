@@ -51,9 +51,9 @@ import org.junit.Test
  *   csv-ohne-nachladen  NACHLADEN without `sync.stock()` → red “a running import …”
  *   csv-rueckzug-fest   the delay no longer grows → red “a broken stream …”
  *   csv-abbruch-still   cancelCsvImport() does not report an error → red “the cancellation reports …”
- *   csv-folgt-doppelt   folge() without the lock `follows` → red “a running import …”
+ *   csv-folgt-doppelt   follow() without the lock `follows` → red “a running import …”
  *                       (two connections, service started twice)
- *   csv-abmelden-laesst-dienst  no dienst.stop() on sign-out → red “after sign-out …”
+ *   csv-abmelden-laesst-dienst  no service.stop() on sign-out → red “after sign-out …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvImportViewModelTest {

@@ -67,7 +67,7 @@ private fun asRow(z: LocalRow, area: String, kind: StockKind, position: Int) = w
         sparePart, condition)
 }
 
-/** „Contains“ as LIKE pattern; `%`, `_` and `\` apply literally as at the server (likeSearch.ts). */
+/** „Contains“ as LIKE pattern; `%`, `_` and `\` apply literally as at the server (`likeSearch.ts`). */
 internal fun containsPattern(search: String): String =
     "%" + search.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 

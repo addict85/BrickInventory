@@ -350,7 +350,7 @@ class VoucherViewModel @Inject constructor(
     /**
      * Query the balance of ALL cards, one after another.
      *
-     * This waits when the server reports „abstand" — for exactly as long
+     * This waits when the server reports `abstand` — for exactly as long
      * as it says. On bot protection the whole run aborts: the remaining cards
      * would run into the same wall.
      */
@@ -381,7 +381,7 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /** One card; if the server reports „abstand", it waits and asks again. */
+    /** One card; if the server reports `abstand`, it waits and asks again. */
     private suspend fun questionBalance(g: VoucherView, previous: Int, total: Int): BalanceQuery {
         repeat(GAP_ATTEMPTS) {
             _state.update {

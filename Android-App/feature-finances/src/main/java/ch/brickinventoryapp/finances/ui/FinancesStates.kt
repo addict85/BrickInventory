@@ -81,7 +81,7 @@ data class VoucherUiState(
     //
     // As strings, including the amount: while typing, „12,“ is neither a number
     // nor an error. What cannot be converted on saving is rejected by the server
-    // (pruefeWerte in routes/api_v1/vouchers.ts).
+    // (pruefeWerte in `routes/api_v1/vouchers.ts`).
     val number: String = "",
     val pin: String = "",
     val amount: String = "",

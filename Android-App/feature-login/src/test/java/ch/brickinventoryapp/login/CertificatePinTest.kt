@@ -68,14 +68,14 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   I  in check() back to `spkiFingerprint(chain.last())` instead of the root
  *      from the system → red “a public CA offers its root …”
  *      and “without a pin, nothing goes out on first contact …”
- *   J  in CertificateQuestion.bestaetige() the condition for CHANGED removed →
+ *   J  in CertificateQuestion.confirm() the condition for CHANGED removed →
  *      red “a changed key only counts once typed off …”
  *   K  bestaetigtFingerabdruck() with `>= 4` instead of `>= 16` → red “a
  *      changed key …” (four typed characters were enough); likewise
  *      FINGERPRINT_TYPE_IN = 16 instead of 24 → red there (“16 characters (64 bits) …”)
- *   L  in bestaetige() back to checking only CHANGED (`f.kind == CHANGED &&`)
+ *   L  in confirm() back to checking only CHANGED (`f.kind == CHANGED &&`)
  *      → red “without a known CA, a tap is not enough …”
- *   M  the line `if (pin != null && oeffentlich && pin in
+ *   M  the line `if (pin != null && public && pin in
  *      systemRoots) return` removed → red “a public CA …”, “a
  *      changed key …” (the state before the root pin, see X)
  *   N  there without `&& pin in systemRoots` → red “a public pin …”
@@ -99,7 +99,7 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   U  in check() back to `if (publicPin && public) return` (without
  *      `!fromCode`) → red “a code with a system root must name exactly that root …”;
  *      counter-checks/code-wurzel-ungeprueft.patch
- *   V  in bestaetige() the line for CODE_MISMATCH removed → red “a code with a
+ *   V  in confirm() the line for CODE_MISMATCH removed → red “a code with a
  *      system root …” (confirmable once typed off); counter-checks/code-abweichung-bestaetigbar.patch
  *   W  on a deviating pin always CHANGED → red “a code with its own CA …”;
  *      counter-checks/code-abweichung-als-rueckfrage.patch
@@ -123,7 +123,7 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      counter-checks/blattpin-ungeprueft.patch
  *   AC sameOperator() back to the O= in the subject → red “the same O= in the subject
  *      does not yet make a family …”; counter-checks/familie-nach-subjekt.patch
- *   AD in bestaetige() typing it off on first contact not checked (`freiwillig` even with
+ *   AD in confirm() typing it off on first contact not checked (`optional` even with
  *      input) → red “on first contact, typing it off is optional …”;
  *      counter-checks/erstkontakt-abschrift-ungeprueft.patch
  *   AE in checkSheet() `|| fromCode` removed → red “a code from the signed-in screen

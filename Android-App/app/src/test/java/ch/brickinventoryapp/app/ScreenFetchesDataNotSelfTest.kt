@@ -47,7 +47,7 @@ class ScreenFetchesDataNotSelfTest {
     }
 
     /**
-     * Screens see domain types (model.fach), not server models: a new
+     * Screens see domain types (model.domain), not server models: a new
      * field or a different nullability in the DTO should stand out in the repository or ViewModel,
      * not in a composable. Without exception.
      * Counter-check: in VouchersCard.kt again

@@ -107,7 +107,7 @@ class MainActivity : OnlyLauncherStart() {
     /** Optional, default off: after N minutes in the background continue only after the device lock. */
     private val appLock by lazy { AppLock(SystemClock::elapsedRealtime, AppLockStore(this)) { devicesStarts(this) } }
 
-    /** Binds the step guard to the server (routes/api_v1/device.ts). */
+    /** Binds the step guard to the server (`routes/api_v1/device.ts`). */
     @Inject lateinit var stepBinding: StepBinding
 
     /** The target of a tapped notification; stored only by the non-exported MessageEntryPoint. */

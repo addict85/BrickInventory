@@ -9,7 +9,7 @@ import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /**
- * The checks before publishing (tools/release-check.py),
+ * The checks before publishing (`tools/release-check.py`),
  * executed against outputs in the format of `apksigner verify --print-certs` and
  * against descriptions like the one in version-signiert.json of a release.
  *

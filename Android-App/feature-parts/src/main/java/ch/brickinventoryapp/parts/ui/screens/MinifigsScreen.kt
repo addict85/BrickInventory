@@ -230,7 +230,7 @@ internal fun MinifigsScreen(
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
                         span = { _, _ -> if (view == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
-                        // BEIDE Ansichten oeffnen denselben Dialog.
+                        // BOTH views open the same dialog.
                         val open = { actions.openSetItem(fig.figNumber) }
                         Moved {
                             if (view == ListView.TABLE) MinifigTableRow(fig, serverUrl, imageLoader, open)

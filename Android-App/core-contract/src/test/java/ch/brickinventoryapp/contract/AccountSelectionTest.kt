@@ -14,7 +14,7 @@ import org.junit.Test
  * server's words.
  *
  * Counter-checks (counter-checks/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
- *   Konto.anfrage with prefix „konto“ → red “every saved choice becomes the same value again”
+ *   Account.request with prefix „konto“ → red “every saved choice becomes the same value again”
  *   UEBER with the identifier „über“ → red “the direction reads and writes the server's words”
  */
 class AccountSelectionTest {

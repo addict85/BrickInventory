@@ -25,7 +25,7 @@ import org.junit.Test
  *
  * Counter-checks (counter-checks/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
  *   in AlarmRepositoryImpl.setPriceAlarm only `safeCall` → red “a set and a deleted alert …”
- *   in LocalApplication.lagerorte the branch LocationDefault on `list` → red “creating, renaming …”
+ *   in LocalApplication's storage locations the branch LocationDefault on `list` → red “creating, renaming …”
  */
 class AlarmAndStockStoreTest {
 

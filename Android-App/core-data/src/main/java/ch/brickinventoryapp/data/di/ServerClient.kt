@@ -150,7 +150,7 @@ internal fun buildInterceptorClient(
             }
         }
         // No redirect past the guard: it only sees what it sends itself, and
-        // follows only within the same origin (ServerGuard.senden).
+        // follows only within the same origin (ServerGuard's send).
         .followRedirects(false)
         .followSslRedirects(false)
         .addInterceptor(ServerGuard(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.development,

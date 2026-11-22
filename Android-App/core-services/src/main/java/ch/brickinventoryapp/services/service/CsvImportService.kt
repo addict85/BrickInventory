@@ -50,7 +50,7 @@ class CsvImportService : Service() {
 
         // Fallback for when SSE isn't working
         private const val POLL_INTERVAL_MS = 1500L
-        private const val POLL_WINDOW      = 10   // Abfragen je Fenster, dann neuer SSE-Versuch
+        private const val POLL_WINDOW      = 10   // queries per window, then a new SSE attempt
         private const val MAX_ERRORS       = 10
         private const val GRACE_MS         = 10_000L  // Anlauffenster, siehe applyStatus()
 
@@ -190,7 +190,7 @@ class CsvImportService : Service() {
         return true
     }
 
-    /** Abschlussmeldung kurz stehen lassen, dann beenden. */
+    /** Leave the final notice up briefly, then stop. */
     private suspend fun finishAndStop() {
         updateNotification(loc.getString(R.string.notif_csv_done), 1, 1)
         delay(4000)

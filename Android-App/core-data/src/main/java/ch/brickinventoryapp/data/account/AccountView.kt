@@ -40,7 +40,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Page size of the gallery, as in the web app (public/js/collection.js): two
+ * Page size of the gallery, as in the web app (`public/js/collection.js`): two
  * sizes would give two scrolling experiences for the same stock.
  */
 internal const val GALLERY_PAGE_SIZE = 60

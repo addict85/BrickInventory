@@ -8,8 +8,8 @@ import org.junit.Test
  * WCAG and every contrast calculator name.
  *
  * Counter-checks (measured on Oct 28, kotlinc against a copy of Kontrast.kt):
- *   A  linearization removed (channel = value/255) → red: „mittleres Grau …"
- *      and „die alte Rahmenfarbe …" (black/white stays 21:1)
+ *   A  linearization removed (channel = value/255) → red: „mittleres Grau …“
+ *      and „die alte Rahmenfarbe …“ (black/white stays 21:1)
  *   B  `+ 0.05` removed from the denominator → red in all three checks
  */
 class ContrastTest {

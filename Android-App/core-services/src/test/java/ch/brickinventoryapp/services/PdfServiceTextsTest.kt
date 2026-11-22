@@ -16,8 +16,7 @@ import org.junit.Test
  * error is left without a string, even when the server sent none.
  *
  * Counter-check (counter-checks/pdf-dienst-fehler-leer.patch, measured with kotlinc):
- *   errorText() always uses `error.message` for a fetch error → red „jeder Fehler
- *   hat einen Satz …“ with „Netz(technisch=null) ohne Satz“
+ *   errorText() always uses `error.message` for a fetch error → red „jeder Fehler hat einen Satz …“ with „Netz(technisch=null) ohne Satz“
  */
 class PdfServiceTextsTest {
 

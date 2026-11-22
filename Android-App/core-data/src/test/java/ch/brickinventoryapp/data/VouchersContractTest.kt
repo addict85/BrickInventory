@@ -81,7 +81,7 @@ class VouchersContractTest {
     }
 
     /**
-     * ONE service in the backend, both apps on it — the router routes/api_v1/vouchers.ts.
+     * ONE service in the backend, both apps on it — the router `routes/api_v1/vouchers.ts`.
      * Other addresses would mean two implementations.
      */
     @Test
@@ -134,7 +134,7 @@ class VouchersContractTest {
 
     @Test
     fun `the PDF is sent to the SERVER and not read in the app`() {
-        // The excerpt lives in Web-App/src/vouchers/pdfParsing.ts — ONCE, for
+        // The excerpt lives in `Web-App/src/vouchers/pdfParsing.ts` — ONCE, for
         // both apps. A second reading logic in Kotlin would have to keep pace
         // with it, and the web app would need a third.
         assert(repo.contains("MultipartBody.Part.createFormData(\"file\"")) {
@@ -150,7 +150,7 @@ class VouchersContractTest {
 
     @Test
     fun `the three values are not checked in the app`() {
-        // `checkValues` in src/vouchers/service.ts decides which
+        // `checkValues` in `src/vouchers/service.ts` decides which
         // number, which amount and which currency are valid — once,
         // for both apps. A second check here would drift apart
         // at some point, and then it would be unclear which one applies.

@@ -71,8 +71,7 @@ import java.util.Locale
  *   codes-teilen-ueber-ablage      "Share" puts the codes on the clipboard → red "die Notfallcodes lassen sich teilen …"
  *   codes-wieder-kopierbar         a button copies the codes to the clipboard → red "kein Knopf der Codes …"
  *   schluessel-kopieren-vor-33     key copyable from API 30 → red "der Schluessel ist erst ab API 33 …"
- *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes
- *                                  lassen sich als Datei speichern …" (not measured locally)
+ *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes lassen sich als Datei speichern …" (not measured locally)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

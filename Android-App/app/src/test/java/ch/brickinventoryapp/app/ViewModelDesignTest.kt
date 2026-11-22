@@ -16,7 +16,7 @@ import org.junit.Test
  * `AndroidViewModel` requires a real `Application` in the constructor. That way
  * the class cannot be built in a JVM test — and that is the reason
  * why the large part of the Android tests READS source instead of executing
- * code. A test can then only check the assumption „loadSets() sets the loading state"
+ * code. A test can then only check the assumption „loadSets() sets the loading state“
  * on the wording, not on the flow.
  *
  * The context has stayed the same: `getApplication<Application>()

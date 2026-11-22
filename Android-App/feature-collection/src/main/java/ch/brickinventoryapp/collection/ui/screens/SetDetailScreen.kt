@@ -122,7 +122,7 @@ internal fun SetDetailScreen(
         else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
-    // MinifigsScreen in einer zweiten, abweichenden Fassung.
+    // MinifigsScreen in a second, diverging version.
     fun fmtDate(time: Instant?) = fmtTag(time) ?: "—"
 
     val accent = LocalAccentSurfaces.current
@@ -172,7 +172,7 @@ internal fun SetDetailScreen(
             return@Scaffold
         }
 
-        // Full resolution — like the web app's detail dialog (admin.js, "m-img",
+        // Full resolution — like the web app's detail dialog (`admin.js`, "m-img",
         // fullUrl()). The preview card and zoom use the same address.
         val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)
         // One delayed retry — as in the gallery tile: right

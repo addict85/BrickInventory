@@ -12,8 +12,7 @@ import org.junit.Test
  * The comparison page decides in its ViewModel what to search: the typed text wins over
  * a scan, a scan opens at once, and the query is opened once only.
  *
- * Counter-checks: in ComparisonViewModel.scanned `pendingQuery = barcode` removed → red "a scan
- * closes the scanner and opens its code at once" (null); in setSearch the scanned code kept
+ * Counter-checks: in ComparisonViewModel.scanned `pendingQuery = barcode` removed → red "a scan closes the scanner and opens its code at once" (null); in setSearch the scanned code kept
  * → red "typing replaces the scanned code".
  */
 class ComparisonViewModelTest {

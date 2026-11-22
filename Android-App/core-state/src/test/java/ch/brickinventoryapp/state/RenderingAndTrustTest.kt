@@ -35,7 +35,7 @@ import org.junit.Test
  *   design-spaet-gesetzt        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
  *   widget-nicht-angestossen    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
  *   vertrauen-ohne-abwurf       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
- *   unbekannte-ca-ohne-abtippen in CertificateQuestion.bestaetige() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   unbekannte-ca-ohne-abtippen in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {

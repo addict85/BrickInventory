@@ -107,7 +107,7 @@ internal fun AcquisitionManagementScreen(
 
     val acquisitions = manDetailState.acquisitions.filterNot { it.id == condition.routePurchaseId }
     // Total from the server — the calculation used to sit here, and three more times
-    // elsewhere (see utils/acquisitions.ts, acquisitionTotals).
+    // elsewhere (see `utils/acquisitions.ts`, acquisitionTotals).
     val totals = manDetailState.acquisitionTotals
     // Feedback after an owner change — the server says whether and what
     // moved along.

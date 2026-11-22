@@ -173,8 +173,8 @@ class ListScrollPositionTest {
         // out the same position when reattaching; the list would stand shifted.
         //
         // Demonstrably right lands the catalog's path: record along and
-        // explicitly call scrollToItem() on entering („im Katalog ist sie
-        // auf der korrekten Zeile"). Every tab now takes it — implemented once
+        // explicitly call scrollToItem() on entering („im Katalog ist sie auf der korrekten Zeile“
+        // ). Every tab now takes it — implemented once
         // in ScrollMemory.kt instead of copied three times.
         val col = code(read("collection/ui/CollectionGraph.kt") + read("parts/ui/PartsGraph.kt"))
         val tools = code(read("finances/ui/FinancesGraph.kt"))

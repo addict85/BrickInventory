@@ -129,7 +129,7 @@ private fun SetItemDetail(
                         }
                         PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = { showZoom = true })
                         Spacer(Modifier.height(Spacing.small))
-                        // Only for parts (kopf.colorId is null for figures): a minifigure
+                        // Only for parts (header.colorId is null for figures): a minifigure
                         // is stuck in its set, whose location stands in the set detail — a second
                         // location could drift apart. Editable as in the web app; the
                         // field writes to every row of this part-color pair.

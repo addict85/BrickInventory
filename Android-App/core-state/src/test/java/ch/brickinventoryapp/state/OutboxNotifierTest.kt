@@ -25,21 +25,16 @@ import org.junit.Test
  * was sent; a message with a reason if the server rejected it.
  *
  * Counter-checks:
- *   A  in Ausgangsmelder.starte the hint on a rising count removed → red
+ *   A  in OutboxNotifier.launch the hint on a rising count removed → red
  *      „offline Gespeichertes wird gemeldet“
- *   B  for MANUAL_PARTS `null` instead of Liste.TEILE → red „gesendet holt die
- *      betroffenen Listen in die Ablage“
- *   C  `e.message` instead of `e.message.ifBlank { … }` → red „ohne Grund vom Server
- *      steht ein eigener Satz da“
- *   D  `situation.planeLeftover()` left out at startup → red „was vom letzten
- *      Mal wartet, wird beim Start eingeplant“
- *   E  in InitialObserver.starte the check `started` removed → red „ein zweiter
- *      Start folgt dem Ausgang nicht doppelt“ (2 instead of 1)
- *   F  in reportDiscarded the check `v.unreadable` removed → red „ein nach dem Update
- *      unlesbarer Posten wird als solcher gemeldet“ (only measurable in CI)
+ *   B  for MANUAL_PARTS `null` instead of Liste.TEILE → red „gesendet holt die betroffenen Listen in die Ablage“
+ *   C  `e.message` instead of `e.message.ifBlank { … }` → red „ohne Grund vom Server steht ein eigener Satz da“
+ *   D  `situation.planeLeftover()` left out at startup → red „was vom letzten Mal wartet, wird beim Start eingeplant“
+ *   E  in InitialObserver.launch the check `started` removed → red „ein zweiter Start folgt dem Ausgang nicht doppelt“ (2 instead of 1)
+ *   F  in reportDiscarded the check `v.unreadable` removed → red „ein nach dem Update unlesbarer Posten wird als solcher gemeldet“ (only measurable in CI)
  *   (B, D and E measured locally with kotlinc)
  *   counter-checks/verworfen-sofort-quittiert.patch (reportDiscarded acknowledges right after
- *      zeige) → red „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
+ *      show) → red „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutboxNotifierTest {

@@ -28,7 +28,7 @@ import org.junit.Test
  *
  * Counter-checks (counter-checks/ablageform-felder-vertauscht.patch, verworfen-still.patch):
  *   in Ablagezeilen.set avg and max of the purchase price swapped → red “every field …”
- *   in Offlineablage.dekodiere verworfen = 0 → red “an unreadable row is counted …”
+ *   in OfflineStore's decode discarded = 0 → red “an unreadable row is counted …”
  */
 class StoreShapeTest {
 

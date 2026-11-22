@@ -54,7 +54,7 @@ class TrustCipher(
         const val PURPOSE = "vertrauen:"
         const val INFO = "angabe:"
         const val NAMES = "namen"
-        /** 22 Zeichen Base64url sind 132 Bit: genug, dass zwei Server nie denselben Namen bekommen. */
+        /** 22 Base64url characters are 132 bits: enough that two servers never get the same name. */
         const val NAME_LENGTH = 22
 
         fun hmac(key: ByteArray, text: String): ByteArray = Mac.getInstance("HmacSHA256").run {

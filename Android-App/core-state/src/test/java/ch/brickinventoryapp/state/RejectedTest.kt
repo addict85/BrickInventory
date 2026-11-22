@@ -23,18 +23,16 @@ import org.junit.Test
  * session. So the request went out without a token.
  *
  * ── Counter-checks (carried out, result in the commit) ──────────────────────────
- *   a) method condition removed      → „ein fehlgeschlagener Login" red
- *   b) !hadAuthHeader removed         → „ein wirklich ungültiger Token" red
+ *   a) method condition removed      → „ein fehlgeschlagener Login“ red
+ *   b) !hadAuthHeader removed         → „ein wirklich ungültiger Token“ red
  *   c) one file set back to authToken.first() → the source rule red
- *   d) `loggedIn` in reportsTheSessionLayer ignored → „ein falsches
- *      Passwort bleibt ein falsches Passwort" red
- *   e) in Texte.messageForSnackbar() always meldung(fehler) → „die Snackbar
- *      schweigt …" red
+ *   d) `loggedIn` in reportsTheSessionLayer ignored → „ein falsches Passwort bleibt ein falsches Passwort“ red
+ *   e) in Texte.messageForSnackbar() always message(failure) → „die Snackbar schweigt …“ red
  * That the interceptor applies the rule is checked, run, by ServerGuardTest.
  */
 class RejectedTest {
 
-    // ── Die Regel selbst ────────────────────────────────────────────────────
+    // ── The rule itself ───────────────────────────────────────────────────────
 
     @Test
     fun `the observed case - a GET without a token to our server`() {
@@ -93,7 +91,7 @@ class RejectedTest {
     @Test
     fun `a 401 in the signed-in state belongs to the session layer`() {
         // Two cases, ONE answer: on a real expiry the interceptor reports
-        // „Sitzung abgelaufen" and signs out; on a race while signing in
+        // „Sitzung abgelaufen“ and signs out; on a race while signing in
         // there is nothing to report at all. In both cases
         // the fetch has nothing to tell the user.
         assert(reportsTheSessionLayer(unauthorized = true, loggedIn = true)) {
@@ -107,7 +105,7 @@ class RejectedTest {
     fun `a wrong password stays a wrong password`() {
         // The server answers a wrong password with the same 401 and
         // the same message. But whoever isn't signed in has no session that
-        // could expire — „Sitzung abgelaufen" would simply be a lie there.
+        // could expire — „Sitzung abgelaufen“ would simply be a lie there.
         assert(!reportsTheSessionLayer(unauthorized = true, loggedIn = false)) {
             "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
                 "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
@@ -127,7 +125,7 @@ class RejectedTest {
     fun `the snackbar stays silent instead of showing a different sentence`() {
         // Run against Texte, the one place for all ViewModels: a 401
         // with a token present returns null (the channel shows nothing), without a token
-        // the message stays — then 401 means „wrong password".
+        // the message stays — then 401 means „wrong password“.
         fun texts(withToken: Boolean) = object : Texts {
             override fun text(id: Int, vararg args: Any?) = "t$id"
             override fun quantity(id: Int, count: Int, vararg args: Any?) = "m$id"

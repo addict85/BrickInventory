@@ -51,7 +51,7 @@ interface PartsRepository {
 
     suspend fun getPartsCategories(accounts: AccountSelection? = null): Outcome<List<CategoryView>>
 
-    /** Der Bestand je gefragtem Teil; was fehlt, hat keinen Eintrag. */
+    /** The stock per requested part; what is missing has no entry. */
     suspend fun getOwnedParts(parts: List<PartialKey>,
                               accounts: AccountSelection? = null): Outcome<Map<PartialKey, PartInventory>>
 

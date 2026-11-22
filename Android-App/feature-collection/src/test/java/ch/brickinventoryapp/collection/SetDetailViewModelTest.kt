@@ -47,7 +47,7 @@ import org.junit.Test
  *      replaced with the whole list → red “a changed purchase of a different set loads nothing here”
  *   D  in the price alert input `saved` left empty → red “a saved
  *      price alert is loaded anew”
- *   E  in changeQuantityBy() back to UpdateQuantityRequest(quantity = schritt)
+ *   E  in changeQuantityBy() back to UpdateQuantityRequest(quantity = step)
  *      → red “the slider sends a step …”
  *   F  `init { refresh() }` removed (the screen used to load itself)
  *      → red “the set comes from the SavedStateHandle and everything is loaded on creation”

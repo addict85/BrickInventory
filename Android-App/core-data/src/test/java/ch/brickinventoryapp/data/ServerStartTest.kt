@@ -52,7 +52,7 @@ class ServerStartTest {
             "Die Anmeldung zeigt den Startfortschritt nicht"
         }
         // The jump into the gallery must stand OUTSIDE the if/else: the
-        // switch to „finished" can come at any time.
+        // switch to „finished“ can come at any time.
         val display = s.indexOf("ServerStartDisplay(serverStart)")
         val jump = s.indexOf("LaunchedEffect(state.isLoggedIn)")
         assert(jump > display) { "Test veraltet — die Reihenfolge stimmt nicht mehr" }

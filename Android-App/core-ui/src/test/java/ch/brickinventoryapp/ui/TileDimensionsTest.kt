@@ -39,7 +39,7 @@ class TileDimensionsTest {
         val numbers = listOf("width(112.dp)", "height(178.dp)", "topStart = 14.dp")
         val violations = mutableListOf<String>()
         for (file in Sources.below("ui")) {
-            if (file.name == "Shapes.kt") continue   // dort gehoeren sie hin
+            if (file.name == "Shapes.kt") continue   // that is where they belong
             val src = Sources.withoutComments(file.readText())
             for ((nr, row) in src.lines().withIndex()) {
                 for (z in numbers) if (row.contains(z)) {

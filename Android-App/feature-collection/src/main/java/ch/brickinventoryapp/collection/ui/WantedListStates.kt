@@ -44,7 +44,7 @@ data class WantedItemDetailUiState(
     val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
     val catalog: CatalogDetailView? = null,
-    /** Der HISTORY. Die aktuellen Preise stehen in [prices] — siehe dort. */
+    /** The HISTORY. The current prices are in [prices] — see there. */
     val history: PriceHistoryView? = null,
     /**
      * The current market prices, freshly fetched. Separate from [history], because they come

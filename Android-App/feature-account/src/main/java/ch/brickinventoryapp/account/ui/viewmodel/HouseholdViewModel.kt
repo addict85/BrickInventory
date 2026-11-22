@@ -29,7 +29,7 @@ import javax.inject.Inject
  * The household: link accounts, invitations, unlinking.
  *
  * Who belongs and what's allowed is decided by the server
- * (utils/household.ts). Errors live in [HouseholdUiState.fetch], not in the
+ * (`utils/household.ts`). Errors live in [HouseholdUiState.fetch], not in the
  * message channel: the card shows them as long as it's open.
  */
 @HiltViewModel

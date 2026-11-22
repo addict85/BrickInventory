@@ -126,7 +126,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
                 // ── Notice for a guessed number ──
                 //
                 // The dialog shows image and name; the notice says when a closer look is needed
-                // (server with no EAN match, utils/barcodeQuelle.ts, or text recognition). Above, and
+                // (server with no EAN match, `utils/barcodeQuelle.ts`, or text recognition). Above, and
                 // in the warning color, but without blocking the operation: the hit is often right,
                 // and confirming should be a glance, not a click more.
                 if (barcodeState.unsafe) {

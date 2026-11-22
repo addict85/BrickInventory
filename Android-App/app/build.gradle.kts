@@ -89,7 +89,7 @@ android {
                 storePassword = signatureValue("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
                 keyAlias      = signatureValue("BRICK_KEY_ALIAS", "brickKeyAlias")
                 keyPassword   = signatureValue("BRICK_KEY_PASSWORT", "brickKeyPasswort")
-                // Like CI (apksigner in job signieren): no v1 — from minSdk 30
+                // Like CI (apksigner in the signing job): no v1 — from minSdk 30
                 // no device checks the JAR signature any more —, v3 for a later
                 // key rotation.
                 enableV1Signing = false
@@ -124,14 +124,14 @@ android {
     lint {
         // Lint runs on release builds and aborts on an error: a
         // finding of level Error is not a report but a defect. Warnings
-        // are counted by tools/lint-count.py against an upper limit. No baseline —
+        // are counted by `tools/lint-count.py` against an upper limit. No baseline —
         // what is reported gets fixed.
         checkReleaseBuilds = true
         abortOnError = true
         warningsAsErrors = false
         // A run here checks all modules as if they were one: resources from
         // core-resources count as used when an area reads them, and the
-        // report stays the one file that tools/lint-count.py counts.
+        // report stays the one file that `tools/lint-count.py` counts.
         checkDependencies = true
     }
 
@@ -162,7 +162,7 @@ android {
 }
 
 // Pin DataStore to the catalog's version: a transitive bump would yield
-// an APK different from the checked one. The 16 KB alignment is measured by tools/apk-alignment.py
+// an APK different from the checked one. The 16 KB alignment is measured by `tools/apk-alignment.py`
 // on the built APK.
 val datastore = libs.versions.datastore.get()
 configurations.configureEach {

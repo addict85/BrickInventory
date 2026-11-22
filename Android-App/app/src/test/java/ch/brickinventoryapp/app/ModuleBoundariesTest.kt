@@ -19,10 +19,8 @@ import java.time.LocalDate
  * Counter-checks:
  *   A  feature-collection: `implementation(project(":feature-parts"))` → red
  *      „feature-collection hängt an feature-parts“
- *   B  core-model: jvm.library replaced by android.library → red „core-model
- *      ist kein reines Kotlin-Modul“
- *   C  core-data: `implementation(project(":core-ui"))` → red „Schichtung
- *      der Kernmodule: core-data hängt an [core-ui]“
+ *   B  core-model: jvm.library replaced by android.library → red „core-model ist kein reines Kotlin-Modul“
+ *   C  core-data: `implementation(project(":core-ui"))` → red „Schichtung der Kernmodule: core-data hängt an [core-ui]“
  *   D  include(":feature-management") deleted from settings.gradle.kts → red
  *      “every module folder is included”
  *   E  in dependencyResolutionManagement again `google()` → red
@@ -40,8 +38,7 @@ import java.time.LocalDate
  *   H a `PdfRenderer(` in PdfPage.kt →
  *      red “PdfRenderer lives only in the isolated render service“; likewise
  *      counter-checks/pdf-bitmap-aus-dem-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
- *   M  `internal` removed from `class SetsRepositoryImpl` → red „SetsRepositoryImpl ist
- *      öffentlich“ (layering of the core modules); likewise an import of data.parts.PartsRepositoryImpl
+ *   M  `internal` removed from `class SetsRepositoryImpl` → red „SetsRepositoryImpl ist öffentlich“ (layering of the core modules); likewise an import of data.parts.PartsRepositoryImpl
  *      in collection/SetsRepositoryImpl.kt → red „kennt parts.PartsRepositoryImpl“
  *   L  counter-checks/netz-haengt-an-ablage.patch: core-network includes Room →
  *      red „core-network hängt an Ablage oder DI“ (layering of the core modules);
@@ -63,7 +60,7 @@ import java.time.LocalDate
  *   T  counter-checks/bereich-kennt-bereich.patch: feature-parts includes feature-catalog →
  *      red „feature-parts hängt an feature-catalog“
  *   R  counter-checks/ui-kennt-ansicht.patch: a core-ui file imports a view from
- *      model.fach → red „core-ui kennt Fachmodelle“ (layering of the core modules)
+ *      model.domain → red „core-ui kennt Fachmodelle“ (layering of the core modules)
  *   S  counter-checks/ui-neuer-bildschirm.patch: a new file in core-ui/ui/screens →
  *      red „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (layering …)
  *   O  counter-checks/fremder-paketstamm.patch: feature-parts gets a file in the package
@@ -76,8 +73,7 @@ import java.time.LocalDate
  *      red „layering of the core modules: core-session hängt an core-ui“
  *   Z  counter-checks/konto-haengt-an-tresor.patch: feature-account includes core-security again →
  *      red „feature-account hängt an core-security, das unter dem Zustand liegt“ (no area depends …)
- *   AA core-state switches on brickinventory.android.compose again → red „core-state liegt unter
- *      der Oberfläche und schaltet Compose ein“ (layering …; measured with kotlinc, in Gradle
+ *   AA core-state switches on brickinventory.android.compose again → red „core-state liegt unter der Oberfläche und schaltet Compose ein“ (layering …; measured with kotlinc, in Gradle
  *      AndroidComposeConvention already aborts); counter-checks/zustand-darf-oberflaeche.patch → red “the edge rule …”
  *   AB counter-checks/bereichs-viewmodel-im-zustand.patch: a ViewModel of only one area in core-state
  *      → red „… liegt in core-state ohne Grund in ModuleEdges.stateViewModels“ (layering …)
@@ -118,7 +114,7 @@ class ModuleBoundariesTest {
         val folder = module().keys
         assertTrue("Nur ${folder.size} Module gefunden — Suche veraltet?", folder.size >= 12)
         assertEquals("jeder Modulordner ist eingebunden", folder, included)
-        // Every module has its own package root (table in README.md): an import
+        // Every module has its own package root (table in `README.md`): an import
         // thus reveals the module, and no package spreads across two modules.
         val master = mapOf(
             "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
@@ -169,7 +165,7 @@ class ModuleBoundariesTest {
         val areas = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${areas.size} Bereichsmodule", areas.size >= 5)
         for ((name, build) in areas) {
-            // Ohne Ausnahme: Was mehrere Bereiche zeigen, liegt in core-ui-inventory.
+            // Without exception: what several areas show lives in core-ui-inventory.
             val wrong = ModuleEdges.violations(edges(name, build))
             assertTrue(wrong.joinToString("\n"), wrong.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", mainDependencies(build).any { it.startsWith("core-") })
@@ -251,7 +247,7 @@ class ModuleBoundariesTest {
 
     /**
      * core-ui is the design system: theme and building blocks without domain knowledge. Whoever needs a domain type
-     * (model.fach) or a server model (model.data) is a domain building block
+     * (model.domain) or a server model (model.data) is a domain building block
      * and belongs in the area or in core-ui-inventory; it only formats amounts and currency.
      */
     private fun checkUiWithoutDomainKnowledge() {
@@ -272,7 +268,7 @@ class ModuleBoundariesTest {
      * Counter-checks (measured with kotlinc):
      *   counter-checks/kantenregel-ohne-testausnahme.patch: test configurations count → red here
      *   the api line deleted → red here, „Modulkanten per api …“ missing
-     *   core-ui entered in kerne["core-state"] → red here
+     *   core-ui entered in cores["core-state"] → red here
      *   counter-checks/tiefe-kerne-offen.patch: the rule for depthCores deleted → red here
  *   counter-checks/wire-format-fuer-alle.patch: the rule for wireMarker deleted → red here
      *

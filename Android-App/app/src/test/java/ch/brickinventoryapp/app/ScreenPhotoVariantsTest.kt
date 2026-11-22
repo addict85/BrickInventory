@@ -212,7 +212,7 @@ class ScreenPhotoVariantsTest {
         world.close()
     }
 
-    /** Like ScreenPhotoTest.bereitstellen: drive the main looper until the world rests. */
+    /** Like ScreenPhotoTest's provide step: drive the main looper until the world rests. */
     private fun provide(name: String, ready: () -> Boolean, condition: () -> Any?) {
         driveUntil(name, requests = { world.paths.requests.size }, condition = condition, ready = ready)
     }
@@ -640,7 +640,7 @@ class ScreenPhotoVariantsTest {
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
             androidx.compose.ui.test.hasClickAction()).performClick()
-        // Erst komponieren: Das Detail startet sein Laden selbst (LaunchedEffect).
+        // Compose first: the detail starts its own loading (LaunchedEffect).
         compose.waitForIdle()
         // Photograph only when price and history are there — otherwise „Preis wird geladen“ stood
         // next to the price in the list.
@@ -802,7 +802,7 @@ class ScreenPhotoVariantsTest {
         }
     }
 
-    // ── Laden, Fehler, leer ──
+    // ── Loading, error, empty ──
 
     @Test
     fun galleryLoads() {

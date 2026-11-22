@@ -74,7 +74,7 @@ class AppViewModel @Inject constructor(
         loadStorageLocations()
     }
 
-    // ── Meldung angetippt ────────────────────────────────────────────────────
+    // ── Message tapped ─────────────────────────────────────────────────────────
 
     /** The intent arrives at the edge of the app, and that edge is the activity. */
     fun setFromMessageRequest(setNumber: String?) {

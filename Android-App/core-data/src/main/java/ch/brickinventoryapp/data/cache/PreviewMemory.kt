@@ -127,7 +127,7 @@ class PreviewMemory(
             val temp = File(folder, "${target.name}.tmp")
             temp.writeBytes(cipher.encrypt(bytes, binding(target)))
             if (!temp.renameTo(target)) temp.delete()
-            // Vorgewaermtes altert sofort — Begruendung an SPECULATIVE_TIME.
+            // Prewarmed entries age at once; the reason is at SPECULATIVE_TIME.
             else if (speculative) target.setLastModified(SPECULATIVE_TIME)
         }
         cleanupIfNeeded()

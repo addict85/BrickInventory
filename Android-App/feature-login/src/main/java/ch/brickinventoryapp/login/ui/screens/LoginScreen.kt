@@ -251,7 +251,7 @@ internal fun FormMessage(text: String, error: Boolean) {
 /** A button that loads: a spinner instead of a label while something is running. */
 @Composable
 internal fun LoadButton(text: String, running: Boolean, active: Boolean, missing: String? = null, onClick: () -> Unit) {
-    // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
+    // A disabled main button says what is missing: pale alone left one guessing why.
     if (!active && !running && missing != null) Text(missing, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     Button(

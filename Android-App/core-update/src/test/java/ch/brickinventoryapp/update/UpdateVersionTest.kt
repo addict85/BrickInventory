@@ -10,8 +10,8 @@ import org.junit.Test
  * be newer than the running app.
  *
  * Counter-check: the comparison `inApk == reported` removed from
- * versionFits() → red „ein APK mit anderer Fassung
- * als angekuendigt passt nicht“.
+ * versionFits() → red „ein APK mit anderer Fassung als angekuendigt passt nicht“
+ * .
  */
 class UpdateVersionTest {
 

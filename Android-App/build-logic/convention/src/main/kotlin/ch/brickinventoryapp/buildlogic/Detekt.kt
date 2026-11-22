@@ -9,6 +9,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -44,6 +45,7 @@ class DetektConvention : Plugin<Project> {
                     sources, target.rootDir.resolve("config/detekt/detekt.yml"),
                     target.rootDir.resolve("config/detekt/baseline.xml"), ruleset, report.map { it.asFile },
                     target.providers.gradleProperty("detektAutoCorrect").isPresent,
+                    target.providers.gradleProperty("detektNewBaseline").map { File(it, target.name + ".xml").absolutePath }.orNull,
                 ),
             )
             task.outputs.file(report)
@@ -78,13 +80,16 @@ internal class DetektArguments(
     @get:Internal val report: org.gradle.api.provider.Provider<File>,
     /** `-PdetektAutoCorrect`: let the formatting rules (import order) rewrite the files instead of only reporting. */
     @get:Input val autoCorrect: Boolean,
+    /** `-PdetektNewBaseline=<dir>`: write this module's findings as a baseline there, to merge by hand. */
+    @get:Input @get:Optional val newBaseline: String?,
 ) : CommandLineArgumentProvider {
     override fun asArguments(): Iterable<String> = listOf(
         "--input", sources.files.joinToString(",") { it.absolutePath },
         "--config", rules.absolutePath,
         "--build-upon-default-config",
-        "--baseline", baseline.absolutePath,
+        "--baseline", newBaseline ?: baseline.absolutePath,
         "--plugins", ruleset.files.joinToString(",") { it.absolutePath },
         "--report", "txt:" + report.get().absolutePath,
-    ) + if (autoCorrect) listOf("--auto-correct") else emptyList()
+    ) + (if (autoCorrect) listOf("--auto-correct") else emptyList()) +
+        (if (newBaseline != null) listOf("--create-baseline") else emptyList())
 }

@@ -9,7 +9,7 @@ import java.io.File
  *
  * ── What this test does NOT require ─────────────────────────────────────────
  * `contentDescription = null` on an icon NEXT to a text is right and
- * stays: otherwise TalkBack reads the same thing twice („Suchen, Suchen"). The
+ * stays: otherwise TalkBack reads the same thing twice („Suchen, Suchen“). The
  * test therefore only picks up icons INSIDE an IconButton — there the
  * icon is the only thing the button has to offer.
  */

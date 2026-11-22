@@ -165,7 +165,7 @@ class MonitoringViewModelBehaviorTest {
     // ── The default theme ───────────────────────────────────────────────
     //
     // Counter-checks (measured 30.10.2026):
-    //   A  loadDesignDefault() takes r.data.theme instead of vorgabe → red “the
+    //   A  loadDesignDefault() takes r.data.theme instead of the default → red “the
     //      selection shows the default, not the own theme”
     //   B  setDesign() does not take over the value → red “a set theme
     //      is immediately the default …”
@@ -254,7 +254,7 @@ class MonitoringViewModelBehaviorTest {
 
     // ── The server log (moved here from MainViewModel) ────────────
     //
-    // Counter-check: in loadLog() the error branch without `abruf =
+    // Counter-check: in loadLog() the error branch without `fetch =
     // ladefehler(r)` → “an error in the log ends the loading" red.
 
     @Test

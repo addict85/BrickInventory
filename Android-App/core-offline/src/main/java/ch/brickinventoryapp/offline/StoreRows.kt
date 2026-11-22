@@ -167,7 +167,7 @@ internal data class ValuationPurchaseRow(
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
 )
 
-/** Ein manuell erfasstes Teil samt Bewertung. */
+/** A manually entered part with its valuation. */
 @Serializable
 internal data class ManualPartRow(
     @SerialName("ausstehend") val pending: Boolean = false,
@@ -207,7 +207,7 @@ internal data class ManualPartRow(
     val storage: String? = null,
 )
 
-/** Eine manuell erfasste Figur samt Bewertung. */
+/** A manually entered figure with its valuation. */
 @Serializable
 internal data class ManualMinifigRow(
     @SerialName("ausstehend") val pending: Boolean = false,

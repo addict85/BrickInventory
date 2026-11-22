@@ -105,9 +105,9 @@ internal fun PdfViewerScreen(
     onBack: () -> Unit,
     /** Renders a page off the main thread (PdfPagesSource). */
     renderPage: PagesRenderer,
-    /** Writes the file for printing, off the main thread (PdfViewerViewModel.schreiber). */
+    /** Writes the file for printing, off the main thread (PdfViewerViewModel's writer). */
     write: PdfWriter,
-    /** „Erneut versuchen“ in the error state (PdfViewerViewModel.erneut). */
+    /** „Erneut versuchen“ in the error state (PdfViewerViewModel's retry). */
     onAgain: () -> Unit,
 ) {
     val ctx = LocalContext.current

@@ -5,10 +5,10 @@ import ch.brickinventoryapp.data.util.pdfStep
 import org.junit.Test
 
 /**
- * A fully loaded instruction is not „resumed": after a complete
+ * A fully loaded instruction is not „resumed“: after a complete
  * download `Range: bytes=<size>-` pointed behind the last byte, and the server
  * rightly answers with 416 (via the instruction route as 404). The decision
- * „finished or from which byte" is therefore a pure function and executed here;
+ * „finished or from which byte“ is therefore a pure function and executed here;
  * the server half is checked by Web-App/test/instruction-area.test.js.
  *
  * Counter-check: in pdfStep() the first branch removed, so that a finished file

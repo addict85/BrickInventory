@@ -61,7 +61,7 @@ import java.util.Locale
  * "fig_name" → red “parts and figures carry real names“; the path
  * /api/v1/minifigs/stats removed → red as well (no key figures).
  * Counter-checks: for the Falcon every "wert_gesamt" removed → red
- * “every finance row carries …” (wert=null); in the FinanceViewModel the points again
+ * “every finance row carries …” (value=null); in the FinanceViewModel the points again
  * translated with Locale.getDefault() when loading → red “the finance axis is formatted
  * only when drawing” ([10/27, , 10/29]) and “the samples are consistent“.
  * Counter-check: for the parts again "quantity" instead of
@@ -248,9 +248,8 @@ object Examples {
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
             {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
             {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
-        // Like the server (finances/rechnung/bewertung.ts): wert_gesamt, purchase price, P&L and
-        // one row per acquisition with condition. Without wert_gesamt every row shows „noch
-        // kein Preis“ below a filled header tile.
+        // Like the server (`finances/rechnung/bewertung.ts`): wert_gesamt, purchase price, P&L and
+        // one row per acquisition with condition. Without wert_gesamt every row shows „noch kein Preis“ below a filled header tile.
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","quantity":1,"avg_price":812.5,"qty_avg_price":812.5,
              "min_price":760.0,"max_price":880.0,"total_avg":"812.50","wert_gesamt":812.5,"purchase_price":700.0,"pnl_prozent":16.1,

@@ -51,8 +51,7 @@ import java.util.Base64
  * Counter-checks:
  *   update-angebot-ohne-frische  offer with isNew instead of offerableVersion →
  *                                red "a reset description offers nothing"
- *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene,
- *                                neuere Beschreibung bietet die Fassung mit Hinweis an"
+ *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an"
  *   update-signatur-ungeprueft   the signature check after the download removed →
  *                                red "eine fremde Signatur loescht das APK …"
  *   update-zweiter-weg-ungeprueft  startInstallation() without signatureFits →

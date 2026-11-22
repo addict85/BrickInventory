@@ -96,12 +96,12 @@ class CatalogUsesLocalImagesTest {
         //
         // Previously a contains() on the whole call stood here, closing
         // bracket included. This assertion fell when the design
-        // "noppe" needed a fifth argument (the position of the tile for
+        // `noppe` needed a fifth argument (the position of the tile for
         // the stud color) — although serverUrl stood unchanged in third place
         // and the matter this is about was not touched at all.
         //
-        // The statement is „serverUrl stands in third place", not „the
-        // call has exactly four arguments". The character after it may therefore
+        // The statement is „serverUrl stands in third place“, not „the call has exactly four arguments“
+        // . The character after it may therefore
         // be a comma.
         val src = read("catalog/ui/screens/CatalogScreen.kt")
         assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")

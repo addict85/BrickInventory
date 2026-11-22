@@ -7,7 +7,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * tools/manifest-check.py against outputs in the format of
+ * `tools/manifest-check.py` against outputs in the format of
  * `aapt2 dump xmltree --file AndroidManifest.xml`, with the real allow list.
  *
  * Counter-checks:

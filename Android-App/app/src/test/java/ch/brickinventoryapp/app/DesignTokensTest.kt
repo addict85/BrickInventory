@@ -90,7 +90,7 @@ class DesignTokensTest {
     /**
      * No input field uses the angular Material default: storage location and selection fields
      * stood angular next to rounded text fields. Each names its shape from the design
-     * (Formen.feld; search bars and table fields deliberately their own).
+     * (Shapes.field; search bars and table fields deliberately their own).
      * Counter-check (counter-checks/lagerort-feld-eckig.patch): `shape = Shapes.field` removed from the
      * storage location field → red with „LocationField.kt“.
      */
