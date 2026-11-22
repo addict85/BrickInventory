@@ -95,12 +95,12 @@ class ColorAloneTest {
                 newValue.joinToString("\n  ") +
                 "\nColor carries MEANING there. What does the spot tell someone who " +
                 "cannot tell red from green? If there is a second carrier " +
-                "(word, symbol, shape), the file belongs in `geprueft` — and if " +
+                "(word, symbol, shape), the file belongs in `checked` — and if " +
                 "not, it needs to be built."
         }
         val gone = (checked - user).sorted()
         assert(gone.isEmpty()) {
-            "These entries in `geprueft` no longer color that way: " +
+            "These entries in `checked` no longer color that way: " +
                 gone.joinToString(", ") + " — remove them."
         }
     }

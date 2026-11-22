@@ -120,8 +120,8 @@ class ListScrollPositionTest {
         val allTab = covered + withoutScrollArea
         assert(allTab.size == 7) {
             "The app has seven tabs; here there are ${allTab.size}. If one was " +
-                "added, it belongs in `abgedeckt` — or, if it has nothing to " +
-                "scroll, in `ohneRollbereich`."
+                "added, it belongs in `covered` — or, if it has nothing to " +
+                "scroll, in `withoutScrollArea`."
         }
 
         // Whoever is in `withoutScrollArea` must really have none.
@@ -275,7 +275,7 @@ class ListScrollPositionTest {
         val handover = Regex("""listNumber\s*=\s*([A-Za-z0-9_.]+)""").find(catalog)
         assert(handover != null) {
             "The year bar does not get to see the list's position at all — " +
-                "`listenNummer` is not passed"
+                "`listNumber` is not passed"
         }
         val expression = handover!!.groupValues[1]
         val immediate = expression == "gridState.firstVisibleItemIndex"

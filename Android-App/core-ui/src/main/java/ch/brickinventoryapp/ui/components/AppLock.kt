@@ -22,7 +22,7 @@ class AppLock(private val clock: () -> Long, private val store: Store, private v
         fun backgroundStart(): Int?
         fun rememberBackgroundStart(start: Int?)
         fun locked(): Boolean
-        fun setLocked(an: Boolean)
+        fun setLocked(on: Boolean)
     }
 
     private val _minutes = MutableStateFlow(store.minutes())
@@ -59,9 +59,9 @@ class AppLock(private val clock: () -> Long, private val store: Store, private v
 
     fun unlocked() = set(false)
 
-    private fun set(an: Boolean) {
-        store.setLocked(an)
-        _locked.value = an
+    private fun set(on: Boolean) {
+        store.setLocked(on)
+        _locked.value = on
     }
 
     companion object {

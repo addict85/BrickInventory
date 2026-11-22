@@ -198,7 +198,7 @@ class UiUniformTest {
     fun `purchase prices stand in form width on the tablet`() {
         val vm = purchases()
         show { AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {}) }
-        drive("Käufe") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
+        drive("purchases") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
         linksAbFormEdge(ctx.getString(R.string.common_quantity), "Kaufpreise")
     }
@@ -225,7 +225,7 @@ class UiUniformTest {
     @Test
     fun `gallery shows list rows at 130 percent`() {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        drive("Galerie") { vm.galleryState.value.sets.isNotEmpty() }
+        drive("gallery") { vm.galleryState.value.sets.isNotEmpty() }
         show(font = 1.3f) {
             GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
@@ -324,7 +324,7 @@ class UiUniformTest {
     @Test
     fun `active filter stands as a chip below the search and can be removed`() {
         val vm = world.gallery().also { it.setGalleryTheme("Star Wars"); it.loadSets(); it.loadStats() }
-        drive("Galerie") { vm.galleryState.value.sets.isNotEmpty() }
+        drive("gallery") { vm.galleryState.value.sets.isNotEmpty() }
         show { GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {}) }
         compose.onNodeWithContentDescription(ctx.getString(R.string.filter_remove, "Star Wars")).performClick()
         compose.waitForIdle()
@@ -338,7 +338,7 @@ class UiUniformTest {
             {"fig_number":"sw0001","fig_name":"Luke","quantity":1},
             {"fig_number":"sw0002","fig_name":"Han","quantity":5}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
-        drive("Figuren") { vm.minifigsState.value.minifigs.size == 3 }
+        drive("figures") { vm.minifigsState.value.minifigs.size == 3 }
         show { MinifigsRoute(vm = vm, imageLoader = images) }
         val name = ctx.getString(R.string.parts_order_name)
         compose.onNode(hasContentDescription(ctx.getString(R.string.sort_menu_cd, name)) and hasClickAction()).performClick()
@@ -358,7 +358,7 @@ class UiUniformTest {
         world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12}]}"""
         val vm = world.parts().also { it.loadParts() }
-        drive("Teile") { vm.partsState.value.manualParts?.isNotEmpty() == true }
+        drive("parts") { vm.partsState.value.manualParts?.isNotEmpty() == true }
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         drive("vorgemerkt") { true }
         assertTrue("marked is missing in the list", vm.partsState.value.manualParts.orEmpty().isEmpty())
@@ -367,7 +367,7 @@ class UiUniformTest {
         assertEquals("undo brings it back", 1, vm.partsState.value.manualParts.orEmpty().size)
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         vm.delete.execute()
-        drive("gelöscht") { requests("DELETE /api/v1/parts/3001/5").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v1/parts/3001/5").isNotEmpty() }
     }
 
     @Test
@@ -376,7 +376,7 @@ class UiUniformTest {
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
-        drive("Lagerorte") { vm.storageState.value.own.size == 2 }
+        drive("storage locations") { vm.storageState.value.own.size == 2 }
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         short()
         assertEquals("marked is missing in the list", listOf(4), vm.storageState.value.own.map { it.id })
@@ -387,14 +387,14 @@ class UiUniformTest {
         assertTrue("undo does not delete", requests("DELETE /api/v1/storage/locations/3").isEmpty())
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         vm.locationRoute.execute()
-        drive("gelöscht") { requests("DELETE /api/v1/storage/locations/3").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v1/storage/locations/3").isNotEmpty() }
     }
 
     @Test
     fun `deleting a purchase offers undo and deletes only afterwards`() {
         val vm = purchases()
         show { AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {}) }
-        drive("Käufe") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
+        drive("purchases") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
         vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
         short()
         assertTrue("marked is missing in the list",
@@ -405,7 +405,7 @@ class UiUniformTest {
         assertTrue("undo does not delete", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
         vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
         vm.purchaseRoute.execute()
-        drive("gelöscht") { requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isNotEmpty() }
     }
 
     // ── One header for part details, one word for „kein Preis“ ──
@@ -419,7 +419,7 @@ class UiUniformTest {
         world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png"}]}"""
         val parts = world.parts().also { it.loadParts() }
-        drive("Teile") { parts.partsState.value.manualParts?.isNotEmpty() == true }
+        drive("parts") { parts.partsState.value.manualParts?.isNotEmpty() == true }
         show {
             ManualItemDetailRoute(purchases(), parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
                 imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
@@ -437,14 +437,14 @@ class UiUniformTest {
                     "image_local":"/beispiel/teil1.png","total_quantity":12},
             "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"owner_user_id":1}]}"""
         val vm = world.parts().also { it.loadParts() }
-        drive("Teile") { vm.partsState.value.parts.isNotEmpty() }
+        drive("parts") { vm.partsState.value.parts.isNotEmpty() }
         show {
             PartsListAndDetailRoute(vm, images, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                 PartsRoute(vm = vm, imageLoader = images)
             }
         }
         compose.onNode(hasText("Brick 2 x 4", substring = true) and hasClickAction()).performClick()
-        drive("Teil offen") { vm.setItemState.value.header != null }
+        drive("part open") { vm.setItemState.value.header != null }
         compose.waitForIdle()
         assertEquals("header of the part from sets", 200f, imageHeight("Brick 2 x 4"), 1f)
         // The chip shows the color in the app's language (de-CH), as for the self-added part.

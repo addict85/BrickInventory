@@ -98,7 +98,7 @@ class PriceAlertsDisplayTest {
                 }
             }
         }
-        wait("Alarme") { vm.alarmOverview.value.loaded }
+        wait("alerts") { vm.alarmOverview.value.loaded }
         return vm
     }
 
@@ -115,7 +115,7 @@ class PriceAlertsDisplayTest {
         assertEquals(listOf("GET /api/v1/alerts"), requests("GET").filter { "alerts" in it })
 
         compose.onAllNodesWithText(ctx.getString(R.string.detail_alert_chip_above))[0].performClick()
-        wait("Richtung") { requests("PUT").isNotEmpty() }
+        wait("direction") { requests("PUT").isNotEmpty() }
         assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v1/sets/75192-1/alert"))
 
         compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
@@ -123,7 +123,7 @@ class PriceAlertsDisplayTest {
         assertEquals("a tap on the bin already deletes", emptyList<String>(), requests("DELETE"))
         compose.onNode(hasText(ctx.getString(R.string.common_delete)) and hasClickAction() and hasAnyAncestor(isDialog()))
             .performClick()
-        wait("Löschen") { requests("DELETE").isNotEmpty() }
+        wait("delete") { requests("DELETE").isNotEmpty() }
         assertTrue(requests("DELETE").single().startsWith("DELETE /api/v1/sets/75192-1/alert"))
     }
 

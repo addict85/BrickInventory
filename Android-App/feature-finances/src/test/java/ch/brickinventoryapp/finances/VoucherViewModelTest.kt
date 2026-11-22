@@ -89,7 +89,7 @@ class VoucherViewModelTest {
     fun `the list is loaded and a voucher is fetched into the form`() {
         server.enqueue(response(twoCards))
         vm.loadVouchers()
-        until("Liste") { vm.state.value.vouchers.size == 2 && !vm.state.value.fetch.loading }
+        until("list") { vm.state.value.vouchers.size == 2 && !vm.state.value.fetch.loading }
 
         vm.editVoucher(1)
         val s = vm.state.value
@@ -107,7 +107,7 @@ class VoucherViewModelTest {
         server.enqueue(response("""{"success":false,"error":"Betrag fehlt",
             "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.persist { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
-        until("Formular") { !vm.state.value.save.running && server.requestCount == 1 && channel.text != null }
+        until("form") { !vm.state.value.save.running && server.requestCount == 1 && channel.text != null }
 
         val s = vm.state.value
         assertEquals("6000999988887777", s.number)
@@ -121,7 +121,7 @@ class VoucherViewModelTest {
     @Test
     fun `a non-PDF file does not go to the server`() {
         vm.persist { "image/png" to byteArrayOf(1, 2, 3) }
-        until("Meldung") { channel.text != null && !vm.state.value.save.running }
+        until("message") { channel.text != null && !vm.state.value.save.running }
         assertEquals("t${R.string.vouchers_only_pdf}", channel.text)
         assertEquals(0, server.requestCount)
     }
@@ -130,13 +130,13 @@ class VoucherViewModelTest {
     fun `an aborted run cleans up and reloads`() {
         server.enqueue(response(twoCards))
         vm.loadVouchers()
-        until("Liste") { vm.state.value.vouchers.size == 2 }
+        until("list") { vm.state.value.vouchers.size == 2 }
 
         // The limit reports `abstand`: the ViewModel visibly waits.
         server.enqueue(response("""{"success":false,"code":"guthaben_abstand","grund":"abstand","wartenSek":30}""", 429))
         server.enqueue(response(twoCards))
         vm.queryAllBalances()
-        until("Wartezeit") { (vm.state.value.balanceRun?.waitSec ?: 0) > 0 }
+        until("waiting time") { (vm.state.value.balanceRun?.waitSec ?: 0) > 0 }
         assertEquals(2, vm.state.value.balanceRun?.total)
 
         vm.cancelBalanceRun()
@@ -152,7 +152,7 @@ class VoucherViewModelTest {
     fun `the account limit aborts the pass`() {
         server.enqueue(response(twoCards))
         vm.loadVouchers()
-        until("Liste") { vm.state.value.vouchers.size == 2 }
+        until("list") { vm.state.value.vouchers.size == 2 }
 
         server.enqueue(response("""{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Abfragen","grund":"konto","wartenSek":1800}""", 429))
         server.enqueue(response(twoCards))

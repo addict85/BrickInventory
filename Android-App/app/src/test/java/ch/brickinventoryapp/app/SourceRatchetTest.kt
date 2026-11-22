@@ -107,11 +107,15 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 207
-        val ONLY_SOURCE_TEXT = 33
-        val all = Sources.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
-            .filter { it.name != "SourceRatchetTest.kt" }.toList()
-        val tally = all.associate { it.name to sourceTextFunctions(it.readText()) }
+        val FUNCTIONS = 197
+        val ONLY_SOURCE_TEXT = 30
+        // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
+        val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
+            m.walkTopDown().onEnter { it.name != "build" }
+                .filter { it.isFile && it.name.endsWith("Test.kt") && it.name != "SourceRatchetTest.kt" }
+                .filter { Regex("/src/(test|androidTest|testFixtures)/").containsMatchIn(it.invariantSeparatorsPath) }.toList()
+        }
+        val tally = all.associate { it.relativeTo(Sources.project).invariantSeparatorsPath to sourceTextFunctions(it.readText()) }
         val total = tally.values.sumOf { it.first }
         assertTrue("Only ${all.size} test files, $total tests — does the search still apply?", all.size >= 200 && total >= 1000)
         val only = tally.filterValues { (n, l) -> n > 0 && l == n }.keys.sorted()
@@ -421,7 +425,7 @@ class SourceRatchetTest {
         }
         assert(checked >= 10) { "Only $checked runCatching found — does the search still apply?" }
         assert(findings.isEmpty()) {
-            "runCatching around a suspending call; use fangeAusserAbbruch:\n  " + findings.joinToString("\n  ")
+            "runCatching around a suspending call; use catchUnlessCancelled:\n  " + findings.joinToString("\n  ")
         }
     }
 
@@ -443,7 +447,7 @@ class SourceRatchetTest {
         }
         assert(names.size > 100 && checked >= 15) { "Only ${names.size} suspend functions, $checked catches — does the search still apply?" }
         assert(findings.isEmpty()) {
-            "Broad catch around a suspending call without a cancellation branch; use fangeAusserAbbruch:\n  " +
+            "Broad catch around a suspending call without a cancellation branch; use catchUnlessCancelled:\n  " +
                 findings.joinToString("\n  ")
         }
     }

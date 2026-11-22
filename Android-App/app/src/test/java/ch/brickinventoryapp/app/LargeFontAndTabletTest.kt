@@ -257,7 +257,7 @@ class LargeFontAndTabletTest {
                 GalleryRoute(vm = vm, entryVm = entryVm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            driveUntil("Galerie", ready = { !(vm.galleryState.value.let { it.sets.isEmpty() || it.fetch.loading }) })
+            driveUntil("gallery", ready = { !(vm.galleryState.value.let { it.sets.isEmpty() || it.fetch.loading }) })
             compose.waitForIdle()
             wholeOneRow(ctx.getString(R.string.gallery_search_placeholder),
                 if (font == 1f) "Such-Platzhalter" else "Such-Platzhalter 200 %")
@@ -314,11 +314,11 @@ class LargeFontAndTabletTest {
                     PartsRoute(vm = vm, imageLoader = images)
                 }
             }
-            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            wait("parts") { vm.partsState.value.parts.isNotEmpty() }
             val tile = androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
                 androidx.compose.ui.test.hasClickAction()
             compose.onNode(tile).performClick()
-            wait("Teil") { !vm.setItemState.value.fetch.loading }
+            wait("part") { !vm.setItemState.value.fetch.loading }
             val too = compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.detail_close)))
                 .fetchSemanticsNode().boundsInRoot
             val list = compose.onNode(tile).fetchSemanticsNode().boundsInRoot

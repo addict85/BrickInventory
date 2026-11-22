@@ -50,7 +50,7 @@ class TileDimensionsTest {
         assert(violations.isEmpty()) {
             "These places write the tile dimensions as a number:\n  " +
                 violations.joinToString("\n  ") +
-                "\nThey belong in Formen (tileWidth/tileHeight/tileImageCorners). " +
+                "\nThey belong in Shapes (tileWidth/tileHeight/tileImageCorners). " +
                 "Two numbers for the same grid can drift apart, and that " +
                 "only shows on the device."
         }

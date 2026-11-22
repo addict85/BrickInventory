@@ -24,7 +24,7 @@ class DesignTokensTest {
         assert(error.isEmpty()) {
             "Feste Eckenradien ausserhalb von $themeFolder/ (${error.size}):\n  " +
                 error.joinToString("\n  ") +
-                "\nFor that there are Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
+                "\nFor that there are Shapes.card/chip/field/tile/bar/tag/brand/fab/stroke. " +
                 "If none fits, a NEW one belongs there — otherwise the next " +
                 "design change is again a search over the whole tree."
         }
@@ -44,7 +44,7 @@ class DesignTokensTest {
         assert(error.isEmpty()) {
             "Fixed colors outside $themeFolder/ (${error.size}):\n  " +
                 error.joinToString("\n  ") +
-                "\nFor states there is LocalStatusColors (erfolg/warnung/fehler), " +
+                "\nFor states there is LocalStatusColors (success/warning/error), " +
                 "for the chart LocalChartColors. A color that stands in the screen " +
                 "does not follow a design change."
         }
@@ -64,7 +64,7 @@ class DesignTokensTest {
             .map { it.name }
         assert(error.isEmpty()) {
             "These files set the card elevation as a number: ${error.joinToString()}. " +
-                "For that there are Formen.karteErhebung and Formen.karteErhebungHoch — " +
+                "For that there are Shapes.cardElevation and Shapes.cardElevationHigh — " +
                 "or AppCard right away."
         }
     }
@@ -162,7 +162,7 @@ class DesignTokensTest {
         assert(seen >= 20) { "Only $seen outlined buttons found — does the search still apply?" }
         assert(error.isEmpty()) {
             "Buttons with their own shape (${error.size}):\n  " + error.joinToString("\n  ") +
-                "\nButtons carry the theme's default; Formen.feld only applies to input fields."
+                "\nButtons carry the theme's default; Shapes.field only applies to input fields."
         }
         assert(secondaryButtons.isEmpty()) {
             "Outlined buttons without secondaryButtonColors()/secondaryButtonRand() (${secondaryButtons.size}):\n  " +

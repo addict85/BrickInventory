@@ -86,7 +86,7 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
     override fun rememberBackgroundStart(start: Int?) = write { if (start == null) remove(START) else putInt(START, start) }
     override fun locked(): Boolean { checkSeal(); return prefs.getBoolean(LOCKED, false) }
     // commit instead of apply: a process end right afterwards must not lose the lock.
-    override fun setLocked(an: Boolean) = write { putBoolean(LOCKED, an) }
+    override fun setLocked(on: Boolean) = write { putBoolean(LOCKED, on) }
 
     private companion object {
         const val FILE = "app_sperre"

@@ -70,7 +70,7 @@ class FinancePurchasePriceRowsTest {
                 }
             }
         }
-        driveUntil("Finanzen", ready = { vm.financeState.value.let { it.valuation != null && it.figsValuation != null } })
+        driveUntil("finances", ready = { vm.financeState.value.let { it.valuation != null && it.figsValuation != null } })
         compose.waitForIdle()
     }
 

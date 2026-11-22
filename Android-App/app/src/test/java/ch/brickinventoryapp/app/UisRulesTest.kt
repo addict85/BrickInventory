@@ -327,7 +327,7 @@ class UisRulesTest {
                 SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            wait("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.priceFetch.loading } }
+            wait("set detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.priceFetch.loading } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // The P&L tile names amount and percent (812.50 − 700.00); the percentage alone stands
             // further down in the badge per condition.
@@ -353,7 +353,7 @@ class UisRulesTest {
                 SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            wait("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.historyFetch.loading && !it.priceFetch.loading } }
+            wait("set detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.historyFetch.loading && !it.priceFetch.loading } }
             val density = ctx.resources.displayMetrics.density
             val title = ctx.getString(R.string.detail_section_price_history)
             // Inside, the tile lies 12 dp (medium), the title 16 dp (large) from the edge of its surface.
@@ -384,7 +384,7 @@ class UisRulesTest {
             GalleryRoute(vm = vm, entryVm = entryVm,
                 imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
-        wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
+        wait("gallery") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
     }
 
     /**
@@ -441,7 +441,7 @@ class UisRulesTest {
             show(font = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            wait("parts") { vm.partsState.value.parts.isNotEmpty() }
             val names = vm.partsState.value.parts.mapNotNull { it.partName }
             assertTrue(names.size >= 3)
             val whole = wholeVisible(names)
@@ -566,7 +566,7 @@ class UisRulesTest {
         val world = Examples.World(ContextTexts())
         try {
             galleryWith(world, SampleImages.loader(ctx))
-            wait("Bilder") { fallbackImages() == 0 }
+            wait("images") { fallbackImages() == 0 }
         } finally {
             world.close()
         }
@@ -588,7 +588,7 @@ class UisRulesTest {
                 GalleryRoute(vm = vm, entryVm = entryVm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
+            wait("gallery") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
             val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
             scan.assertCountEquals(1)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
@@ -609,7 +609,7 @@ class UisRulesTest {
             show(font = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            wait("parts") { vm.partsState.value.parts.isNotEmpty() }
             val names = vm.partsState.value.parts.mapNotNull { it.partName }
             assertTrue(names.size >= 3)
             val density = ctx.resources.displayMetrics.density
@@ -647,7 +647,7 @@ class UisRulesTest {
         try {
             val vm = world.parts().also { it.loadParts() }
             show { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            wait("parts") { vm.partsState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
                 assertTrue("Trans-Clear is shown", it.isNotEmpty())
             }
@@ -668,7 +668,7 @@ class UisRulesTest {
         try {
             val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
             show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.history.loading } }
+            wait("finances") { vm.financeState.value.let { it.valuation != null && !it.history.loading } }
             val history = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -720,7 +720,7 @@ class UisRulesTest {
         try {
             val vm = world.wantedList().also { it.loadWanted() }
             show { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
-            wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
+            wait("watchlist") { vm.wantedState.value.wantedItem.isNotEmpty() }
             val chips = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
                 compose.onNode(hasText(ctx.getString(it)) and
                     SemanticsMatcher.expectValue(SemanticsProperties.Role,
@@ -757,7 +757,7 @@ class UisRulesTest {
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), sideBySide = true,
                     onScan = {}, onOpenSingle = { _, _ -> error("no page of its own on the tablet") })
             }
-            wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
+            wait("watchlist") { vm.wantedState.value.wantedItem.isNotEmpty() }
             val card = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
             card.performClick()
             compose.waitForIdle()
@@ -780,7 +780,7 @@ class UisRulesTest {
             world.paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
             val vm = world.wantedList().also { it.loadWanted() }
             show { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
-            driveUntil("Merkliste", ready = { !(world.paths.requests.none { "/api/v1/wanted" in it } || vm.wantedState.value.fetch.loading) })
+            driveUntil("watchlist", ready = { !(world.paths.requests.none { "/api/v1/wanted" in it } || vm.wantedState.value.fetch.loading) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -856,7 +856,7 @@ class UisRulesTest {
         try {
             val vm = world.finances().also { it.loadValuation() }
             show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading } }
+            wait("finances") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading } }
             val row = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.quantity > 1 && it.purchasePrice != null && it.value != null }
             // Computed ourselves, not from purchaseTotal/profit: otherwise the test would check the calculation with itself.
@@ -884,7 +884,7 @@ class UisRulesTest {
         try {
             val vm = world.finances().also { it.loadValuation() }
             show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoad.loading } }
+            wait("finances") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoad.loading } }
             compose.waitForIdle()
             // The numbers of the examples, not from financeHeader: otherwise the test would check the calculation with itself.
             val cost = BigDecimal("1500.00")

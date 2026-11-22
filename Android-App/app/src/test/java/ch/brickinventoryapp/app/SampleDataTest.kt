@@ -89,7 +89,7 @@ class SampleDataTest {
     }
 
     /** In ticks everything is already loaded when the call returns. */
-    private fun da(was: String, condition: () -> Boolean) = assertTrue(was, condition())
+    private fun whenReady(was: String, condition: () -> Boolean) = assertTrue(was, condition())
 
     @Test
     fun `every main screen gets content`() {
@@ -99,12 +99,12 @@ class SampleDataTest {
         val finances = world.finances().also { it.loadValuation() }
         val wantedList = world.wantedList().also { it.loadWanted() }
         val detail = world.setDetail()
-        da("Galerie") { gallery.galleryState.value.sets.size == 3 }
-        da("Teile") { parts.partsState.value.parts.isNotEmpty() }
-        da("Figuren") { figures.minifigsState.value.minifigs.isNotEmpty() }
-        da("Finanzen") { finances.financeState.value.valuation != null }
-        da("Merkliste") { wantedList.wantedState.value.wantedItem.isNotEmpty() }
-        da("Detail") { detail.setDetailState.value.setDetail != null }
+        whenReady("gallery") { gallery.galleryState.value.sets.size == 3 }
+        whenReady("parts") { parts.partsState.value.parts.isNotEmpty() }
+        whenReady("figures") { figures.minifigsState.value.minifigs.isNotEmpty() }
+        whenReady("finances") { finances.financeState.value.valuation != null }
+        whenReady("watchlist") { wantedList.wantedState.value.wantedItem.isNotEmpty() }
+        whenReady("detail") { detail.setDetailState.value.setDetail != null }
         assertEquals("Millennium Falcon", detail.setDetailState.value.setDetail?.name)
         assertTrue(finances.financeState.value.valuation!!.sets.isNotEmpty())
     }
@@ -114,7 +114,7 @@ class SampleDataTest {
     fun `parts and figures carry real names`() {
         val parts = world.parts().also { it.loadParts() }
         val figures = world.figures().also { it.loadMinifigs() }
-        da("Teile und Figuren") { parts.partsState.value.parts.isNotEmpty() && figures.minifigsState.value.let {
+        whenReady("parts and figures") { parts.partsState.value.parts.isNotEmpty() && figures.minifigsState.value.let {
             it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
         val z = parts.partsState.value
         val f = figures.minifigsState.value
@@ -131,8 +131,8 @@ class SampleDataTest {
     fun `the samples are consistent`() {
         val finances = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         val detail = world.setDetail()
-        da("Finanzen") { finances.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
-        da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
+        whenReady("finances") { finances.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
+        whenReady("detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
         val falcon = finances.financeState.value.valuation!!.sets.first { it.setNumber == Examples.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf(CurrencyCode.CHF), listOf(world.t.session.state.value.currency))
@@ -156,7 +156,7 @@ class SampleDataTest {
         Locale.setDefault(Locale.US)
         try {
             val finances = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            da("Verlauf") { finances.financeState.value.historyPoints.isNotEmpty() }
+            whenReady("history") { finances.financeState.value.historyPoints.isNotEmpty() }
             val f = finances.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
             assertEquals(CurrencyCode.CHF, f.historyCurrency)
@@ -179,7 +179,7 @@ class SampleDataTest {
         val figures = world.figures().also { it.loadMinifigs() }
         val wantedList = world.wantedList().also { it.loadWanted() }
         val finances = world.finances().also { it.loadValuation() }
-        da("alles") {
+        whenReady("alles") {
             gallery.galleryState.value.sets.isNotEmpty() && parts.partsState.value.parts.isNotEmpty() &&
                 figures.minifigsState.value.minifigs.isNotEmpty() && wantedList.wantedState.value.wantedItem.isNotEmpty() &&
                 finances.financeState.value.valuation != null
@@ -200,7 +200,7 @@ class SampleDataTest {
     @Test
     fun `the parts tiles add up to the total`() {
         val parts = world.parts().also { it.loadParts() }
-        da("Teile") { parts.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        whenReady("parts") { parts.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
         val z = parts.partsState.value
         assertEquals(z.partsStats!!.partsTotal, z.parts.sumOf { it.totalQuantity })
     }
@@ -212,7 +212,7 @@ class SampleDataTest {
     @Test
     fun `every finance row carries price, purchase price, condition and P&L`() {
         val finances = world.finances().also { it.loadValuation() }
-        da("Finanzen") { finances.financeState.value.let { it.valuation != null && it.pnl != null } }
+        whenReady("finances") { finances.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finances.financeState.value
         val rows = setRows(z.valuation!!.sets).map { it.second }
         // Two valued rows and the tree house without market price — the case of the basis row.

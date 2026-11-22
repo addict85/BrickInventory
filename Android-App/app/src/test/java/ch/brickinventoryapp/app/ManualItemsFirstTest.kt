@@ -103,7 +103,7 @@ class ManualItemsFirstTest {
         world.paths.responses["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
         val vm = world.parts().also { it.loadParts() }
-        wait("Teile") { vm.partsState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
+        wait("parts") { vm.partsState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
         show { PartsRoute(vm = vm, imageLoader = images) }
         val header = top(ctx.getString(R.string.parts_manual_section))
         val tile = top("Brick 1 x 1 manuell")
@@ -117,7 +117,7 @@ class ManualItemsFirstTest {
         world.paths.responses["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
-        wait("Figuren") { vm.minifigsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
+        wait("figures") { vm.minifigsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
         show { MinifigsRoute(vm = vm, imageLoader = images) }
         val header = top(ctx.getString(R.string.minifigs_manual_section))
         val tile = top("Prinzessin Leia manuell")
@@ -184,8 +184,8 @@ class ManualItemsFirstTest {
         for ((key, list) in listOf("PartsTarget.Parts.rollKey" to "manualParts", "PartsTarget.Minifigs.rollKey" to "manualFigs")) {
             val block = Sources.window(graph, "$key, ", 12)
             assertTrue("no ScrollPositionKeeper found for $key", block.isNotEmpty())
-            assertTrue("$key: `bereit` does not wait for $list", block.contains("$list != null"))
-            assertTrue("$key: obenNachziehend is missing", block.contains("topTrailing ="))
+            assertTrue("$key: `ready` does not wait for $list", block.contains("$list != null"))
+            assertTrue("$key: topTrailing is missing", block.contains("topTrailing ="))
         }
     }
 }

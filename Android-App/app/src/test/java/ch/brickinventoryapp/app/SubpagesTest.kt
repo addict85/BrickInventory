@@ -185,7 +185,7 @@ class SubpagesTest {
         val vm = settings().also { it.loadOwnLocations() }
         val message = SnackbarHostState()
         show { LocationsRoute(vm, message, onBack = {}) }
-        wait("Lagerorte") { vm.storageState.value.own.size == 3 }
+        wait("storage locations") { vm.storageState.value.own.size == 3 }
         // No location as a permanent text field, the title only in the app bar.
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         compose.onAllNodesWithText(ctx.getString(R.string.storage_manage), ignoreCase = true).assertCountEquals(1)
@@ -213,7 +213,7 @@ class SubpagesTest {
         // The end of the snackbar continues the LaunchedEffect; it runs at the pace of the
         // Compose clock, which driveUntil (only the main looper) does not advance.
         compose.waitForIdle()
-        wait("Löschen") { world.paths.requests.any { it.startsWith("DELETE") && it.endsWith("/storage/locations/3") } }
+        wait("delete") { world.paths.requests.any { it.startsWith("DELETE") && it.endsWith("/storage/locations/3") } }
     }
 
     @Test
@@ -223,7 +223,7 @@ class SubpagesTest {
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
-        wait("Haushalt") { vm.householdState.value.status != null }
+        wait("household") { vm.householdState.value.status != null }
 
         val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
         for (title in listOf(R.string.household_invite_section, R.string.household_redeem_title)) {
@@ -238,7 +238,7 @@ class SubpagesTest {
         assertTrue("disconnected before the confirmation", world.paths.requests.none { "household/unlink" in it })
         compose.onNodeWithText(ctx.getString(R.string.household_remove_text, "lena")).fetchSemanticsNode()
         inDialog(ctx.getString(R.string.household_remove)).performClick()
-        wait("Trennen") { world.paths.requests.any { "household/unlink" in it } }
+        wait("unlink") { world.paths.requests.any { "household/unlink" in it } }
     }
 
     @Test
@@ -287,7 +287,7 @@ class SubpagesTest {
         world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
-        wait("Lagerorte") { vm.storageState.value.own.size == 1 }
+        wait("storage locations") { vm.storageState.value.own.size == 1 }
         val stern = compose.onNodeWithContentDescription(ctx.getString(R.string.storage_default_cd, "Keller")).fetchSemanticsNode()
         assertEquals("TalkBack hears on/off", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
     }
@@ -299,7 +299,7 @@ class SubpagesTest {
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
-        wait("Haushalt") { vm.householdState.value.status != null }
+        wait("household") { vm.householdState.value.status != null }
         val remove = ctx.getString(R.string.household_remove)
         for (name in listOf("lena", "tim")) {
             compose.onNode(hasContentDescription(ctx.getString(R.string.action_for, remove, name)) and hasClickAction())
@@ -317,7 +317,7 @@ class SubpagesTest {
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
         }
-        wait("Alarme") { vm.alarmOverview.value.loaded }
+        wait("alerts") { vm.alarmOverview.value.loaded }
         val name = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val number = compose.onNodeWithText("75192-1", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue("name ($name) above the number ($number)", name.bottom <= number.top)
@@ -337,7 +337,7 @@ class SubpagesTest {
             AccountRoute(snackbarHostState = remember { SnackbarHostState() },
                 account = account, onBack = {})
         }
-        wait("Profil") { account.accountState.value.profile != null }
+        wait("profile") { account.accountState.value.profile != null }
         fun field(label: Int) = compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label)))[0]
         val switch = compose.onNode(hasText(ctx.getString(R.string.account_password_button)) and hasClickAction())
         val switched = { world.paths.requests.count { "password" in it } }
@@ -353,7 +353,7 @@ class SubpagesTest {
         field(R.string.register_password_repeat).performTextClearance()
         field(R.string.register_password_repeat).performTextInput("neues-passwort-12")
         switch.performScrollTo().performClick()
-        wait("Passwortwechsel") { switched() == 1 }
+        wait("password change") { switched() == 1 }
     }
 
     /** A new address applies only after the link: the field shows the current one, below it the requested one. */
@@ -369,7 +369,7 @@ class SubpagesTest {
             AccountRoute(snackbarHostState = remember { SnackbarHostState() },
                 account = account, onBack = {})
         }
-        wait("Profil") { account.accountState.value.profile != null }
+        wait("profile") { account.accountState.value.profile != null }
         compose.onNode(hasSetTextAction() and hasText("marco@example.org")).fetchSemanticsNode("Das Feld zeigt die geltende Adresse nicht")
         compose.onNodeWithText(ctx.getString(R.string.account_email_pending, "neu@example.org"), useUnmergedTree = true)
             .fetchSemanticsNode("Die beantragte Adresse fehlt unter dem Feld")
@@ -387,7 +387,7 @@ class SubpagesTest {
             AccountRoute(snackbarHostState = remember { SnackbarHostState() },
                 account = account, onBack = {})
         }
-        wait("Profil") { account.accountState.value.profile != null }
+        wait("profile") { account.accountState.value.profile != null }
         compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(R.string.register_first_name)))[0]
             .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("Marc")) }
         compose.waitForIdle()
@@ -439,7 +439,7 @@ class SubpagesTest {
         show { PartsList(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number))).performTextInput("21318")
         compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled().performClick()
-        wait("Bauliste") { resolved.isNotEmpty() }
+        wait("build list") { resolved.isNotEmpty() }
         assertEquals(listOf("21318-1"), resolved)
     }
 }

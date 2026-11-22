@@ -82,7 +82,7 @@ class InstructionRowTest {
         // growing explanatory paragraph has already broken a check four times in this series
         // that cut a fixed character window.
         assert(Regex("""clickable\([^)]*openInstruction""").containsMatchIn(source)) {
-            "`oeffneAnleitung` does not hang on the `clickable` of the manual row. " +
+            "`openInstruction` does not hang on the `clickable` of the manual row. " +
                 "Then again only part of the row is tappable — exactly Marco's finding."
         }
     }

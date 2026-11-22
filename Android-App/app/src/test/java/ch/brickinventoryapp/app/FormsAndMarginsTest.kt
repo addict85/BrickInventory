@@ -235,7 +235,7 @@ class FormsAndMarginsTest {
         show {
             AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {})
         }
-        wait("Kaufpreise") { vm.manDetailState.value.acquisitions.isNotEmpty() }
+        wait("purchase prices") { vm.manDetailState.value.acquisitions.isNotEmpty() }
         val rows = vm.manDetailState.value.acquisitions.size
         assertEquals("quantity as a label per row", rows,
             compose.onAllNodes(hasSetTextAction() and hasText(text(R.string.common_quantity))).fetchSemanticsNodes().size)
@@ -348,7 +348,7 @@ class FormsAndMarginsTest {
                     onBack = {}, onDelete = {})
             }
         }
-        wait("Galerie und Detail") {
+        wait("gallery and detail") {
             gallery.galleryState.value.sets.isNotEmpty() &&
                 (open == null || detail.setDetailState.value.let { it.setDetail != null && !it.detailFetch.loading })
         }
@@ -408,7 +408,7 @@ class FormsAndMarginsTest {
             PriceAlarmsRoute(vm = vm, imageLoader = SampleImages.loader(ctx), serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
         }
-        wait("Preisalarme") { vm.alarmOverview.value.loaded && vm.alarmOverview.value.alerts.isNotEmpty() }
+        wait("price alerts") { vm.alarmOverview.value.loaded && vm.alarmOverview.value.alerts.isNotEmpty() }
         // One choice each in the alert and in the creation form, not once more as a field name.
         assertEquals("“Fällt unter” twice", 2,
             compose.onAllNodes(hasText(text(R.string.detail_alert_chip_below)), useUnmergedTree = true)

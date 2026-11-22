@@ -242,7 +242,7 @@ class WrapGuardTest {
             {"set_number":"10294-1","condition":"N","direction":"ueber","threshold":440.0,"currency_code":"CHF",
              "triggered":true,"last_triggered_at":"2026-10-30T09:00:00Z","last_price":449.95}]}"""
         val vm = settings().also { it.loadAlarmOverview() }
-        check("Preisalarme $font", font, { vm.alarmOverview.value.loaded }) {
+        check("price alerts $font", font, { vm.alarmOverview.value.loaded }) {
             PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
         }
@@ -250,7 +250,7 @@ class WrapGuardTest {
 
     private fun gallery(font: Float) {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        check("Sammlung $font", font,
+        check("collection $font", font,
             { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.fetch.loading } }) {
             GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
@@ -258,7 +258,7 @@ class WrapGuardTest {
 
     private fun setDetail(font: Float) {
         val vm = world.setDetail()
-        check("Set-Detail $font", font, { vm.setDetailState.value.let { s ->
+        check("set detail $font", font, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.detailFetch.loading && !s.priceFetch.loading && !s.historyFetch.loading && !s.purchasesFetch.loading } }) {
             SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
@@ -271,7 +271,7 @@ class WrapGuardTest {
             numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
             bricklink = BrickLinkView(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
-        check("Katalog-Detail $font", font) {
+        check("catalog detail $font", font) {
             CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(detail), imageLoader = images, serverUrl = "",
                 actions = object : CatalogDetailActions {})
         }
@@ -296,7 +296,7 @@ class WrapGuardTest {
                      "x":["2026-08-01","2026-10-01"]},
             "pnl_prozent":19.2,"purchase_price":1049.0}"""
         val vm = world.setDetail()
-        check("Set-Detail schmal $font", font, { vm.setDetailState.value.let { s ->
+        check("set detail narrow $font", font, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.detailFetch.loading && !s.priceFetch.loading && !s.historyFetch.loading && !s.purchasesFetch.loading } },
             device = "w360dp-h740dp-port-xxhdpi", wholeRow = true) {
@@ -322,7 +322,7 @@ class WrapGuardTest {
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value
-        check("Hintergrundarbeiten $font", font, device = "w360dp-h891dp-port-xxhdpi") {
+        check("background work $font", font, device = "w360dp-h891dp-port-xxhdpi") {
             MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
@@ -334,7 +334,7 @@ class WrapGuardTest {
         compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
     private fun login(font: Float) {
-        check("Anmeldung $font", font) {
+        check("sign-in $font", font) {
             LoginScreen(
                 LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
                 object : LoginActions {},

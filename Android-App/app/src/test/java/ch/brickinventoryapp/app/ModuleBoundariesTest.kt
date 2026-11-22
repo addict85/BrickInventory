@@ -229,7 +229,7 @@ class ModuleBoundariesTest {
         val findings = mutableListOf<String>()
         for (f in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
             val text = Sources.withoutComments(f.readText())
-            val area = f.parentFile.name
+            val area = f.parentFile?.name.orEmpty()
             Regex("""^(\w+\s+)*class\s+(\w+Impl)\b""", RegexOption.MULTILINE).findAll(text)
                 .filter { "internal" !in it.value && "private" !in it.value }.forEach { findings += "${f.name}: ${it.groupValues[2]} is public" }
             for (m in importRow.findAll(text)) {

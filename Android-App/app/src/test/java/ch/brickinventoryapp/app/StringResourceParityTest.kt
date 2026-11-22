@@ -201,7 +201,7 @@ class StringResourceParityTest {
             "These texts are word for word the same in German as in English — very " +
                 "likely copied when created and not translated:\n  " +
                 untranslated.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
-                "\nIf it really is the same in both languages, it belongs in `gewolltGleich`."
+                "\nIf it really is the same in both languages, it belongs in `intendedEqual`."
         }
         val stale = (intendedEqual - equal).sorted()
         assert(stale.isEmpty()) {
@@ -394,7 +394,7 @@ class StringResourceParityTest {
         }
         val stale = (allowed - allowedSeen).sorted()
         assert(stale.isEmpty()) {
-            "These entries in `erlaubt` no longer describe anything: " +
+            "These entries in `allowed` no longer describe anything: " +
                 stale.joinToString(", ") +
                 " — the text no longer stands anywhere in the source. Remove them."
         }

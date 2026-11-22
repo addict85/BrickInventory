@@ -105,10 +105,10 @@ class AccountViewModelTest {
         assertEquals("no fetch without an observer", 0, server.requestCount)
         server.enqueue(response(devices(currentAlong = true)))
         val devicesPage = CoroutineScope(tick).launch { vm.devicesState.collect {} }
-        until("Geräte") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        until("devices") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
         server.enqueue(response("""{"success":true,"aktiv":true,"codes_uebrig":8}"""))
         val factorPage = CoroutineScope(tick).launch { vm.secondFactorState.collect {} }
-        until("zweiter Faktor") { vm.secondFactorState.value.active == true && vm.secondFactorState.value.codesRemaining == 8 }
+        until("second factor") { vm.secondFactorState.value.active == true && vm.secondFactorState.value.codesRemaining == 8 }
         devicesPage.cancel()
         factorPage.cancel()
         assertEquals(2, server.requestCount)
@@ -122,7 +122,7 @@ class AccountViewModelTest {
         server.enqueue(response("""{"success":false,"error":"aus"}""", 500))
         server.enqueue(response("""{"success":false,"error":"aus"}""", 500))
         val page = CoroutineScope(tick).launch { vm.accountPage.collect {} }
-        until("Profil und Design geholt") { server.requestCount == 2 }
+        until("profile and design fetched") { server.requestCount == 2 }
         mask.cancel()
         page.cancel()
     }
@@ -136,11 +136,11 @@ class AccountViewModelTest {
     fun `other devices go in one confirmed request, the own one stays`() {
         server.enqueue(response(devices(currentAlong = true)))
         vm.loadDevices()
-        until("Liste") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
         server.takeRequest()
 
         vm.redeemQuestion(null)
-        until("Rückfrage") { vm.devicesState.value.prompt?.tokenId == null && vm.devicesState.value.prompt != null }
+        until("confirmation") { vm.devicesState.value.prompt?.tokenId == null && vm.devicesState.value.prompt != null }
         server.enqueue(response("""{"success":true,"deleted":0,"zugaenge":2}"""))
         server.enqueue(response(devices(currentAlong = true)))
         vm.redeemConfirm("geheim", null)
@@ -158,13 +158,13 @@ class AccountViewModelTest {
     fun `a foreign device requires password and, if needed, the code`() {
         server.enqueue(response(devices(currentAlong = true)))
         vm.loadDevices()
-        until("Liste") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
         server.takeRequest()
 
         vm.redeemQuestion("b2")
         server.enqueue(response("""{"success":false,"error":"Code fehlt","code":"zweiter_faktor_noetig"}""", 400))
         vm.redeemConfirm("geheim", null)
-        until("Code verlangt") { vm.devicesState.value.prompt?.codeNeeded == true }
+        until("code required") { vm.devicesState.value.prompt?.codeNeeded == true }
         val without = server.takeRequest()
         assertEquals("DELETE", without.method)
         assertTrue(without.path.orEmpty(), without.path.orEmpty().endsWith("/settings/tokens/b2"))
@@ -188,7 +188,7 @@ class AccountViewModelTest {
              "last_used":null,"expires_at":null,"hard_expires_at":null,"never_expires":true,"scope":"app",
              "ip_range":null,"rotated_at":"2026-10-01T00:00:00Z","aktuell":true}]}"""))
         vm.loadDevices()
-        until("Liste") { vm.devicesState.value.devices.size == 2 }
+        until("list") { vm.devicesState.value.devices.size == 2 }
         val (full, own) = vm.devicesState.value.devices
         assertTrue(full.fullAccess)
         assertEquals(Instant.parse("2026-12-01T00:00:00Z"), full.expiresAt)
@@ -202,7 +202,7 @@ class AccountViewModelTest {
     fun `an already invalidated device does not count`() {
         server.enqueue(response(devices(currentAlong = true)))
         vm.loadDevices()
-        until("Liste") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
         vm.redeemQuestion(null)
         server.enqueue(response("""{"success":true,"deleted":1,"zugaenge":0}"""))
         server.enqueue(response(devices(currentAlong = true)))
@@ -215,10 +215,10 @@ class AccountViewModelTest {
     fun `without a recognized own device nothing is invalidated`() {
         server.enqueue(response(devices(currentAlong = false)))
         vm.loadDevices()
-        until("Liste") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
 
         vm.redeemQuestion(null)
-        until("Fehler") { vm.devicesState.value.fetch.errorMessage != null }
+        until("error") { vm.devicesState.value.fetch.errorMessage != null }
         assertEquals("t${R.string.tokens_self_unknown}", vm.devicesState.value.fetch.errorMessage.text)
         assertNull(vm.devicesState.value.prompt)
         assertEquals(1, server.requestCount)
@@ -228,7 +228,7 @@ class AccountViewModelTest {
     fun `after the password change it signs out`() {
         server.enqueue(response("""{"success":true}"""))
         vm.changePassword("alt", "neuNeuNeu123!")
-        until("Meldung") { channel.text != null }
+        until("message") { channel.text != null }
 
         assertTrue(loggedOut)
         assertEquals("t${R.string.account_password_changed}", channel.text)
@@ -239,7 +239,7 @@ class AccountViewModelTest {
     fun `a rejected password change does not report to sign out`() {
         server.enqueue(response("""{"success":false,"error":"Aktuelles Passwort falsch","code":"passwort_falsch"}""", 400))
         vm.changePassword("falsch", "neuNeuNeu123!")
-        until("Fehler") { vm.accountState.value.save.errorMessage != null }
+        until("error") { vm.accountState.value.save.errorMessage != null }
 
         assertFalse(loggedOut)
         // The rejection comes as an error status with the server's message.
@@ -251,7 +251,7 @@ class AccountViewModelTest {
     fun `the confirmed second factor shows the codes`() {
         server.enqueue(response("""{"success":true,"codes":["aaaa-1111","bbbb-2222"]}"""))
         vm.confirmSecondFactor(" 123456 ")
-        until("Codes") { vm.secondFactorState.value.codes.isNotEmpty() }
+        until("codes") { vm.secondFactorState.value.codes.isNotEmpty() }
 
         val z = vm.secondFactorState.value
         assertEquals(true, z.active)
@@ -268,14 +268,14 @@ class AccountViewModelTest {
         server.enqueue(response("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXP",
             "otpauth":"intent://totp/#Intent;scheme=otpauth;end"}"""))
         vm.setUpSecondFactorOne("geheim")
-        until("Einrichtung") { vm.secondFactorState.value.secret != null }
+        until("setup") { vm.secondFactorState.value.secret != null }
         assertNull("only otpauth:// goes to ACTION_VIEW", vm.secondFactorState.value.otpauth)
         assertEquals("the key stays for typing it in", "JBSWY3DPEHPK3PXP", vm.secondFactorState.value.secret)
 
         val real = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP"
         server.enqueue(response("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXQ","otpauth":"$real"}"""))
         vm.setUpSecondFactorOne("geheim")
-        until("zweite Einrichtung") { vm.secondFactorState.value.secret == "JBSWY3DPEHPK3PXQ" }
+        until("second setup") { vm.secondFactorState.value.secret == "JBSWY3DPEHPK3PXQ" }
         assertEquals(real, vm.secondFactorState.value.otpauth)
     }
 
@@ -283,7 +283,7 @@ class AccountViewModelTest {
     fun `without a code the second factor requires the code field, with a code the change goes through`() {
         server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.changePassword("alt", "neuNeuNeu123!")
-        until("Absage") { vm.accountState.value.save.errorMessage != null }
+        until("refusal") { vm.accountState.value.save.errorMessage != null }
         assertTrue("the code field appears", vm.accountState.value.codeNeeded)
         assertFalse(loggedOut)
         server.takeRequest()
@@ -317,7 +317,7 @@ class AccountViewModelTest {
     fun `a new e-mail carries the code along`() {
         server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.saveProfile("marco", "neu@example.org", "", "", "pw")
-        until("Absage") { vm.accountState.value.codeNeeded }
+        until("refusal") { vm.accountState.value.codeNeeded }
         server.takeRequest()
 
         server.enqueue(response("""{"success":true}"""))

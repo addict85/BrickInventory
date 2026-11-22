@@ -85,7 +85,7 @@ class TileReadAloudTest {
         val part = PartView(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12,
             imageUrl = "https://cdn.rebrickable.com/media/parts/3001.png")
         val read = announced { PartCard(part, serverUrl = "https://brick.example", imageLoader = images, onClick = {}) }
-        check("Teilekachel", read, "Brick 2 x 4", listOf("12 Stück", "Teil 3001"))
+        check("part tile", read, "Brick 2 x 4", listOf("12 Stück", "Teil 3001"))
     }
 
     @Test
@@ -100,7 +100,7 @@ class TileReadAloudTest {
         val set = CatalogSetView(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
             numParts = 4514, owned = true, ownedQuantity = 2)
         val read = announced { CatalogSetCard(set, imageLoader = images, serverUrl = "", onClick = {}) }
-        check("Katalogkachel", read, "Lion Knights' Castle",
+        check("catalog tile", read, "Lion Knights' Castle",
             listOf("Jahr 2022", "${fmtInt(4514)} Teile", "In der Sammlung, 2 Exemplare", "Set 10305-1"))
     }
 
@@ -151,6 +151,6 @@ class TileReadAloudTest {
             TableRow(imageUrl = null, number = "3001", name = "Brick 2 x 4", quantity = 1250, imageLoader = images,
                 onClick = {})
         }
-        check("Tabellenzeile", read, "Brick 2 x 4", listOf("${fmtInt(1250)} Stück"))
+        check("table row", read, "Brick 2 x 4", listOf("${fmtInt(1250)} Stück"))
     }
 }

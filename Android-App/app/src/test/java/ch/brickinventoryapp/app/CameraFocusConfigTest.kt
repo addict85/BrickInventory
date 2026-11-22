@@ -15,6 +15,9 @@ import java.io.File
  * Effective was thus the version with `setAutoCancelDuration(3, SECONDS)` — and
  * exactly that is what the comment in the code warns about: „Bewusst mit disableAutoCancel(): Ohne das fällt die Kamera nach wenigen Sekunden auf ihre eigene Wahl zurück.“
  * One taps, it becomes sharp, and seconds later it is gone again.
+ *
+ * Here only where the camera setup lives; what it does (autofocus on both use cases,
+ * a tap that keeps the focus) is checked as behavior in core-ui's CameraSetupTest.
  */
 class CameraFocusConfigTest {
 
@@ -78,23 +81,6 @@ class CameraFocusConfigTest {
         return hits
     }
 
-    @Test
-    fun `tap-to-focus keeps the focus`() {
-        for (file in withTapToFocus()) {
-            // The tapper itself lives in CameraSetup.kt; it is checked there for every user.
-            val c = code(file.readText()) + "\n" + setup()
-            assert(c.contains("disableAutoCancel()")) {
-                "${file.name}: Without disableAutoCancel() the camera falls back to its own choice after " +
-                    "a few seconds — the user " +
-                    "focuses on purpose, and it is gone right away."
-            }
-            assert(!c.contains("setAutoCancelDuration")) {
-                "${file.name}: setAutoCancelDuration is there. That is the opposite " +
-                    "of disableAutoCancel() and was the cause once before."
-            }
-        }
-    }
-
     /**
      * The whole camera setup stands in ONE place.
      *
@@ -122,10 +108,10 @@ class CameraFocusConfigTest {
         }
 
         for ((brand, was) in listOf(
-            "CONTROL_AF_MODE_CONTINUOUS_PICTURE" to "Der AF-Modus",
-            "Preview.Builder()"                  to "Die Vorschau",
-            "ImageAnalysis.Builder()"            to "Die Bildanalyse",
-            "bindToLifecycle("                   to "Die Bindung",
+            "CONTROL_AF_MODE_CONTINUOUS_PICTURE" to "The AF mode",
+            "Preview.Builder()"                  to "The preview",
+            "ImageAnalysis.Builder()"            to "The image analysis",
+            "bindToLifecycle("                   to "The binding",
         )) {
             val where = files.filter { code(it.readText()).contains(brand) }.map { it.name }
             assert(where == listOf("CameraSetup.kt")) {
@@ -133,20 +119,6 @@ class CameraFocusConfigTest {
                     "Every further place is a second version of the same rule — and exactly " +
                     "there tap-to-focus in the SetupScreen got stuck."
             }
-        }
-    }
-
-    @Test
-    fun `CameraSetup sets the AF mode on BOTH use cases`() {
-        // CameraX merges the configurations of all bound use cases into ONE
-        // repeating request. If the mode is only on one, the other decides along
-        // depending on the device — and the image stays blurry although
-        // the code looks right.
-        val src = code(Sources.read("ui/screens/CameraSetup.kt"))
-        val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
-        assert(n >= 2) {
-            "The AF mode stands in CameraSetup.kt only ${n}x — it must hang on preview AND " +
-                "image analysis. Do NOT adapt this test, add the place instead."
         }
     }
 

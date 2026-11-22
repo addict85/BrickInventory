@@ -132,7 +132,7 @@ class EntryViewModelTest {
         vm.resolveBarcode("5702016616316", ScannerOrigin.GALLERY_SEARCH)
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
         assertNull("no confirmation dialog", vm.barcodeState.value.result)
-        until("Prüfanzeige weg") { vm.entryState.value.check == null }
+        until("check display gone") { vm.entryState.value.check == null }
     }
 
     @Test
@@ -143,7 +143,7 @@ class EntryViewModelTest {
         vm.resolveBarcode("0000")
         until("manuell") { vm.barcodeState.value.requestManualEntry }
         assertEquals("t${R.string.vm_barcode_not_found}|0000", t.messages.text)
-        until("Prüfanzeige weg") { vm.entryState.value.check == null }
+        until("check display gone") { vm.entryState.value.check == null }
     }
 
     @Test
@@ -181,7 +181,7 @@ class EntryViewModelTest {
         val vm = vm(Creator(listOf(SetCreateStep.Done(
             SetRecorded(number = "99999-1", created = true, catalogOpen = true)))))
         vm.addSet(EntryRequest("99999"))
-        until("Meldung") { t.messages.text != null }
+        until("message") { t.messages.text != null }
         assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.messages.text)
     }
 
@@ -207,7 +207,7 @@ class EntryViewModelTest {
     fun `a scan from the wishlist creates a wishlist item and closes the dialog`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", ScannerOrigin.WANTED_LIST)
-        until("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        until("dialog") { vm.barcodeState.value.result == "75192-1" }
         vm.confirmAddBarcode(EntryRequest("75192-1", condition = Condition.USED))
         until("gemeldet") { t.messages.text != null }
         val wantedList = runBlocking { t.wantedList().observeWanted().first().list }
@@ -221,7 +221,7 @@ class EntryViewModelTest {
     private fun untilToDialog(): EntryViewModel {
         val vm = vm()
         vm.resolveBarcode("5702016616316")
-        until("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        until("dialog") { vm.barcodeState.value.result == "75192-1" }
         return vm
     }
 
@@ -257,7 +257,7 @@ class EntryViewModelTest {
     fun `nothing is created from the parts list, only the number is passed on`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", ScannerOrigin.PART_LIST)
-        until("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        until("dialog") { vm.barcodeState.value.result == "75192-1" }
         vm.confirmAddBarcode(EntryRequest("75192-1"))
         assertEquals("75192-1", vm.barcodeState.value.forPartList)
         assertNull(vm.barcodeState.value.result)
@@ -273,7 +273,7 @@ class EntryViewModelTest {
         assertEquals(CheckPhase.STOCK, vm.entryState.value.check?.phase)
         paths.release()
         until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
-        until("Prüfanzeige weg") { vm.entryState.value.check == null }
+        until("check display gone") { vm.entryState.value.check == null }
         assertTrue("an existing set does not ask the catalog", paths.requestsTo("/catalog/").isEmpty())
     }
 
@@ -283,7 +283,7 @@ class EntryViewModelTest {
         val vm = vm()
         vm.useScannedSetNumber("10294")
         until("gemeldet") { t.messages.text == "fehler" }
-        until("Prüfanzeige weg") { vm.entryState.value.check == null }
+        until("check display gone") { vm.entryState.value.check == null }
         assertNull(vm.barcodeState.value.result)
         assertTrue("after an error it does not keep asking at random", paths.requestsTo("/catalog/").isEmpty())
     }
@@ -306,7 +306,7 @@ class EntryViewModelTest {
             vm.acknowledgeManualEntry()
             gone()
             until(name) { vm.barcodeState.value.requestManualEntry }
-            until("$name: Prüfanzeige weg") { vm.entryState.value.check == null }
+            until("$name: check display gone") { vm.entryState.value.check == null }
         }
     }
 
@@ -331,7 +331,7 @@ class EntryViewModelTest {
         vm.useScannedSetNumber("75192")
         assertTrue(vm.entryState.value.check != null)
         t.session.loggedOut()
-        until("geräumt") { vm.entryState.value.check == null }
+        until("cleared") { vm.entryState.value.check == null }
         paths.release()
         clock.advanceUntilIdle()
         assertNull(vm.barcodeState.value.foundSet)

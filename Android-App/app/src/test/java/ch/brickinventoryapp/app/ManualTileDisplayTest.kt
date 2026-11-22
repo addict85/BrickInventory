@@ -98,7 +98,7 @@ class ManualTileDisplayTest {
         world.paths.responses["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$fields}]}"""
         val vm = world.parts().also { it.loadParts() }
-        wait("Teile") { !vm.partsState.value.manualParts.isNullOrEmpty() }
+        wait("parts") { !vm.partsState.value.manualParts.isNullOrEmpty() }
         show { PartsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Brick 1 x 1", useUnmergedTree = true).fetchSemanticsNode()
         showsEverything("Teil")
@@ -109,7 +109,7 @@ class ManualTileDisplayTest {
         world.paths.responses["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$fields}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
-        wait("Figuren") { !vm.minifigsState.value.manualFigs.isNullOrEmpty() }
+        wait("figures") { !vm.minifigsState.value.manualFigs.isNullOrEmpty() }
         show { MinifigsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         showsEverything("Figur")
@@ -122,7 +122,7 @@ class ManualTileDisplayTest {
         world.paths.responses["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia","quantity":1}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
-        wait("Figuren") { vm.minifigsState.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }
+        wait("figures") { vm.minifigsState.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }
         show { MinifigsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         val types = ctx.resources.getQuantityString(R.plurals.minifigs_stat_types, 2, "2")

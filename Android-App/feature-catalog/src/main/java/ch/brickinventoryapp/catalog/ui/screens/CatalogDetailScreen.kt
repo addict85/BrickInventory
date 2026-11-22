@@ -404,7 +404,7 @@ private fun wantedItemText(m: WantedItemView): String {
 
 /** Ask quantity/price/condition — like AddSetDialog, but without a set-number field. */
 @Composable
-private fun CatalogAddDialog(
+internal fun CatalogAddDialog(
     setName: String,
     defaultCondition: Condition,
     householdMembers: List<MemberView>,
@@ -483,7 +483,7 @@ private fun CatalogAddDialog(
  * it leaves the field empty.
  */
 @Composable
-private fun WantedItemDialog(
+internal fun WantedItemDialog(
     setName: String,
     defaultCondition: Condition,
     /** Household accounts — without sub-accounts, the picker hides itself. */
@@ -510,30 +510,30 @@ private fun WantedItemDialog(
         onCancel = onDismiss,
         changed = threshold.isNotEmpty() || condition != defaultCondition || direction != AlarmDirection.BELOW,
     ) {
-                Text(setName, style = MaterialTheme.typography.bodyMedium)
-                // Target account as when entering; hides itself with fewer than
-                // two members.
-                OwnerPicker(householdMembers, account, { account = it })
-                ConditionRow(condition = condition, onUiState = { condition = it })
-                HorizontalDivider()
-                Text(stringResource(R.string.detail_alert),
-                     style = MaterialTheme.typography.labelLarge)
-                SegmentChoice(
-                    options = listOf(AlarmDirection.BELOW to stringResource(R.string.detail_alert_chip_below),
-                                      AlarmDirection.OVER to stringResource(R.string.detail_alert_chip_above)),
-                    chosen = direction,
-                    onChoice = { direction = it },
-                )
-                // A threshold is a price — the same input rule and
-                // the same keyboard as everywhere (util/NumericInput.kt).
-                OutlinedTextField(
-                    shape = Shapes.field,
-                    value = threshold,
-                    onValueChange = { threshold = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.wanted_threshold)) },
-                    singleLine = true,
-                    keyboardOptions = NumericInput.priceKeyboard(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        Text(setName, style = MaterialTheme.typography.bodyMedium)
+        // Target account as when entering; hides itself with fewer than
+        // two members.
+        OwnerPicker(householdMembers, account, { account = it })
+        ConditionRow(condition = condition, onUiState = { condition = it })
+        HorizontalDivider()
+        Text(stringResource(R.string.detail_alert),
+             style = MaterialTheme.typography.labelLarge)
+        SegmentChoice(
+            options = listOf(AlarmDirection.BELOW to stringResource(R.string.detail_alert_chip_below),
+                              AlarmDirection.OVER to stringResource(R.string.detail_alert_chip_above)),
+            chosen = direction,
+            onChoice = { direction = it },
+        )
+        // A threshold is a price — the same input rule and
+        // the same keyboard as everywhere (util/NumericInput.kt).
+        OutlinedTextField(
+            shape = Shapes.field,
+            value = threshold,
+            onValueChange = { threshold = NumericInput.price(it) },
+            label = { Text(stringResource(R.string.wanted_threshold)) },
+            singleLine = true,
+            keyboardOptions = NumericInput.priceKeyboard(),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }

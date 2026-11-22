@@ -263,7 +263,7 @@ class ScaffoldAndFormTest {
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
             }
-            wait("Alarme") { vm.alarmOverview.value.loaded }
+            wait("alerts") { vm.alarmOverview.value.loaded }
             // „750.00“ like every amount (de-CH), not the raw number „750.0“; the field is called „Schwelle“,
             // the direction stands selected in the choice above (N2 of the second UX review). „Steigt über“
             // , because the creation form preselects „Fällt unter“.
@@ -347,7 +347,7 @@ class ScaffoldAndFormTest {
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
             }
-            wait("Alarme") { vm.alarmOverview.value.loaded }
+            wait("alerts") { vm.alarmOverview.value.loaded }
             val density = ctx.resources.displayMetrics.density
             val field = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
             // Centered on 560 dp the card starts at 360 dp; in list width (840 dp) already at 220.
@@ -601,7 +601,7 @@ class ScaffoldAndFormTest {
         try {
             val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
             show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading && !it.history.loading } }
+            wait("finances") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading && !it.history.loading } }
             val header = compose.onNodeWithText(ctx.getString(R.string.finance_market_avg), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val history = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)

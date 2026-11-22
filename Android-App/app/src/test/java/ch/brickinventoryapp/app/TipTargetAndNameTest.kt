@@ -144,7 +144,7 @@ class TipTargetAndNameTest {
     @Test
     fun gallery() {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        check("Galerie", { vm.galleryState.value.sets.isNotEmpty() }) {
+        check("gallery", { vm.galleryState.value.sets.isNotEmpty() }) {
             GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -152,7 +152,7 @@ class TipTargetAndNameTest {
     @Test
     fun setDetail() {
         val vm = world.setDetail()
-        check("Set-Detail", { vm.setDetailState.value.let { it.setDetail != null && !it.priceFetch.loading } }) {
+        check("set detail", { vm.setDetailState.value.let { it.setDetail != null && !it.priceFetch.loading } }) {
             SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
         }
     }
@@ -160,25 +160,25 @@ class TipTargetAndNameTest {
     @Test
     fun parts() {
         val vm = world.parts().also { it.loadParts() }
-        check("Teile", { vm.partsState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = images) }
+        check("parts", { vm.partsState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
     fun figures() {
         val vm = world.figures().also { it.loadMinifigs() }
-        check("Figuren", { vm.minifigsState.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = images) }
+        check("figures", { vm.minifigsState.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
     fun finances() {
         val vm = world.finances().also { it.loadValuation() }
-        check("Finanzen", { vm.financeState.value.valuation != null }) { FinanceRoute(vm = vm, imageLoader = images) }
+        check("finances", { vm.financeState.value.valuation != null }) { FinanceRoute(vm = vm, imageLoader = images) }
     }
 
     @Test
     fun wantedList() {
         val vm = world.wantedList().also { it.loadWanted() }
-        check("Merkliste", { vm.wantedState.value.wantedItem.isNotEmpty() }) {
+        check("watchlist", { vm.wantedState.value.wantedItem.isNotEmpty() }) {
             WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
     }
@@ -186,17 +186,17 @@ class TipTargetAndNameTest {
     @Test
     fun catalog() {
         val sets = (1..4).map { CatalogSetView(setNumber = "1030$it-1", name = "Beispielset $it", year = 2020 + it, numParts = 500 * it) }
-        check("Katalog") {
+        check("catalog") {
             CatalogScreen(CatalogUiState(loadedPages = mapOf(1 to sets), total = sets.size), serverUrl = "",
                 catalog = none<CatalogActions>(), imageLoader = images, onSetClick = {})
         }
     }
 
     @Test
-    fun vouchers() = check("Gutscheine") { Vouchers() }
+    fun vouchers() = check("vouchers") { Vouchers() }
 
     @Test
-    fun settings() = check("Einstellungen") {
+    fun settings() = check("settings") {
         SettingsScreen(
             condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
                 "system", Design.CLASSIC, false, false, false, false),
@@ -207,19 +207,19 @@ class TipTargetAndNameTest {
     }
 
     @Test
-    fun logIn() = check("Anmelden") { LoginContent(LoginForm.LOGIN) }
+    fun logIn() = check("sign in") { LoginContent(LoginForm.LOGIN) }
 
     @Test
-    fun register() = check("Registrieren") { LoginContent(LoginForm.REGISTER) }
+    fun register() = check("register") { LoginContent(LoginForm.REGISTER) }
 
     @Test
-    fun setUp() = check("Einrichten") { SetupScreen(currentUrl = "https://brick.example.org", onSave = {}, development = false) }
+    fun setUp() = check("set up") { SetupScreen(currentUrl = "https://brick.example.org", onSave = {}, development = false) }
 
     @Test
-    fun startPassword() = check("Startpasswort") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
+    fun startPassword() = check("start password") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
 
     @Test
-    fun secondFactor() = check("Zweiter Faktor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
+    fun secondFactor() = check("second factor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
 
     @Composable
     private fun LoginContent(form: LoginForm) = LoginScreen(

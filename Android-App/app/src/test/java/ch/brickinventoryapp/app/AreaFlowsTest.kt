@@ -139,7 +139,7 @@ class AreaFlowsTest {
     @Test
     fun `a wishlist item can be restored after deleting, including its alert`() {
         val vm = world.wantedList().also { it.loadWanted() }
-        wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
+        wait("watchlist") { vm.wantedState.value.wantedItem.isNotEmpty() }
         show {
             val message = remember { SnackbarHostState() }
             Scaffold(snackbarHost = { SnackbarHost(message) }) { inner ->
@@ -154,7 +154,7 @@ class AreaFlowsTest {
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
             .let { assertTrue("alert before deleting", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
-        wait("Detail") { !vm.wantedItemDetailState.value.fetch.loading }
+        wait("detail") { !vm.wantedItemDetailState.value.fetch.loading }
         // From here the clock by hand: otherwise the snackbar would expire immediately at the test clock's pace.
         compose.mainClock.autoAdvance = false
         fun step() = repeat(5) { compose.mainClock.advanceTimeBy(100); shadowOf(Looper.getMainLooper()).idle() }
@@ -164,7 +164,7 @@ class AreaFlowsTest {
         assertTrue("already deleted before the snackbar ends", world.paths.requestsTo("DELETE").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         step()
-        wait("zurück") { vm.wantedState.value.wantedItem.any { it.setNumber == "10305-1" } }
+        wait("back") { vm.wantedState.value.wantedItem.any { it.setNumber == "10305-1" } }
         step()
         compose.onAllNodesWithText(alarm, substring = true)
             .fetchSemanticsNodes().let { assertTrue("alert visible again", it.isNotEmpty()) }
@@ -261,10 +261,10 @@ class AreaFlowsTest {
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api)))
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
-        wait("Haushalt") { vm.householdState.value.status != null }
+        wait("household") { vm.householdState.value.status != null }
         compose.onNodeWithText(ctx.getString(R.string.household_redeem_lock_reason)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_create)).performScrollTo().performClick()
-        wait("Code") { vm.householdState.value.inviteCode != null }
+        wait("code") { vm.householdState.value.inviteCode != null }
         compose.onNodeWithText(ctx.getString(R.string.household_invite_share)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_copy)).fetchSemanticsNode()
         compose.onAllNodesWithText("Gültig bis", substring = true).fetchSemanticsNodes()
@@ -275,7 +275,7 @@ class AreaFlowsTest {
     fun `in the error state there is no add button, as in gallery and wishlist`() {
         world.paths.codes["/api/v1/parts"] = 500
         val vm = world.parts().also { it.loadParts() }
-        wait("Fehler") { vm.partsState.value.let { it.partsFetch is Load.Failure } }
+        wait("error") { vm.partsState.value.let { it.partsFetch is Load.Failure } }
         show { PartsRoute(vm = vm, imageLoader = images) }
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.parts_add)).assertCountEquals(0)
     }

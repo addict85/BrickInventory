@@ -42,7 +42,7 @@ class AppOverviewProtectionTest {
         override fun backgroundStart(): Int? = null
         override fun rememberBackgroundStart(start: Int?) = Unit
         override fun locked() = false
-        override fun setLocked(an: Boolean) = Unit
+        override fun setLocked(on: Boolean) = Unit
     }
 
     @get:Rule
