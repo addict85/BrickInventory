@@ -71,19 +71,4 @@ class CameraXUpgradeTest {
     // The duplication stood out when the camera setup was merged
     // and this check turned red — not because the rule was violated,
     // but because it measured copies that no longer exist.
-
-    /**
-     * The analysis runs on YUV. If that is switched to RGBA, CameraX falls back
-     * on libimage_processing_util_jni.so — the same native library
-     * the 16 KB topic is about.
-     */
-    @Test
-    fun `image analysis stays on YUV`() {
-        val src = code(withAnalyse("collection/ui/screens/BarcodeScannerScreen.kt"))
-        assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
-            "The ImageAnalysis no longer runs on YUV_420_888. ML Kit gets the " +
-                "mediaImage directly so far; with RGBA CameraX would additionally load its " +
-                "native conversion and cost computing time per frame."
-        }
-    }
 }

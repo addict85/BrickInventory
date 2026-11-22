@@ -79,9 +79,9 @@ class RejectedTest {
 
     @Test
     fun `everything except 401 stays untouched`() {
-        for (code in listOf(200, 204, 304, 400, 403, 404, 500, 503)) {
-            assert(!followUpMay(code, ourServer = true, hadAuthHeader = false, method = "GET")) {
-                "status $code is treated as a sign-in problem."
+        for (status in listOf(200, 204, 304, 400, 403, 404, 500, 503)) {
+            assert(!followUpMay(status, ourServer = true, hadAuthHeader = false, method = "GET")) {
+                "status $status is treated as a sign-in problem."
             }
         }
     }

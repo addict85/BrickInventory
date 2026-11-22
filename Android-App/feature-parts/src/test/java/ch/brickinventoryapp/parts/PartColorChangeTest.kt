@@ -56,14 +56,15 @@ class PartColorChangeTest {
     }
 
     private fun vm() = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView, SavedStateHandle()))
+
     private val screen by lazy {
         Sources.withoutComments(Sources.read("parts/ui/screens/ManualItemDetailScreen.kt"))
     }
-    private val graph by lazy {
-        Sources.withoutComments(Sources.read("parts/ui/PartsGraph.kt"))
-    }
     private val field by lazy {
         Sources.withoutComments(Sources.read("parts/ui/screens/ColorChoiceField.kt"))
+    }
+    private val graph by lazy {
+        Sources.withoutComments(Sources.read("parts/ui/PartsGraph.kt"))
     }
 
     /**
@@ -159,17 +160,12 @@ class PartColorChangeTest {
     @Test
     fun `the same color again triggers no request`() {
         // Two places, and both with a reason: the field does not send the callback
-        // (saves the request AND reopening), the ViewModel
-        // also aborts (it is the path every caller takes).
+        // (ColorChoiceFieldTest), the ViewModel also aborts (it is the path every caller takes).
         //
         // The server rejects the case anyway, without changing anything — but
         // "the server will catch it" is no reason to send a request
         // whose answer is a rebuild of the screen.
         vm().setPartColor("3001", 5, 5)
         assertTrue("setzeTeilFarbe does not stop at the same color: ${paths.requests}", paths.requestsTo("/color").isEmpty())
-        assertTrue(
-            "ColorChoiceField calls onWahl also for the color already chosen.",
-            Regex("""if \(c\.id != current\) onChoice\(c\)""").containsMatchIn(field)
-        )
     }
 }

@@ -5,7 +5,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import ch.brickinventoryapp.model.domain.ColorView
@@ -28,6 +33,8 @@ import org.robolectric.annotation.Config
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   farbe-als-nummer        fallback back to "Farbe %1$d" with the number → red “without a name it reads …”
  *   farbfeld-kleine-schrift the field back in bodySmall → red “without a name it reads …” (font size)
+ * Counter-check (run here): `if (c.id != current) onChoice(c)` → `onChoice(c)` → red “the current
+ * color again is no choice” ([5] instead of []).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")
@@ -72,5 +79,30 @@ class ColorChoiceFieldTest {
     fun `the color list wins over the name from the stock`() {
         show(listOf(ColorView(5, "Yellow", "F2CD37")), "Gelb (alt)")
         assertEquals("Yellow", fieldText())
+    }
+
+    private fun choose(name: String): List<Int> {
+        val chosen = mutableListOf<Int>()
+        val colors = listOf(ColorView(5, "Red", "C91A09"), ColorView(11, "Black", "05131D"))
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                ColorChoiceField(colors, current = 5, currentName = "Red", currentHex = null, onChoice = { chosen += it.id })
+            }
+        }
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText(name) and hasClickAction() and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+        return chosen
+    }
+
+    @Test
+    fun `the current color again is no choice`() {
+        assertEquals(emptyList<Int>(), choose("Red"))
+    }
+
+    @Test
+    fun `another color is passed on`() {
+        assertEquals(listOf(11), choose("Black"))
     }
 }

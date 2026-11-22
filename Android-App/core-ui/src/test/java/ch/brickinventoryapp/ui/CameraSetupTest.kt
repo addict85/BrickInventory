@@ -32,6 +32,7 @@ import androidx.camera.core.impl.Config as UseCaseConfig
  * “a tap focuses once at the spot and keeps it” (auto cancel on).
  * Counter-check (run here): `autofocusPermanent(it)` removed from imageAnalyse → red
  * “preview and image analysis carry continuous autofocus” (analysis without AF mode).
+ * Counter-check (run here): `OUTPUT_IMAGE_FORMAT_YUV_420_888` → `RGBA_8888` → red “image analysis stays on YUV …”.
  * Counter-check (run here): the `ACTION_UP` condition removed → red “a tap focuses once …”
  * (down and up each focus).
  */
@@ -90,5 +91,12 @@ class CameraSetupTest {
         assertEquals("analysis", continuous, afMode(imageAnalyse(640, 480).currentConfig))
         assertEquals("preview", continuous, afMode(Preview.Builder().also { autofocusPermanent(it) }.build().currentConfig))
         assertEquals("without the call no AF mode", null, afMode(ImageAnalysis.Builder().build().currentConfig))
+    }
+
+    @Test
+    fun `image analysis stays on YUV and keeps only the newest frame`() {
+        val analysis = imageAnalyse(640, 480)
+        assertEquals("format", ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888, analysis.outputImageFormat)
+        assertEquals("backpressure", ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST, analysis.backpressureStrategy)
     }
 }

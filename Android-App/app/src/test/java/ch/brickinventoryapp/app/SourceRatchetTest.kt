@@ -86,42 +86,55 @@ class SourceRatchetTest {
     private val readsSource = Regex("""Sources\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
 
     /**
-     * (test functions, of which reading) of a file. A function reads source if its body
+     * (test functions, names of those reading) of a file. A function reads source if its body
      * does or uses a value or function of the file that does.
      */
-    internal fun sourceTextFunctions(raw: String): Pair<Int, Int> {
+    internal fun readingTests(raw: String): Pair<Int, List<String>> {
         val c = Sources.withoutComments(raw)
         val helper = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
             val piece = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
-            readsSource.containsMatchIn(m.value) || (m.value.startsWith("fun") && readsSource.containsMatchIn(piece))
+            // A function, or a value computed in a block (`by lazy {`), reads if its block does.
+            val block = m.value.startsWith("fun") || m.value.trimEnd().endsWith("{") || m.value.trimEnd().endsWith("=")
+            readsSource.containsMatchIn(m.value) || (block && readsSource.containsMatchIn(piece))
         }.map { it.groupValues[1] }.toSet()
-        // The name in backticks is prose, not code: "the workflow …" does not call a helper `workflow`.
-        val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n").replace(Regex("`[^`\n]*`"), "``") }
-        // Messages are prose too: "the code reads …" does not call a helper `code`.
-        val reading = tests.count { t ->
+        val bodies = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n") }
+        val reading = bodies.filter { body ->
+            // The name in backticks is prose, not code: "the workflow …" does not call a helper `workflow`.
+            val t = body.replace(Regex("`[^`\n]*`"), "``")
+            // Messages are prose too: "the code reads …" does not call a helper `code`.
             val calls = string.replace(t, "\"\"")
             readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(calls) }
-        }
-        return tests.size to reading
+        }.map { Regex("""fun `([^`]*)`""").find(it)?.groupValues?.get(1) ?: "?" }
+        return bodies.size to reading
     }
+
+    internal fun sourceTextFunctions(raw: String): Pair<Int, Int> = readingTests(raw).let { (n, r) -> n to r.size }
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 191
-        val ONLY_SOURCE_TEXT = 30
+        val FUNCTIONS = 207
+        val ONLY_SOURCE_TEXT = 33
+        val BEHAVIOR = 64
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }
                 .filter { it.isFile && it.name.endsWith("Test.kt") && it.name != "SourceRatchetTest.kt" }
                 .filter { Regex("/src/(test|androidTest|testFixtures)/").containsMatchIn(it.invariantSeparatorsPath) }.toList()
         }
-        val tally = all.associate { it.relativeTo(Sources.project).invariantSeparatorsPath to sourceTextFunctions(it.readText()) }
+        val tally = all.associate { it.relativeTo(Sources.project).invariantSeparatorsPath to readingTests(it.readText()) }
         val total = tally.values.sumOf { it.first }
         assertTrue("Only ${all.size} test files, $total tests — does the search still apply?", all.size >= 200 && total >= 1000)
-        val only = tally.filterValues { (n, l) -> n > 0 && l == n }.keys.sorted()
-        ratchet("test functions that read source", FUNCTIONS, tally.values.sumOf { it.second },
+        val only = tally.filterValues { (n, l) -> n > 0 && l.size == n }.keys.sorted()
+        ratchet("test functions that read source", FUNCTIONS, tally.values.sumOf { it.second.size },
             "If the new test checks behavior, it should run the code instead of looking whether a line is there.")
         ratchet("test files that only read source", ONLY_SOURCE_TEXT, only.size, only.joinToString())
+        // Structure (StructureChecks.kt) may read source; a behavior check runs the code. Target: 0.
+        val readers = tally.flatMap { (path, t) -> t.second.map { path.substringAfterLast('/') + ": " + it } }
+        val behavior = readers.filter { it.substringBefore(": ") !in structureFiles && it !in structureChecks }
+        ratchet("behavior checks that read source", BEHAVIOR, behavior.size,
+            "Run the code instead; structure goes into StructureChecks.kt with a reason:\n  " + behavior.joinToString("\n  "))
+        val stale = (structureChecks.keys - readers.toSet()) + (structureFiles.keys - readers.map { it.substringBefore(": ") }.toSet())
+        assertEquals("Entries in StructureChecks.kt without a reading check", emptySet<String>(), stale)
     }
 
     @Test
