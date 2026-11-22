@@ -9,7 +9,7 @@
  * @typedef {object} Events
  * @property {string} sessionEnded        Path of the call that ended with 401
  * @property {undefined} passwordChangeRequired
- * @property {undefined} zweiterFaktorPflicht  Admin without a second factor: only its setup is allowed
+ * @property {undefined} secondFactorRequired  Admin without a second factor: only its setup is allowed
  * @property {undefined} setsChanged      Sets differ from what is shown (import finished or aborted)
  * @property {undefined} stockChanged   Sets, parts and figures differ from what is shown (restore)
  * @property {{ restore?: boolean } | undefined} collectionLoad  Reload the collection (restore: at the same spot)

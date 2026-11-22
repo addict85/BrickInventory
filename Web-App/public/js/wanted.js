@@ -20,8 +20,8 @@ import { emptyLocationField, selectedOwner, selectedStorage, householdAccounts }
 // would count in the gallery, parts, portfolio and finances, and every view would need a filter.
 
 /** The most recently loaded list — for the buttons that point to a row. */
-/** @typedef {import('../../frontend-types/contract').Merkposten} Merkposten */
-/** @type {Merkposten[]} */
+/** @typedef {import('../../frontend-types/contract').WantedItem} WantedRow */
+/** @type {WantedRow[]} */
 let _wantedItems = [];
 
 /** The item the take-into-collection dialog currently shows. */
@@ -48,7 +48,7 @@ function conditionText(c) {
  * not admired. The note ("gift for grandson") matters here as much as the image, and a tile would have
  * no room for it.
  */
-/** @param {Merkposten} w */
+/** @param {WantedRow} w */
 function row(w) {
   // Image via imgUrl(), not thumbUrl() alone: thumbUrl() passes a foreign address through unchanged, the
   // browser would call the CDN directly, and the security policy blocked that.
@@ -83,8 +83,8 @@ function row(w) {
   // The row shows the market price, not "Add to gallery": taking it into the collection still happens in
   // the detail, where quantity, price and condition are asked for anyway.
   const price =
-    w.marktpreis != null
-      ? html`<span title="${tRaw('detail.market_price')}" class="price mk-price">${fmtN(w.marktpreis, w.waehrung || accountCurrency)}</span>`
+    w.market_price != null
+      ? html`<span title="${tRaw('detail.market_price')}" class="price mk-price">${fmtN(w.market_price, w.currency || accountCurrency)}</span>`
       : html`<span class="mk-price text-mut mk-price-open" title="${tRaw('wanted.price_open_hint')}">${tRaw('wanted.price_open')}</span>`;
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
@@ -136,14 +136,14 @@ export async function loadWanted() {
   // An error state also carries .empty-state; it steps aside for the skeleton, otherwise a retry looked like the old error.
   if (!_wantedItems.length && !target.querySelector('.mk-row, .empty-state:not(.error-state)'))
     setHtml(target, skeletonRows(4, tRaw('common.loading')));
-  const d = await api('GET', `/v1/wanted?${wantedParams()}`);
+  const d = await api('GET', `/v2/wanted?${wantedParams()}`);
   const box = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-box'));
   if (listLoadError(target, d, { again: 'loadWanted', keep: _wantedItems.length > 0 })) {
     // The open form pushed the error message below the fold.
     if (box && !box.dataset.decided) box.open = false;
     return;
   }
-  _wantedItems = d.merkposten || [];
+  _wantedItems = d.item || [];
   // Once per page load: collapsed on a phone with entries, so the list fits the first screen; after that
   // whatever the user chose stays.
   if (box && !box.dataset.decided) {
@@ -179,7 +179,7 @@ export async function loadWanted() {
             ico: 'wanted',
             title: tRaw('wanted.empty'),
             text: tRaw('wanted.empty_hint'),
-            button: { text: tRaw('wanted.first'), click: 'focusField', arg: 'mk-num', art: 'bs' },
+            button: { text: tRaw('wanted.first'), click: 'focusField', arg: 'mk-num', kind: 'bs' },
           }),
   );
 }
@@ -192,7 +192,7 @@ export async function addWantedItem() {
   if (!setNumberFieldValid('mk-num', num)) return;
   const release = buttonBusy(G('mk-add'));
   try {
-    const d = await api('POST', '/v1/wanted', {
+    const d = await api('POST', '/v2/wanted', {
       set_number: num,
       condition: G('mk-cond')?.value || 'N',
       owner_user_id: selectedOwner('mk-owner'),
@@ -203,7 +203,7 @@ export async function addWantedItem() {
     }
     // "was already on it" is not an error message, but not a new addition either — anyone who clicks the
     // same button twice should see the difference.
-    await wantedAddedToast(d.war_neu, num);
+    await wantedAddedToast(d.was_new, num);
     G('mk-num').value = '';
     await loadWanted();
   } finally {
@@ -222,7 +222,7 @@ export async function catalogToWanted() {
   const owner = selectedOwner('cat-m-owner');
   const release = buttonBusy(G('cat-m-wish'));
   try {
-    const d = await api('POST', '/v1/wanted', { set_number: sn, condition, owner_user_id: owner });
+    const d = await api('POST', '/v2/wanted', { set_number: sn, condition, owner_user_id: owner });
     if (!d.success) {
       toast(d.error || tRaw('settings.error'), 'error');
       return;
@@ -232,13 +232,13 @@ export async function catalogToWanted() {
     const threshold = readAmount(G('cat-m-alert-val')?.value);
     const alert =
       threshold != null && threshold > 0
-        ? await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+        ? await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
             richtung: G('cat-m-alert-dir')?.value || 'unter',
             schwelle: threshold,
             condition,
           })
         : null;
-    await wantedAddedToast(d.war_neu, sn);
+    await wantedAddedToast(d.was_new, sn);
     // The set is remembered; if the alert failed, that should show (after the toast, which would otherwise sit above it).
     if (alert && !alert.success) toast(alert.error || tRaw('settings.error'), 'error');
   } finally {
@@ -253,7 +253,7 @@ export async function catalogToWanted() {
  */
 async function wantedAddedToast(isNew, num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
-  const own = isNew ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`) : null;
+  const own = isNew ? await api('GET', `/v2/sets/${encodeURIComponent(nr)}`) : null;
   const owned = own?.success && own.set ? own.set : null;
   toast(
     owned
@@ -277,10 +277,10 @@ export async function deleteWantedItem(arg) {
   const p = new URLSearchParams({ owner_user_id: String(owner_user_id) });
   // Undo recreates the item; besides number, condition and owner it has nothing of its own.
   const d = await deleteRestorable({
-    request: () => api('DELETE', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`),
+    request: () => api('DELETE', `/v2/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`),
     message: tRaw('wanted.deleted'),
     undo: async () => {
-      const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
+      const r = await api('POST', '/v2/wanted', { set_number, condition, owner_user_id });
       if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
       return !!r?.success;
     },
@@ -327,7 +327,7 @@ export async function confirmTakeover() {
   try {
     const d = await api(
       'POST',
-      `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
+      `/v2/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/take-over`,
       {
         owner_user_id,
         quantity: qty.value,
@@ -341,7 +341,7 @@ export async function confirmTakeover() {
     if (!d?.success) return;
     closeTakeover();
     // 'exists' means: the set was already in view. The wanted item is still fulfilled and disappears —
-    // otherwise it would stand for something you already have.
+    // otherwise it would state for something you already have.
     toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'success');
     await loadWanted();
     emit('collectionLoad');
@@ -373,7 +373,7 @@ export async function openWantedDetail(arg) {
   setHtml(G('mk-m-det'), rawHtml(detailRows(w)));
   G('mk-m-bricklink').style.display = 'none';
   // The price comparison link hangs off the wanted item, not the catalog: a set unknown there still has its own address.
-  showLink('mk-m-comparison', w.preisvergleich_url);
+  showLink('mk-m-comparison', w.price_comparison_url);
   document.querySelector('#mk-detail-modal .more-menu')?.removeAttribute('open');
   G('mk-detail-modal').classList.add('open');
   // From here on, the alert handlers mean THIS dialog.
@@ -385,7 +385,7 @@ export async function openWantedDetail(arg) {
   // Marco's question: "Why aren't the prices shown right away?" Because /price-history only READS the
   // cache, and until this change nothing wrote one for wanted items. This route fetches it (with a TTL, so
   // not freshly on every open) and fills the cache at the same time.
-  api('GET', `/v1/wanted/${encodeURIComponent(set_number)}/preise`)
+  api('GET', `/v2/wanted/${encodeURIComponent(set_number)}/prices`)
     .then(pr => {
       if (_detail !== arg || !pr?.success) return;
       // Same shape as `current` in /price-history — so the same render function works here too.
@@ -398,21 +398,21 @@ export async function openWantedDetail(arg) {
   // Without a name the catalog doesn't know the set (see row()); the request would only end in a 404 in
   // the console.
   if (w.name)
-    api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`)
+    api('GET', `/v2/catalog/sets/${encodeURIComponent(set_number)}`)
       .then(d => {
         if (_detail !== arg || !d?.success) return;
         fillCatalogInfo(d.set, w);
         showLink('mk-m-bricklink', d.set?.bricklink?.url);
         // With the catalog name the search gets better ("LEGO 75192 Millennium Falcon" instead of just the
         // number) — but only when one really came back.
-        showLink('mk-m-comparison', d.set?.preisvergleich_url || w.preisvergleich_url);
+        showLink('mk-m-comparison', d.set?.price_comparison_url || w.price_comparison_url);
       })
       .catch(() => {});
 
   // The HISTORY — the rows above it are already there. It comes from price_history, which the hourly
   // price job fills; since this change, for a wanted item too (src/finances/priceRun.ts). A fresh wanted
   // item therefore starts with only one point, and a line needs two — that's not a bug, it's the start.
-  api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`)
+  api('GET', `/v2/sets/${encodeURIComponent(set_number)}/price-history`)
     .then(ph => {
       if (_detail !== arg) return;
       setHtml(
@@ -447,9 +447,9 @@ const formatNumber = (/** @type {unknown} */ n) => (n == null ? DASH : Number(n)
 
 /**
  * The rows as in the set dialog, without anything that assumes ownership. Built exactly once per open,
- * catalog data is filled in afterwards in place: redrawing would lose an alert's in-progress input.
+ * catalog data is filled in afterwards in place: redrawing would loose an alert's in-progress input.
  */
-/** @param {Merkposten} w */
+/** @param {WantedRow} w */
 function detailRows(w) {
   // When the catalog doesn't know the set, one row says so instead of four dashes for year, theme, parts, figs.
   /** @type {[string, string | import('./escaping.js').SafeHtml, string | null][]} */
@@ -478,7 +478,7 @@ function detailRows(w) {
  * The owner as a select field: anyone who got it wrong when adding the item had to delete it and lost the
  * alert and the date. With a single account the row stays empty — as in the recording forms.
  */
-/** @param {Merkposten} w */
+/** @param {WantedRow} w */
 function ownerSelect(w) {
   const accounts = householdAccounts();
   if (accounts.length < 2) return '';
@@ -498,9 +498,9 @@ export async function wantedOwnerSelected(arg) {
   const sel = G('mk-m-owner');
   const next = parseInt(sel?.value || '', 10);
   if (!Number.isFinite(next) || next === owner_user_id) return;
-  const d = await api('PUT', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/inhaber`, {
+  const d = await api('PUT', `/v2/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/owner`, {
     owner_user_id,
-    neuer_inhaber: next,
+    new_owner: next,
   });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -509,11 +509,11 @@ export async function wantedOwnerSelected(arg) {
   // "was already there" is not an error, but not a move either — as with adding, the message tells the two
   // cases apart. settings.saved instead of a new text: "Saved" already exists in the language file, and
   // two identically-worded entries drift apart at the next polish pass.
-  toast(tRaw(d.zusammengefuehrt ? 'wanted.already' : 'settings.saved'), 'success');
+  toast(tRaw(d.merged ? 'wanted.already' : 'settings.saved'), 'success');
   await loadWanted();
   // The detail is tied to the old key (it carries the owner) — reopen with the new one, otherwise it shows
   // an entry that no longer exists in that form.
-  if (d.zusammengefuehrt) closeWantedDetail();
+  if (d.merged) closeWantedDetail();
   else await openWantedDetail(`${set_number}|${condition}|${next}`);
 }
 
@@ -523,7 +523,7 @@ export async function wantedOwnerSelected(arg) {
  * textContent, not innerHTML: the theme name comes from the catalog and is therefore foreign text. This
  * way it can never be read as markup, and no esc() is needed in yet another place.
  */
-/** @param {import('../../frontend-types/contract').CatalogSetDetail | null | undefined} catalog @param {Merkposten} w */
+/** @param {import('../../frontend-types/contract').CatalogSetDetail | null | undefined} catalog @param {WantedRow} w */
 function fillCatalogInfo(catalog, w) {
   const set = (/** @type {string} */ id, /** @type {string} */ value) => {
     const el = G(id);
@@ -569,8 +569,8 @@ async function importWantedCsv() {
   const owner = selectedOwner('mk-owner');
   const status = G('mk-status');
   const d = await uploadCsv({
-    feld: 'mk-csv-file',
-    pfad: '/v1/wanted/import/csv',
+    field: 'mk-csv-file',
+    path: '/v2/wanted/import/csv',
     fields: owner ? { owner_user_id: String(owner) } : {},
     show: l => {
       if (status) status.textContent = l ? tRaw('import.running') : '';

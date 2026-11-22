@@ -999,7 +999,7 @@ a{color:var(--b600);text-underline-offset:2px}
 @media (hover:hover){a:hover{text-decoration:underline}}
 @media (hover:hover){a.btn:hover{text-decoration:none}}
 
-/* ── Fehler, Verbindung, Laden ──────────────────────────────────────────── */
+/* ── Errors, connection, loading ──────────────────────────────────────────── */
 .error-state .empty-ico .ico{color:var(--a-text)}
 .error-state p{margin:0 0 .9rem}
 /* Sticks below header and bar instead of over them (height from js/mobile.js): on top it covered the user menu. */
@@ -1240,7 +1240,7 @@ p.mon-quiet{margin:0 0 .35rem}
 .mon-state .ico{width:1em;height:1em}
 .mon-digit{font-variant-numeric:tabular-nums;color:var(--mut)}
 .mon-digit.mon-running{color:var(--b700,var(--b600));font-weight:700}
-.mon-digit.mon-error,.mon-state.mon-fehler,.mon-state.mon-error{color:var(--r700)}
+.mon-digit.mon-error,.mon-state.mon-error{color:var(--r700)}
 .mon-buttons{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:flex-start}
 .mon-buttons .btn{flex:0 1 auto}
 /* One word per button does not hyphenate: the column takes the width of the whole word. */

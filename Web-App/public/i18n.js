@@ -13,7 +13,7 @@ if (window.I18N_DE) I18N.de = window.I18N_DE;
 if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
- * Load a language file before retranslating: otherwise key names would stand there for half a second.
+ * Load a language file before retranslating: otherwise key names would state there for half a second.
  * If it fails, the previous language stays — the caller checks I18N[lang].
  * @param {string} lang 'de' or 'en'
  * @returns {Promise<void>}

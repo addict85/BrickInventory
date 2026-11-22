@@ -24,7 +24,7 @@ const _wait = (/** @type {number} */ ms) => new Promise(r => setTimeout(r, ms));
 async function waitVisibly(seconds, number) {
   const status = G('vouchers-balance-status');
   for (let rest = seconds; rest > 0; rest--) {
-    if (status) status.textContent = tRaw('vouchers.balance_wait', { sek: rest, nummer: number });
+    if (status) status.textContent = tRaw('vouchers.balance_wait', { sek: rest, number: number });
     await _wait(1000);
   }
 }
@@ -35,36 +35,36 @@ async function waitVisibly(seconds, number) {
  * Returns what the caller needs to know: whether it worked, and if not, whether it was the rate limit
  * (worth waiting for) or bot protection (then it STOPS — asking again is exactly what must not happen).
  * @param {number | string} id
- * @returns {Promise<{ art: 'ok', response: import('../../frontend-types/contract').GuthabenAntwort } | { art: 'space', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
+ * @returns {Promise<{ kind: 'ok', response: import('../../frontend-types/contract').BalanceReply } | { kind: 'space', waitSeconds: number } | { kind: 'botschutz' | 'error', error: string }>}
  */
 async function oneQuery(id) {
-  const d = await api('POST', `/v1/vouchers/${id}/guthaben`);
-  if (d?.success) return { art: 'ok', response: d };
-  if (d?.grund === 'abstand' && Number(d.wartenSek) > 0) {
-    return { art: 'space', wartenSek: Number(d.wartenSek) };
+  const d = await api('POST', `/v2/vouchers/${id}/balance`);
+  if (d?.success) return { kind: 'ok', response: d };
+  if (d?.reason === 'abstand' && Number(d.waitSeconds) > 0) {
+    return { kind: 'space', waitSeconds: Number(d.waitSeconds) };
   }
-  if (d?.grund === 'botschutz' || d?.grund === 'konto') {
-    return { art: 'botschutz', fehler: d.error || tRaw('settings.error') };
+  if (d?.reason === 'botschutz' || d?.reason === 'konto') {
+    return { kind: 'botschutz', error: d.error || tRaw('settings.error') };
   }
-  return { art: 'fehler', fehler: d?.error || tRaw('settings.error') };
+  return { kind: 'error', error: d?.error || tRaw('settings.error') };
 }
 
 /** What a successful query tells the user. */
-/** @param {import('../../frontend-types/contract').GuthabenAntwort} response */
+/** @param {import('../../frontend-types/contract').BalanceReply} response */
 function reportSuccess(response) {
   const v = response.voucher;
   if (!v) return;
   toast(
     tRaw('vouchers.balance_done', {
-      nummer: v.number,
-      amount: response.angezeigt || fmtN(v.amount, v.currency),
+      number: v.number,
+      amount: response.displayed || fmtN(v.amount, v.currency),
     }),
     'success',
   );
   // A silently changed currency would be a changed total with no hint — the list only sums up when
   // every voucher carries the same one.
-  if (response.waehrung_geaendert) {
-    toast(tRaw('vouchers.balance_currency', { waehrung: v.currency }), 'info');
+  if (response.currency_changed) {
+    toast(tRaw('vouchers.balance_currency', { currency: v.currency }), 'info');
   }
 }
 
@@ -76,20 +76,20 @@ export async function queryBalance(id) {
   if (status) status.textContent = tRaw('vouchers.balance_running');
   for (let attempt = 1; ; attempt++) {
     const r = await oneQuery(id);
-    if (r.art === 'ok') {
+    if (r.kind === 'ok') {
       if (status) status.textContent = '';
       reportSuccess(r.response);
       await loadVouchers();
       return;
     }
-    if (r.art === 'space' && attempt < RETRY_LIMIT) {
-      await waitVisibly(r.wartenSek, g ? g.number : '');
+    if (r.kind === 'space' && attempt < RETRY_LIMIT) {
+      await waitVisibly(r.waitSeconds, g ? g.number : '');
       continue;
     }
     if (status) status.textContent = '';
     // The rate limit also becomes an error message here: after four attempts, saying "it's busy" is
     // more honest than waiting further.
-    toast(('fehler' in r && r.fehler) || tRaw('settings.error'), 'error');
+    toast(('error' in r && r.error) || tRaw('settings.error'), 'error');
     return;
   }
 }
@@ -111,26 +111,26 @@ export async function queryAllBalances() {
         status.textContent = tRaw('vouchers.balance_progress', {
           n: done + failed + 1,
           total: pending.length,
-          nummer: g.number,
+          number: g.number,
         });
       }
       const r = await oneQuery(g.id);
-      if (r.art === 'ok') {
+      if (r.kind === 'ok') {
         done++;
         reportSuccess(r.response);
         settled = true;
         break;
       }
-      if (r.art === 'space') {
-        await waitVisibly(r.wartenSek, g.number);
+      if (r.kind === 'space') {
+        await waitVisibly(r.waitSeconds, g.number);
         continue;
       }
       failed++;
-      toast(r.fehler, 'error');
+      toast(r.error, 'error');
       settled = true;
       // Bot protection: this is where it STOPS, not just skips this card. The remaining cards would hit
       // the same wall, and Marco's rule is that "no more requests get generated" in that case.
-      if (r.art === 'botschutz') {
+      if (r.kind === 'botschutz') {
         if (status) status.textContent = '';
         await loadVouchers();
         return;
@@ -142,7 +142,7 @@ export async function queryAllBalances() {
     }
   }
   if (status) status.textContent = '';
-  toast(tRaw('vouchers.balance_all_done', { done: done, fehler: failed }), failed ? 'info' : 'success');
+  toast(tRaw('vouchers.balance_all_done', { done: done, error: failed }), failed ? 'info' : 'success');
   await loadVouchers();
 }
 

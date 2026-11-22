@@ -53,11 +53,11 @@ async function plAddSet() {
     _plSets.push(entry);
     // Name from the catalog; if it does not know the number, the chip says so instead of silently counting it as a set without parts
     // along.
-    return api('GET', `/v1/sets/info/${normalized}`)
+    return api('GET', `/v2/sets/info/${normalized}`)
       .then(d => {
         if (!d.success) return;
         if (d.name && d.name !== normalized) entry.name = d.name;
-        entry.unknown = d.im_katalog === false;
+        entry.unknown = d.in_catalog === false;
         plRenderSets();
       })
       .catch(() => {});
@@ -137,7 +137,7 @@ async function plGenerate() {
   /** @type {Record<string, number>} */
   let rbToBlColor = {};
   try {
-    const cm = await api('GET', '/v1/parts/bl-color-map');
+    const cm = await api('GET', '/v2/parts/bl-color-map');
     // The values are color numbers; the contract only names the map as open (Record<string, unknown>).
     if (cm?.success) rbToBlColor = /** @type {Record<string, number>} */ (cm.map);
   } catch (_) {}
@@ -149,7 +149,7 @@ async function plGenerate() {
     G('pl-status').textContent = tRaw('pl.loading_set', { set: s.set_number });
     // Use user-independent CSV endpoints (work for all users regardless of import history)
     try {
-      const d = await api('GET', `/v1/sets/${encodeURIComponent(s.set_number)}/parts-list`);
+      const d = await api('GET', `/v2/sets/${encodeURIComponent(s.set_number)}/parts-list`);
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
@@ -184,7 +184,7 @@ async function plGenerate() {
 
     // Fetch minifigures from CSV (user-independent)
     try {
-      const dm = await api('GET', `/v1/sets/${encodeURIComponent(s.set_number)}/minifigs-list`);
+      const dm = await api('GET', `/v2/sets/${encodeURIComponent(s.set_number)}/minifigs-list`);
       if (dm?.success && dm.figs?.length) {
         for (const f of dm.figs) {
           const figQty = parseInt(String(f.quantity || 1), 10);
@@ -214,7 +214,7 @@ async function plGenerate() {
   if (run !== _plRun) return;
   _plParts = Object.values(combined);
   G('pl-status').textContent =
-    `${tRaw('pl.summary_parts', { n: _plParts.length, teile: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: known.length })}` +
+    `${tRaw('pl.summary_parts', { n: _plParts.length, parts: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: known.length })}` +
     (errors ? ` (${tRaw('monitor.errors_n', { n: errors })})` : '') +
     (unknown.length
       ? ` · ${tRaw('pl.unknown_n', { n: unknown.length, numbers: unknown.map(s => s.set_number).join(', ') })}`
@@ -250,7 +250,7 @@ async function plFillStock() {
   // (src/household/household.ts, parseScopeMode) — so the choice is only a different operation of the same thing,
   // not a second concept next to it.
   const withSubs = !!G('pl-stock-subs')?.checked;
-  const d = await api('POST', `/v1/parts/owned${withSubs ? '' : '?accounts=own'}`, { teile: parts });
+  const d = await api('POST', `/v2/parts/owned${withSubs ? '' : '?accounts=own'}`, { parts: parts });
   free();
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
@@ -262,8 +262,8 @@ async function plFillStock() {
     missingKinds = 0;
   for (const el of fields) {
     const [num, color] = String(el.dataset.key || '').split('__');
-    const entry = d.bestand?.[`${num}|${parseInt(color, 10) || 0}`];
-    const have = (entry ? (onlyLose ? entry.lose : entry.gesamt) : 0) ?? 0;
+    const entry = d.holding?.[`${num}|${parseInt(color, 10) || 0}`];
+    const have = (entry ? (onlyLose ? entry.loose : entry.total) : 0) ?? 0;
     el.value = String(have);
     if (have > 0) hit++;
     const needs = parseInt(el.dataset.need ?? '', 10) || 0;
@@ -311,7 +311,7 @@ function plRenderTable(error = 0) {
         ico: 'warning',
         titleKey: error ? 'pl.empty_error_title' : 'pl.empty_title',
         textKey: error ? 'pl.empty_error_text' : 'pl.empty_text',
-        button: { textKey: 'list.again', click: 'plGenerate', ico: 'refresh', art: 'bs' },
+        button: { textKey: 'list.again', click: 'plGenerate', ico: 'refresh', kind: 'bs' },
       }),
     );
     return;
@@ -377,7 +377,7 @@ async function plExportPdf() {
     }));
 
     // Step 1: start the async PDF job
-    const startResp = await apiRaw('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
+    const startResp = await apiRaw('POST', '/v2/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
     if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
     const { jobId } = await startResp.json();
     if (!jobId) throw new Error(tRaw('pdf.no_job_id'));
@@ -419,7 +419,7 @@ async function plExportPdf() {
         };
 
         const trySSE = () => {
-          const s = stream(`/v1/sets/partslist-pdf/stream/${jobId}`, {
+          const s = stream(`/v2/sets/partslist-pdf/stream/${jobId}`, {
             event: ({ status, error, etaSeconds }) => {
               if (status === 'running' && etaSeconds != null) startEta(etaSeconds);
               if (status === 'done') {
@@ -430,7 +430,7 @@ async function plExportPdf() {
                 finish(error || tRaw('pdf.server_error'));
               }
             },
-            fehler: () => {
+            error: () => {
               if (!settled) pollPdfStatus(jobId, btn, finish, startEta);
             },
           });
@@ -441,7 +441,7 @@ async function plExportPdf() {
     );
 
     // Step 3: Download
-    const dlResp = await apiRaw('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
+    const dlResp = await apiRaw('GET', `/v2/sets/partslist-pdf/download/${jobId}`);
     if (!dlResp.ok) throw new Error(tRaw('pdf.download_error', { status: dlResp.status }));
     const blob = await dlResp.blob();
     const url = URL.createObjectURL(blob);
@@ -469,7 +469,7 @@ async function pollPdfStatus(jobId, _btn, finish, startEta) {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 1500));
     try {
-      const r = await apiRaw('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
+      const r = await apiRaw('GET', `/v2/sets/partslist-pdf/status/${jobId}`);
       // An error status (job unknown, server gone) ends the waiting right away.
       if (!r.ok) {
         finish(tRaw('pdf.server_error'));
@@ -536,9 +536,9 @@ async function resolveMinifigs(missing) {
   for (const m of missing) {
     if (m.type === 'M') {
       try {
-        const dp = await api('GET', `/v1/minifigs/${encodeURIComponent(m.part)}/parts`);
+        const dp = await api('GET', `/v2/minifigs/${encodeURIComponent(m.part)}/parts`);
         if (dp?.success && dp.parts?.length) {
-          // FigurTeile does not name the fields of a row; this is how src/minifigs delivers them.
+          // MinifigParts does not name the fields of a row; this is how src/minifigs delivers them.
           const parts =
             /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (
               dp.parts
@@ -600,7 +600,7 @@ async function plExportBricklink() {
   // Ensure BL color mapping is loaded (may be empty if plGenerate was called before sync)
   if (!Object.keys(_rbToBlColor).length) {
     try {
-      const cm = await api('GET', '/v1/parts/bl-color-map');
+      const cm = await api('GET', '/v2/parts/bl-color-map');
       if (cm?.success && cm.map) _rbToBlColor = /** @type {Record<string, number>} */ (cm.map);
     } catch (_) {}
   }

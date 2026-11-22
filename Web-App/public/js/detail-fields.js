@@ -24,7 +24,7 @@ import { tRaw } from '../i18n.js';
 export async function saveSetLocation(sn) {
   const el = G('m-storage');
   if (!el) return;
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/storage`, { storage: el.value });
+  const d = await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/storage`, { storage: el.value });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -204,7 +204,7 @@ function alertState() {
  * @param {string} sn
  */
 export async function loadAlert(sn) {
-  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`);
+  const d = await api('GET', `/v2/sets/${encodeURIComponent(sn)}/alert`);
   const dir = G(alertId('dir')),
     val = G(alertId('val'));
   if (!dir || !val) return;
@@ -222,7 +222,7 @@ export async function loadAlert(sn) {
 /**
  * Only update the flag, never the input field: while typing, the server response would otherwise erase a
  * character just typed.
- * @param {import('../../frontend-types/contract').Preisalarm | undefined} a
+ * @param {import('../../frontend-types/contract').PriceAlert | undefined} a
  */
 function showAlertMarker(a) {
   const st = G(alertId('state'));
@@ -309,8 +309,8 @@ async function sendAlert(sn, direction, raw) {
   const remove = number == null;
   const cond = alertState();
   const d = remove
-    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
-    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+    ? await api('DELETE', `/v2/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
+    : await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
         direction: direction,
         threshold: number,
         condition: cond,
@@ -336,7 +336,7 @@ export async function showOpenAlerts() {
   try {
     mark = localStorage.getItem(key);
   } catch (_) {}
-  const d = await api('GET', `/v1/alerts/pending${mark ? '?since=' + encodeURIComponent(mark) : ''}`).catch(() => null);
+  const d = await api('GET', `/v2/alerts/pending${mark ? '?since=' + encodeURIComponent(mark) : ''}`).catch(() => null);
   // Without `now` no new marker — and without a new marker better save nothing at all than a wrong one.
   if (!d?.success || !d.now) return;
   try {
@@ -371,33 +371,33 @@ export async function loadLocationSelection(owner) {
     .map((/** @type {{ id: number } | number} */ o) => (typeof o === 'number' ? o : (o?.id ?? o)))
     .filter(n => Number.isFinite(Number(n)));
   const question = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
-  const d = await api('GET', `/v1/storage/locations${question}`);
+  const d = await api('GET', `/v2/storage/locations${question}`);
   if (!d?.success) return;
   setHtml(
     dl,
-    (d.orte || []).map(o => html`<option value="${o.name}"></option>`),
+    (d.locations || []).map(o => html`<option value="${o.name}"></option>`),
   );
   // The same list feeds the select field in the detail (locationBlock).
-  setLocationStock((d.orte || []).map(o => o.name));
+  setLocationStock((d.locations || []).map(o => o.name));
 }
 
 /** The accounts whose storage locations are up for choice when capturing; set by loading the household. @type {number[]} */
 let _stockAccounts = [];
 
 /**
- * The whole stock is up for choice (/v1/storage/locations), even a new, empty place; the filters only show
- * occupied places (/v1/storage), because an empty place would find nothing there.
+ * The whole stock is up for choice (/v2/storage/locations), even a new, empty place; the filters only show
+ * occupied places (/v2/storage), because an empty place would find nothing there.
  * @param {number[]} [accounts] household accounts; without a value the most recently named ones
  */
 export async function loadLocations(accounts) {
   if (accounts) _stockAccounts = accounts;
   const question = _stockAccounts.length > 1 ? '?owner=' + encodeURIComponent(_stockAccounts.join(',')) : '';
   const [supply, used] = await Promise.all([
-    api('GET', `/v1/storage/locations${question}`),
-    api('GET', `/v1/storage${scopeQuery('gallery')}`),
+    api('GET', `/v2/storage/locations${question}`),
+    api('GET', `/v2/storage${scopeQuery('gallery')}`),
   ]);
   if (supply?.success) {
-    const names = (supply.orte || []).map(o => o.name);
+    const names = (supply.locations || []).map(o => o.name);
     const dl = G('locations');
     if (dl)
       setHtml(
@@ -406,7 +406,7 @@ export async function loadLocations(accounts) {
       );
     setLocationStock(names);
   }
-  if (used?.success) initStorageSelects(used.orte || []);
+  if (used?.success) initStorageSelects(used.locations || []);
 }
 
 /**
@@ -447,7 +447,7 @@ registerActions({
 /**
  * Fill the storage location filters. Without places they stay hidden: a choice with only "all" answers nothing —
  * the same rule as for the account filter.
- * @param {import('../../frontend-types/contract').Lagerort[]} locations
+ * @param {import('../../frontend-types/contract').Storage[]} locations
  */
 export function initStorageSelects(locations) {
   // Long names shortened: a select field is as wide as its longest option; the full name is in the title.
@@ -455,7 +455,8 @@ export function initStorageSelects(locations) {
   const opts = [
     html`<option value="">${tRaw('filter.storage_all')}</option>`,
     ...locations.map(
-      o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${short(o.ort)}</option>`,
+      o =>
+        html`<option value="${o.location}"${o.location.length > 32 ? html` title="${o.location}"` : ''}>${short(o.location)}</option>`,
     ),
   ].join('');
   for (const view of LOCATION_VIEWS) {
@@ -466,7 +467,7 @@ export function initStorageSelects(locations) {
       continue;
     }
     setHtml(el, rawHtml(opts));
-    // If the stored choice points to a place that has since become empty, an empty label would otherwise stand here
+    // If the stored choice points to a place that has since become empty, an empty label would otherwise state here
     // above a filtered list — the same trap as with the account filter.
     const saved = locationMode(view);
     el.value = [...el.options].some(o => o.value === saved) ? saved : '';

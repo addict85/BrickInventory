@@ -58,7 +58,7 @@ function sideBySide(el) {
 }
 
 /**
- * The siblings that stand with `kind` on the same line of its flex row (without messages). On the phone
+ * The siblings that state with `kind` on the same line of its flex row (without messages). On the phone
  * the same rows wrap below each other; then the field stands alone.
  * @param {Element} kind
  */
@@ -71,7 +71,7 @@ function linesNeighbors(kind) {
   });
 }
 
-/** A cell in a grid of field groups that all stand top-aligned on their line? @param {Element} cell */
+/** A cell in a grid of field groups that all state top-aligned on their line? @param {Element} cell */
 function fieldCell(cell) {
   const grid = cell.parentElement;
   if (!grid || !/grid$/.test(getComputedStyle(grid).display)) return false;

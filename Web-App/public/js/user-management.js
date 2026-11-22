@@ -10,11 +10,11 @@ import { html, rawHtml } from './escaping.js';
 import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
-/** @typedef {import('../../frontend-types/contract').KontoInListe} Account */
+/** @typedef {import('../../frontend-types/contract').AccountInList} Account */
 
 // ── USER MGMT ─────────────────────────────────────────
 export async function loadUsers() {
-  const d = await api('GET', '/v1/auth/users');
+  const d = await api('GET', '/v2/auth/users');
   if (!d.success) return;
   // The name comes first: on the phone it's the card title (data-label empty), the ID only shows on desktop.
   setHtml(
@@ -23,7 +23,7 @@ export async function loadUsers() {
       u => html`<tr><td class="user-name" data-label=""><strong>${u.username}</strong></td><td class="user-id">${u.id}</td>
       <td><div class="roles-cell">${role(u)}
         ${u.is_active === false ? html`<span class="rb ru">${tRaw('users.status.inactive')}</span>` : ''}
-        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.waiting')}</span>` : ''}
+        ${u.awaiting_confirmation ? html`<span class="rb ru">${tRaw('users.status.waiting')}</span>` : ''}
         ${announced(u)}</div></td>
       <td>${fmtDate(u.created_at)}</td>
       <td>${userActions(u)}</td></tr>`,
@@ -59,7 +59,7 @@ function role(u) {
 /** @type {Record<string, () => string>} */
 const ANNOUNCED = {
   passwort: () => tRaw('users.announced.password'),
-  zweiter_faktor: () => tRaw('users.announced.second_factor'),
+  second_factor: () => tRaw('users.announced.second_factor'),
   deaktivieren: () => tRaw('users.announced.deactivate'),
   rolle_entziehen: () => tRaw('users.announced.role_revoke'),
   loeschen: () => tRaw('users.announced.delete'),
@@ -70,7 +70,7 @@ const ANNOUNCED = {
  * @param {Account} u
  */
 function announced(u) {
-  return (u.angekuendigt ?? []).map(
+  return (u.announced ?? []).map(
     a =>
       html`<span class="rb ru">${tRaw('users.announced', { was: (ANNOUNCED[a.type] || (() => a.type))(), time: fmtDate(a.effective_at, 'datetime') })}</span>`,
   );
@@ -93,7 +93,7 @@ const ACTIONS = {
   verwalter_ernannt: () => tRaw('users.action.admin_appointed'),
   verwalter_entzogen: () => tRaw('users.action.admin_revoked'),
   konto_geloescht: () => tRaw('users.action.account_deleted'),
-  konto_deaktiviert: () => tRaw('users.action.account_deactivated'),
+  account_deactivated: () => tRaw('users.action.account_deactivated'),
   konto_reaktiviert: () => tRaw('users.action.account_reactivated'),
   konto_freigeschaltet: () => tRaw('users.action.account_unlocked'),
   gutschein_klartext: () => tRaw('users.action.voucher_plain_text'),
@@ -104,9 +104,9 @@ const ACTIONS = {
 };
 /** Who changed what on which other account — the most recent entries. */
 async function loadLog() {
-  const d = await api('GET', '/v1/admin/protokoll');
+  const d = await api('GET', '/v2/admin/audit-log');
   if (!d.success) return;
-  const entries = d.eintraege || [];
+  const entries = d.entries || [];
   setHtml(
     G('vw-log'),
     entries.length
@@ -137,13 +137,13 @@ function userActions(u) {
       u.is_active === false ? 0 : 1,
       u.username,
     ),
-    u.zweiter_faktor
+    u.second_factor
       ? userButton(u, 'bs', 'resetSecondFactor', 'lock', 'users.action.2fa', 'sf.reset_title', u.username)
       : '',
     userButton(u, 'bd', 'delUser', 'delete', 'common.delete', 'users.action.delete_title', u.username),
   ].join('');
   return html`<div class="user-actions">
-    ${u.wartet_auf_bestaetigung ? userButton(u, 'bp', 'unlockAccount', 'ok', 'users.action.unlock', 'users.action.unlock_title', u.username) : ''}
+    ${u.awaiting_confirmation ? userButton(u, 'bp', 'unlockAccount', 'ok', 'users.action.unlock', 'users.action.unlock_title', u.username) : ''}
     ${userButton(u, 'bs', 'openRpw', 'key', 'users.action.password', 'users.pw_reset_title', u.username)}
     <details class="more-menu v-more"><summary class="btn bs btn-sm" aria-label="${tRaw('users.more', { name: u.username })}">${ico('menu')}<span>${tRaw('users.more_short')}</span></summary>
       <div class="more-list">${rawHtml(rare)}</div></details>
@@ -194,11 +194,11 @@ G('btn-cu').onclick = async () => {
     tRaw('users.create_title'),
     tRaw('users.admin_confirm_text'),
     'lock',
-    { button: 'confirm.btn.account_create', art: 'bp' },
+    { button: 'confirm.btn.account_create', kind: 'bp' },
   );
   if (admin_password === null) return;
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/auth/users', { username: n, password: p, is_admin: a, admin_password, ...z }),
+    api('POST', '/v2/auth/users', { username: n, password: p, is_admin: a, admin_password, ...z }),
   );
   if (d === null) return;
   if (d.success) {
@@ -231,11 +231,11 @@ G('btn-rpw').onclick = async () => {
     name ? tRaw('users.reset_pw_title_name', { name }) : tRaw('users.reset_pw_title'),
     tRaw('users.admin_confirm_text'),
     'lock',
-    { button: 'confirm.btn.password_set', art: 'bp' },
+    { button: 'confirm.btn.password_set', kind: 'bp' },
   );
   if (admin_password === null) return;
   const d = await withSecondFactor(z =>
-    api('PUT', `/v1/auth/users/${G('rpw-uid').value}/password`, { password: newPw, admin_password, ...z }),
+    api('PUT', `/v2/auth/users/${G('rpw-uid').value}/password`, { password: newPw, admin_password, ...z }),
   );
   if (d === null) return;
   if (d.success) {
@@ -261,11 +261,11 @@ async function toggleAdmin(uid, isAdmin, name) {
   const title = tRaw(cur ? 'users.role_title_revoke' : 'users.role_title_give', { name });
   const admin_password = await confirmDeleteWithPassword(title, tRaw('users.admin_confirm_text'), 'lock', {
     button: 'confirm.btn.role_change',
-    art: 'bp',
+    kind: 'bp',
   });
   if (admin_password === null) return;
   const d = await withSecondFactor(z =>
-    api('PUT', `/v1/auth/users/${uid}/admin`, { is_admin: !cur, admin_password, ...z }),
+    api('PUT', `/v2/auth/users/${uid}/admin`, { is_admin: !cur, admin_password, ...z }),
   );
   if (d === null) return;
   if (d.success) {
@@ -285,11 +285,11 @@ async function toggleActive(uid, active, name) {
     tRaw(isActive ? 'users.deactivate_title' : 'users.activate_title', { name }),
     tRaw('users.admin_confirm_text'),
     'lock',
-    { button: isActive ? 'confirm.btn.deactivate' : 'confirm.btn.activate', art: 'bp' },
+    { button: isActive ? 'confirm.btn.deactivate' : 'confirm.btn.activate', kind: 'bp' },
   );
   if (admin_password === null) return;
   const d = await withSecondFactor(z =>
-    api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !isActive, admin_password, ...z }),
+    api('PUT', `/v2/auth/users/${uid}/active`, { is_active: !isActive, admin_password, ...z }),
   );
   if (d === null) return;
   if (d.success) {
@@ -306,10 +306,10 @@ async function unlockAccount(uid, name) {
     tRaw('users.unlock_title', { name }),
     tRaw('users.unlock_text', { name }),
     'ok',
-    { button: 'confirm.btn.unlock', art: 'bp' },
+    { button: 'confirm.btn.unlock', kind: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await withSecondFactor(z => api('PUT', `/v1/auth/users/${uid}/freischalten`, { admin_password, ...z }));
+  const d = await withSecondFactor(z => api('PUT', `/v2/auth/users/${uid}/approve`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
     toast(tRaw('users.unlocked', { name }), 'success');
@@ -325,10 +325,10 @@ async function delUser(uid, name) {
     tRaw('users.delete.title', { name }),
     tRaw('users.delete.text'),
     'profile',
-    { button: 'confirm.btn.account_name_delete', werte: { name }, art: 'bd' },
+    { button: 'confirm.btn.account_name_delete', values: { name }, kind: 'bd' },
   );
   if (admin_password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v1/auth/users/${uid}`, { admin_password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', `/v2/auth/users/${uid}`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
     reportResult(d, tRaw('users.deleted', { name }));

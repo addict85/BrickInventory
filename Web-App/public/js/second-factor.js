@@ -17,7 +17,7 @@ import { confirmDeleteWithPassword, questionCode, withSecondFactor, confirmWithP
 
 // On the login screen, while an admin still has to set it up (js/api.js reports it).
 let mandatory = false;
-/** The setup an admin's "set up again" has already started. @type {import('../../frontend-types/contract').ZweiterFaktorEinrichtung | null} */
+/** The setup an admin's "set up again" has already started. @type {import('../../frontend-types/contract').SecondFactorSetup | null} */
 let started = null;
 const area = () => (mandatory ? G('sf-required-surface') : G('sf-surface'));
 if (typeof document !== 'undefined')
@@ -61,12 +61,12 @@ const CODE_FIELD = (/** @type {string} */ label, length = 24) =>
 
 export async function loadSecondFactor() {
   if (!area()) return;
-  const d = await api('GET', '/v1/auth/zweiter-faktor');
+  const d = await api('GET', '/v2/auth/second-factor');
   if (!d?.success) {
     render(html`<div class="voucher-empty">${tRaw('settings.error')}</div>`);
     return;
   }
-  if (!d.aktiv) {
+  if (!d.active) {
     render(html`<form class="sform" data-submit="sf-start" data-style="max-width:420px">
       <div><button type="button" class="btn bp ${buttonKind()}" id="sf-start" data-click="setupSecondFactor"${genuine()}>${tRaw('sf.setup')}</button></div>
     </form>`);
@@ -76,10 +76,10 @@ export async function loadSecondFactor() {
   }
   // Every action asks for the code in its own dialog: one field for two buttons would leave open what it
   // applies to. Old-style codes expire (migration 0122); only the owner knows whether the open ones are old.
-  const old = d.alte_codes_bis
-    ? html`<p role="note" data-style="margin:0 0 .75rem 0">${ico('warning')} ${tRaw('sf.old_codes', { bis: fmtDate(d.alte_codes_bis) })}</p>`
+  const old = d.old_codes_until
+    ? html`<p role="note" data-style="margin:0 0 .75rem 0">${ico('warning')} ${tRaw('sf.old_codes', { bis: fmtDate(d.old_codes_until) })}</p>`
     : '';
-  render(html`<p data-style="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('sf.active', { n: d.codes_uebrig })}</p>
+  render(html`<p data-style="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('sf.active', { n: d.codes_left })}</p>
     ${old}
     <div class="sf-buttons">
       ${button('newRecoveryCodes', tRaw('sf.new_codes'))}
@@ -89,13 +89,13 @@ export async function loadSecondFactor() {
 
 export async function setupSecondFactor() {
   // Shortly after login the server skips the password (grace period); otherwise it answers without a
-  // counter with aktuelles_passwort_erforderlich.
-  const first = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
+  // counter with current_password_required.
+  const first = await api('POST', '/v2/auth/second-factor/setup', {});
   const d =
-    first?.code !== 'aktuelles_passwort_erforderlich'
+    first?.code !== 'current_password_required'
       ? first
       : await confirmWithPassword(tRaw('sf.title'), (password, z) =>
-          api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }),
+          api('POST', '/v2/auth/second-factor/setup', { password, ...z }),
         );
   if (!d) return;
   if (!d?.success) {
@@ -105,10 +105,10 @@ export async function setupSecondFactor() {
   showSetup(d);
 }
 
-/** @param {import('../../frontend-types/contract').ZweiterFaktorEinrichtung} d */
+/** @param {import('../../frontend-types/contract').SecondFactorSetup} d */
 function showSetup(d) {
   // Grouped for readability, in case someone types the key in by hand.
-  const readable = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
+  const readable = (d.secret ?? '').replace(/(.{4})/g, '$1 ').trim();
   render(html`<form class="sform" data-submit="sf-confirm" data-style="max-width:420px">
       <p data-style="font-size:var(--fs-2);margin:0">${tRaw('sf.scan')}</p>
       <div id="sf-qr" class="sf-qr"></div>
@@ -172,7 +172,7 @@ export async function confirmSecondFactor() {
     if (error) formError(error, tRaw('sf.code_empty'), ['sf-code']);
     return;
   }
-  const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code });
+  const d = await api('POST', '/v2/auth/second-factor/confirm', { code });
   if (!d?.success) {
     // At the field instead of a toast: the error belongs to the code, and a toast would still sit next to
     // "set up" after the correct code.
@@ -189,7 +189,7 @@ export async function confirmSecondFactor() {
 export async function newRecoveryCodes() {
   const code = await questionCode(tRaw('sf.new_codes'), tRaw('sf.code_for_codes'));
   if (!code) return;
-  const d = await api('POST', '/v1/auth/zweiter-faktor/codes', { code });
+  const d = await api('POST', '/v2/auth/second-factor/codes', { code });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -206,10 +206,10 @@ export async function disableSecondFactor() {
     tRaw(isAdmin ? 'sf.new_setup' : 'sf.disable'),
     (password, z) => {
       adminPassword = password;
-      return api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z });
+      return api('POST', '/v2/auth/second-factor/disable', { password, ...z });
     },
     tRaw(isAdmin ? 'sf.new_setup_text' : 'sf.disable_confirm'),
-    { button: isAdmin ? 'sf.new_setup' : 'confirm.btn.disable', art: 'bd', withCode: true },
+    { button: isAdmin ? 'sf.new_setup' : 'confirm.btn.disable', kind: 'bd', withCode: true },
   );
   if (!d) return;
   if (!d?.success) {
@@ -218,9 +218,9 @@ export async function disableSecondFactor() {
   }
   toast(tRaw('sf.disabled'), 'success');
   if (!isAdmin) return loadSecondFactor();
-  const started_ = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: adminPassword });
+  const started_ = await api('POST', '/v2/auth/second-factor/setup', { password: adminPassword });
   started = started_?.success ? started_ : null;
-  emit('zweiterFaktorPflicht');
+  emit('secondFactorRequired');
 }
 
 export async function copyRecoveryCodes() {
@@ -252,12 +252,10 @@ export async function resetSecondFactor(uid, name) {
     tRaw('sf.reset_title_name', { name }),
     tRaw('sf.reset_text', { name }),
     'lock',
-    { button: 'confirm.btn.reset', art: 'bp' },
+    { button: 'confirm.btn.reset', kind: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await withSecondFactor(z =>
-    api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password, ...z }),
-  );
+  const d = await withSecondFactor(z => api('DELETE', `/v2/auth/users/${uid}/second-factor`, { admin_password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');

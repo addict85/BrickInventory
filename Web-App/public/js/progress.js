@@ -16,7 +16,7 @@ let _gibTimer = null; // Polling fallback timer (only if SSE fails)
 /**
  * An entry in an import's result. The contract does not name `results` (CsvImportStatus is open); this is how
  * src/sets/csvImportRun.ts writes it.
- * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportResult
+ * @typedef {{ set_number?: string, row?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, quantity?: number, catalog_pending?: boolean }} ImportResult
  * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStatus
  */
 /** @type {{ close: () => void } | null} */
@@ -101,7 +101,7 @@ function gibApplyStatus(s) {
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = logRow(r);
-      if (z) gibAddLog(z.text, z.art);
+      if (z) gibAddLog(z.text, z.kind);
     });
   }
   if (s.results) _gibLastCount = s.results.length;
@@ -123,7 +123,7 @@ function gibApplyStatus(s) {
 // Polling fallback: fetch the status once and render it.
 async function gibPoll() {
   try {
-    const s = await apiData('GET', '/v1/sets/import/csv/status');
+    const s = await apiData('GET', '/v2/sets/import/csv/status');
     if (s) gibApplyStatus(s);
   } catch (_) {}
 }
@@ -156,25 +156,25 @@ function gibToggle() {
  * @param {string} [warnExtra]
  */
 export function logRow(r, warnExtra = '') {
-  if (!r?.set_number && !r?.zeile) return null;
+  if (!r?.set_number && !r?.row) return null;
   // With the line number one finds the spot in the file; a line without a set number otherwise has no name.
-  const wo = (r.zeile ? tRaw('csv.row', { n: r.zeile }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
+  const wo = (r.row ? tRaw('csv.row', { n: r.row }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
   if (r.success) {
     // A known set gets another copy; "updated" concealed that.
     const was =
       r.action === 'added'
         ? tRaw('common.added')
-        : r.menge
-          ? tRaw('csv.log_more', { n: r.menge })
+        : r.quantity
+          ? tRaw('csv.log_more', { n: r.quantity })
           : tRaw('common.updated');
     // Booked, but unknown to the catalog: yellow instead of green, otherwise a typo would look like a success.
-    if (r.katalog_offen)
+    if (r.catalog_pending)
       return {
         ok: false,
-        art: /** @type {const} */ ('warn'),
+        kind: /** @type {const} */ ('warn'),
         text: wo + ' – ' + was + ' — ' + tRaw('csv.log_unknown'),
       };
-    return { ok: true, art: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
+    return { ok: true, kind: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
   }
   // `warnExtra` only for the CSV import: there a note means
   // "timeout, will be retried". In the wanted list import it means "open, no
@@ -183,11 +183,11 @@ export function logRow(r, warnExtra = '') {
   if (r.isWarning) {
     return {
       ok: false,
-      art: /** @type {const} */ ('warn'),
+      kind: /** @type {const} */ ('warn'),
       text: wo + ': ' + (r.error || '') + (warnExtra ? ' (' + warnExtra + ')' : ''),
     };
   }
-  return { ok: false, art: /** @type {const} */ ('er'), text: wo + ': ' + (r.error || tRaw('settings.error')) };
+  return { ok: false, kind: /** @type {const} */ ('er'), text: wo + ': ' + (r.error || tRaw('settings.error')) };
 }
 
 /**
@@ -219,10 +219,10 @@ export function gibStart() {
 
   // No token in the address: with withCredentials EventSource sends the session cookie, and a ?token=
   // would appear in the proxy log and in the history.
-  const s = stream(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
+  const s = stream(`/v2/sets/import/csv/stream?language=${encodeURIComponent(LANG)}`, {
     event: gibApplyStatus,
     // Connection lost/rejected → fall back to polling as long as no fallback is running yet.
-    fehler: () => {
+    error: () => {
       if (_gibSse === s) _gibSse = null;
       if (!_gibTimer) {
         _gibTimer = setInterval(gibPoll, 1500);
@@ -264,7 +264,7 @@ export async function gibCheckOnLoad() {
     // Without login there is nothing to check; in a hidden tab every query counted against the budget.
     if (!loggedInAccount || document.hidden) return;
     try {
-      const r = await apiRaw('GET', '/v1/sets/import/csv/status');
+      const r = await apiRaw('GET', '/v2/sets/import/csv/status');
 
       // Check the response first, then parse. If a reverse proxy or tunnel stands in front, it delivers an HTML error page
       // on restart or dropout — r.json() then threw "Unexpected token '<'". That is not an error
@@ -312,7 +312,7 @@ const LAST_IMPORT_MS = 24 * 3600_000;
  */
 function rememberLastImport(s) {
   const done = !!s?.success && (s.status === 'done' || s.status === 'cancelled') && (s.results?.length ?? 0) > 0;
-  const alter = s?.beendet_am ? Date.now() - Date.parse(String(s.beendet_am)) : Infinity;
+  const alter = s?.finished_at ? Date.now() - Date.parse(String(s.finished_at)) : Infinity;
   _lastImport = done && alter < LAST_IMPORT_MS ? /** @type {ImportStatus} */ (s) : null;
   const button = /** @type {HTMLButtonElement | null} */ (document.getElementById('last-import'));
   if (!button) return;
@@ -330,7 +330,7 @@ function showLastImport() {
   setProgBar(100);
   for (const r of s.results || []) {
     const z = logRow(r);
-    if (z) addCsvLog(z.text, z.art);
+    if (z) addCsvLog(z.text, z.kind);
   }
   G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${importCounter(s)}`;
   showImportCompletion();
@@ -444,7 +444,7 @@ export function addCsvLog(text, kind) {
 }
 
 /** An event of the stream when capturing; `step` says which fields it carries.
- * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [feld: string]: unknown }} SseEvent */
+ * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [field: string]: unknown }} SseEvent */
 
 // SSE events when capturing a set. Only set data and image are waited for; instructions, parts and
 // price run in the background afterwards, and a bar for work nobody is waiting for would be a
@@ -504,7 +504,7 @@ function cancelImport() {
   _csvPollActive = false;
   _activeAbort?.abort();
   _activeAbort = null;
-  api('POST', '/v1/sets/import/csv/cancel');
+  api('POST', '/v2/sets/import/csv/cancel');
   G('btn-cancel-import').style.display = 'none';
   hideProgress();
   toast(tRaw('csv.cancelled'), 'info');

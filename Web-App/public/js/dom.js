@@ -102,14 +102,14 @@ export function reportHits(text) {
 /**
  * An empty state: icon, one sentence and, if there is one, the next step as a button. Texts come
  * already translated or as keys; escaping happens here.
- * @param {{ ico: string, title?: string, text?: string, titleKey?: string, textKey?: string, button?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * @param {{ ico: string, title?: string, text?: string, titleKey?: string, textKey?: string, button?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, kind?: string } }} o
  */
 export function emptyState(o) {
   const buttonText = o.button?.textKey
     ? html`<span data-i18n="${o.button.textKey}">${tRaw(o.button.textKey)}</span>`
     : html`<span>${o.button?.text}</span>`;
   const button = o.button
-    ? html`<button type="button" class="btn ${o.button.art || 'bp'}" data-click="${o.button.click}"${o.button.arg ? html` data-arg="${o.button.arg}"` : ''}>${ico(o.button.ico || 'plus')}${buttonText}</button>`
+    ? html`<button type="button" class="btn ${o.button.kind || 'bp'}" data-click="${o.button.click}"${o.button.arg ? html` data-arg="${o.button.arg}"` : ''}>${ico(o.button.ico || 'plus')}${buttonText}</button>`
     : '';
   // With a key, applyLang retranslates the text if the account language is only determined later.
   const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
@@ -126,7 +126,7 @@ export function resetButton(view) {
     click: 'resetFilter',
     arg: view,
     ico: 'close',
-    art: 'bs',
+    kind: 'bs',
   };
 }
 

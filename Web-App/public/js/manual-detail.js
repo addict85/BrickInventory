@@ -137,8 +137,8 @@ function loadManPriceHistory(type, id, colorId) {
   // (src/finances/chartData.ts), so no second drawing logic is needed here.
   const histUrl =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`
-      : `/v1/parts/${encodeURIComponent(id)}/${colorId || 0}/price-history`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/price-history`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId || 0}/price-history`;
   api('GET', histUrl)
     .then(ph => {
       // Same function as in set detail — the endpoints deliver the same by_condition structure, so no
@@ -189,8 +189,8 @@ export async function openManDetail(type, id, colorId) {
   // The caches of the parts and minifigs tabs follow their own search, location and account filters;
   // the finance table does not. If the entry is missing it is therefore looked up unfiltered — the
   // tab's cache stays as it is.
-  if (!item && type === 'fig') item = find((await api('GET', '/v1/minifigs/manual'))?.figs, undefined);
-  if (!item && type !== 'fig') item = find(undefined, (await api('GET', '/v1/parts/manual'))?.parts);
+  if (!item && type === 'fig') item = find((await api('GET', '/v2/minifigs/manual'))?.figs, undefined);
+  if (!item && type !== 'fig') item = find(undefined, (await api('GET', '/v2/parts/manual'))?.parts);
   // Remember the CARD's owner. In a household the manual section shows entries of all accounts; without
   // this, the server wrote to the caller's row. MEASURED: the main account set the quantity of the
   // child's card to 99 — the own one changed (before 5|9, after 99|9), and the response still said "success".
@@ -214,8 +214,8 @@ export async function openManDetail(type, id, colorId) {
   // Load acquisitions
   const acqUrl =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
-      : `/v1/parts/${encodeURIComponent(id)}/${parseInt(String(colorId), 10) || 0}/acquisitions`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions`
+      : `/v2/parts/${encodeURIComponent(id)}/${parseInt(String(colorId), 10) || 0}/acquisitions`;
   const ad = await api('GET', acqUrl);
   const acqs = ad?.acquisitions || [];
 
@@ -288,17 +288,17 @@ async function savePartColor() {
   const owner = el.dataset.owner;
   const d = await api(
     'PUT',
-    `/v1/parts/${encodeURIComponent(number)}/${old}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    `/v2/parts/${encodeURIComponent(number)}/${old}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     { color_id: newValue, color_name: choice?.dataset.name || null, color_hex: choice?.dataset.hex || null },
   );
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // `bild` says where the new color's image comes from (src/parts/changeColor.ts).
+  // `image` says where the new color's image comes from (src/parts/changeColor.ts).
   // null means: none found — then the placeholder shows up after reopening, and that was exactly
   // Marco's finding. The message says so instead of leaving him facing an empty spot a second time.
-  if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
+  if (d.image === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
   if (activeTab() === 'finance') emit('financesLoad');
@@ -338,8 +338,8 @@ async function manQtySave() {
   // server removes acquisitions (LIFO), and reloading only on an increase kept showing deleted entries.
   const acqUrl2 =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
-      : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   api('GET', acqUrl2)
     .then(ad2 => {
       const acqs2 = ad2?.acquisitions || [];
@@ -390,13 +390,13 @@ function openManAcqModal() {
 async function loadManAcqModal(type, id, colorId) {
   const url =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
-      : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   const ad = await api('GET', url);
   // Same as in the set dialog: without the member list and without owner_user_id, the owner picker
   // would not know what it stands on.
   if (!acquisition.members.length) {
-    const hm = await api('GET', '/v1/sets/household-members');
+    const hm = await api('GET', '/v2/sets/household-members');
     acquisition.members = hm?.members || [];
   }
   acquisition.owner = ad?.owner_user_id ?? loggedInAccount?.id ?? null;
@@ -487,8 +487,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
   try {
     const url =
       type === 'fig'
-        ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
-        : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
+        ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
+        : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
     /** @type {{ unit_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
     const body = {};
     if (field === 'price') {
@@ -543,8 +543,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
   if (mi) {
     const u =
       mi.type === 'fig'
-        ? `/v1/minifigs/${encodeURIComponent(mi.id)}/price-history`
-        : `/v1/parts/${encodeURIComponent(mi.id)}/${mi.colorId || 0}/price-history`;
+        ? `/v2/minifigs/${encodeURIComponent(mi.id)}/price-history`
+        : `/v2/parts/${encodeURIComponent(mi.id)}/${mi.colorId || 0}/price-history`;
     api('GET', u)
       .then(ph => renderMarketRows(ph, 'man-market-rows'))
       .catch(() => {});
@@ -560,12 +560,12 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
 async function manAcqDelete(type, id, colorId, acqId) {
   const delUrl =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
-      : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
   const listUrl =
     type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
-      : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   const d = await deleteFinal({
     title: tRaw('acq.delete_title'),
     text: tRaw('acq.delete_text'),

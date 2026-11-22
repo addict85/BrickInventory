@@ -35,22 +35,22 @@ async function startSetCsvImport() {
   };
   // Let it read first, then ask: the import increases the quantity for existing sets, while adding a
   // single set rejects the same set. Anyone who picks a file twice should find out beforehand.
-  const preflight = await api('POST', '/v1/sets/import/csv?pruefen=1', formData());
+  const preflight = await api('POST', '/v2/sets/import/csv?check=1', formData());
   if (!preflight.success) {
     toast(preflight.error || tRaw('settings.error'), 'error');
     fi.value = '';
     return;
   }
   if (
-    (preflight.vorhanden ?? 0) > 0 &&
+    (preflight.existing ?? 0) > 0 &&
     !(await confirmDelete(
       tRaw('csv.present_title'),
       tRaw('csv.present_text', {
-        n: preflight.vorhanden ?? 0,
-        numbers: (preflight.vorhanden_nummern || []).slice(0, 5).join(', '),
+        n: preflight.existing ?? 0,
+        numbers: (preflight.existing_numbers || []).slice(0, 5).join(', '),
       }),
       'import',
-      { button: 'csv.present_button', art: 'bp' },
+      { button: 'csv.present_button', kind: 'bp' },
     ))
   ) {
     fi.value = '';
@@ -59,7 +59,7 @@ async function startSetCsvImport() {
   showProgress(tRaw('csv.import_title'), true);
   try {
     // Start import job (returns immediately)
-    const startData = await api('POST', '/v1/sets/import/csv', formData());
+    const startData = await api('POST', '/v2/sets/import/csv', formData());
     if (!startData.success) {
       hideProgress();
       toast(startData.error || t('settings.error'), 'error');
@@ -91,7 +91,7 @@ async function startSetCsvImport() {
           }
         };
 
-        const s = stream(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
+        const s = stream(`/v2/sets/import/csv/stream?language=${encodeURIComponent(LANG)}`, {
           event: state => {
             if (csvApplyOverlayStatus(state, ctx, fi)) {
               s?.close();
@@ -99,7 +99,7 @@ async function startSetCsvImport() {
             }
           },
           // Stream gone → fall back to polling
-          fehler: () => {
+          error: () => {
             if (!settled) csvPollLoop(ctx, fi).then(finish);
           },
         });
@@ -148,7 +148,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       newResults.forEach(r => {
         // Same builder as in progress.js — the reasoning lives there.
         const z = logRow(r);
-        if (z) addCsvLog(z.text, z.art);
+        if (z) addCsvLog(z.text, z.kind);
       });
       ctx.prevResultCount = s.results.length;
     }
@@ -168,14 +168,14 @@ function csvApplyOverlayStatus(s, ctx, fi) {
           // Same row builder as in progress.js. No esc(), because addCsvLog sets textContent; the
           // timeout-retry hint only applies here.
           const z = logRow(r, tRaw('csv.timeout_retry'));
-          if (z) addCsvLog(z.text, z.art);
+          if (z) addCsvLog(z.text, z.kind);
         });
         ctx.prevResultCount = s.results.length;
       }
       if ((s.err ?? 0) > 0) {
         const errorSets = (s.results || []).filter(r => !r.success);
         const errorList = errorSets.map(r => r.set_number + ': ' + (r.error || '?')).join('; ');
-        console.warn('[CSV Import] Fehler: ' + errorList);
+        console.warn('[CSV import] errors: ' + errorList);
       }
       const counter = importCounter(s, 'csv.warnings_n');
       G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${counter}`;
@@ -201,7 +201,7 @@ async function csvPollLoop(ctx, fi) {
     try {
       // apiData instead of api: api() would overwrite the `status` field with the HTTP status, and the
       // loop would never end.
-      const s = await apiData('GET', '/v1/sets/import/csv/status');
+      const s = await apiData('GET', '/v2/sets/import/csv/status');
       if (s && csvApplyOverlayStatus(/** @type {import('./progress.js').ImportStatus} */ (s), ctx, fi)) break;
     } catch (e) {
       console.warn('Poll error:', e);

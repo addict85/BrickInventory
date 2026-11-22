@@ -87,14 +87,14 @@ export function fontFactor() {
  * @param {number} fs
  */
 function axesEdge(division, cur, fs) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const longest = Math.max(...division.werte.map(v => axesAmount(v, step, cur, fs >= 18).length));
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const longest = Math.max(...division.values.map(v => axesAmount(v, step, cur, fs >= 18).length));
   return Math.ceil(longest * fs * 0.62 + fs * 1.2);
 }
 
 /**
  * Left margin and position of the axis amounts. If less than a good half remained next to them for the curve
- * (phone, large font), the amounts stand inside above their grid lines: otherwise at 320 px and
+ * (phone, large font), the amounts state inside above their grid lines: otherwise at 320 px and
  * 200 % 15 px of curve would remain.
  * @param {Split} division
  * @param {string} cur
@@ -112,7 +112,7 @@ function axesSituation(division, cur, fs, W, right) {
 // Values in steps of 1, 2 or 5 times a power of ten (nobody reads 4'219 / 4'441), time as a real
 // axis instead of by index — otherwise a month would be as wide as a day.
 
-/** Axis division: first and last tick, all values in between. @typedef {{ of: number, bis: number, werte: number[] }} Split */
+/** Axis division: first and last tick, all values in between. @typedef {{ of: number, bis: number, values: number[] }} Split */
 
 /**
  * Division by 1-2-5 over [min, max] with at most about `target` ticks.
@@ -132,7 +132,7 @@ export function niceSplit(min, max, target = 5) {
     bis = Math.ceil(max / step - 1e-9) * step;
   const values = [];
   for (let i = 0; of + i * step <= bis + step / 2; i++) values.push(Number((of + i * step).toPrecision(12)));
-  return { of, bis, werte: values };
+  return { of, bis, values: values };
 }
 
 /**
@@ -265,8 +265,8 @@ export function axesAmount(v, step, cur, short = false) {
  * @param {string} cur
  */
 function yAxis(division, min, yOf, links, right, top, bottom, cur, f = 1, inside = false) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const stripes = division.werte
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const stripes = division.values
     .filter((/** @type {number} */ v) => v >= min)
     .map(v => {
       const y = yOf(v).toFixed(1);
@@ -293,8 +293,8 @@ function yAxis(division, min, yOf, links, right, top, bottom, cur, f = 1, inside
  * @param {number[]} [avoid]
  */
 function yAmountsInner(division, min, yOf, links, cur, f, avoid = []) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const values = division.werte.filter((/** @type {number} */ v) => v >= min);
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const values = division.values.filter((/** @type {number} */ v) => v >= min);
   return [values[0], values[values.length - 1]]
     .filter((v, i, a) => a.indexOf(v) === i)
     .filter(v => avoid.every(y => Math.abs(yOf(v) - y) > 30 * f))
@@ -323,7 +323,7 @@ function wrap(text, space, f) {
 }
 
 /**
- * Labels of reference lines that would wrap inside the picture stand below the chart: multi-line they lay
+ * Labels of reference lines that would wrap inside the picture state below the chart: multi-line they lay
  * over the curve and end point. `height` is the room the chart adds at the bottom for them.
  * @param {{ text: string, farbe: string }[]} entries @param {number} W @param {number} f
  */
@@ -388,7 +388,7 @@ function referenceLine(
       paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${tspans}</text></g>`;
 }
 
-/** Response of /v1/…/price-history, as far as the charts read it.
+/** Response of /v2/…/price-history, as far as the charts read it.
  * @typedef {Partial<Pick<import('../../frontend-types/contract').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} PriceData */
 
 /**
@@ -453,7 +453,7 @@ let _nextId = 0;
  * not from the index: used prices often start later, and stretched series would show a comparison that
  * does not exist.
  * @param {PriceData} data
- *   Response of /v1/sets/:nummer/price-history
+ *   Response of /v2/sets/:number/price-history
  * @param {string} [uid]  abbreviation for the gradient IDs in the SVG
  * @param {number} [width]
  * @param {Set<string>} [medium] conditions whose purchase price is the average of several purchases ("Ø purchase price")

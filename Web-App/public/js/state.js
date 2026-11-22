@@ -15,18 +15,18 @@ import { setNumbersCurrency } from '../i18n.js';
 export let loggedInAccount = null;
 /** Currency from the settings; 'EUR' as long as they are not loaded. */
 export let accountCurrency = 'EUR';
-/** The settings from /v1/settings/raw (settings). @type {Record<string, string> | null} */
+/** The settings from /v2/settings/raw (settings). @type {Record<string, string> | null} */
 export let settingsSnapshot = null;
 /**
- * A set of the gallery: the row from /v1/sets, plus tile price, P&L and their source from
- * /v1/finance/pnl (set in collection.js).
+ * A set of the gallery: the row from /v2/sets, plus tile price, P&L and their source from
+ * /v2/finance/pnl (set in collection.js).
  * @typedef {import('../../frontend-types/contract').SetItem & { _price?: number | null, _pnl_pct?: number | null, _source?: string | null }} Tile
  */
 /** The loaded sets of the gallery. @type {Tile[]} */
 export let gallerySets = [];
 /** The set in the detail dialog; null when it is closed. @type {Tile | null} */
 export let openSet = null;
-/** Tile price and P&L per set number from /v1/finance/pnl. @type {Record<string, { price?: number | null, pnl_pct?: number | null, quelle?: string | null }>} */
+/** Tile price and P&L per set number from /v2/finance/pnl. @type {Record<string, { price?: number | null, pnl_pct?: number | null, source?: string | null }>} */
 export let pnlBySet = {};
 /** The market value for the finance header figure: the value curve ends on it, so both show the same. */
 export let financeHeaderValue = 0;

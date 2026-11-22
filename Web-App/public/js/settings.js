@@ -57,8 +57,8 @@ async function registrationMailHint() {
   const box = G('reg-enabled'),
     hint = G('reg-mail-hint');
   if (!box || !hint) return;
-  const d = await api('GET', '/v1/auth/registration-status');
-  const none = d?.mail_versand === false;
+  const d = await api('GET', '/v2/auth/registration-status');
+  const none = d?.mail_delivery === false;
   box.disabled = none && !box.checked;
   hint.hidden = !none;
   hint.textContent = none ? tRaw(box.checked ? 'settings.reg_paused' : 'settings.reg_needs_mail') : '';
@@ -92,11 +92,11 @@ async function saveSmtp() {
     'lock',
     {
       button: 'confirm.btn.save',
-      art: 'bp',
+      kind: 'bp',
     },
   );
   if (admin_password === null) return null;
-  const d = await withSecondFactor(z => api('POST', '/v1/settings', { ...values, admin_password, ...z }));
+  const d = await withSecondFactor(z => api('POST', '/v2/settings', { ...values, admin_password, ...z }));
   if (d === null) return null;
   if (d.success) {
     loadedSmtp = JSON.stringify(values);
@@ -124,10 +124,10 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
   const d = foreign
     ? await confirmWithPassword(
         tRaw('smtp.test_confirm_title'),
-        (password, z) => api('POST', '/v1/settings/smtp-test', { to, password, ...z }),
+        (password, z) => api('POST', '/v2/settings/smtp-test', { to, password, ...z }),
         tRaw('smtp.test_confirm_text'),
       )
-    : await withSecondFactor(z => api('POST', '/v1/settings/smtp-test', { to, ...z }));
+    : await withSecondFactor(z => api('POST', '/v2/settings/smtp-test', { to, ...z }));
   release();
   if (!d) return;
   res.style.display = 'block';
@@ -169,14 +169,14 @@ async function saveRegEnabled() {
 
 export async function loadCacheTtl() {
   try {
-    const d = await api('GET', '/v1/admin/cache-ttl');
+    const d = await api('GET', '/v2/admin/cache-ttl');
     if (d.success) {
       const sel = G('mon-cache-ttl');
       if (sel) sel.value = d.ttl || '24';
     }
   } catch (_) {}
   try {
-    const dc = await api('GET', '/v1/settings/default-condition');
+    const dc = await api('GET', '/v2/settings/default-condition');
     if (dc.success) {
       const sel = G('mon-default-condition');
       if (sel) sel.value = dc.condition || 'N';
@@ -193,20 +193,20 @@ export async function loadCacheTtl() {
 /** One value, one save: like every single value, saved right away, confirmed at the field (reportAtField). */
 async function saveCacheTtl() {
   const sel = G('mon-cache-ttl');
-  const d = await api('POST', '/v1/admin/cache-ttl', { ttl: sel?.value || '24' });
+  const d = await api('POST', '/v2/admin/cache-ttl', { ttl: sel?.value || '24' });
   if (d.success) reportAtField(sel);
   else toast(d.error || t('settings.error'), 'error');
 }
 
 async function saveStandardState() {
   const sel = G('mon-default-condition');
-  const d = await api('POST', '/v1/admin/default-condition', { condition: sel?.value || 'N' });
+  const d = await api('POST', '/v2/admin/default-condition', { condition: sel?.value || 'N' });
   if (d.success) reportAtField(sel);
   else toast(d.error || t('settings.error'), 'error');
 }
 
 export async function loadRateLimitStats() {
-  const d = await api('GET', '/v1/admin/cache-stats');
+  const d = await api('GET', '/v2/admin/cache-stats');
   if (!d.success || !d.rate_limits) return;
   const fmt = (/** @type {import('../../frontend-types/contract').RateLimit | null | undefined} */ rl) =>
     rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
@@ -218,16 +218,16 @@ export async function loadRateLimitStats() {
   }
 }
 export async function loadCacheStats() {
-  const d = await api('GET', '/v1/admin/cache-stats');
+  const d = await api('GET', '/v2/admin/cache-stats');
   if (!d.success) return;
   if (G('cs-prices')) G('cs-prices').textContent = String(d.prices || 0);
   if (G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
   if (G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
   // After a read error this shows 0; the hint says that it is not a real 0.
-  if (d.degradiert?.length) toast(tRaw('monitor.degraded', { teile: d.degradiert.join(', ') }), 'info');
+  if (d.degraded?.length) toast(tRaw('monitor.degraded', { parts: d.degraded.join(', ') }), 'info');
 }
 export async function loadApiLimits() {
-  const d = await api('GET', '/v1/admin/api-limits');
+  const d = await api('GET', '/v2/admin/api-limits');
   if (!d.success) return;
   G('lim-rb').value = String(d.limits.rebrickable);
   G('lim-bl').value = String(d.limits.bricklink);
@@ -238,7 +238,7 @@ export async function loadProfile() {
   const dw = G('dark-choice');
   if (dw && window.__bimDarkValue) dw.value = window.__bimDarkValue();
   loadOwnTheme();
-  const d = await api('GET', '/v1/auth/profile');
+  const d = await api('GET', '/v2/auth/profile');
   const u = d.success ? d.user : null;
   if (!u) return;
   G('prof-first').value = u.first_name || '';
@@ -266,7 +266,7 @@ export async function loadProfile() {
 async function loadOwnTheme() {
   const sel = G('design-choice');
   if (!sel) return;
-  const d = await api('GET', '/v1/settings/theme');
+  const d = await api('GET', '/v2/settings/theme');
   if (!d.success) return;
   showThemeChoice(d);
 }
@@ -282,13 +282,13 @@ function showThemeChoice(d) {
     noppe: 'settings.theme_noppe',
     hochglanz: 'settings.theme_hochglanz',
   };
-  const defaultName = tRaw(/** @type {Record<string, string>} */ (NAMES)[d.vorgabe ?? ''] || NAMES.classic);
+  const defaultName = tRaw(/** @type {Record<string, string>} */ (NAMES)[d.preset ?? ''] || NAMES.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: defaultName });
-  sel.value = d.eigenes || '';
+  sel.value = d.own || '';
   // A sentence about the chosen theme: theme names alone don't say what it looks like.
   // Werkbank has no light variant; that is noted here too.
   const hint = G('design-hint');
-  const active = d.eigenes || d.vorgabe || 'classic';
+  const active = d.own || d.preset || 'classic';
   const DESCRIPTIONS = {
     classic: 'settings.theme_desc.classic',
     brick: 'settings.theme_desc.brick',
@@ -309,7 +309,7 @@ function showThemeChoice(d) {
 
 async function setOwnDesign() {
   const theme = G('design-choice').value;
-  const d = await api('POST', '/v1/settings/user/theme', { theme });
+  const d = await api('POST', '/v2/settings/user/theme', { theme });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -331,13 +331,13 @@ async function saveCurrency() {
       tRaw('account.currency_change_title'),
       tRaw('account.currency_change_text', { alt: accountCurrency, new: value }),
       'finances',
-      { button: 'account.currency_change_button', art: 'bp' },
+      { button: 'account.currency_change_button', kind: 'bp' },
     ))
   ) {
     G('s-cur').value = accountCurrency;
     return;
   }
-  const d = await api('POST', '/v1/settings', { currency: value });
+  const d = await api('POST', '/v2/settings', { currency: value });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -353,7 +353,7 @@ async function saveCurrency() {
 
 async function saveState() {
   const condVal = G('s-default-condition')?.value || 'N';
-  const d = await api('POST', '/v1/settings/user/default-condition', { condition: condVal });
+  const d = await api('POST', '/v2/settings/user/default-condition', { condition: condVal });
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
     return;
@@ -380,7 +380,7 @@ G('btn-sav-prof').onclick = async () => {
     const d = await confirmWithPassword(
       tRaw(newAddress ? 'profile.email_change_title' : 'profile.save_title'),
       (pwC, z) =>
-        api('PUT', '/v1/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
+        api('PUT', '/v2/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
       newAddress ? tRaw('profile.email_change_text', { email }) : undefined,
     );
     if (!d) return;
@@ -418,10 +418,10 @@ G('btn-sav-pw').onclick = async () => {
   btn.disabled = true;
   try {
     const dPw = await confirmWithPassword(tRaw('settings.password.change'), (pwC, z) =>
-      api('POST', '/v1/auth/change-password', {
+      api('POST', '/v2/auth/change-password', {
         current: pwC,
         newPassword: pwN,
-        passkeys_widerrufen: !!G('pw-pk')?.checked,
+        passkeys_revoked: !!G('pw-pk')?.checked,
         ...z,
       }),
     );
@@ -430,10 +430,10 @@ G('btn-sav-pw').onclick = async () => {
       responseError(
         dPw,
         {
-          alle_felder_erforderlich: 'pw-n',
-          passwort_zu_kurz: 'pw-n',
-          passwort_zu_lang: 'pw-n',
-          passwort_zu_haeufig: 'pw-n',
+          all_fields_required: 'pw-n',
+          password_too_short: 'pw-n',
+          password_too_long: 'pw-n',
+          password_too_common: 'pw-n',
         },
         tRaw('settings.error'),
       );
@@ -478,8 +478,8 @@ function applySettings(s) {
     _set('bs-key', s.brickset_api_key || '');
     _set('mon-app-theme', s.app_theme || 'classic');
     // s.app_theme is the theme in effect for THIS account; here the admin sets the default.
-    api('GET', '/v1/settings/theme').then(d => {
-      if (d.success) _set('mon-app-theme', d.vorgabe ?? 'classic');
+    api('GET', '/v2/settings/theme').then(d => {
+      if (d.success) _set('mon-app-theme', d.preset ?? 'classic');
     });
     loadUsers();
     loadSmtpSettings(s);
@@ -490,7 +490,7 @@ export async function loadSettings() {
   // Show cached data right away, so the tab never appears empty
   if (settingsSnapshot) applySettings(settingsSnapshot);
   loadHousehold();
-  const d = await api('GET', '/v1/settings/raw');
+  const d = await api('GET', '/v2/settings/raw');
   if (!d.success) return;
   setSettingsSnapshot(d.settings);
   applySettings(d.settings);
@@ -508,7 +508,7 @@ async function saveApiCredential(values, service, limitId, button) {
     toast(tRaw('settings.error'), 'error');
     return;
   }
-  await api('PUT', '/v1/admin/api-limits', { [service]: parseInt(G(limitId).value, 10) });
+  await api('PUT', '/v2/admin/api-limits', { [service]: parseInt(G(limitId).value, 10) });
   const empty = Object.values(values).every(w => !String(w).trim());
   reportAtField(G(button), empty ? tRaw('settings.access_removed') : undefined);
   loadRateLimitStats();
@@ -532,10 +532,10 @@ G('btn-sav-bs').onclick = () =>
 /** Saved right away like the other single values, confirmed at the field. */
 async function saveAppDesign() {
   const theme = G('mon-app-theme')?.value || 'classic';
-  const d = await api('POST', '/v1/settings/admin/theme', { theme });
+  const d = await api('POST', '/v2/settings/admin/theme', { theme });
   // What is applied is what holds for THIS account — an own theme stays.
   if (d.success) {
-    const w = await api('GET', '/v1/settings/theme');
+    const w = await api('GET', '/v2/settings/theme');
     if (w.success) {
       applyTheme(w.theme);
       if (settingsSnapshot) settingsSnapshot.app_theme = w.theme;
@@ -545,7 +545,7 @@ async function saveAppDesign() {
   else toast(tRaw('settings.error'), 'error');
 }
 G('btn-clr').onclick = async () => {
-  await api('POST', '/v1/admin/cache-clear');
+  await api('POST', '/v2/admin/cache-clear');
   toast(tRaw('settings.cache_cleared'), 'info');
   loadCacheStats();
   emit('financesLoad');
@@ -555,10 +555,10 @@ G('btn-clr').onclick = async () => {
  * @param {boolean} all
  */
 async function clearCache(all) {
-  const z = await api('GET', '/v1/admin/cache-stats');
-  // Without numbers (fetch failed, `degradiert` with placeholder zeros) a text with no number: "Clearing
+  const z = await api('GET', '/v2/admin/cache-stats');
+  // Without numbers (fetch failed, `degraded` with placeholder zeros) a text with no number: "Clearing
   // 0 prices" would wrongly promise that nothing is lost.
-  const known = !!z?.success && typeof z.prices === 'number' && !z.degradiert?.includes('cache');
+  const known = !!z?.success && typeof z.prices === 'number' && !z.degraded?.includes('cache');
   const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
   const title = tRaw(all ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
   const text = known
@@ -566,8 +566,8 @@ async function clearCache(all) {
     : tRaw(
         all ? 'settings.all_cache.confirm_text_without_number' : 'settings.cache_prices.confirm_text_without_number',
       );
-  if (!(await confirmDelete(title, text, 'delete', { button: 'confirm.btn.empty', art: 'bd' }))) return;
-  const d = await api('POST', '/v1/admin/cache-clear', all ? { all: true } : {});
+  if (!(await confirmDelete(title, text, 'delete', { button: 'confirm.btn.empty', kind: 'bd' }))) return;
+  const d = await api('POST', '/v2/admin/cache-clear', all ? { all: true } : {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -584,16 +584,16 @@ G('btn-dall').onclick = async () => {
     tRaw('settings.delete_all.title'),
     tRaw('settings.delete_all.text'),
     'delete',
-    { button: 'confirm.btn.all_delete', art: 'bd' },
+    { button: 'confirm.btn.all_delete', kind: 'bd' },
   );
   if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v1/bestand', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v2/inventory', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  toast(tRaw('settings.delete_all.done', { n: d.sets + d.teile + d.figuren }), 'success');
+  toast(tRaw('settings.delete_all.done', { n: d.sets + d.parts + d.minifigs }), 'success');
   emit('collectionLoad');
   loadParts();
   loadMinifigs();
@@ -605,10 +605,10 @@ G('btn-account-delete').onclick = async () => {
     tRaw('settings.delete_account.title'),
     tRaw('settings.delete_account.text'),
     'delete',
-    { button: 'confirm.btn.account_delete', art: 'bd' },
+    { button: 'confirm.btn.account_delete', kind: 'bd' },
   );
   if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v1/auth/konto', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v2/auth/account', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -620,7 +620,7 @@ G('btn-account-delete').onclick = async () => {
 // ── CONFIG EXPORT / IMPORT ───────────────────────────────────
 G('btn-cfg-export').onclick = async () => {
   const a = document.createElement('a');
-  a.href = '/api/v1/settings/export';
+  a.href = '/api/v2/settings/export';
   a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
@@ -636,10 +636,10 @@ async function importConfig() {
   const fd = new FormData();
   fd.append('file', file);
   try {
-    const d = await api('POST', '/v1/settings/import', fd);
+    const d = await api('POST', '/v2/settings/import', fd);
     if (d.success) {
       // Which SMTP values the file carried is shown here: they are only ever set in the form.
-      const smtp = (d.smtp_uebergangen || []).join(', ');
+      const smtp = (d.smtp_skipped || []).join(', ');
       st.textContent = tRaw('settings.imported_note', {
         n: d.imported,
         note: [d.note, smtp].filter(Boolean).join(': '),
@@ -647,8 +647,7 @@ async function importConfig() {
       st.style.color = 'var(--g500)';
       toast(tRaw('admin.config_imported'), 'success');
       // The import never takes over SMTP values (password confirmation); which ones, is shown here.
-      if (d.smtp_uebergangen?.length)
-        toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
+      if (d.smtp_skipped?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_skipped.join(', ') }), 'info');
       loadSettings();
       setSettingsSnapshot(null); // invalidate cache so next loadSettings fetches fresh
       if (loggedInAccount?.isAdmin) {
@@ -726,9 +725,9 @@ async function checkSettingsSource(source) {
   const release = buttonBusy(this);
   status.className = 'source-status';
   status.textContent = tRaw('settings.access_running');
-  const d = await api('POST', '/v1/settings/quelle-testen', { quelle: source });
+  const d = await api('POST', '/v2/settings/test-source', { source: source });
   release();
-  const { grund: reason } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : clearerReason(d);
+  const { reason } = d?.success ? { reason: '' } : d?.code ? { reason: d.error } : clearerReason(d);
   status.classList.add(d?.success ? 'source-ok' : 'source-error');
   setHtml(
     status,

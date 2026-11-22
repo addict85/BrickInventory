@@ -43,7 +43,7 @@ function purchaseCell(s) {
   if (buy == null) return html`<span class="text-mut">—</span>`;
   if (isGift(buy)) return html`<span class="gift-badge">${tRaw('finance.gift')}</span>`;
   const amount = withUnit(Number(buy), s.quantity || 1);
-  return s.kaufpreis_geschaetzt ? estimatedPurchase(amount) : amount;
+  return s.purchase_price_estimated ? estimatedPurchase(amount) : amount;
 }
 
 /** Market value of the quantity with the trend against the purchase price; the price arrives later
@@ -66,7 +66,7 @@ export function tableRow(s) {
     <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
     <td>${s.pieces ? s.pieces.toLocaleString(locale()) : '—'}</td><td>${s.minifigs || '—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td data-style="font-size:var(--fs-1);color:var(--mut)">${s.letzter_kauf ? fmtDate(s.letzter_kauf) : '—'}</td>
+    <td data-style="font-size:var(--fs-1);color:var(--mut)">${s.last_purchase ? fmtDate(s.last_purchase) : '—'}</td>
     <td class="number">${purchaseCell(s)}</td><td class="number" data-tab-value-for="${s.set_number}">${valueCell(s)}</td>
     <td>${s.instructions?.length ? html`<span class="ibadge">${ico('list')}${s.instructions.length}</span>` : '—'}</td>
     <td class="rows-actions" data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${s.set_number}" title="${tRaw('detail.reimport_parts')}" aria-label="${tRaw('gallery.row.reimport', { name })}">${ico('refresh')}</button><button class="btn bs btn-sm" data-click="delSet"${genuine()} data-arg="${s.set_number}" title="${tRaw('detail.delete')}" aria-label="${tRaw('gallery.row.delete', { name })}">${TRASH_ICON_SVG}</button></td>

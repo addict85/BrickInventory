@@ -69,7 +69,7 @@ const FILTER = {
   minifigs: { 'fig-search': 'suche' },
 };
 const FILTER_FIELD = new Map(Object.entries(FILTER).flatMap(([a, f]) => Object.keys(f).map(id => [id, a])));
-/** Values that stand in the fields on load: they do not belong in the address. */
+/** Values that state in the fields on load: they do not belong in the address. */
 const _default = new Map();
 /**
  * @param {string} id

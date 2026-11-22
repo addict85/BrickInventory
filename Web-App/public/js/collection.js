@@ -111,7 +111,7 @@ async function loadGalleryMore() {
   _galLoadingMore = true;
   const gen = galleryGuard.current();
   try {
-    const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
+    const d = await galleryGuard.whenCurrent(api('GET', `/v2/sets?${galleryParams(_galPage + 1)}`));
     if (d === undefined) return;
     const batch = d.sets || [];
     if (!batch.length) {
@@ -227,7 +227,7 @@ export async function loadGallery(opts = {}) {
   _galDone = true;
   _galLoadingMore = false;
   const hadList = gallerySets.length > 0;
-  const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, fetchSize)}`));
+  const d = await galleryGuard.whenCurrent(api('GET', `/v2/sets?${galleryParams(1, fetchSize)}`));
   if (d === undefined) return;
   if (listLoadError(gal, d, { again: 'loadGallery', keep: hadList })) {
     if (hadList) renderGallery();
@@ -335,12 +335,12 @@ export function updateGalleryPrices() {
  */
 function priceLine(s) {
   const buy = s.avg_purchase_price ?? s.max_purchase_price;
-  // The server says where kachel_preis comes from: without a market price it is the purchase price.
+  // The server says where tile_price comes from: without a market price it is the purchase price.
   const market = !!s._price && (s._source ? s._source === 'markt' : true);
   const buyAmount = buy != null ? fmtMoney(buy, accountCurrency) : s._price ? fmtMoney(s._price, accountCurrency) : '';
   const amount = market
     ? fmtN(s._price, accountCurrency)
-    : s.kaufpreis_geschaetzt && buyAmount
+    : s.purchase_price_estimated && buyAmount
       ? String(estimatedPurchase(buyAmount))
       : buyAmount;
   // A gift shows as a badge next to the condition: in the price box it read as a property of the market price.
@@ -371,7 +371,7 @@ function gridCard(s) {
   // The date of the last purchase: when importing, the date added to the account was the same day for
   // every set and said nothing. With several purchases (often within a household), the tile shows it is
   // the most recent one.
-  const buyFmt = s.letzter_kauf ? fmtDate(s.letzter_kauf) : '';
+  const buyFmt = s.last_purchase ? fmtDate(s.last_purchase) : '';
   const buys = Number(s.acq_count) || 0;
   const buyText =
     buys > 1
@@ -464,7 +464,7 @@ async function deletionChoice(sn, name, set) {
   const title = tRaw('gallery.delete.title');
   const foreign = (set?.owners || []).some(o => o.id !== loggedInAccount?.id);
   if (!foreign) return '';
-  const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
+  const ad = await api('GET', `/v2/sets/${encodeURIComponent(sn)}/acquisitions`);
   const accounts = (set?.owners || []).map(o => ({
     ...o,
     n: (ad?.acquisitions || [])
@@ -500,7 +500,7 @@ export async function delSet(sn) {
   const owner = (known?.owners || []).find(o => String(o.id) === account);
   const nr = CSS.escape(sn);
   const d = await deleteRestorable({
-    request: () => api('DELETE', `/v1/sets/${sn}${account ? `?accounts=${account}` : ''}`),
+    request: () => api('DELETE', `/v2/sets/${sn}${account ? `?accounts=${account}` : ''}`),
     message: `${tRaw('users.deleted', { name })}${owner ? ` · ${accountDisplay(owner)}` : ''}`,
     focus: `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .row-open`,
   });
@@ -512,7 +512,7 @@ export async function delSet(sn) {
 /** @param {string} sn */
 export async function reimportParts(sn) {
   toast(tRaw('detail.importing_parts', { sn }), 'info');
-  const d = await api('POST', `/v1/sets/${sn}/parts`);
+  const d = await api('POST', `/v2/sets/${sn}/parts`);
   if (d.success) {
     toast(tRaw('detail.parts_imported', { count: d.count }), 'success');
     emit('loadParts');
@@ -521,21 +521,21 @@ export async function reimportParts(sn) {
 
 export async function enrichGalleryWithPrices() {
   // With the account filter like loadStats(): loadGallery() calls this on every filter change.
-  const pnl = await api('GET', `/v1/finance/pnl${scopeQuery('gallery')}`);
+  const pnl = await api('GET', `/v2/finance/pnl${scopeQuery('gallery')}`);
   if (!pnl.success) return;
   setPnlBySet({});
-  // The server computes the tile's amount and P&L (kachel_preis, kachel_pnl_pct in /finance/pnl,
+  // The server computes the tile's amount and P&L (tile_price, tile_pnl_pct in /finance/pnl,
   // src/finances/setValue.ts tileValues); in a household, every row of a set carries the same values.
   for (const s of pnl.sets) {
     if (!pnlBySet[s.set_number])
-      pnlBySet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
+      pnlBySet[s.set_number] = { price: s.tile_price, pnl_pct: s.tile_pnl_pct, source: s.tile_source };
   }
   // Inject price data into cached sets
   setGallerySets(
     gallerySets.map(s => ({
       ...s,
       _price: pnlBySet[s.set_number]?.price || 0,
-      _source: pnlBySet[s.set_number]?.quelle,
+      _source: pnlBySet[s.set_number]?.source,
       _pnl_pct: pnlBySet[s.set_number]?.pnl_pct ?? undefined,
     })),
   );

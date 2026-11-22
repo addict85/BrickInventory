@@ -46,7 +46,7 @@ function syncTabTitleIcon(tab) {
   if (!nav || !slot) return;
   // Everything before the .tab-label is the icon (emoji text node or <svg>).
   const label = nav.querySelector('.tab-label');
-  // Copies instead of outerHTML: re-read as text, the icon's style would stand there as a style attribute again,
+  // Copies instead of outerHTML: re-read as text, the icon's style would state there as a style attribute again,
   // and the CSP forbids that.
   const copies = [];
   for (const node of nav.childNodes) {
@@ -329,7 +329,7 @@ export function refreshPageName() {
 }
 
 /**
- * On the phone the page name only stands in the header once the heading has scrolled out; otherwise it would stand
+ * On the phone the page name only stands in the header once the heading has scrolled out; otherwise it would state
  * twice below each other.
  * @type {IntersectionObserver | null}
  */

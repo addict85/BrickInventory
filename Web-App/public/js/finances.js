@@ -28,7 +28,7 @@ import { baseFrom, showMetrics } from './finance-metrics.js';
  * cache or fresh changes nothing about the number. title AND aria-label, otherwise it is an
  * unexplained symbol for screen readers too.
  */
-/** @param {{ error?: string | null, no_price?: boolean | null, bl_unbekannt?: boolean | null }} s */
+/** @param {{ error?: string | null, no_price?: boolean | null, bl_unknown?: boolean | null }} s */
 function priceStatusBadge(s, neutral = false) {
   // If the price is missing almost everywhere (no credentials, service hasn't run yet), it is not
   // this row's error: grey instead of red, with the reason in the tooltip.
@@ -38,7 +38,7 @@ function priceStatusBadge(s, neutral = false) {
   }
   // No checkmark without a market price: it said "present" over an empty column.
   if (s.no_price) {
-    const title = t(s.bl_unbekannt ? 'finance.price_unknown_bl' : 'finance.price_none');
+    const title = t(s.bl_unknown ? 'finance.price_unknown_bl' : 'finance.price_none');
     return html`<span class="pst pst-empty" title="${title}" role="img" aria-label="${title}">–</span>`;
   }
   const title = t('finance.price_loaded');
@@ -139,8 +139,8 @@ function pmRow(it, label, acq, ctx, text) {
     : it.purchase_price != null
       ? Number(it.purchase_price)
       : null;
-  const total = acq ? (acq.wert_gesamt ?? 0) : (it.wert_gesamt ?? 0);
-  const pnl = acq ? acq.pnl_prozent : it.pnl_prozent;
+  const total = acq ? (acq.value_total ?? 0) : (it.value_total ?? 0);
+  const pnl = acq ? acq.pnl_percent : it.pnl_percent;
   const kind = it.fig_number ? 'figur' : 'teil';
   const img =
     it.image_local || it.image_url
@@ -184,12 +184,12 @@ function pmTableHead() {
 }
 
 /** Section of manually recorded parts or minifigs; empty without entries.
- * @param {{ art: string, title: string, symbol: string, rows: string, anzahl: number, kauf: number, value: number, cur: string }} o */
+ * @param {{ kind: string, title: string, symbol: string, rows: string, count: number, kauf: number, value: number, cur: string }} o */
 function manualSection(o) {
-  if (!o.anzahl) return '';
+  if (!o.count) return '';
   const foot = html`<tfoot><tr><td colspan="4" class="fin-footer-l">${tRaw('finance.sum')}</td>${totalCells(o.kauf, o.value, o.cur)}<td colspan="2"></td></tr></tfoot>`;
   return html`
-    <div class="tw space-top-125" data-fin-kind="${o.art}" tabindex="0" role="region" aria-label="${o.title}">
+    <div class="tw space-top-125" data-fin-kind="${o.kind}" tabindex="0" role="region" aria-label="${o.title}">
       <h2 class="ctitle fin-section">${ico(o.symbol)} ${rawHtml(o.title)}</h2>
       <table class="dt dt-fin" aria-label="${o.title}">${PM_COLGROUP}${pmTableHead()}<tbody>${rawHtml(o.rows)}</tbody>${foot}</table>
     </div>`;
@@ -205,10 +205,10 @@ function setRow(s, acq, ctx) {
   const qty = acq ? acq.quantity : s.quantity;
   const purchase = acq ? acq.purchase_price : s.purchase_price;
   const market = acq ? acq.avg_price : s.avg_price;
-  const total = acq ? acq.wert_gesamt : s.wert_gesamt;
+  const total = acq ? acq.value_total : s.value_total;
   // Per-row P&L from the server (against THIS entry's purchase price). Without entries, the existing
   // value from the P&L response stays.
-  const pnl = acq ? acq.pnl_prozent : (s.pnl_prozent ?? pnlBySet[s.set_number]?.pnl_pct);
+  const pnl = acq ? acq.pnl_percent : (s.pnl_percent ?? pnlBySet[s.set_number]?.pnl_pct);
   const dateSrc = acq ? acq.created_at : s.added_at;
   // The error message lives in the status symbol (tooltip), not in the total: there it broke the
   // column into five lines.
@@ -300,10 +300,10 @@ export async function loadFinance() {
   // All four with the same account filter — otherwise a total from one scope would sit next to a
   // listing from another.
   const [d, partsVal, figsVal, pnlData] = await Promise.all([
-    api('GET', `/v1/finance/valuation${scopeQuery('finance')}`),
-    api('GET', `/v1/finance/parts-valuation${scopeQuery('finance')}`),
-    api('GET', `/v1/finance/minifigs-valuation${scopeQuery('finance')}`),
-    api('GET', `/v1/finance/pnl${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/parts-valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/minifigs-valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/pnl${scopeQuery('finance')}`),
   ]);
   if (financeFailed(d, hadTable) || !d?.success) return;
   filterEnabled(true);
@@ -313,7 +313,7 @@ export async function loadFinance() {
     parseFloat(figsVal.success ? figsVal.total_value || '0' : '0');
   // No P&L without a comparable entry — not even the previous filter's: a leftover number would look
   // like the answer to the new one.
-  const totalPnl = pnlData.success ? pnlData.totals?.pnl_prozent : null;
+  const totalPnl = pnlData.success ? pnlData.totals?.pnl_percent : null;
   const allRows = [
     ...(d.sets || []),
     ...(partsVal.success ? partsVal.parts : []),
@@ -366,7 +366,7 @@ export async function loadFinance() {
     valueAll: grandTotal,
     guv: totalPnl,
     cur,
-    foreignCurrency: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
+    foreignCurrency: pnlData?.totals?.foreign_currency_purchases || 0,
     estimated: allRows.flatMap(z => z.acquisitions || []).filter(a => a.price_estimated).length,
     rows: allRows.reduce((n, z) => n + Math.max(1, z.acquisitions?.length || 0), 0),
   });
@@ -397,7 +397,7 @@ export async function loadFinance() {
  * @param {unknown} unit
  * @param {unknown} qty
  * @param {string} cur
- * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string, price_estimated?: boolean } | null} [acq]
+ * @param {{ original_purchase_price?: number, purchase_currency?: string, price_estimated?: boolean } | null} [acq]
  */
 function purchaseCell(unit, qty, cur, acq) {
   const amount = purchaseAmount(unit, qty, cur, acq);
@@ -406,14 +406,14 @@ function purchaseCell(unit, qty, cur, acq) {
 
 /**
  * @param {unknown} unit @param {unknown} qty @param {string} cur
- * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string } | null} [acq]
+ * @param {{ original_purchase_price?: number, purchase_currency?: string } | null} [acq]
  */
 function purchaseAmount(unit, qty, cur, acq) {
   const p = unit == null || String(unit).trim() === '' ? NaN : Number(unit);
   // In a foreign currency with no rate the price doesn't count towards the total, but is still shown: a
   // dash would mean "unknown".
-  if (!Number.isFinite(p) && acq?.kaufpreis_original != null)
-    return html`${fmtMoney(acq.kaufpreis_original * (parseInt(String(qty), 10) || 1), acq.kaufpreis_waehrung)}<span class="fin-per">${tRaw('finance.not_converted')}</span>`;
+  if (!Number.isFinite(p) && acq?.original_purchase_price != null)
+    return html`${fmtMoney(acq.original_purchase_price * (parseInt(String(qty), 10) || 1), acq.purchase_currency)}<span class="fin-per">${tRaw('finance.not_converted')}</span>`;
   if (!Number.isFinite(p)) return '<span class="text-mut">—</span>';
   const n = parseInt(String(qty), 10) || 1;
   if (n <= 1) return fmtMoney(p, cur);
@@ -436,15 +436,15 @@ function priceHeads(sortable = false) {
 const FIN_BLOCK = 100;
 let _finSearch = '',
   _finLimit = FIN_BLOCK;
-/** @type {{ feld: string, ab: boolean }} */
-let _finSort = { feld: '', ab: false };
+/** @type {{ field: string, ab: boolean }} */
+let _finSort = { field: '', ab: false };
 /** @type {null | { sets: ValuedSet[], parts: import('../../frontend-types/contract').PartsValuationResponse['parts'], figs: import('../../frontend-types/contract').FigsValuationResponse['figs'], purchase: { sets: number, parts: number, figs: number, all: number }, value: { sets: number, parts: number, figs: number, all: number }, setsQtyAvg: number, cur: string, basis: Basis, ctx: RowContext }} */
 let _finState = null;
 
 /** @param {string} field @param {boolean} on */
 function sortState(field, on) {
   if (!on) return '';
-  return html` aria-sort="${_finSort.feld === field ? (_finSort.ab ? 'descending' : 'ascending') : 'none'}"`;
+  return html` aria-sort="${_finSort.field === field ? (_finSort.ab ? 'descending' : 'ascending') : 'none'}"`;
 }
 /** @param {string} field @param {boolean} on @param {import('./escaping.js').Markup | string} content */
 function sortButton(field, on, content) {
@@ -455,11 +455,11 @@ function sortButton(field, on, content) {
 
 /** @param {ValuedSet} s @returns {number | string} */
 function sortValue(s) {
-  const f = _finSort.feld;
+  const f = _finSort.field;
   if (f === 'name') return String(s.name || s.set_number).toLocaleLowerCase();
   if (f === 'kauf') return (Number(s.purchase_price) || 0) * (s.quantity || 1);
-  if (f === 'value') return Number(s.wert_gesamt) || 0;
-  return Number(s.pnl_prozent ?? -Infinity);
+  if (f === 'value') return Number(s.value_total) || 0;
+  return Number(s.pnl_percent ?? -Infinity);
 }
 
 /** Tables from the current state: search, sort and the block limit. */
@@ -475,7 +475,7 @@ function renderFinanceTables() {
         .includes(q),
     );
   const sets = st.sets.filter(s => matches(s.name, s.set_number));
-  if (_finSort.feld)
+  if (_finSort.field)
     sets.sort((a, b) => {
       const x = sortValue(a),
         y = sortValue(b);
@@ -516,21 +516,21 @@ function renderFinanceTables() {
     G('fin-tbl'),
     html`${noHits}${setsTable(setRows.slice(0, _finLimit).join(''), st.purchase, st.setsQtyAvg, st.cur)}${manualSection(
       {
-        art: 'parts',
+        kind: 'parts',
         title: tRaw('parts.manual_section'),
         symbol: 'part',
         rows: partsRows,
-        anzahl: parts.length,
+        count: parts.length,
         kauf: st.purchase.parts,
         value: st.value.parts,
         cur: st.cur,
       },
     )}${manualSection({
-      art: 'figs',
+      kind: 'figs',
       title: tRaw('finance.figs_section'),
       symbol: 'minifig',
       rows: figsRows,
-      anzahl: figs.length,
+      count: figs.length,
       kauf: st.purchase.figs,
       value: st.value.figs,
       cur: st.cur,
@@ -580,7 +580,7 @@ function finSearch() {
 }
 /** @param {string} field */
 function finSort(field) {
-  _finSort = { feld: field, ab: _finSort.feld === field ? !_finSort.ab : field !== 'name' };
+  _finSort = { field: field, ab: _finSort.field === field ? !_finSort.ab : field !== 'name' };
   renderFinanceTables();
   /** @type {HTMLElement | null} */ (
     document.querySelector(`#fin-tbl [data-click="finSort"][data-arg="${field}"]`)

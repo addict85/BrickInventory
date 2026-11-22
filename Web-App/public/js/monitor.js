@@ -6,8 +6,8 @@ import { ico, G, setHtml, ifVisible } from './dom.js';
 import { fmtDate } from './format.js';
 import { reportAtField, toast } from './messages.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
-/** @typedef {import('../../frontend-types/contract').AuftragPause} AuftragPause */
-/** @typedef {import('../../frontend-types/contract').Auftrag} Auftrag */
+/** @typedef {import('../../frontend-types/contract').JobPause} QueuePause */
+/** @typedef {import('../../frontend-types/contract').Job} QueueJob */
 /** @typedef {import('../../frontend-types/contract').JobStatus} JobStatus */
 
 /** Timer of the job list while the tab is open. @type {ReturnType<typeof setTimeout> | null} */
@@ -123,7 +123,7 @@ const SUB_TEXTS = {
   teil_gemappt: w => tRaw('monitor.sub.part_mapped', w),
   // At 0 the plural form said "all 0 …".
   all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_to_assign' : 'monitor.sub.all_mapped', w),
-  ausstehend: w => tRaw('monitor.sub.pending', w),
+  pending: w => tRaw('monitor.sub.pending', w),
   all_done: w => tRaw('monitor.sub.all_done', w),
   keine_ausstehenden: w => tRaw('monitor.sub.none_pending', w),
   retry_ready: w => tRaw('monitor.sub.retry_ready', w),
@@ -139,13 +139,13 @@ const SUB_TEXTS = {
   pdf_laufend: w => tRaw('monitor.sub.pdf_running', w),
   pdf_bereit: w => tRaw('monitor.sub.pdf_ready', w),
   no_active: w => tRaw('monitor.sub.no_active', w),
-  bestand: w => tRaw('monitor.sub.stock', w),
+  holding: w => tRaw('monitor.sub.stock', w),
 };
 
 /**
  * Subtitle from the server's codes (src/management/service.ts); the sentences are only in the language files.
  * An unknown code (newer server) falls back to the server's text.
- * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} parts @param {string} sub
+ * @param {{ code: string, values?: Record<string, string | number>, ago?: string }[]} parts @param {string} sub
  */
 function subFromCodes(parts, sub) {
   const text = (/** @type {string} */ code, /** @type {Record<string, string | number> | undefined} */ values) => {
@@ -153,8 +153,8 @@ function subFromCodes(parts, sub) {
     return f ? f(values) : null;
   };
   const pieces = parts.map(t => {
-    const s = text(t.code, t.werte);
-    return s === null ? null : (t.vor ? (text(t.vor, undefined) ?? '') + ' ' : '') + s;
+    const s = text(t.code, t.values);
+    return s === null ? null : (t.ago ? (text(t.ago, undefined) ?? '') + ' ' : '') + s;
   });
   return pieces.includes(null) ? translateJobSub(sub) : pieces.join(' · ');
 }
@@ -185,7 +185,7 @@ function translateJobSub(sub) {
  * @param {Element} [field]
  */
 export async function saveJobSchedule(name, payload, field) {
-  const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload });
+  const d = await api('POST', '/v2/admin/job-schedule', { name, ...payload });
   if (d?.success) reportAtField(field);
   else toast(d?.error || t('settings.error'), 'error');
 }
@@ -222,7 +222,7 @@ const schedText = (schedules, k) => {
 export async function loadSchedules() {
   const el = G('settings-schedules');
   if (!el) return;
-  const d = await apiData('GET', '/v1/admin/jobs');
+  const d = await apiData('GET', '/v2/admin/jobs');
   if (!d?.success || !d.jobs) return;
   const rows = Object.entries(d.jobs).filter(([k]) => d.schedules?.[k]);
   setHtml(
@@ -306,7 +306,7 @@ export async function loadMonitor() {
     _monitorTimer = setTimeout(() => ifVisible(() => run === _monitorRun && round()), active ? 5000 : 15000);
   };
   const render = async () => {
-    const d = await apiData('GET', '/v1/admin/jobs');
+    const d = await apiData('GET', '/v2/admin/jobs');
     if (!d?.success) return false;
     const { jobs, schedules } = d;
     // The contract does not name db and lastRun (JobsResponse); the server sends them along.
@@ -330,15 +330,15 @@ export async function loadMonitor() {
       el,
       html`
       <p class="mon-hint">${tRaw('monitor.services_hint')}</p>
-      ${d.degradiert?.length ? html`<p class="mon-hint" role="status">${tRaw('monitor.degraded', { teile: d.degradiert.join(', ') })}</p>` : ''}
-      ${d.proxy_hinweis ? html`<p class="mon-warning" role="status" id="mon-proxy-hint">${ico('warning')} ${tRaw(PROXY_HINT[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
+      ${d.degraded?.length ? html`<p class="mon-hint" role="status">${tRaw('monitor.degraded', { parts: d.degraded.join(', ') })}</p>` : ''}
+      ${d.proxy_hint ? html`<p class="mon-warning" role="status" id="mon-proxy-hint">${ico('warning')} ${tRaw(PROXY_HINT[d.proxy_hint.kind], d.proxy_hint.vars)}</p>` : ''}
       <div class="tw"><table class="dt mon-table mon-services" aria-label="${tRaw('table.services')}">
         <thead><tr><th>${tRaw('monitor.col.service')}</th><th>${tRaw('monitor.col.state')}</th><th>${tRaw('monitor.col.schedule')}</th><th>${tRaw('monitor.col.last')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(
           ([k, j]) => html`<tr>
           <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${serviceName(k, j)}</span></td>
           <td><span class="mon-state mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-quiet">${j.sub_teile?.length ? subFromCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub_parts?.length || j.sub ? html`<div class="mon-quiet">${j.sub_parts?.length ? subFromCodes(j.sub_parts, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDate(/** @type {string} */ (j.lastRun), 'when') : ''}</td>
           <td><div class="mon-buttons">${actions(k, j).length ? actions(k, j) : html`<span class="mon-quiet">–</span>`}</div></td>
@@ -369,32 +369,32 @@ export async function loadMonitor() {
  * @type {Record<string, () => string>}
  */
 const KIND_NAMES = {
-  nacharbeit: () => tRaw('monitor.kind.rework'),
-  bilder: () => tRaw('monitor.kind.images'),
+  rework: () => tRaw('monitor.kind.rework'),
+  images: () => tRaw('monitor.kind.images'),
   pdf: () => tRaw('monitor.kind.pdf'),
   csv_import: () => tRaw('monitor.kind.csv_import'),
-  wechselkurse: () => tRaw('monitor.kind.wechselkurse'),
-  anleitung: () => tRaw('monitor.kind.instructions'),
+  exchange_rates: () => tRaw('monitor.kind.wechselkurse'),
+  instructions: () => tRaw('monitor.kind.instructions'),
   brickset: () => tRaw('monitor.kind.brickset'),
-  bildbedarf: () => tRaw('monitor.kind.bildbedarf'),
-  bilder_neu_laden: () => tRaw('monitor.kind.images_new_load'),
-  nachlauf: () => tRaw('monitor.kind.follow_up'),
+  image_demand: () => tRaw('monitor.kind.bildbedarf'),
+  images_reload: () => tRaw('monitor.kind.images_new_load'),
+  followup: () => tRaw('monitor.kind.follow_up'),
   csv_sync: () => tRaw('monitor.kind.csv_sync'),
-  preise: () => tRaw('monitor.kind.prices'),
-  preise_nachladen: () => tRaw('monitor.kind.prices_reload'),
-  bild_nachlauf: () => tRaw('monitor.kind.image_follow_up'),
-  aufraeumen: () => tRaw('monitor.kind.cleanup'),
-  aufraeumen_taeglich: () => tRaw('monitor.kind.cleanup_daily'),
-  konto_dateien: () => tRaw('monitor.kind.account_files'),
-  widerrufsliste: () => tRaw('monitor.kind.revocation_list'),
-  katalog_nachzug: () => tRaw('monitor.kind.catalog_catch_up'),
+  prices: () => tRaw('monitor.kind.prices'),
+  price_refresh: () => tRaw('monitor.kind.prices_reload'),
+  image_followup: () => tRaw('monitor.kind.image_follow_up'),
+  cleanup: () => tRaw('monitor.kind.cleanup'),
+  cleanup_daily: () => tRaw('monitor.kind.cleanup_daily'),
+  account_files: () => tRaw('monitor.kind.account_files'),
+  revocation_list: () => tRaw('monitor.kind.revocation_list'),
+  catalog_followup: () => tRaw('monitor.kind.catalog_catch_up'),
 };
 /** @type {Record<string, () => string>} */
 const STATUS_NAMES = {
-  offen: () => tRaw('monitor.jobs.open'),
-  laeuft: () => tRaw('monitor.jobs.running'),
-  fehler: () => tRaw('monitor.jobs.error'),
-  abgebrochen: () => tRaw('monitor.jobs.cancelled'),
+  pending: () => tRaw('monitor.jobs.open'),
+  running: () => tRaw('monitor.jobs.running'),
+  error: () => tRaw('monitor.jobs.error'),
+  cancelled: () => tRaw('monitor.jobs.cancelled'),
 };
 /** The name of a job kind in the UI language, already escaped; unknown ones stay as they are. */
 const kindName = (/** @type {string} */ kind) => (Object.hasOwn(KIND_NAMES, kind) ? KIND_NAMES[kind]() : kind);
@@ -422,33 +422,33 @@ const button = (/** @type {string} */ action, /** @type {string} */ arg, /** @ty
   html`<button class="btn bs btn-sm" type="button" data-click="${action}"${genuine()} data-arg="${arg}"${purpose ? html` aria-label="${text}: ${purpose}"` : ''}>${text}</button>`;
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUS_NAMES, s) ? STATUS_NAMES[s]() : s);
 /** A row of the individual jobs. If a kind is open several times, the role at the name says which entry
- * is a retry and which is the regular run. @param {Auftrag} a @param {Set<string>} multiple */
+ * is a retry and which is the regular run. @param {QueueJob} a @param {Set<string>} multiple */
 const jobRow = (a, multiple) => {
-  const open = a.status === 'offen' || a.status === 'laeuft';
+  const open = a.status === 'pending' || a.status === 'running';
   const role =
     !open || !multiple.has(a.type)
       ? ''
-      : a.geplant
+      : a.scheduled
         ? tRaw('monitor.jobs.regular')
         : a.attempts > 1 || a.error_message
           ? tRaw('monitor.jobs.retry')
           : '';
-  const time = fmtDate(a.status === 'laeuft' ? a.started_at : a.due_at, 'when');
-  // Postponed is not failed: the server says so (wartet), not the text of the reason.
-  const waiting = a.status === 'offen' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
+  const time = fmtDate(a.status === 'running' ? a.started_at : a.due_at, 'when');
+  // Postponed is not failed: the server says so (waiting), not the text of the reason.
+  const waiting = a.status === 'pending' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
   const when = waiting
     ? t('monitor.jobs.waiting_bis', { time })
-    : a.status === 'offen'
-      ? t(a.geplant ? 'monitor.jobs.scheduled' : 'monitor.jobs.due', { time })
-      : a.status === 'laeuft'
+    : a.status === 'pending'
+      ? t(a.scheduled ? 'monitor.jobs.scheduled' : 'monitor.jobs.due', { time })
+      : a.status === 'running'
         ? time
         : '';
-  const status = a.progress?.gesamt
-    ? `${Math.round(a.progress.erledigt ?? 0)} / ${a.progress.gesamt}`
+  const status = a.progress?.total
+    ? `${Math.round(a.progress.done ?? 0)} / ${a.progress.total}`
     : a.progress?.text || '';
   const hint = [
     waiting && a.error_message ? html`<span class="mon-quiet">${a.error_message}</span>` : '',
-    !waiting && a.error_message && (a.status === 'offen' || a.status === 'fehler') ? errorBox(a.error_message) : '',
+    !waiting && a.error_message && (a.status === 'pending' || a.status === 'error') ? errorBox(a.error_message) : '',
     a.attempts > 1 && !waiting
       ? html`<span class="mon-quiet">${tRaw('monitor.jobs.attempt', { n: a.attempts, max: a.max_attempts })}</span>`
       : '',
@@ -457,7 +457,7 @@ const jobRow = (a, multiple) => {
     .filter(Boolean)
     .join(' ');
   const action =
-    a.status === 'offen' || a.status === 'laeuft' ? button('cancelJob', a.id, tRaw('monitor.jobs.cancel')) : '';
+    a.status === 'pending' || a.status === 'running' ? button('cancelJob', a.id, tRaw('monitor.jobs.cancel')) : '';
   return html`<tr>
     <td><strong>${kindName(a.type)}</strong>${a.set_number ? html` <span class="mon-quiet">${a.set_number}</span>` : ''}${role ? html` <span class="mon-role">${role}</span>` : ''}</td>
     <td><span class="mon-state mon-${waiting ? 'waiting' : a.status}">${waiting ? tRaw('monitor.jobs.waiting') : statusName(a.status)}</span></td>
@@ -468,46 +468,47 @@ const jobRow = (a, multiple) => {
 };
 
 /** The card "background jobs": per kind the numbers with "now" and "clear", below the individual
- * running, waiting and failed jobs (GET /api/v1/admin/auftraege). */
+ * running, waiting and failed jobs (GET /api/v2/admin/jobs). */
 async function showJobs() {
   const el = G('jobs-card');
   if (!el) return;
-  const d = await api('GET', '/v1/admin/auftraege');
+  const d = await api('GET', '/v2/admin/job-queue');
   if (!d?.success) {
     el.replaceChildren();
     return;
   }
   /** @type {Record<string, Record<string, number>>} */
   const number = {};
-  for (const z of d.zusammenfassung) {
+  for (const z of d.summary) {
     number[z.type] ||= {};
-    number[z.type][z.status] = z.anzahl;
+    number[z.type][z.status] = z.count;
   }
   // The next run per kind: the earliest waiting job of that kind.
   /** @type {Record<string, string>} */
   const next = {};
-  for (const a of d.auftraege)
-    if (a.status === 'offen' && a.due_at && (!next[a.type] || a.due_at < next[a.type])) next[a.type] = a.due_at;
+  for (const a of d.jobs)
+    if (a.status === 'pending' && a.due_at && (!next[a.type] || a.due_at < next[a.type])) next[a.type] = a.due_at;
   const kinds = Object.keys(number).sort((a, b) => kindName(a).localeCompare(kindName(b), locale()));
   const digit = (/** @type {number | undefined} */ n, cls = '') =>
     html`<span class="mon-digit${n ? html`${' '}${rawHtml(cls)}` : ' null'}">${n || 0}</span>`;
-  const more = d.auftraege.length - 40;
+  const more = d.jobs.length - 40;
   /** @type {Record<string, number>} */
   const afterError = {};
-  for (const a of d.auftraege)
-    if (a.status === 'offen' && (a.attempts > 1 || a.error_message)) afterError[a.type] = (afterError[a.type] || 0) + 1;
-  const perKind = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.type);
+  for (const a of d.jobs)
+    if (a.status === 'pending' && (a.attempts > 1 || a.error_message))
+      afterError[a.type] = (afterError[a.type] || 0) + 1;
+  const perKind = d.jobs.filter(a => a.status === 'pending' || a.status === 'running').map(a => a.type);
   const multiple = new Set(perKind.filter((kind, i) => perKind.indexOf(kind) !== i));
-  const pause = (/** @type {AuftragPause} */ p) =>
-    t('monitor.jobs.pause', { art: kindName(p.type), bis: fmtDate(p.until_at, 'when'), grund: p.reason || '' });
+  const pause = (/** @type {QueuePause} */ p) =>
+    t('monitor.jobs.pause', { kind: kindName(p.type), bis: fmtDate(p.until_at, 'when'), reason: p.reason || '' });
   setHtml(
     el,
     html`
     <h2 class="mon-title" id="mon-t-jobs" tabindex="-1">${ico('list')}<span>${tRaw('monitor.jobs.title')}</span></h2>
     <p class="mon-hint">${tRaw('monitor.jobs.hint')}</p>
-    ${d.job_prozess.laeuft ? '' : html`<p class="mon-warning">${ico('warning')} ${tRaw('monitor.jobs.no_process')}</p>`}
-    ${d.pausen.map(p => html`<p class="mon-quiet">${ico('pause')} ${pause(p)}</p>`)}
-    ${d.bildbedarf ? html`<p class="mon-quiet">${tRaw('monitor.jobs.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
+    ${d.job_process.running ? '' : html`<p class="mon-warning">${ico('warning')} ${tRaw('monitor.jobs.no_process')}</p>`}
+    ${d.pauses.map(p => html`<p class="mon-quiet">${ico('pause')} ${pause(p)}</p>`)}
+    ${d.image_demand ? html`<p class="mon-quiet">${tRaw('monitor.jobs.bildbedarf', { n: d.image_demand })}</p>` : ''}
     ${
       kinds.length
         ? html`<div class="tw"><table class="dt mon-table mon-kinds" aria-label="${tRaw('table.job_kinds')}">
@@ -515,22 +516,22 @@ async function showJobs() {
       <tbody>${kinds.map(
         kind => html`<tr>
         <td>${kindName(kind)}</td>
-        <td class="number">${digit(number[kind].offen)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
-        <td class="number">${digit(number[kind].laeuft, 'mon-running')}</td>
-        <td class="number">${digit(number[kind].fehler, 'mon-error')}</td>
+        <td class="number">${digit(number[kind].open)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
+        <td class="number">${digit(number[kind].running, 'mon-running')}</td>
+        <td class="number">${digit(number[kind].error, 'mon-error')}</td>
         <td>${next[kind] ? fmtDate(next[kind], 'when') : ''}</td>
-        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].offen ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
+        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].open ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
       </tr>`,
       )}</tbody></table></div>`
         : ''
     }
     ${
-      d.auftraege.length
+      d.jobs.length
         ? html`<details class="mon-single"${openSingle() ? ' open' : ''}>
-      <summary class="mon-subtitle">${tRaw('monitor.jobs.single')} <span class="mon-quiet">(${d.auftraege.length})</span></summary>
+      <summary class="mon-subtitle">${tRaw('monitor.jobs.single')} <span class="mon-quiet">(${d.jobs.length})</span></summary>
       <div class="tw"><table class="dt mon-table" aria-labelledby="mon-t-jobs">
       <thead><tr><th>${tRaw('monitor.col.job')}</th><th>${tRaw('monitor.col.state')}</th><th>${tRaw('monitor.col.time')}</th><th>${tRaw('monitor.col.hint')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(a => jobRow(a, multiple))}</tbody></table></div>
+      <tbody>${d.jobs.slice(0, 40).map(a => jobRow(a, multiple))}</tbody></table></div>
       ${more > 0 ? html`<p class="mon-quiet">${tRaw('monitor.jobs.more', { n: more })}</p>` : ''}</details>`
         : html`<h3 class="mon-subtitle">${tRaw('monitor.jobs.single')}</h3><p class="mon-quiet">${tRaw('monitor.jobs.empty')}</p>`
     }`,
@@ -551,22 +552,22 @@ if (typeof document !== 'undefined')
 
 /** @param {string} id */
 async function cancelJob(id) {
-  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`);
+  const d = await api('POST', `/v2/admin/job-queue/${encodeURIComponent(id)}/cancel`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }
 
 /** @param {string} kind */
 async function runJobKindNow(kind) {
-  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(kind)}/jetzt`);
+  const d = await api('POST', `/v2/admin/job-queue/kind/${encodeURIComponent(kind)}/now`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }
 
 /** @param {string} kind */
 async function emptyJobKind(kind) {
-  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(kind)}`);
-  if (d?.success) toast(tRaw('monitor.jobs.emptied', { n: d.entfernt }), 'success');
+  const d = await api('DELETE', `/v2/admin/job-queue/kind/${encodeURIComponent(kind)}`);
+  if (d?.success) toast(tRaw('monitor.jobs.emptied', { n: d.removed }), 'success');
   else toast(d?.error || t('settings.error'), 'error');
   await showJobs();
 }

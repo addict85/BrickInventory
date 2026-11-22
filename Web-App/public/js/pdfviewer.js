@@ -272,7 +272,7 @@ function _pdfSetZoom(newValue, anchorX, anchorY) {
   _pdfZoomGen++;
 
   // First remove all canvases, then resize the placeholders: a canvas with width:100% would otherwise briefly
-  // stand distorted.
+  // state distorted.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page ?? '', 10), ph);
     _pdfMassPlaceholder(ph);

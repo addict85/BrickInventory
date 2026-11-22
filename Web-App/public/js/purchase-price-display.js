@@ -34,7 +34,7 @@ export function sumsText(totals) {
 
 /** @param {AcquisitionSum | null | undefined} totals */
 function sumsHint(totals) {
-  return html`<span id="acq-sum-hint" class="acq-legend" data-style="flex-basis:100%"${totals?.ohne_kurs ? '' : ' hidden'}>${totals?.ohne_kurs ? tRaw('acq.without_rate', { n: totals.ohne_kurs }) : ''}</span>`;
+  return html`<span id="acq-sum-hint" class="acq-legend" data-style="flex-basis:100%"${totals?.without_rate ? '' : ' hidden'}>${totals?.without_rate ? tRaw('acq.without_rate', { n: totals.without_rate }) : ''}</span>`;
 }
 
 /**
@@ -43,8 +43,8 @@ function sumsHint(totals) {
  */
 export function convertedText(a, totals) {
   const account = totals?.currency || accountCurrency;
-  if (!a.currency || a.currency === account || a.preis_konto == null) return '';
-  return '≈ ' + fmtN(a.preis_konto, account);
+  if (!a.currency || a.currency === account || a.account_price == null) return '';
+  return '≈ ' + fmtN(a.account_price, account);
 }
 
 /**
@@ -52,7 +52,7 @@ export function convertedText(a, totals) {
  * paid amount and therefore carries "≈".
  * A purchase in a foreign currency carries the ISO code ("79,99 USD", "$" could also be CAD or AUD) and the amount
  * that sums and finances compute with ("≈ 74,06 €", rate of the purchase day).
- * @param {{ currency?: string | null, price_estimated?: boolean, preis_konto?: number | null }} a
+ * @param {{ currency?: string | null, price_estimated?: boolean, account_price?: number | null }} a
  * @param {number | null | undefined} amount
  */
 export function acquisitionPrice(a, amount) {
@@ -61,7 +61,7 @@ export function acquisitionPrice(a, amount) {
   if (isGift(amount) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
   const foreign = !!a.currency && a.currency !== accountCurrency;
   const number = foreign
-    ? html`<strong>${fmtMoneyCode(amount, a.currency || accountCurrency)}</strong>${a.preis_konto != null ? html` <span class="acq-converted-inline" title="${tRaw('acq.converted_title')}">≈ ${fmtMoney(a.preis_konto, accountCurrency)}</span>` : ''}`
+    ? html`<strong>${fmtMoneyCode(amount, a.currency || accountCurrency)}</strong>${a.account_price != null ? html` <span class="acq-converted-inline" title="${tRaw('acq.converted_title')}">≈ ${fmtMoney(a.account_price, accountCurrency)}</span>` : ''}`
     : html`<strong>${fmtMoney(amount, a.currency || accountCurrency)}</strong>`;
   if (!a.price_estimated) return number;
   const hint = esc(tRaw('acq.estimated'));

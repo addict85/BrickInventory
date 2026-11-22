@@ -299,7 +299,7 @@
       </div>
     </div>
 
-    <!-- ── REPLACE THE START PASSWORD (server: 403 passwort_wechsel_noetig) ─ -->
+    <!-- ── REPLACE THE START PASSWORD (server: 403 password_change_required) ─ -->
     <div id="panel-required-change" data-style="display:none">
       <h1 class="login-subline" data-i18n="required.title">Vorläufiges Passwort ersetzen</h1>
       <div class="text-small space-bottom-075" data-i18n="required.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Administrator vergeben hat. Bitte zuerst ein eigenes setzen.</div>
@@ -1403,7 +1403,7 @@
               <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ nach Bestätigung mit dem Passwort als PDF sichern.</span>
             </p>
             <div class="row gap-10 flex-wrap items-center space-bottom-1">
-              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v2/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
             <!-- ── The BrickLink wanted list has MOVED ── … -->
@@ -1412,7 +1412,7 @@
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
             </p>
             <div class="row gap-10 flex-wrap items-center">
-              <a class="btn bs" href="/api/v1/sets/export/rebrickable" data-i18n="settings.export_rb" data-ico="export">Sets für Rebrickable exportieren</a>
+              <a class="btn bs" href="/api/v2/sets/export/rebrickable" data-i18n="settings.export_rb" data-ico="export">Sets für Rebrickable exportieren</a>
             </div>
           </div>
         </div>
@@ -2002,7 +2002,7 @@
     <section class="wiz-step" data-step="first-set">
       <p class="text-3" data-i18n="setup.first_hint">Fast fertig. Wie kommt das erste Set in die Sammlung?</p>
       <div class="col-05">
-        <button type="button" class="btn bs" data-click="setupTarget" data-arg="nummer" data-i18n="setup.first_number" data-ico="list">Setnummer eingeben</button>
+        <button type="button" class="btn bs" data-click="setupTarget" data-arg="number" data-i18n="setup.first_number" data-ico="list">Setnummer eingeben</button>
         <button type="button" class="btn bs" data-click="setupTarget" data-arg="csv" data-i18n="setup.first_csv" data-ico="import">Liste als CSV importieren</button>
         <button type="button" class="btn bs" data-click="setupTarget" data-arg="catalog" data-i18n="setup.first_catalog" data-ico="catalog">Im Katalog stöbern</button>
       </div>

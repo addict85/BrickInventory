@@ -16,12 +16,12 @@ import { confirmDelete, confirmDeleteWithPassword, withSecondFactor } from './co
  * only one of the boxes stands there — a button the server always rejects is worse than none.
  */
 export async function loadHousehold() {
-  const [d, sf] = await Promise.all([api('GET', '/v1/settings/household'), api('GET', '/v1/auth/zweiter-faktor')]);
+  const [d, sf] = await Promise.all([api('GET', '/v2/settings/household'), api('GET', '/v2/auth/second-factor')]);
   if (!d?.success) return;
   renderHousehold(d);
   // With a second factor the server also requires the code when redeeming.
   const factor = G('household-redeem-factor');
-  if (factor) factor.style.display = sf?.aktiv ? '' : 'none';
+  if (factor) factor.style.display = sf?.active ? '' : 'none';
 }
 
 /**
@@ -36,7 +36,7 @@ function renderHousehold(d) {
   const redeemEl = G('household-redeem-box');
   if (!stateEl) return;
 
-  // A grid on the list, the rows as display:contents: that way all names and all buttons stand in
+  // A grid on the list, the rows as display:contents: that way all names and all buttons state in
   // the same two columns. Names and all buttons in the same two columns; the icon marks the names as
   // accounts.
   const list = (
@@ -91,7 +91,7 @@ function renderHousehold(d) {
 }
 
 export async function createHouseholdInvite() {
-  const d = await api('POST', '/v1/settings/household/invite', {});
+  const d = await api('POST', '/v2/settings/household/invite', {});
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -123,7 +123,7 @@ export async function redeemHouseholdInvite() {
     return;
   }
   // Resolve the code first: whoever agrees should know whom they are giving access.
-  const p = await api('POST', '/v1/settings/household/redeem/pruefen', { code });
+  const p = await api('POST', '/v2/settings/household/redeem/check', { code });
   if (!p.success) {
     toast(p.error || t('settings.error'), 'error');
     return;
@@ -134,15 +134,15 @@ export async function redeemHouseholdInvite() {
     tRaw('household.redeem_question', { name }),
     tRaw('household.redeem_confirm_text', { name }),
     'link',
-    { button: 'confirm.btn.invitation_accept', art: 'bp' },
+    { button: 'confirm.btn.invitation_accept', kind: 'bp' },
   );
   if (password === null) return;
   const factor_code = (G('household-redeem-factor-code')?.value || '').trim();
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/settings/household/redeem', {
+    api('POST', '/v2/settings/household/redeem', {
       code,
       password,
-      ...(z.code || factor_code ? { faktor_code: z.code || factor_code } : {}),
+      ...(z.code || factor_code ? { factor_code: z.code || factor_code } : {}),
       ...(z.passkey ? { passkey: z.passkey } : {}),
     }),
   );
@@ -170,11 +170,11 @@ export async function unlinkFromParent(mainUserId, name) {
       tRaw('household.unlink_confirm_title', { name }),
       tRaw('household.unlink_confirm_text_parent', { name }),
       'link',
-      { button: 'confirm.btn.link_unlink', art: 'bp' },
+      { button: 'confirm.btn.link_unlink', kind: 'bp' },
     ))
   )
     return;
-  const d = await api('POST', '/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId, 10) });
+  const d = await api('POST', '/v2/settings/household/unlink', { main_user_id: parseInt(mainUserId, 10) });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -187,7 +187,7 @@ export async function unlinkFromParent(mainUserId, name) {
  * @param {string} subUserId
  */
 export async function dismissFormerLink(subUserId) {
-  const d = await api('POST', '/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId, 10) });
+  const d = await api('POST', '/v2/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId, 10) });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -205,13 +205,13 @@ export async function unlinkHousehold(subUserId, name) {
       tRaw('household.unlink_confirm_title', { name }),
       tRaw('household.unlink_confirm_text', { name }),
       'link',
-      { button: 'confirm.btn.link_unlink', art: 'bp' },
+      { button: 'confirm.btn.link_unlink', kind: 'bp' },
     ))
   )
     return;
   const d = await api(
     'POST',
-    '/v1/settings/household/unlink',
+    '/v2/settings/household/unlink',
     subUserId ? { sub_user_id: parseInt(subUserId, 10) } : {},
   );
   if (!d.success) {

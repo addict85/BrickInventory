@@ -83,7 +83,7 @@ export function imagePlaceholder(img, provisional = false) {
 }
 
 /**
- * The image proxy lives under /api/v1. Older image_url values from the database still carry the old address;
+ * The image proxy stays under /api/v1 (stored image_url values point there). Older values still carry
  * both are recognized, only the new one is built.
  */
 const IMG_PROXY = '/api/v1/img-proxy';
@@ -226,7 +226,7 @@ let imageObserver = null;
 
 /**
  * Fades images in when they become visible and marks already loaded ones immediately: after innerHTML all
- * <img> start at opacity 0, and until the observer answers, a briefly white tile wall would otherwise stand there.
+ * <img> start at opacity 0, and until the observer answers, a briefly white tile wall would otherwise state there.
  * @param {ParentNode} [root]
  */
 export function observeLazyImages(root) {

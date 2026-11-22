@@ -93,7 +93,7 @@ export function householdAccounts() {
  * one entry, and a selection with one option stays hidden.
  */
 export async function loadHouseholdMembers() {
-  const d = await api('GET', '/v1/sets/household-members');
+  const d = await api('GET', '/v2/sets/household-members');
   const members = d?.members || [];
   _household = members;
   // The same response decides about the account filter: more than one account means a main account with sub-accounts.
@@ -164,7 +164,7 @@ export const ACQUISITION_LOCATION_FIELDS = [
  * "Furthermore I would like to be able to set a storage location as default in the settings.
  *  It should then already be preselected for a new capture."
  *
- * Empty means: no default, the fields stand at "—" as before.
+ * Empty means: no default, the fields state at "—" as before.
  */
 let _locationDefault = '';
 
@@ -195,13 +195,13 @@ export function drawLocationFields() {
 }
 
 /**
- * The default lives with the stock (/v1/storage/locations), not with the occupied places. Only a still empty
+ * The default lives with the stock (/v2/storage/locations), not with the occupied places. Only a still empty
  * field is filled in afterwards: whoever has chosen by themselves in the meantime keeps their choice.
  */
 export async function loadLocationDefault() {
-  const d = await api('GET', '/v1/storage/locations');
+  const d = await api('GET', '/v2/storage/locations');
   if (!d?.success) return;
-  _locationDefault = d.vorgabe?.name || '';
+  _locationDefault = d.preset?.name || '';
   if (!_locationDefault) return;
   for (const id of ACQUISITION_LOCATION_FIELDS) {
     if (!(G(id)?.value || '').trim()) drawLocationField(id, _locationDefault);

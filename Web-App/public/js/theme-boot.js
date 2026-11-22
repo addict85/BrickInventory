@@ -178,7 +178,7 @@
 
   // 2) Catch up with the server's value
   function sync() {
-    fetch('/api/v1/settings/theme', { credentials: 'same-origin' })
+    fetch('/api/v2/settings/theme', { credentials: 'same-origin' })
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
         if (!d?.success || !d.theme) return;
