@@ -728,12 +728,21 @@ function sourceTextCases() {
   const helper = executingHelper();
   let n = 0,
     alle = 0;
+  /** @type {string[]} */
+  const readers = [];
   for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
     const r = sourceTextCasesIn(fs.readFileSync(path.join(__dirname, name), 'utf8'), helper);
     n += r.n;
     alle += r.all;
+    for (const f of r.faelle) readers.push(`${name}: ${caseName(f)}`);
   }
-  return { n, all: alle };
+  return { n, all: alle, readers };
+}
+
+/** The name of a test case from its header line, as written (templates unexpanded). */
+function caseName(/** @type {string} */ header) {
+  const m = header.match(/^(?:test|it)\(\s*(['"`])(.*?)\1/);
+  return m ? m[2] : header;
 }
 
 test('test cases that only read source text become fewer, never more', () => {
@@ -773,7 +782,7 @@ test('test cases that only read source text become fewer, never more', () => {
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
   const LIMIT = 375;
-  const { n, all: alle } = sourceTextCases();
+  const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
     n <= LIMIT,
@@ -781,7 +790,32 @@ test('test cases that only read source text become fewer, never more', () => {
       'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).',
   );
   if (n < LIMIT) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  behaviorChecksReadingSource(readers);
 });
+
+/** Of the reading cases, those outside the structure list are behavior checks. */
+function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
+  // Structure (helpers/structure-checks.js) may read source text; a behavior check runs the code. Target: 0.
+  // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
+  // a file without a reading case → red „without a reading case“.
+  const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
+  const LIMIT = 84;
+  assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
+  const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
+  assert.ok(
+    behavior.length <= LIMIT,
+    `${behavior.length} behavior checks read source text, allowed are ${LIMIT}. Run the code instead; ` +
+      `structure goes into helpers/structure-checks.js with a reason:\n  ${behavior.join('\n  ')}`,
+  );
+  if (behavior.length < LIMIT)
+    console.log(`  ℹ behavior checks reading source text: ${behavior.length} (limit ${LIMIT}) — tighten the limit`);
+  const files = new Set(readers.map(r => r.split(': ')[0]));
+  const stale = [
+    ...Object.keys(STRUCTURE_FILES).filter(f => !files.has(f)),
+    ...Object.keys(STRUCTURE_CHECKS).filter(c => !readers.includes(c)),
+  ];
+  assert.deepEqual(stale, [], 'entries in helpers/structure-checks.js without a reading case');
+}
 
 /** The facade `_req('db/database.js')` (and dbOderSkip, which delivered it) pretended
  * there was still a process access, and mixed test data with the code under test.
