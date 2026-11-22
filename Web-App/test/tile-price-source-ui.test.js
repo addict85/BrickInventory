@@ -8,6 +8,7 @@
  *   A  in priceRow() again `markt = !!s._price` → red: „ohne Marktpreis“
  *      (tile showed „Marktpreis 99,99 €“)
  *   B  in tileValues() kachel_quelle always 'market' → red: „ohne Marktpreis“
+ *   C  (22.11.2026) priceLine() prefers max_purchase_price → red: „the quantity-weighted purchase price“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +37,14 @@ test('tile price: market and purchase price labeled as the server delivers them'
       total: 2,
       themes: [],
       sets: [
-        { set_number: '42115-1', name: 'Lamborghini', year: 2020, quantity: 1, avg_purchase_price: 99.99 },
+        {
+          set_number: '42115-1',
+          name: 'Lamborghini',
+          year: 2020,
+          quantity: 1,
+          avg_purchase_price: 99.99,
+          max_purchase_price: 160,
+        },
         { set_number: '21318-1', name: 'Tree House', year: 2019, quantity: 1, avg_purchase_price: 199.99 },
       ],
     },
@@ -52,6 +60,8 @@ test('tile price: market and purchase price labeled as the server delivers them'
     await warte(() => d.querySelector('[data-price-for="42115-1"] .price-kind'));
     assert.equal(text(d.querySelector('[data-price-for="42115-1"] .price-kind')), 'Kaufpreis', 'ohne Marktpreis');
     assert.equal(text(d.querySelector('[data-price-for="21318-1"] .price-kind')), 'Marktpreis');
+    const kauf = text(d.querySelector('[data-price-for="42115-1"]'));
+    assert.ok(kauf.includes('99,99') && !kauf.includes('160'), `the quantity-weighted purchase price: ${kauf}`);
   } finally {
     w.close();
   }
