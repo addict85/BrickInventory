@@ -102,7 +102,7 @@ test('“report and continue” becomes fewer, never more; src/sets does without
   // with a total limit 200 → red „ausserhalb src/catalog“ (40 of 39).
   // (15.11.2026) catalog write paths throw (job retried); in teileAnreicherung.ts again
   // `.catch(logAndContinue('x'))` on rememberPart → red (68 of 67).
-  const LIMITS = { logAndContinue: 67, reportAndDeliver: 7 };
+  const LIMITS = { logAndContinue: 64, reportAndDeliver: 7 };
   const AT_LEAST = { logAndContinue: 20, reportAndDeliver: 3 };
   const OUTSIDE_CATALOG = { logAndContinue: 37 };
   const inCatalog = (/** @type {string} */ f) => /[\\/]src[\\/]catalog[\\/]/.test(f);
@@ -781,7 +781,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const LIMIT = 372;
+  const LIMIT = 370;
   const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -799,7 +799,7 @@ function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
   // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
   // a file without a reading case → red „without a reading case“.
   const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
-  const LIMIT = 81;
+  const LIMIT = 75;
   assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
   const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
   assert.ok(
@@ -1539,7 +1539,7 @@ test('long comments in tests, scripts and index.html become fewer, never more', 
   // In the code the why stands in few lines, the history in the commit (CLAUDE.md);
   // counter-check lists do not count.
   // Counter-check (06.11.2026): six lines of prose before the counter-check in the header of hsts.test.js → red (tests 75).
-  const LIMIT = { tests: 49, scripts: 0, indexHtml: 162 };
+  const LIMIT = { tests: 48, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
     fs
       .readdirSync(d)
@@ -1662,6 +1662,20 @@ test('German identifiers become fewer, never more (server and tests separately; 
     if (found.size < limit)
       console.log(`  ℹ deutsche Bezeichner ${area}: ${found.size} (Schranke ${limit}) — Schranke nachziehen`);
   }
+});
+
+test('German assertion messages become fewer, never more', () => {
+  // Tests speak English (CLAUDE.md), as on Android; texts users read stay German and count only outside „…“.
+  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (5680 of 5679).
+  const { messages, isGermanMessage, germanMessages } = require('./helpers/assert-messages');
+  assert.ok(messages("assert.ok(x, 'Die Liste fehlt')").some(isGermanMessage), 'self-proof: a German message');
+  assert.ok(!isGermanMessage("'the list is missing'"), 'self-proof: an English message');
+  assert.deepEqual(messages("assert.equal(title, 'Galerie')"), [], 'an expected value is no message');
+  const LIMIT = 5679;
+  const found = germanMessages(__dirname);
+  assert.ok(found.length <= LIMIT, `${found.length} German assertion messages, allowed are ${LIMIT}`);
+  if (found.length < LIMIT)
+    console.log(`  ℹ German assertion messages: ${found.length} (limit ${LIMIT}) — tighten the limit`);
 });
 
 // ── Language: no German names in the UI code ─────────────────────────────────────────────

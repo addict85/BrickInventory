@@ -91,6 +91,10 @@ const STRUCTURE_FILES = {
 
 /** Single structure checks in files that otherwise check behavior: "file.test.js: test name" to reason. */
 const STRUCTURE_CHECKS = {
+  'media-auth.test.js: no static mount delivers files from the data directory': 'only PUBLIC_DIR is mounted statically',
+  'media-auth.test.js: the placeholder lies outside of /images/': 'where the placeholder file lies and who names it',
+  'parts-paging.test.js: all list images load lazily': 'rule over every image template',
+  'img-proxy-v1.test.js: only the new address is built': 'ban on the old proxy address in both trees',
   'add-parallel-db.test.js: all capture paths use the same check': 'rule over every capture path',
   'bundle-smoke.test.js: index.html loads the bundle and the language file in the right order':
     'load order in index.html',

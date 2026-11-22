@@ -1,5 +1,7 @@
 /**
  * Counter-check: fromUs() in public/js/error-capture.js always returns true → red “an extension triggers no error with us”.
+ * Counter-check: the fromUs() check removed from the error listener, and in a second run from the
+ * rejection listener → red “both listeners go through the check” each time.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -98,30 +100,26 @@ test('a foreign host with our name as its start does not count as ours', () => {
 });
 
 test('both listeners go through the check', () => {
-  // Not only the one for rejections: `window.onerror` catches script errors, and
-  // those of an extension land there just the same.
-  // Braces counted instead of `indexOf('});')`: without a curly block that would hit the next listener.
-  const argument = (text, ab) => {
-    let depth = 0;
-    for (let i = text.indexOf('(', ab); i < text.length; i++) {
-      if (text[i] === '(') depth++;
-      else if (text[i] === ')' && --depth === 0) return text.slice(ab, i + 1);
-    }
-    return '';
-  };
-  for (const ereignis of ['unhandledrejection', 'error']) {
-    const i = QUELLE.indexOf(`addEventListener('${ereignis}'`);
-    assert.ok(i > 0, `Der Lauscher fuer '${ereignis}' fehlt`);
-    const block = argument(QUELLE, i);
-    assert.ok(
-      block.includes(`'${ereignis}'`) && block.length > 30,
-      `Der Lauscher fuer '${ereignis}' liess sich nicht herausschneiden — greift die Suche noch?`,
-    );
-    assert.match(
-      block,
-      /fromUs\(/,
-      `Der Lauscher fuer '${ereignis}' meldet ungeprueft — dann kommen fremde ` + 'Fehler weiter als unsere an.',
-    );
+  // Not only rejections: window 'error' catches script errors, and those of an extension land there too.
+  // One window per listener: reportUnexpected() swallows a second report within five seconds.
+  const { JSDOM } = require('jsdom');
+  for (const name of ['unhandledrejection', 'error']) {
+    const w = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only', url: UNS + '/' }).window;
+    const toasts = [];
+    w.toast = text => toasts.push(text);
+    w.tRaw = key => key;
+    w.console.error = () => {};
+    w.eval(`${QUELLE.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '')}\nbindGlobalErrorHandlers();`);
+    const fire = error => {
+      const ev = new w.Event(name);
+      Object.assign(ev, name === 'error' ? { error, message: error.message } : { reason: error });
+      w.dispatchEvent(ev);
+    };
+    fire(withStack('x', 'Error: x\n    at chrome-extension://abc/inpage.js:1:1'));
+    assert.deepEqual(toasts, [], `${name}: an error of an extension is reported as ours`);
+    fire(withStack('y', `Error: y\n    at ${UNS}/js/app.bundle.js:1:1`));
+    assert.deepEqual(toasts, ['api.unexpected'], `${name}: our own error does not arrive`);
+    w.close();
   }
 });
 
