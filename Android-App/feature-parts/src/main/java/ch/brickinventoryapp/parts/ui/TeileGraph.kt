@@ -208,7 +208,8 @@ private fun NavGraphBuilder.partListsTarget(navigation: PartsNavigation) {
                 hatUnterkonten = blick.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,
                 onBarcodeConsumed = scan.uebernommen,
-                listState = teilelistenState
+                listState = teilelistenState,
+                snackbar = navigation.snackbar,
             )
         }
     }

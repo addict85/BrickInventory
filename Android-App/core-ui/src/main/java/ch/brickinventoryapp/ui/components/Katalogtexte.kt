@@ -1,7 +1,12 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.resources.R
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
@@ -35,3 +40,14 @@ fun categoryTranslator(): (String) -> String =
 @Composable
 fun catalogName(name: String): AnnotatedString =
     if (deutsch()) AnnotatedString(name, SpanStyle(localeList = LocaleList("en"))) else AnnotatedString(name)
+
+/**
+ * „Name auf Englisch“ under a catalog name, only in a German UI: otherwise an English name
+ * among German labels reads like a missing translation. TalkBack hears it via [catalogName].
+ */
+@Composable
+fun CatalogNameHint(modifier: Modifier = Modifier) {
+    if (!deutsch()) return
+    Text(stringResource(R.string.catalog_name_english), modifier,
+        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}

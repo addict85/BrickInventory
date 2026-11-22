@@ -16,6 +16,7 @@
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
+    <string name="acq_delete_question">Delete entry?</string>
     <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
     <string name="acq_geloescht">Purchase deleted</string>
     <string name="common_delete">Delete</string>
@@ -118,6 +119,8 @@
     <string name="scanner_nummer_eintippen">Type the number</string>
     <string name="scanner_adresse_eintippen">Type the address</string>
     <string name="scanner_close">Close</string>
+    <string name="scanner_camera_error">The camera won’t open – another app may be using it. Close that app and try again, or type the number.</string>
+    <string name="scanner_hint_slow">Nothing recognized yet? More light, 10–20 cm away and hold steady – or type the number.</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
     <string name="setup_invalid_qr">Invalid QR code — please use a BrickInventory QR code</string>
@@ -147,7 +150,7 @@
     <string name="gallery_card_market">Market price</string>
     <string name="gallery_card_paid">Purchase price</string>
     <string name="gallery_delete_title">Delete set?</string>
-    <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
+    <string name="gallery_delete_text">%1$s and its parts will be deleted. You can still undo it for a moment afterwards.</string>
     <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
@@ -181,11 +184,14 @@
     <string name="minifigs_bl_hint">Rebrickable and BrickLink numbers usually differ. Without a BrickLink number, the market price is approximated from the figure\'s individual parts.</string>
     <string name="minifigs_add_button">Add</string>
     <string name="minifigs_delete_title">Delete minifigure?</string>
-    <string name="minifigs_delete_text">%1$s will be removed from your collection.</string>
+    <string name="minifigs_delete_text">%1$s will be deleted from your collection.</string>
     <string name="minifigs_manual_badge">Manual</string>
 
     <!-- ══════════════ Parts list screen ══════════════ -->
     <string name="partslist_set_already_added">Set already in the list</string>
+    <string name="partslist_set_removed">%1$s removed from the build list</string>
+    <string name="partslist_remove_set">Remove %1$s from the build list</string>
+    <string name="partslist_set_missing">Enter a set number or scan a set first.</string>
     <plurals name="partslist_sets_in_list">
         <item quantity="one">%1$d set in the list</item>
         <item quantity="other">%1$d sets in the list</item>
@@ -351,7 +357,7 @@
     <string name="parts_none">No parts</string>
     <string name="parts_add">Add part</string>
     <string name="parts_delete_title">Delete part?</string>
-    <string name="parts_delete_text">%1$s will be removed from your collection.</string>
+    <string name="parts_delete_text">%1$s will be deleted from your collection.</string>
     <string name="parts_add_title">Add part</string>
     <string name="parts_part_number">Part number</string>
     <string name="parts_part_number_placeholder">e.g. 3001</string>
@@ -366,8 +372,8 @@
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_refresh">Refresh</string>
-    <string name="monitoring_retry_error">Error on retry</string>
-    <string name="monitoring_delete_error">Error deleting</string>
+    <string name="monitoring_retry_error">Retry for %1$s failed: %2$s</string>
+    <string name="monitoring_delete_error">%1$s could not be removed from the queue: %2$s</string>
     <string name="monitoring_sync_now">Sync now</string>
     <string name="monitoring_queue_collapse">Collapse queue</string>
     <string name="monitoring_queue_show">Show queue (%1$d)</string>
@@ -384,16 +390,21 @@
     <string name="monitoring_cache_clear_all">Clear all</string>
     <string name="monitoring_cache_clear_hint">Cached prices are discarded. Rebuilding them uses requests from the shared daily quota.</string>
     <string name="monitoring_cache_clear_confirm">Clear</string>
+    <string name="monitoring_cache_clear_all_title">Clear the whole cache?</string>
+    <string name="monitoring_cache_clear_prices_title">Clear cached prices?</string>
     <string name="monitoring_cache_cleared">Cache cleared</string>
+    <string name="monitoring_cache_clear_failed">Cache not cleared: %1$s</string>
     <string name="monitoring_cache_saved">Cache duration saved</string>
+    <string name="monitoring_save_failed">Not saved: %1$s</string>
     <string name="monitoring_api_calls">API calls</string>
     <string name="monitoring_limits_saved">Limits saved</string>
     <string name="monitoring_limits_save">Save limits</string>
     <string name="monitoring_retry_queued">%1$s will be retried</string>
     <string name="monitoring_entry_removed">%1$s removed</string>
-    <string name="monitoring_queue_loeschen_titel">Delete entry?</string>
+    <string name="monitoring_queue_loeschen_titel">Remove from the queue?</string>
     <string name="monitoring_queue_loeschen_text">Brickset will no longer be asked about %1$s.</string>
-    <string name="monitoring_start_error">Error starting</string>
+    <string name="monitoring_queue_entfernen">Remove</string>
+    <string name="monitoring_start_error">Start failed: %1$s</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
@@ -553,7 +564,7 @@
     <string name="monitoring_catalog_images">Queue catalog images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
-    <string name="monitoring_reimport_error">Reimport not possible. Check your connection and try again.</string>
+    <string name="monitoring_reimport_error">Reimport not possible: %1$s</string>
     <plurals name="monitoring_reimport_enqueued">
         <item quantity="one">%1$d set enqueued</item>
         <item quantity="other">%1$d sets enqueued</item>
@@ -589,6 +600,7 @@
     <string name="catalog_sort_parts_asc">Parts ↑</string>
     <string name="catalog_buy_bricklink">Buy on BrickLink</string>
     <string name="catalog_search_bricklink">Search on BrickLink</string>
+    <string name="catalog_name_english">Name in English, as on Rebrickable and BrickLink</string>
     <string name="finance_purchase_short">Purchase price: %1$s</string>
     <string name="finance_purchase_total">Total paid: %1$s</string>
     <string name="household_scope_label">Accounts</string>
@@ -758,6 +770,7 @@
     <string name="konto_email_unverified">Email address not confirmed</string>
     <string name="konto_profil_password_needed">To save, enter your current password.</string>
     <string name="konto_save">Save profile</string>
+    <string name="konto_save_title">Save profile?</string>
     <string name="konto_saved">Profile saved</string>
     <string name="konto_email_ausstehend">Pending: %1$s. It takes effect once you open the link sent to it; until then the current address stays.</string>
     <string name="konto_email_link_gesendet">Confirmation link sent to %1$s. Until you open it, your current address stays valid.</string>
@@ -905,8 +918,8 @@
     <string name="alerts_fired">Triggered</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
-    <string name="alerts_delete">Remove price alert</string>
-    <string name="alerts_confirm_delete">Really remove the price alert for %1$s?</string>
+    <string name="alerts_delete">Delete price alert?</string>
+    <string name="alerts_confirm_delete">The price alert for %1$s will be deleted. You would have to set the threshold again.</string>
 
     <!-- Vouchers (LEGO gift cards in your own profile) -->
     <string name="vouchers_title">Vouchers</string>
@@ -957,6 +970,7 @@
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
     <string name="vouchers_confirm_title">Confirm with password</string>
+    <string name="vouchers_delete_title">Delete voucher?</string>
     <string name="vouchers_confirm_klartext">The number and PIN are only shown after you confirm. The request is logged.</string>
     <string name="vouchers_confirm_pdf">The PDF shows the number and PIN. Please confirm with your password.</string>
     <string name="vouchers_confirm_button">Confirm</string>
@@ -1084,6 +1098,7 @@
     <string name="finance_range_label">Today’s price range – cheapest to dearest case</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
+    <string name="wanted_all_alerts">All price alerts</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>
     <string name="fehler_anmeldung_titel">Please sign in again</string>
     <string name="fehler_server_text">Your data is safe. Try again in a moment.</string>
@@ -1146,8 +1161,8 @@
     <string name="hintergrund_gestartet">%1$s is starting</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
     <plurals name="gallery_delete_text_exemplare">
-        <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
-        <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
+        <item quantity="one">%1$d copy of %2$s and its parts will be deleted. You can still undo it for a moment afterwards.</item>
+        <item quantity="other">All %1$d copies of %2$s and their parts will be deleted. You can still undo it for a moment afterwards.</item>
     </plurals>
     <plurals name="offline_warten">
         <item quantity="one">%1$d change is waiting and will be sent on the next connection</item>
@@ -1166,7 +1181,7 @@
     <string name="zf_schritt_codes">Recovery codes</string>
     <string name="konto_profil_titel">Profile</string>
     <string name="alerts_liste_titel">Your alerts</string>
-    <string name="alerts_delete_fuer">Remove price alert for %1$s</string>
+    <string name="alerts_delete_fuer">Delete price alert for %1$s</string>
     <string name="storage_vorgabe_cd">Default when adding: %1$s</string>
     <string name="aktion_fuer">%1$s: %2$s</string>
     <string name="finance_positionen">Items</string>

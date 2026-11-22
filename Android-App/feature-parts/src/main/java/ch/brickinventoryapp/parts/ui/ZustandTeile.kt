@@ -130,7 +130,15 @@ data class TeilelisteUiState(
     val pdf: Vorgang = Vorgang.Fertig,
     /** Finished PDF that the screen offers once to open. */
     val pdfFile: java.io.File? = null,
+    /** The set just taken off the list, as long as „Undo“ is offered. */
+    val removed: RemovedSet? = null,
 )
+
+/**
+ * A removed set and the list as it stood before: „Undo“ restores exactly that list,
+ * including the generated parts, as long as nothing else changed in between.
+ */
+data class RemovedSet(val set: PlSet, val before: List<PlSet>, val wasGenerated: Boolean)
 
 /**
  * What parts and figures read from the session: server for the images, currency and

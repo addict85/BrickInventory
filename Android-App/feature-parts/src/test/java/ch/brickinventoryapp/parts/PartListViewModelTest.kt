@@ -60,6 +60,10 @@ import ch.brickinventoryapp.testing.TestDienste
  *   E  gegenproben/pdf-fehler-leer.patch: errorText() for a failed
  *      job again returns only the server's sentence (even empty) → red “an error always has
  *      a sentence …” (measurable only in the CI)
+ *   F  undoRemove() without the branch for an unchanged list (always re-inserting with
+ *      generated = false) → red “undo after removing brings back the generated list”;
+ *      removalSeen() clearing unconditionally → red “a newer removal keeps its undo”
+ *      (not locally runnable, to be checked in CI)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartListViewModelTest {
@@ -254,5 +258,50 @@ class PartListViewModelTest {
         advanceUntilIdle()
         assertTrue(vm.zustand.value.sets.isEmpty())
         assertTrue(vm.zustand.value.parts.isEmpty())
+    }
+
+    @Test
+    fun `undo after removing brings back the generated list`() = runTest(takt) {
+        val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)), "21318-1" to listOf(teil("3002", 1)))))
+        vm.addAdd("10294")
+        vm.erstelle("21318")
+        advanceUntilIdle()
+        vm.entferne(0)
+        val r = vm.zustand.value.removed!!
+        assertEquals(listOf("21318-1"), vm.zustand.value.sets.map { it.setNumber })
+        assertFalse(vm.zustand.value.generated)
+        vm.undoRemove(r)
+        val z = vm.zustand.value
+        assertEquals("Wieder an seinem Platz", listOf("10294-1", "21318-1"), z.sets.map { it.setNumber })
+        assertTrue("Die Liste gilt wieder, nichts hat sich geändert", z.generated)
+        assertNull(z.removed)
+    }
+
+    @Test
+    fun `undo after a change re-inserts the set, the list must be created anew`() = runTest(takt) {
+        val vm = vm()
+        vm.addAdd("10294")
+        vm.addAdd("21318")
+        vm.entferne(0)
+        val r = vm.zustand.value.removed!!
+        vm.addAdd("42100")
+        vm.undoRemove(r)
+        assertEquals(listOf("10294-1", "21318-1", "42100-1"), vm.zustand.value.sets.map { it.setNumber })
+        assertFalse(vm.zustand.value.generated)
+    }
+
+    @Test
+    fun `a newer removal keeps its undo`() = runTest(takt) {
+        val vm = vm()
+        vm.addAdd("10294")
+        vm.addAdd("21318")
+        vm.entferne(0)
+        val erste = vm.zustand.value.removed!!
+        vm.entferne(0)
+        val zweite = vm.zustand.value.removed!!
+        vm.removalSeen(erste)
+        assertEquals(zweite, vm.zustand.value.removed)
+        vm.removalSeen(zweite)
+        assertNull(vm.zustand.value.removed)
     }
 }

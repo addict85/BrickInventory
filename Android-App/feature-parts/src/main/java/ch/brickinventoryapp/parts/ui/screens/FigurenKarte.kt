@@ -143,7 +143,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
             Column(Modifier.padding(Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(fig.figNumber, Modifier.readAloudAs(stringResource(R.string.cd_figur_nummer, fig.figNumber)),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    // A number, not a link: primary blue is for what can be tapped.
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                 // The number already stands above it; without a name, the same number again looked like a name.
                 val figName = fig.figName
                 if (figName != null) {

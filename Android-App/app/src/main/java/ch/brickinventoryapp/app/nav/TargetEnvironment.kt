@@ -9,6 +9,7 @@ import ch.brickinventoryapp.app.ReiterGeruest
 import ch.brickinventoryapp.finances.ui.FinancesNavigation
 import ch.brickinventoryapp.catalog.ui.CatalogNavigation
 import ch.brickinventoryapp.account.ui.AccountNavigation
+import ch.brickinventoryapp.account.ui.KontoZiel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.model.domain.Erfassungswunsch
 import ch.brickinventoryapp.model.domain.Postenart
@@ -93,4 +94,6 @@ class TargetEnvironment(
         navController.navigate(TeileZiel.ManualItemDetail(art, id, colorId, titel))
 
     override fun openPdf(url: String, titel: String) = showPdf(url, titel)
+
+    override fun openPriceAlerts() = navController.navigate(KontoZiel.Preisalarme)
 }

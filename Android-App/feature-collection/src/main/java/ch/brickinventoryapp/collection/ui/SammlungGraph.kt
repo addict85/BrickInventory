@@ -39,6 +39,9 @@ import ch.brickinventoryapp.state.ui.viewmodel.KaeufeViewModel
 interface CollectionNavigation : Bereichsumgebung {
     /** The finance page holds the PDF viewer. */
     fun openPdf(url: String, titel: String)
+
+    /** All price alerts live in the settings (account area). */
+    fun openPriceAlerts()
 }
 
 /** Gallery, set detail, purchases, watchlist, scanner and price comparison. */
@@ -218,6 +221,7 @@ private fun NavGraphBuilder.wantedTargets(navigation: CollectionNavigation) {
                     onOpenSingle = { sn, zustand ->
                         navController.navigate(SammlungZiel.MerkpostenDetail(sn, zustand))
                     },
+                    onOpenPriceAlerts = navigation::openPriceAlerts,
                 )
             }
         }
@@ -233,6 +237,7 @@ private fun NavGraphBuilder.wantedTargets(navigation: CollectionNavigation) {
             condition = ziel.condition,
             imageLoader = navigation.bilder,
             onBack = { navController.popBackStack() },
+            onOpenPriceAlerts = navigation::openPriceAlerts,
         )
     }
 }

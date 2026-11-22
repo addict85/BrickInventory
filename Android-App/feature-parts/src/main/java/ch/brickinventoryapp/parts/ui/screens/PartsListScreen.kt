@@ -47,6 +47,10 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import ch.brickinventoryapp.data.service.partListsSelection
 import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.RemovableChip
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.ui.components.withFont
@@ -80,6 +84,8 @@ fun PartsListRoute(
     listState: LazyListState,
     manuelleErfassungAnfordern: Boolean,
     onManuelleErfassungQuittiert: () -> Unit,
+    /** Shows „removed“ with „Undo“; without one (tests), removing has no undo. */
+    snackbar: SnackbarHostState? = null,
     vm: PartListViewModel = hiltViewModel(),
 ) {
     val zustand by vm.zustand.collectAsStateWithLifecycle()
@@ -90,6 +96,22 @@ fun PartsListRoute(
         if (barcodeSetNumber != null) {
             vm.addAdd(barcodeSetNumber)
             onBarcodeConsumed()
+        }
+    }
+    // A removed set can come back: the chip had vanished on a single tap, without a trace.
+    val removed = zustand.removed
+    val removedText = removed?.let { stringResource(R.string.partslist_set_removed, it.set.setNumber) }
+    val undo = stringResource(R.string.common_undo)
+    LaunchedEffect(removed) {
+        val r = removed ?: return@LaunchedEffect
+        val host = snackbar ?: return@LaunchedEffect
+        var zurueck = false
+        // finally: leaving the page ends the offer too, it does not come back on returning.
+        try {
+            zurueck = host.showSnackbar(removedText ?: r.set.setNumber, undo, duration = SnackbarDuration.Long) ==
+                SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.undoRemove(r) else vm.removalSeen(r)
         }
     }
     // Offer the finished PDF for sharing once; an Activity start does not belong in the ViewModel.
@@ -161,6 +183,8 @@ fun PartsListScreen(
     // else is held by the ViewModel.
     var setInput  by rememberSaveable { mutableStateOf("") }
     var clearAsk by rememberSaveable { mutableStateOf(false) }
+    // „Create“ with nothing to create marks the field instead of being greyed out without a reason.
+    var setMissing by rememberSaveable { mutableStateOf(false) }
     val setFeldFokus = remember { FocusRequester() }
     val sets = zustand.sets
     val parts = zustand.parts
@@ -176,7 +200,12 @@ fun PartsListScreen(
         setInput = ""
     }
 
-    fun erstellen() {
+    fun erstellen(anzahl: Int) {
+        if (anzahl == 0) {
+            setMissing = true
+            runCatching { setFeldFokus.requestFocus() }
+            return
+        }
         onErstelle(setInput)
         setInput = ""
     }
@@ -212,12 +241,16 @@ fun PartsListScreen(
                         // Filter and keyboard choice like every set-number field (util/NumericInput.kt).
                         // "Fertig" and the "+" in the field take the set into the list: one way in,
                         // one button to create it.
-                        onValueChange = { setInput = NumericInput.setNumber(it) },
+                        onValueChange = { setInput = NumericInput.setNumber(it); setMissing = false },
                         keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Label instead of placeholder: the long placeholder wrapped into two
                         // lines in the field and disappeared while typing.
                         label = { Text(stringResource(R.string.gallery_set_number)) },
+                        isError = setMissing,
+                        supportingText = if (setMissing) {
+                            { Text(stringResource(R.string.partslist_set_missing), Modifier.announce()) }
+                        } else null,
                         modifier = Modifier.weight(1f).focusRequester(setFeldFokus),
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
@@ -253,11 +286,10 @@ fun PartsListScreen(
                         verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)
                     ) {
                         sets.forEachIndexed { i, s ->
-                            AssistChip(
-                                onClick = { onEntferne(i) },
-                                label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
-                                    style = MaterialTheme.typography.bodySmall) },
-                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(withFont(14.dp))) }
+                            RemovableChip(
+                                label = if (s.name.isNotBlank() && s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
+                                removeLabel = stringResource(R.string.partslist_remove_set, s.setNumber),
+                                onRemove = { onEntferne(i) },
                             )
                         }
                     }
@@ -267,8 +299,8 @@ fun PartsListScreen(
                 // takes — the typed one included.
                 val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
                 Button(
-                    onClick = { erstellen() },
-                    enabled = anzahl > 0 && !isLoading,
+                    onClick = { erstellen(anzahl) },
+                    enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     // Only the icon turns into a spinner, the label stays: otherwise

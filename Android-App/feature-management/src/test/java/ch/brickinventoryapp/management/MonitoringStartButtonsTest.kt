@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -32,6 +33,9 @@ import org.junit.Test
  *   startknopf-bleibt-gestartet      resetting after STARTED_MS removed → red “a start button shows …”
  *   startknopf-fehlschlag-still      failure without a message → red “a failed start reports …”
  *   warteschlange-fehler-verschluckt queue error treated as an empty list → red “a failed queue …”
+ *   The cause dropped from a failure (Meldung.Resource(satz) without werte) → red “a failed start
+ *   reports …”, “a failed removal names …” and “a failed save names …” (not locally runnable,
+ *   to be checked in CI).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonitoringStartButtonsTest {
@@ -82,8 +86,37 @@ class MonitoringStartButtonsTest {
         val vm = vm()
         vm.starte(Jobstart.KATALOGBILDER)
         runCurrent()
-        assertEquals("t${R.string.monitoring_start_error}", kanal.text)
+        assertCause(R.string.monitoring_start_error, kanal.meldung.value)
         assertEquals(emptyMap<Jobstart, Meldung>(), vm.state.value.buttons)
+    }
+
+    @Test
+    fun `a failed removal names the set and the cause`() = runTest {
+        paths.antworten["/api/v1/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
+        paths.codes["/api/v1/admin/brickset-queue/75192"] = 500
+        val vm = vm()
+        vm.entferne("75192")
+        runCurrent()
+        val m = kanal.meldung.value as Meldung.Resource
+        assertEquals(R.string.monitoring_delete_error, m.id)
+        assertEquals("75192", m.werte.first())
+        assertTrue("Ohne Grund: ${m.werte}", m.werte.last() is Meldung)
+    }
+
+    @Test
+    fun `a failed save names the cause instead of staying silent`() = runTest {
+        paths.codes["/api/v1/admin/cache-ttl"] = 500
+        val vm = vm()
+        vm.saveCacheDuration(12)
+        runCurrent()
+        assertCause(R.string.monitoring_save_failed, kanal.meldung.value)
+    }
+
+    /** The sentence [id] with exactly one value, and that value is the failure's own message. */
+    private fun assertCause(id: Int, m: Meldung?) {
+        val r = m as? Meldung.Resource ?: throw AssertionError("Keine Meldung: $m")
+        assertEquals(id, r.id)
+        assertTrue("Ohne Grund: ${r.werte}", r.werte.single() is Meldung)
     }
 
     @Test

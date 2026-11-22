@@ -165,16 +165,26 @@ class MonitoringViewModel @Inject constructor(
     fun defaultStateChoose(zustand: Zustand) = gespeichert(einstellungen = true) { setDefaultState(zustand) }
     fun designChoose(theme: Design) = gespeichert(einstellungen = true) { setzeDesign(theme) }
     fun saveCacheDuration(hours: Int) = gespeichert { setCacheDuration(hours) }
-    fun cacheLeeren(alles: Boolean) = gespeichert(R.string.monitoring_cache_cleared) { emptyCache(alles) }
+    fun cacheLeeren(alles: Boolean) =
+        gespeichert(R.string.monitoring_cache_cleared, failure = R.string.monitoring_cache_clear_failed) { emptyCache(alles) }
     fun saveLimits(rebrickable: Int, bricklink: Int, brickset: Int) =
         gespeichert(R.string.monitoring_limits_saved) { setLimits(rebrickable, bricklink, brickset) }
 
-    // Only a success reports itself; a failure leaves the shown state as is.
-    private fun gespeichert(satz: Int = R.string.monitoring_cache_saved, einstellungen: Boolean = false, aktion: suspend () -> Boolean) {
+    // A failure names its cause: a switch that silently flips back looks like a bug in the app.
+    private fun gespeichert(
+        satz: Int = R.string.monitoring_cache_saved,
+        einstellungen: Boolean = false,
+        failure: Int = R.string.monitoring_save_failed,
+        aktion: suspend () -> Ergebnis<Unit>,
+    ) {
         viewModelScope.launch {
-            if (!aktion()) return@launch
-            if (einstellungen) _settingsNew.value = true
-            meldungen.zeige(Meldung.Resource(satz))
+            when (val r = aktion()) {
+                is Ergebnis.Fehler -> meldungen.zeige(Meldung.Resource(failure, listOf(errorMessage(r))))
+                is Ergebnis.Erfolg -> {
+                    if (einstellungen) _settingsNew.value = true
+                    meldungen.zeige(Meldung.Resource(satz))
+                }
+            }
         }
     }
 
@@ -218,24 +228,30 @@ class MonitoringViewModel @Inject constructor(
     override fun wiederhole(setNummer: String) = reportAfter(
         { repeatEntry(setNummer) },
         Meldung.Resource(R.string.monitoring_retry_queued, listOf(setNummer)),
-        Meldung.Resource(R.string.monitoring_retry_error),
+        R.string.monitoring_retry_error, setNummer,
     )
 
     override fun entferne(setNummer: String) = reportAfter(
         { removeEntry(setNummer) },
         Meldung.Resource(R.string.monitoring_entry_removed, listOf(setNummer)),
-        Meldung.Resource(R.string.monitoring_delete_error),
+        R.string.monitoring_delete_error, setNummer,
     )
 
-    private fun reportAfter(aktion: suspend () -> Boolean, erfolg: Meldung, failure: Meldung) {
-        viewModelScope.launch { meldungen.zeige(if (aktion()) erfolg else failure) }
+    /** [failure] takes the set number and the cause; „Fehler beim Löschen“ alone said neither. */
+    private fun reportAfter(aktion: suspend () -> Ergebnis<Unit>, erfolg: Meldung, failure: Int, setNummer: String) {
+        viewModelScope.launch {
+            meldungen.zeige(when (val r = aktion()) {
+                is Ergebnis.Erfolg -> erfolg
+                is Ergebnis.Fehler -> Meldung.Resource(failure, listOf(setNummer, errorMessage(r)))
+            })
+        }
     }
 
     /** Retries a stuck entry; reloads the list afterward. */
-    internal suspend fun repeatEntry(setNummer: String): Boolean {
-        val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Erfolg
-        if (ok) loadQueue()
-        return ok
+    internal suspend fun repeatEntry(setNummer: String): Ergebnis<Unit> {
+        val r = verwaltung.retryBricksetEntry(setNummer)
+        if (r is Ergebnis.Erfolg) loadQueue()
+        return r
     }
 
     /**
@@ -243,14 +259,14 @@ class MonitoringViewModel @Inject constructor(
      * it reloads instead of writing the old copy back — something else may
      * have changed on the server in between.
      */
-    internal suspend fun removeEntry(setNummer: String): Boolean {
+    internal suspend fun removeEntry(setNummer: String): Ergebnis<Unit> {
         _state.update { s ->
             val ohne = s.queue.dataOrNull()?.filter { it.setNumber != setNummer }
             if (ohne == null) s else s.copy(queue = Laden.Daten(ohne))
         }
-        val ok = verwaltung.deleteBricksetEntry(setNummer) is Ergebnis.Erfolg
-        if (!ok) loadQueue()
-        return ok
+        val r = verwaltung.deleteBricksetEntry(setNummer)
+        if (r is Ergebnis.Fehler) loadQueue()
+        return r
     }
 
     /**
@@ -262,34 +278,35 @@ class MonitoringViewModel @Inject constructor(
         if (job in _state.value.buttons) return
         setButton(job, Meldung.Resource(if (job == Jobstart.INSTRUCTIONS) R.string.common_loading else R.string.monitoring_starting))
         viewModelScope.launch {
-            val gestartet = startJob(job)
-            if (gestartet == null) {
-                setButton(job, null)
-                val satz = if (job == Jobstart.INSTRUCTIONS) R.string.monitoring_reimport_error else R.string.monitoring_start_error
-                meldungen.zeige(Meldung.Resource(satz))
-                return@launch
+            when (val r = startJob(job)) {
+                is Ergebnis.Fehler -> {
+                    setButton(job, null)
+                    val satz = if (job == Jobstart.INSTRUCTIONS) R.string.monitoring_reimport_error else R.string.monitoring_start_error
+                    meldungen.zeige(Meldung.Resource(satz, listOf(errorMessage(r))))
+                }
+                is Ergebnis.Erfolg -> {
+                    setButton(job, r.data)
+                    delay(STARTED_MS)
+                    setButton(job, null)
+                }
             }
-            setButton(job, gestartet)
-            delay(STARTED_MS)
-            setButton(job, null)
         }
     }
 
     private fun setButton(job: Jobstart, stand: Meldung?) =
         _state.update { it.copy(buttons = if (stand == null) it.buttons - job else it.buttons + (job to stand)) }
 
-    /** Starts the job; returns what the button shows afterward, or null on a failure. */
-    internal suspend fun startJob(job: Jobstart): Meldung? {
+    /** Starts the job; returns what the button shows afterward, or the failure with its cause. */
+    internal suspend fun startJob(job: Jobstart): Ergebnis<Meldung> {
         val gestartet = Meldung.Resource(R.string.monitoring_started)
         return when (job) {
-            Jobstart.CSV_ABGLEICH -> Meldung.Resource(R.string.monitoring_sync_started_short)
-                .takeIf { verwaltung.triggerCsvSync() is Ergebnis.Erfolg }
-            Jobstart.PREISLAUF -> gestartet.takeIf { verwaltung.triggerPriceJob() is Ergebnis.Erfolg }
-            Jobstart.BESTANDSBILDER -> gestartet.takeIf { verwaltung.redownloadMissingImages() is Ergebnis.Erfolg }
+            Jobstart.CSV_ABGLEICH -> verwaltung.triggerCsvSync().then { Meldung.Resource(R.string.monitoring_sync_started_short) }
+            Jobstart.PREISLAUF -> verwaltung.triggerPriceJob().then { gestartet }
+            Jobstart.BESTANDSBILDER -> verwaltung.redownloadMissingImages().then { gestartet }
             // The catalog's images, not the stock's next to it.
-            Jobstart.KATALOGBILDER -> gestartet.takeIf { verwaltung.queueCatalogImages() is Ergebnis.Erfolg }
-            Jobstart.INSTRUCTIONS -> (verwaltung.reimportInstructions() as? Ergebnis.Erfolg)?.data
-                ?.let { Meldung.Menge(R.plurals.monitoring_reimport_enqueued, it) }
+            Jobstart.KATALOGBILDER -> verwaltung.queueCatalogImages().then { gestartet }
+            Jobstart.INSTRUCTIONS -> verwaltung.reimportInstructions()
+                .then { Meldung.Menge(R.plurals.monitoring_reimport_enqueued, it) }
         }
     }
 
@@ -313,20 +330,20 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
-    internal suspend fun setCacheDuration(hours: Int): Boolean {
-        val ok = verwaltung.setCacheTtl(hours) is Ergebnis.Erfolg
-        if (ok) _state.update { it.copy(cacheTtl = hours.toString()) }
-        return ok
+    internal suspend fun setCacheDuration(hours: Int): Ergebnis<Unit> {
+        val r = verwaltung.setCacheTtl(hours)
+        if (r is Ergebnis.Erfolg) _state.update { it.copy(cacheTtl = hours.toString()) }
+        return r
     }
 
     /**
      * Clear the cache and fetch the numbers again right away — otherwise the old
      * ones would stay up, and nothing would show that something happened.
      */
-    internal suspend fun emptyCache(alles: Boolean): Boolean {
-        val ok = verwaltung.clearCache(alles) is Ergebnis.Erfolg
-        if (ok) loadCacheAndLimits()
-        return ok
+    internal suspend fun emptyCache(alles: Boolean): Ergebnis<Unit> {
+        val r = verwaltung.clearCache(alles)
+        if (r is Ergebnis.Erfolg) loadCacheAndLimits()
+        return r
     }
 
     /**
@@ -334,15 +351,13 @@ class MonitoringViewModel @Inject constructor(
      * "07:05", at least five minutes): it should show what applies.
      */
     override fun setSchedule(name: String, zeit: String?, minuten: Int?) {
-        viewModelScope.launch {
-            if (setzeJobZeitplan(name, zeit, minuten)) meldungen.zeige(Meldung.Resource(R.string.monitoring_cache_saved))
-        }
+        gespeichert { setzeJobZeitplan(name, zeit, minuten) }
     }
 
-    internal suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
-        val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Erfolg
-        if (ok) loadJobs()
-        return ok
+    internal suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Ergebnis<Unit> {
+        val r = verwaltung.setJobSchedule(name, zeit, minuten)
+        if (r is Ergebnis.Erfolg) loadJobs()
+        return r
     }
 
     /**
@@ -360,20 +375,20 @@ class MonitoringViewModel @Inject constructor(
      * value into the state and remembers it, so that the display switches right away and
      * survives a cold start.
      */
-    internal suspend fun setzeDesign(theme: Design): Boolean {
-        val ok = verwaltung.setAppTheme(theme) is Ergebnis.Erfolg
-        if (ok) _state.update { it.copy(defaultDesign = theme) }
-        return ok
+    internal suspend fun setzeDesign(theme: Design): Ergebnis<Unit> {
+        val r = verwaltung.setAppTheme(theme)
+        if (r is Ergebnis.Erfolg) _state.update { it.copy(defaultDesign = theme) }
+        return r
     }
 
-    internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
-        val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Erfolg
-        if (ok) {
-            (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { r ->
-                _state.update { it.copy(apiLimits = r.data) }
+    internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Ergebnis<Unit> {
+        val r = verwaltung.setApiLimits(rebrickable, bricklink, brickset)
+        if (r is Ergebnis.Erfolg) {
+            (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { l ->
+                _state.update { it.copy(apiLimits = l.data) }
             }
         }
-        return ok
+        return r
     }
 
     /**
@@ -381,13 +396,19 @@ class MonitoringViewModel @Inject constructor(
      * the call fails, it is rolled back, otherwise the UI would claim something that was never
      * saved.
      */
-    internal suspend fun setDefaultState(zustand: Zustand): Boolean {
+    internal suspend fun setDefaultState(zustand: Zustand): Ergebnis<Unit> {
         val vorher = _state.value.defaultState
         _state.update { it.copy(defaultState = zustand) }
-        val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Erfolg
-        if (!ok) _state.update { it.copy(defaultState = vorher) }
-        return ok
+        val r = verwaltung.setDefaultCondition(zustand)
+        if (r is Ergebnis.Fehler) _state.update { it.copy(defaultState = vorher) }
+        return r
     }
+}
+
+/** What a started job shows on its button, the failure passed on unchanged with its cause. */
+private inline fun <T, R> Ergebnis<T>.then(f: (T) -> R): Ergebnis<R> = when (this) {
+    is Ergebnis.Erfolg -> Ergebnis.Erfolg(f(data))
+    is Ergebnis.Fehler -> this
 }
 
 /** Spacing of the polls, for as long as monitoring is visible. */

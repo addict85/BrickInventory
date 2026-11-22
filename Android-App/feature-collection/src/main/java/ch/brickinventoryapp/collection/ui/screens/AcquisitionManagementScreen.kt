@@ -309,7 +309,7 @@ private fun AcquisitionManagementRow(
 
     if (showDeleteConfirm) {
         Prompt(
-            titel = stringResource(R.string.acq_delete_title),
+            titel = stringResource(R.string.acq_delete_question),
             text = stringResource(R.string.acq_delete_text),
             bestaetigen = stringResource(R.string.common_delete),
             onBestaetigen = { showDeleteConfirm = false; onDelete() },

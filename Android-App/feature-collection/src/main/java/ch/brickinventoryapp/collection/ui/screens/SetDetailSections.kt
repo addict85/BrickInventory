@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.collection.ui.ALARM_STATE_DEFAULT
+import ch.brickinventoryapp.ui.components.CrossLink
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.SharedImage
 import ch.brickinventoryapp.ui.components.QuantitiesButton
@@ -346,6 +347,8 @@ internal fun LazyListScope.setDetailAlarmSection(
     onSet: (setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) -> Unit,
     /** Off, where the list itself already has a margin (watchlist-item detail). */
     outerGap: Boolean = true,
+    /** The overview of all alerts; null hides the link. */
+    onAllAlerts: (() -> Unit)? = null,
 ) {
     item {
         // For WHICH condition the alert applies. New and used often sit
@@ -414,6 +417,7 @@ internal fun LazyListScope.setDetailAlarmSection(
                 shape = Formen.feld,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (onAllAlerts != null) CrossLink(stringResource(R.string.wanted_all_alerts), onAllAlerts)
         }
     }
 }

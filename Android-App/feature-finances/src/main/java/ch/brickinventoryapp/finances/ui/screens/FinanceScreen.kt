@@ -35,6 +35,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.CrossLink
 import ch.brickinventoryapp.ui.components.EmptySymbol
 import ch.brickinventoryapp.ui.components.LoadState
 import ch.brickinventoryapp.ui.components.readAloudAs
@@ -68,11 +69,12 @@ fun FinanceRoute(
     onSetClick: (String) -> Unit = {},
     onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     listState: LazyListState = rememberLazyListState(),
+    onOpenVouchers: (() -> Unit)? = null,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val financeState by vm.financeState.collectAsStateWithLifecycle()
-    FinanceScreen(FinanzZustand(state, blick, financeState), vm, imageLoader, onSetClick, onManualClick, listState)
+    FinanceScreen(FinanzZustand(state, blick, financeState), vm, imageLoader, onSetClick, onManualClick, listState, onOpenVouchers)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +89,8 @@ internal fun FinanceScreen(
     onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     /** Scroll state from outside: the target is discarded when a detail is opened. */
     listState: LazyListState = rememberLazyListState(),
+    /** Vouchers are money too, but live under „Mehr“: the overview points there. */
+    onOpenVouchers: (() -> Unit)? = null,
 ) {
     val state = zustand.state
     val blick = zustand.blick
@@ -200,6 +204,9 @@ internal fun FinanceScreen(
                     selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { withValue },
                     onPeriodChange = onPeriodChange
                 )
+            }
+            if (onOpenVouchers != null) item {
+                CrossLink(stringResource(R.string.vouchers_title), onOpenVouchers)
             }
         }
         // Die Zeilen: Filter, Sets, Teile, Minifiguren.

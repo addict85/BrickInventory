@@ -121,10 +121,10 @@ class BackgroundButtonsTest {
             }
         }
         compose.waitForIdle()
-        button(text(R.string.aktion_fuer, text(R.string.common_delete), "75192-1")).performClick()
+        button(text(R.string.aktion_fuer, text(R.string.monitoring_queue_entfernen), "75192-1")).performClick()
         compose.waitForIdle()
         assertEquals("Ein Tipp allein löscht schon", emptyList<String>(), geloescht)
-        inDialog(text(R.string.common_delete)).performClick()
+        inDialog(text(R.string.monitoring_queue_entfernen)).performClick()
         compose.waitForIdle()
         assertEquals(listOf("75192-1"), geloescht)
         button(text(R.string.aktion_fuer, text(R.string.monitoring_icon_retry), "75192-1"))

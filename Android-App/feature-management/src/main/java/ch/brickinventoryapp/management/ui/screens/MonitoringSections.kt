@@ -108,14 +108,15 @@ private fun BricksetActions(
         Prompt(
             titel = stringResource(R.string.monitoring_queue_loeschen_titel),
             text = stringResource(R.string.monitoring_queue_loeschen_text, entry.setNumber),
-            bestaetigen = stringResource(R.string.common_delete),
+            // Off the list, not destroyed: the set stays, Brickset is just no longer asked.
+            bestaetigen = stringResource(R.string.monitoring_queue_entfernen),
             onBestaetigen = { deleteAsk = false; onDelete(entry.setNumber) },
             onAbbrechen = { deleteAsk = false },
             symbol = Icons.Default.Delete,
         )
     }
     val wiederholen = stringResource(R.string.aktion_fuer, stringResource(R.string.monitoring_icon_retry), entry.setNumber)
-    val loeschen = stringResource(R.string.aktion_fuer, stringResource(R.string.common_delete), entry.setNumber)
+    val loeschen = stringResource(R.string.aktion_fuer, stringResource(R.string.monitoring_queue_entfernen), entry.setNumber)
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
         MitTooltip(wiederholen) {
             FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {

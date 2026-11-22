@@ -101,6 +101,8 @@
     <string name="scanner_nummer_eintippen">Nummer eintippen</string>
     <string name="scanner_adresse_eintippen">Adresse eintippen</string>
     <string name="scanner_close">Schliessen</string>
+    <string name="scanner_camera_error">Die Kamera lässt sich nicht öffnen – vielleicht nutzt sie gerade eine andere App. Schliesse diese und versuche es nochmals, oder tippe die Nummer ein.</string>
+    <string name="scanner_hint_slow">Noch nichts erkannt? Mehr Licht, 10–20 cm Abstand und ruhig halten – oder die Nummer eintippen.</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
     <string name="setup_invalid_qr">Ungültiger QR-Code — bitte BrickInventory QR-Code verwenden</string>
@@ -130,7 +132,7 @@
     <string name="gallery_card_market">Marktpreis</string>
     <string name="gallery_card_paid">Kaufpreis</string>
     <string name="gallery_delete_title">Set löschen?</string>
-    <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
+    <string name="gallery_delete_text">%1$s und seine Teile werden gelöscht. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="common_undo">Rückgängig</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
@@ -164,11 +166,14 @@
     <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
     <string name="minifigs_add_button">Hinzufügen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
-    <string name="minifigs_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
+    <string name="minifigs_delete_text">%1$s wird aus deiner Sammlung gelöscht.</string>
     <string name="minifigs_manual_badge">Manuell</string>
 
     <!-- ══════════════ Parts list screen ══════════════ -->
     <string name="partslist_set_already_added">Set bereits in der Liste</string>
+    <string name="partslist_set_removed">%1$s aus der Bauliste entfernt</string>
+    <string name="partslist_remove_set">%1$s aus der Bauliste entfernen</string>
+    <string name="partslist_set_missing">Gib zuerst eine Setnummer ein oder scanne ein Set.</string>
     <plurals name="partslist_sets_in_list">
         <item quantity="one">%1$d Set in der Liste</item>
         <item quantity="other">%1$d Sets in der Liste</item>
@@ -335,7 +340,7 @@
     <string name="parts_none">Keine Teile</string>
     <string name="parts_add">Teil hinzufügen</string>
     <string name="parts_delete_title">Teil löschen?</string>
-    <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
+    <string name="parts_delete_text">%1$s wird aus deiner Sammlung gelöscht.</string>
     <string name="parts_add_title">Teil hinzufügen</string>
     <string name="parts_part_number">Teilenummer</string>
     <string name="parts_part_number_placeholder">z. B. 3001</string>
@@ -350,8 +355,8 @@
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_refresh">Neu laden</string>
-    <string name="monitoring_retry_error">Fehler beim erneuten Versuch</string>
-    <string name="monitoring_delete_error">Fehler beim Löschen</string>
+    <string name="monitoring_retry_error">Erneuter Versuch für %1$s fehlgeschlagen: %2$s</string>
+    <string name="monitoring_delete_error">%1$s liess sich nicht aus der Warteschlange entfernen: %2$s</string>
     <string name="monitoring_sync_now">Jetzt synchronisieren</string>
     <string name="monitoring_queue_collapse">Warteschlange zuklappen</string>
     <string name="monitoring_queue_show">Warteschlange anzeigen (%1$d)</string>
@@ -368,16 +373,21 @@
     <string name="monitoring_cache_clear_all">Alles leeren</string>
     <string name="monitoring_cache_clear_hint">Die zwischengespeicherten Preise werden verworfen. Sie neu zu holen kostet Anfragen aus dem gemeinsamen Tageskontingent.</string>
     <string name="monitoring_cache_clear_confirm">Leeren</string>
+    <string name="monitoring_cache_clear_all_title">Ganzen Zwischenspeicher leeren?</string>
+    <string name="monitoring_cache_clear_prices_title">Gespeicherte Preise leeren?</string>
     <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
+    <string name="monitoring_cache_clear_failed">Zwischenspeicher nicht geleert: %1$s</string>
     <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
+    <string name="monitoring_save_failed">Nicht gespeichert: %1$s</string>
     <string name="monitoring_api_calls">API-Aufrufe</string>
     <string name="monitoring_limits_saved">Grenzen gespeichert</string>
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
     <string name="monitoring_entry_removed">%1$s entfernt</string>
-    <string name="monitoring_queue_loeschen_titel">Eintrag löschen?</string>
+    <string name="monitoring_queue_loeschen_titel">Aus der Warteschlange entfernen?</string>
     <string name="monitoring_queue_loeschen_text">%1$s wird nicht mehr bei Brickset nachgefragt.</string>
-    <string name="monitoring_start_error">Fehler beim Starten</string>
+    <string name="monitoring_queue_entfernen">Entfernen</string>
+    <string name="monitoring_start_error">Start fehlgeschlagen: %1$s</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Jahr</string>
@@ -510,6 +520,7 @@
     <string name="condition_new">Neuware</string>
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
+    <string name="acq_delete_question">Erfassung löschen?</string>
     <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
     <string name="acq_geloescht">Kauf gelöscht</string>
     <string name="common_back">Zurück</string>
@@ -544,7 +555,7 @@
     <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
-    <string name="monitoring_reimport_error">Reimport nicht möglich. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="monitoring_reimport_error">Reimport nicht möglich: %1$s</string>
     <plurals name="monitoring_reimport_enqueued">
         <item quantity="one">%1$d Set eingereiht</item>
         <item quantity="other">%1$d Sets eingereiht</item>
@@ -580,6 +591,7 @@
     <string name="catalog_sort_parts_asc">Teile ↑</string>
     <string name="catalog_buy_bricklink">Auf BrickLink kaufen</string>
     <string name="catalog_search_bricklink">Auf BrickLink suchen</string>
+    <string name="catalog_name_english">Name auf Englisch, wie bei Rebrickable und BrickLink</string>
     <string name="finance_purchase_short">Kaufpreis: %1$s</string>
     <string name="finance_purchase_total">Kaufsumme: %1$s</string>
     <string name="household_scope_label">Konten</string>
@@ -745,6 +757,7 @@
     <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
     <string name="konto_profil_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="konto_save">Profil speichern</string>
+    <string name="konto_save_title">Profil speichern?</string>
     <string name="konto_saved">Profil gespeichert</string>
     <string name="konto_email_ausstehend">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
     <string name="konto_email_link_gesendet">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
@@ -892,8 +905,8 @@
     <string name="alerts_fired">Ausgelöst</string>
     <string name="alerts_last">zuletzt %1$s</string>
     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
-    <string name="alerts_delete">Preisalarm entfernen</string>
-    <string name="alerts_confirm_delete">Preisalarm für %1$s wirklich entfernen?</string>
+    <string name="alerts_delete">Preisalarm löschen?</string>
+    <string name="alerts_confirm_delete">Der Preisalarm für %1$s wird gelöscht. Die Schwelle müsstest du danach neu setzen.</string>
 
     <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
     <string name="vouchers_title">Gutscheine</string>
@@ -944,6 +957,7 @@
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
     <string name="vouchers_confirm_title">Mit Passwort bestätigen</string>
+    <string name="vouchers_delete_title">Gutschein löschen?</string>
     <string name="vouchers_confirm_klartext">Nummer und PIN stehen erst nach der Bestätigung da. Die Abfrage wird protokolliert.</string>
     <string name="vouchers_confirm_pdf">Das PDF zeigt Nummer und PIN. Bitte mit deinem Passwort bestätigen.</string>
     <string name="vouchers_confirm_button">Bestätigen</string>
@@ -1066,6 +1080,7 @@
     <string name="finance_range_label">Heutige Preisspanne – günstigster bis teuerster Fall</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
+    <string name="wanted_all_alerts">Alle Preisalarme</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>
     <string name="fehler_anmeldung_titel">Bitte neu anmelden</string>
     <string name="fehler_server_text">Deine Daten sind sicher. Versuche es gleich noch einmal.</string>
@@ -1128,8 +1143,8 @@
     <string name="hintergrund_gestartet">%1$s startet</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nichts zu starten</string>
     <plurals name="gallery_delete_text_exemplare">
-        <item quantity="one">%1$d Exemplar von %2$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
-        <item quantity="other">Alle %1$d Exemplare von %2$s und ihre Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+        <item quantity="one">%1$d Exemplar von %2$s und seine Teile werden gelöscht. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+        <item quantity="other">Alle %1$d Exemplare von %2$s und ihre Teile werden gelöscht. Danach bleibt kurz Zeit für „Rückgängig“.</item>
     </plurals>
     <plurals name="offline_warten">
         <item quantity="one">%1$d Änderung wartet und wird beim nächsten Verbinden gesendet</item>
@@ -1148,7 +1163,7 @@
     <string name="zf_schritt_codes">Notfallcodes</string>
     <string name="konto_profil_titel">Profil</string>
     <string name="alerts_liste_titel">Deine Alarme</string>
-    <string name="alerts_delete_fuer">Preisalarm für %1$s entfernen</string>
+    <string name="alerts_delete_fuer">Preisalarm für %1$s löschen</string>
     <string name="storage_vorgabe_cd">Vorgabe beim Erfassen: %1$s</string>
     <string name="aktion_fuer">%1$s: %2$s</string>
     <string name="finance_positionen">Positionen</string>
