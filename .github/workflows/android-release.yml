@@ -426,3 +426,64 @@ jobs:
             echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link folgt"
             echo "> der als „Latest“ markierten Release und braucht kein GitHub-Konto."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Google Play: das signierte Bundle in einen Test-Track einliefern ─────
+  #
+  # Ohne Checkout und ohne Drittaktion: nur curl, jq und openssl gegen die
+  # Android Publisher API, damit das Dienstkonto keinen Projektcode sieht.
+  # Fehlt PLAY_SERVICE_ACCOUNT_JSON, bleibt es bei einem Hinweis (GitHub-Release
+  # genügt). Der erste Upload einer neuen App geht von Hand (docs/ANDROID-RELEASE.md).
+  play:
+    needs: [etikett, signieren, release]
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions: {}
+    steps:
+      - name: Signiertes Bundle holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert
+          path: signiert
+
+      - name: Bundle gegen die Prüfsumme des Signierjobs
+        env:
+          AAB_SOLL: ${{ needs.signieren.outputs.sha256_aab }}
+        run: printf '%s  %s\n' "$AAB_SOLL" signiert/bundle/release/app-release.aab | sha256sum -c -
+
+      - name: In Google Play einliefern
+        env:
+          KONTO: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PAKET: ch.brickinventoryapp
+          # Neue Apps nehmen nur Entwürfe an; nach der ersten Freigabe PLAY_STATUS=completed.
+          TRACK: ${{ vars.PLAY_TRACK || 'internal' }}
+          STATUS: ${{ vars.PLAY_STATUS || 'draft' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KONTO" ]; then
+            echo "::notice title=Google Play::PLAY_SERVICE_ACCOUNT_JSON fehlt in der Environment release; nichts eingeliefert."
+            exit 0
+          fi
+          S="$RUNNER_TEMP/play"; (umask 077; mkdir -p "$S"; printf '%s' "$KONTO" > "$S/konto.json"; jq -r .private_key "$S/konto.json" > "$S/key.pem")
+          b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+          JETZT=$(date +%s)
+          KOPF=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          INHALT=$(jq -cn --arg iss "$(jq -r .client_email "$S/konto.json")" --arg aud "$(jq -r .token_uri "$S/konto.json")" \
+            --argjson iat "$JETZT" --argjson exp "$((JETZT + 600))" \
+            '{iss:$iss, scope:"https://www.googleapis.com/auth/androidpublisher", aud:$aud, iat:$iat, exp:$exp}' | b64url)
+          SIG=$(printf '%s.%s' "$KOPF" "$INHALT" | openssl dgst -sha256 -sign "$S/key.pem" | b64url)
+          TOKEN=$(curl -fsS "$(jq -r .token_uri "$S/konto.json")" \
+            -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer -d "assertion=$KOPF.$INHALT.$SIG" | jq -r .access_token)
+          rm -f "$S/key.pem" "$S/konto.json"
+          echo "::add-mask::$TOKEN"
+          API="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PAKET"
+          AUTH="Authorization: Bearer $TOKEN"
+          EDIT=$(curl -fsS -X POST -H "$AUTH" "$API/edits" | jq -r .id)
+          CODE=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/octet-stream' \
+            --data-binary @signiert/bundle/release/app-release.aab \
+            "https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/$PAKET/edits/$EDIT/bundles?uploadType=media" | jq -r .versionCode)
+          jq -n --arg t "$TRACK" --arg c "$CODE" --arg s "$STATUS" '{track:$t, releases:[{versionCodes:[$c], status:$s}]}' \
+            | curl -fsS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data @- "$API/edits/$EDIT/tracks/$TRACK" > /dev/null
+          curl -fsS -X POST -H "$AUTH" "$API/edits/$EDIT:commit" > /dev/null
+          echo "## Google Play" >> "$GITHUB_STEP_SUMMARY"
+          echo "versionCode $CODE im Track \`$TRACK\` (Status \`$STATUS\`) eingeliefert." >> "$GITHUB_STEP_SUMMARY"
