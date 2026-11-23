@@ -6,7 +6,7 @@
  * Counter-checks (22.11.2026, each alone):
  *   A  queueThumb without the _thumbInFlight check → red “a tile wall …” (several previews written)
  *   B  the cache path awaits createProxyPreview instead of queueThumb → red “the request does not wait …”
- *      (the preview already exists when the answer arrives)
+ *      (23.11.2026: the held preview blocks the answer, the file times out)
  *   C  imgUrl() without '&thumb=1' for thumb → red “the UI asks for the preview” (public/js/images.js)
  *   D  THUMB_MAX_PARALLEL 4 → red “one preview at a time …” (several running)
  *   E  THUMB_MAX_QUEUE removed from queueThumb → red the same test (more than 40 waiting)
@@ -78,8 +78,12 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   const thumbFile = `${cacheFile}_thumb.jpg`;
   const renames = [];
   const realRename = fs.promises.rename;
+  // While set, the preview's final rename waits: the answer can then only arrive if it does not
+  // wait for the preview. A fixed check after the answer raced the background job under CI load.
+  let holdThumb = null;
   t.mock.method(fs.promises, 'rename', async (from, to) => {
     renames.push(String(to));
+    if (holdThumb && String(to) === thumbFile) await holdThumb;
     return realRename.call(fs.promises, from, to);
   });
   const get = () => fetch(proxied(u)).then(async r => Buffer.from(await r.arrayBuffer()));
@@ -97,8 +101,18 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   renames.length = 0;
 
   await t.test('the request does not wait for the preview', async () => {
-    assert.ok((await get()).equals(IMAGE), 'the answer is not the original');
-    assert.equal(fs.existsSync(thumbFile), false, 'the answer waited for the preview');
+    let release = () => {};
+    holdThumb = new Promise(r => (release = r));
+    try {
+      assert.ok((await get()).equals(IMAGE), 'the answer is not the original');
+      assert.equal(fs.existsSync(thumbFile), false, 'the answer waited for the preview');
+    } finally {
+      release();
+      holdThumb = null;
+    }
+    assert.ok(await drained(), 'the held preview does not finish');
+    fs.rmSync(thumbFile, { force: true });
+    renames.length = 0;
   });
   await t.test('a tile wall starts the preview only once', async () => {
     await Promise.all(Array.from({ length: 6 }, get));
