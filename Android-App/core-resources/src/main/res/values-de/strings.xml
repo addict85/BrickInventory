@@ -1041,6 +1041,14 @@
     <string name="cert_changed_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="cert_key_new_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
     <string name="cert_changed_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
+    <string name="cert_scan_qr">QR-Code scannen</string>
+    <string name="cert_scan_explain">Bequemer als Abschreiben: Die Web-App zeigt unter Einstellungen → Server-Zertifikat einen QR-Code. Die App vergleicht damit den ganzen Fingerabdruck.</string>
+    <string name="cert_scan_hint">QR-Code des Server-Zertifikats scannen</string>
+    <string name="scanner_camera_purpose_cert">Die Kamera liest den QR-Code mit dem Fingerabdruck des Server-Zertifikats.</string>
+    <string name="cert_scan_compare_instead">Von Hand vergleichen</string>
+    <string name="cert_scan_mismatch">Der QR-Code nennt einen anderen Fingerabdruck als der Server. Dem Zertifikat wird nicht vertraut. Stammt der Code aus der Web-App dieses Servers, leitet womöglich jemand die Verbindung um.</string>
+    <string name="cert_scan_not_code">Das ist kein Zertifikats-Code. Scanne den QR-Code unter Einstellungen → Server-Zertifikat in der Web-App.</string>
+    <string name="cert_scan_unknown_version">Diesen Zertifikats-Code kennt diese App-Version nicht. Aktualisiere die App oder vergleiche den Fingerabdruck von Hand.</string>
     <string name="cert_unknown_input">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="cert_input_wrong">Das passt nicht zum Fingerabdruck dieses Servers.</string>
     <string name="cert_input_too_short">Noch zu kurz: %1$d von %2$d Zeichen. Abgeschrieben werden die letzten 12 Paare.</string>

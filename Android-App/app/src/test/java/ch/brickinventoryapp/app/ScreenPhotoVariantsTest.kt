@@ -72,6 +72,7 @@ import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
@@ -147,6 +148,7 @@ import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.testing.SessionFake
@@ -1471,6 +1473,18 @@ class ScreenPhotoVariantsTest {
     @Test fun dialogCertificateLight() = certificatePhoto(false, 1f)
     @Test fun dialogCertificateDark() = certificatePhoto(true, 1f)
     @Test fun dialogCertificateFont200() = certificatePhoto(false, 2f)
+
+    /** Without a known CA: scanning the web app's code first, the manual comparison below it. */
+    @Test fun dialogCertificateScanLight() {
+        val name = "dialog-zertifikat-scan"
+        val question = CertificateUnresolved("brick.example.org:443",
+            "P6EJfCJd6EGbDGbSehP0iFEuyQe2TTCa4XUsaA/TS5E=", CertificateUnresolved.Kind.UNKNOWN_CA)
+        showDialog(name, dark = false, font = 1f) {
+            CertificateDialog(question, userCaEnabled = true, trustOn = { true }, onUserCa = {}, onCancel = {},
+                codeScan = CodeScan(trust = { CodeCheck.FITS_NOT }) { _, _ -> })
+        }
+        dialogPhoto(name, "classic", false, "telefon", 1f)
+    }
 
     /** Account, scrolled to [section]: the list of devices or the second factor. */
     private fun accountSectionPhoto(name: String, section: Int, dark: Boolean, font: Float) {

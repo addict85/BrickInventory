@@ -1,0 +1,17 @@
+Gegenprobe: Der Zertifikats-Code wird nur über die letzten 12 Byte verglichen
+Modul: core-security
+Test: ch.brickinventoryapp.security.CertificateCodeTest
+Rot: a code that differs only in the front does not fit
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+@@ -28,7 +28,7 @@
+         val scanned = parse(payload) ?: return refusal(payload)
+         val presented = runCatching { Base64.getDecoder().decode(fingerprint) }.getOrNull()
+             ?: return CodeCheck.FITS_NOT
+-        return if (MessageDigest.isEqual(scanned, presented)) CodeCheck.MATCHES else CodeCheck.FITS_NOT
++        return if (MessageDigest.isEqual(scanned.copyOfRange(20, 32), presented.copyOfRange(20, 32))) CodeCheck.MATCHES else CodeCheck.FITS_NOT
+     }
+ 
+     /**

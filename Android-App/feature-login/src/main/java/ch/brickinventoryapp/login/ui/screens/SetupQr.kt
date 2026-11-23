@@ -197,14 +197,46 @@ private fun QrFingerprintInput(input: String, finding: Transcript?, changed: Boo
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
 @Composable
-internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) =
+    QrScannerScreen(
+        scanHint = stringResource(R.string.setup_qr_scan_hint),
+        purpose = stringResource(R.string.scanner_camera_purpose_qr),
+        // Typing it in means back to setup: that is where the address field is.
+        typeIn = stringResource(R.string.scanner_address_type_in),
+        onResult = onResult,
+        onDismiss = onDismiss,
+    )
+
+/**
+ * The same scanner for the certificate question: it reads the code from the web app's
+ * certificate section; without a camera, back to the dialog to compare by hand.
+ */
+@Composable
+fun CertificateQrScanner(onResult: (String) -> Unit, onDismiss: () -> Unit) =
+    QrScannerScreen(
+        scanHint = stringResource(R.string.cert_scan_hint),
+        purpose = stringResource(R.string.scanner_camera_purpose_cert),
+        typeIn = stringResource(R.string.cert_scan_compare_instead),
+        onResult = onResult,
+        onDismiss = onDismiss,
+    )
+
+@Composable
+private fun QrScannerScreen(
+    scanHint: String,
+    purpose: String,
+    typeIn: String,
+    onResult: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val cameraPermission = rememberCameraPermission()
     var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!cameraPermission.granted) cameraPermission.requests()
     }
-    // The image shows a sign-in code: in a photo it would sign in a foreign device.
+    // The image shows a sign-in code: in a photo it would sign in a foreign device. The
+    // certificate code is public, the shield costs it nothing.
     PrivacyShield()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -220,8 +252,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 // Frame and hint in the shared overlay — see
                 // CameraPermission.kt. Only the square stays its own.
                 CameraOverlay(
-                    hint = if (frozen) stringResource(R.string.setup_qr_detected)
-                              else stringResource(R.string.setup_qr_scan_hint),
+                    hint = if (frozen) stringResource(R.string.setup_qr_detected) else scanHint,
                 ) {
                     Box(
                         Modifier
@@ -234,9 +265,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 }
             }
             else -> {
-                // Typing it in means back to setup: that is where the address field is.
-                CameraPermissionHint(stringResource(R.string.scanner_camera_purpose_qr),
-                    stringResource(R.string.scanner_address_type_in), onDismiss,
+                CameraPermissionHint(purpose, typeIn, onDismiss,
                     cameraPermission.permanentDenied) { cameraPermission.allow() }
             }
         }

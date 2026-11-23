@@ -29,9 +29,11 @@ import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.app.nav.ActivityState
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.app.widget.CollectionWidget
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.login.ui.screens.CertificateQrScanner
 import ch.brickinventoryapp.model.step.StepBinding
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
@@ -287,6 +289,7 @@ class MainActivity : OnlyLauncherStart() {
                 onUserCa = { trust.userCa.requests(); trust.discardCertificate() },
                 onCancel = trust::discardCertificate,
                 deviceSecure = deviceSecure(),
+                codeScan = CodeScan(trust::trustByCode) { onResult, onDismiss -> CertificateQrScanner(onResult, onDismiss) },
             )
         }
         // Here and not in the settings: the certificate dialog asks too.

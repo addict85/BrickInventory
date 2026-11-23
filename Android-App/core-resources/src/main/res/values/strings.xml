@@ -1059,6 +1059,14 @@
     <string name="cert_changed_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="cert_key_new_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from your computer\'s browser certificate details (Fingerprints → Public key, SHA-256)</string>
     <string name="cert_changed_qr">Alternatively, scan a new QR code from the web app.</string>
+    <string name="cert_scan_qr">Scan QR code</string>
+    <string name="cert_scan_explain">Easier than copying: the web app shows a QR code under Settings → Server certificate. The app compares the whole fingerprint with it.</string>
+    <string name="cert_scan_hint">Scan the server certificate\'s QR code</string>
+    <string name="scanner_camera_purpose_cert">The camera reads the QR code with the fingerprint of the server certificate.</string>
+    <string name="cert_scan_compare_instead">Compare by hand</string>
+    <string name="cert_scan_mismatch">The QR code names a different fingerprint than the server. The certificate is not trusted. If the code comes from this server\'s web app, someone may be redirecting the connection.</string>
+    <string name="cert_scan_not_code">This is not a certificate code. Scan the QR code under Settings → Server certificate in the web app.</string>
+    <string name="cert_scan_unknown_version">This app version does not know this certificate code. Update the app or compare the fingerprint by hand.</string>
     <string name="cert_unknown_input">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="cert_input_wrong">That does not match this server\'s fingerprint.</string>
     <string name="cert_input_too_short">Characters so far: %1$d/%2$d. Copy the last 12 pairs.</string>

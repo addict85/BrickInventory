@@ -6,13 +6,13 @@ Rot: if the server deviates from the code there is nothing to confirm
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -46,8 +46,7 @@
-     /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
-     deviceSecure: Boolean = true,
+@@ -59,8 +59,7 @@
+     /** Scanning the web app's certificate code; null where there is no camera (previews). */
+     codeScan: CodeScan? = null,
  ) {
 -    if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
--    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
-+    CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
+-    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, codeScan)
++    CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, codeScan)
  }
  
- /** Everything except CODE_MISMATCH: trust after comparing or typing. */
+ /**

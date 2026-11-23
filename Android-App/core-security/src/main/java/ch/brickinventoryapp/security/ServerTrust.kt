@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.security
 
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -190,7 +191,28 @@ interface CertificateQuestion {
     fun report(question: CertificateUnresolved)
     /** [deviceConfirmed]: the screen lock was just passed ([CertificateUnresolved.deviceConfirmationNeeded]). */
     fun confirm(pins: PinStore, input: String? = null, deviceConfirmed: Boolean = false): Boolean
+
+    /**
+     * Yes by the certificate code from the web app ([CertificateCode]): the whole fingerprint from a
+     * second source, so it counts wherever a transcript would — never for [CertificateUnresolved.Kind.CODE_MISMATCH].
+     */
+    fun confirmByCode(pins: PinStore, payload: String?): CodeCheck
     fun discard()
+
+    /** What a scanned certificate code says about the certificate in question. */
+    enum class CodeCheck {
+        /** All 32 bytes equal the presented fingerprint. */
+        MATCHES,
+
+        /** A certificate code, but of a different key. */
+        FITS_NOT,
+
+        /** Our prefix, but a version or hash this app does not know (newer web app). */
+        UNKNOWN_VERSION,
+
+        /** Not a certificate code at all (sign-in code, set barcode, foreign QR). */
+        NOT_A_CODE,
+    }
 
     /** The one way to build it, for Hilt and tests alike; the implementation stays internal. */
     companion object {
@@ -221,10 +243,20 @@ internal class CertificatePrompt : CertificateQuestion {
         if (verify && !Transcript.confirmed(input, f.fingerprint)) return false
         // Without a screen lock there is nothing to confirm with; then the transcript counts instead.
         if (f.deviceConfirmationNeeded && !deviceConfirmed && !Transcript.confirmed(input, f.fingerprint)) return false
+        adopt(pins, f)
+        return true
+    }
+
+    override fun confirmByCode(pins: PinStore, payload: String?): CodeCheck {
+        val f = _open.value ?: return CodeCheck.FITS_NOT
+        if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return CodeCheck.FITS_NOT
+        return CertificateCode.check(payload, f.fingerprint).also { if (it == CodeCheck.MATCHES) adopt(pins, f) }
+    }
+
+    private fun adopt(pins: PinStore, f: CertificateUnresolved) {
         pins.rememberPin(f.storeKey, f.fingerprint)
         f.sheet?.let { pins.rememberPin(sheetPinKey(f.key), it) }
         _open.value = null
-        return true
     }
 
     override fun discard() {

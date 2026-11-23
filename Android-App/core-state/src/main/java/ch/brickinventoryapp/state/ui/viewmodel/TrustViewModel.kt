@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.ConnectionDrop
 import ch.brickinventoryapp.data.TrustStore
 import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.state.ui.UserCaToggle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -39,6 +40,10 @@ class TrustViewModel @Inject constructor(
         drop.discard()
         return true
     }
+
+    /** Yes by the scanned certificate code; anything but a full match trusts nothing. */
+    fun trustByCode(payload: String?): CodeCheck =
+        certificateQuestion.confirmByCode(prefs, payload).also { if (it == CodeCheck.MATCHES) drop.discard() }
 
     fun discardCertificate() = certificateQuestion.discard()
 }

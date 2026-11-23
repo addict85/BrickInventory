@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.app
 
 import androidx.activity.ComponentActivity
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsEnabled
@@ -13,8 +15,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.closable
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.security.Transcript
 import ch.brickinventoryapp.security.fingerprintReadable
@@ -57,6 +61,10 @@ import java.util.Base64
  *       new server key is typed …” (counter-checks/key-new-dialog-without-field.patch)
  *   (k) `writeOff` on first contact again only on request → red “without CT requirement it is
  *       typed on first contact …” (counter-checks/first-contact-dialog-one-tap.patch)
+ *   (l) the scan offered under a public CA too (`codeScan.takeIf { true }`) → red “under a public
+ *       CA there is nothing to scan” (counter-checks/certificate-scan-public.patch)
+ *   (m) scanError() silent for FITS_NOT → red “a scanned code that does not fit …”
+ *       (counter-checks/certificate-scan-mismatch-silent.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class CertificateDialogTest {
@@ -72,12 +80,14 @@ class CertificateDialogTest {
         kind: CertificateUnresolved.Kind,
         expected: String? = null,
         ct: Boolean = false,
+        codeScan: CodeScan? = null,
         trustOn: (String?) -> Boolean = { false },
     ) {
         val question = CertificateUnresolved("nas:8443", fp, kind, expected, ctForced = ct)
         compose.setContent {
             BrickInventoryManagerTheme {
-                CertificateDialog(question, userCaEnabled = false, trustOn = trustOn, onUserCa = {}, onCancel = {})
+                CertificateDialog(question, userCaEnabled = false, trustOn = trustOn, onUserCa = {}, onCancel = {},
+                    codeScan = codeScan)
             }
         }
         compose.waitForIdle()
@@ -225,6 +235,35 @@ class CertificateDialogTest {
         field().performTextInput(hex.replace(":", "").takeLast(24))
         compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled().performClick()
         assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
+    }
+
+    /** Instead of the camera a button that delivers [payload]; [answer] stands for the comparison. */
+    private fun fakeScan(payload: String, answer: CodeCheck, seen: MutableList<String>) =
+        CodeScan(trust = { seen += it; answer }) { onResult, _ ->
+            TextButton(onClick = { onResult(payload) }) { Text("fake scan") }
+        }
+
+    @Test
+    fun `a scanned code that does not fit says so and leaves the comparison by hand`() {
+        val seen = mutableListOf<String>()
+        show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.FITS_NOT, seen))
+        assertEquals("the button replaces the old hint", 0, shown(ctx.getString(R.string.cert_changed_qr)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_scan_qr)).performClick()
+        compose.onNodeWithText("fake scan").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("brickinventory-cert:v1:spki-sha256:00"), seen)
+        assertEquals(1, shown(ctx.getString(R.string.cert_scan_mismatch)))
+        assertEquals("the field for typing stays", 1, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `under a public CA there is nothing to scan`() {
+        val seen = mutableListOf<String>()
+        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true,
+            codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.MATCHES, seen))
+        assertEquals(0, shown(ctx.getString(R.string.cert_scan_qr)))
     }
 
     /** Android 11–15: without CT a misissued chain would get through with a tap. */

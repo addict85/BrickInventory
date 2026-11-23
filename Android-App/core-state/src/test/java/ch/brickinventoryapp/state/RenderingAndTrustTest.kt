@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.TrustStore
 import ch.brickinventoryapp.data.testing.StorageSessionStore
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.session.StoreAccountValues
 import ch.brickinventoryapp.session.testing.testSession
@@ -26,6 +27,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.Base64
 
 /**
  * AppearanceViewModel and TrustViewModel put to the test, with in-memory stores
@@ -36,6 +38,8 @@ import org.junit.Test
  *   widget-not-triggered    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
  *   trust-without-discard       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
  *   unknown-ca-without-typing in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   certificate-code-trusts-any    confirmByCode() adopts the pin whatever check() says → red „only a scanned code …“
+ *   certificate-code-without-discard trustByCode() without `drop.discard()` → red „only a scanned code …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {
@@ -148,6 +152,39 @@ class RenderingAndTrustTest {
         vm.discardCertificate()
         assertNull(vm.certificate.value)
         assertNull(store.pins["andere.example:443"])
+    }
+
+    @Test
+    fun `only a scanned code of the whole fingerprint trusts, like a confirmation`() {
+        val question = CertificateQuestion()
+        val store = StorageTrust()
+        var drops = 0
+        val vm = TrustViewModel(store, { drops++ }, question)
+        val bytes = ByteArray(32) { (it * 5 + 1).toByte() }
+        val fp = Base64.getEncoder().encodeToString(bytes)
+        val hex = bytes.joinToString("") { "%02x".format(it) }
+        question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.UNKNOWN_CA, sheet = "BLATT"))
+
+        val other = "brickinventory-cert:v1:spki-sha256:" + "ff" + hex.drop(2)
+        assertEquals(CodeCheck.FITS_NOT, vm.trustByCode(other))
+        assertEquals(CodeCheck.NOT_A_CODE, vm.trustByCode("brickinventory-cert:v1:spki-sha256:" + hex.takeLast(24)))
+        assertEquals(CodeCheck.UNKNOWN_VERSION, vm.trustByCode("brickinventory-cert:v9:spki-sha256:$hex"))
+        assertTrue("no wrong code remembers anything", store.pins.isEmpty())
+        assertEquals(0, drops)
+        assertEquals("the question stays open for the manual comparison", fp, vm.certificate.value?.fingerprint)
+
+        assertEquals(CodeCheck.MATCHES, vm.trustByCode("brickinventory-cert:v1:spki-sha256:$hex"))
+        assertEquals(fp, store.pins["brick.example:443"])
+        assertEquals("like a confirmation: the leaf as the second pin", "BLATT", store.pins["brick.example:443#blatt"])
+        assertEquals(1, drops)
+        assertNull(vm.certificate.value)
+
+        // A server that contradicts the sign-in code can never be confirmed, not by a code either.
+        question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.CODE_MISMATCH, expected = "X"))
+        store.pins.clear()
+        assertEquals(CodeCheck.FITS_NOT, vm.trustByCode("brickinventory-cert:v1:spki-sha256:$hex"))
+        assertTrue(store.pins.isEmpty())
+        assertEquals(1, drops)
     }
 
     @Test
