@@ -228,7 +228,8 @@ export async function loadTokens() {
 }
 
 /**
- * The CA root's fingerprint, for manual comparison — the same value appears as `fp` in the QR code.
+ * The CA root's fingerprint, for manual comparison — the same value appears as `fp` in the QR code
+ * for signing in, and as a QR code of its own for the app's certificate question.
  * Without an internal CA (a foreign proxy), only whether HTTPS applies is shown.
  */
 export async function loadTls() {
@@ -256,8 +257,24 @@ export async function loadTls() {
     <code id="tls-fp-hex" data-style="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
     <div class="text-small space-top-075">${tRaw('tls.fp_base64')}</div>
     <code id="tls-fp" data-style="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
+    <div class="text-small space-top-075">${tRaw('tls.qr_hint')}</div>
+    <div id="tls-cert-qr" data-style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
     <div class="space-top-075"><a class="btn bs btn-sm" href="${safeUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
   );
+  const qr = G('tls-cert-qr');
+  const code = certificateCode(d.fp_hex);
+  if (qr && code) drawQr(qr, code);
+}
+
+/**
+ * What the app scans at its certificate question (CertificateCode.kt): versioned, so it can refuse a
+ * format it does not know, and with all 32 bytes — a short code could be ground out with a key of
+ * one's own. Derived here from `fp_hex` so the API needs no second spelling of the same value.
+ * @param {string | undefined} fpHex
+ */
+function certificateCode(fpHex) {
+  const hex = (fpHex || '').replace(/:/g, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(hex) ? `brickinventory-cert:v1:spki-sha256:${hex}` : null;
 }
 
 /**
