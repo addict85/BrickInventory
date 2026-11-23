@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
+const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
 
 /**
  * The safety net only catches OUR errors.
@@ -16,10 +16,10 @@ const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error
 
 /** Take `fromUs` literally from fehlerfang.js and run it with a provided origin. */
 function fetchOfUs(originValue = 'https://lego.bigolin.online') {
-  const auf = QUELLE.indexOf('function fromUs(');
-  assert.ok(auf > 0, 'fromUs() is no longer in fehlerfang.js — is the rule still called that?');
-  const zu = QUELLE.indexOf('\n}', auf) + 2;
-  const text = QUELLE.slice(auf, zu);
+  const opened = SOURCE.indexOf('function fromUs(');
+  assert.ok(opened > 0, 'fromUs() is no longer in fehlerfang.js — is the rule still called that?');
+  const closed = SOURCE.indexOf('\n}', opened) + 2;
+  const text = SOURCE.slice(opened, closed);
   assert.ok(
     text.includes('location.origin'),
     'fromUs() no longer compares against the own origin — does the cut still work?',
@@ -28,7 +28,7 @@ function fetchOfUs(originValue = 'https://lego.bigolin.online') {
   return new Function('location', `${text}; return fromUs;`)({ origin: originValue });
 }
 
-const withStack = (message, stapel) => Object.assign(new Error(message), { stack: stapel });
+const withStack = (message, stack) => Object.assign(new Error(message), { stack: stack });
 const UNS = 'https://lego.bigolin.online';
 
 test('an extension triggers no error with us', () => {
@@ -105,7 +105,7 @@ test('both listeners go through the check', () => {
     w.toast = text => toasts.push(text);
     w.tRaw = key => key;
     w.console.error = () => {};
-    w.eval(`${QUELLE.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '')}\nbindGlobalErrorHandlers();`);
+    w.eval(`${SOURCE.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '')}\nbindGlobalErrorHandlers();`);
     const fire = error => {
       const ev = new w.Event(name);
       Object.assign(ev, name === 'error' ? { error, message: error.message } : { reason: error });
@@ -121,13 +121,13 @@ test('both listeners go through the check', () => {
 
 test('no leftover debugging in the delivered state', () => {
   // The second finding from the same console
-  const ordner = path.join(__dirname, '..', 'public', 'js');
-  const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Only ${dateien.length} scripts — does the search still match?`);
+  const dir = path.join(__dirname, '..', 'public', 'js');
+  const files = fs.readdirSync(dir).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
+  assert.ok(files.length >= 10, `Only ${files.length} scripts — does the search still match?`);
 
   const traces = [];
-  for (const name of dateien) {
-    fs.readFileSync(path.join(ordner, name), 'utf8')
+  for (const name of files) {
+    fs.readFileSync(path.join(dir, name), 'utf8')
       .split('\n')
       .forEach((z, i) => {
         if (/^\s*\/\//.test(z)) return;

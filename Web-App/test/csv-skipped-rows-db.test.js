@@ -34,14 +34,14 @@ test('CSV imports report skipped rows', { concurrency: 1 }, async t => {
       [name],
     )
   ).id;
-  const worker = _req('jobs/startJobs.js').startJobWorker(testServices(), { arten: ['csv_import'], taktMs: 50 });
+  const worker = _req('jobs/startJobs.js').startJobWorker(testServices(), { kinds: ['csv_import'], tickMs: 50 });
   t.after(async () => {
     await worker.stop(0);
     await require('./helpers/sources').testAccess().notification.close();
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: name }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: name }, t });
   const upload = async (p, csv) => {
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'x.csv');

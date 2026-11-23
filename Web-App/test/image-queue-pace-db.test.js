@@ -66,7 +66,7 @@ const IQ = _req('src/images/imageDemandRun.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Batch size and cap from the module — the test repeats no number. */
-const { BATCH: STAPEL, PASS_MAX_NOTES: DECKEL } = IQ;
+const { BATCH, PASS_MAX_NOTES: DECKEL } = IQ;
 
 const created = [];
 /** Put image AND preview in place — the job has nothing to do for this note. */
@@ -86,13 +86,13 @@ const open = async p =>
  * all rows enters the same NOW(), the order is arbitrary — and a test
  * that targets batch boundaries then measures chance.
  */
-const enqueue = async (praefix, von, bis) => {
+const enqueue = async (prefix, from, until) => {
   await db.run(
     `INSERT INTO image_wanted (url, set_number, requested_at)
                   SELECT 'https://cdn/'||$1||'_'||g||'.jpg', $1||'_'||g,
                          NOW() - (($3::int - g) || ' seconds')::interval
                     FROM generate_series($2::int, $3::int) g`,
-    [praefix, von, bis],
+    [prefix, from, until],
   );
 };
 
@@ -110,7 +110,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   const P = `FE${process.pid}`;
-  const COUNT = STAPEL * 4;
+  const COUNT = BATCH * 4;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= COUNT; i++) finishedImage(`${P}_${i}`);
   await enqueue(P, 1, COUNT);
@@ -126,7 +126,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
       0,
       `After one tick ${await open(P)} of ${COUNT} notes are still there. ` +
         'That was exactly Marco’s situation: the job was working, but with ' +
-        `${STAPEL} per twenty seconds — a good 37 minutes for 1113 finished images.`,
+        `${BATCH} per twenty seconds — a good 37 minutes for 1113 finished images.`,
     );
     assert.equal(e.skipped, COUNT, 'Not all were counted as „vorhanden“');
     assert.equal(e.work, 0, 'An image with its preview must not cause any work step');
@@ -163,13 +163,13 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
   // ten requests thereby spread over several batches — only then does the
   // spacing test below measure a batch boundary at all. If all ten lay in the first
   // batch, the old, too narrow cut of the pause would go undetected.
-  const COUNT = STAPEL * 4;
-  const zuLaden = new Set();
+  const COUNT = BATCH * 4;
+  const toLoad = new Set();
   for (let i = 1; i <= COUNT; i++) {
-    if (i % 3 === 0) zuLaden.add(i);
+    if (i % 3 === 0) toLoad.add(i);
     else finishedImage(`${P}_${i}`);
   }
-  assert.ok(zuLaden.size > STAPEL, 'Precondition: more to load than the quota');
+  assert.ok(toLoad.size > BATCH, 'Precondition: more to load than the quota');
   await enqueue(P, 1, COUNT);
 
   try {
@@ -179,17 +179,17 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
     await t.test('at most STAPEL requests per tick', async () => {
       assert.equal(
         loadTimes.length,
-        STAPEL,
-        `${loadTimes.length} CDN requests in one tick — ${STAPEL} are allowed. ` +
+        BATCH,
+        `${loadTimes.length} CDN requests in one tick — ${BATCH} are allowed. ` +
           'The rate at the CDN is Marco’s requirement and must NOT increase by catching up ' +
           'on batches.',
       );
-      assert.equal(e.work, STAPEL);
+      assert.equal(e.work, BATCH);
       assert.ok((await open(P)) > 0, 'The rest must stay');
       // Precondition for the spacing test: the ten requests really lay in
       // more than one batch.
       assert.ok(
-        e.total > STAPEL,
+        e.total > BATCH,
         `all ${e.work} requests were in a single batch — then ` +
           'the gap test below does not check the batch boundary at all',
       );
@@ -226,11 +226,11 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
   // The normal case after the button “fetch catalog images": a few missing
   // images, scattered among hundreds that were long present.
   const P = `MX${process.pid}`;
-  const DONE = STAPEL * 5,
-    ZU_LADEN = 3;
+  const DONE = BATCH * 5,
+    TO_LOAD = 3;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= DONE; i++) finishedImage(`${P}_${i}`);
-  await enqueue(P, 1, DONE + ZU_LADEN);
+  await enqueue(P, 1, DONE + TO_LOAD);
 
   try {
     loadTimes.length = 0;
@@ -241,9 +241,9 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
       'One tick must clear the whole stretch — the three missing images ' +
         'are below the quota, the finished ones cost nothing',
     );
-    assert.equal(e.fetched, ZU_LADEN);
+    assert.equal(e.fetched, TO_LOAD);
     assert.equal(e.skipped, DONE);
-    assert.equal(loadTimes.length, ZU_LADEN, 'More was loaded than necessary');
+    assert.equal(loadTimes.length, TO_LOAD, 'More was loaded than necessary');
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
@@ -266,7 +266,7 @@ test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   const P = `DK${process.pid}`;
-  const COUNT = DECKEL + STAPEL * 2;
+  const COUNT = DECKEL + BATCH * 2;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= COUNT; i++) finishedImage(`${P}_${i}`);
   await enqueue(P, 1, COUNT);
@@ -313,8 +313,8 @@ test('expired notes are really deleted', { concurrency: 1 }, async t => {
     assert.equal(e.total, 1, 'The old note must not be processed');
     assert.equal(await open(P), 1, 'Only the old note should still be there');
 
-    const weg = await IQ._deleteExpired();
-    assert.ok(weg >= 1, 'No expired note was deleted');
+    const route = await IQ._deleteExpired();
+    assert.ok(route >= 1, 'No expired note was deleted');
     assert.equal(
       await open(P),
       0,
@@ -343,8 +343,8 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   await emptyQueue(db);
 
   await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
-  const vorher = await db.get(`SELECT value FROM run_state WHERE key='imgqueue_last_run'`);
-  assert.equal(vorher, undefined, 'Precondition: no run state stored yet');
+  const prior = await db.get(`SELECT value FROM run_state WHERE key='imgqueue_last_run'`);
+  assert.equal(prior, undefined, 'Precondition: no run state stored yet');
 
   // The child process knows NOTHING from this one — it does not build but uses
   // the already generated dist/ and only runs one tick.
@@ -385,10 +385,10 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   IQhere.lastRun.zeit = null;
   IQhere.lastRun.ergebnis = null;
 
-  const NUTZER = `pace-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  const USER = `pace-${process.pid}`;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   const express = require('express');
   const app = express();
   app.use(express.json());
@@ -401,9 +401,9 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   try {
-    const kachel = (await (await fetch(`http://localhost:${portOf(srv)}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
+    const tile = (await (await fetch(`http://localhost:${portOf(srv)}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
     assert.ok(
-      kachel?.queueLastRun,
+      tile?.queueLastRun,
       'The tile does not know the pass of the other process. That is exactly how ' +
         'Marco’s „Job noch nicht gelaufen“ came about: the marker was in the ' +
         'memory of the process that runs the job — but the request ' +
@@ -411,7 +411,7 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
     );
   } finally {
     await new Promise(r => srv.close(r));
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
   }
 
   await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`).catch(() => {});
@@ -428,7 +428,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
   // prefix — otherwise the batch takes the rows of a predecessor. Rationale
   // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
-  const IM = _req('src/images/imageMisses.js');
+  const MISSES = _req('src/images/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   await t.test('note without a set number', async () => {
@@ -478,9 +478,9 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
     const P = `BF${process.pid}`;
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
-    const COUNT = STAPEL;
-    for (let i = 1; i <= COUNT; i++) IM.rememberMissing(`set:${P}_${i}`);
-    await IM._writeBuffer();
+    const COUNT = BATCH;
+    for (let i = 1; i <= COUNT; i++) MISSES.rememberMissing(`set:${P}_${i}`);
+    await MISSES._writeBuffer();
     await enqueue(P, 1, COUNT);
     try {
       loadTimes.length = 0;

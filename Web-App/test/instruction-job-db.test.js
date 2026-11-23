@@ -21,7 +21,7 @@ const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const abruf = { extern: false, error_message: null, aufrufe: 0 };
+const fetching = { outside: false, error_message: null, calls: 0 };
 const realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = realRequire.call(this, name, ...rest);
@@ -29,10 +29,10 @@ Module.prototype.require = function (name, ...rest) {
   return {
     ...m,
     instructionCount: async () => 0,
-    lastFetchWasExternal: () => abruf.extern,
+    lastFetchWasExternal: () => fetching.outside,
     loadSetInstructions: async () => {
-      abruf.aufrufe++;
-      if (abruf.error_message) throw abruf.error_message;
+      fetching.calls++;
+      if (fetching.error_message) throw fetching.error_message;
       return 1;
     },
   };
@@ -71,11 +71,11 @@ test('instructions as a job', { concurrency: 1 }, async t => {
 
   await t.test('after a supplied set nobody waits', async () => {
     await reset();
-    abruf.extern = false;
-    abruf.error_message = null;
+    fetching.outside = false;
+    fetching.error_message = null;
     await Q.loadInstruction({ set_number: '10001-1' });
     assert.equal(await pause(), null, 'no pause without a foreign fetch');
-    abruf.extern = true;
+    fetching.outside = true;
     await Q.loadInstruction({ set_number: '10002-1' });
     const s = await inSec();
     assert.ok(s >= 13 && s <= 15, `after a real fetch ${s} s gap instead of 15`);
@@ -83,21 +83,21 @@ test('instructions as a job', { concurrency: 1 }, async t => {
 
   await t.test('the Cloudflare ladder climbs and ends the next day', async () => {
     await reset();
-    abruf.error_message = new Error('Cloudflare error 1015: rate limited');
-    const gesehen = [];
+    fetching.error_message = new Error('Cloudflare error 1015: rate limited');
+    const seen = [];
     for (let i = 0; i < 5; i++) {
       await assert.rejects(Q.loadInstruction({ set_number: '10003-1' }), e => e instanceof JobMove);
-      gesehen.push(await inSec());
+      seen.push(await inSec());
       await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'instructions'`);
     }
     assert.deepEqual(
-      gesehen.slice(0, 4).map(s => Math.round(s / 60)),
+      seen.slice(0, 4).map(s => Math.round(s / 60)),
       [5, 10, 15, 20],
     );
     const morgen = Q.nextTag(new Date());
-    assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'after the fourth lock until_at tomorrow');
-    abruf.error_message = null;
-    abruf.extern = false;
+    assert.ok(Math.abs(seen[4] - (morgen - Date.now()) / 1000) < 5, 'after the fourth lock until_at tomorrow');
+    fetching.error_message = null;
+    fetching.outside = false;
     await Q.loadInstruction({ set_number: '10003-1' });
     assert.equal(await pause(), null, 'a success resets the ladder');
   });
@@ -107,16 +107,16 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.INSTRUCTION_QUEUE]);
-    const vorher = abruf.aufrufe;
+    const prior = fetching.calls;
     try {
       await assert.rejects(Q.loadInstruction({ set_number: '10004-1' }), e => e instanceof JobMove);
-      assert.equal(abruf.aufrufe, vorher, 'fetched despite a foreign lock');
+      assert.equal(fetching.calls, prior, 'fetched despite a foreign lock');
     } finally {
       await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.INSTRUCTION_QUEUE]);
       fremd.release();
     }
     await Q.loadInstruction({ set_number: '10004-1' });
-    assert.equal(abruf.aufrufe, vorher + 1, 'Counter-check: without a foreign lock it is fetched');
+    assert.equal(fetching.calls, prior + 1, 'Counter-check: without a foreign lock it is fetched');
   });
 
   await t.test('a set is open only once', async () => {

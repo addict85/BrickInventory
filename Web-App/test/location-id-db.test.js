@@ -33,7 +33,7 @@ async function seed() {
 }
 
 /** The NAME the UI sees on the set — resolved via the stock. */
-async function ortAmSet(sn) {
+async function placeOnSet(sn) {
   return (
     (
       await db.get(
@@ -82,7 +82,7 @@ test('storage location as an ID against a real database', async t => {
     const n = await L.setLocation('set', writable, ['10179-1'], 'estrich');
     assert.equal(n, 1, `${n} rows hit, expected 1`);
     assert.equal(
-      await ortAmSet('10179-1'),
+      await placeOnSet('10179-1'),
       'Estrich',
       'The set carries its own spelling — then it is not the same location',
     );
@@ -102,7 +102,7 @@ test('storage location as an ID against a real database', async t => {
     // a loop over three tables in one transaction — and that
     // compared character by character, so it did not hit „estrich".
     await L.renameStorage(UID, estrich.id, 'Dachboden');
-    assert.equal(await ortAmSet('10179-1'), 'Dachboden', 'The set is in the old location — the rename was a loss');
+    assert.equal(await placeOnSet('10179-1'), 'Dachboden', 'The set is in the old location — the rename was a loss');
   });
 
   await t.test('an occupied place cannot be deleted', async () => {
@@ -124,7 +124,7 @@ test('storage location as an ID against a real database', async t => {
   await t.test('clearing sets the ID to NULL', async () => {
     // Empty and NULL are the same: „not captured" (reasoning in 0018).
     await L.setLocation('set', writable, ['10179-1'], null);
-    assert.equal(await ortAmSet('10179-1'), null, 'Clearing removed nothing');
+    assert.equal(await placeOnSet('10179-1'), null, 'Clearing removed nothing');
     // And now deleting works, because nothing lies in it any more.
     await L.deleteStorage(UID, estrich.id);
     assert.deepEqual(await L.locationsOf([UID]), []);
@@ -135,10 +135,10 @@ test('storage location as an ID against a real database', async t => {
     // created the place only on success. With the ID it must run the other way round
     // (no row, no ID), hence both stand in one transaction with
     // rollback. Without it a place would stand in the list after every typo.
-    const vorher = (await L.locationsOf([UID])).length;
+    const prior = (await L.locationsOf([UID])).length;
     const n = await L.setLocation('set', writable, ['99999-1'], 'Geisterkiste');
     assert.equal(n, 0, 'A set that does not exist was supposedly changed');
-    assert.equal((await L.locationsOf([UID])).length, vorher, 'The failed attempt left „Geisterkiste“ in the stock');
+    assert.equal((await L.locationsOf([UID])).length, prior, 'The failed attempt left „Geisterkiste“ in the stock');
   });
 
   await db.pool.end().catch(() => {});

@@ -37,9 +37,9 @@ test('capture only what is meant', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const post = async (weg, body) => {
-    const r = await fetch(`${base}/api/v2${weg}`, {
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
+  const post = async (route, body) => {
+    const r = await fetch(`${base}/api/v2${route}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -50,8 +50,8 @@ test('capture only what is meant', { concurrency: 1 }, async t => {
     (await db.all('SELECT set_number FROM sets WHERE user_id = $1', [uid])).map(z => z.set_number);
 
   await t.test('a sentence is not a set number', async () => {
-    for (const roh of ["1'; DROP TABLE sets;--", '75192 Millennium Falcon', '75192;2'])
-      assert.deepEqual(await post('/sets', { set_number: roh }), { status: 400, code: 'set_number_invalid' }, roh);
+    for (const raw of ["1'; DROP TABLE sets;--", '75192 Millennium Falcon', '75192;2'])
+      assert.deepEqual(await post('/sets', { set_number: raw }), { status: 400, code: 'set_number_invalid' }, raw);
     assert.deepEqual(await sets(), []);
   });
 

@@ -31,10 +31,10 @@ test('fehlertext never returns "undefined"', () => {
 
   // No value may come out as an empty string — otherwise the
   // UI shows “Fehler: " and the user again sees nothing.
-  for (const wert of [0, false, {}, [], new Error(), Symbol('x')]) {
-    const t = errorMessage(wert);
-    assert.equal(typeof t, 'string', `${String(wert)} ergibt keinen String`);
-    assert.ok(t.length > 0, `${String(wert)} results in an empty text`);
+  for (const value of [0, false, {}, [], new Error(), Symbol('x')]) {
+    const t = errorMessage(value);
+    assert.equal(typeof t, 'string', `${String(value)} ergibt keinen String`);
+    assert.ok(t.length > 0, `${String(value)} results in an empty text`);
   }
 });
 

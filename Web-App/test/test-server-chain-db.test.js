@@ -27,18 +27,18 @@ test('testServer runs through the real chain', { concurrency: 1 }, async t => {
   if (!db) return;
   const NAME = `kette_echt_${process.pid}`;
   await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
-  const anlegen = async (/** @type {string} */ n) =>
+  const create = async (/** @type {string} */ n) =>
     (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [n])).id;
-  const mit = await anlegen(NAME);
-  const ohne = await anlegen(`${NAME}_ohne`);
-  await adminWithFactor(_req, mit);
+  const withIt = await create(NAME);
+  const without = await create(`${NAME}_ohne`);
+  await adminWithFactor(_req, withIt);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   await t.test('security headers and request ID from grundschutz()', async () => {
-    const { base } = testServer(_req, { sitzung: {}, t });
+    const { base } = testServer(_req, { session: {}, t });
     const r = await fetch(`${base}/api/v2/health/live`);
     assert.match(String(r.headers.get('content-security-policy')), /default-src 'self'/);
     assert.match(String(r.headers.get('x-request-id')), /\S/);
@@ -46,18 +46,18 @@ test('testServer runs through the real chain', { concurrency: 1 }, async t => {
   });
 
   await t.test('foreign origin with session cookie: 403', async () => {
-    const { base } = testServer(_req, { sitzung: { userId: mit, isAdmin: true }, t });
-    const sende = (/** @type {string} */ herkunft) =>
+    const { base } = testServer(_req, { session: { userId: withIt, isAdmin: true }, t });
+    const send = (/** @type {string} */ provenance) =>
       fetch(`${base}/api/v2/settings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Cookie: 'bim.sid=x', Origin: herkunft },
+        headers: { 'Content-Type': 'application/json', Cookie: 'bim.sid=x', Origin: provenance },
         body: '{}',
       });
-    const fremd = await sende('https://boese.example');
+    const fremd = await send('https://boese.example');
     assert.equal(fremd.status, 403, 'foreign origin with a session cookie: 403');
     assert.equal((await fremd.json()).code, 'foreign_origin');
     assert.notEqual(
-      (await (await sende(base)).json().catch(() => ({}))).code,
+      (await (await send(base)).json().catch(() => ({}))).code,
       'foreign_origin',
       'the own origin gets through, otherwise the 403 above would prove nothing',
     );
@@ -65,10 +65,10 @@ test('testServer runs through the real chain', { concurrency: 1 }, async t => {
 
   await t.test('an administrator without a second factor is rejected at the entrance', async () => {
     const jobs = async (/** @type {number} */ id) =>
-      fetch(`${testServer(_req, { sitzung: { userId: id, isAdmin: true }, t }).base}/api/v2/admin/jobs`);
-    const r = await jobs(ohne);
+      fetch(`${testServer(_req, { session: { userId: id, isAdmin: true }, t }).base}/api/v2/admin/jobs`);
+    const r = await jobs(without);
     assert.equal(r.status, 403);
     assert.equal((await r.json()).code, 'second_factor_mandatory');
-    assert.equal((await jobs(mit)).status, 200, 'with a second factor it gets through');
+    assert.equal((await jobs(withIt)).status, 200, 'with a second factor it gets through');
   });
 });

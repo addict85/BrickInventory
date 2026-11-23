@@ -22,22 +22,22 @@ const { testServer } = require('./helpers/server');
 test('the contract delivers the domain format to the route', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const namen = [`fachformat_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`fachformat_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [n])).id);
   const [a] = ids;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const basis = testServer(_req, { sitzung: { userId: a }, t }).base;
-  const callIt = async (methode, path, rumpf) => {
+  const basis = testServer(_req, { session: { userId: a }, t }).base;
+  const callIt = async (method, path, body) => {
     const r = await fetch(`${basis}/api/v2${path}`, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
-      ...(rumpf ? { body: JSON.stringify(rumpf) } : {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return { status: r.status, body: await r.json() };
   };

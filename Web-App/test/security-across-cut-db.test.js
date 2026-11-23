@@ -48,10 +48,10 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer, portOf } = require('./helpers/server');
 const { mailFake, enterMailServer } = require('./helpers/mail-fake');
-const gesendet = mailFake();
+const sent = mailFake();
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
@@ -65,8 +65,8 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
   const NAME = `quer_${process.pid}`,
     PASS = 'Quer-Passwort-1',
     MAIL = `quer_${process.pid}@example.org`;
-  const NEU = `quer_neu_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
+  const NEW = `quer_neu_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEW]]);
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_active, email_verified)
     VALUES ($1, $2, $3, true, true)`,
@@ -83,7 +83,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regBefore)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regBefore.value]);
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEW]]);
     await db.pool.end().catch(() => {});
   });
 
@@ -105,12 +105,12 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
   srv.stderr.resume();
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
 
   await t.test('every response carries the security headers', async () => {
     for (const path of ['/', '/api/v2/health/live', '/api/v2/gibt-es-nicht']) {
@@ -148,13 +148,13 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('the delivered page loads nothing from foreign hosts and no inline script', async () => {
-    const seite = await (await fetch(`${basis}/`)).text();
-    assert.match(seite, /<script[^>]+src="[^"]*app\.bundle\.js/, 'nicht die App-Seite');
-    const extern = [
-      ...seite.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?\s(?:href|src)="((?:https?:)?\/\/[^"]+)"/g),
+    const page = await (await fetch(`${basis}/`)).text();
+    assert.match(page, /<script[^>]+src="[^"]*app\.bundle\.js/, 'not the app page');
+    const outside = [
+      ...page.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?\s(?:href|src)="((?:https?:)?\/\/[^"]+)"/g),
     ].map(m => m[1]);
-    assert.deepEqual(extern, []);
-    const inline = [...seite.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    assert.deepEqual(outside, []);
+    const inline = [...page.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
       .map(m => m[1].trim())
       .filter(Boolean);
     assert.deepEqual(
@@ -178,8 +178,8 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
 
   await t.test('an unknown API path responds in the form of every error response', async () => {
     const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
-    const { request_id, ...rumpf } = await r.json();
-    assert.deepEqual([r.status, rumpf], [404, { success: false, code: 'not_found', error: 'Not found' }]);
+    const { request_id, ...body } = await r.json();
+    assert.deepEqual([r.status, body], [404, { success: false, code: 'not_found', error: 'Not found' }]);
     assert.equal(request_id, r.headers.get('x-request-id'));
   });
 
@@ -203,15 +203,15 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
-    const vergeben = await register(NEU, MAIL.toUpperCase());
-    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'account created');
+    const taken = await register(NEW, MAIL.toUpperCase());
+    assert.equal(taken.status, 200, JSON.stringify(taken.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEW]), undefined, 'account created');
     assert.ok(
-      gesendet.some(m => m.to === MAIL),
+      sent.some(m => m.to === MAIL),
       'The owner gets no hint',
     );
-    const neu = await register(NEU, `anders_${MAIL}`);
-    assert.deepEqual(vergeben.body, neu.body);
+    const fresh = await register(NEW, `anders_${MAIL}`);
+    assert.deepEqual(taken.body, fresh.body);
   });
 
   await t.test('a taken name responds like a new one, the address learns of it by mail', async () => {
@@ -223,18 +223,18 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
-    const andere = `name_${MAIL}`;
-    const vergeben = await register(NAME, andere);
-    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'account created');
+    const others = `name_${MAIL}`;
+    const taken = await register(NAME, others);
+    assert.equal(taken.status, 200, JSON.stringify(taken.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [others]), undefined, 'account created');
     assert.ok(
-      gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)),
-      gesendet.map(m => m.subject).join(' | '),
+      sent.some(m => m.to === others && /Benutzername schon vergeben/.test(m.subject)),
+      sent.map(m => m.subject).join(' | '),
     );
-    const NEU2 = `${NEU}_2`;
-    const neu = await register(NEU2, `neu2_${MAIL}`);
+    const NEU2 = `${NEW}_2`;
+    const fresh = await register(NEU2, `neu2_${MAIL}`);
     await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
-    assert.deepEqual(vergeben.body, neu.body);
+    assert.deepEqual(taken.body, fresh.body);
   });
 });
 
@@ -243,10 +243,10 @@ test('a server error in production names no internals', () => {
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };
     handleRouteError(res, new Error('relation "geheim" at /app/dist/x.js:1'), undefined, { method: 'GET', originalUrl: '/x' });`;
-  const aus = execFileSync(process.execPath, ['-e', script], {
+  const out = execFileSync(process.execPath, ['-e', script], {
     env: { ...process.env, NODE_ENV: 'production' },
   }).toString();
-  assert.deepEqual(JSON.parse(aus), [
+  assert.deepEqual(JSON.parse(out), [
     500,
     { success: false, code: 'internal_error', error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' },
   ]);

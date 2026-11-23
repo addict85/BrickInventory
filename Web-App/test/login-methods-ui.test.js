@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 // jsdom knows no passkeys; this way the form sees a browser that can do them.
 const withPasskeys = w => {
@@ -24,13 +24,13 @@ const withPasskeys = w => {
 
 async function mask(status) {
   const o = await openUi({ '/v2/auth/registration-status': status }, { loggedIn: false, before: withPasskeys });
-  await warte(() => o.aufrufe.some(a => a.url.includes('registration-status')));
-  await warte(() => false, 100);
+  await waitFor(() => o.calls.some(a => a.url.includes('registration-status')));
+  await waitFor(() => false, 100);
   const d = o.d;
   const r = {
     passkey: !d.getElementById('btn-passkey').hidden,
-    vergessen: !d.getElementById('link-forgot').hidden,
-    registrieren: d.getElementById('link-register-wrap').style.display !== 'none',
+    forget: !d.getElementById('link-forgot').hidden,
+    register: d.getElementById('link-register-wrap').style.display !== 'none',
     main: d.querySelector('main#login-screen') !== null,
   };
   o.w.close();
@@ -40,8 +40,8 @@ async function mask(status) {
 test('the server can do neither', async () => {
   assert.deepEqual(await mask({ enabled: true, passkey: false, forgot_password: false }), {
     passkey: false,
-    vergessen: false,
-    registrieren: true,
+    forget: false,
+    register: true,
     main: true,
   });
 });
@@ -49,8 +49,8 @@ test('the server can do neither', async () => {
 test('the server can do both', async () => {
   assert.deepEqual(await mask({ enabled: false, passkey: true, forgot_password: true }), {
     passkey: true,
-    vergessen: true,
-    registrieren: false,
+    forget: true,
+    register: false,
     main: true,
   });
 });
@@ -58,8 +58,8 @@ test('the server can do both', async () => {
 test('older server without the information', async () => {
   assert.deepEqual(await mask({ enabled: false }), {
     passkey: true,
-    vergessen: true,
-    registrieren: false,
+    forget: true,
+    register: false,
     main: true,
   });
 });

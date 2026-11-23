@@ -28,7 +28,7 @@ function inventory() {
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerMounts())
-    for (const [m, p] of scan(r.datei, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
+    for (const [m, p] of scan(r.file, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
       for (const [m, p] of scan(path.join(ROOT, 'routes/api', f), '/api/v2')) eps.add(`${m} /api/v2${p}`);
@@ -409,12 +409,12 @@ test('no orphaned classification entries', () => {
 function androidAddresses() {
   const { appRoutes, appAddresses } = require('./helpers/contract');
   const _req = require('./helpers/sources').buildAndRequire();
-  const routen = appRoutes(_req);
-  const adressen = appAddresses();
-  const found = new Set(routen.map(r => `${r.method} ${comparable(r.path)}`));
+  const routes = appRoutes(_req);
+  const addresses = appAddresses();
+  const found = new Set(routes.map(r => `${r.method} ${comparable(r.path)}`));
   // Built by hand: the method is not given, so under all verbs. That can relieve
   // one address too many, but wrongly accuse none.
-  for (const a of adressen)
+  for (const a of addresses)
     for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) found.add(`${v} ${comparable(a)}`);
   return found;
 }
@@ -430,7 +430,7 @@ test('no "nur-web" is in truth called by the Android app', () => {
   // test green without having checked anything. MEASURED there are over 90.
   assert.ok(app.size >= 80, `Only ${app.size} Android addresses found — pattern outdated?`);
 
-  const falsch = Object.entries(C)
+  const wrong = Object.entries(C)
     .filter(([, k]) => k === 'nur-web')
     .map(([e]) => {
       const [verb, path] = e.split(' ');
@@ -440,9 +440,9 @@ test('no "nur-web" is in truth called by the Android app', () => {
     .sort();
 
   assert.deepEqual(
-    falsch,
+    wrong,
     [],
-    `These endpoints are listed as „nur-web“, but the Android app calls them:\n  ${falsch.join('\n  ')}\nEither the label is outdated (then set it to nur-v1), or the call does not belong in the app.`,
+    `These endpoints are listed as „nur-web“, but the Android app calls them:\n  ${wrong.join('\n  ')}\nEither the label is outdated (then set it to nur-v1), or the call does not belong in the app.`,
   );
 });
 

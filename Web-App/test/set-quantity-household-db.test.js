@@ -25,7 +25,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     SUB = `ms-${process.pid}`;
   const SN = `78${(process.pid % 900) + 100}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'price_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
@@ -38,7 +38,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     mainId,
     subId,
   ]);
-  await aufraeumen();
+  await cleanUp();
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(
@@ -54,10 +54,10 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     [subId, SN],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId }, t });
 
   const detail = async () => (await (await fetch(`${base}/api/v2/sets/${SN}`)).json()).set;
-  const setzen = async n => {
+  const put = async n => {
     const r = await fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -80,7 +80,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     });
 
     await t.test('increasing creates in the OWN account, with market price', async () => {
-      const r = await setzen(2);
+      const r = await put(2);
       assert.equal(r.status, 200);
       assert.equal(await quantity(mainId), 1, 'the difference belongs to the own account');
       assert.equal(await quantity(subId), 1, 'the foreign stock stays untouched');
@@ -103,35 +103,35 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
 
     await t.test('increasing again merges on the same day', async () => {
       // The daily rule applies unchanged: one acquisition per account, set and day.
-      await setzen(4);
-      const zeilen = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
+      await put(4);
+      const lines = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
         mainId,
         SN,
       ]);
-      assert.equal(zeilen.length, 1, `${zeilen.length} acquisitions — the per-day rule does not apply`);
-      assert.equal(zeilen[0].quantity, 3);
+      assert.equal(lines.length, 1, `${lines.length} acquisitions — the per-day rule does not apply`);
+      assert.equal(lines[0].quantity, 3);
       assert.equal(await quantity(mainId), 3);
     });
 
     await t.test('decreasing takes the own copies first', async () => {
-      await setzen(1);
+      await put(1);
       assert.equal(await quantity(mainId), 0, 'the own copies go first');
       assert.equal(await quantity(subId), 1, 'the foreign one stays');
       // If nothing remains, the own row disappears entirely.
-      const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
-      assert.equal(eigene.c, 0, 'an own row with quantity 0 stays behind');
+      const owned = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
+      assert.equal(owned.c, 0, 'an own row with quantity 0 stays behind');
     });
 
     await t.test('it cannot go below the own stock', async () => {
       // The copies of another account are not mine. Instead of taking
       // them away, the server caps — and says in the response what
       // actually applies.
-      const r = await setzen(0);
+      const r = await put(0);
       assert.equal(await quantity(subId), 1, 'the foreign copy was taken away');
       assert.equal(r.body.quantity, 1, 'the response must name the REAL quantity, not the one sent');
     });
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));

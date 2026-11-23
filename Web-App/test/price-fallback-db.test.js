@@ -39,9 +39,9 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 // Recreate BrickLink — as in price-write-route-db: esbuild exports via
 // getters, so replace the entry in the require cache.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
-const echt = require(blPath);
+const original = require(blPath);
 let fetches = [];
-require.cache[blPath].exports = Object.assign({}, echt, {
+require.cache[blPath].exports = Object.assign({}, original, {
   priceGuideQuery: async (_k, _sn, cond) => {
     fetches.push(cond);
     return cond === 'N'
@@ -63,7 +63,7 @@ async function reload() {
 }
 
 /** An account with a used set, currency EUR. */
-async function konto(name, set) {
+async function account(name, set) {
   await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
   const uid = (
     await db.get(
@@ -78,7 +78,7 @@ async function konto(name, set) {
     [uid],
   );
   await catalogSet(db, set, { name: 'Rückfallprobe', year: 2026 });
-  await holdsSet(db, uid, set, 1, { preis: 119, condition: 'U' });
+  await holdsSet(db, uid, set, 1, { price: 119, condition: 'U' });
   return uid;
 }
 
@@ -87,15 +87,15 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
 
   const NAME = `rueckfall_${process.pid}`,
     SET = `9${process.pid % 10000}-1`;
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     for (const tab of ['price_cache', 'price_history', 'set_catalog', 'catalog_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET.replace(/-1$/, '')]]).catch(() => {});
   };
-  await aufraeumen();
-  t.after(aufraeumen);
+  await cleanUp();
+  t.after(cleanUp);
 
-  const uid = await konto(NAME, SET);
+  const uid = await account(NAME, SET);
   // Used: fresh, without a price. New: price present, but three days old.
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
@@ -105,9 +105,9 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
 
   const { valueSets } = _req('src/finances/financeCalc.js');
   fetches = [];
-  const vorher = await valueSets(uid, [uid]);
+  const prior = await valueSets(uid, [uid]);
   assert.deepEqual(fetches, [], 'the valuation fetches from BrickLink itself');
-  assert.equal(vorher.prices_pending, 1, 'the missing price is not queued as a job');
+  assert.equal(prior.prices_pending, 1, 'the missing price is not queued as a job');
   assert.ok(await reload());
   const row = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(row, 'set missing in the valuation');
@@ -121,8 +121,8 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
   // Now both are fresh — the next call gets by without BrickLink.
   fetches = [];
   assert.equal(await reload(), false, 'a fresh price queues no job');
-  const zweite = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
-  assert.equal(zweite.avg_price, 111);
+  const second = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  assert.equal(second.avg_price, 111);
   assert.deepEqual(fetches, [], 'fetches from BrickLink again although both conditions are fresh in the cache');
 
   // Both fresh without a price: no fetch, no price.
@@ -141,14 +141,14 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
   t.after(() => db.pool.end().catch(() => {}));
   const NAME = `unbekannt_${process.pid}`,
     SET = `8${process.pid % 10000}-1`;
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     for (const tab of ['price_cache', 'price_history', 'set_catalog', 'catalog_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = $1`, [SET]).catch(() => {});
   };
-  await aufraeumen();
-  t.after(aufraeumen);
-  const uid = await konto(NAME, SET);
+  await cleanUp();
+  t.after(cleanUp);
+  const uid = await account(NAME, SET);
   const { valueSets } = _req('src/finances/financeCalc.js');
   const value = async () => (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
 
@@ -158,10 +158,10 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
     [SET],
   );
   fetches = [];
-  const frisch = await value();
+  const fresh = await value();
   assert.deepEqual(fetches, [], 'fresh marker: it is fetched anyway');
-  assert.equal(frisch.no_price, true);
-  assert.equal(frisch.bl_unknown, true, 'the reason is missing — the display cannot name it');
+  assert.equal(fresh.no_price, true);
+  assert.equal(fresh.bl_unknown, true, 'the reason is missing — the display cannot name it');
 
   // Ten days old: it is asked again, and the price arrives.
   await db.run(`UPDATE catalog_cache SET fetched_at = NOW() - INTERVAL '10 days' WHERE set_number = $1`, [SET]);

@@ -25,41 +25,37 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  await ruhig();
+  const { b, until, settle } = app;
+  await settle();
   // On every new page: the first query answers late and denies „Passwort vergessen?“, every further one immediately.
   await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `(() => {
-    const echt = window.fetch.bind(window); let n = 0;
+    const original = window.fetch.bind(window); let n = 0;
     window.fetch = (url, o) => {
-      if (!String(url).includes('/v2/auth/registration-status')) return echt(url, o);
-      const erste = ++n === 1;
+      if (!String(url).includes('/v2/auth/registration-status')) return original(url, o);
+      const first = ++n === 1;
       const antwort = () => new Response(JSON.stringify({ success: true, enabled: true, passkey: true,
-        passwort_vergessen: !erste }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-      return new Promise(r => setTimeout(() => { r(antwort()); if (erste) window.__spaet = true; }, erste ? 8000 : 0));
+        passwort_vergessen: !first }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Promise(r => setTimeout(() => { r(antwort()); if (first) window.__spaet = true; }, first ? 8000 : 0));
     }; })();`,
   });
-  await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
-  await bis(
+  await b.evaluate(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+  await until(
     `!window.__alt && typeof document.getElementById('btn-login')?.onclick === 'function'`,
     'Sign-in form after the reload',
     200,
   );
-  await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(name)};
+  await b.evaluate(`document.getElementById('lu').value = ${JSON.stringify(name)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in', 300);
+  await until(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in', 300);
   // The session ends at the server; the next call of the app gets 401 and shows the form again.
-  await b.auswerten(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => {
+  await b.evaluate(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => {
     document.querySelector('.ntab[data-tab="finance"]').click(); return true; })`);
-  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Session expired');
-  await bis(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege eingetragen');
+  await until(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Session expired');
+  await until(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege eingetragen');
   // Wait for the late first response.
-  await bis('window.__spaet === true', 'late first response', 150);
-  await ruhig();
-  assert.equal(
-    await b.auswerten(`document.getElementById('link-forgot').hidden`),
-    false,
-    'the latest response applies',
-  );
-  assert.equal(await b.auswerten(`document.getElementById('login-screen').dataset.loginMethods`), 'loaded');
+  await until('window.__spaet === true', 'late first response', 150);
+  await settle();
+  assert.equal(await b.evaluate(`document.getElementById('link-forgot').hidden`), false, 'the latest response applies');
+  assert.equal(await b.evaluate(`document.getElementById('login-screen').dataset.loginMethods`), 'loaded');
 });

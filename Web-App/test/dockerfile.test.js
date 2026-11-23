@@ -50,9 +50,9 @@ test('and no dependency needs them', () => {
 // back in the Dockerfile → red. An ENV stands in every copy of the image.
 test('the image carries no database password', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  const zeilen = df.split('\n').filter(l => !l.trim().startsWith('#'));
+  const lines = df.split('\n').filter(l => !l.trim().startsWith('#'));
   assert.deepEqual(
-    zeilen.filter(l => /^\s*(ENV|ARG)\b.*(PASSWORD|_SECRET|PGPASS)/i.test(l)),
+    lines.filter(l => /^\s*(ENV|ARG)\b.*(PASSWORD|_SECRET|PGPASS)/i.test(l)),
     [],
   );
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
@@ -81,34 +81,34 @@ test('base images are fixed by digest', () => {
 // Counter-check (30.10.2026): the rm line in the runtime stage removed → red.
 test('the runtime image carries no npm, corepack or yarn', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  const laufzeit = df
+  const runtime = df
     .split(/^FROM /m)
     .pop()
     .split('\n')
     .filter(l => !l.trim().startsWith('#'))
     .join('\n');
   for (const path of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
-    assert.ok(laufzeit.includes(path), `${path} stays in the runtime image`);
+    assert.ok(runtime.includes(path), `${path} stays in the runtime image`);
 });
 
 test('secrets and backups stay out of image and repository', t => {
   // The build context is Web-App/: without an entry .env (passwords),
   // the backups of scripts/backup.sh and the data key would land in the image.
   // Counter-check (01.11.2026): `backups` deleted from .dockerignore → red.
-  const muster = fs
+  const pattern = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')
     .map(l => l.trim());
   // (03.11.2026) `geheimnisse` deleted from .gitignore → red.
   for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data', 'geheimnisse'])
-    assert.ok(muster.includes(m), `.dockerignore does not exclude ${m}`);
+    assert.ok(pattern.includes(m), `.dockerignore does not exclude ${m}`);
   // The second part asks git; without a working tree (copy without .git, image) only
   // skipped with a message, in CI (REQUIRE_DB=1) an error.
   // Counter-check (04.11.2026): copy of the tree without .git → skipped with
   // “no Git working tree”, red with REQUIRE_DB=1.
-  const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
-  if (baum.error || baum.status !== 0) {
-    const reason = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
+  const tree = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
+  if (tree.error || tree.status !== 0) {
+    const reason = `kein Git-Arbeitsbaum unter ${ROOT} (${tree.error?.message || tree.stderr.trim()})`;
     missingPrecondition(t, reason, `.gitignore lässt sich nicht prüfen, ${reason}`);
     return;
   }
@@ -146,11 +146,11 @@ test('install scripts only run selectively, for exactly the packages that have o
       .split('\n')
       .filter(l => !/^\s*#/.test(l))
       .join('\n');
-    const aufrufe = [...code.matchAll(/npm ci\b[^\n&]*/g)].map(m => m[0]);
-    assert.ok(aufrufe.length > 0, `${name}: no npm ci found`);
-    for (const a of aufrufe) assert.match(a, /--ignore-scripts/, `${name}: npm ci without --ignore-scripts`);
-    const gebaut = [...code.matchAll(/npm rebuild ([^\n&]+)/g)].flatMap(m => m[1].trim().split(/\s+/)).sort();
-    assert.deepEqual(gebaut, withScriptTag, `${name} does not build exactly the packages with an install script`);
+    const calls = [...code.matchAll(/npm ci\b[^\n&]*/g)].map(m => m[0]);
+    assert.ok(calls.length > 0, `${name}: no npm ci found`);
+    for (const a of calls) assert.match(a, /--ignore-scripts/, `${name}: npm ci without --ignore-scripts`);
+    const built = [...code.matchAll(/npm rebuild ([^\n&]+)/g)].flatMap(m => m[1].trim().split(/\s+/)).sort();
+    assert.deepEqual(built, withScriptTag, `${name} does not build exactly the packages with an install script`);
   }
 });
 
@@ -159,14 +159,14 @@ test('install scripts only run selectively, for exactly the packages that have o
 // as root without --user”; the condition `[ "$(id -u)" = 0 ]` replaced by `true` → red “without root
 // node starts directly, without su-exec”.
 test('the image starts as brickinv, the entrypoint runs that way and as root', () => {
-  const laufzeit =
+  const runtime =
     fs
       .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')
       .split(/^FROM /m)
       .pop() ?? '';
-  const nutzer = [...laufzeit.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
-  assert.equal(nutzer.at(-1), 'brickinv', 'without --user the image starts as root');
-  assert.match(laufzeit, /adduser -S brickinv/, 'the user is created in the runtime stage');
+  const user = [...runtime.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
+  assert.equal(user.at(-1), 'brickinv', 'without --user the image starts as root');
+  assert.match(runtime, /adduser -S brickinv/, 'the user is created in the runtime stage');
   const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
   try {
     const app = path.join(location, 'app'),
@@ -175,26 +175,26 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
     fs.mkdirSync(path.join(app, 'data'), { recursive: true });
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(app, 'data-permissions.sh'), 'echo daten-rechte >> "$SPUR"\n');
-    const ersatz = (name, rumpf) => fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${rumpf}\n`, { mode: 0o755 });
-    ersatz('id', '[ "$1" = -u ] && echo "$KENNUNG" || echo brickinv');
-    ersatz('chown', 'exit 0');
-    ersatz('su-exec', 'echo "su-exec $1" >> "$SPUR"; shift; KENNUNG=1000 exec "$@"');
-    ersatz('node', 'echo "node $*" >> "$SPUR"');
+    const spare = (name, body) => fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+    spare('id', '[ "$1" = -u ] && echo "$FAKE_UID" || echo brickinv');
+    spare('chown', 'exit 0');
+    spare('su-exec', 'echo "su-exec $1" >> "$SPUR"; shift; FAKE_UID=1000 exec "$@"');
+    spare('node', 'echo "node $*" >> "$SPUR"');
     const ep = fs.readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8').replaceAll('/app/', `${app}/`);
     const script = path.join(location, 'entrypoint.sh');
     fs.writeFileSync(script, ep, { mode: 0o755 });
-    const lauf = kennung => {
+    const run = tokenId => {
       fs.rmSync(spur, { force: true });
       const r = spawnSync('sh', [script], {
         encoding: 'utf8',
         cwd: location,
-        env: { PATH: `${bin}:/usr/bin:/bin`, KENNUNG: kennung, SPUR: spur },
+        env: { PATH: `${bin}:/usr/bin:/bin`, FAKE_UID: tokenId, SPUR: spur },
       });
       assert.equal(r.status, 0, r.stderr);
       return fs.readFileSync(spur, 'utf8').trim().split('\n');
     };
-    assert.deepEqual(lauf('1000'), ['node dist/server.js'], 'without root node starts directly, without su-exec');
-    assert.deepEqual(lauf('0'), ['daten-rechte', 'su-exec brickinv', 'node dist/server.js']);
+    assert.deepEqual(run('1000'), ['node dist/server.js'], 'without root node starts directly, without su-exec');
+    assert.deepEqual(run('0'), ['daten-rechte', 'su-exec brickinv', 'node dist/server.js']);
   } finally {
     fs.rmSync(location, { recursive: true, force: true });
   }

@@ -32,13 +32,13 @@ const { openapi } = _req('src/contract/openapi.js');
 
 /** Method and full path of every route of a router, also in mounted routers. */
 function routesOf(router, basis) {
-  const aus = [];
+  const out = [];
   for (const layer of router.stack) {
     if (layer.route)
-      for (const m of Object.keys(layer.route.methods)) aus.push(`${m.toUpperCase()} ${basis}${layer.route.path}`);
-    else if (layer.handle?.stack) aus.push(...routesOf(layer.handle, basis));
+      for (const m of Object.keys(layer.route.methods)) out.push(`${m.toUpperCase()} ${basis}${layer.route.path}`);
+    else if (layer.handle?.stack) out.push(...routesOf(layer.handle, basis));
   }
-  return aus;
+  return out;
 }
 const EXPRESS = [
   ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'), '/api/v2'),
@@ -66,8 +66,8 @@ test('no contract without a route', () => {
 });
 
 test('no key twice', () => {
-  const summe = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routes).length, 0);
-  assert.equal(Object.keys(CONTRACT).length, summe);
+  const sum = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routes).length, 0);
+  assert.equal(Object.keys(CONTRACT).length, sum);
 });
 
 test('the checked-in openapi.json is generated', () => {
@@ -89,18 +89,18 @@ test('every long list takes pages', () => {
   // A list without pages grows with the stock; `klein` says that it does not.
   const o = openapi();
   const schema = s => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
-  const ohne = [],
+  const without = [],
     limit = [];
   for (const [p, ops] of Object.entries(o.paths)) {
     const get = ops.get;
     if (!get) continue;
     const response = schema(get.responses[200].content['application/json']?.schema);
     const listen = Object.values(response?.properties ?? {}).filter(v => schema(v)?.type === 'array');
-    const namen = (get.parameters ?? []).map(x => x.name);
-    if (listen.length && !get['x-klein'] && !namen.includes('page_size')) ohne.push(p);
+    const names = (get.parameters ?? []).map(x => x.name);
+    if (listen.length && !get['x-klein'] && !names.includes('page_size')) without.push(p);
     if ((get.parameters ?? []).some(x => x.name === 'limit' && !x.deprecated)) limit.push(p);
   }
-  assert.deepEqual(ohne, []);
+  assert.deepEqual(without, []);
   assert.deepEqual(limit, [], 'The page size is called page_size; limit is only deprecated');
 });
 
@@ -124,63 +124,63 @@ const CONTRACT_FILE = {
 };
 
 /** The contract file of a schema: where its object is exported, otherwise the scope of the route that names it. */
-function fileJeSchema() {
+function filePerSchema() {
   // The documents carry the v1 names of the schemas (src/contract/v1Names.ts).
   const { v1SchemaName } = _req('src/contract/v1Names.js');
   const { v1Key } = _req('src/contract/v1Routes.js');
-  const datei = new Map();
+  const file = new Map();
   for (const f of ['base', 'shared', ...Object.keys(AREAS)])
     for (const [n, w] of Object.entries(_req(`src/contract/${CONTRACT_FILE[f]}.js`)))
-      if (!datei.has(v1SchemaName(n)) && w?._zod) datei.set(v1SchemaName(n), f);
+      if (!file.has(v1SchemaName(n)) && w?._zod) file.set(v1SchemaName(n), f);
   for (const [b, m] of Object.entries(AREAS))
     for (const k of Object.keys(m.routes))
-      datei.set(
+      file.set(
         v1Key(k)
           .replace(/[^A-Za-z0-9]+/g, '_')
           .replace(/_+$/, ''),
         b,
       );
-  return datei;
+  return file;
 }
 
 /** Fields of the response schemas (everything a 200 reaches), per contract file: how many, optional, nullable. */
 function responseFields(o) {
   const S = o.components.schemas;
-  const erreicht = new Set();
+  const reached = new Set();
   const sequence = s => {
     if (!s || typeof s !== 'object') return;
     if (s.$ref) {
       const n = s.$ref.split('/').pop();
-      if (erreicht.has(n)) return;
-      erreicht.add(n);
+      if (reached.has(n)) return;
+      reached.add(n);
       sequence(S[n]);
       return;
     }
     for (const v of Object.values(s)) sequence(v);
   };
   for (const ops of Object.values(o.paths)) for (const op of Object.values(ops)) sequence(op.responses?.['200']);
-  const nullbar = s =>
-    !!s && (s.type === 'null' || (Array.isArray(s.type) && s.type.includes('null')) || (s.anyOf ?? []).some(nullbar));
-  const datei = fileJeSchema();
-  const je = {};
-  for (const n of erreicht) {
-    const d = datei.get(n) ?? '?';
-    je[d] ??= { felder: 0, frei: 0, nullbar: 0 };
-    const z = je[d];
-    const zaehle = s => {
+  const nullable = s =>
+    !!s && (s.type === 'null' || (Array.isArray(s.type) && s.type.includes('null')) || (s.anyOf ?? []).some(nullable));
+  const file = filePerSchema();
+  const per = {};
+  for (const n of reached) {
+    const d = file.get(n) ?? '?';
+    per[d] ??= { fields: 0, free: 0, nullable: 0 };
+    const z = per[d];
+    const count = s => {
       if (!s || typeof s !== 'object' || s.$ref) return;
       const required = new Set(s.required ?? []);
       for (const [k, v] of Object.entries(s.properties ?? {})) {
-        z.felder++;
-        if (!required.has(k)) z.frei++;
-        if (nullbar(v)) z.nullbar++;
+        z.fields++;
+        if (!required.has(k)) z.free++;
+        if (nullable(v)) z.nullable++;
       }
-      for (const [k, v] of Object.entries(s)) if (typeof v === 'object') zaehle(k === 'properties' ? null : v);
-      for (const v of Object.values(s.properties ?? {})) zaehle(v);
+      for (const [k, v] of Object.entries(s)) if (typeof v === 'object') count(k === 'properties' ? null : v);
+      for (const v of Object.values(s.properties ?? {})) count(v);
     };
-    zaehle(S[n]);
+    count(S[n]);
   }
-  return je;
+  return per;
 }
 
 test('response fields are required where the server always delivers them: optional and nullable ones become fewer', () => {
@@ -188,36 +188,36 @@ test('response fields are required where the server always delivers them: option
   // Per contract file so that it is visible where the contract is still soft; total 1728 → 1449 fields,
   // optional 719 → 329 (41.6 % → 22.7 %), nullable 700 → 484.
   const LIMIT = {
-    inventory: { frei: 10, nullbar: 12 },
-    settings: { frei: 14, nullbar: 11 },
-    minifigs: { frei: 21, nullbar: 27 },
-    finances: { frei: 62, nullbar: 125 },
-    shared: { frei: 35, nullbar: 50 },
-    device: { frei: 0, nullbar: 0 },
-    vouchers: { frei: 10, nullbar: 17 },
-    household: { frei: 1, nullbar: 4 },
-    catalog: { frei: 2, nullbar: 21 },
-    account: { frei: 52, nullbar: 55 },
-    wanted: { frei: 32, nullbar: 33 },
-    sets: { frei: 39, nullbar: 58 },
-    parts: { frei: 9, nullbar: 20 },
-    management: { frei: 42, nullbar: 51 },
+    inventory: { free: 10, nullable: 12 },
+    settings: { free: 14, nullable: 11 },
+    minifigs: { free: 21, nullable: 27 },
+    finances: { free: 62, nullable: 125 },
+    shared: { free: 35, nullable: 50 },
+    device: { free: 0, nullable: 0 },
+    vouchers: { free: 10, nullable: 17 },
+    household: { free: 1, nullable: 4 },
+    catalog: { free: 2, nullable: 21 },
+    account: { free: 52, nullable: 55 },
+    wanted: { free: 32, nullable: 33 },
+    sets: { free: 39, nullable: 58 },
+    parts: { free: 9, nullable: 20 },
+    management: { free: 42, nullable: 51 },
   };
-  const je = responseFields(openapi());
-  const summe = Object.values(je).reduce((a, z) => a + z.felder, 0);
-  assert.ok(summe > 1400, `only ${summe} response fields — does the search still match?`);
-  assert.deepEqual(Object.keys(je).sort(), Object.keys(LIMIT).sort(), 'every contract file has its limit');
+  const per = responseFields(openapi());
+  const sum = Object.values(per).reduce((a, z) => a + z.fields, 0);
+  assert.ok(sum > 1400, `only ${sum} response fields — does the search still match?`);
+  assert.deepEqual(Object.keys(per).sort(), Object.keys(LIMIT).sort(), 'every contract file has its limit');
   const toMuch = [],
     lessThan = [];
-  for (const [datei, z] of Object.entries(je)) {
-    const s = LIMIT[datei];
-    for (const kind of /** @type {const} */ (['frei', 'nullbar'])) {
-      if (z[kind] > s[kind]) toMuch.push(`${datei}: ${z[kind]} ${kind}, erlaubt ${s[kind]}`);
-      if (z[kind] < s[kind]) lessThan.push(`${datei} ${kind} ${z[kind]}`);
+  for (const [file, z] of Object.entries(per)) {
+    const s = LIMIT[file];
+    for (const kind of /** @type {const} */ (['free', 'nullable'])) {
+      if (z[kind] > s[kind]) toMuch.push(`${file}: ${z[kind]} ${kind}, erlaubt ${s[kind]}`);
+      if (z[kind] < s[kind]) lessThan.push(`${file} ${kind} ${z[kind]}`);
     }
   }
   assert.deepEqual(toMuch, []);
-  const frei = Object.values(je).reduce((a, z) => a + z.frei, 0);
-  assert.ok(frei / summe < 0.23, `${frei} von ${summe} Antwortfeldern freiwillig`);
+  const free = Object.values(per).reduce((a, z) => a + z.free, 0);
+  assert.ok(free / sum < 0.23, `${free} von ${sum} Antwortfeldern freiwillig`);
   if (lessThan.length) console.log(`  ℹ response fields ${lessThan.join(', ')} — tighten the limit`);
 });

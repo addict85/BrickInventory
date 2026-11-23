@@ -29,12 +29,12 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-/** @type {Array<{ url: string, kopf: Record<string, string> }>} */
+/** @type {Array<{ url: string, head: Record<string, string> }>} */
 const fetches = [];
 let responseFor = (/** @type {string} */ _url) => ({ status: 404, body: '' });
 // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opt, cb) => {
-  fetches.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt?.headers) } });
+  fetches.push({ url: String(url), head: { .../** @type {Record<string, string>} */ (opt?.headers) } });
   const { status, body } = responseFor(String(url));
   const req = new EventEmitter();
   setImmediate(() => {
@@ -55,15 +55,15 @@ https.get = (url, opt, cb) => {
 test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const S = _req('src/settings/settings.js');
-  const vorher = await S.getGlobalSetting('rebrickable_api_key');
+  const prior = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'geheim-123');
   t.after(async () => {
-    if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
+    if (prior) await S.setGlobalSetting('rebrickable_api_key', prior);
     else await S.deleteGlobalValues('rebrickable_api_key');
   });
   const { fetchSetParts, httpsGetRobust, rebrickableRaw } =
     require('./helpers/sources').testServices().externalSources.sources;
-  const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
+  const withKey = () => fetches.filter(a => Object.keys(a.head).some(k => k.toLowerCase() === 'authorization'));
 
   await t.test('next on api.upcitemdb.com is not followed', async () => {
     fetches.length = 0;

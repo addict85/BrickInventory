@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { abschnitt } = require('./helpers/sources');
+const { section } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 // The image proxy moved from server.ts to routes/imgProxy.ts (server.ts
@@ -55,19 +55,19 @@ test('the cache cleanup run is a scheduled job', () => {
     /export async function cleanImageCacheOn/,
     'The run must be startable from outside instead of starting on registration',
   );
-  const reg = abschnitt(
+  const reg = section(
     SERVER,
     'function registerImgProxy',
     'export async function cleanImageCacheOn',
     'Registrierung ohne tagesweites Intervall',
   );
   assert.doesNotMatch(reg, /setInterval/, 'No own interval in the part the web process runs');
-  const plan = require('./helpers/sources').ohneKommentare(
+  const plan = require('./helpers/sources').withoutComments(
     fs.readFileSync(path.join(ROOT, 'src/management/cleanup.ts'), 'utf8'),
   );
   assert.match(
     plan.slice(plan.indexOf('function cleanupDaily')),
     /cleanImageCacheOn\(/,
-    'Der Bild-Cache gehört zum täglichen Aufräumen',
+    'The image cache belongs to the daily cleanup',
   );
 });

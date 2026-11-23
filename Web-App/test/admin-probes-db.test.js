@@ -40,8 +40,8 @@ test('admin probes', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await adminWithFactor(_req, ids[0]);
-  const admin = testServer(_req, { sitzung: { userId: ids[0], username: names[0], isAdmin: true }, t });
-  const child = testServer(_req, { sitzung: { userId: ids[1], username: names[1], isAdmin: false }, t });
+  const admin = testServer(_req, { session: { userId: ids[0], username: names[0], isAdmin: true }, t });
+  const child = testServer(_req, { session: { userId: ids[1], username: names[1], isAdmin: false }, t });
   const post = (base, p, body) =>
     fetch(`${base}${p}`, {
       method: 'POST',

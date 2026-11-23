@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const RESPONSES = {
   '/v2/parts/manual': {
@@ -57,12 +57,12 @@ const RESPONSES = {
 
 async function detail() {
   const o = await openUi(RESPONSES);
-  const knopf = o.d.createElement('button');
-  Object.assign(knopf.dataset, { click: 'openManDetail', arg: 'part', arg2: '3001', arg3: '4' });
-  o.d.body.appendChild(knopf);
-  knopf.click();
-  await warte(() => /3[.,]50/.test(o.d.getElementById('man-detail-body')?.textContent || ''));
-  await takt(20);
+  const button = o.d.createElement('button');
+  Object.assign(button.dataset, { click: 'openManDetail', arg: 'part', arg2: '3001', arg3: '4' });
+  o.d.body.appendChild(button);
+  button.click();
+  await waitFor(() => /3[.,]50/.test(o.d.getElementById('man-detail-body')?.textContent || ''));
+  await tick(20);
   return o;
 }
 
@@ -83,9 +83,9 @@ test('every acquisition in its currency', async () => {
 test('an estimated price carries ≈', async () => {
   const { w, d } = await detail();
   try {
-    const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
-    assert.equal(zeichen.length, 1, 'exactly the estimated acquisition carries ≈');
-    assert.match(zeichen[0].getAttribute('aria-label'), /geschätzt/i);
+    const chars = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
+    assert.equal(chars.length, 1, 'exactly the estimated acquisition carries ≈');
+    assert.match(chars[0].getAttribute('aria-label'), /geschätzt/i);
   } finally {
     w.close();
   }

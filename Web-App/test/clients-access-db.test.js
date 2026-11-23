@@ -27,12 +27,12 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-/** @type {{ path: string, schluessel: string | undefined }[]} */
+/** @type {{ path: string, key: string | undefined }[]} */
 const fetches = [];
 // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
-  fetches.push({ path: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
+  fetches.push({ path: u.pathname, key: /** @type {any} */ (opts)?.headers?.Authorization });
   const req = new EventEmitter();
   setImmediate(() =>
     cb(
@@ -48,13 +48,13 @@ https.get = (url, opts, cb) => {
 };
 
 /** An access without a database: fixed key, free quota, throttle without waiting. */
-const accessWith = schluessel => {
-  const frei = { waitForSlot: async () => {}, throttle: () => {} };
+const accessWith = key => {
+  const free = { waitForSlot: async () => {}, throttle: () => {} };
   return {
-    key: async () => schluessel,
+    key: async () => key,
     count: async () => ({ allowed: true, count: 1, limit: 10 }),
     quotaStatus: async () => ({ count: 1, limit: 10, remaining: 9 }),
-    throttle: { foreground: frei, background: frei },
+    throttle: { foreground: free, background: free },
     bricksetReserve: async () => ({ attempt: 1, queued: true, atMost: 3 }),
     bricksetForgotten: async () => {},
   };
@@ -63,13 +63,13 @@ const accessWith = schluessel => {
 test('two clients in one process each ask with the key of their access', async () => {
   const { createRebrickable } = _req('clients/rebrickable.js');
   const { RbSet } = _req('clients/responses.js');
-  const erster = createRebrickable(accessWith('erster'));
-  const zweiter = createRebrickable(accessWith('zweiter'));
+  const firstOne = createRebrickable(accessWith('erster'));
+  const secondOne = createRebrickable(accessWith('zweiter'));
   fetches.length = 0;
-  await erster.rebrickableJson('/lego/sets/10001-1/', RbSet);
-  await zweiter.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  await firstOne.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  await secondOne.rebrickableJson('/lego/sets/10001-1/', RbSet);
   assert.deepEqual(
-    fetches.map(a => a.schluessel),
+    fetches.map(a => a.key),
     ['key erster', 'key zweiter'],
   );
 });
@@ -84,7 +84,7 @@ test('via the services fetches carry the stored key and count', { concurrency: 1
     await db.pool.end().catch(() => {});
   });
   const todayDate = new Date().toISOString().slice(0, 10);
-  const zaehler = async () =>
+  const counter = async () =>
     Number(
       (
         await db.get("SELECT count FROM api_calls WHERE day = $1 AND api = 'rebrickable' AND account_id = 0", [
@@ -92,12 +92,12 @@ test('via the services fetches carry the stored key and count', { concurrency: 1
         ])
       )?.count || 0,
     );
-  const vorher = await zaehler();
+  const prior = await counter();
 
   const { RbSet } = _req('src/externalSources/index.js');
   fetches.length = 0;
   const response = await S.testServices().externalSources.sources.rebrickableJson('/lego/sets/10001-1/', RbSet);
   assert.deepEqual(response, { set_num: '10001-1', name: 'Attrappe' });
-  assert.deepEqual(fetches, [{ path: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
-  assert.equal(await zaehler(), vorher + 1);
+  assert.deepEqual(fetches, [{ path: '/api/v3/lego/sets/10001-1/', key: 'key schluessel-zugang-1' }]);
+  assert.equal(await counter(), prior + 1);
 });

@@ -19,23 +19,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { openUi, sicht } = require('./helpers/ui');
+const { openUi, view } = require('./helpers/ui');
 
 /** The button as the opened “App” view shows it. */
-async function knopf() {
+async function button() {
   const o = await openUi({ '/v2/settings/tokens': { success: true, tokens: [] } });
   try {
-    await sicht(o.w, 'app');
+    await view(o.w, 'app');
     const a = o.d.querySelector('a.apk-btn');
     const qr = o.d.getElementById('qr-container');
     assert.ok(a && qr, 'Download button or QR code missing in the „App“ view');
-    const sichtbar = el => {
+    const visible = el => {
       for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false;
       return true;
     };
     return {
       href: a.getAttribute('href'),
-      sichtbar: sichtbar(a),
+      visible: visible(a),
       vorQr: !!(a.compareDocumentPosition(qr) & o.w.Node.DOCUMENT_POSITION_FOLLOWING),
       svg: !!a.querySelector('svg'),
       markup: a.outerHTML,
@@ -46,9 +46,13 @@ async function knopf() {
 }
 
 test('1. the button is in the "app" view, before the QR code, without a foreign brand mark', async () => {
-  const k = await knopf();
-  assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
-  assert.ok(k.sichtbar, 'The button is not visible in the opened view');
+  const k = await button();
+  assert.match(
+    k.href,
+    /^https:\/\/github\.com\//,
+    'The button does not point to GitHub — that is where the APK lives.',
+  );
+  assert.ok(k.visible, 'The button is not visible in the opened view');
   // First get the app, then link the device; the other way round there is nothing to scan yet.
   assert.ok(k.vorQr, 'The button is behind the QR code');
   // Google's Android robot is bound by trademark law; the icon is deliberately our own.
@@ -57,7 +61,7 @@ test('1. the button is in the "app" view, before the QR code, without a foreign 
 });
 
 test('2. the same address as in the workflow', async () => {
-  const address = (await knopf()).href;
+  const address = (await button()).href;
   // ── From the workflow: fixed link and the name under which the APK is created ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];

@@ -73,7 +73,7 @@ async function asAccount(actor, path, opts = {}) {
 }
 
 /** Create an instruction row as the upload produces it. */
-async function anleitung(uid, sn, relPath) {
+async function instruction(uid, sn, relPath) {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [uid, sn]);
   await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5)', [
     uid,
@@ -95,7 +95,7 @@ test('routes/sets against a real database', async t => {
   await startApi();
 
   await t.test('the own account can delete its instructions', async () => {
-    const id = await anleitung(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
+    const id = await instruction(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
     const r = await asAccount(U.anna, `/api/v2/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal(await db.get('SELECT id FROM instructions WHERE id=$1', [id]), undefined, 'The row was not deleted');
@@ -108,7 +108,7 @@ test('routes/sets against a real database', async t => {
     //
     // That is the most expensive failure in the whole module: it reports no error,
     // it simply deletes somebody else's data.
-    const id = await anleitung(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
+    const id = await instruction(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
     const r = await asAccount(U.bruno, `/api/v2/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 404, 'A foreign account got access to the instructions');
     assert.ok(await db.get('SELECT id FROM instructions WHERE id=$1', [id]), "Another account's row was deleted");
@@ -121,8 +121,8 @@ test('routes/sets against a real database', async t => {
     const abs = path.join(ROOT, 'data/uploads/geteilt/x.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
-    const idA = await anleitung(U.anna, '10003-1', rel);
-    await anleitung(U.bruno, '10003-1', rel);
+    const idA = await instruction(U.anna, '10003-1', rel);
+    await instruction(U.bruno, '10003-1', rel);
 
     const r = await asAccount(U.anna, `/api/v2/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
@@ -137,7 +137,7 @@ test('routes/sets against a real database', async t => {
     const abs = path.join(ROOT, 'data/uploads/allein/y.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
-    const id = await anleitung(U.anna, '10004-1', rel);
+    const id = await instruction(U.anna, '10004-1', rel);
 
     await asAccount(U.anna, `/api/v2/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(fs.existsSync(abs), false, 'The orphaned file was left behind');

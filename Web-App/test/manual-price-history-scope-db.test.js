@@ -31,7 +31,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
   const FN = `ph-fig-${process.pid}`;
   const CUR = 'EUR';
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]).catch(() => {});
@@ -60,7 +60,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       [id, CUR],
     );
 
-  await aufraeumen();
+  await cleanUp();
 
   // ── CREATE stock, and that consistently with the SUB-ACCOUNT ────────────────
   await holdsSet(db, subId, SN, 0); // quantity 0: the acquisition behind it carries it
@@ -149,7 +149,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       );
     }
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM user_settings WHERE user_id IN ($1,$2)`, [mainId, subId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

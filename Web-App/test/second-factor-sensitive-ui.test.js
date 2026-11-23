@@ -12,15 +12,15 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 test('mandatory change with second factor asks for the code', async () => {
-  const wechsel = [];
+  const change = [];
   const { w, d } = await openUi({
     '/v2/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
     '/v2/auth/change-password': (_url, o) => {
       const body = JSON.parse(o.body);
-      wechsel.push(body);
+      change.push(body);
       return body.code
         ? { success: true }
         : { $status: 400, success: false, code: 'second_factor_required', error: 'Code fehlt' };
@@ -28,7 +28,7 @@ test('mandatory change with second factor asks for the code', async () => {
   });
   try {
     assert.ok(
-      await warte(() => d.getElementById('panel-required-change')?.style.display === 'block'),
+      await waitFor(() => d.getElementById('panel-required-change')?.style.display === 'block'),
       'precondition: mandatory change visible',
     );
     d.getElementById('required-alt').value = 'Start-Passwort-1';
@@ -39,17 +39,17 @@ test('mandatory change with second factor asks for the code', async () => {
 
     const codeWrap = d.getElementById('cd-code-wrap');
     assert.ok(
-      await warte(() => codeWrap && !codeWrap.hidden && d.getElementById('confirm-modal').style.display === 'flex'),
+      await waitFor(() => codeWrap && !codeWrap.hidden && d.getElementById('confirm-modal').style.display === 'flex'),
       'the code dialog appears',
     );
     assert.equal(d.getElementById('cd-pw-wrap').hidden, true, 'no password field in the code dialog');
     d.getElementById('cd-code').value = ' 123456 ';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => wechsel.length === 2), `only ${wechsel.length} request(s)`);
-    assert.equal(wechsel[0].code, undefined);
-    assert.equal(wechsel[1].code, '123456', 'the second request carries the code');
-    assert.equal(wechsel[1].newPassword, 'Neues-Passwort-22');
-    await takt(20);
+    assert.ok(await waitFor(() => change.length === 2), `only ${change.length} request(s)`);
+    assert.equal(change[0].code, undefined);
+    assert.equal(change[1].code, '123456', 'the second request carries the code');
+    assert.equal(change[1].newPassword, 'Neues-Passwort-22');
+    await tick(20);
   } finally {
     w.close();
   }

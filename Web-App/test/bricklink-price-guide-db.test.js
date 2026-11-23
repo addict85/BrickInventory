@@ -24,11 +24,11 @@ const { dataOrSkip } = require('./helpers/db');
 
 const fetches = [];
 /** Price per guide_type; if one is missing, BrickLink delivers 0. */
-let preise = {};
+let prices = {};
 testSources(null, {
   bricklinkRequest: async (_method, path, params) => {
     fetches.push({ path, ...params });
-    const p = String(preise[params.guide_type] ?? 0);
+    const p = String(prices[params.guide_type] ?? 0);
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
 });
@@ -53,7 +53,7 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
 
   await t.test('without a value the new price from the sales', async () => {
     fetches.length = 0;
-    preise = { sold: 120 };
+    prices = { sold: 120 };
     const g = await priceGuideQuery(SET);
     assert.deepEqual(
       fetches.map(a => [a.new_or_used, a.guide_type]),
@@ -63,7 +63,7 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
   });
 
   await t.test('without a sale in six months the offers — for sets, parts and figures', async () => {
-    preise = { sold: 0, stock: 80 };
+    prices = { sold: 0, stock: 80 };
     fetches.length = 0;
     const g = await priceGuideQuery(SET, 'U');
     assert.deepEqual(
@@ -76,8 +76,8 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
     assert.deepEqual([g.avg_price, g.guide_used, g.guide_fallback], ['80', 'stock', true]);
 
     fetches.length = 0;
-    const teil = await fetchPartPrice(PART, 4, 'N', 'EUR', 24);
-    assert.equal(teil.avg_price, 80, JSON.stringify(teil));
+    const part = await fetchPartPrice(PART, 4, 'N', 'EUR', 24);
+    assert.equal(part.avg_price, 80, JSON.stringify(part));
     assert.deepEqual(
       fetches.slice(0, 2).map(a => a.guide_type),
       ['sold', 'stock'],
@@ -85,8 +85,8 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
     assert.match(fetches[0].path, new RegExp(`/items/part/${PART}/price`));
 
     fetches.length = 0;
-    const figur = await fetchMinifigPrice(FIGURE, 'N', 'EUR', 24);
-    assert.equal(figur.avg_price, 80, JSON.stringify(figur));
+    const minifig = await fetchMinifigPrice(FIGURE, 'N', 'EUR', 24);
+    assert.equal(minifig.avg_price, 80, JSON.stringify(minifig));
     assert.deepEqual(
       fetches.slice(0, 2).map(a => a.guide_type),
       ['sold', 'stock'],

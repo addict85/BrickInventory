@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, sicht, reiter } = require('./helpers/ui');
+const { openUi, waitFor, view, switchTab } = require('./helpers/ui');
 
 const NAME = 'A & B <C>';
 
@@ -33,10 +33,10 @@ test('delete message names the set name literally', async () => {
     },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery .delbtn[data-click="delSetStop"]')), 'tile with trash can');
+    assert.ok(await waitFor(() => d.querySelector('#gallery .delbtn[data-click="delSetStop"]')), 'tile with trash can');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
     // The own set goes without a question (js/deletion.js); the name stands in the toast instead.
-    assert.ok(await warte(() => d.querySelector('#toasts .toast.success .toast-text')), 'no message');
+    assert.ok(await waitFor(() => d.querySelector('#toasts .toast.success .toast-text')), 'no message');
     const text = d.querySelector('#toasts .toast.success .toast-text').textContent;
     assert.ok(text.includes(NAME), `message: ${text}`);
     assert.ok(!text.includes('&amp;'), `message is escaped twice: ${text}`);
@@ -57,8 +57,8 @@ test('former link names the path literally', async () => {
     },
   });
   try {
-    await sicht(w, 'household');
-    assert.ok(await warte(() => d.body.textContent.includes('Jerry')), 'household loaded');
+    await view(w, 'household');
+    assert.ok(await waitFor(() => d.body.textContent.includes('Jerry')), 'household loaded');
     const place = [...d.querySelectorAll('span')].find(s => s.textContent.includes('Jerry'));
     assert.ok(place.textContent.includes('Tom & Jerry'), `Text: ${place.textContent}`);
     assert.ok(!place.innerHTML.includes('&amp;amp;'), `escaped twice: ${place.innerHTML}`);
@@ -68,7 +68,7 @@ test('former link names the path literally', async () => {
 });
 
 test('pause names an unknown job kind literally', async () => {
-  const { w, d, ruhig } = await openUi({
+  const { w, d, settle } = await openUi({
     '/v2/admin/job-status': { success: true, job: { running: false } },
     '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v2/admin/job-queue': {
@@ -81,10 +81,10 @@ test('pause names an unknown job kind literally', async () => {
     },
   });
   try {
-    await reiter(w, 'monitor');
-    await ruhig();
+    await switchTab(w, 'monitor');
+    await settle();
     assert.ok(
-      await warte(() => d.body.textContent.includes('x&y') || d.body.innerHTML.includes('x&amp;amp;y')),
+      await waitFor(() => d.body.textContent.includes('x&y') || d.body.innerHTML.includes('x&amp;amp;y')),
       'pause visible',
     );
     assert.ok(d.body.textContent.includes('x&y'), 'job type is shown literally');

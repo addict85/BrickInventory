@@ -20,18 +20,18 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const { loadConfig, databaseConnection, ConfigError } = _req('src/infra/config.js');
 
-const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
-test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-const datei = (name, inhalt) => {
-  const p = path.join(ordner, name);
-  fs.writeFileSync(p, inhalt, { mode: 0o600 });
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
+test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+const file = (name, content) => {
+  const p = path.join(dir, name);
+  fs.writeFileSync(p, content, { mode: 0o600 });
   return p;
 };
 
 test('the session secret comes from the file', () => {
   const env = {
-    SESSION_SECRET_FILE: datei('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
-    ADMIN_PASSWORD_FILE: datei('verwalter', 'Verwalter-aus-Datei-1'),
+    SESSION_SECRET_FILE: file('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
+    ADMIN_PASSWORD_FILE: file('verwalter', 'Verwalter-aus-Datei-1'),
   };
   const k = loadConfig(env);
   assert.equal(k.sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
@@ -41,20 +41,20 @@ test('the session secret comes from the file', () => {
 });
 
 test('the database password comes from the file', () => {
-  const v = databaseConnection({ PGPASSWORD_FILE: datei('db', 'db-aus-datei\n'), PGUSER: 'brickinventory_app' });
+  const v = databaseConnection({ PGPASSWORD_FILE: file('db', 'db-aus-datei\n'), PGUSER: 'brickinventory_app' });
   assert.equal(v.password, 'db-aus-datei');
-  const url = databaseConnection({ DATABASE_URL_FILE: datei('url', 'postgres://a:b@c/d\n') });
+  const url = databaseConnection({ DATABASE_URL_FILE: file('url', 'postgres://a:b@c/d\n') });
   assert.equal(url.connectionString, 'postgres://a:b@c/d');
 });
 
 test('both set is an error, a missing file too', () => {
   assert.throws(
-    () => loadConfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
+    () => loadConfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: file('s2', 'y'.repeat(40)) }),
     (/** @type {any} */ e) =>
       e instanceof ConfigError && e.error.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
   );
   assert.throws(
-    () => loadConfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
+    () => loadConfig({ PGPASSWORD_FILE: path.join(dir, 'gibt-es-nicht') }),
     (/** @type {any} */ e) => e instanceof ConfigError && e.error.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
   );
 });

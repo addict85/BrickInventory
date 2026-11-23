@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -36,7 +36,7 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await holdsSet(db, uid, SN, 2);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const put = async quantity =>
     (
       await fetch(`${base}/api/v2/sets/${SN}`, {
@@ -53,7 +53,7 @@ test('the web app takes the quantity from the response', async () => {
   // The server caps the reduction (acquisitions of other accounts in the household): it writes 2, not 1.
   // Afterwards the detail rereads the set; the server names the same quantity there.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v2/sets/10294-1': (_url, o) => {
       if (o?.method === 'PUT') SET.quantity = 2;
@@ -62,14 +62,14 @@ test('the web app takes the quantity from the response', async () => {
     '/v2/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.getElementById('m-qty')?.value === '3'), 'The detail does not show the quantity');
+    assert.ok(await waitFor(() => d.getElementById('m-qty')?.value === '3'), 'The detail does not show the quantity');
     d.getElementById('m-qty').value = '1';
     d.getElementById('m-qty').dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'The quantity is not saved');
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT')), 'The quantity is not saved');
     assert.ok(
-      await warte(() => d.getElementById('m-qty').value === '2'),
+      await waitFor(() => d.getElementById('m-qty').value === '2'),
       `The field keeps its own assumption: ${d.getElementById('m-qty').value}`,
     );
   } finally {

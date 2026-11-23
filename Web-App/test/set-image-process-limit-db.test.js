@@ -37,7 +37,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const db = testData();
 const sharp = require(path.join(ROOT, 'node_modules', 'sharp'));
 
@@ -50,46 +50,51 @@ const FREMD = '60000-1';
 const imageAddress = (/** @type {string} */ sn) => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
 
 function freePort() {
-  return new Promise((auf, ab) => {
+  return new Promise((opened, ab) => {
     const s = net
       .createServer()
       .listen(0, '127.0.0.1', () => {
         const addr = s.address();
         const port = typeof addr === 'object' && addr ? addr.port : 0;
-        s.close(() => auf(port));
+        s.close(() => opened(port));
       })
       .on('error', ab);
   });
 }
 
-/** @returns {Promise<{ status: number, typ: string, bytes: number }>} */
-function hole(/** @type {number} */ port, /** @type {string} */ weg, /** @type {string} */ token) {
-  return new Promise((auf, ab) => {
+/** @returns {Promise<{ status: number, kind: string, bytes: number }>} */
+function hole(/** @type {number} */ port, /** @type {string} */ route, /** @type {string} */ token) {
+  return new Promise((opened, ab) => {
     http
-      .get({ host: '127.0.0.1', port, path: weg, agent: false, headers: { authorization: `Bearer ${token}` } }, res => {
-        let n = 0;
-        res.on('data', d => {
-          n += d.length;
-        });
-        res.on('end', () => auf({ status: res.statusCode ?? 0, typ: String(res.headers['content-type']), bytes: n }));
-      })
+      .get(
+        { host: '127.0.0.1', port, path: route, agent: false, headers: { authorization: `Bearer ${token}` } },
+        res => {
+          let n = 0;
+          res.on('data', d => {
+            n += d.length;
+          });
+          res.on('end', () =>
+            opened({ status: res.statusCode ?? 0, kind: String(res.headers['content-type']), bytes: n }),
+          );
+        },
+      )
       .on('error', ab);
   });
 }
 
-/** @param {() => Promise<boolean> | boolean} bedingung */
-async function bis(bedingung, ms) {
-  for (const ende = Date.now() + ms; Date.now() < ende; await warte(250)) if (await bedingung()) return true;
-  return bedingung();
+/** @param {() => Promise<boolean> | boolean} condition */
+async function until(condition, ms) {
+  for (const end = Date.now() + ms; Date.now() < end; await sleep(250)) if (await condition()) return true;
+  return condition();
 }
 
 test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-prozesse-'));
-  fs.symlinkSync(path.join(ROOT, 'public'), path.join(wurzel, 'public'));
-  const sets = path.join(wurzel, 'data', 'images', 'sets');
-  const cache = path.join(wurzel, 'data', 'img_proxy_cache');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-prozesse-'));
+  fs.symlinkSync(path.join(ROOT, 'public'), path.join(root, 'public'));
+  const sets = path.join(root, 'data', 'images', 'sets');
+  const cache = path.join(root, 'data', 'img_proxy_cache');
 
   const image = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c33' } })
     .jpeg()
@@ -115,7 +120,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
 
   /** @type {(import('node:child_process').ChildProcess & { log: string })[]} */
   const processes = [];
-  const starte = (/** @type {string} */ rolle, /** @type {number} */ port) => {
+  const start = (/** @type {string} */ role, /** @type {number} */ port) => {
     const p = /** @type {import('node:child_process').ChildProcess & { log: string }} */ (
       spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
         cwd: ROOT,
@@ -123,14 +128,14 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
         env: {
           ...process.env,
           DATABASE_URL: URL_DB,
-          APP_ROOT: wurzel,
+          APP_ROOT: root,
           SESSION_SECRET: 'setbild-prozesse-geheimnis-lang-genug-1',
           PORT: String(port),
-          ROLE: rolle,
+          ROLE: role,
           NODE_ENV: 'production',
           DB_SUPERUSER_ALLOWED: '1',
           APP_BASE_URL_MISSING_OK: '1',
-          CDN_UMLEITUNG_PORT: String(cdnPort),
+          CDN_REDIRECT_PORT: String(cdnPort),
           NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'helpers', 'cdn-redirect.js')}`,
         },
       })
@@ -150,7 +155,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
   const TOKEN = `setbild-token-${process.pid}-${Date.now()}`;
   t.after(async () => {
     for (const p of processes) if (p.exitCode === null && p.signalCode === null) p.kill('SIGTERM');
-    for (let i = 0; i < 100 && processes.some(p => p.exitCode === null && p.signalCode === null); i++) await warte(100);
+    for (let i = 0; i < 100 && processes.some(p => p.exitCode === null && p.signalCode === null); i++) await sleep(100);
     for (const p of processes) if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
     cdn.close();
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
@@ -158,7 +163,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
       .run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[FRESH, ONLY_PREVIEW, LOCKED, FREMD]])
       .catch(() => {});
     await db.pool.end().catch(() => {});
-    fs.rmSync(wurzel, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   // Without today's stamps the job process downloads the Rebrickable catalog.
@@ -175,15 +180,15 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
       imageAddress(sn),
     ]);
   }
-  const nutzer = await db.get(
+  const user = await db.get(
     `INSERT INTO users (username, password_hash, is_active, email_verified)
                                VALUES ($1, 'x', true, true) RETURNING id`,
     [NAME],
   );
   for (const sn of [FRESH, ONLY_PREVIEW, LOCKED])
-    await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [nutzer.id, sn]);
+    await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [user.id, sn]);
   await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
-    nutzer.id,
+    user.id,
     crypto.createHash('sha256').update(TOKEN).digest('hex'),
   ]);
 
@@ -196,11 +201,11 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     fs.writeFileSync(path.join(cache, `${proxyCacheKey(imageAddress(sn))}_thumb.jpg`), previewInCache);
 
   const webPort = await freePort();
-  const web = starte('web', webPort);
-  assert.ok(await bis(() => /localhost:\d+/.test(web.log), 60_000), web.log.slice(-1500));
+  const web = start('web', webPort);
+  assert.ok(await until(() => /localhost:\d+/.test(web.log), 60_000), web.log.slice(-1500));
   const proxy = (/** @type {string} */ sn) =>
     hole(webPort, `/api/v1/img-proxy?url=${encodeURIComponent(imageAddress(sn))}&thumb=1&gen=0`, TOKEN);
-  const liegt = (/** @type {string} */ datei) => fs.existsSync(path.join(sets, datei));
+  const located = (/** @type {string} */ file) => fs.existsSync(path.join(sets, file));
   const noted = async (/** @type {string} */ sn) =>
     !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [imageAddress(sn), sn]));
 
@@ -209,21 +214,21 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     const fremd = await proxy(FREMD);
     assert.deepEqual([fremd.status, fremd.bytes], [200, image.length]);
     const r = await proxy(FRESH);
-    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', image.length]);
-    assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg is missing\n${web.log.slice(-1500)}`);
+    assert.deepEqual([r.status, r.kind, r.bytes], [200, 'image/jpeg', image.length]);
+    assert.ok(await until(() => located(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg is missing\n${web.log.slice(-1500)}`);
     // The buffer goes into the database every 10 s.
-    assert.ok(await bis(() => noted(FRESH), 15_000), `no note for ${FRESH}\n${web.log.slice(-1500)}`);
-    assert.deepEqual([liegt(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
+    assert.ok(await until(() => noted(FRESH), 15_000), `no note for ${FRESH}\n${web.log.slice(-1500)}`);
+    assert.deepEqual([located(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
   });
 
   await t.test('only the preview in the cache: the proxy fetches the original and stores it', async () => {
     const r = await proxy(ONLY_PREVIEW);
     assert.equal(r.status, 200);
     assert.ok(
-      await bis(() => liegt(`${ONLY_PREVIEW}.jpg`), 5_000),
+      await until(() => located(`${ONLY_PREVIEW}.jpg`), 5_000),
       `${ONLY_PREVIEW}.jpg is missing\n${web.log.slice(-1500)}`,
     );
-    assert.ok(await bis(() => noted(ONLY_PREVIEW), 15_000), `no note for ${ONLY_PREVIEW}\n${web.log.slice(-1500)}`);
+    assert.ok(await until(() => noted(ONLY_PREVIEW), 15_000), `no note for ${ONLY_PREVIEW}\n${web.log.slice(-1500)}`);
     assert.ok(
       ids.every(k => k.startsWith('Mozilla/')),
       'The web process asks the CDN with a browser identifier',
@@ -232,25 +237,25 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
 
   await t.test('if the CDN rejects the new request, the preview comes from the cache', async () => {
     const r = await proxy(LOCKED);
-    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', previewInCache.length], web.log.slice(-1500));
-    assert.equal(liegt(`${LOCKED}.jpg`), false);
+    assert.deepEqual([r.status, r.kind, r.bytes], [200, 'image/jpeg', previewInCache.length], web.log.slice(-1500));
+    assert.equal(located(`${LOCKED}.jpg`), false);
   });
 
   await t.test('the job process creates the preview and registers image_local', async () => {
-    const jobs = starte('jobs', await freePort());
-    const fertig = async () => {
-      const zeilen = await db.all('SELECT set_number, image_local FROM set_catalog WHERE set_number = ANY($1)', [
+    const jobs = start('jobs', await freePort());
+    const done = async () => {
+      const lines = await db.all('SELECT set_number, image_local FROM set_catalog WHERE set_number = ANY($1)', [
         [FRESH, ONLY_PREVIEW],
       ]);
       return (
-        zeilen.length === 2 &&
-        zeilen.every(z => z.image_local === `/images/sets/${z.set_number}.jpg`) &&
-        liegt(`${FRESH}_thumb.jpg`) &&
-        liegt(`${ONLY_PREVIEW}_thumb.jpg`)
+        lines.length === 2 &&
+        lines.every(z => z.image_local === `/images/sets/${z.set_number}.jpg`) &&
+        located(`${FRESH}_thumb.jpg`) &&
+        located(`${ONLY_PREVIEW}_thumb.jpg`)
       );
     };
     assert.ok(
-      await bis(fertig, 60_000),
+      await until(done, 60_000),
       `files: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(no folder)'}\n${jobs.log.slice(-2000)}`,
     );
     const preview = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();

@@ -65,7 +65,7 @@ test('API v1 as alias of v2', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME, isAdmin: true }, t });
   const call = async (method, path, body) => {
     const r = await fetch(base + path, {
       method,

@@ -14,18 +14,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
-for (const [language, bauliste, neu] of [
+for (const [language, buildList, fresh] of [
   ['de', 'Bauliste', 'Neuware'],
   ['en', 'Build list', 'New'],
 ]) {
-  test(`${language}: ${bauliste} in bar and heading, condition “${neu}”`, async () => {
+  test(`${language}: ${buildList} in bar and heading, condition “${fresh}”`, async () => {
     const { w, d } = await openUi({}, { language });
     try {
-      assert.equal(d.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim(), bauliste);
-      assert.equal(d.querySelector('#tab-partslist .ptitle').textContent.trim(), bauliste);
-      assert.equal(d.querySelector('#add-condition option[value="N"]').textContent.trim(), neu);
+      assert.equal(d.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim(), buildList);
+      assert.equal(d.querySelector('#tab-partslist .ptitle').textContent.trim(), buildList);
+      assert.equal(d.querySelector('#add-condition option[value="N"]').textContent.trim(), fresh);
     } finally {
       w.close();
     }
@@ -41,8 +41,8 @@ test('parts tile shows ×N', async () => {
     },
   });
   try {
-    await reiter(w, 'parts');
-    await warte(() => !!d.querySelector('.part-card .part-qty'));
+    await switchTab(w, 'parts');
+    await waitFor(() => !!d.querySelector('.part-card .part-qty'));
     assert.equal(d.querySelector('.part-card .part-qty').textContent.trim(), '×12');
   } finally {
     w.close();
@@ -52,14 +52,14 @@ test('parts tile shows ×N', async () => {
 test('de: set number without hyphen, as in the Android app', async () => {
   const { w, d } = await openUi({});
   try {
-    const texte = [
+    const texts = [
       d.body.textContent,
       ...[...d.querySelectorAll('[placeholder], [aria-label]')].map(
         e => `${e.getAttribute('placeholder') ?? ''} ${e.getAttribute('aria-label') ?? ''}`,
       ),
     ].join('\n');
-    assert.match(texte, /Setnummer/, 'the interface does not name the set number at all');
-    assert.doesNotMatch(texte, /Set-Nummer/);
+    assert.match(texts, /Setnummer/, 'the interface does not name the set number at all');
+    assert.doesNotMatch(texts, /Set-Nummer/);
     assert.equal(d.querySelector('label[for="add-num"]').textContent.trim(), 'Setnummer *');
   } finally {
     w.close();
@@ -69,7 +69,7 @@ test('de: set number without hyphen, as in the Android app', async () => {
 test('en: placeholder of the storage location field', async () => {
   const { w, d } = await openUi({}, { language: 'en' });
   try {
-    await warte(() => d.documentElement.lang === 'en');
+    await waitFor(() => d.documentElement.lang === 'en');
     assert.equal(d.getElementById('storage-new').getAttribute('placeholder'), 'New storage location');
   } finally {
     w.close();

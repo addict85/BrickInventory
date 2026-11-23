@@ -29,7 +29,7 @@ async function seed() {
   }
   for (const [name, mail] of [
     ['ich', 'ich@example.test'],
-    ['ohnemail', null],
+    ['noMail', null],
   ]) {
     await db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1,$2,'x')`, [name, mail]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
@@ -37,13 +37,13 @@ async function seed() {
 }
 
 /** Set the market price — what the price run otherwise fetches from BrickLink. */
-async function setPrice(preis, condition = 'N', currency = 'EUR') {
+async function setPrice(price, condition = 'N', currency = 'EUR') {
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
      VALUES ($1,$2,$3,$4,NOW())
      ON CONFLICT (set_number, currency_code, condition)
        DO UPDATE SET avg_price = $4, fetched_at = NOW()`,
-    [SN, condition, currency, preis],
+    [SN, condition, currency, price],
   );
 }
 
@@ -80,7 +80,7 @@ test('price alert against a real database', async t => {
     if (sendingError) throw new Error(sendingError);
     sent.push(m);
   };
-  const pruefe = sn => A.checkSet(sn, { ...require('./helpers/sources').testServices().mail, sendMail: send });
+  const check = sn => A.checkSet(sn, { ...require('./helpers/sources').testServices().mail, sendMail: send });
 
   await t.test('the direction means what it says', () => {
     // The only place in the module where a sign error arises.
@@ -95,21 +95,21 @@ test('price alert against a real database', async t => {
   await t.test('nonsensical input is rejected, not bent into shape', async () => {
     // A silently corrected threshold would be worse than a
     // refusal: the alert would stand there and report never or always.
-    for (const [field, wert] of [
+    for (const [field, value] of [
       ['direction', 'seitwärts'],
       ['threshold', 0],
       ['threshold', -5],
       ['threshold', 'abc'],
       ['condition', 'X'],
     ]) {
-      const eingabe = { direction: 'below', threshold: 200, condition: 'N', [field]: wert };
+      const input = { direction: 'below', threshold: 200, condition: 'N', [field]: value };
       // Checked on `code`, not on the message: fachfehler() sets as
       // `message` the GERMAN sentence — a test on it would break on every
       // rephrasing without the behavior changing.
       await assert.rejects(
-        () => A.setAlert(U.ich, SN, 'EUR', eingabe),
+        () => A.setAlert(U.ich, SN, 'EUR', input),
         (/** @type {any} */ e) => String(e.code || '').startsWith('alert_'),
-        `${field}=${wert} was accepted`,
+        `${field}=${value} was accepted`,
       );
     }
   });
@@ -119,21 +119,21 @@ test('price alert against a real database', async t => {
 
     // 1. Above the threshold — nothing to report.
     await setPrice(250);
-    assert.equal(await pruefe(SN), 0, 'above the threshold nothing may come');
+    assert.equal(await check(SN), 0, 'above the threshold nothing may come');
 
     // 2. Falling below — one message.
     await setPrice(180);
-    assert.equal(await pruefe(SN), 1, 'going below was not reported');
+    assert.equal(await check(SN), 1, 'going below was not reported');
     assert.match(sent.at(-1).subject, /10179-1/);
 
     // 3. Stays below — NO second message. Without this marker an hourly
     //    price run would produce a mail every hour.
     await setPrice(170);
-    assert.equal(await pruefe(SN), 0, 'second message without a new transition');
+    assert.equal(await check(SN), 0, 'second message without a new transition');
 
     // 4. Back above — the marker falls.
     await setPrice(260);
-    assert.equal(await pruefe(SN), 0);
+    assert.equal(await check(SN), 0);
     const nach = (await A.alertsFor(U.ich, SN))[0];
     assert.equal(nach.triggered, false, 'the marker was not reset');
 
@@ -141,7 +141,7 @@ test('price alert against a real database', async t => {
     //    blocking period („at most once a week"), and exactly this is the
     //    case that is interesting again.
     await setPrice(150);
-    assert.equal(await pruefe(SN), 1, 'the second drop below was swallowed');
+    assert.equal(await check(SN), 1, 'the second drop below was swallowed');
   });
 
   await t.test('a new threshold is a new question', async () => {
@@ -150,7 +150,7 @@ test('price alert against a real database', async t => {
     await setPrice(150);
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 160, condition: 'N' });
     assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false);
-    assert.equal(await pruefe(SN), 1, 'after the change it was not reported again');
+    assert.equal(await check(SN), 1, 'after the change it was not reported again');
   });
 
   await t.test('the currency belongs to the threshold', async () => {
@@ -159,9 +159,9 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await A.setAlert(U.ich, SN, 'CHF', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(10, 'N', 'EUR'); // cheap, but in the wrong currency
-    assert.equal(await pruefe(SN), 0, 'a price in a foreign currency triggered');
+    assert.equal(await check(SN), 0, 'a price in a foreign currency triggered');
     await setPrice(10, 'N', 'CHF');
-    assert.equal(await pruefe(SN), 1);
+    assert.equal(await check(SN), 1);
   });
 
   await t.test('the condition separates the alerts', async () => {
@@ -171,19 +171,19 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(50, 'U');
-    assert.equal(await pruefe(SN), 0, 'the used price triggered the new-condition alert');
+    assert.equal(await check(SN), 0, 'the used price triggered the new-condition alert');
     await setPrice(150, 'N');
-    assert.equal(await pruefe(SN), 1);
+    assert.equal(await check(SN), 1);
   });
 
   await t.test('an account without a mail address does not block the run', async () => {
     // The marker is set nevertheless — otherwise the check would run through
     // all alerts of this account again on every run.
     await db.run('DELETE FROM price_alerts', []);
-    await A.setAlert(U.ohnemail, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
+    await A.setAlert(U.noMail, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 0, 'without an address nothing may be sent');
-    assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'the marker must be set anyway');
+    assert.equal(await check(SN), 0, 'without an address nothing may be sent');
+    assert.equal((await A.alertsFor(U.noMail, SN))[0].triggered, true, 'the marker must be set anyway');
   });
 
   await t.test('a failed send leaves the flag unset', async () => {
@@ -194,11 +194,11 @@ test('price alert against a real database', async t => {
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     sendingError = 'SMTP weg';
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 0);
+    assert.equal(await check(SN), 0);
     assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false, 'after a failed send the marker must not be set');
     sendingError = null;
     // And on the next run it is tried again.
-    assert.equal(await pruefe(SN), 1, 'the second attempt did not happen');
+    assert.equal(await check(SN), 1, 'the second attempt did not happen');
   });
 
   await t.test('fetch: without a marker nothing comes back, only the timestamp', async () => {
@@ -209,11 +209,11 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 1);
+    assert.equal(await check(SN), 1);
 
-    for (const ohne of [undefined, null, '', '   ', 'kein Datum']) {
-      const r = await A.triggeredSince(U.ich, ohne);
-      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} returned messages`);
+    for (const without of [undefined, null, '', '   ', 'kein Datum']) {
+      const r = await A.triggeredSince(U.ich, without);
+      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(without)} returned messages`);
       assert.ok(r.now instanceof Date, "the server's timestamp is missing");
     }
   });
@@ -224,45 +224,45 @@ test('price alert against a real database', async t => {
     // same message would come again on every hourly run.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    const vorher = (await A.triggeredSince(U.ich, null)).now;
+    const prior = (await A.triggeredSince(U.ich, null)).now;
 
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 1);
+    assert.equal(await check(SN), 1);
 
-    const erste = await A.triggeredSince(U.ich, vorher);
+    const first = await A.triggeredSince(U.ich, prior);
     // The timestamps here too: a full CI run failed on this subtest
     // once, and the report did not show WHICH
     // of the two assertions broke. Both therefore name their values.
     assert.equal(
-      erste.alerts.length,
+      first.alerts.length,
       1,
       'the triggered threshold is missing. ' +
-        `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+        `prior=${prior?.toISOString?.() ?? prior}, ` +
         `last_triggered_at=${(await db.get('SELECT last_triggered_at FROM price_alerts'))?.last_triggered_at}`,
     );
-    assert.equal(erste.alerts[0].set_number, SN);
-    assert.equal(erste.alerts[0].direction, 'below');
+    assert.equal(first.alerts[0].set_number, SN);
+    assert.equal(first.alerts[0].direction, 'below');
     // numeric comes out of the driver as a string — if it came through like that,
     // the message would say "200.00" instead of a number, and the app would compute
     // on a string.
-    assert.equal(typeof erste.alerts[0].threshold, 'number');
-    assert.equal(erste.alerts[0].threshold, 200);
-    assert.equal(typeof erste.alerts[0].last_price, 'number');
-    assert.equal(erste.alerts[0].last_price, 100);
+    assert.equal(typeof first.alerts[0].threshold, 'number');
+    assert.equal(first.alerts[0].threshold, 200);
+    assert.equal(typeof first.alerts[0].last_price, 'number');
+    assert.equal(first.alerts[0].last_price, 100);
 
-    const zweite = await A.triggeredSince(U.ich, erste.now);
+    const second = await A.triggeredSince(U.ich, first.now);
     // The timestamps stand in the message, and that has a reason: exactly
     // this assertion turned red for me ONCE in a full run and
     // no longer in four repetitions. Without the three values the
     // error report would only say „kam ein zweites Mal" — and with that again nothing to …
     assert.deepEqual(
-      zweite.alerts,
+      second.alerts,
       [],
       'the same message came a second time. ' +
-        `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
-        `last_triggered_at=${erste.alerts[0]?.last_triggered_at?.toISOString?.() ?? erste.alerts[0]?.last_triggered_at}, ` +
-        `erste.now=${erste.now?.toISOString?.() ?? erste.now}`,
+        `prior=${prior?.toISOString?.() ?? prior}, ` +
+        `last_triggered_at=${first.alerts[0]?.last_triggered_at?.toISOString?.() ?? first.alerts[0]?.last_triggered_at}, ` +
+        `first.now=${first.now?.toISOString?.() ?? first.now}`,
     );
   });
 
@@ -273,19 +273,19 @@ test('price alert against a real database', async t => {
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
 
     const WITH_MICRO = '2026-09-19 20:29:58.527431+00';
-    const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
+    const MS_ONLY = new Date('2026-09-19T20:29:58.527Z');
     await db.run(
       `UPDATE price_alerts SET triggered = TRUE, last_triggered_at = $1::timestamptz,
               last_price = 100 WHERE user_id = $2`,
       [WITH_MICRO, U.ich],
     );
 
-    const r = await A.triggeredSince(U.ich, NUR_MILLI);
+    const r = await A.triggeredSince(U.ich, MS_ONLY);
     assert.deepEqual(
       r.alerts,
       [],
       'The message came a second time: the database holds ' +
-        `${WITH_MICRO}, the marker carries ${NUR_MILLI.toISOString()}. ` +
+        `${WITH_MICRO}, the marker carries ${MS_ONLY.toISOString()}. ` +
         'The microseconds decide — they must not.',
     );
 
@@ -302,13 +302,13 @@ test('price alert against a real database', async t => {
     // set an alert.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    const vorher = (await A.triggeredSince(U.ich, null)).now;
+    const prior = (await A.triggeredSince(U.ich, null)).now;
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
-    assert.equal(await pruefe(SN), 1);
+    assert.equal(await check(SN), 1);
 
-    assert.equal((await A.triggeredSince(U.ich, vorher)).alerts.length, 1);
-    assert.deepEqual((await A.triggeredSince(U.ohnemail, vorher)).alerts, [], 'a foreign account saw the message');
+    assert.equal((await A.triggeredSince(U.ich, prior)).alerts.length, 1);
+    assert.deepEqual((await A.triggeredSince(U.noMail, prior)).alerts, [], 'a foreign account saw the message');
   });
 
   await t.test("Marco's four steps — the APP also gets exactly one per transition", async () => {
@@ -317,40 +317,40 @@ test('price alert against a real database', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     sent = [];
 
-    let marke = (await A.triggeredSince(U.ich, null)).now;
+    let mark = (await A.triggeredSince(U.ich, null)).now;
     await A.setAlert(U.ich, SN, 'EUR', { direction: 'below', threshold: 200, condition: 'N' });
 
     /** A price run: set the price, check, fetch. Returns [mails, messages]. */
-    const lauf = async preis => {
+    const run = async price => {
       sent = [];
-      await setPrice(preis);
-      const mails = await pruefe(SN);
-      const r = await A.triggeredSince(U.ich, marke);
-      marke = r.now;
+      await setPrice(price);
+      const mails = await check(SN);
+      const r = await A.triggeredSince(U.ich, mark);
+      mark = r.now;
       return [mails, r.alerts.length];
     };
 
     // 1. The price falls below the threshold.
-    assert.deepEqual(await lauf(180), [1, 1], 'step 1: mail AND message expected');
+    assert.deepEqual(await run(180), [1, 1], 'step 1: mail AND message expected');
 
     // 2. Next price run, still below.
-    assert.deepEqual(await lauf(170), [0, 0], 'step 2: nothing expected — no new transition');
+    assert.deepEqual(await run(170), [0, 0], 'step 2: nothing expected — no new transition');
 
     // And a third run stays silent too. Without this step it would remain open whether
     // step 2 only depended on the unchanged number.
-    assert.deepEqual(await lauf(165), [0, 0], 'step 2b: nothing on the third run either');
+    assert.deepEqual(await run(165), [0, 0], 'step 2b: nothing on the third run either');
 
     // 3. The price rises above again.
-    assert.deepEqual(await lauf(260), [0, 0], 'step 3: returning itself reports nothing');
+    assert.deepEqual(await run(260), [0, 0], 'step 3: returning itself reports nothing');
 
     // 4. And falls below again — both paths report again.
-    assert.deepEqual(await lauf(150), [1, 1], 'step 4: the second drop below was swallowed');
+    assert.deepEqual(await run(150), [1, 1], 'step 4: the second drop below was swallowed');
 
     // For completeness: whoever does NOT fetch misses nothing. The
     // message stays ready as long as the marker is older — the phone
     // may be off.
-    const spaeter = await A.triggeredSince(U.ich, new Date(Date.now() - 60_000));
-    assert.equal(spaeter.alerts.length, 1, 'a message expires when the app is not fetching right now');
+    const subsequent = await A.triggeredSince(U.ich, new Date(Date.now() - 60_000));
+    assert.equal(subsequent.alerts.length, 1, 'a message expires when the app is not fetching right now');
   });
 
   await t.test('deleting without an alert is not an error', async () => {

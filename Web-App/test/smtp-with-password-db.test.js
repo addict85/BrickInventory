@@ -85,8 +85,8 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { base } = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v2': 'routes/api/settings.js' },
+    session: { userId: uid, isAdmin: true },
+    routes: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
   const store = body =>
@@ -150,7 +150,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     assert.deepEqual(r.body.smtp_skipped, ['smtp_host', 'smtp_insecure_tls']);
   });
 
-  const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
+  const value = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
   await t.test('a first API key needs no password during setup', async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
     const r = await store({ rebrickable_api_key: 'erster-schluessel' });
@@ -163,7 +163,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
     const r = await store({ brickset_api_key: 'erster-fremder' });
     assert.deepEqual([r.status, r.body.code], [400, 'current_password_required']);
-    assert.equal(await wert('brickset_api_key'), undefined);
+    assert.equal(await value('brickset_api_key'), undefined);
   });
 
   await t.test('without a password registration and API key stay', async () => {
@@ -174,15 +174,15 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       const r = await store(body);
       assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], JSON.stringify(body));
     }
-    assert.equal(await wert('registration_enabled'), '0');
-    assert.notEqual(await wert('rebrickable_api_key'), 'fremder-schluessel');
+    assert.equal(await value('registration_enabled'), '0');
+    assert.notEqual(await value('rebrickable_api_key'), 'fremder-schluessel');
   });
 
   await t.test('changed with password, the administrators learn of it', async () => {
     mails.length = 0;
     const r = await store({ registration_enabled: '1', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await wert('registration_enabled'), '1');
+    assert.equal(await value('registration_enabled'), '1');
     for (let i = 0; i < 60 && !mails.some(m => m.an === `${NAME}@example.org`); i++)
       await new Promise(x => setTimeout(x, 25));
     assert.deepEqual(

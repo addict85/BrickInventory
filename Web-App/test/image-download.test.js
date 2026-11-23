@@ -29,29 +29,29 @@ const CDN = 'https://cdn.rebrickable.com/media/parts/elements';
 const NUMBER = `bildtest${process.pid}`;
 
 /** Rebuild https.get: counts calls and delivers the predefined response. */
-function placeAfter(t, { status = 200, typ = 'image/png', body = Buffer.from('PNGDATEN') } = {}) {
-  const aufrufe = [];
-  const echt = https.get;
+function placeAfter(t, { status = 200, kind = 'image/png', body = Buffer.from('PNGDATEN') } = {}) {
+  const calls = [];
+  const original = https.get;
   /** @type {any} */ (https).get = (address, _o, cb) => {
-    aufrufe.push(String(address));
+    calls.push(String(address));
     const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     setImmediate(() => {
       const r = /** @type {any} */ (Readable.from(Array.isArray(body) ? body : [body]));
       r.statusCode = status;
-      r.headers = { 'content-type': typ };
+      r.headers = { 'content-type': kind };
       cb(r);
     });
     return req;
   };
   t.after(() => {
-    https.get = echt;
+    https.get = original;
   });
-  return aufrufe;
+  return calls;
 }
 
-function aufraeumen() {
+function cleanUp() {
   if (!fs.existsSync(PART_IMAGES_DIR)) return;
   for (const f of fs.readdirSync(PART_IMAGES_DIR))
     if (f.startsWith(NUMBER)) fs.rmSync(path.join(PART_IMAGES_DIR, f), { force: true });
@@ -72,10 +72,10 @@ test('the building blocks', () => {
       `${inherited} taken over as extension`,
     );
   assert.ok(bd.imageTypeAllowed('image/jpeg; charset=binary'));
-  for (const typ of ['image/svg+xml', 'text/html', '', undefined])
-    assert.equal(bd.imageTypeAllowed(typ), false, `${typ} allowed as an image`);
-  for (const gut of ['3001', '973pb0123c01', 'fig-000123', '10294-1', 0, 4])
-    assert.equal(bd.filePart(gut), String(gut));
+  for (const kind of ['image/svg+xml', 'text/html', '', undefined])
+    assert.equal(bd.imageTypeAllowed(kind), false, `${kind} allowed as an image`);
+  for (const good of ['3001', '973pb0123c01', 'fig-000123', '10294-1', 0, 4])
+    assert.equal(bd.filePart(good), String(good));
   for (const badOne of ['a/../../x', '../x', 'a..b', '.versteckt', 'a\\b', '', 'x'.repeat(65)])
     assert.equal(bd.filePart(badOne), null, `${badOne} allowed as a file name`);
   assert.equal(bd.targetInFolder('/a/b', '../c'), null);
@@ -83,14 +83,14 @@ test('the building blocks', () => {
 });
 
 test('downloadImage', { concurrency: 1 }, async t => {
-  t.after(aufraeumen);
+  t.after(cleanUp);
 
   await t.test('an image from the CDN is saved', async tt => {
-    aufraeumen();
-    const aufrufe = placeAfter(tt);
+    cleanUp();
+    const calls = placeAfter(tt);
     const rel = await downloadImage(`${CDN}/1.png`, NUMBER, 4, 'part');
     assert.equal(rel, `/images/parts/${NUMBER}_4.png`);
-    assert.equal(aufrufe.length, 1);
+    assert.equal(calls.length, 1);
     assert.equal(fs.readFileSync(path.join(PART_IMAGES_DIR, `${NUMBER}_4.png`), 'utf8'), 'PNGDATEN');
     assert.deepEqual(
       fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER) && f.endsWith('.part')),
@@ -99,8 +99,8 @@ test('downloadImage', { concurrency: 1 }, async t => {
   });
 
   await t.test('foreign host: no fetch', async tt => {
-    aufraeumen();
-    const aufrufe = placeAfter(tt);
+    cleanUp();
+    const calls = placeAfter(tt);
     for (const address of [
       'https://169.254.169.254/latest/meta-data.png',
       'https://localhost/x.png',
@@ -108,14 +108,14 @@ test('downloadImage', { concurrency: 1 }, async t => {
       'https://rebrickable.com.boese.example/x.png',
     ])
       assert.equal(await downloadImage(address, NUMBER, 0, 'part'), null, address);
-    assert.deepEqual(aufrufe, [], 'foreign host is fetched');
+    assert.deepEqual(calls, [], 'foreign host is fetched');
   });
 
   await t.test('no image: nothing saved', async tt => {
-    for (const typ of ['image/svg+xml', 'text/html']) {
-      aufraeumen();
-      placeAfter(tt, { typ, body: Buffer.from('<svg onload="alert(1)"/>') });
-      assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, `${typ} saved`);
+    for (const kind of ['image/svg+xml', 'text/html']) {
+      cleanUp();
+      placeAfter(tt, { kind, body: Buffer.from('<svg onload="alert(1)"/>') });
+      assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, `${kind} saved`);
       assert.deepEqual(
         fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER)),
         [],
@@ -125,16 +125,16 @@ test('downloadImage', { concurrency: 1 }, async t => {
   });
 
   await t.test('path from the part number: no fetch, no file outside', async tt => {
-    const aufrufe = placeAfter(tt);
-    const boese = `a/../../../${NUMBER}`;
+    const calls = placeAfter(tt);
+    const evil = `a/../../../${NUMBER}`;
     tt.after(() => fs.rmSync(path.join(DATA_DIR, `${NUMBER}_0.png`), { force: true }));
-    assert.equal(await downloadImage(`${CDN}/x.png`, boese, 0, 'part'), null);
-    assert.deepEqual(aufrufe, [], 'Path from the part number');
+    assert.equal(await downloadImage(`${CDN}/x.png`, evil, 0, 'part'), null);
+    assert.deepEqual(calls, [], 'Path from the part number');
     assert.equal(fs.existsSync(path.join(DATA_DIR, `${NUMBER}_0.png`)), false);
   });
 
   await t.test('too large: aborted, nothing left behind', async tt => {
-    aufraeumen();
+    cleanUp();
     const block = Buffer.alloc(1024 * 1024, 1);
     placeAfter(tt, { body: /** @type {any} */ (Array(bd.IMAGE_MAX_BYTES / block.length + 2).fill(block)) });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, 'oversized image saved');
@@ -145,8 +145,8 @@ test('downloadImage', { concurrency: 1 }, async t => {
   });
 
   await t.test('HTTP 404: nothing saved', async tt => {
-    aufraeumen();
-    placeAfter(tt, { status: 404, typ: 'text/html' });
+    cleanUp();
+    placeAfter(tt, { status: 404, kind: 'text/html' });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null);
     assert.deepEqual(
       fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER)),

@@ -18,7 +18,7 @@ const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { createDb, dbConfigFromEnvironment } = _req('db/database.js');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 test('household changes per set of services', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -27,10 +27,10 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   // Two accesses like two processes (web and jobs).
   const accesses = [createDb(dbConfigFromEnvironment()), createDb(dbConfigFromEnvironment())];
   const [a, b] = accesses.map(z => buildServices(z));
-  const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
@@ -42,11 +42,11 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   });
 
   await t.test('a set only clears its dependents', () => {
-    const gerufen = [];
-    a.household.atHouseholdChange(() => gerufen.push('a'));
-    b.household.atHouseholdChange(() => gerufen.push('b'));
+    const called = [];
+    a.household.atHouseholdChange(() => called.push('a'));
+    b.household.atHouseholdChange(() => called.push('b'));
     a.household.reportHouseholdChange();
-    assert.deepEqual(gerufen, ['a']);
+    assert.deepEqual(called, ['a']);
   });
 
   await t.test('another set learns about the change via NOTIFY', async () => {
@@ -56,7 +56,7 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
     assert.deepEqual(await view(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
     a.household.reportHouseholdChange();
-    const neu = async () => (await view()).length === 2;
-    assert.ok(await bis(neu, 3000), 'old view: the change did not arrive');
+    const fresh = async () => (await view()).length === 2;
+    assert.ok(await until(fresh, 3000), 'old view: the change did not arrive');
   });
 });

@@ -39,11 +39,11 @@ test('move set', { concurrency: 1 }, async t => {
   }
 
   // In one transaction via its context: the collection calls the move like this (t.sets).
-  const sammlung = require('./helpers/sources').testContext('collection');
+  const collection = require('./helpers/sources').testContext('collection');
   // Two foreign accounts: across both only in the system context (the owner role creates the data).
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const setEntriesReassign = (...a) =>
-    inSystemContext('Testdaten', () => sammlung.transact(t => t.sets.setEntriesReassign(...a)));
+    inSystemContext('Testdaten', () => collection.transact(t => t.sets.setEntriesReassign(...a)));
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
@@ -137,7 +137,7 @@ test('move set', { concurrency: 1 }, async t => {
       [a],
     );
     await holdsPart(db, a, '3005', { quantity: 2, colorId: 4 });
-    const [erste, zweite] = (
+    const [first, second] = (
       await db.all("SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='10005-1' ORDER BY id", [a])
     ).map(r => r.id);
     const z = uid =>
@@ -145,18 +145,18 @@ test('move set', { concurrency: 1 }, async t => {
         `SELECT (SELECT COUNT(*)::int FROM sets WHERE user_id=$1 AND set_number='10005-1') AS sets,
               (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND set_number='10005-1') AS parts,
               (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10005-1') AS minifigs,
-              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND source='manual') AS manuell`,
+              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND source='manual') AS manual`,
         [uid],
       );
 
-    const r1 = await setEntriesReassign('10005-1', a, b, [erste]);
+    const r1 = await setEntriesReassign('10005-1', a, b, [first]);
     assert.equal(r1.source_emptied, false);
-    assert.deepEqual(await z(a), { sets: 1, parts: 2, minifigs: 1, manuell: 1 });
-    assert.deepEqual(await z(b), { sets: 1, parts: 2, minifigs: 1, manuell: 0 });
+    assert.deepEqual(await z(a), { sets: 1, parts: 2, minifigs: 1, manual: 1 });
+    assert.deepEqual(await z(b), { sets: 1, parts: 2, minifigs: 1, manual: 0 });
 
-    const r2 = await setEntriesReassign('10005-1', a, b, [zweite]);
+    const r2 = await setEntriesReassign('10005-1', a, b, [second]);
     assert.equal(r2.source_emptied, true);
-    assert.deepEqual(await z(a), { sets: 0, parts: 0, minifigs: 0, manuell: 1 });
+    assert.deepEqual(await z(a), { sets: 0, parts: 0, minifigs: 0, manual: 1 });
   });
 
   await t.test("a moved purchase joins the target's row of the same day", async () => {

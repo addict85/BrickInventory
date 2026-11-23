@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const bcrypt = require('bcryptjs');
 
 const NAME = `stromzugang_${process.pid}`,
@@ -60,13 +60,13 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     return new Promise(r => srv.close(r));
   });
   const basis = `http://localhost:${srv.address().port}`;
-  const post = (weg, kopf, rumpf) =>
-    fetch(basis + weg, {
+  const post = (route, head, body) =>
+    fetch(basis + route, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', origin: basis, ...kopf },
-      body: JSON.stringify(rumpf ?? {}),
+      headers: { 'content-type': 'application/json', origin: basis, ...head },
+      body: JSON.stringify(body ?? {}),
     });
-  const sitzung = async () => {
+  const session = async () => {
     const r = await post('/api/v2/auth/login', {}, { username: NAME, password: PASS, without_token: true });
     assert.equal(r.status, 200, await r.clone().text());
     return { cookie: (r.headers.get('set-cookie') ?? '').split(';')[0] };
@@ -79,12 +79,12 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   };
 
   /** Opens the stream and reads along until it ends. */
-  const openIt = async kopf => {
-    const abbruch = new AbortController();
-    t.after(() => abbruch.abort());
-    const r = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: kopf, signal: abbruch.signal });
+  const openIt = async head => {
+    const abort = new AbortController();
+    t.after(() => abort.abort());
+    const r = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: head, signal: abort.signal });
     if (r.status !== 200) assert.fail(`stream: ${r.status} ${await r.text()}`);
-    const s = { text: '', zu: false };
+    const s = { text: '', closed: false };
     (async () => {
       const reader = r.body.getReader();
       for (;;) {
@@ -92,50 +92,50 @@ test('streams end with their access', { concurrency: 1 }, async t => {
         if (done) break;
         s.text += Buffer.from(value).toString('utf8');
       }
-      s.zu = true;
+      s.closed = true;
     })();
-    await bis(() => s.text.includes('data:'), 5000);
+    await until(() => s.text.includes('data:'), 5000);
     return s;
   };
-  const ending = async (s, wie) => {
-    await bis(() => s.zu, 3000).catch(() => {});
-    assert.ok(s.zu, `${wie}: the stream ends`);
-    assert.match(s.text, /event: access_ended/, wie);
+  const ending = async (s, how) => {
+    await until(() => s.closed, 3000).catch(() => {});
+    assert.ok(s.closed, `${how}: the stream ends`);
+    assert.match(s.text, /event: access_ended/, how);
   };
 
   await t.test('token logged out: the stream ends', async () => {
-    const kopf = await token();
-    const s = await openIt(kopf);
-    const andere = await openIt(await token());
-    assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
+    const head = await token();
+    const s = await openIt(head);
+    const others = await openIt(await token());
+    assert.equal((await post('/api/v2/auth/logout', head)).status, 200);
     await ending(s, 'Token abgemeldet');
-    assert.equal(await bis(() => andere.zu, 300), false, 'the stream of another, valid token stays open');
+    assert.equal(await until(() => others.closed, 300), false, 'the stream of another, valid token stays open');
   });
 
   await t.test('session logged out: the stream ends', async () => {
-    const kopf = await sitzung();
-    const s = await openIt(kopf);
-    assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
+    const head = await session();
+    const s = await openIt(head);
+    assert.equal((await post('/api/v2/auth/logout', head)).status, 200);
     await ending(s, 'Sitzung abgemeldet');
   });
 
   await t.test('all sessions ended (new session version): the stream ends', async () => {
-    const s = await openIt(await sitzung());
+    const s = await openIt(await session());
     await _req('src/account/accessEnd.js').endAllSessions(uid);
     await ending(s, 'alle Sitzungen beendet');
   });
 
   await t.test('without an event the stream ends on the tick', async () => {
-    const kopf = await token();
+    const head = await token();
     const watchViaAccess = (...a) =>
       _req('src/account/http/accessWatch.js').watchViaAccess(require('./helpers/sources').testServices().account, ...a);
-    let beendet = 0;
-    const signOut = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
+    let ended = 0;
+    const signOut = watchViaAccess({ session: {}, headers: head }, () => ended++, 50);
     t.after(signOut);
-    assert.equal(await bis(() => beendet > 0, 200), false, 'a valid token ends nothing');
+    assert.equal(await until(() => ended > 0, 200), false, 'a valid token ends nothing');
     // Revocation as from another process: only the row, no event here.
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    await bis(() => beendet > 0, 2000).catch(() => {});
-    assert.equal(beendet, 1, 'without an event the stream ends on the beat');
+    await until(() => ended > 0, 2000).catch(() => {});
+    assert.equal(ended, 1, 'without an event the stream ends on the beat');
   });
 });

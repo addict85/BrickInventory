@@ -51,16 +51,16 @@ test('category from the summary', { concurrency: 1 }, async t => {
     [SN],
   );
   await holdsSet(db, U, SN, 2);
-  for (const [nr, farbe, quantity] of [
+  for (const [nr, color, quantity] of [
     ['kz1', 5, 4],
     ['kz2', 5, 2],
     ['kz3', 1, 3],
   ])
-    await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity });
+    await holdsPart(db, U, nr, { setNumber: SN, colorId: color, quantity });
 
-  const zeilen = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
+  const lines = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
   const categoryList = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();
-  const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
+  const query = { exclude_manual: '1', page: 1, page_size: 50 };
 
   try {
     // Without exclude_manual the live query always answers; the parts here
@@ -71,17 +71,17 @@ test('category from the summary', { concurrency: 1 }, async t => {
     const liveSpare = await H.partsQuery(U, { page: 1, page_size: 50, spare: '1' });
     assert.equal(live.source, 'db');
     assert.equal(liveSpare.source, 'db');
-    assert.deepEqual(zeilen(live), ['kz1|5|8', 'kz2|5|4'], 'test data: both parts of the category, with set quantity');
+    assert.deepEqual(lines(live), ['kz1|5|8', 'kz2|5|4'], 'test data: both parts of the category, with set quantity');
     await PS.rebuildNow(U);
 
     await t.test('the category filter reads from the summary', async () => {
-      const zsf = await H.partsQuery(U, { ...abfrage, category: '98701' });
-      assert.equal(zsf.source, 'summary');
-      assert.deepEqual(zeilen(zsf), zeilen(live));
+      const summary = await H.partsQuery(U, { ...query, category: '98701' });
+      assert.equal(summary.source, 'summary');
+      assert.deepEqual(lines(summary), lines(live));
     });
     await t.test('the spare part filter is the same on both paths', async () => {
-      assert.deepEqual(zeilen(liveSpare), ['kz2|5|4']);
-      assert.deepEqual(zeilen(await H.partsQuery(U, { ...abfrage, spare: '1' })), zeilen(liveSpare));
+      assert.deepEqual(lines(liveSpare), ['kz2|5|4']);
+      assert.deepEqual(lines(await H.partsQuery(U, { ...query, spare: '1' })), lines(liveSpare));
     });
     await t.test('the category list is the same on both paths', async () => {
       assert.deepEqual(categoryList(liveKat), ['98701|Steine|12', '98702|Platten|6']);

@@ -51,7 +51,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `sperre_${process.pid}`,
   PASS = 'richtigesPasswort1';
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 let UID = null;
@@ -91,24 +91,24 @@ async function prepare(t) {
 }
 
 test('proxyTrust: whom X-Forwarded-For is believed', () => {
-  const vertraut = (setting, address) => {
+  const trusted = (setting, address) => {
     const app = express();
     app.set('trust proxy', proxyTrust(setting));
     return app.get('trust proxy fn')(address, 0);
   };
   // Without a setting only loopback: outside of Docker 172.16/12 is a network like any other.
-  for (const eigen of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
-    assert.equal(vertraut(undefined, eigen), true, `${eigen} is the own proxy`);
-  for (const netz of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
-    assert.equal(vertraut(undefined, netz), false, `trusted the Docker network without TRUST_PROXY: ${netz}`);
+  for (const own of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
+    assert.equal(trusted(undefined, own), true, `${own} is the own proxy`);
+  for (const network of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
+    assert.equal(trusted(undefined, network), false, `trusted the Docker network without TRUST_PROXY: ${network}`);
   // A fixed proxy address in the Compose network: exactly this one, not its neighbors
   // and not the gateway through which clients come in themselves.
-  assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'the configured proxy');
-  assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'also in the IPv6 wrapper');
+  assert.equal(trusted('172.28.73.10', '172.28.73.10'), true, 'the configured proxy');
+  assert.equal(trusted('172.28.73.10', '::ffff:172.28.73.10'), true, 'also in the IPv6 wrapper');
   for (const neighbor of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
-    assert.equal(vertraut('172.28.73.10', neighbor), false, `not configured and still trusted: ${neighbor}`);
+    assert.equal(trusted('172.28.73.10', neighbor), false, `not configured and still trusted: ${neighbor}`);
   // Whole networks, hop counts and blank checks refuse the start.
-  for (const falsch of [
+  for (const wrong of [
     'docker',
     'true',
     '1',
@@ -123,7 +123,7 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
     '192.168.1.5/33',
     '172.28.73.10, docker',
   ])
-    assert.throws(() => proxyTrust(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
+    assert.throws(() => proxyTrust(wrong), /TRUST_PROXY enthält/, `angenommen: ${wrong}`);
   assert.deepEqual(proxyTrust('172.28.73.10, 192.168.1.8/29 fd00::7 fd00::100/120'), [
     '172.28.73.10',
     '192.168.1.8/29',
@@ -138,14 +138,14 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
   for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
     assert.throws(() => proxyTrust(toWide, true), /TRUST_PROXY enthält/, `accepted with confirmation: ${toWide}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
-    assert.equal(vertraut(undefined, fremd), false, `public address trusted: ${fremd}`);
+    assert.equal(trusted(undefined, fremd), false, `public address trusted: ${fremd}`);
   // Computers in the home network do not state their address themselves.
   for (const lan of ['192.168.1.10', '10.1.2.3', '169.254.1.1'])
-    assert.equal(vertraut(undefined, lan), false, `home network machine trusted: ${lan}`);
-  assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'a proxy in the home network can be named');
-  assert.equal(vertraut('false', '127.0.0.1'), false);
-  assert.equal(vertraut('203.0.113.5', '203.0.113.5'), true);
-  assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
+    assert.equal(trusted(undefined, lan), false, `home network machine trusted: ${lan}`);
+  assert.equal(trusted('192.168.1.5', '192.168.1.5'), true, 'a proxy in the home network can be named');
+  assert.equal(trusted('false', '127.0.0.1'), false);
+  assert.equal(trusted('203.0.113.5', '203.0.113.5'), true);
+  assert.equal(trusted('203.0.113.5', '127.0.0.1'), false);
 });
 
 test('lock per username applies across all addresses', { concurrency: 1 }, async t => {
@@ -156,7 +156,7 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const anmelden = async (password, ip) =>
+  const signIn = async (password, ip) =>
     (
       await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
         method: 'POST',
@@ -166,30 +166,30 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
     ).status;
 
   // Per address: after MAX_ATTEMPTS it is over for this address.
-  for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', '198.51.100.1'), 401);
-  assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'no lock per address');
+  for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await signIn('falsch', '198.51.100.1'), 401);
+  assert.equal(await signIn(PASS, '198.51.100.1'), 429, 'no lock per address');
   // Per account: from MAX_ATTEMPTS failed attempts on every other address waits too.
   assert.equal(
-    await anmelden(PASS, '198.51.100.2'),
+    await signIn(PASS, '198.51.100.2'),
     429,
     'guessing without limit with changing addresses — the counter per account is missing',
   );
   // Once the wait time is over, it continues — and it doubles.
-  const zurueck = sek =>
+  const back = sek =>
     db.run(`UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`, [
       accountKey(),
       sek,
     ]);
   assert.equal(waitTimeSeconds(MAX_ATTEMPTS), 1);
   assert.equal(waitTimeSeconds(MAX_ATTEMPTS + 1), 2);
-  await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
-  assert.equal(await anmelden('falsch', '198.51.100.3'), 401, 'after the waiting time it may go on');
-  await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
-  assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'the waiting time does not grow');
+  await back(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
+  assert.equal(await signIn('falsch', '198.51.100.3'), 401, 'after the waiting time it may go on');
+  await back(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
+  assert.equal(await signIn(PASS, '198.51.100.4'), 429, 'the waiting time does not grow');
 
   // After the wait time the right password counts and clears the counter.
-  await zurueck(waitTimeSeconds(MAX_ATTEMPTS + 1) + 0.5);
-  assert.equal(await anmelden(PASS, '198.51.100.5'), 200);
+  await back(waitTimeSeconds(MAX_ATTEMPTS + 1) + 0.5);
+  assert.equal(await signIn(PASS, '198.51.100.5'), 200);
   const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [accountKey()]);
   assert.equal(rest, undefined, 'a successful sign-in does not clear the counter per account');
 });
@@ -203,7 +203,7 @@ test('the lock per name does not lock out the owner', { concurrency: 1 }, async 
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const anmelden = async (password, ip, name = NAME) =>
+  const signIn = async (password, ip, name = NAME) =>
     (
       await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
         method: 'POST',
@@ -212,16 +212,16 @@ test('the lock per name does not lock out the owner', { concurrency: 1 }, async 
       })
     ).status;
 
-  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Precondition: the owner has been there before');
+  assert.equal(await signIn(PASS, '198.51.100.7'), 200, 'Precondition: the owner has been there before');
   // An attacker distributes his failed attempts — across name AND email.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
     assert.equal(
-      await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME),
+      await signIn('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME),
       401,
       `Attempt ${i + 1}`,
     );
-  assert.equal(await anmelden(PASS, '203.0.113.200'), 429, 'an unknown address waits — name and e-mail count together');
-  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'the owner still gets in from the known address');
+  assert.equal(await signIn(PASS, '203.0.113.200'), 429, 'an unknown address waits — name and e-mail count together');
+  assert.equal(await signIn(PASS, '198.51.100.7'), 200, 'the owner still gets in from the known address');
 });
 
 test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -232,10 +232,10 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [k],
     );
-  const port = await new Promise(auf => {
+  const port = await new Promise(opened => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
       const p = portOf(s);
-      s.close(() => auf(p));
+      s.close(() => opened(p));
     });
   });
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -261,10 +261,10 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  const anmelden = async (password, ip) => {
+  const signIn = async (password, ip) => {
     try {
       return (
         await fetch(`http://127.0.0.1:${port}/api/v2/auth/login`, {
@@ -277,9 +277,9 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
       return 0;
     }
   };
-  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await sleep(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
   assert.equal(
     (await fetch(`http://127.0.0.1:${port}/api/v2/`)).headers.get('x-powered-by'),
     null,
@@ -289,6 +289,6 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
   // Changing X-Forwarded-For, but the same sender: without trust everything
   // counts on 127.0.0.1, the lock kicks in after MAX_ATTEMPTS.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
-    assert.equal(await anmelden('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
-  assert.equal(await anmelden(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false is not respected');
+    assert.equal(await signIn('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
+  assert.equal(await signIn(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false is not respected');
 });

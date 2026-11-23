@@ -27,13 +27,13 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const erf = _req('src/inventory/repository/acquisitions.js');
-const manuell = {
+const manual = {
   ..._req('src/inventory/repository/manualQuantities.js'),
   ...require('./helpers/sources').testArea('inventory').manualQuantities,
 };
 const various = {
   ..._req('src/inventory/repository/reassign.js'),
-  deleteSetEntry: (tx, id, [konto]) => erf.deleteEntry(tx, 'set', id, konto),
+  deleteSetEntry: (tx, id, [account]) => erf.deleteEntry(tx, 'set', id, account),
   deleteManualEntry: _req('src/inventory/repository/manualQuantities.js').removeEntry,
 };
 
@@ -41,20 +41,20 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const name = n => `zl_${process.pid}_${n}`;
-  const konto = async n =>
+  const account = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [name(n)])).id;
-  const eigen = await konto('eigen');
-  const fremd = await konto('fremd');
+  const own = await account('eigen');
+  const fremd = await account('fremd');
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[eigen, fremd]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[own, fremd]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const ein = fn => db.transaction(fn);
+  const on = fn => db.transaction(fn);
 
   // One set per acquisition: per day and set only one acquisition is allowed.
-  let zaehler = 0;
+  let counter = 0;
   const setEntry = async uid => {
-    const sn = `7519${++zaehler}-1`;
+    const sn = `7519${++counter}-1`;
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [uid, sn]);
     return (
       await db.get(
@@ -64,29 +64,29 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
       )
     ).id;
   };
-  const lies = (tabelle, id) => db.get(`SELECT * FROM ${tabelle} WHERE id = $1`, [id]);
+  const read = (table, id) => db.get(`SELECT * FROM ${table} WHERE id = $1`, [id]);
 
   await t.test('quantity, price, condition and date of a foreign entry stay', async () => {
     const id = await setEntry(fremd);
-    await ein(async tx => {
-      await erf.setEntryQuantity(tx, 'set', id, 99, [eigen]);
-      await erf.setEntryPrice(tx, 'set', id, 1, true, [eigen]);
-      await erf.setEntryState(tx, 'set', id, 'U', [eigen]);
-      await erf.setEntryDate(tx, 'set', id, '2020-01-02', [eigen]);
+    await on(async tx => {
+      await erf.setEntryQuantity(tx, 'set', id, 99, [own]);
+      await erf.setEntryPrice(tx, 'set', id, 1, true, [own]);
+      await erf.setEntryState(tx, 'set', id, 'U', [own]);
+      await erf.setEntryDate(tx, 'set', id, '2020-01-02', [own]);
     });
-    const z = await lies('set_acquisitions', id);
+    const z = await read('set_acquisitions', id);
     assert.deepEqual([z.quantity, Number(z.purchase_price), z.condition, z.price_estimated], [3, 10, 'N', false]);
   });
 
   await t.test('counter-check: with the right account the same function works', async () => {
     const id = await setEntry(fremd);
-    await ein(async tx => {
-      await erf.setEntryQuantity(tx, 'set', id, 99, [eigen, fremd]);
+    await on(async tx => {
+      await erf.setEntryQuantity(tx, 'set', id, 99, [own, fremd]);
       await erf.setEntryPrice(tx, 'set', id, 1, true, [fremd]);
       await erf.setEntryState(tx, 'set', id, 'U', [fremd]);
       await erf.setEntryDate(tx, 'set', id, '2020-01-02', [fremd]);
     });
-    const z = await lies('set_acquisitions', id);
+    const z = await read('set_acquisitions', id);
     assert.deepEqual([z.quantity, Number(z.purchase_price), z.condition, z.price_estimated], [99, 1, 'U', true]);
     assert.equal((await db.get('SELECT day::text AS t FROM set_acquisitions WHERE id = $1', [id])).t, '2020-01-02');
   });
@@ -98,15 +98,15 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
         [fremd],
       )
     ).id;
-    await ein(async tx => {
-      await manuell.shortenEntry(tx, 'part', id, 1, [eigen]);
-      await manuell.removeEntry(tx, 'part', id, [eigen]);
+    await on(async tx => {
+      await manual.shortenEntry(tx, 'part', id, 1, [own]);
+      await manual.removeEntry(tx, 'part', id, [own]);
     });
-    assert.equal((await lies('part_acquisitions', id)).quantity, 4);
-    await ein(tx => manuell.shortenEntry(tx, 'part', id, 1, [fremd]));
-    assert.equal((await lies('part_acquisitions', id)).quantity, 3, 'counter-check: the own account shortens');
-    await ein(tx => manuell.removeEntry(tx, 'part', id, [fremd]));
-    assert.equal(await lies('part_acquisitions', id), undefined, 'counter-check: the own account removes');
+    assert.equal((await read('part_acquisitions', id)).quantity, 4);
+    await on(tx => manual.shortenEntry(tx, 'part', id, 1, [fremd]));
+    assert.equal((await read('part_acquisitions', id)).quantity, 3, 'counter-check: the own account shortens');
+    await on(tx => manual.removeEntry(tx, 'part', id, [fremd]));
+    assert.equal(await read('part_acquisitions', id), undefined, 'counter-check: the own account removes');
   });
 
   await t.test('a foreign entry cannot be deleted from a move', async () => {
@@ -117,18 +117,18 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
         [fremd],
       )
     ).id;
-    await ein(async tx => {
-      await various.deleteSetEntry(tx, setId, [eigen]);
-      await various.deleteManualEntry(tx, 'fig', figId, [eigen]);
+    await on(async tx => {
+      await various.deleteSetEntry(tx, setId, [own]);
+      await various.deleteManualEntry(tx, 'fig', figId, [own]);
     });
-    assert.ok(await lies('set_acquisitions', setId));
-    assert.ok(await lies('minifig_acquisitions', figId));
-    await ein(async tx => {
+    assert.ok(await read('set_acquisitions', setId));
+    assert.ok(await read('minifig_acquisitions', figId));
+    await on(async tx => {
       await various.deleteSetEntry(tx, setId, [fremd]);
       await various.deleteManualEntry(tx, 'fig', figId, [fremd]);
     });
-    assert.equal(await lies('set_acquisitions', setId), undefined, 'counter-check: the own account deletes');
-    assert.equal(await lies('minifig_acquisitions', figId), undefined);
+    assert.equal(await read('set_acquisitions', setId), undefined, 'counter-check: the own account deletes');
+    assert.equal(await read('minifig_acquisitions', figId), undefined);
   });
 
   await t.test('the inventory row of a foreign account stays', async () => {
@@ -138,9 +138,9 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
         [fremd],
       )
     ).id;
-    await ein(tx => various.removeManual(tx, 'fig', eigen, ['fig-000002'], row));
-    assert.ok(await lies('minifigs', row), "with the sender's account it is a foreign row");
-    await ein(tx => various.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
-    assert.equal(await lies('minifigs', row), undefined, 'counter-check: the own account removes');
+    await on(tx => various.removeManual(tx, 'fig', own, ['fig-000002'], row));
+    assert.ok(await read('minifigs', row), "with the sender's account it is a foreign row");
+    await on(tx => various.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
+    assert.equal(await read('minifigs', row), undefined, 'counter-check: the own account removes');
   });
 });

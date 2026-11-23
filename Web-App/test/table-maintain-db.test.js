@@ -27,8 +27,8 @@ const db = testData();
 const { maintainTable } = _req('db/maintainTable.js');
 
 /** When was the table last cleaned up and measured? */
-async function state(tabelle) {
-  const r = await db.get(`SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [tabelle]);
+async function state(table) {
+  const r = await db.get(`SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [table]);
   return {
     vacuum: r?.last_vacuum ? new Date(r.last_vacuum).getTime() : 0,
     analyze: r?.last_analyze ? new Date(r.last_analyze).getTime() : 0,
@@ -39,12 +39,12 @@ async function state(tabelle) {
  * Wait for the statistics. Postgres does not write them synchronously with the command —
  * without this loop the test hangs on the whim of the collector.
  */
-async function waitOnStatus(tabelle, vorher, ms = 5000) {
-  const ende = Date.now() + ms;
+async function waitOnStatus(table, prior, ms = 5000) {
+  const end = Date.now() + ms;
   for (;;) {
-    const now = await state(tabelle);
-    if (now.vacuum > vorher.vacuum && now.analyze > vorher.analyze) return now;
-    if (Date.now() > ende) return now;
+    const now = await state(table);
+    if (now.vacuum > prior.vacuum && now.analyze > prior.analyze) return now;
+    if (Date.now() > end) return now;
     await new Promise(r => setTimeout(r, 100));
   }
 }
@@ -70,29 +70,29 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`,
       [uid],
     );
-    const vorher = await state('parts_summary');
+    const prior = await state('parts_summary');
     await new Promise(r => setTimeout(r, 1100)); // Timestamps have second resolution in the display
 
     const ok = await maintainTable(sql => db.exec(sql), 'parts_summary');
     assert.equal(ok, true, 'maintainTable gave up — does the test run as owner of the table?');
 
-    const nachher = await waitOnStatus('parts_summary', vorher);
+    const later = await waitOnStatus('parts_summary', prior);
     assert.ok(
-      nachher.vacuum > vorher.vacuum,
-      `last_vacuum did not move (${nachher.vacuum} vs ${vorher.vacuum}). Without VACUUM ` +
+      later.vacuum > prior.vacuum,
+      `last_vacuum did not move (${later.vacuum} vs ${prior.vacuum}). Without VACUUM ` +
         `the GIN pending list stays, and every search goes through it in addition.`,
     );
     assert.ok(
-      nachher.analyze > vorher.analyze,
+      later.analyze > prior.analyze,
       `last_analyze did not move. Without fresh statistics the planner estimates the ` +
         `table at one row and picks the wrong index.`,
     );
   });
 
   await t.test('a name that is not a table name executes NOTHING', async () => {
-    const gerufen = [];
+    const called = [];
     const runFrom = async sql => {
-      gerufen.push(sql);
+      called.push(sql);
     };
     for (const name of [
       'parts_summary; DROP TABLE users',
@@ -105,7 +105,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       const ok = await maintainTable(runFrom, name);
       assert.equal(ok, false, `"${name}" should have been rejected.`);
     }
-    assert.deepEqual(gerufen, [], `SQL was executed anyway for a rejected name: ${gerufen.join(' | ')}`);
+    assert.deepEqual(called, [], `SQL was executed anyway for a rejected name: ${called.join(' | ')}`);
   });
 
   await t.test('a failure stays a failure and does not become a crash', async () => {
@@ -119,11 +119,11 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
 
   await t.test('rebuild() refreshes parts_summary', async () => {
     const { rebuildSummary: rebuild } = _req('src/parts/summary.js');
-    const nutzer = 90002;
+    const user = 90002;
     await db.run(
       `INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')
                   ON CONFLICT (id) DO NOTHING`,
-      [nutzer, 'pflege-tester'],
+      [user, 'pflege-tester'],
     );
     // Description into the catalogs, inventory into parts (migration 0034).
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
@@ -136,23 +136,23 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
     // catalog number. Here only the NUMBER of rows (300) counts, not their value
     // — hence no catalog rows are needed for it; subsetFrom() falls back to
     // 1, and 1 stood here before as well.
-    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
+    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [user]);
     await db.run(
       `INSERT INTO parts (user_id, set_number, part_number, color_id)
       SELECT $1, '75192-1', 'p'||g, 0
       FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`,
-      [nutzer],
+      [user],
     );
 
-    const vorher = await state('parts_summary');
+    const prior = await state('parts_summary');
     await new Promise(r => setTimeout(r, 1100));
-    await rebuild(nutzer);
-    const nachher = await waitOnStatus('parts_summary', vorher);
+    await rebuild(user);
+    const later = await waitOnStatus('parts_summary', prior);
 
     assert.ok(
-      nachher.analyze > vorher.analyze,
-      `rebuild() did not analyse parts_summary (analyze ${nachher.analyze} vs ` +
-        `${vorher.analyze}). DELETE + INSERT of all rows of a user is a ` +
+      later.analyze > prior.analyze,
+      `rebuild() did not analyse parts_summary (analyze ${later.analyze} vs ` +
+        `${prior.analyze}). DELETE + INSERT of all rows of a user is a ` +
         `bulk insert — afterwards the statistics are skewed.`,
     );
   });

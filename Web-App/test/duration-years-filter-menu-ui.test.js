@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const MONITOR = lastDuration => ({
@@ -50,17 +50,17 @@ const SET = {
 };
 
 test("duration in the language's notation", async () => {
-  for (const { language, browserLanguage, ms, erwartet } of [
-    { language: 'de', browserLanguage: 'de-DE', ms: 1500, erwartet: /1,5 s/ },
-    { language: 'de', browserLanguage: 'de-DE', ms: 125_000, erwartet: /2 min 5 s/ },
-    { language: 'en', browserLanguage: 'en-US', ms: 1500, erwartet: /1\.5 s/ },
+  for (const { language, browserLanguage, ms, expected } of [
+    { language: 'de', browserLanguage: 'de-DE', ms: 1500, expected: /1,5 s/ },
+    { language: 'de', browserLanguage: 'de-DE', ms: 125_000, expected: /2 min 5 s/ },
+    { language: 'en', browserLanguage: 'en-US', ms: 1500, expected: /1\.5 s/ },
   ]) {
     const o = await openUi(MONITOR(ms), { language, browserLanguage });
     try {
-      await reiter(o.w, 'monitor');
+      await switchTab(o.w, 'monitor');
       const detail = () => text(o.d.getElementById('job-status-detail'));
-      assert.ok(await warte(() => /3 /.test(detail())), `no run report: ${detail()}`);
-      assert.match(detail(), erwartet);
+      assert.ok(await waitFor(() => /3 /.test(detail())), `no run report: ${detail()}`);
+      assert.match(detail(), expected);
     } finally {
       o.w.close();
     }
@@ -72,9 +72,9 @@ test('year filters say that it is about years', async () => {
     '/v2/catalog/meta': { success: true, themes: [], year_min: 2015, year_max: 2016, year_counts: [] },
   });
   try {
-    await reiter(o.w, 'catalog');
+    await switchTab(o.w, 'catalog');
     const options = id => [...o.d.getElementById(id).options].map(x => x.textContent.trim());
-    assert.ok(await warte(() => options('cat-year-from').length === 3), options('cat-year-from').join());
+    assert.ok(await waitFor(() => options('cat-year-from').length === 3), options('cat-year-from').join());
     assert.deepEqual(options('cat-year-from'), ['Jahr ab…', 'ab 2016', 'ab 2015']);
     assert.deepEqual(options('cat-year-to'), ['Jahr bis…', 'bis 2016', 'bis 2015']);
   } finally {
@@ -87,20 +87,20 @@ test('set without image: no button "enlarge image"', async () => {
   try {
     const image = o.d.getElementById('m-img');
     // Since round 27 the image lies in a button; without an image it is disabled.
-    const knopf = /** @type {HTMLButtonElement} */ (image.parentElement);
+    const button = /** @type {HTMLButtonElement} */ (image.parentElement);
     const state = () => ({
       role: image.getAttribute('role'),
       tab: image.tabIndex,
-      klick: image.dataset.click ?? knopf.dataset.click ?? null,
-      gesperrt: knopf.disabled,
+      klick: image.dataset.click ?? button.dataset.click ?? null,
+      locked: button.disabled,
     });
-    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'before the first opening');
-    await reiter(o.w, 'gallery');
-    assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
+    assert.deepEqual(state(), { role: null, tab: -1, klick: null, locked: true }, 'before the first opening');
+    await switchTab(o.w, 'gallery');
+    assert.ok(await waitFor(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => o.d.getElementById('set-modal').classList.contains('open')));
-    assert.ok(await warte(() => /set-placeholder/.test(image.getAttribute('src') || '')));
-    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'with a placeholder');
+    assert.ok(await waitFor(() => o.d.getElementById('set-modal').classList.contains('open')));
+    assert.ok(await waitFor(() => /set-placeholder/.test(image.getAttribute('src') || '')));
+    assert.deepEqual(state(), { role: null, tab: -1, klick: null, locked: true }, 'with a placeholder');
   } finally {
     o.w.close();
   }
@@ -109,14 +109,14 @@ test('set without image: no button "enlarge image"', async () => {
 test('menu in groups with titles', async () => {
   const o = await openUi();
   try {
-    const gruppen = [...o.d.querySelectorAll('#umenu-pop [role="group"]')].map(g => ({
-      titel: text(o.d.getElementById(g.getAttribute('aria-labelledby'))),
-      punkte: [...g.querySelectorAll('[role="menuitem"]')].map(b => b.dataset.arg),
+    const groups = [...o.d.querySelectorAll('#umenu-pop [role="group"]')].map(g => ({
+      title: text(o.d.getElementById(g.getAttribute('aria-labelledby'))),
+      points: [...g.querySelectorAll('[role="menuitem"]')].map(b => b.dataset.arg),
     }));
-    assert.deepEqual(gruppen, [
-      { titel: 'Rund um die Sammlung', punkte: ['locations', 'alerts', 'vouchers'] },
-      { titel: 'Mein Konto', punkte: ['profile', 'household', 'data', 'app'] },
-      { titel: 'Verwaltung', punkte: ['settings', 'monitor'] },
+    assert.deepEqual(groups, [
+      { title: 'Rund um die Sammlung', points: ['locations', 'alerts', 'vouchers'] },
+      { title: 'Mein Konto', points: ['profile', 'household', 'data', 'app'] },
+      { title: 'Verwaltung', points: ['settings', 'monitor'] },
     ]);
     // Account and settings say what they stand for.
     assert.match(text(o.d.querySelector('[data-arg="profile"]')), /Profil, Design, Anmeldung/);
@@ -134,15 +134,15 @@ test('from the set detail to price alerts and storage locations', async () => {
     '/v2/storage': { success: true },
   });
   try {
-    for (const ziel of ['alerts', 'locations']) {
-      await reiter(o.w, 'gallery');
-      assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
+    for (const target of ['alerts', 'locations']) {
+      await switchTab(o.w, 'gallery');
+      assert.ok(await waitFor(() => o.d.querySelector('#gallery [data-click="openModal"]')));
       o.d.querySelector('#gallery [data-click="openModal"]').click();
-      const knopf = () => o.d.querySelector(`#set-modal [data-click="viewFromDialog"][data-arg="${ziel}"]`);
-      assert.ok(await warte(knopf), `no way to ${ziel}`);
-      knopf().click();
-      assert.ok(await warte(() => o.d.getElementById(`tab-${ziel}`).classList.contains('active')), ziel);
-      assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false, `${ziel}: dialog open`);
+      const button = () => o.d.querySelector(`#set-modal [data-click="viewFromDialog"][data-arg="${target}"]`);
+      assert.ok(await waitFor(button), `no way to ${target}`);
+      button().click();
+      assert.ok(await waitFor(() => o.d.getElementById(`tab-${target}`).classList.contains('active')), target);
+      assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false, `${target}: dialog open`);
     }
   } finally {
     o.w.close();

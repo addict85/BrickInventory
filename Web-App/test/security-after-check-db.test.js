@@ -29,7 +29,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -78,41 +78,41 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
 
-  const anmeldung = await fetch(`${basis}/api/v2/auth/login`, {
+  const login = await fetch(`${basis}/api/v2/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
-  assert.equal(anmeldung.status, 200, `${await anmeldung.clone().text()}\n${log}`);
-  const keks = anmeldung.headers.get('set-cookie').split(';')[0];
-  const holen = (path, o = {}) =>
+  assert.equal(login.status, 200, `${await login.clone().text()}\n${log}`);
+  const keks = login.headers.get('set-cookie').split(';')[0];
+  const fetchIt = (path, o = {}) =>
     fetch(basis + path, { redirect: 'manual', ...o, headers: { cookie: keks, origin: basis, ...(o.headers || {}) } });
 
   await t.test('API and login paths carry no-store, static files do not', async () => {
-    const neu = await holen('/api/v2/vouchers', {
+    const fresh = await fetchIt('/api/v2/vouchers', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ number: '6006491234567890', pin: '1234', amount: 25, currency: 'CHF' }),
     });
-    assert.equal(neu.status, 200, await neu.clone().text());
-    const liste = await holen('/api/v2/vouchers');
-    assert.equal(liste.status, 200);
-    assert.equal((await liste.json()).vouchers[0].pin, '•••');
-    assert.equal(liste.headers.get('cache-control'), 'no-store', '/api/v2/vouchers');
-    assert.equal(anmeldung.headers.get('cache-control'), 'no-store', 'POST /api/v2/auth/login');
+    assert.equal(fresh.status, 200, await fresh.clone().text());
+    const list = await fetchIt('/api/v2/vouchers');
+    assert.equal(list.status, 200);
+    assert.equal((await list.json()).vouchers[0].pin, '•••');
+    assert.equal(list.headers.get('cache-control'), 'no-store', '/api/v2/vouchers');
+    assert.equal(login.headers.get('cache-control'), 'no-store', 'POST /api/v2/auth/login');
     for (const path of ['/api/v2/stats', '/reset-password?token=x', '/verify?token=x']) {
-      const r = await holen(path);
+      const r = await fetchIt(path);
       await r.arrayBuffer();
       assert.equal(r.headers.get('cache-control'), 'no-store', path);
     }
-    const staticPart = await holen('/js/app.bundle.js');
+    const staticPart = await fetchIt('/js/app.bundle.js');
     await staticPart.arrayBuffer();
     assert.equal(staticPart.status, 200);
     assert.doesNotMatch(staticPart.headers.get('cache-control'), /no-store/);
@@ -123,7 +123,7 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
       ['/api/v2/auth/login', false],
       ['/api/v2/vouchers', true],
     ])) {
-      const r = await (withCookie ? holen : (p, o) => fetch(basis + p, o))(path, {
+      const r = await (withCookie ? fetchIt : (p, o) => fetch(basis + p, o))(path, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{"username": "x", ',
@@ -149,7 +149,7 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
 
   await t.test('too large IDs in path and body yield 400, not 500', async () => {
     const GROSS = '99999999999999999999';
-    const faelle = [
+    const cases = [
       ['GET', `/api/v2/vouchers/${GROSS}/pdf`],
       ['PUT', `/api/v2/storage/locations/${GROSS}`, { name: 'Estrich' }],
       ['DELETE', '/api/v2/trash/2147483648'],
@@ -158,25 +158,25 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
       ['POST', '/api/v2/settings/household/unlink', { sub_user_id: 99999999999 }],
       ['POST', '/api/v2/settings/household/former/dismiss', { sub_user_id: GROSS }],
     ];
-    const ergebnis = [];
-    for (const [methode, path, rumpf] of faelle) {
-      const r = await holen(path, {
-        method: methode,
+    const outcome = [];
+    for (const [method, path, reqBody] of cases) {
+      const r = await fetchIt(path, {
+        method: method,
         headers: { 'content-type': 'application/json' },
-        ...(rumpf ? { body: JSON.stringify(rumpf) } : {}),
+        ...(reqBody ? { body: JSON.stringify(reqBody) } : {}),
       });
-      ergebnis.push(`${methode} ${path} ${r.status} ${(await r.json().catch(() => ({}))).code}`);
+      outcome.push(`${method} ${path} ${r.status} ${(await r.json().catch(() => ({}))).code}`);
     }
     assert.deepEqual(
-      ergebnis,
-      faelle.map(([m, p]) => `${m} ${p} 400 id_invalid`),
+      outcome,
+      cases.map(([m, p]) => `${m} ${p} 400 id_invalid`),
     );
-    const grenze = await holen('/api/v2/storage/locations/2147483647', {
+    const limit = await fetchIt('/api/v2/storage/locations/2147483647', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Estrich' }),
     });
-    assert.notEqual((await grenze.json()).code, 'id_invalid', '2³¹−1 is still a valid ID');
+    assert.notEqual((await limit.json()).code, 'id_invalid', '2³¹−1 is still a valid ID');
   });
 });
 

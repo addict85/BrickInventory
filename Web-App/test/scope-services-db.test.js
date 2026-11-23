@@ -38,20 +38,20 @@ test('services resolve the view', { concurrency: 1 }, async t => {
   const { deleteSetFor } = require('./helpers/sources').areaPage('sets');
   const [MAIN, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);
-  const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [MAIN])).id;
+  const main = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [MAIN])).id;
   const sub = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SUB])).id;
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [main, sub]);
   H.reportHouseholdChange();
-  await holdsSet(db, haupt, '10179-1');
+  await holdsSet(db, main, '10179-1');
   await holdsSet(db, sub, '75192-1');
-  const nummern = async sicht => (await readSets(sicht, {})).sets.map(s => s.set_number).sort();
+  const numbers = async view => (await readSets(view, {})).sets.map(s => s.set_number).sort();
 
   await t.test('a view selects the accounts in the service', async () => {
-    assert.deepEqual(await nummern({ user: haupt }), ['10179-1', '75192-1']);
-    assert.deepEqual(await nummern({ user: haupt, accounts: 'own' }), ['10179-1']);
-    assert.deepEqual(await nummern({ user: haupt, accounts: 'subs' }), ['75192-1']);
+    assert.deepEqual(await numbers({ user: main }), ['10179-1', '75192-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'own' }), ['10179-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'subs' }), ['75192-1']);
     assert.deepEqual(
-      await nummern({ user: sub, accounts: String(haupt) }),
+      await numbers({ user: sub, accounts: String(main) }),
       ['75192-1'],
       'a sub-account does not see into the main account via a foreign ID',
     );
@@ -59,25 +59,25 @@ test('services resolve the view', { concurrency: 1 }, async t => {
 
   await t.test('deleting follows the account selection, in the write scope', async () => {
     assert.equal(
-      await deleteSetFor({ user: sub, accounts: String(haupt) }, '10179-1'),
+      await deleteSetFor({ user: sub, accounts: String(main) }, '10179-1'),
       null,
       'the sub-account deleted a set of the main account',
     );
     assert.equal(
-      await deleteSetFor({ user: haupt, accounts: 'subs' }, '10179-1'),
+      await deleteSetFor({ user: main, accounts: 'subs' }, '10179-1'),
       null,
       'with „Unterkonten“ selected the deletion hit the own set',
     );
-    assert.deepEqual(await nummern({ user: haupt, accounts: 'own' }), ['10179-1']);
-    assert.ok(await deleteSetFor({ user: haupt, accounts: 'subs' }, '75192-1'));
-    assert.deepEqual(await nummern({ user: haupt }), ['10179-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'own' }), ['10179-1']);
+    assert.ok(await deleteSetFor({ user: main, accounts: 'subs' }, '75192-1'));
+    assert.deepEqual(await numbers({ user: main }), ['10179-1']);
   });
 
   await t.test('a sub-account does not write for its main account', async () => {
-    assert.equal(await H.writeTarget(haupt, sub), sub);
+    assert.equal(await H.writeTarget(main, sub), sub);
     assert.equal(await H.writeTarget(sub, undefined), sub, 'without a request the own account');
     await assert.rejects(
-      H.writeTarget(sub, haupt),
+      H.writeTarget(sub, main),
       (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'forbidden',
     );
   });

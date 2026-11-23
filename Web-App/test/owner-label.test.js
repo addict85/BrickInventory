@@ -12,13 +12,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 const SET = (nr, name, owners) => ({ set_number: nr, name, quantity: 1, conditions: ['N'], instructions: [], owners });
 const ANNA = { id: 1, username: 'anna' },
   EMILY = { id: 3, username: 'emily' };
 
-async function galerie() {
+async function gallery() {
   const o = await openUi({
     '/v2/sets/household-members': {
       success: true,
@@ -38,14 +38,14 @@ async function galerie() {
       ],
     },
   });
-  await warte(() => o.d.querySelectorAll('#gallery .sc').length === 3);
+  await waitFor(() => o.d.querySelectorAll('#gallery .sc').length === 3);
   return o;
 }
 const labels = (d, nr) =>
   [...d.querySelector(`#gallery .sc[data-arg="${nr}"]`).querySelectorAll('.owner-badge')].map(e => e.textContent);
 
 test('own sets without a label', async () => {
-  const { w, d } = await galerie();
+  const { w, d } = await gallery();
   try {
     assert.deepEqual(labels(d, '10294-1'), []);
   } finally {
@@ -54,7 +54,7 @@ test('own sets without a label', async () => {
 });
 
 test("the child's set carries its name, a shared one both", async () => {
-  const { w, d } = await galerie();
+  const { w, d } = await gallery();
   try {
     assert.deepEqual(labels(d, '42143-1'), ['emily']);
     assert.deepEqual(labels(d, '75192-1'), ['anna (ich)', 'emily']);

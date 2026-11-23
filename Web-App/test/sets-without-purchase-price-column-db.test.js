@@ -36,8 +36,8 @@ test.after(async () => {
 });
 
 /** Column names of a table, from the catalog. */
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -65,28 +65,28 @@ test('after the complete schema setup sets has no purchase price and no conditio
     client.release();
   }
 
-  const nachher = await columnsOf('sets');
+  const later = await columnsOf('sets');
   // `quantity` stood here too — until migration 0036 deleted it. What is checked
   // now is `user_id` and `set_number`: which account holds which set,
   // that is what remains of the row. (That quantity is ROUTE is checked by
   // test/set-quantity-from-entries-db.test.js.)
   assert.ok(
-    nachher.includes('user_id') && nachher.includes('set_number'),
-    `The column list of sets looks wrong: ${nachher.join(', ')}`,
+    later.includes('user_id') && later.includes('set_number'),
+    `The column list of sets looks wrong: ${later.join(', ')}`,
   );
   for (const sp of ['purchase_price', 'condition']) {
     assert.ok(
-      !nachher.includes(sp),
+      !later.includes(sp),
       `sets.${sp} is still there after all migrations — migration 0032 did not ` +
         'delete it, or something creates the column again afterwards.',
     );
   }
 
   // And they have not disappeared but moved.
-  const erfassung = await columnsOf('set_acquisitions');
+  const acquisition = await columnsOf('set_acquisitions');
   for (const sp of ['purchase_price', 'condition', 'quantity', 'created_at']) {
     assert.ok(
-      erfassung.includes(sp),
+      acquisition.includes(sp),
       `set_acquisitions.${sp} is missing — then the purchase price exists nowhere any more`,
     );
   }

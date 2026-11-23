@@ -25,7 +25,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const path = require('node:path');
 const wt = require('node:worker_threads');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -37,15 +37,15 @@ const db = testData();
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
 
-async function pdfWith(seiten) {
+async function pdfWith(pages) {
   const d = await PDFDocument.create();
-  for (let i = 0; i < seiten; i++) d.addPage([200, 200]);
+  for (let i = 0; i < pages; i++) d.addPage([200, 200]);
   return Buffer.from(await d.save());
 }
 
-async function uploadIt(base, daten) {
+async function uploadIt(base, data) {
   const fd = new FormData();
-  fd.append('file', new Blob([daten], { type: 'application/pdf' }), 'g.pdf');
+  fd.append('file', new Blob([data], { type: 'application/pdf' }), 'g.pdf');
   const r = await fetch(`${base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
@@ -53,25 +53,25 @@ async function uploadIt(base, daten) {
 /** An upload whose body only ends on call: it holds its slot. */
 function hangingUpload(base) {
   const u = new URL(`${base}/api/v2/vouchers/pdf`);
-  const grenze = 'xyzgrenze';
+  const maxSize = 'xyzgrenze';
   const req = http.request({
     host: u.hostname,
     port: u.port,
     path: u.pathname,
     method: 'POST',
-    headers: { 'content-type': `multipart/form-data; boundary=${grenze}` },
+    headers: { 'content-type': `multipart/form-data; boundary=${maxSize}` },
   });
-  const response = new Promise(fertig =>
+  const response = new Promise(done =>
     req.on('response', r => {
       r.resume();
-      r.on('end', () => fertig(r.statusCode));
+      r.on('end', () => done(r.statusCode));
     }),
   );
   req.on('error', () => {});
   req.write(
-    `--${grenze}\r\nContent-Disposition: form-data; name="file"; filename="g.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\n`,
+    `--${maxSize}\r\nContent-Disposition: form-data; name="file"; filename="g.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\n`,
   );
-  return { response, ende: () => req.end(`\r\n--${grenze}--\r\n`) };
+  return { response, end: () => req.end(`\r\n--${maxSize}--\r\n`) };
 }
 
 test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -90,12 +90,12 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       c.release();
     }
   }
-  const neu = async name => {
+  const fresh = async name => {
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     return (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   };
-  const A = await neu(`schranke_a_${process.pid}`),
-    B = await neu(`schranke_b_${process.pid}`);
+  const A = await fresh(`schranke_a_${process.pid}`),
+    B = await fresh(`schranke_b_${process.pid}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
     await testAccess()
@@ -103,7 +103,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       .catch(() => {}); // the CSV stream listens to NOTIFY
     await db.pool.end().catch(() => {});
   });
-  const server = uid => testServer(_req, { sitzung: { userId: uid }, t });
+  const server = uid => testServer(_req, { session: { userId: uid }, t });
   const a = server(A),
     b = server(B);
 
@@ -117,10 +117,10 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
 
   await t.test('reading happens in a worker thread', async () => {
     const { readInBackground } = _req('src/vouchers/pdfReader.js');
-    const Echt = wt.Worker;
+    const Real = wt.Worker;
     let started = 0;
-    wt.Worker = class extends Echt {
-      constructor(/** @type {ConstructorParameters<typeof Echt>} */ ...a) {
+    wt.Worker = class extends Real {
+      constructor(/** @type {ConstructorParameters<typeof Real>} */ ...a) {
         super(...a);
         started++;
       }
@@ -130,23 +130,23 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       assert.equal(r.kind, 'gelesen');
       assert.equal(r.pages, 3);
     } finally {
-      wt.Worker = Echt;
+      wt.Worker = Real;
     }
     assert.equal(started, 1);
   });
 
   await t.test('a second voucher PDF of the same account does not wait', async () => {
-    const erster = hangingUpload(a.base);
+    const firstOne = hangingUpload(a.base);
     try {
       await new Promise(r => setTimeout(r, 200));
-      const zweiter = await uploadIt(a.base, await pdfWith(1));
-      assert.equal(zweiter.status, 429, JSON.stringify(zweiter.body));
-      assert.equal(zweiter.body.code, 'upload_running');
+      const secondOne = await uploadIt(a.base, await pdfWith(1));
+      assert.equal(secondOne.status, 429, JSON.stringify(secondOne.body));
+      assert.equal(secondOne.body.code, 'upload_running');
       const fremd = await uploadIt(b.base, await pdfWith(1));
       assert.notEqual(fremd.status, 429, 'another account is not affected');
     } finally {
-      erster.ende(); // otherwise closing the server waits for it
-      await erster.response;
+      firstOne.end(); // otherwise closing the server waits for it
+      await firstOne.response;
     }
   });
 
@@ -158,20 +158,20 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
   await t.test('at most six event streams per account', async () => {
     const open = [];
     const stream = () =>
-      new Promise(fertig => {
+      new Promise(done => {
         const req = http.get(`${a.base}/api/v2/sets/import/csv/stream`, r => {
           open.push(r);
-          fertig(r.statusCode);
+          done(r.statusCode);
           r.resume();
         });
-        req.on('error', () => fertig(0));
+        req.on('error', () => done(0));
       });
     try {
       const statuses = [];
       for (let i = 0; i < 7; i++) statuses.push(await stream());
       assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of open) r.destroy();
-      assert.ok(await bis(async () => (await stream()) === 200, 3000), 'closed streams free their slot');
+      assert.ok(await until(async () => (await stream()) === 200, 3000), 'closed streams free their slot');
     } finally {
       for (const r of open) r.destroy();
     }
@@ -184,7 +184,7 @@ test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
   const { accountGate: accountLimit } = _req('routes/api/middleware.js');
   const limit = accountLimit('voucherPdf');
-  const anfrage = () => {
+  const request = () => {
     const res = Object.assign(new EventEmitter(), {
       statusCode: 200,
       status(c) {
@@ -198,16 +198,16 @@ test('the slot is free as soon as the response is handed over', () => {
       getHeader() {},
       headersSent: false,
     });
-    let weiter = false;
+    let next = false;
     limit({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => {
-      weiter = true;
+      next = true;
     });
-    return { res, weiter };
+    return { res, next };
   };
-  const erste = anfrage();
-  assert.equal(erste.weiter, true);
-  erste.res.emit('finish');
-  const zweite = anfrage();
-  assert.equal(zweite.weiter, true, `second file rejected (${zweite.res.statusCode})`);
-  zweite.res.emit('finish');
+  const first = request();
+  assert.equal(first.next, true);
+  first.res.emit('finish');
+  const second = request();
+  assert.equal(second.next, true, `second file rejected (${second.res.statusCode})`);
+  second.res.emit('finish');
 });

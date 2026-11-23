@@ -74,7 +74,7 @@ test('the main account sees market price and history of a sub-account set', { co
   );
 
   // The viewer is the MAIN ACCOUNT.
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId, username: MAIN, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId, username: MAIN, isAdmin: false }, t });
 
   try {
     // 1. The actual finding: the price route must no longer give 404.
@@ -88,8 +88,8 @@ test('the main account sees market price and history of a sub-account set', { co
     r = await fetch(`${base}/api/v2/sets/${SET}/price-history`);
     assert.equal(r.status, 200);
     j = await r.json();
-    const punkte = (j.chart?.values || []).reduce((a, s) => a + (s.values || []).length, 0);
-    assert.ok(punkte >= 10, `the chart needs the history points (got: ${punkte})`);
+    const points = (j.chart?.values || []).reduce((a, s) => a + (s.values || []).length, 0);
+    assert.ok(points >= 10, `the chart needs the history points (got: ${points})`);
     assert.ok(j.by_condition?.U, 'by_condition.U must exist — the acquisition of the sub-account counts');
     assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.2, 'Purchase price of the sub-account');
     assert.equal(parseFloat(j.by_condition.U.market_price), 22.5);

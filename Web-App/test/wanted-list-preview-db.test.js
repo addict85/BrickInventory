@@ -108,14 +108,14 @@ test.after(async () => {
 /**
  * `zustand` since 20.10. — previously this was a fixed `X`.
  */
-function item(typ, id, farbe, quantity = 1, condition = 'X') {
+function item(typeName, id, color, quantity = 1, condition = 'X') {
   return (
-    `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
-    `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${quantity}</MINQTY>\n` +
+    `<ITEM>\n<ITEMTYPE>${typeName}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
+    `${color === null ? '' : `<COLOR>${color}</COLOR>\n`}<MINQTY>${quantity}</MINQTY>\n` +
     `${condition === null ? '' : `<CONDITION>${condition}</CONDITION>\n`}</ITEM>`
   );
 }
-const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
+const list = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
 test('preview, corrections and color translation', { concurrency: 1 }, async t => {
   try {
@@ -150,13 +150,13 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
                 VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7)`);
 
   await t.test('1. the preview carries name, image and color — and invents nothing', async () => {
-    const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
+    const xml = list(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
     // `vorschau: true` is there EXPLICITLY. The default of this function is
     // WRITE (`vorschau: !!opt.vorschau`), and that is right: whoever calls it
     // brings a creator along. The decision "preview or for real"
     // is made by the route from `?write=1` — not by a default value here.
     const b = await importWantedList(1, xml, { preview: true });
-    assert.equal(b.preview, true, 'With vorschau: true it must be a preview');
+    assert.equal(b.preview, true, 'With preview: true it must be a preview');
     assert.equal(b.created, 0, 'A preview writes nothing');
 
     const nach = new Map(b.items.map(p => [p.blId, p]));
@@ -216,7 +216,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('2. quantity, BL color and condition travel into the preview', async () => {
     // Without it the preview cannot show the row — and the correction
     // cannot say which color was meant.
-    const b = await importWantedList(1, liste(item('P', '3001', 85, 7)), { preview: true });
+    const b = await importWantedList(1, list(item('P', '3001', 85, 7)), { preview: true });
     const p = b.items[0];
     assert.equal(p.blColor, 85, 'The BrickLink colour number from the file is missing');
     assert.equal(p.quantity, 7);
@@ -226,20 +226,20 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Asked for by Marco on 20.10.
-    const ohne = await importWantedList(1, liste(item('P', '3001', 5, 1, 'X')), { preview: true });
+    const without = await importWantedList(1, list(item('P', '3001', 5, 1, 'X')), { preview: true });
     assert.equal(
-      ohne.defaultCondition,
+      without.defaultCondition,
       'N',
       'Without a setting the default of the tree applies (userDefaultCondition)',
     );
-    assert.equal(ohne.items[0].condition, null, 'The ITEM still carries what was in the file — not the default');
+    assert.equal(without.items[0].condition, null, 'The ITEM still carries what was in the file — not the default');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
                   ON CONFLICT (user_id, key) DO UPDATE SET value='U'`);
-    const mit = await importWantedList(
+    const withIt = await importWantedList(
       1,
-      liste(
+      list(
         item('P', '3001', 5, 1, 'N'),
         item('P', '3001', 5, 1, 'U'),
         item('P', '3001', 5, 1, 'X'),
@@ -247,9 +247,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       ),
       { preview: true },
     );
-    assert.equal(mit.defaultCondition, 'U', 'The account setting wins');
+    assert.equal(withIt.defaultCondition, 'U', 'The account setting wins');
     assert.deepEqual(
-      mit.items.map(x => x.condition),
+      withIt.items.map(x => x.condition),
       ['N', 'U', null, null],
       'N and U stay, X stays null — the default does NOT replace them in the item. ' +
         'The preview combines both (row() in public/js/wanted-xml.js)',
@@ -260,14 +260,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('3. a correction hits the item at the index, not the number', async () => {
     // The same number and the same color TWICE — a key of kind,
     // number and color would hit both rows.
-    const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
-    const zaehler = [];
+    const xml = list(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
+    const counter = [];
     const b = await importWantedList(1, xml, {
       preview: false,
       corrections: [{ index: 1, blId: '3001', kind: 'part', rbColor: 7 }],
       creator: {
         part: async (_u, body) => {
-          zaehler.push(body);
+          counter.push(body);
           return { action: 'created' };
         },
         minifig: async () => ({ action: 'created' }),
@@ -277,27 +277,27 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
     assert.deepEqual(b.corrections?.rejected, []);
     assert.equal(
-      zaehler.length,
+      counter.length,
       1,
-      `The creator got ${zaehler.length} items. Exactly ONE was corrected; ` +
+      `The creator got ${counter.length} items. Exactly ONE was corrected; ` +
         'the other still has no mappable colour and must stay open.',
     );
     assert.equal(
-      zaehler[0].quantity,
+      counter[0].quantity,
       5,
-      `quantity ${zaehler[0].quantity} — index 1 was corrected, i.e. the item with 5. ` +
+      `quantity ${counter[0].quantity} — index 1 was corrected, i.e. the item with 5. ` +
         'If the correction hits the first one, it points to the number instead of the index.',
     );
-    assert.equal(zaehler[0].color_id, 7);
+    assert.equal(counter[0].color_id, 7);
     // The COLOR NAME must be fetched afterwards: the resolution fetches it for the
     // colors from the FILE, and 7 was not there.
     assert.equal(
-      zaehler[0].color_name,
+      counter[0].color_name,
       'Blue',
       'Without filling in, the entered colour goes to the creator without a name — ' +
         'and that is exactly the colour dot without a label from 19.10.',
     );
-    assert.equal(zaehler[0].color_hex, '0055BF');
+    assert.equal(counter[0].color_hex, '0055BF');
     assert.equal(
       b.items[1].confidence,
       'korrigiert',
@@ -310,14 +310,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // The case: between preview and writing a DIFFERENT file was
     // chosen. Without the counter-check the correction would act on a foreign
     // item — silently, because both numbers would look plausible.
-    const xml = liste(item('P', '3001', 85, 2));
-    const zaehler = [];
+    const xml = list(item('P', '3001', 85, 2));
+    const counter = [];
     const b = await importWantedList(1, xml, {
       preview: false,
       corrections: [{ index: 0, blId: '4444', kind: 'part', rbColor: 7 }],
       creator: {
         part: async (_u, body) => {
-          zaehler.push(body);
+          counter.push(body);
           return { action: 'created' };
         },
         minifig: async () => ({ action: 'created' }),
@@ -331,11 +331,11 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       'The rejected correction must BE in the report — silently ' +
         'skipping it means: Marco corrects, and nothing happens.',
     );
-    assert.equal(zaehler.length, 0, 'The item still has no colour and stays open');
+    assert.equal(counter.length, 0, 'The item still has no colour and stays open');
   });
 
   await t.test('5. only a REGISTERED number is remembered, no catalog hit', async () => {
-    const gemerkt = [];
+    const remembered = [];
     const creator = {
       part: async () => ({ action: 'created' }),
       minifig: async () => ({ action: 'created' }),
@@ -343,28 +343,28 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     };
     // 3001 resolves via the catalog (stage 3, a guess), 9999 does not.
     // 9999 is corrected → 3002.
-    const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
+    const xml = list(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
     const b = await importWantedList(1, xml, {
       preview: false,
       creator,
       corrections: [{ index: 1, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
       rememberNumber: async (kind, rbId, blId) => {
-        gemerkt.push({ kind, rbId, blId });
+        remembered.push({ kind, rbId, blId });
       },
     });
     assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
     assert.deepEqual(
-      gemerkt,
+      remembered,
       [{ kind: 'part', rbId: '3002', blId: '9999' }],
-      `Remembered was ${JSON.stringify(gemerkt)}. Expected is EXACTLY the ` +
+      `Remembered was ${JSON.stringify(remembered)}. Expected is EXACTLY the ` +
         'entered mapping 9999→3002. If 3001 is included, a ' +
         'catalogue hit — i.e. a guess — is recorded as a mapping.',
     );
   });
 
   await t.test('5b. a number looked up at Rebrickable is remembered too', async () => {
-    const gemerkt = [];
-    const xml = liste(item('P', '98765', 5, 1));
+    const remembered = [];
+    const xml = list(item('P', '98765', 5, 1));
     const b = await importWantedList(1, xml, {
       preview: false,
       viaRebrickable: true,
@@ -374,7 +374,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         set: async () => ({ action: 'created' }),
       },
       rememberNumber: async (kind, rbId, blId) => {
-        gemerkt.push({ kind, rbId, blId });
+        remembered.push({ kind, rbId, blId });
       },
     });
     assert.deepEqual(
@@ -383,9 +383,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       'The item must have been resolved via Rebrickable — otherwise ' + 'the case says nothing about this level',
     );
     assert.deepEqual(
-      gemerkt,
+      remembered,
       [{ kind: 'part', rbId: '12345', blId: '98765' }],
-      `Remembered was ${JSON.stringify(gemerkt)}. Without this entry the ` +
+      `Remembered was ${JSON.stringify(remembered)}. Without this entry the ` +
         'next import asks Rebrickable about the same number again — 1.5 seconds ' +
         'and one fetch from the daily quota per item, on every run',
     );
@@ -395,11 +395,11 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // The opposite direction to case 5: without this case it would also be green
     // if the preview already wrote. A preview that stores something is
     // not one.
-    const gemerkt = [];
+    const remembered = [];
     // WITH creator: without it writing fails, and the callback would
     // not be reached for that reason alone — the case would be green without
     // saying anything about the preview.
-    const b = await importWantedList(1, liste(item('P', '9999', 5, 1)), {
+    const b = await importWantedList(1, list(item('P', '9999', 5, 1)), {
       preview: true,
       corrections: [{ index: 0, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
       creator: {
@@ -408,41 +408,41 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         set: async () => ({ action: 'created' }),
       },
       rememberNumber: async (...a) => {
-        gemerkt.push(a);
+        remembered.push(a);
       },
     });
     assert.equal(b.corrections?.applied, 1, 'precondition: the correction must apply, otherwise the case says nothing');
     assert.equal(b.created, 0, 'A preview creates nothing');
-    assert.deepEqual(gemerkt, [], 'Nothing may be remembered in the preview');
+    assert.deepEqual(remembered, [], 'Nothing may be remembered in the preview');
   });
 
   await t.test('7. describeItem does not make one query per item', async () => {
     // Marco's file has 224 rows. One query per row would be a preview
     // one waits for.
-    const echt = db.pool.query.bind(db.pool);
+    const original = db.pool.query.bind(db.pool);
     let queryList = 0;
     db.pool.query = (...a) => {
       queryList++;
-      return echt(...a);
+      return original(...a);
     };
     try {
       const parsed = readWantedList(
-        liste(
+        list(
           ...Array.from({ length: 60 }, (_, i) => item('P', `300${i % 10}`, 5, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('M', `fig${i}`, null, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('S', `1049${i}-1`, null, 1)),
         ),
       );
-      const auf = await resolveLocalOn(parsed.items);
+      const opened = await resolveLocalOn(parsed.items);
       queryList = 0;
-      await describeItem(auf);
+      await describeItem(opened);
       assert.ok(
         queryList <= 4,
         `${queryList} queries for 100 items. At most 4 are allowed (parts, ` +
           'colour images, figures, sets). One per item would be 100.',
       );
     } finally {
-      db.pool.query = echt;
+      db.pool.query = original;
     }
   });
 
@@ -453,7 +453,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
-    const b = await importWantedList(1, liste(item('P', '3001', 5, 1)), {
+    const b = await importWantedList(1, list(item('P', '3001', 5, 1)), {
       preview: false,
       creator,
     });
@@ -477,14 +477,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // the loop would show nothing for exactly these items.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
-    const vorher = await importWantedList(1, liste(item('P', '7777', 5, 1)), { preview: true });
+    const prior = await importWantedList(1, list(item('P', '7777', 5, 1)), { preview: true });
     assert.equal(
-      vorher.items[0].image,
+      prior.items[0].image,
       null,
       'In the preview the image does not exist yet — otherwise the case says nothing',
     );
 
-    const b = await importWantedList(1, liste(item('P', '7777', 5, 1)), {
+    const b = await importWantedList(1, list(item('P', '7777', 5, 1)), {
       preview: false,
       creator: {
         // The way addManualPart would do it: fill the catalog first, then report.

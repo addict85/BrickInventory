@@ -13,16 +13,16 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte, ANMELDUNG } = require('./helpers/ui');
+const { openUi, view, waitFor, SIGNED_IN } = require('./helpers/ui');
 
 const OTPAUTH = 'otpauth://totp/BrickInventory:anna?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory';
 
-function openIt(verwalter, copied) {
+function openIt(admin, copied) {
   return openUi(
     {
       '/v2/auth/me': {
-        ...ANMELDUNG['/v2/auth/me'],
-        user: { ...ANMELDUNG['/v2/auth/me'].user, is_admin: verwalter },
+        ...SIGNED_IN['/v2/auth/me'],
+        user: { ...SIGNED_IN['/v2/auth/me'].user, is_admin: admin },
       },
       '/v2/auth/profile': {
         success: true,
@@ -40,7 +40,7 @@ function openIt(verwalter, copied) {
 
 const dialog = d => ({
   open: d.getElementById('confirm-modal').style.display === 'flex',
-  titel: d.getElementById('cd-title').textContent,
+  title: d.getElementById('cd-title').textContent,
   text: d.getElementById('cd-msg').textContent,
   pw: !d.getElementById('cd-pw-wrap').hidden,
   code: !d.getElementById('cd-code-wrap').hidden,
@@ -48,26 +48,26 @@ const dialog = d => ({
 
 test('administrator: set up again in one dialog, then key and link', async () => {
   const copied = [];
-  const { w, d, aufrufe } = await openIt(true, copied);
+  const { w, d, calls } = await openIt(true, copied);
   try {
-    await sicht(w, 'profile');
-    await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
-    const knopf = d.querySelector('#sf-surface [data-click="disableSecondFactor"]');
-    assert.equal(knopf.textContent.trim(), 'Neu einrichten');
-    knopf.click();
-    await warte(() => dialog(d).open);
+    await view(w, 'profile');
+    await waitFor(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
+    const button = d.querySelector('#sf-surface [data-click="disableSecondFactor"]');
+    assert.equal(button.textContent.trim(), 'Neu einrichten');
+    button.click();
+    await waitFor(() => dialog(d).open);
     const f = dialog(d);
-    assert.deepEqual([f.titel, f.pw, f.code], ['Neu einrichten', true, true], JSON.stringify(f));
+    assert.deepEqual([f.title, f.pw, f.code], ['Neu einrichten', true, true], JSON.stringify(f));
     assert.match(f.text, /Administrator.*neuen ein/);
     d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-code').value = '123456';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/second-factor/setup')));
-    const ab = aufrufe.find(a => a.url.endsWith('/second-factor/disable'));
+    await waitFor(() => calls.some(a => a.url.endsWith('/second-factor/setup')));
+    const ab = calls.find(a => a.url.endsWith('/second-factor/disable'));
     assert.deepEqual(JSON.parse(ab.body), { password: 'geheim-Passwort-1', code: '123456' });
-    const ein = aufrufe.find(a => a.url.endsWith('/second-factor/setup'));
-    assert.deepEqual(JSON.parse(ein.body), { password: 'geheim-Passwort-1' });
-    assert.ok(await warte(() => d.querySelector('#sf-required-surface #sf-key')), 'no key in the mandatory field');
+    const on = calls.find(a => a.url.endsWith('/second-factor/setup'));
+    assert.deepEqual(JSON.parse(on.body), { password: 'geheim-Passwort-1' });
+    assert.ok(await waitFor(() => d.querySelector('#sf-required-surface #sf-key')), 'no key in the mandatory field');
     assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'mandatory field not open');
     assert.equal(d.getElementById('sf-start'), null, '„Einrichten“ once more');
     assert.equal(dialog(d).open, false, 'second password prompt');
@@ -75,7 +75,7 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     assert.equal(link.hidden, false, 'Link verborgen');
     assert.equal(link.getAttribute('href'), OTPAUTH);
     d.querySelector('[data-click="copySecondFactorKey"]').click();
-    assert.ok(await warte(() => copied.length === 1));
+    assert.ok(await waitFor(() => copied.length === 1));
     assert.equal(copied[0], 'JBSWY3DPEHPK3PXP');
   } finally {
     w.close();
@@ -83,21 +83,21 @@ test('administrator: set up again in one dialog, then key and link', async () =>
 });
 
 test('account without admin rights: switching off as announced, without setup', async () => {
-  const { w, d, aufrufe } = await openIt(false, []);
+  const { w, d, calls } = await openIt(false, []);
   try {
-    await sicht(w, 'profile');
-    await warte(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
+    await view(w, 'profile');
+    await waitFor(() => d.querySelector('#sf-surface [data-click="disableSecondFactor"]'));
     d.querySelector('#sf-surface [data-click="disableSecondFactor"]').click();
-    await warte(() => dialog(d).open);
+    await waitFor(() => dialog(d).open);
     const f = dialog(d);
-    assert.deepEqual([f.titel, f.pw, f.code], ['Abschalten', true, true], JSON.stringify(f));
+    assert.deepEqual([f.title, f.pw, f.code], ['Abschalten', true, true], JSON.stringify(f));
     assert.match(f.text, /Passwort allein/);
     d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/second-factor/disable')));
-    await warte(() => !dialog(d).open);
+    await waitFor(() => calls.some(a => a.url.endsWith('/second-factor/disable')));
+    await waitFor(() => !dialog(d).open);
     assert.equal(
-      aufrufe.some(a => a.url.endsWith('/second-factor/setup')),
+      calls.some(a => a.url.endsWith('/second-factor/setup')),
       false,
       'setup without obligation',
     );

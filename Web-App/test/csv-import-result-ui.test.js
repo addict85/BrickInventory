@@ -30,7 +30,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const RESULTS = [
   { row: 2, set_number: '10200-1', success: true, action: 'added', quantity: 1 },
@@ -65,7 +65,7 @@ function chooseFile(w, d) {
 
 test('existing sets: ask first, cancel starts nothing', async () => {
   const posts = [];
-  const { w, d, ruhig } = await openUi({
+  const { w, d, settle } = await openUi({
     '/v2/sets/import/csv': u => {
       posts.push(new URL(u, 'http://x').searchParams.get('check'));
       return { success: true, total: 8, started: false, existing: 2, existing_numbers: ['10305-1', '10200-1'] };
@@ -74,12 +74,12 @@ test('existing sets: ask first, cancel starts nothing', async () => {
   try {
     chooseFile(w, d);
     assert.ok(
-      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'),
       'Confirmation prompt appears',
     );
     assert.match(d.getElementById('cd-msg').textContent, /2 Sets .* schon in der Sammlung \(10305-1, 10200-1\)/);
     d.getElementById('cd-cancel').click();
-    await ruhig();
+    await settle();
     assert.deepEqual(posts, ['1'], 'only the check ran');
     assert.ok(!d.getElementById('progress-overlay').classList.contains('open'));
   } finally {
@@ -107,21 +107,21 @@ test('result list with rows, colors and read rows', async () => {
   try {
     chooseFile(w, d);
     const ovl = d.getElementById('progress-overlay');
-    assert.ok(await warte(() => ovl.classList.contains('open')), 'Progress open');
+    assert.ok(await waitFor(() => ovl.classList.contains('open')), 'Progress open');
     assert.equal(ovl.getAttribute('role'), 'dialog');
     assert.equal(ovl.getAttribute('aria-modal'), 'true');
-    await takt(20);
+    await tick(20);
     assert.ok(ovl.contains(d.activeElement), `Focus is on ${d.activeElement?.outerHTML?.slice(0, 60)}`);
     assert.equal(d.getElementById('prog-footer').getAttribute('role'), 'status');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('role'), 'progressbar');
     assert.equal(ovl.querySelector('[data-click="hideProgress"]').getAttribute('aria-label'), 'Minimieren');
-    assert.ok(await warte(() => /Wartet/.test(d.getElementById('prog-set-name').textContent), 2500), 'Wartetext');
+    assert.ok(await waitFor(() => /Wartet/.test(d.getElementById('prog-set-name').textContent), 2500), 'Wartetext');
 
-    assert.ok(await warte(() => d.querySelectorAll('#csv-log .csv-log-line').length >= 5, 5000), 'Result there');
-    const zeilen = [...d.querySelectorAll('#csv-log .csv-log-line')].map(
+    assert.ok(await waitFor(() => d.querySelectorAll('#csv-log .csv-log-line').length >= 5, 5000), 'Result there');
+    const lines = [...d.querySelectorAll('#csv-log .csv-log-line')].map(
       z => `${z.className.replace('csv-log-line ', '')}|${z.textContent}`,
     );
-    assert.deepEqual(zeilen, [
+    assert.deepEqual(lines, [
       'ok|Zeile 2 · 10200-1 – hinzugefügt',
       'er|Zeile 4 · abc: Das ist keine Setnummer',
       'er|Zeile 5 · 10312-1: Menge „x“ ungültig',
@@ -141,11 +141,11 @@ test('result list with rows, colors and read rows', async () => {
 test('after reloading: the last import in the menu', async () => {
   const { w, d } = await openUi({ '/v2/sets/import/csv/status': DONE });
   try {
-    const knopf = d.getElementById('last-import');
-    assert.ok(await warte(() => !knopf.hidden), 'Entry visible');
-    assert.match(knopf.textContent, /Letzter Import: 1 ok, 1 Warnung, 3 Fehler – ansehen/);
-    knopf.click();
-    assert.ok(await warte(() => d.getElementById('progress-overlay').classList.contains('open')));
+    const button = d.getElementById('last-import');
+    assert.ok(await waitFor(() => !button.hidden), 'Entry visible');
+    assert.match(button.textContent, /Letzter Import: 1 ok, 1 Warnung, 3 Fehler – ansehen/);
+    button.click();
+    assert.ok(await waitFor(() => d.getElementById('progress-overlay').classList.contains('open')));
     assert.ok(d.getElementById('csv-log').textContent.includes('abc'), 'Result list contains abc');
   } finally {
     w.close();
@@ -154,9 +154,9 @@ test('after reloading: the last import in the menu', async () => {
 
 test('an old import stays out of the menu', async () => {
   const alt = { ...DONE, finished_at: new Date(Date.now() - 25 * 3600_000).toISOString() };
-  const { w, d, ruhig } = await openUi({ '/v2/sets/import/csv/status': alt });
+  const { w, d, settle } = await openUi({ '/v2/sets/import/csv/status': alt });
   try {
-    await ruhig();
+    await settle();
     assert.equal(d.getElementById('last-import').hidden, true);
   } finally {
     w.close();

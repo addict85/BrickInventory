@@ -27,111 +27,111 @@ const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEac
 function checkerboard() {
   const w = 32,
     h = 32;
-  const block = (typ, daten) => {
-    const laenge = Buffer.alloc(4);
-    laenge.writeUInt32BE(daten.length);
-    const inhalt = Buffer.concat([Buffer.from(typ), daten]);
-    const pruef = Buffer.alloc(4);
-    pruef.writeUInt32BE(zlib.crc32(inhalt));
-    return Buffer.concat([laenge, inhalt, pruef]);
+  const block = (kind, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const content = Buffer.concat([Buffer.from(kind), data]);
+    const checksum = Buffer.alloc(4);
+    checksum.writeUInt32BE(zlib.crc32(content));
+    return Buffer.concat([len, content, checksum]);
   };
-  const kopf = Buffer.alloc(13);
-  kopf.writeUInt32BE(w, 0);
-  kopf.writeUInt32BE(h, 4);
-  kopf[8] = 8;
-  kopf[9] = 6;
-  const roh = Buffer.alloc((w * 4 + 1) * h);
+  const head = Buffer.alloc(13);
+  head.writeUInt32BE(w, 0);
+  head.writeUInt32BE(h, 4);
+  head[8] = 8;
+  head[9] = 6;
+  const raw = Buffer.alloc((w * 4 + 1) * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const rand = x < 2 || y < 2 || x >= w - 2 || y >= h - 2;
-      roh.set(rand || (x + y) % 2 === 0 ? [200, 40, 40, 255] : [0, 0, 0, 0], y * (w * 4 + 1) + 1 + x * 4);
+      raw.set(rand || (x + y) % 2 === 0 ? [200, 40, 40, 255] : [0, 0, 0, 0], y * (w * 4 + 1) + 1 + x * 4);
     }
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    block('IHDR', kopf),
-    block('IDAT', zlib.deflateSync(roh)),
+    block('IHDR', head),
+    block('IDAT', zlib.deflateSync(raw)),
     block('IEND', Buffer.alloc(0)),
   ]);
 }
 
-async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(CLOSE);
-  await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, 200);
-  await a.ruhig(5000);
+async function geh(a, hash, ready, was) {
+  await a.b.evaluate(CLOSE);
+  await a.b.evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
+  await a.until(ready, was, 200);
+  await a.settle(5000);
 }
 
 async function closeQuantityOn(_t, a) {
-  const { b, bis } = a;
-  for (const [knopf, soll] of [
+  const { b, until } = a;
+  for (const [button, want] of [
     ['mQtyInc', 2],
     ['mQtyDec', 1],
   ]) {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
-    await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
-    await bis(`document.getElementById('m-qty')?.value === '${3 - Number(soll)}'`, 'Detail');
+    await b.evaluate(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
+    await until(`document.getElementById('m-qty')?.value === '${3 - Number(want)}'`, 'Detail');
     // Change and close in the same move: far below the 400 ms until saving.
-    await b.auswerten(`document.querySelector('#set-modal [data-click="${knopf}"]').click();
+    await b.evaluate(`document.querySelector('#set-modal [data-click="${button}"]').click();
       document.querySelector('#set-modal [data-dialog-close]').click(); true`);
-    await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
-    await a.warte(800);
-    await a.ruhig();
-    assert.equal(await quantityOf(a.db, [a.uid], '10300-1'), soll, `${knopf} and closed immediately: lost`);
+    await until(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
+    await a.sleep(800);
+    await a.settle();
+    assert.equal(await quantityOf(a.db, [a.uid], '10300-1'), want, `${button} and closed immediately: lost`);
   }
 }
 
 async function transparentPreview(_t, a, nr) {
-  const { b, bis } = a;
-  await b.auswerten(`document.documentElement.setAttribute('data-dark', ''); true`);
+  const { b, until } = a;
+  await b.evaluate(`document.documentElement.setAttribute('data-dark', ''); true`);
   try {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="${nr}"] .sci img')`, 'Sammlung');
-    await bis(
+    await until(
       `(i => i.complete && i.naturalWidth > 0)(document.querySelector('#gallery .sc[data-arg="${nr}"] .sci img'))`,
       'Kachelbild',
     );
     const m =
-      await b.auswerten(`(async () => { const i = document.querySelector('#gallery .sc[data-arg="${nr}"] .sci img');
+      await b.evaluate(`(async () => { const i = document.querySelector('#gallery .sc[data-arg="${nr}"] .sci img');
       const r = await fetch(i.currentSrc); const bild = await createImageBitmap(await r.blob());
       const c = document.createElement('canvas'); c.width = bild.width; c.height = bild.height;
       const g = c.getContext('2d'); g.drawImage(bild, 0, 0);
-      return { quelle: i.currentSrc.replace(/^.*\\/images\\//, ''), typ: r.headers.get('content-type'),
-        rand: g.getImageData(0, 0, 1, 1).data[3], innen: g.getImageData(3, 2, 1, 1).data[3] }; })()`);
-    assert.match(m.quelle, /_thumb\.jpg$/, `test data: tile shows the preview: ${JSON.stringify(m)}`);
-    assert.equal(m.typ, 'image/png', `preview with wrong type: ${JSON.stringify(m)}`);
-    assert.deepEqual([m.rand, m.innen], [255, 0], `transparency was lost: ${JSON.stringify(m)}`);
+      return { source: i.currentSrc.replace(/^.*\\/images\\//, ''), kind: r.headers.get('content-type'),
+        rand: g.getImageData(0, 0, 1, 1).data[3], inner: g.getImageData(3, 2, 1, 1).data[3] }; })()`);
+    assert.match(m.source, /_thumb\.jpg$/, `test data: tile shows the preview: ${JSON.stringify(m)}`);
+    assert.equal(m.kind, 'image/png', `preview with wrong type: ${JSON.stringify(m)}`);
+    assert.deepEqual([m.rand, m.inner], [255, 0], `transparency was lost: ${JSON.stringify(m)}`);
   } finally {
-    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
+    await b.evaluate(`document.documentElement.removeAttribute('data-dark'); true`);
   }
 }
 
 test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, async t => {
   const nr = `r25b-${process.pid}-1`;
   const req = require('./helpers/sources').buildAndRequire();
-  const ordner = path.join(ROOT, 'data', 'images', 'sets');
+  const dir = path.join(ROOT, 'data', 'images', 'sets');
   t.after(() => {
-    for (const d of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(ordner, d), { force: true });
+    for (const d of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(dir, d), { force: true });
   });
   const a = await startApp(t, {
     name: `r25b_${process.pid}`,
     holding: async (db, uid) => {
       await patternCollection(db, uid);
       // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
-      fs.mkdirSync(ordner, { recursive: true });
-      fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, `${nr}.jpg`), checkerboard());
       assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), 'preview');
       await catalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
       await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
         nr,
         `/images/sets/${nr}.jpg`,
       ]);
-      await holdsSet(db, uid, nr, 1, { preis: 5 });
+      await holdsSet(db, uid, nr, 1, { price: 5 });
     },
   });
   if (a.reason) {
     t.skip(a.reason);
     return;
   }
-  await a.ruhig();
+  await a.settle();
   await t.test('quantity saved on immediate close', () => closeQuantityOn(t, a));
   await t.test('preview of a transparent PNG stays transparent', () => transparentPreview(t, a, nr));
 });

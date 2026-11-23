@@ -23,25 +23,25 @@ const { holdsMinifig, holdsSet, holdsPart, haltRow, quantityOf } = require('./he
 test('last purchase price deleted → the entry disappears entirely', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const NUTZER = `lk-${process.pid}`;
+  const USER = `lk-${process.pid}`;
   const ROUTE = `80${(process.pid % 900) + 100}-1`; // deletion happens here
   const STAYS = `80${(process.pid % 900) + 101}-1`; // control group
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const sn of [ROUTE, STAYS])
       for (const tab of ['sets', 'set_acquisitions', 'parts', 'minifigs', 'price_cache'])
         await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [sn]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(
     `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
     [uid],
   );
-  await aufraeumen();
+  await cleanUp();
 
   for (const sn of [ROUTE, STAYS]) {
     await db.run(
@@ -62,14 +62,14 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
     await holdsMinifig(db, uid, 'cty0001', { setNumber: sn, quantity: 1 });
   }
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModule(_req);
   const FC = _req('src/finances/financeCalc.js');
 
   try {
-    const liste = await (await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions`)).json();
-    const acqId = liste.acquisitions?.[0]?.id;
+    const list = await (await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions`)).json();
+    const acqId = list.acquisitions?.[0]?.id;
     assert.ok(acqId, 'Precondition: there is an acquisition');
     const r = await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions/${acqId}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
@@ -77,11 +77,11 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
 
     await t.test('the gallery no longer shows it', async () => {
       const g = await H.readSets([uid], {});
-      const nummern = g.sets.map(s => s.set_number);
+      const numbers = g.sets.map(s => s.set_number);
       assert.deepEqual(
-        nummern,
+        numbers,
         [STAYS],
-        `Gallery still shows: ${nummern.join(', ')} — a set with quantity 0 is a ghost entry`,
+        `Gallery still shows: ${numbers.join(', ')} — a set with quantity 0 is a ghost entry`,
       );
       assert.equal(g.total, 1, 'the total count still includes it');
     });
@@ -100,8 +100,8 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       // The actual damage: `quantity || 1` made a 1 out of 0, the
       // deleted set contributed 20 CHF to the portfolio.
       const val = await FC.valueSets(uid, [uid]);
-      const nummern = (val.sets || []).map(s => s.set_number);
-      assert.deepEqual(nummern, [STAYS], `Valuation still contains: ${nummern.join(', ')}`);
+      const numbers = (val.sets || []).map(s => s.set_number);
+      assert.deepEqual(numbers, [STAYS], `Valuation still contains: ${numbers.join(', ')}`);
       assert.equal(
         parseFloat(val.totals.avg),
         20,
@@ -110,13 +110,13 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
     });
 
     await t.test('no row remains in the database', async () => {
-      for (const [tab, spalte] of [
+      for (const [tab, column] of [
         ['sets', 'set_number'],
         ['parts', 'set_number'],
         ['minifigs', 'set_number'],
         ['set_acquisitions', 'set_number'],
       ]) {
-        const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${spalte}=$1`, [ROUTE])).c;
+        const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${column}=$1`, [ROUTE])).c;
         assert.equal(n, 0, `${tab}: ${n} row(s) left`);
       }
     });
@@ -141,15 +141,15 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
         [uid, STAYS],
       );
       const l = await (await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions`)).json();
-      const erste = l.acquisitions[0].id;
-      await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions/${erste}`, { method: 'DELETE' });
+      const first = l.acquisitions[0].id;
+      await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions/${first}`, { method: 'DELETE' });
       assert.ok(await haltRow(db, uid, STAYS), 'the set was deleted although an acquisition is still left');
       const quantity = await quantityOf(db, uid, STAYS);
       assert.ok(quantity > 0, `quantity ${quantity}`);
     });
   } finally {
-    await aufraeumen();
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await cleanUp();
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

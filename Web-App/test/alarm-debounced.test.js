@@ -34,9 +34,9 @@ function alarmMarkup(sn) {
   const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
   const j = ADMIN.indexOf('id="${p}-alert-state"');
   assert.ok(i > 0 && j > i, 'The alert markup is no longer where expected');
-  const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
+  const raw = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
   return (
-    roh
+    raw
       // The prefix of the set dialog. It is ${p} in alertBlock(); here
       // it becomes what stands there at runtime.
       .replace(/\$\{p\}/g, 'm')
@@ -51,11 +51,11 @@ function alarmMarkup(sn) {
 const REST = 800;
 
 /** A window with a loaded bundle and the alert markup of the detail window. */
-function fenster() {
+function win() {
   const vc = new jsdom.VirtualConsole();
-  const meldungen = [];
-  vc.on('warn', (...a) => meldungen.push(['warn', ...a].join(' ')));
-  vc.on('error', (...a) => meldungen.push(['error', ...a].join(' ')));
+  const messages = [];
+  vc.on('warn', (...a) => messages.push(['warn', ...a].join(' ')));
+  vc.on('error', (...a) => messages.push(['error', ...a].join(' ')));
   const dom = new jsdom.JSDOM(HTML, {
     runScripts: 'outside-only',
     url: 'http://localhost/',
@@ -81,36 +81,36 @@ function fenster() {
   // schliesse(): WITHOUT it the check hangs. startApp() in the bundle
   // polls /api/v2/startup-status every second, and this timer
   // keeps the Node process alive long after the test is done.
-  return { w, callIt, meldungen, field: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
+  return { w, callIt, messages, field: w.document.getElementById('m-alert-val'), close: () => w.close() };
 }
 
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 
 /** “249.90" character by character, with [takt] ms between the keystrokes. */
-async function tap(f, takt, text = '249.90') {
+async function tap(f, tick, text = '249.90') {
   for (let i = 1; i <= text.length; i++) {
     f.field.value = text.slice(0, i);
     f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
-    await warte(takt);
+    await sleep(tick);
   }
-  await warte(REST * 2);
+  await sleep(REST * 2);
 }
 
 test('typing saves — and the quiet period turns it into ONE request', async () => {
-  const schnell = fenster();
+  const schnell = win();
   await tap(schnell, 40);
-  assert.deepEqual(schnell.meldungen, [], 'There were messages in the console');
+  assert.deepEqual(schnell.messages, [], 'There were messages in the console');
 
   // 1. It is saved at all — that was Marco's finding.
   assert.ok(schnell.callIt.length >= 1, 'Typing triggered nothing at all — exactly the reported bug');
 
   // 2. And only once, not per character.
-  const langsam = fenster();
-  await tap(langsam, REST + 200);
+  const slow = win();
+  await tap(slow, REST + 200);
   assert.ok(
-    langsam.callIt.length > schnell.callIt.length,
+    slow.callIt.length > schnell.callIt.length,
     `The debounce time changes nothing: fast ${schnell.callIt.length}, slow ` +
-      `${langsam.callIt.length}. Without this gap the test bench only measures itself.`,
+      `${slow.callIt.length}. Without this gap the test bench only measures itself.`,
   );
   assert.equal(
     schnell.callIt.length,
@@ -122,15 +122,15 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
   //    Exactly those would have remained without idle time, and a threshold at 2
   //    reports immediately.
   assert.match(schnell.callIt[0], /^PUT .*\/sets\/10179-1\/alert$/, `Not saved via PUT: ${schnell.callIt[0]}`);
-  schnell.schliesse();
-  langsam.schliesse();
+  schnell.close();
+  slow.close();
 });
 
 test('the response does NOT write back into the field', async () => {
   // The reason is at showAlertMarker(): whoever types “249.90" may already have set
   // the last zero after the idle time behind “249.9". A
   // reload would turn it back into “249.9" and eat the character.
-  const f = fenster();
+  const f = win();
   await tap(f, 40);
   assert.equal(f.field.value, '249.90', 'The field was overwritten');
   assert.deepEqual(
@@ -138,17 +138,17 @@ test('the response does NOT write back into the field', async () => {
     [],
     'After saving, the alert was reloaded — that touches the field',
   );
-  f.schliesse();
+  f.close();
 });
 
 test('a cleared field deletes', async () => {
   // The natural gesture to get rid of an alert. A separate button next to it
   // would be a second path for the same intent.
-  const f = fenster();
+  const f = win();
   f.field.value = '';
   f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
-  await warte(REST * 2);
+  await sleep(REST * 2);
   assert.equal(f.callIt.length, 1, `Requests: ${f.callIt.join(' | ')}`);
   assert.match(f.callIt[0], /^DELETE .*\/alert\?condition=N$/, `An empty field did not delete: ${f.callIt[0]}`);
-  f.schliesse();
+  f.close();
 });

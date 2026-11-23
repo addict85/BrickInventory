@@ -34,7 +34,7 @@ const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]
 test('the acquisition list is reloaded in BOTH directions', async t => {
   // When decreasing, the server removes acquisitions; reloading only when
   // increasing left deleted entries standing in the dialog.
-  const { openUi, reiter } = require('./helpers/ui');
+  const { openUi, switchTab } = require('./helpers/ui');
   const row = (id, quantity, tag) => ({
     id,
     quantity: quantity,
@@ -46,7 +46,7 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
     user_id: 1,
   });
   let acqList = [row(1, 1, '2026-10-01'), row(2, 1, '2026-10-02')];
-  const { w, d, warte, aufrufe } = await openUi({
+  const { w, d, waitFor, calls } = await openUi({
     '/v2/parts/manual': {
       success: true,
       total: 1,
@@ -60,29 +60,29 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
     '/v2/parts/3002/5': { success: true, quantity: 1 },
   });
   t.after(() => w.close());
-  await reiter(w, 'parts');
+  await switchTab(w, 'parts');
   assert.ok(
-    await warte(() => d.querySelector('#manual-parts-list .man-tile')),
+    await waitFor(() => d.querySelector('#manual-parts-list .man-tile')),
     'The tile of the manual part is missing',
   );
   d.querySelector('#manual-parts-list .man-tile').click();
-  assert.ok(await warte(() => d.getElementById('man-det-qty')), 'The quantity field in the detail is missing');
-  const vorher = d.getElementById('man-acq-summary')?.textContent;
+  assert.ok(await waitFor(() => d.getElementById('man-det-qty')), 'The quantity field in the detail is missing');
+  const prior = d.getElementById('man-acq-summary')?.textContent;
 
   acqList = [row(1, 1, '2026-10-01')];
-  const ab = aufrufe.length;
+  const ab = calls.length;
   const field = /** @type {HTMLInputElement} */ (d.getElementById('man-det-qty'));
   field.value = '1';
   field.dispatchEvent(new w.Event('change', { bubbles: true }));
-  assert.ok(await warte(() => aufrufe.slice(ab).some(a => a.method === 'PUT')), 'The quantity is not saved');
+  assert.ok(await waitFor(() => calls.slice(ab).some(a => a.method === 'PUT')), 'The quantity is not saved');
   assert.ok(
-    await warte(() =>
-      aufrufe.slice(ab).some(a => a.method === 'GET' && a.url.includes('/v2/parts/3002/5/acquisitions')),
+    await waitFor(() =>
+      calls.slice(ab).some(a => a.method === 'GET' && a.url.includes('/v2/parts/3002/5/acquisitions')),
     ),
     'After decreasing, the acquisition list is not fetched again',
   );
   assert.ok(
-    await warte(() => d.getElementById('man-acq-summary')?.textContent !== vorher),
+    await waitFor(() => d.getElementById('man-acq-summary')?.textContent !== prior),
     'The summary in the detail still shows the deleted acquisition',
   );
 });
@@ -109,7 +109,7 @@ test('quantities and acquisitions of manual entries against the database', { con
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { addPurchaseAtTag } = _req('src/inventory/acquisitions.js');
   const { testServer } = require('./helpers/server');
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const partRows = (pn, cid = 5) =>
     db.all(
       `SELECT id, quantity FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 AND color_id = $3
@@ -199,7 +199,7 @@ test('quantities and acquisitions of manual entries against the database', { con
                          ($1, 'ma-datum', 5, 1, 1.5, 'N', NOW() - INTERVAL '5 days')`,
       [uid],
     );
-    const [frueher, todayDate] = await partRows('ma-datum');
+    const [earlier, todayDate] = await partRows('ma-datum');
     const tag = async id =>
       (
         await db.get(
@@ -214,11 +214,11 @@ test('quantities and acquisitions of manual entries against the database', { con
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       });
-    const r = await changeOne(frueher.id, { date: await tag(todayDate.id) });
+    const r = await changeOne(earlier.id, { date: await tag(todayDate.id) });
     assert.equal(r.status, 409, 'A date on which the same purchase already exists must be rejected');
     assert.equal((await r.json()).code, 'date_taken');
     assert.equal(
-      (await changeOne(frueher.id, { date: await tag(todayDate.id), condition: 'U' })).status,
+      (await changeOne(earlier.id, { date: await tag(todayDate.id), condition: 'U' })).status,
       200,
       'A different condition on the same day is a separate acquisition and allowed',
     );
@@ -246,27 +246,27 @@ test('quantities and acquisitions of manual entries against the database', { con
       [uid],
     );
     await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'ma-fig-preis', 'manual')`, [uid]);
-    for (const [tag, preis] of [
+    for (const [tag, price] of [
       [3, 2],
       [1, 4],
     ]) {
       await db.run(
         `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, created_at)
                     VALUES ($1, 'ma-preis', 5, 1, $2, NOW() - make_interval(days => $3))`,
-        [uid, preis, tag],
+        [uid, price, tag],
       );
       await db.run(
         `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, created_at)
                     VALUES ($1, 'ma-fig-preis', 1, $2, NOW() - make_interval(days => $3))`,
-        [uid, preis, tag],
+        [uid, price, tag],
       );
     }
     const parts = (await valueParts(uid, [uid])).parts;
     const minifigs = (await valueMinifigs(uid, [uid])).figs;
-    const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
-    assert.deepEqual(preise(parts.find(p => p.part_number === 'ma-preis')), [2, 4], 'part: one row per purchase price');
+    const prices = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
+    assert.deepEqual(prices(parts.find(p => p.part_number === 'ma-preis')), [2, 4], 'part: one row per purchase price');
     assert.deepEqual(
-      preise(minifigs.find(f => f.fig_number === 'ma-fig-preis')),
+      prices(minifigs.find(f => f.fig_number === 'ma-fig-preis')),
       [2, 4],
       'figure: one row per purchase price',
     );
@@ -275,19 +275,19 @@ test('quantities and acquisitions of manual entries against the database', { con
 });
 
 test('the finances show one row per purchase price, the legacy data in one', async t => {
-  const { openUi, reiter } = require('./helpers/ui');
-  const erfassung = (id, preis) => ({
+  const { openUi, switchTab } = require('./helpers/ui');
+  const acquisition = (id, price) => ({
     id,
     condition: 'N',
     quantity: 1,
-    purchase_price: preis,
+    purchase_price: price,
     avg_price: 3,
     total_avg: '3.00',
     value_total: 3,
     pnl_pct: null,
     pnl_percent: null,
   });
-  const teil = (nr, acquisitions) => ({
+  const part = (nr, acquisitions) => ({
     part_number: nr,
     part_name: `Teil ${nr}`,
     color_id: 5,
@@ -302,21 +302,21 @@ test('the finances show one row per purchase price, the legacy data in one', asy
     total_value: '3.0000',
     display_value: '3.00',
   });
-  const { w, d, warte } = await openUi({
+  const { w, d, waitFor } = await openUi({
     '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '9.00',
       value_total: 9,
-      parts: [teil('ma-zwei', [erfassung(1, 2), erfassung(2, 4)]), teil('ma-alt', [])],
+      parts: [part('ma-zwei', [acquisition(1, 2), acquisition(2, 4)]), part('ma-alt', [])],
     },
   });
   t.after(() => w.close());
-  await reiter(w, 'finance');
-  assert.ok(await warte(() => d.querySelector('[data-fin-kind] tbody tr')), 'No section for manual parts');
-  const zeilen = [...d.querySelectorAll('[data-fin-kind] tbody tr')].map(z => z.textContent);
-  assert.equal(zeilen.filter(z => z.includes('Teil ma-zwei')).length, 2, zeilen.join('\n'));
-  assert.equal(zeilen.filter(z => z.includes('Teil ma-alt')).length, 1, zeilen.join('\n'));
+  await switchTab(w, 'finance');
+  assert.ok(await waitFor(() => d.querySelector('[data-fin-kind] tbody tr')), 'No section for manual parts');
+  const lines = [...d.querySelectorAll('[data-fin-kind] tbody tr')].map(z => z.textContent);
+  assert.equal(lines.filter(z => z.includes('Teil ma-zwei')).length, 2, lines.join('\n'));
+  assert.equal(lines.filter(z => z.includes('Teil ma-alt')).length, 1, lines.join('\n'));
 });
 
 test('no create path writes directly into an acquisition table', () => {
@@ -370,7 +370,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   assert.match(
     fn,
     /await bookEntry\(sk, \{\s*account: userId,\s*setNumber,\s*quantity: delta,\s*purchasePrice: plan\.price,\s*condition: plan\.condition,/,
-    'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
+    'The increase also goes through the shared write path',
   );
   // The price comes from priceForNewEntry() — extracted, because the
   // BrickLink fetch in it must run BEFORE the advisory lock (a network call
@@ -378,16 +378,16 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   assert.match(
     fn,
     /pricePlan \?\? \(?await priceForNewEntry\(sk, userId, setNumber\)/,
-    'Ein vorab ermittelter Preis muss durchgereicht werden können',
+    'A price determined beforehand must be passable through',
   );
   // Target of the quantity change is the account `ziel` (without a setting the own one, in the household the chosen one).
   // The checked RULE is unchanged: determine the price (network call), THEN lock.
   assert.match(
     src,
     /const plan = [\s\S]{0,120}priceForNewEntry\(sk, target, sn\)[\s\S]{0,400}sk\.transact\(/,
-    'In changeSet muss der Preis VOR der Sperre stehen',
+    'In changeSet the price must come BEFORE the lock',
   );
-  assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
+  assert.doesNotMatch(src, /function isToday\(/, 'The own per-day check must be removed');
 });
 
 test('a quantity change runs under the inventory lock', () => {
@@ -407,12 +407,12 @@ test('a quantity change runs under the inventory lock', () => {
   assert.doesNotMatch(
     fn,
     /alignEntriesToQuantity\([^)]*\)\.catch\(/,
-    'Ein verschluckter Fehler hinterlässt eine Menge ohne passende Erfassungen',
+    'A swallowed error leaves a quantity without matching acquisitions',
   );
   assert.doesNotMatch(
     fn,
     /await db\.run\('UPDATE sets SET quantity/,
-    'Die Mengenänderung darf nicht an der Transaktion vorbei laufen',
+    'The quantity change must not bypass the transaction',
   );
   // And the difference must come from the TOTAL QUANTITY of the scope, not
   // from the row of a single account — otherwise the detail would show a
@@ -421,6 +421,6 @@ test('a quantity change runs under the inventory lock', () => {
   assert.match(
     fn,
     /repo\.setQuantity\(s\.db, 'blickfeld', readField/,
-    'Die Ausgangsmenge muss über das Blickfeld summiert werden',
+    'The starting quantity must be summed over the scope',
   );
 });

@@ -20,10 +20,10 @@ const { buildAndRequire, testServices, testData, asAccount } = require('./helper
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-function replace(rel, felder) {
+function replace(rel, fields) {
   const p = require.resolve(path.join(ROOT, 'dist', rel));
-  const echt = require(p);
-  require.cache[p].exports = Object.assign({}, echt, felder);
+  const original = require(p);
+  require.cache[p].exports = Object.assign({}, original, fields);
 }
 const disrupted = async () => {
   throw new Error('Tabelle gestört');

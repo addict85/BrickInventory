@@ -46,23 +46,23 @@ const db = testData();
 test('a newly created set is answered the same in both routes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const NUTZER = `neu-form-${process.pid}`;
+  const USER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);
   const DA = `${basis}-1`; // exists, for step 1
   const NEW_A = `${basis + 100}-1`; // does not exist, for the stream
   const NEW_B = `${basis + 200}-1`; // does not exist, for the token route
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const sn of [DA, NEW_A, NEW_B]) {
       await db.run(`DELETE FROM sets WHERE set_number=$1`, [sn]).catch(() => {});
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [sn]).catch(() => {});
     }
   };
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  await aufraeumen();
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
+  await cleanUp();
   await holdsSet(db, uid, DA, 0); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -70,7 +70,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     [uid, DA],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   try {
     // ── 1. The premise, with the REAL function ────────────────────────────
@@ -79,10 +79,10 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     // nothing: the routes would then not have to add it in the first place. The
     // „exists" branch runs purely on the database and needs no network.
     const { acquireSet } = require('./helpers/sources').areaPage('sets');
-    const echt = await acquireSet({ requester: uid, setNumber: DA });
-    assert.equal(echt.action, 'exists', 'the setup of the test is no longer right');
+    const original = await acquireSet({ requester: uid, setNumber: DA });
+    assert.equal(original.action, 'exists', 'the setup of the test is no longer right');
     assert.equal(
-      'success' in echt,
+      'success' in original,
       false,
       'acquireSet() now returns a success itself — then this test no longer says anything about the routes',
     );
@@ -99,7 +99,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       supplement: 'pending',
       owner: e.requester,
     });
-    const vorher = positionCalled;
+    const prior = positionCalled;
 
     const stream = await fetch(`${base}/api/v2/sets/add-stream`, {
       method: 'POST',
@@ -112,13 +112,10 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       /text\/event-stream/,
       'for a new set it must be the event stream, not the JSON form',
     );
-    const roh = await stream.text();
-    assert.ok(
-      positionCalled > vorher,
-      'acquireSet() was not called — the stub does not apply, the test checks nothing',
-    );
+    const raw = await stream.text();
+    assert.ok(positionCalled > prior, 'acquireSet() was not called — the stub does not apply, the test checks nothing');
 
-    const eventList = roh
+    const eventList = raw
       .split('\n')
       .filter(z => z.startsWith('data:'))
       .map(z => {
@@ -129,20 +126,20 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
         }
       })
       .filter(Boolean);
-    const fertig = eventList.find(e => e.step === 'done');
-    assert.ok(fertig, `no done event in the stream: ${roh}`);
+    const done = eventList.find(e => e.step === 'done');
+    assert.ok(done, `no done event in the stream: ${raw}`);
 
     // THE assertion. `=== true` and not `.ok()`: a missing field is
     // `undefined` and would have slipped through with a soft check — exactly
     // the state that Marco reported.
     assert.equal(
-      fertig.success,
+      done.success,
       true,
       'the done event carries no success:true — the Android app then aborts ' +
         'when creating EVERY new set, although the set was created',
     );
-    assert.equal(fertig.action, 'added');
-    assert.equal(fertig.set_number, NEW_A);
+    assert.equal(done.action, 'added');
+    assert.equal(done.set_number, NEW_A);
 
     // ── 3. The token route with the same result ───────────────────────────
     const before2 = positionCalled;
@@ -161,25 +158,25 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     // Both paths pass THE SAME result through. If their forms
     // drift apart, it depends on the chosen path again whether a client can read the
     // response — and that was the error.
-    const felder = o =>
+    const fields = o =>
       Object.keys(o)
         .filter(k => k !== 'step')
         .sort();
     assert.deepEqual(
-      felder(fertig),
-      felder(tb),
-      `stream ${JSON.stringify(felder(fertig))} versus token route ` +
-        `${JSON.stringify(felder(tb))} — the same information in two shapes`,
+      fields(done),
+      fields(tb),
+      `stream ${JSON.stringify(fields(done))} versus token route ` +
+        `${JSON.stringify(fields(tb))} — the same information in two shapes`,
     );
 
     // 5. The app demands nothing that the server does not send: the required fields of its
     // model (shared/app-interface.json, generated from its source text).
     const model = require('./helpers/contract').appInterface().models.AddSetResponse;
     assert.ok(model && model.fields.length >= 5, 'model AddSetResponse not found — renamed?');
-    const zeilen = model.fields.map(name => ({ name, required: model.required.includes(name) }));
+    const lines = model.fields.map(name => ({ name, required: model.required.includes(name) }));
 
-    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
-    const requiredAndMissing = zeilen.filter(f => f.required && !geliefert.has(f.name)).map(f => f.name);
+    const delivered = new Set([...Object.keys(done), ...Object.keys(tb)]);
+    const requiredAndMissing = lines.filter(f => f.required && !delivered.has(f.name)).map(f => f.name);
     assert.deepEqual(
       requiredAndMissing,
       [],
@@ -192,8 +189,8 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     );
   } finally {
     posedAddSet = null;
-    await aufraeumen();
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await cleanUp();
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

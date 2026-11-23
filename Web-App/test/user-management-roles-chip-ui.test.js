@@ -18,7 +18,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const ANNA = { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' };
 const BEN = { id: 2, username: 'ben', is_admin: false, is_active: true, created_at: '2026-10-02T00:00:00Z' };
@@ -29,17 +29,17 @@ const row = (d, name) =>
   [...d.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === name);
 
 async function confirm(d) {
-  assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
+  assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
   assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
-  const titel = d.getElementById('cd-title').textContent;
+  const title = d.getElementById('cd-title').textContent;
   d.getElementById('cd-pw').value = 'mein-passwort';
   d.getElementById('cd-confirm').click();
-  return titel;
+  return title;
 }
 
 test('X on the administrator chip revokes after confirmation', async () => {
   let announced = false;
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/auth/users': () => ({
       success: true,
       users: [ANNA, BEN, { ...CARLA, announced: announced ? [{ type: 'revoke_role', effective_at: AB }] : [] }],
@@ -50,8 +50,8 @@ test('X on the administrator chip revokes after confirmation', async () => {
     },
   });
   try {
-    await reiter(w, 'settings');
-    await warte(() => row(d, 'carla'));
+    await switchTab(w, 'settings');
+    await waitFor(() => row(d, 'carla'));
     const chip = row(d, 'carla').querySelector('.role-chip');
     assert.equal(chip?.textContent.trim(), 'Administrator', 'chip with the word');
     const x = chip.querySelector('button.chip-remove');
@@ -66,12 +66,12 @@ test('X on the administrator chip revokes after confirmation', async () => {
 
     x.click();
     assert.equal(await confirm(d), '„carla“ die Administratorrolle entziehen?');
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'))));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'))));
+    const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
     // Against an administrator it only takes effect after 24 h; the list shows it.
     assert.ok(
-      await warte(() => /Angekündigt: Administratorrechte entziehen ab/.test(row(d, 'carla')?.textContent || '')),
+      await waitFor(() => /Angekündigt: Administratorrechte entziehen ab/.test(row(d, 'carla')?.textContent || '')),
       '„Angekündigt“ is missing after the response',
     );
     assert.match(d.getElementById('toasts').textContent, /Die Änderung gilt ab/);
@@ -81,13 +81,13 @@ test('X on the administrator chip revokes after confirmation', async () => {
 });
 
 test('default chip without X, + administrator appoints', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/auth/users': { success: true, users: [ANNA, BEN, CARLA] },
     '/v2/auth/users/2/admin': { success: true },
   });
   try {
-    await reiter(w, 'settings');
-    await warte(() => row(d, 'ben'));
+    await switchTab(w, 'settings');
+    await waitFor(() => row(d, 'ben'));
     const z = row(d, 'ben');
     assert.equal(z.querySelector('.rb.ru')?.textContent.trim(), 'Standard');
     assert.equal(z.querySelector('.chip-remove'), null, 'standard chip without X');
@@ -99,10 +99,10 @@ test('default chip without X, + administrator appoints', async () => {
 
     k.click();
     assert.equal(await confirm(d), '„ben“ zum Administrator machen?');
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'))));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'));
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'))));
+    const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: true, admin_password: 'mein-passwort' });
-    assert.ok(await warte(() => /Rolle geändert/.test(d.getElementById('toasts').textContent)));
+    assert.ok(await waitFor(() => /Rolle geändert/.test(d.getElementById('toasts').textContent)));
   } finally {
     w.close();
   }
@@ -111,8 +111,8 @@ test('default chip without X, + administrator appoints', async () => {
 test('own account: chip without X', async () => {
   const { w, d } = await openUi({ '/v2/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
   try {
-    await reiter(w, 'settings');
-    await warte(() => row(d, 'anna'));
+    await switchTab(w, 'settings');
+    await waitFor(() => row(d, 'anna'));
     const z = row(d, 'anna');
     assert.equal(z.querySelector('.role-chip')?.textContent.trim(), 'Administrator');
     assert.equal(z.querySelectorAll('button').length, 0, 'no button against the own account');
@@ -125,8 +125,8 @@ test('own account: chip without X', async () => {
 test('a single administrator: no X', async () => {
   const { w, d } = await openUi({ '/v2/auth/users': { success: true, users: [ANNA, BEN] } });
   try {
-    await reiter(w, 'settings');
-    await warte(() => row(d, 'ben'));
+    await switchTab(w, 'settings');
+    await waitFor(() => row(d, 'ben'));
     assert.equal(d.querySelectorAll('#users-tbl .role-chip').length, 1, 'test data: an administrator chip');
     assert.equal(d.querySelectorAll('#users-tbl .chip-remove').length, 0, 'no X revokes the last administrator');
     assert.ok(row(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'promoting stays possible');

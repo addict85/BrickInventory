@@ -29,16 +29,16 @@ const { noDb } = require('./helpers/db');
 const db = testData();
 
 const T = `bq${process.pid}`;
-const GUT = `https://cdn.rebrickable.com/media/parts/${T}-gut.jpg`;
-const BOESE = `https://cdn.rebrickable.com/media/parts/${T}-BOESE.jpg`;
+const GOOD = `https://cdn.rebrickable.com/media/parts/${T}-gut.jpg`;
+const EVIL = `https://cdn.rebrickable.com/media/parts/${T}-BOESE.jpg`;
 const TAPPED = `https://cdn.rebrickable.com/media/parts/${T}-getippt.jpg`;
 
 /** Intercept https.get: every address is noted and answered with 404. */
 function intercept(t) {
-  const echt = https.get;
-  const abgerufen = [];
+  const original = https.get;
+  const fetched = [];
   /** @type {any} */ (https).get = (url, _opt, cb) => {
-    abgerufen.push(String(url));
+    fetched.push(String(url));
     const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
@@ -52,9 +52,9 @@ function intercept(t) {
     return req;
   };
   t.after(() => {
-    https.get = echt;
+    https.get = original;
   });
-  return abgerufen;
+  return fetched;
 }
 
 test('image sources come from the catalog, not from the client', { concurrency: 1 }, async t => {
@@ -74,39 +74,39 @@ test('image sources come from the catalog, not from the client', { concurrency: 
   }
   const { newJobId, pdfFilePath } = _req('src/catalog/pdf/pdfJobs.js');
   const jobId = newJobId(Date.now());
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
     await db.run('DELETE FROM users WHERE username = $1', [T]);
     await db.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${jobId}`]);
     require('node:fs').rmSync(pdfFilePath(jobId), { force: true });
   };
-  await aufraeumen();
+  await cleanUp();
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end().catch(() => {});
   });
 
   // Verified address in the catalog, typed-in one in an account's own details.
-  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GUT]);
-  const konto = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GOOD]);
+  const account = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
   await db.run(`INSERT INTO part_color_custom (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`, [
-    konto,
+    account,
     `${T}b`,
     TAPPED,
   ]);
 
   const { imagesFromCatalog, createPdf } = _req('src/catalog/pdf/pdfGeneration.js');
   const fromClient = () => [
-    { part_number: `${T}a`, color_id: 5, quantity: 1, image_url: BOESE, image_local: '/images/parts/fremd.jpg' },
-    { part_number: `${T}b`, color_id: 5, quantity: 1, image_url: BOESE },
-    { part_number: `${T}c`, color_id: 5, quantity: 1, image_url: BOESE, image_local: '/images/parts/fremd.jpg' },
-    { part_number: `${T}d`, color_id: 5, quantity: 1, image_url: BOESE },
+    { part_number: `${T}a`, color_id: 5, quantity: 1, image_url: EVIL, image_local: '/images/parts/fremd.jpg' },
+    { part_number: `${T}b`, color_id: 5, quantity: 1, image_url: EVIL },
+    { part_number: `${T}c`, color_id: 5, quantity: 1, image_url: EVIL, image_local: '/images/parts/fremd.jpg' },
+    { part_number: `${T}d`, color_id: 5, quantity: 1, image_url: EVIL },
   ];
 
   await t.test("the client's details are discarded", async () => {
     const parts = fromClient();
     await imagesFromCatalog(parts);
-    assert.equal(parts[0].image_url, GUT);
+    assert.equal(parts[0].image_url, GOOD);
     assert.equal(parts[0].image_local, null, 'the local path of the client stays');
     assert.equal(parts[1].image_url, null, 'a typed-in address is stored for everyone');
     assert.equal(parts[2].image_url, null, 'without a catalog row the client address stays');
@@ -114,11 +114,11 @@ test('image sources come from the catalog, not from the client', { concurrency: 
   });
 
   await t.test('only the verified catalog address is fetched', async () => {
-    const abgerufen = intercept(t);
+    const fetched = intercept(t);
     await createPdf({ job_id: jobId, user_id: 1, sets: [], parts: fromClient() });
-    assert.ok(abgerufen.includes(GUT), `the catalog address is not fetched: ${abgerufen}`);
-    assert.ok(!abgerufen.includes(BOESE), 'the image address of the client is fetched');
-    assert.ok(!abgerufen.includes(TAPPED), 'a typed-in address is stored for everyone');
+    assert.ok(fetched.includes(GOOD), `the catalog address is not fetched: ${fetched}`);
+    assert.ok(!fetched.includes(EVIL), 'the image address of the client is fetched');
+    assert.ok(!fetched.includes(TAPPED), 'a typed-in address is stored for everyone');
   });
 });
 

@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view: viewOf, waitFor, tick } = require('./helpers/ui');
 
 const ANNA = { id: 1, username: 'anna', is_self: true, depth: 0 };
 const BEN = { id: 7, username: 'ben', is_self: false, depth: 1 };
@@ -34,8 +34,8 @@ test('every account may invite and redeem — a sub-account too', async () => {
     },
   });
   try {
-    await sicht(w, 'household');
-    assert.ok(await warte(() => /mama/.test(d.getElementById('household-state')?.textContent ?? '')));
+    await viewOf(w, 'household');
+    assert.ok(await waitFor(() => /mama/.test(d.getElementById('household-state')?.textContent ?? '')));
     assert.deepEqual(
       ['household-invite-box', 'household-redeem-box'].map(id => shown(d, id)),
       [true, true],
@@ -46,20 +46,20 @@ test('every account may invite and redeem — a sub-account too', async () => {
 });
 
 test('account selection and account filter only in the household', async () => {
-  const allein = await openUi();
+  const alone = await openUi();
   try {
-    await allein.ruhig();
+    await alone.settle();
     assert.deepEqual(
-      [...OWNER_BOXES.map(id => shown(allein.d, `${id}-box`)), ...SCOPES.map(id => shown(allein.d, id))],
+      [...OWNER_BOXES.map(id => shown(alone.d, `${id}-box`)), ...SCOPES.map(id => shown(alone.d, id))],
       Array(9).fill(false),
       'single account',
     );
   } finally {
-    allein.w.close();
+    alone.w.close();
   }
-  const { w, d, ruhig } = await openUi(HOUSEHOLD);
+  const { w, d, settle } = await openUi(HOUSEHOLD);
   try {
-    await ruhig();
+    await settle();
     for (const id of OWNER_BOXES) {
       assert.ok(shown(d, `${id}-box`), `${id} hidden in the household`);
       assert.deepEqual(
@@ -98,7 +98,7 @@ test('owner badge only for another account', async () => {
         ...(d.querySelector(`#gallery [data-price-for="${sn}"]`)?.closest('.sc')?.querySelectorAll('.owner-badge') ??
           []),
       ].map(b => b.textContent.trim());
-    assert.ok(await warte(() => badges('10001-1').length > 0), 'no badge for the other account');
+    assert.ok(await waitFor(() => badges('10001-1').length > 0), 'no badge for the other account');
     assert.deepEqual(badges('10001-1'), ['ben']);
     assert.deepEqual(badges('10002-1'), [], 'the own account carries no badge');
   } finally {
@@ -107,19 +107,19 @@ test('owner badge only for another account', async () => {
 });
 
 test('the account filter applies per view, is sent along and reloads only its view', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi(HOUSEHOLD);
+  const { w, d, calls, settle } = await openUi(HOUSEHOLD);
   const pick = async (view, value) => {
     const el = d.getElementById(`scope-${view}`);
     el.value = value;
-    const from = aufrufe.length;
+    const from = calls.length;
     el.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(50);
-    await ruhig();
-    return aufrufe.slice(from).map(a => a.url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, ''));
+    await tick(50);
+    await settle();
+    return calls.slice(from).map(a => a.url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, ''));
   };
   const paths = urls => [...new Set(urls.map(u => u.split('?')[0]))].sort();
   try {
-    await ruhig();
+    await settle();
     await t_parts();
     await t_finance();
   } finally {
@@ -127,8 +127,8 @@ test('the account filter applies per view, is sent along and reloads only its vi
   }
 
   async function t_parts() {
-    await reiter(w, 'parts');
-    await ruhig();
+    await switchTab(w, 'parts');
+    await settle();
     const urls = await pick('parts', '7');
     assert.equal(w.localStorage.getItem('bim_scope_parts'), '7');
     assert.equal(w.localStorage.getItem('bim_scope_gallery'), null, 'the gallery keeps its own choice');
@@ -147,8 +147,8 @@ test('the account filter applies per view, is sent along and reloads only its vi
   }
 
   async function t_finance() {
-    await reiter(w, 'finance');
-    await ruhig();
+    await switchTab(w, 'finance');
+    await settle();
     const urls = await pick('finance', '7');
     for (const ep of [
       '/v2/finance/valuation',

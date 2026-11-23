@@ -44,7 +44,7 @@ test('UI: strict is switched on, no part of it switched off', () => {
     );
     const o = JSON.parse(r.stdout).compilerOptions;
     assert.equal(o.strict, true, `${config}: strict`);
-    for (const teil of [
+    for (const part of [
       'strictNullChecks',
       'noImplicitAny',
       'noImplicitThis',
@@ -54,6 +54,6 @@ test('UI: strict is switched on, no part of it switched off', () => {
       'useUnknownInCatchVariables',
       'alwaysStrict',
     ])
-      assert.notEqual(o[teil], false, `${config}: ${teil} switched off`);
+      assert.notEqual(o[part], false, `${config}: ${part} switched off`);
   }
 });

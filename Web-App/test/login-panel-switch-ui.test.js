@@ -10,30 +10,30 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 const klick = (d, id) => d.getElementById(id).click();
-const fokus = d => d.activeElement?.id || d.activeElement?.tagName;
+const focused = d => d.activeElement?.id || d.activeElement?.tagName;
 
 test('focus when switching the fields of the login card', async () => {
   const { w, d } = await openUi({}, { loggedIn: false });
   try {
-    await warte(() => d.getElementById('panel-login')?.style.display !== 'none');
+    await waitFor(() => d.getElementById('panel-login')?.style.display !== 'none');
     klick(d, 'link-forgot');
-    assert.equal(fokus(d), 'forgot-email');
+    assert.equal(focused(d), 'forgot-email');
     klick(d, 'link-forgot-to-login');
-    assert.equal(fokus(d), 'lu');
+    assert.equal(focused(d), 'lu');
     klick(d, 'link-register');
-    assert.equal(fokus(d), 'reg-first');
+    assert.equal(focused(d), 'reg-first');
     klick(d, 'link-to-login');
-    assert.equal(fokus(d), 'lu');
+    assert.equal(focused(d), 'lu');
   } finally {
     w.close();
   }
 });
 
 test('forgot password: title, explanation and Enter submits', async () => {
-  const { w, d, aufrufe } = await openUi(
+  const { w, d, calls } = await openUi(
     { '/v2/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
     { loggedIn: false },
   );
@@ -46,10 +46,10 @@ test('forgot password: title, explanation and Enter submits', async () => {
     field.value = 'anna@example.org';
     field.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     assert.ok(
-      await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/forgot-password'))),
+      await waitFor(() => calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/forgot-password'))),
       'Enter sendet ab',
     );
-    assert.ok(await warte(() => d.getElementById('forgot-success').style.display === 'block'));
+    assert.ok(await waitFor(() => d.getElementById('forgot-success').style.display === 'block'));
   } finally {
     w.close();
   }

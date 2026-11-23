@@ -53,25 +53,25 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  const callFn = async (weg, opt = {}) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, opt = {}) => {
+    const r = await fetch(basis + route, {
       method: opt.method || 'GET',
       headers: { 'content-type': 'application/json', ...(opt.headers || {}) },
       ...(opt.body ? { body: JSON.stringify(opt.body) } : {}),
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const anmelden = (extra = {}) =>
+  const signIn = (extra = {}) =>
     callFn(AUTH + '/login', { method: 'POST', body: { username: NAME, password: PASS, ...extra } });
 
   try {
     // Three logins: a browser and two “phones" with their own labels.
-    const browser = await anmelden();
+    const browser = await signIn();
     assert.equal(browser.status, 200, JSON.stringify(browser.body));
-    const telefon = await anmelden({ label: 'Pixel 8', never_expires: true });
-    const tablet = await anmelden({ label: 'Tablet', never_expires: true });
+    const phone = await signIn({ label: 'Pixel 8', never_expires: true });
+    const tablet = await signIn({ label: 'Tablet', never_expires: true });
     // Session and token come from separate logins: a token login creates no session.
-    const cookie = (await anmelden({ without_token: true })).cookie.split(';')[0];
+    const cookie = (await signIn({ without_token: true })).cookie.split(';')[0];
 
     // ── 1. Via the SESSION (web app) ────────────────────────────────────────
     const perSession = await callFn(SETTINGS + '/tokens', { headers: { cookie } });
@@ -89,9 +89,9 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     const withOwn = await callFn(SETTINGS + '/tokens', {
       headers: { cookie, authorization: `Bearer ${browser.body.token}` },
     });
-    const markiert = withOwn.body.tokens.filter(x => x.current);
-    assert.equal(markiert.length, 1, 'Exactly one row is „dieses Gerät“');
-    assert.equal(markiert[0].label, 'webapp-session');
+    const marked = withOwn.body.tokens.filter(x => x.current);
+    assert.equal(marked.length, 1, 'Exactly one row is „dieses Gerät“');
+    assert.equal(marked[0].label, 'webapp-session');
     // The token itself must NOT come out — only a piece of its hash.
     assert.ok(
       !JSON.stringify(withOwn.body).includes(browser.body.token),
@@ -101,7 +101,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     // ── 2. Via the TOKEN (app) ──────────────────────────────────────────────
     // Previously that was not possible at all: the route hung on the session, and the
     // app has none.
-    const perToken = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
+    const perToken = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${phone.body.token}` } });
     assert.equal(perToken.status, 200, 'The app must be able to see its accesses');
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.current)?.label, 'Pixel 8');
@@ -128,18 +128,18 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     );
 
     const deleteTo = perToken.body.tokens.find(x => x.label === 'Tablet');
-    const ohne = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
+    const without = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
-      headers: { authorization: `Bearer ${telefon.body.token}` },
+      headers: { authorization: `Bearer ${phone.body.token}` },
     });
-    assert.equal(ohne.status, 400, 'without a password one device does not lock out another');
-    const weg = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
+    assert.equal(without.status, 400, 'without a password one device does not lock out another');
+    const route = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
-      headers: { authorization: `Bearer ${telefon.body.token}` },
+      headers: { authorization: `Bearer ${phone.body.token}` },
       body: { password: PASS },
     });
-    assert.equal(weg.status, 200);
-    assert.equal(weg.body.deleted, 1);
+    assert.equal(route.status, 200);
+    assert.equal(route.body.deleted, 1);
 
     // And REALLY: the tablet's token no longer applies. That is the
     // point of the whole exercise — deleting the row is only half the job
@@ -152,8 +152,8 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     );
 
     // The other two stay.
-    const danach = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
-    assert.deepEqual(danach.body.tokens.map(x => x.label).sort(), ['Pixel 8', 'webapp-session']);
+    const afterwards = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${phone.body.token}` } });
+    assert.deepEqual(afterwards.body.tokens.map(x => x.label).sort(), ['Pixel 8', 'webapp-session']);
 
     // ── 4. Foreign accesses are off limits ──────────────────────────────────
     // The filter goes via user_id. Without it every logged-in user could invalidate
@@ -167,13 +167,15 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
       method: 'POST',
       body: { username: NAME + '_fremd', password: PASS, label: 'Fremd', never_expires: true },
     });
-    const fremdSicht = await callFn(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${fremd.body.token}` } });
+    const foreignView = await callFn(SETTINGS + '/tokens', {
+      headers: { authorization: `Bearer ${fremd.body.token}` },
+    });
     assert.deepEqual(
-      fremdSicht.body.tokens.map(x => x.label),
+      foreignView.body.tokens.map(x => x.label),
       ['Fremd'],
       'A foreign account must not see the own accesses',
     );
-    const foreignAttempt = await callFn(SETTINGS + '/tokens/' + danach.body.tokens[0].token_id, {
+    const foreignAttempt = await callFn(SETTINGS + '/tokens/' + afterwards.body.tokens[0].token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${fremd.body.token}` },
       body: { password: PASS },
@@ -183,7 +185,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     // ── 5. The % case: only the full identifier (16 hex characters) applies ──
     const alles = await callFn(SETTINGS + '/tokens/' + encodeURIComponent('%'), {
       method: 'DELETE',
-      headers: { authorization: `Bearer ${telefon.body.token}` },
+      headers: { authorization: `Bearer ${phone.body.token}` },
     });
     // Since 05.11.2026 the contract (PATH) already rejects the identifier.
     assert.equal(alles.status, 400, 'A "%" as token ID must not delete all accesses at once');

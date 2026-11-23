@@ -34,7 +34,7 @@ const { holdsSet, record, holdsPart, holdsMinifig, catalogSet } = require('./hel
 const NAME = `geschenk_${process.pid}`;
 const SET = `8${process.pid}1-1`,
   PART = `gt${process.pid}`,
-  FARBE = 11,
+  COLOR = 11,
   FIGURE = `gf${process.pid}`;
 
 test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, async t => {
@@ -56,7 +56,7 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
                 VALUES ($1, $2, 'N', 'CHF', 0.4, 0.4, NOW())`,
-    [PART, FARBE],
+    [PART, COLOR],
   );
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
@@ -74,9 +74,9 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
   });
 
   await holdsSet(db, uid, SET, 0);
-  await record(db, uid, SET, 2, { preis: 0, am: '2026-01-05' });
-  await holdsPart(db, uid, PART, { colorId: FARBE, quantity: 10, preis: 0 });
-  await holdsMinifig(db, uid, FIGURE, { quantity: 1, preis: 0 });
+  await record(db, uid, SET, 2, { price: 0, am: '2026-01-05' });
+  await holdsPart(db, uid, PART, { colorId: COLOR, quantity: 10, price: 0 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1, price: 0 });
 
   const { gainAndLoss } = _req('src/finances/financeCalc.js');
   const pnl = await gainAndLoss(uid, [uid]);
@@ -115,10 +115,10 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await t.test('part and figure', async () => {
     const { priceHistoryPart, priceHistoryMinifig } = _req('src/finances/priceHistory.js');
-    const teil = await priceHistoryPart([uid], PART, FARBE, 'CHF');
-    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_percent: null });
-    const figur = await priceHistoryMinifig([uid], FIGURE, 'CHF');
-    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_percent: null });
+    const part = await priceHistoryPart([uid], PART, COLOR, 'CHF');
+    assert.deepEqual(part.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_percent: null });
+    const minifig = await priceHistoryMinifig([uid], FIGURE, 'CHF');
+    assert.deepEqual(minifig.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_percent: null });
     const { valueAcquisitionRows } = _req('src/finances/setValue.js');
     const [row] = valueAcquisitionRows(
       PART,

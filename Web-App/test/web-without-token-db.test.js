@@ -73,10 +73,10 @@ test('browser without token', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  /** @param {string} weg @param {{ method?: string, body?: unknown, cookie?: string }} [o] */
+  /** @param {string} route @param {{ method?: string, body?: unknown, cookie?: string }} [o] */
 
-  const callFn = async (weg, { method = 'GET', body, cookie } = {}) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, { method = 'GET', body, cookie } = {}) => {
+    const r = await fetch(basis + route, {
       method,
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -87,54 +87,53 @@ test('browser without token', { concurrency: 1 }, async t => {
       body: await r.json().catch(() => null),
     };
   };
-  const anmelden = zusatz =>
-    callFn('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...zusatz } });
+  const signIn = extra => callFn('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...extra } });
   const tokens = async () => Number((await db.get('SELECT COUNT(*) AS n FROM api_tokens WHERE user_id = $1', [uid])).n);
-  const sitzungen = async () =>
+  const sessions = async () =>
     Number(
       (await db.get("SELECT COUNT(*) AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n,
     );
 
-  let eigene;
+  let owned;
   await t.test('no token for the browser', async () => {
-    const r = await anmelden({ without_token: true });
+    const r = await signIn({ without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.token, undefined, 'The browser gets a token that a script could read');
     assert.equal(await tokens(), 0);
     assert.ok(r.cookie.startsWith(`${KEKS}=`), 'Without a token the session must carry');
-    eigene = r.cookie;
+    owned = r.cookie;
   });
 
   await t.test('the app gets its token and no session', async () => {
-    const vorher = await sitzungen();
-    const r = await anmelden({ label: 'Android App', never_expires: true });
+    const prior = await sessions();
+    const r = await signIn({ label: 'Android App', never_expires: true });
     assert.ok(r.body.token, 'The app can do nothing without a token');
     assert.equal(r.body.token_info?.scope, 'app');
     assert.equal(await tokens(), 1);
     assert.equal(r.cookie, '', "Next to the token a session cookie with the account's full rights");
-    assert.equal(await sitzungen(), vorher, 'The token login creates a session');
+    assert.equal(await sessions(), prior, 'The token login creates a session');
     const profileData = await fetch(basis + '/auth/profile', { headers: { authorization: `Bearer ${r.body.token}` } });
     assert.equal(profileData.status, 200, 'The token alone carries the app');
   });
 
   await t.test('the own session stays', async () => {
-    await anmelden({ without_token: true }); // a second browser
-    assert.equal(await sitzungen(), 2, 'precondition: two sessions (two browsers; the app has none)');
-    const ohne = await callFn('/settings/sessions/end-others', {
+    await signIn({ without_token: true }); // a second browser
+    assert.equal(await sessions(), 2, 'precondition: two sessions (two browsers; the app has none)');
+    const without = await callFn('/settings/sessions/end-others', {
       method: 'POST',
-      cookie: eigene,
+      cookie: owned,
       body: { password: 'falsch-1234' },
     });
-    assert.deepEqual([ohne.status, ohne.body?.code], [400, 'current_password_wrong']);
-    assert.equal(await sitzungen(), 2, 'sessions were ended without the right password');
+    assert.deepEqual([without.status, without.body?.code], [400, 'current_password_wrong']);
+    assert.equal(await sessions(), 2, 'sessions were ended without the right password');
     const r = await callFn('/settings/sessions/end-others', {
       method: 'POST',
-      cookie: eigene,
+      cookie: owned,
       body: { password: PASS },
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 1);
-    assert.equal(await sitzungen(), 1);
-    assert.equal((await callFn('/auth/profile', { cookie: eigene })).status, 200, 'The own session was ended as well');
+    assert.equal(await sessions(), 1);
+    assert.equal((await callFn('/auth/profile', { cookie: owned })).status, 200, 'The own session was ended as well');
   });
 });

@@ -21,19 +21,19 @@ const os = require('node:os');
 const path = require('node:path');
 const zlib = require('node:zlib');
 
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-imgstream-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-imgstream-'));
+process.env.APP_ROOT = root;
 process.env.IMAGE_FETCHES_PER_MINUTE = '1000';
 const express = require('express');
 const { buildAndRequire, testData, replaceServices, testServices } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { httpsStub } = require('./helpers/https-stub');
 const { portOf } = require('./helpers/server');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 replaceServices('images', { setNumberInScope: async () => false });
 const passThroughImage = (...a) => _req('routes/imgProxy.js').passThroughImage(testServices(), ...a);
 const { proxyCacheKey } = _req('src/images/images.js');
-const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
+const cacheDir = path.join(root, 'data', 'img_proxy_cache');
 
 const app = express();
 app.use((req, _res, next) => {
@@ -52,7 +52,7 @@ test.after(async () => {
   await testData()
     .pool?.end?.()
     .catch(() => {});
-  fs.rmSync(wurzel, { recursive: true, force: true });
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('a concurrent cut-off request does not spoil the complete one', async t => {
@@ -78,7 +78,7 @@ test('a concurrent cut-off request does not spoil the complete one', async t => 
       .catch(() => Buffer.alloc(0));
   const [whole] = await Promise.all([get(), new Promise(r => setTimeout(r, 5)).then(get)]);
   assert.ok(whole.equals(IMAGE), `client got ${whole.length} bytes`);
-  assert.ok(await bis(() => fs.existsSync(cached(u)), 3000), 'the complete image was not cached');
+  assert.ok(await until(() => fs.existsSync(cached(u)), 3000), 'the complete image was not cached');
   assert.ok(fs.readFileSync(cached(u)).equals(IMAGE), `cache file has ${fs.statSync(cached(u)).size} bytes`);
 });
 
@@ -90,7 +90,7 @@ test('the cache gets every byte, even the first chunk', async t => {
   });
   const r = await fetch(proxied(u));
   assert.ok(Buffer.from(await r.arrayBuffer()).equals(IMAGE));
-  assert.ok(await bis(() => fs.existsSync(cached(u))), 'not cached');
+  assert.ok(await until(() => fs.existsSync(cached(u))), 'not cached');
   assert.equal(fs.statSync(cached(u)).size, IMAGE.length);
 });
 
@@ -110,7 +110,7 @@ test('a gzip body is unpacked for client and cache', async t => {
   assert.equal(r.headers.get('content-encoding'), null);
   assert.notEqual(r.headers.get('content-length'), String(gz.length));
   assert.ok(body.equals(IMAGE), `client got ${body.length} bytes`);
-  assert.ok(await bis(() => fs.existsSync(cached(u))));
+  assert.ok(await until(() => fs.existsSync(cached(u))));
   assert.ok(fs.readFileSync(cached(u)).equals(IMAGE), 'the cache holds the compressed body');
 });
 
@@ -150,7 +150,7 @@ test('an aborted client request releases the CDN connection', async t => {
   const reader = r.body.getReader();
   await reader.read();
   ac.abort();
-  assert.ok(await bis(() => closed, 3000), 'the CDN connection stays open');
+  assert.ok(await until(() => closed, 3000), 'the CDN connection stays open');
   assert.equal(fs.existsSync(cached(u)), false, 'a cut-off image went into the cache');
 });
 
@@ -164,10 +164,10 @@ test('a cut-off response is neither cached nor kept', async t => {
     .then(r => r.arrayBuffer())
     .catch(() => {});
   const { imgProxyFailures } = _req('src/images/imgProxyStats.js');
-  assert.ok(await bis(() => String(imgProxyFailures.lastError).includes(u), 3000), 'the cut was not noticed');
+  assert.ok(await until(() => String(imgProxyFailures.lastError).includes(u), 3000), 'the cut was not noticed');
   const left = () => fs.readdirSync(cacheDir).filter(f => f.startsWith(proxyCacheKey(u)));
   // The temp file is removed asynchronously after the discard.
-  await bis(() => left().length === 0, 3000);
+  await until(() => left().length === 0, 3000);
   assert.deepEqual(left(), []);
 });
 
@@ -180,7 +180,7 @@ test('streamed briefly, cached with ETag', async t => {
   const first = await fetch(proxied(u));
   await first.arrayBuffer();
   assert.equal(first.headers.get('cache-control'), 'private, max-age=3600, must-revalidate');
-  assert.ok(await bis(() => fs.existsSync(cached(u))));
+  assert.ok(await until(() => fs.existsSync(cached(u))));
   const second = await fetch(proxied(u));
   await second.arrayBuffer();
   assert.match(second.headers.get('cache-control') ?? '', /must-revalidate/);

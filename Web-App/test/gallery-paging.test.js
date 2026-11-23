@@ -37,13 +37,13 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `paging_${process.pid}`;
-  const nummern = SETS.map(s => s.nr);
-  const aufraeumen = async () => {
+  const numbers = SETS.map(s => s.nr);
+  const cleanUp = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-    await db.run('DELETE FROM set_minifigs WHERE set_number = ANY($1)', [nummern]);
-    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM set_minifigs WHERE set_number = ANY($1)', [numbers]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [numbers]);
   };
-  await aufraeumen();
+  await cleanUp();
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   for (const s of SETS) {
     await catalogSet(db, s.nr, { name: s.name, theme: s.theme });
@@ -59,18 +59,18 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   await holdsMinifig(db, uid, 'fig-0002', { setNumber: '77104-1' });
   for (const nr of ['91001', '91002', '91003']) await holdsPart(db, uid, nr);
   t.after(async () => {
-    await aufraeumen().catch(() => {});
+    await cleanUp().catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const hole = async path => {
     const r = await fetch(`${base}/api/v2${path}`);
     const b = await r.json();
     assert.equal(r.status, 200, `${path}: ${JSON.stringify(b)}`);
     return b;
   };
-  const sequence = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
+  const sequence = async query => (await hole(`/sets?${query}`)).sets.map(s => s.name[0]);
 
   await t.test('sorting by quantity works in both directions, ties by addition', async () => {
     assert.deepEqual(await sequence('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);
@@ -90,9 +90,9 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   });
 
   await t.test('without page_size everything, with page_size pages and total', async () => {
-    const alle = await hole('/sets');
-    assert.equal(alle.sets.length, 5);
-    assert.equal(alle.themes, undefined, 'no theme list without page_size');
+    const all = await hole('/sets');
+    assert.equal(all.sets.length, 5);
+    assert.equal(all.themes, undefined, 'no theme list without page_size');
     const s1 = await hole('/sets?page=1&page_size=2&sort=num_asc');
     const s3 = await hole('/sets?page=3&page_size=2&sort=num_asc');
     assert.deepEqual([s1.sets.map(s => s.set_number), s1.total], [['77101-1', '77102-1'], 5]);
@@ -107,8 +107,8 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   });
 
   await t.test('minifigures count per figure, not per set, and load page by page', async () => {
-    const alle = await hole('/minifigs');
-    assert.equal(alle.figs.length, 2, JSON.stringify(alle.figs.map(f => f.fig_number)));
+    const all = await hole('/minifigs');
+    assert.equal(all.figs.length, 2, JSON.stringify(all.figs.map(f => f.fig_number)));
     const s1 = await hole('/minifigs?page=1&page_size=1');
     const s2 = await hole('/minifigs?page=2&page_size=1');
     assert.deepEqual([s1.figs.length, s1.total, s2.figs.length, s2.total], [1, 2, 1, 2]);

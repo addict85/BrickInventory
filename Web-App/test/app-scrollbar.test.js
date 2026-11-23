@@ -22,8 +22,8 @@ const ROOT = path.join(__dirname, '..');
  * Evaluate the scrollbar code.
  */
 function scrollbarCode() {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'scrollbar.js'), 'utf8');
-  return roh.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
+  const raw = fs.readFileSync(path.join(ROOT, 'public', 'js', 'scrollbar.js'), 'utf8');
+  return raw.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
 }
 
 /** Small stage with faked layout — jsdom computes none. */
@@ -112,7 +112,7 @@ test('the label stays empty as long as nobody registers it', () => {
 
 test('the label is unregistered when leaving the catalog', async () => {
   // In the real bundle: the catalog registers the year label, the gallery must not keep it.
-  const { openUi, reiter, warte } = require('./helpers/ui');
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
   const set = (sn, year) => ({ set_number: sn, name: sn, year, theme: 'City', num_parts: 10 });
   const years = [
     { year: 2020, n: 1 },
@@ -131,9 +131,9 @@ test('the label is unregistered when leaving the catalog', async () => {
     return text;
   };
   try {
-    await reiter(w, 'catalog');
-    assert.ok(await warte(() => /^20\d\d$/.test(drag())), `the catalog shows no year: '${drag()}'`);
-    await reiter(w, 'gallery');
+    await switchTab(w, 'catalog');
+    assert.ok(await waitFor(() => /^20\d\d$/.test(drag())), `the catalog shows no year: '${drag()}'`);
+    await switchTab(w, 'gallery');
     assert.equal(drag(), '', 'the gallery still shows the catalog year');
   } finally {
     w.close();

@@ -24,7 +24,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
-const { buildAndRequire, mounting, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, mounting, withoutComments } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -33,13 +33,13 @@ const { dataOrSkip } = require('./helpers/db');
 const AUTH = mounting('auth');
 const db = testData();
 
-const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+const read = rel => withoutComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
-  const nutzer = await db.get(
+  const user = await db.get(
     'INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true) RETURNING id',
     ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)],
   );
@@ -48,11 +48,11 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
   // the last step instead of reporting red or green. Exactly that happened when
   // writing this file.
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [nutzer.id]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = $1', [user.id]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 }, t });
+  const { base } = testServer(_req, { session: { userId: user.id, username: 'qr_pruefling', isAdmin: 0 }, t });
   const hole = () =>
     fetch(`${base}${AUTH}/qr-token`, {
       // Since the password step the route requires the own password.
@@ -61,23 +61,23 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
       body: JSON.stringify({ password: 'qr-passwort-1' }),
     });
   const nonces = async () =>
-    (await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [nutzer.id])).n;
+    (await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [user.id])).n;
 
   // ── Case 1: the variable is missing ────────────────────────────────────────────
-  const vorher = process.env.APP_BASE_URL;
+  const prior = process.env.APP_BASE_URL;
   t.after(() => {
-    if (vorher === undefined) environment({ APP_BASE_URL: undefined });
-    else environment({ APP_BASE_URL: vorher });
+    if (prior === undefined) environment({ APP_BASE_URL: undefined });
+    else environment({ APP_BASE_URL: prior });
   });
   environment({ APP_BASE_URL: undefined });
 
-  const abgelehnt = await hole();
+  const rejected = await hole();
   assert.equal(
-    abgelehnt.status,
+    rejected.status,
     503,
     'Without APP_BASE_URL the route must refuse — otherwise the code carries the browser address.',
   );
-  const reason = await abgelehnt.json();
+  const reason = await rejected.json();
   assert.equal(reason.success, false);
   assert.equal(
     reason.code,
@@ -95,16 +95,16 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
   // With a surplus slash, because exactly that would otherwise come through as
   // `https://host//?set=…`.
   environment({ APP_BASE_URL: 'https://lego.example.org//' });
-  const gut = await hole();
-  assert.equal(gut.status, 200, 'With APP_BASE_URL a code must be created.');
-  const d = await gut.json();
+  const good = await hole();
+  assert.equal(good.status, 200, 'With APP_BASE_URL a code must be created.');
+  const d = await good.json();
   assert.equal(d.url, 'https://lego.example.org', 'The server does not name the address or leaves the slash in place.');
   assert.match(d.token, /^bim:/, 'The token has lost its shape.');
   assert.equal(await nonces(), 1, 'In the good case exactly one nonce MUST be created.');
 });
 
 test('2. the web app no longer has its own opinion about the address', () => {
-  const js = require('./helpers/sources').ansichtQuelle('settings');
+  const js = require('./helpers/sources').viewSource('settings');
   assert.match(js, /const serverUrl = d\.url;/, "The web app does not simply take the server's address.");
   // The fallback is gone — that was Marco's second sentence. `ohneKommentare`
   // makes sure that the explanation ABOVE (which quotes the old expression)
@@ -125,32 +125,32 @@ test('3. one source for QR code, mail button and reset links', () => {
   // started a fourth notation.
   // src/infra/config.ts reads the variable (appBaseUrl, without a slash at the
   // end); baseUrl() is the one way there.
-  const helper = lies('src/infra/baseUrl.ts');
+  const helper = read('src/infra/baseUrl.ts');
   assert.match(helper, /config\(\)\.appBaseUrl/, 'src/infra/baseUrl.ts does not read the configuration.');
   assert.match(
-    lies('src/infra/config.ts'),
+    read('src/infra/config.ts'),
     /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
     'A trailing slash is not removed.',
   );
 
-  for (const datei of ['src/account/loginFlow.ts', 'routes/auth/registration.ts', 'src/mail/mailer.ts']) {
-    const source = lies(datei);
+  for (const file of ['src/account/loginFlow.ts', 'routes/auth/registration.ts', 'src/mail/mailer.ts']) {
+    const source = read(file);
     assert.ok(
       !/process\.env\.APP_BASE_URL/.test(source),
-      `${datei} reads APP_BASE_URL itself — that is the copy that drifts apart.`,
+      `${file} reads APP_BASE_URL itself — that is the copy that drifts apart.`,
     );
-    assert.match(source, /baseUrl\(\)/, `${datei} does not use the shared helper.`);
+    assert.match(source, /baseUrl\(\)/, `${file} does not use the shared helper.`);
   }
 
   // The QR branch must not guess a host: for this code the same applies as
   // for a link in a mail — a guessed address is worse than
   // none. (getBaseUrl further down MAY do it, see the reasoning there.)
-  const auth = lies('routes/auth/qr.ts');
+  const auth = read('routes/auth/qr.ts');
   const i = auth.search(/router\.endpoint\(\s*'POST \/api\/v2\/auth\/qr-token'/);
   assert.ok(i > 0, 'The route /qr-token has disappeared — renamed?');
-  const rumpf = auth.slice(i, auth.indexOf('\n  router.', i + 10));
+  const body = auth.slice(i, auth.indexOf('\n  router.', i + 10));
   assert.ok(
-    !/headers\['x-forwarded-host'\]|headers\.host/.test(rumpf),
+    !/headers\['x-forwarded-host'\]|headers\.host/.test(body),
     'The route falls back to the Host header — exactly what it must not do.',
   );
 

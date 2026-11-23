@@ -36,7 +36,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { databaseConnection, standardPasswordInUse, loadConfig, ConfigError, VARIABLES } = _req('src/infra/config.js');
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
 test('without values the same defaults as compose.yaml', () => {
@@ -65,12 +65,12 @@ test('DATABASE_URL takes precedence', () => {
 });
 
 test('nobody else reads the connection variables', () => {
-  const funde = [];
-  const durch = dir => {
+  const findings = [];
+  const via = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) durch(p);
+        if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) via(p);
         continue;
       }
       if (!e.name.endsWith('.ts')) continue;
@@ -78,33 +78,33 @@ test('nobody else reads the connection variables', () => {
       if (rel === path.join('src/infra/config.ts')) continue;
       const s = fs.readFileSync(p, 'utf8');
       for (const m of s.matchAll(/process\.env\.(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|DATABASE_URL)\b/g))
-        funde.push(`${rel}: ${m[1]}`);
+        findings.push(`${rel}: ${m[1]}`);
     }
   };
-  durch(ROOT);
-  assert.deepEqual(funde, []);
+  via(ROOT);
+  assert.deepEqual(findings, []);
 });
 
 test('nobody except the configuration reads process.env', () => {
-  const funde = [];
-  const durch = dir => {
+  const findings = [];
+  const via = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) durch(p);
+        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) via(p);
         continue;
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
       if (rel === path.join('src/infra/config.ts')) continue;
-      const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
-      zeilen.forEach((z, i) => {
-        if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`);
+      const lines = withoutComments(fs.readFileSync(p, 'utf8')).split('\n');
+      lines.forEach((z, i) => {
+        if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) findings.push(`${rel}:${i + 1}`);
       });
     }
   };
-  durch(ROOT);
-  assert.deepEqual(funde, []);
+  via(ROOT);
+  assert.deepEqual(findings, []);
 });
 
 test('invalid values: all at once, with names', () => {
@@ -147,8 +147,8 @@ test('own attestation roots only in development and test; the cutoff date is a d
   assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2026-01-01' }).deviceKeyLegacyUntil.getUTCFullYear(), 2026);
   assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: 'bald' }), /DEVICE_KEY_OLD_UNTIL="bald"/);
   assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2027-02-01' }).deviceKeyLegacyUntil.getUTCMonth(), 1);
-  for (const spaeter of ['2027-02-02', '2099-12-31'])
-    assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: spaeter }), /liegt nach 2027-02-01/, spaeter);
+  for (const subsequent of ['2027-02-02', '2099-12-31'])
+    assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: subsequent }), /liegt nach 2027-02-01/, subsequent);
 });
 
 test('the server does not start with a wrong value', () => {
@@ -167,7 +167,7 @@ test('the server does not start with a wrong value', () => {
 });
 
 test('.env.example names every variable', () => {
-  const beispiel = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
-  const fehlt = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
-  assert.deepEqual(fehlt, []);
+  const example = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
+  const missing = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(example));
+  assert.deepEqual(missing, []);
 });

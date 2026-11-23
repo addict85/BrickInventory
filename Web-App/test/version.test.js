@@ -32,30 +32,30 @@ test('the project has no install script', () => {
 });
 
 test('a build argument takes precedence, otherwise Git', () => {
-  const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'version-'));
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), 'version-'));
   try {
     const script = path.join(ROOT, 'scripts', 'version.js');
-    execFileSync(process.execPath, [script, '--outdir', ziel], {
+    execFileSync(process.execPath, [script, '--outdir', target], {
       env: { PATH: process.env.PATH, APP_VERSION: '2026.10.30' },
       stdio: 'ignore',
     });
-    assert.equal(JSON.parse(fs.readFileSync(path.join(ziel, 'version.json'), 'utf8')).version, '2026.10.30');
-    const ohne = execFileSync(process.execPath, [script], { env: { PATH: process.env.PATH }, encoding: 'utf8' });
-    assert.match(ohne, /^\[version\] [\w.-]+\n$/);
-    assert.doesNotMatch(ohne, /2026\.10\.30/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(target, 'version.json'), 'utf8')).version, '2026.10.30');
+    const without = execFileSync(process.execPath, [script], { env: { PATH: process.env.PATH }, encoding: 'utf8' });
+    assert.match(without, /^\[version\] [\w.-]+\n$/);
+    assert.doesNotMatch(without, /2026\.10\.30/);
   } finally {
-    fs.rmSync(ziel, { recursive: true, force: true });
+    fs.rmSync(target, { recursive: true, force: true });
   }
 });
 
 test('the server reports the built version', () => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const gebaut = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
+  const built = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   const alt = process.env.APP_VERSION;
   environment({ APP_VERSION: undefined });
   try {
     const { appVersion } = _req('src/infra/appVersion.js');
-    assert.equal(appVersion(), gebaut);
+    assert.equal(appVersion(), built);
     environment({ APP_VERSION: 'laufzeit-1' });
     assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION at runtime takes precedence');
   } finally {

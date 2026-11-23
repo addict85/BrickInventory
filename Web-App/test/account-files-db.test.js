@@ -37,11 +37,11 @@ const NR = '5045076374450077711',
   PIN = '8642';
 
 function voucherPdf() {
-  return new Promise(fertig => {
+  return new Promise(done => {
     const d = new PDFKit({ size: 'A4', compress: false });
     const s = [];
     d.on('data', c => s.push(c));
-    d.on('end', () => fertig(Buffer.concat(s)));
+    d.on('end', () => done(Buffer.concat(s)));
     d.fontSize(14).text('Ihre LEGO-Geschenkkarte im Wert von 50 CHF:', 60, 100);
     d.fontSize(12).text(NR, 60, 140).text(`PIN: ${PIN}`, 60, 170);
     d.end();
@@ -65,61 +65,61 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
   }
 
   const ADMIN = 'kd-admin',
-    ZIEL = 'kd-ziel',
+    TARGET = 'kd-ziel',
     ADMIN_PW = 'verwalterPasswort1';
-  await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, ZIEL]);
+  await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, TARGET]);
   await db.run(
     `INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,$3,true,true), ($2,$3,false,true)`,
-    [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)],
+    [ADMIN, TARGET, await bcrypt.hash(ADMIN_PW, 4)],
   );
   const adminId = (await db.get('SELECT id FROM users WHERE username=$1', [ADMIN])).id;
-  const targetId = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
+  const targetId = (await db.get('SELECT id FROM users WHERE username=$1', [TARGET])).id;
   const uploads = path.join(DATA_DIR, 'uploads', String(targetId));
   const vouchers = path.join(DATA_DIR, 'vouchers', String(targetId));
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, ZIEL]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, TARGET]).catch(() => {});
     fs.rmSync(uploads, { recursive: true, force: true });
     fs.rmSync(vouchers, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
   });
 
-  const ziel = testServer(_req, { sitzung: { userId: targetId }, t });
+  const target = testServer(_req, { session: { userId: targetId }, t });
   const codes = await adminWithFactor(_req, adminId);
-  const admin = testServer(_req, { sitzung: { userId: adminId, username: ADMIN, isAdmin: true }, t });
+  const admin = testServer(_req, { session: { userId: adminId, username: ADMIN, isAdmin: true }, t });
 
   const original = await voucherPdf();
   const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
   /** What someone reads from the file alone. */
-  const lesbar = daten => {
+  const readable = data => {
     try {
-      return valuesFromPdf(daten);
+      return valuesFromPdf(data);
     } catch {
       return {};
     }
   };
-  assert.equal(lesbar(original).pin, PIN, 'Precondition: the PIN is readable from the PDF');
+  assert.equal(readable(original).pin, PIN, 'Precondition: the PIN is readable from the PDF');
 
   await t.test('uploaded: encrypted on disk, delivered decrypted', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([original], { type: 'application/pdf' }), 'g.pdf');
-    const r = await fetch(`${ziel.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${target.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
-    const roh = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
-    const ofDisk = lesbar(roh);
+    const raw = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
+    const ofDisk = readable(raw);
     assert.ok(ofDisk.pin !== PIN && ofDisk.number !== NR, 'PIN and card number are stored in plain text on disk');
-    assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
+    assert.notEqual(raw.subarray(0, 5).toString('latin1'), '%PDF-');
     const { ticket } = await (
-      await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf-grant`, {
+      await fetch(`${target.base}/api/v2/vouchers/${b.voucher.id}/pdf-grant`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password: ADMIN_PW }),
       })
     ).json();
-    const aus = Buffer.from(
-      await (await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer(),
+    const out = Buffer.from(
+      await (await fetch(`${target.base}/api/v2/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer(),
     );
-    assert.ok(aus.equals(original), 'the delivered PDF is not the uploaded one');
+    assert.ok(out.equals(original), 'the delivered PDF is not the uploaded one');
   });
 
   await t.test('the plaintext legacy data is encrypted at startup', async () => {
@@ -127,7 +127,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
     fs.writeFileSync(alt, original);
     const { encryptLegacyVoucherFiles, readVoucherPdf } = _req('src/vouchers/voucherFiles.js');
     assert.ok((await encryptLegacyVoucherFiles()) >= 1);
-    assert.notEqual(lesbar(fs.readFileSync(alt)).pin, PIN, 'the existing files stay plain text');
+    assert.notEqual(readable(fs.readFileSync(alt)).pin, PIN, 'the existing files stay plain text');
     assert.ok((await readVoucherPdf(alt)).equals(original));
     assert.equal(await encryptLegacyVoucherFiles(), 0, 'a second run encrypts twice');
   });

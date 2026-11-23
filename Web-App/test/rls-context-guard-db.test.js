@@ -26,79 +26,79 @@ const { accessOrSkip, missingPrecondition } = require('./helpers/db');
 const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 const { asRequest } = _req('src/infra/accountContext.js');
 
-const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
-const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
+const as = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
+const ids = lines => [...new Set(lines.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 const FORGED = /app\.account changed within the transaction/;
 
 test('app.account cannot be switched unnoticed within a request', { concurrency: 1 }, async t => {
-  const zugang = await accessOrSkip(t, _req);
-  if (!zugang) return;
-  t.after(() => zugang.pool.end().catch(() => {}));
-  if (!process.env.TEST_DB_EIGEN_URL || (await zugang.asSuperuserConnected()))
+  const access = await accessOrSkip(t, _req);
+  if (!access) return;
+  t.after(() => access.pool.end().catch(() => {}));
+  if (!process.env.TEST_DB_OWN_URL || (await access.asSuperuserConnected()))
     return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
   const k = dbConfigFromEnvironment();
-  const eigen = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const own = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_OWN_URL }, system: null });
   const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });
   t.after(async () => {
     await app.pool.end().catch(() => {});
-    await eigen.pool.end().catch(() => {});
+    await own.pool.end().catch(() => {});
   });
-  const konto = async name =>
+  const account = async name =>
     (
-      await eigen.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [
+      await own.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [
         `rg_${name}_${process.pid}`,
       ])
     ).id;
-  const A = await konto('a'),
-    B = await konto('b');
-  t.after(() => eigen.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]).catch(() => {}));
-  for (const u of [A, B]) await eigen.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1')`, [u]);
+  const A = await account('a'),
+    B = await account('b');
+  t.after(() => own.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]).catch(() => {}));
+  for (const u of [A, B]) await own.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1')`, [u]);
   const setsOf = async uid =>
-    (await eigen.all(`SELECT set_number FROM sets WHERE user_id = $1 ORDER BY 1`, [uid])).map(z => z.set_number);
-  const wechsel = `SELECT set_config('app.account', '${B}', true)`;
+    (await own.all(`SELECT set_number FROM sets WHERE user_id = $1 ORDER BY 1`, [uid])).map(z => z.set_number);
+  const change = `SELECT set_config('app.account', '${B}', true)`;
 
   await t.test('a switch inside a transaction ends it as an error', async () => {
-    let gesehen = null;
+    let seen = null;
     await assert.rejects(
-      als(A, () =>
+      as(A, () =>
         app.transaction(async tx => {
-          await tx.run(wechsel);
-          gesehen = ids(await tx.all('SELECT user_id FROM sets'));
+          await tx.run(change);
+          seen = ids(await tx.all('SELECT user_id FROM sets'));
           await tx.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10002-1')`, [B]);
         }),
       ),
       FORGED,
     );
     // Row security followed the forged setting inside, but nothing of it got out or stayed.
-    assert.deepEqual(gesehen, [B], 'precondition: the query ran under the forged account');
+    assert.deepEqual(seen, [B], 'precondition: the query ran under the forged account');
     assert.deepEqual(await setsOf(B), ['10001-1'], 'the row for B is rolled back');
-    assert.deepEqual(ids(await als(A, () => app.all('SELECT user_id FROM sets'))), [A], 'the connection afterwards: A');
+    assert.deepEqual(ids(await as(A, () => app.all('SELECT user_id FROM sets'))), [A], 'the connection afterwards: A');
   });
 
   await t.test('a single query that switches the account gets no rows', async () => {
     await assert.rejects(
-      als(A, () => app.all(`WITH w AS (${wechsel}) SELECT s.user_id FROM w, LATERAL (SELECT user_id FROM sets) s`)),
+      as(A, () => app.all(`WITH w AS (${change}) SELECT s.user_id FROM w, LATERAL (SELECT user_id FROM sets) s`)),
       FORGED,
     );
     await assert.rejects(
-      als(A, () => app.run(wechsel)),
+      as(A, () => app.run(change)),
       FORGED,
     );
   });
 
   await t.test('a setting forged at session level does not stick to the connection', async () => {
     await assert.rejects(
-      als(A, () => app.run(`SELECT set_config('app.account', '${B}', false)`)),
+      as(A, () => app.run(`SELECT set_config('app.account', '${B}', false)`)),
       FORGED,
     );
     assert.deepEqual(await app.all('SELECT user_id FROM sets'), [], 'without an account the next request sees nothing');
   });
 
   await t.test('switching the account through the app (asRequest) stays allowed', async () => {
-    const r = await als(A, () =>
+    const r = await as(A, () =>
       app.transaction(async tx => [
         ids(await tx.all('SELECT user_id FROM sets')),
-        await als(B, async () => ids(await tx.all('SELECT user_id FROM sets'))),
+        await as(B, async () => ids(await tx.all('SELECT user_id FROM sets'))),
       ]),
     );
     assert.deepEqual(r, [[A], [B]]);

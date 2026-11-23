@@ -26,8 +26,8 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const SN = `preisregel-${process.pid}-1`;
-  const aufraeumen = () => db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});
-  await aufraeumen();
+  const cleanUp = () => db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});
+  await cleanUp();
 
   try {
     // 1. The rule itself — four cases, one per corner.
@@ -168,7 +168,7 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
       );
     }
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end().catch(() => {});
   }
 });

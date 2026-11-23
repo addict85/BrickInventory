@@ -36,18 +36,18 @@ test('price run at the daily limit', { concurrency: 1 }, async t => {
   await setGlobalSetting('api_limit_bricklink', '1');
   await checkAndCountQuota('bricklink');
 
-  const zeilen = [];
+  const lines = [];
   t.mock.method(console, 'log', (...parts) => {
-    zeilen.push(parts.join(' '));
+    lines.push(parts.join(' '));
   });
   await runPriceRefresh();
   t.mock.restoreAll();
 
   await t.test('one line instead of one per set', () => {
-    assert.equal(zeilen.filter(z => /Tageslimit erreicht/.test(z)).length, 1, zeilen.join('\n'));
+    assert.equal(lines.filter(z => /Tageslimit erreicht/.test(z)).length, 1, lines.join('\n'));
   });
   await t.test('the closing line names the skipped sets', () => {
-    const ende = zeilen.find(z => z.includes('Done:')) ?? '';
-    assert.match(ende, /0 errors, [3-9]\d* wegen Tageslimit ausgelassen/, ende);
+    const end = lines.find(z => z.includes('Done:')) ?? '';
+    assert.match(end, /0 errors, [3-9]\d* wegen Tageslimit ausgelassen/, end);
   });
 });

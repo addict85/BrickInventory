@@ -47,7 +47,7 @@ async function seed() {
     [U.kind, '3001', 4, 1, null],
     [U.fremd, '3001', 4, 99, null],
   ];
-  for (const [uid, num, farbe, quantity, set] of parts) {
+  for (const [uid, num, color, quantity, set] of parts) {
     // Since migration 0034 the name belongs in the catalog, not on the
     // Bestandszeile.
     await db.run(
@@ -55,7 +55,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await holdsPart(db, uid, num, { setNumber: set, quantity, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: set, quantity, colorId: color });
   }
 }
 
@@ -118,11 +118,11 @@ test('inventory reconciliation against a real database', async t => {
 
   await t.test('the scope decides, not the request', async () => {
     // Without this limit the comparison would be a way of counting foreign stocks.
-    const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
+    const onlyMe = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const withKind = await ownedQuantitiesQuery(await household.scopeIds(U.ich, 'all'), [
       { part_number: '3001', color_id: 4 },
     ]);
-    assert.equal(nurIch['3001|4'].total, 8);
+    assert.equal(onlyMe['3001|4'].total, 8);
     assert.equal(withKind['3001|4'].total, 9, 'The sub-account must count too');
     // 99 pieces lie with 'fremd' — they must not appear anywhere.
     assert.ok(withKind['3001|4'].total < 99, 'A foreign stock leaked through');
@@ -146,9 +146,9 @@ test('inventory reconciliation against a real database', async t => {
     // A parts list over many sets must not build an unbounded query.
     // MEASURED: the cap applies, the response stays empty instead of throwing.
     assert.equal(typeof MAX_OWNED_PARTS, 'number');
-    const viele = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
-    viele.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
-    const b = await ownedQuantitiesQuery([U.ich], viele);
+    const many = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
+    many.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
+    const b = await ownedQuantitiesQuery([U.ich], many);
     assert.deepEqual(b, {}, 'Everything beyond the cap must drop out — existing items too');
   });
 

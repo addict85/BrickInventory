@@ -46,18 +46,18 @@ const path = require('node:path');
 
 // With `tempFile` the download creates the file and succeeds; the import afterwards does not exist here.
 let tempFile = false;
-const echt = _req('clients/rebrickableCsv.js');
+const original = _req('clients/rebrickableCsv.js');
 testSources(null, {
-  loadCatalogCsv: async (datei, ziel, o) => {
-    if (!tempFile) return echt.loadCatalogCsv(datei, ziel, o);
-    fs.mkdirSync(path.dirname(ziel), { recursive: true });
-    fs.writeFileSync(ziel, 'id,name\n1,Rot\n');
+  loadCatalogCsv: async (file, target, o) => {
+    if (!tempFile) return original.loadCatalogCsv(file, target, o);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, 'id,name\n1,Rot\n');
   },
 });
 
 test('catalog reconciliation without network', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
-  const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
+  const prior = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
   const condition = _req('src/jobQueue/startState.js');
   await condition.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
@@ -66,8 +66,8 @@ test('catalog reconciliation without network', { concurrency: 1 }, async t => {
       await assert.rejects(_req('src/catalog/csvSync.js').run(), 'der Auftrag soll den Fehler sehen und wiederholen');
       const state = await condition.currentStartState();
       assert.equal(state.ready, true, JSON.stringify(state));
-      const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
-      assert.equal(gespeichert.ready, true, 'the other workers read the state from the database');
+      const saved = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
+      assert.equal(saved.ready, true, 'the other workers read the state from the database');
     });
     await t.test('the temporary file does not stay behind after a failure', async () => {
       const tmp = path.join(_req('src/infra/appPaths.js').DATA_DIR, 'colors.csv.tmp');
@@ -80,11 +80,11 @@ test('catalog reconciliation without network', { concurrency: 1 }, async t => {
       assert.equal(fs.existsSync(tmp), false, `${tmp} is still there`);
     });
   } finally {
-    if (vorher !== null)
+    if (prior !== null)
       await db.run(
         `INSERT INTO run_state (key, value) VALUES ('rb_csv_last_sync',$1)
                                        ON CONFLICT (key) DO UPDATE SET value = $1`,
-        [vorher],
+        [prior],
       );
     await db.pool.end().catch(() => {});
   }

@@ -25,10 +25,10 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const nodemailer = require(path.join(__dirname, '..', 'node_modules', 'nodemailer'));
-const gesendet = [];
+const sent = [];
 nodemailer.createTransport = () => ({
   sendMail: async m => {
-    gesendet.push(m);
+    sent.push(m);
     return { messageId: 'x' };
   },
 });
@@ -55,8 +55,8 @@ const UNREIN = [
 
 test('only plain email addresses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  const KEY = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY]);
   const put = (k, v) =>
     db.run(
       `INSERT INTO global_settings (key, value) VALUES ($1, $2)
@@ -77,18 +77,18 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
     )
   ).id;
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
+    for (const z of prior) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE username LIKE $1', [`%_${P}`]);
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
   // The IP throttle (5/h) should not hide the check of the address.
-  const callIt = async (methode, path, body) => {
+  const callIt = async (method, path, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     const r = await fetch(`${base}/api/v2/auth${path}`, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
@@ -101,21 +101,21 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       assert.deepEqual(r, { status: 400, code: 'email_invalid' }, email);
     }
     assert.equal((await db.get('SELECT count(*)::int AS n FROM users WHERE username LIKE $1', [`spam%_${P}`])).n, 0);
-    const gut = await callIt('POST', '/register', {
+    const good = await callIt('POST', '/register', {
       username: `gut_${P}`,
       email: `o'brien.gut_${P}@example.org`,
       password: 'Langes-Passwort-42',
     });
-    assert.equal(gut.status, 200, 'an ordinary address with an apostrophe goes through');
+    assert.equal(good.status, 200, 'an ordinary address with an apostrophe goes through');
   });
 
   await t.test('forgot password and confirmation only accept plain addresses', async () => {
-    for (const weg of ['/forgot-password', '/resend-confirmation'])
+    for (const route of ['/forgot-password', '/resend-confirmation'])
       for (const email of UNREIN)
         assert.deepEqual(
-          await callIt('POST', weg, { email }),
+          await callIt('POST', route, { email }),
           { status: 400, code: 'email_invalid' },
-          `${weg} ${email}`,
+          `${route} ${email}`,
         );
   });
 
@@ -126,20 +126,20 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   });
 
   await t.test('sending rejects a stored list', async () => {
-    gesendet.length = 0;
+    sent.length = 0;
     for (const to of UNREIN) {
       const r = await mailer.sendMail({ to, subject: 'Probe', text: 'x' });
       assert.equal(r.success, false, to);
     }
-    assert.deepEqual(gesendet, [], 'mail was sent to an impure address');
+    assert.deepEqual(sent, [], 'mail was sent to an impure address');
   });
 
   await t.test('the envelope names exactly the one address', async () => {
-    gesendet.length = 0;
+    sent.length = 0;
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Probe', text: 'x' });
     assert.equal(r.success, true);
     assert.deepEqual(
-      gesendet.map(m => m.envelope),
+      sent.map(m => m.envelope),
       [{ from: 'absender@example.org', to: ['ziel@example.org'] }],
     );
   });
@@ -153,8 +153,8 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       )
     ).id;
     const warn = console.warn,
-      zeilen = [];
-    console.warn = (...a) => zeilen.push(a.join(' '));
+      lines = [];
+    console.warn = (...a) => lines.push(a.join(' '));
     let ids;
     try {
       ids = await _req('src/account/accounts.js').reportInvalidAddresses();
@@ -162,8 +162,8 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       console.warn = warn;
     }
     assert.ok(ids.includes(alt) && !ids.includes(uid), JSON.stringify(ids));
-    assert.match(zeilen.join('\n'), new RegExp(`IDs [0-9, ]*\\b${alt}\\b`));
-    assert.doesNotMatch(zeilen.join('\n'), /opfer@/, 'the message names no address');
+    assert.match(lines.join('\n'), new RegExp(`IDs [0-9, ]*\\b${alt}\\b`));
+    assert.doesNotMatch(lines.join('\n'), /opfer@/, 'the message names no address');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [alt])).email, 'x1<opfer@example.org>');
   });
 });

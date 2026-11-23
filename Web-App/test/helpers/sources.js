@@ -28,11 +28,11 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbSour
 
 /** The whole finance layer concatenated: the rules (“only ONE
  *  condition resolution") apply to the layer, not to the facade financeCalc.ts. */
-const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'src/finances/calculation');
+const financeSource = () => {
+  const folder = path.join(ROOT, 'src/finances/calculation');
   const parts = [serviceSource('src/finances/financeCalc.ts')];
   for (const n of fs
-    .readdirSync(ordner)
+    .readdirSync(folder)
     .filter(x => x.endsWith('.ts'))
     .sort()) {
     parts.push(serviceSource('src/finances/calculation/' + n));
@@ -108,7 +108,7 @@ let _accessFactory = null;
 let _serviceFactory = null;
 let _builtOnce = null;
 /** Replacements (replaceServices), remembered even before the first build. */
-const _ersatz = [];
+const _spare = [];
 
 /** The services of this test file: buildServices(testAccess()) as in the server, once per file. */
 /** @returns {any} */
@@ -116,75 +116,73 @@ function testServices() {
   if (!_serviceFactory) throw new Error('testServices() only after buildAndRequire()');
   if (!_builtOnce) {
     _builtOnce = _serviceFactory();
-    for (const [b, e] of _ersatz) Object.assign(_builtOnce.d[b], e);
+    for (const [b, e] of _spare) Object.assign(_builtOnce.d[b], e);
   }
   return _builtOnce.d;
 }
 
 /** The context of a scope (repositories, access, dependencies) for tests that
  *  look inside; the services themselves do not hand it out. */
-/** @param {string} bereich @returns {any} */
-function testContext(bereich) {
+/** @param {string} area @returns {any} */
+function testContext(area) {
   testServices();
-  const k = _builtOnce.contexts[bereich];
-  if (!k) throw new Error(`no context for ${bereich}`);
+  const k = _builtOnce.contexts[area];
+  if (!k) throw new Error(`no context for ${area}`);
   return k;
 }
 
 /** Replaces services of a scope for this test file, also for other scopes that
  *  call them via their context (the same object). Before or after the first build. */
-function replaceServices(bereich, ersatz) {
-  _ersatz.push([bereich, ersatz]);
-  if (_builtOnce) Object.assign(_builtOnce.d[bereich], ersatz);
+function replaceServices(area, spare) {
+  _spare.push([area, spare]);
+  if (_builtOnce) Object.assign(_builtOnce.d[area], spare);
 }
 
 /** The public side of a scope (index.js) together with its services of this test file:
  *  whatever index.js does not export is passed on to testServices()[bereich] on call,
  *  so that a file only builds the services when a test calls them. */
-/** @param {string} bereich @returns {any} */
-function areaPage(bereich) {
-  const modul = require(path.join(ROOT, 'dist', 'src', bereich, 'index.js'));
-  return new Proxy(modul, {
-    get: (m, n) => (n in m ? m[n] : (...a) => testServices()[bereich][n](...a)),
+/** @param {string} area @returns {any} */
+function areaPage(area) {
+  const mod = require(path.join(ROOT, 'dist', 'src', area, 'index.js'));
+  return new Proxy(mod, {
+    get: (m, n) => (n in m ? m[n] : (...a) => testServices()[area][n](...a)),
   });
 }
 
 /** Records what the images note (rememberUsed, src/images/imageDemand.ts): at the buffer
  *  itself, so that every path there counts. `ende()` stops again. */
-/** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
-function imageNotes(kontext = testContext('images')) {
-  const puffer = kontext.compartments.slot('image_demand:puffer', () => new Map());
+/** @param {any} [context] @returns {{ notes: [string, string][], end: () => void }} */
+function imageNotes(context = testContext('images')) {
+  const buffer = context.compartments.slot('image_demand:puffer', () => new Map());
   /** @type {[string, string][]} */
   const notes = [];
-  puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
+  buffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
     notes.push([url, sn]);
-    return Map.prototype.set.call(puffer, url, sn);
+    return Map.prototype.set.call(buffer, url, sn);
   };
-  return { notes, ende: () => delete puffer.set };
+  return { notes, end: () => delete buffer.set };
 }
 
 /** Like the former xBereich(): services of a scope, read access falls back to its context.
  *  Writing goes to the services. */
-/** @param {string} bereich @returns {any} */
-function testArea(bereich) {
+/** @param {string} area @returns {any} */
+function testArea(area) {
   return new Proxy(
     {},
     {
       get: (_z, n) => {
-        const d = testServices()[bereich];
-        return n in d ? d[n] : testContext(bereich)[n];
+        const d = testServices()[area];
+        return n in d ? d[n] : testContext(area)[n];
       },
       set: (_z, n, v) => {
-        testServices()[bereich][n] = v;
+        testServices()[area][n] = v;
         return true;
       },
-      has: (_z, n) => n in testServices()[bereich] || n in testContext(bereich),
-      ownKeys: () => [
-        ...new Set([...Reflect.ownKeys(testContext(bereich)), ...Reflect.ownKeys(testServices()[bereich])]),
-      ],
+      has: (_z, n) => n in testServices()[area] || n in testContext(area),
+      ownKeys: () => [...new Set([...Reflect.ownKeys(testContext(area)), ...Reflect.ownKeys(testServices()[area])])],
       getOwnPropertyDescriptor: (_z, n) => {
-        const d = testServices()[bereich];
-        const source = n in d ? d : testContext(bereich);
+        const d = testServices()[area];
+        const source = n in d ? d : testContext(area);
         return n in source ? { value: source[n], enumerable: true, configurable: true, writable: true } : undefined;
       },
     },
@@ -260,22 +258,22 @@ const CONTEXT_FN =
 /** The names of the context services of a source, also passed-on ones (export { a as b } [from './x']). */
 function contextNames(ts, depth = 0) {
   const source = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
-  const namen = new Set([...source.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
+  const names = new Set([...source.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
   if (depth < 2)
     for (const i of source.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
       const dort = contextNames(path.join(path.dirname(ts), `${i[2]}.ts`), depth + 1);
-      for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
+      for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) names.add(n);
     }
   for (const e of source.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
-    const quellNames = e[2] && depth < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), depth + 1) : namen;
-    for (const teil of e[1].split(',')) {
-      const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (a && quellNames.has(a)) namen.add(b);
+    const quellNames = e[2] && depth < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), depth + 1) : names;
+    for (const part of e[1].split(',')) {
+      const [a, b = a] = part.trim().split(/\s+as\s+/);
+      if (a && quellNames.has(a)) names.add(b);
     }
   }
-  return namen;
+  return names;
 }
-function withContext(rel, modul) {
+function withContext(rel, mod) {
   const m =
     /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
       rel,
@@ -287,20 +285,18 @@ function withContext(rel, modul) {
       fs.existsSync(path.join(ROOT, 'src', m[1], 'area.ts'))
     )
   )
-    return modul;
+    return mod;
   if (!_withContext.has(rel)) {
-    const namen = contextNames(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
-    const bereich = () => testContext(m[1]);
+    const names = contextNames(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
+    const area = () => testContext(m[1]);
     _withContext.set(
       rel,
-      namen.size
-        ? new Proxy(modul, {
+      names.size
+        ? new Proxy(mod, {
             get: (z, n) =>
-              typeof n === 'string' && namen.has(n) && typeof z[n] === 'function'
-                ? (...a) => z[n](bereich(), ...a)
-                : z[n],
+              typeof n === 'string' && names.has(n) && typeof z[n] === 'function' ? (...a) => z[n](area(), ...a) : z[n],
           })
-        : modul,
+        : mod,
     );
   }
   return _withContext.get(rel);
@@ -309,23 +305,23 @@ function withContext(rel, modul) {
 /** The owner's access if the run separates roles, otherwise the test access itself.
  * Whoever closes one of the two pools closes both: it used to be one. */
 function ownerAccess(dbModule, testDb, firstStart) {
-  const url = process.env.TEST_DB_EIGEN_URL;
+  const url = process.env.TEST_DB_OWN_URL;
   if (!url || url === process.env.DATABASE_URL) return testDb();
   const k = dbModule.dbConfigFromEnvironment();
   // Like server.ts: the first start creates the first account in the system context.
   const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
-  const eigen = dbModule.createDb(
+  const own = dbModule.createDb(
     { ...k, connection: { connectionString: url }, system: null },
     { firstStart: () => inSystemContext('start', firstStart) },
   );
   const app = testDb();
-  const endings = [eigen.pool, app.pool].map(p => {
-    const ende = p.end.bind(p);
-    let zu = null;
-    return { p, schliesse: () => (zu ??= ende()) };
+  const endings = [own.pool, app.pool].map(p => {
+    const end = p.end.bind(p);
+    let closed = null;
+    return { p, close: () => (closed ??= end()) };
   });
-  for (const { p } of endings) p.end = () => Promise.all(endings.map(e => e.schliesse())).then(() => undefined);
-  return eigen;
+  for (const { p } of endings) p.end = () => Promise.all(endings.map(e => e.close())).then(() => undefined);
+  return own;
 }
 
 /** Like startup/app.ts (rememberRequest before all routes): a router from routes/ that a test
@@ -336,10 +332,10 @@ function withAccountTheRequest(m) {
   const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
   const { errorResponse } = require(path.join(ROOT, 'dist', 'src/http/httpResponse.js'));
   // Like startup/app.ts: the app attaches the error path, not the router.
-  const weiter = (req, res, next) => e =>
+  const nextPos = (req, res, next) => e =>
     e && e !== 'route' && e !== 'router' ? errorResponse(e, req, res, next) : next();
   return new Proxy(m, {
-    apply: (ziel, ich, [req, res, next]) => asRequest(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
+    apply: (target, ich, [req, res, next]) => asRequest(req, () => target.call(ich, req, res, nextPos(req, res, next))),
   });
 }
 
@@ -362,29 +358,29 @@ function testAccess() {
 
 /** The image machinery that buildServices() of this file got: a test replaces a part
  *  in it instead of bending the module on load. With `t` the replacement applies until the end of the test.
- *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
-function testImageWorker(t, ersatz = {}) {
-  const vorher = { ..._imageWorker };
-  Object.assign(_imageWorker, ersatz);
-  t?.after(() => Object.assign(_imageWorker, vorher));
+ *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [spare] */
+function testImageWorker(t, spare = {}) {
+  const prior = { ..._imageWorker };
+  Object.assign(_imageWorker, spare);
+  t?.after(() => Object.assign(_imageWorker, prior));
   return _imageWorker;
 }
 
 /** Calls f on behalf of an account like a request (asRequest): the code under test sees
  *  only its household under row security, as in production.
- *  @template T @param {number} uid @param {() => T} f @param {{ verwalter?: boolean }} [o] @returns {T} */
+ *  @template T @param {number} uid @param {() => T} f @param {{ admin?: boolean }} [o] @returns {T} */
 function asAccount(uid, f, o = {}) {
   const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
-  return asRequest({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
+  return asRequest({ apiUser: { user_id: uid, is_admin: !!o.admin } }, f);
 }
 
 /** Replaces external sources (Rebrickable, BrickLink, Brickset; names as in buildSources(), src/externalSources/sources.ts)
  *  at the wiring instead of bending modules on load. With `t` until the end of the test.
- *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
-function testSources(t, ersatz) {
-  Object.assign(_sources, ersatz);
+ *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} spare */
+function testSources(t, spare) {
+  Object.assign(_sources, spare);
   t?.after(() => {
-    for (const k of Object.keys(ersatz)) delete _sources[k];
+    for (const k of Object.keys(spare)) delete _sources[k];
   });
   return _sources;
 }
@@ -406,8 +402,8 @@ function environment(values) {
     else process.env[k] = v;
   }
   // Not loaded yet: the first konfig() call reads the new values anyway.
-  const datei = path.join(ROOT, 'dist', 'src/infra/config.js');
-  if (require.cache[datei]) require(datei).readConfigNew();
+  const filePath = path.join(ROOT, 'dist', 'src/infra/config.js');
+  if (require.cache[filePath]) require(filePath).readConfigNew();
 }
 
 /** Both language files together: i18n.js alone delivers an empty I18N.
@@ -434,7 +430,7 @@ const i18nAll = () =>
  * does not keep a check green. Only block comments at the start of a line: a `/*`
  * in a string (`'/images/*pfad'`) would otherwise tear holes into the file.
  */
-function ohneKommentare(src) {
+function withoutComments(src) {
   return String(src)
     .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, '')
     .replace(/^[ \t]*\/\/[^\n]*$/gm, '');
@@ -456,8 +452,8 @@ function compact(src) {
 /** HTML comments until the fixed point: a leftover like “<!<!---->--” would otherwise form a new one. */
 function withoutHtmlComments(src) {
   let s = String(src);
-  for (let vorher; vorher !== s; ) {
-    vorher = s;
+  for (let prior; prior !== s; ) {
+    prior = s;
     s = s.replace(/<!--[\s\S]*?-->/g, '');
   }
   return s;
@@ -534,7 +530,7 @@ const HANDLER_MODULE = [
   'src/minifigs/queries',
   'src/inventory/metrics',
 ];
-function handlerQuelle() {
+function handlerSource() {
   return HANDLER_MODULE.map(m => serviceSource(m + '.ts')).join('\n');
 }
 
@@ -635,23 +631,23 @@ function functionHeader(src, name) {
  * The end is the closing brace in COLUMN 0.
  */
 function functionBody(src, name) {
-  const kopf = functionHeader(src, name);
-  const afterHeader = src.indexOf(kopf) + kopf.length;
-  const auf = src.indexOf('{', afterHeader);
-  if (auf < 0) throw new Error(`body of ${name} does not start with {`);
-  const zu = src.indexOf('\n}', auf);
-  if (zu < 0) throw new Error(`body of ${name} is not closed`);
-  return src.slice(auf + 1, zu);
+  const head = functionHeader(src, name);
+  const afterHeader = src.indexOf(head) + head.length;
+  const opened = src.indexOf('{', afterHeader);
+  if (opened < 0) throw new Error(`body of ${name} does not start with {`);
+  const closed = src.indexOf('\n}', opened);
+  if (closed < 0) throw new Error(`body of ${name} is not closed`);
+  return src.slice(opened + 1, closed);
 }
 
 /** Regardless of type annotation and position; with `withDefaultNull` additionally
  *  the default null (then callers may omit it). */
-function hatParameter(src, name, param, withDefaultNull = false) {
-  const kopf = functionHeader(src, name);
-  const drin = new RegExp(`\\b${param}\\b`).test(kopf);
-  if (!drin) return false;
+function hasParameter(src, name, param, withDefaultNull = false) {
+  const head = functionHeader(src, name);
+  const inside = new RegExp(`\\b${param}\\b`).test(head);
+  if (!inside) return false;
   if (!withDefaultNull) return true;
-  return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(kopf);
+  return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(head);
 }
 
 /**
@@ -663,28 +659,28 @@ function hatParameter(src, name, param, withDefaultNull = false) {
  */
 function checkParameter(src, name, params, hint = '') {
   const assert = require('node:assert/strict');
-  const kopf = functionHeader(src, name);
-  const innen = kopf.slice(kopf.indexOf('(') + 1, kopf.length - 1);
+  const head = functionHeader(src, name);
+  const innerPart = head.slice(head.indexOf('(') + 1, head.length - 1);
 
-  let zuletzt = -1;
+  let lastly = -1;
   for (const p of params) {
-    const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
-    assert.ok(treffer, `${name} no longer accepts '${p}'${hint ? ' — ' + hint : ''}: ${kopf}`);
-    zuletzt = zuletzt + 1 + treffer.index;
+    const hits = new RegExp(`\\b${p}\\b`).exec(innerPart.slice(lastly + 1));
+    assert.ok(hits, `${name} no longer accepts '${p}'${hint ? ' — ' + hint : ''}: ${head}`);
+    lastly = lastly + 1 + hits.index;
   }
 }
 
 /**
  * Where which router hangs — READ from server.ts, not copied: a
  * check that copies the wiring does not check the wiring.
- * @returns [{ mount: '/api/v2/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
+ * @returns [{ mount: '/api/v2/sets', file: '<abs>/routes/sets.ts', name: 'sets' }]
  *          without routes/api/* — that is the index itself.
  */
 /** @param {{ withoutParts?: boolean }} [o] withoutParts: only the mounted modules, not the files of an assembly */
 function routerMounts(o = {}) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+  const src = withoutComments(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` at the top, `app.use('/api/…', xRouter)` below.
-  const fileJeName = new Map(
+  const filePerName = new Map(
     [...src.matchAll(/import\s+(?:\{\s*)?(\w+)(?:\s*\})?\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [
       m[1],
       m[2],
@@ -693,15 +689,15 @@ function routerMounts(o = {}) {
   const out = [];
   // A router with a factory is mounted as `baueXRouter(d)`.
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
-    const datei = fileJeName.get(m[2]);
-    if (!datei || datei.startsWith('routes/api')) continue;
+    const filePath = filePerName.get(m[2]);
+    if (!filePath || filePath.startsWith('routes/api')) continue;
     out.push({
       mount: m[1].replace(/\/+$/, ''),
-      datei: path.join(ROOT, datei + '.ts'),
-      name: datei.replace(/^routes\//, ''),
+      file: path.join(ROOT, filePath + '.ts'),
+      name: filePath.replace(/^routes\//, ''),
     });
     // An assembly (routes/auth.ts) mounts its parts under the same address.
-    const parts = path.join(ROOT, datei);
+    const parts = path.join(ROOT, filePath);
     if (!o.withoutParts && fs.existsSync(parts) && fs.statSync(parts).isDirectory())
       for (const n of fs
         .readdirSync(parts)
@@ -709,8 +705,8 @@ function routerMounts(o = {}) {
         .sort())
         out.push({
           mount: m[1].replace(/\/+$/, ''),
-          datei: path.join(parts, n),
-          name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}`,
+          file: path.join(parts, n),
+          name: `${filePath.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}`,
         });
   }
   return out;
@@ -722,29 +718,29 @@ function routerMounts(o = {}) {
  * @param {string} name file name without routes/ and without .ts, e.g. 'auth'.
  */
 function mounting(name) {
-  const treffer = routerMounts().filter(r => r.name === name);
-  if (treffer.length !== 1)
-    throw new Error(`routes/${name}.ts is mounted ${treffer.length} times in startup/app.ts — expected: exactly once`);
-  return treffer[0].mount;
+  const hits = routerMounts().filter(r => r.name === name);
+  if (hits.length !== 1)
+    throw new Error(`routes/${name}.ts is mounted ${hits.length} times in startup/app.ts — expected: exactly once`);
+  return hits[0].mount;
 }
 
 /**
  * Cut a section — and THROW if an anchor is missing: `slice(-1)`
  * would otherwise give an empty section on which `assert.doesNotMatch` is silently green.
- * @param {string} [bis]   up to here (must occur if given), otherwise to the end
+ * @param {string} [until]   up to here (must occur if given), otherwise to the end
  * @param {string} [purpose]  what the section is needed for, for the message
  */
-function abschnitt(source, ab, bis, purpose = '') {
+function section(source, ab, until, purpose = '') {
   const i = String(source).indexOf(ab);
   if (i < 0)
     throw new Error(
       `anchor text not found${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
         'The excerpt would be empty, and assertions on it would check nothing.',
     );
-  if (bis === undefined) return String(source).slice(i);
-  const j = String(source).indexOf(bis, i);
+  if (until === undefined) return String(source).slice(i);
+  const j = String(source).indexOf(until, i);
   if (j < 0)
-    throw new Error(`end anchor not found${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+    throw new Error(`end anchor not found${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(until).slice(0, 90)}`);
   return String(source).slice(i, j);
 }
 
@@ -754,10 +750,10 @@ function abschnitt(source, ab, bis, purpose = '') {
  * A `${…}` is only a path segment if a `/` stands directly before it:
  *     `/v2/parts/${nr}/${farbe}`            → /v2/parts/:X/:X
  *     `/v2/minifigs/${nr}${owner ? …: ''}`  → /v2/minifigs/:X
- * @param {string} [marke]   placeholder per segment — ':X' or ':x'
+ * @param {string} [mark]   placeholder per segment — ':X' or ':x'
  */
-function pathForm(roh, marke = ':X') {
-  let s = String(roh);
+function pathForm(raw, mark = ':X') {
+  let s = String(raw);
   let ago = null;
   // Innermost first until nothing matches anymore — so a nested expression
   // also disappears completely.
@@ -772,7 +768,7 @@ function pathForm(roh, marke = ':X') {
       continue;
     }
     if (out.endsWith('/')) {
-      out += marke;
+      out += mark;
       continue;
     }
     break; // suffix, not a segment → the path ends here
@@ -783,7 +779,7 @@ function pathForm(roh, marke = ':X') {
 /**
  * A literal from `i` with NESTED template expressions: a path can
  * carry backticks inside, and every `[^`]*` would break off there.
- * @returns {{text: string, ende: number}|null} content without quotes
+ * @returns {{text: string, end: number}|null} content without quotes
  *   and the position AFTER the literal; null if none starts at `i`.
  */
 function readLiteral(src, i) {
@@ -809,14 +805,14 @@ function readLiteral(src, i) {
       else if (c === '`' || c === "'" || c === '"') {
         const inner = readLiteral(src, j);
         if (inner) {
-          j = inner.ende;
+          j = inner.end;
           continue;
         }
       }
       j++;
       continue;
     }
-    if (c === anf) return { text: src.slice(i + 1, j), ende: j + 1 };
+    if (c === anf) return { text: src.slice(i + 1, j), end: j + 1 };
     j++;
   }
   return null;
@@ -828,51 +824,50 @@ function readLiteral(src, i) {
  * @param {string} src @param {string} mount @returns {string[][]}
  */
 function routesFromSource(src, mount) {
-  const raus = [];
-  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
+  const result = [];
+  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) result.push([...m]);
   for (const m of src.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
-    const voll = m[2];
-    const rel = voll === mount ? '/' : voll.startsWith(`${mount}/`) ? voll.slice(mount.length) : null;
-    if (rel !== null) raus.push([m[0], m[1].toLowerCase(), rel]);
+    const full = m[2];
+    const rel = full === mount ? '/' : full.startsWith(`${mount}/`) ? full.slice(mount.length) : null;
+    if (rel !== null) result.push([m[0], m[1].toLowerCase(), rel]);
   }
-  return raus;
+  return result;
 }
 
 /** The file list stands here so that test/api-inbox-db.test.js reads no
  *  variable path (test/eigenbruecken.test.js counts those). */
 function v1Routes() {
   const found = [];
-  const lies = (datei, vorne) => {
-    const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
+  const read = (filePath, front) => {
+    const s = fs.readFileSync(path.join(ROOT, filePath), 'utf8');
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
-      found.push([m[1].toUpperCase(), vorne + m[2]]);
+      found.push([m[1].toUpperCase(), front + m[2]]);
     // Contract routers: the key names method and full path.
     for (const m of s.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
       found.push([m[1], m[2]]);
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')).filter(f => f.endsWith('.ts')))
-    lies(`routes/api/${f}`, '/api/v2');
+    read(`routes/api/${f}`, '/api/v2');
   // The routers mounted in server.ts (auth including parts, gesundheit).
-  for (const r of routerMounts().filter(r => r.mount.startsWith('/api/v2')))
-    lies(path.relative(ROOT, r.datei), r.mount);
-  lies('server.ts', '');
+  for (const r of routerMounts().filter(r => r.mount.startsWith('/api/v2'))) read(path.relative(ROOT, r.file), r.mount);
+  read('server.ts', '');
   return found.filter(([, p]) => p.startsWith('/api/v2'));
 }
 
 /** For checks that require a property everywhere instead of keeping
  *  a file list that goes stale with the next move. */
 function allSources() {
-  const raus = [];
-  const lauf = rel => {
+  const result = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = rel ? path.posix.join(rel, e.name) : e.name;
       if (e.isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'scripts', 'public', 'docs', '.git'].includes(e.name)) lauf(kind);
-      } else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) raus.push(kind);
+        if (!['node_modules', 'dist', 'test', 'scripts', 'public', 'docs', '.git'].includes(e.name)) run(kind);
+      } else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) result.push(kind);
     }
   };
-  lauf('');
-  return raus;
+  run('');
+  return result;
 }
 
 /** Checks on a service's SQL mean its path to the database,
@@ -881,34 +876,34 @@ function allSources() {
 function serviceSource(rel) {
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const repos = new Set(
-    [...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
+    [...withoutComments(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
       .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
       .map(z => (fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts')),
   );
   // The catalog binds its repositories in a factory (src/catalog/area.ts).
-  for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
+  for (const m of withoutComments(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
     if (fs.existsSync(path.join(ROOT, `src/catalog/repository/${m[1]}.ts`)))
       repos.add(`src/catalog/repository/${m[1]}.ts`);
   // The other scopes likewise (src/<b>/bereich.ts, access via <b>Bereich()).
-  for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
+  for (const m of withoutComments(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
     const factoryFile = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));
     if (!factoryFile) continue;
     const factory = path.join(ROOT, `src/${m[1]}/${factoryFile}`);
-    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
-    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
+    const target = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
+    if (target && /repository/.test(target[1])) repos.add(`src/${m[1]}/${target[1]}.ts`);
   }
   // Via the service's context (k.repo., k.<bereich>.repo.; t in a transaction).
-  const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
-  const ueber = (b, name) => {
+  const ownOne = /^src\/(\w+)\//.exec(rel)?.[1];
+  const over = (b, name) => {
     const factoryFile = b && ['kontext.ts', 'context.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${b}/${f}`)));
     const factory = factoryFile && path.join(ROOT, `src/${b}/${factoryFile}`);
     if (!factory) return;
-    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
-    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
+    const target = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
+    if (target && /repository/.test(target[1])) repos.add(`src/${b}/${target[1]}.ts`);
   };
-  for (const m of ohneKommentare(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
-    ueber(eigener, m[1]);
-    if (m[2]) ueber(m[1], m[2]);
+  for (const m of withoutComments(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
+    over(ownOne, m[1]);
+    if (m[2]) over(m[1], m[2]);
   }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
@@ -916,7 +911,7 @@ function serviceSource(rel) {
 /** All sources of the UI (public/js without the bundle, plus i18n.js) as ONE
  *  text: for checks that should not depend on the file in which a
  *  function currently stands. */
-function frontendQuelle() {
+function frontendSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const pub = path.join(__dirname, '..', '..', 'public');
@@ -950,7 +945,7 @@ const VIEWS = {
 };
 
 /** All files of a view (key from VIEWS) as ONE text. */
-function ansichtQuelle(/** @type {keyof typeof VIEWS} */ name) {
+function viewSource(/** @type {keyof typeof VIEWS} */ name) {
   const js = path.join(ROOT, 'public', 'js');
   return VIEWS[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
 }
@@ -960,7 +955,7 @@ module.exports = {
   serverOnly,
   imgProxy,
   serverAll,
-  finanzQuelle,
+  financeSource,
   environment,
   buildAndRequire,
   testAccess,
@@ -979,34 +974,34 @@ module.exports = {
   loadTranslations,
   localeSource,
   i18nAll,
-  ohneKommentare,
+  withoutComments,
   compact,
   withoutHtmlComments,
   regexLiteral,
   proxyThumbSource,
   adminSource,
   setCoreSource,
-  handlerQuelle,
+  handlerSource,
   handlerModule,
   startSource,
   portfolioSource,
   coreSource,
   functionHeader,
   functionBody,
-  hatParameter,
+  hasParameter,
   checkParameter,
   routerMounts,
   mounting,
-  abschnitt,
+  section,
   pathForm,
   readLiteral,
   routesFromSource,
   v1Routes,
   allSources,
   serviceSource,
-  frontendQuelle,
+  frontendSource,
   loginSource,
-  ansichtQuelle,
+  viewSource,
   testClock,
   DIST: path.join(ROOT, 'dist'),
 };

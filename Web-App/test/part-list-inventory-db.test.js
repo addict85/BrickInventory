@@ -43,23 +43,23 @@ async function seed() {
   await holdsSet(db, UID, '10276-1', 1);
 
   // Parts FROM the sets (source stays empty — exactly as partsImport.ts creates them).
-  const setTeil = async (setNr, num, farbe, quantity) => {
+  const setPart = async (setNr, num, color, quantity) => {
     // Description into the catalog, stock into parts (migration 0034).
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
                   ON CONFLICT (part_number) DO NOTHING`,
       [num],
     );
-    await holdsPart(db, UID, num, { setNumber: setNr, quantity: quantity, colorId: farbe });
+    await holdsPart(db, UID, num, { setNumber: setNr, quantity: quantity, colorId: color });
   };
-  await setTeil('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
-  await setTeil('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
+  await setPart('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
+  await setPart('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
 
   // Captured manually: hangs on no set.
   await holdsPart(db, UID, '3003', { quantity: 7, colorId: 0 });
 
   // Part row whose set no longer stands in `sets` — the LEFT JOIN case.
-  await setTeil('99999-1', '3004', 0, 4);
+  await setPart('99999-1', '3004', 0, 4);
 
   // Minifigures: one from the set owned twice, one captured manually.
   await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', quantity: 1 });
@@ -86,7 +86,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
 
-  const frage = [
+  const question = [
     { part_number: '3001', color_id: 0 },
     { part_number: '3002', color_id: 0 },
     { part_number: '3003', color_id: 0 },
@@ -96,7 +96,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     { part_number: 'trn241', color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
-  const holding = await ownedQuantitiesQuery([UID], frage);
+  const holding = await ownedQuantitiesQuery([UID], question);
 
   await t.test('a set owned twice delivers its parts twice', () => {
     assert.equal(
@@ -158,7 +158,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
  */
 /** The part list in the real bundle: one set whose two mold variants share one BrickLink number. */
 async function partListUi() {
-  const { openUi, warte } = require('./helpers/ui');
+  const { openUi, waitFor } = require('./helpers/ui');
   const part = (pn, q) => ({
     part_number: pn,
     bl_part_number: '3001',
@@ -180,13 +180,13 @@ async function partListUi() {
   const { d } = ui;
   d.getElementById('pl-setnr').value = '10294-1';
   d.getElementById('pl-setnr').dispatchEvent(new ui.w.KeyboardEvent('keydown', { key: 'Enter' }));
-  assert.ok(await warte(() => d.querySelectorAll('.pl-have-input').length === 2), 'the two variants are not listed');
+  assert.ok(await waitFor(() => d.querySelectorAll('.pl-have-input').length === 2), 'the two variants are not listed');
   return ui;
 }
 
 test('demand and inventory are merged via the same number', async () => {
   // Merged by the Rebrickable number: two variants stay two rows, each finds its own holding.
-  const { w, d, warte } = await partListUi();
+  const { w, d, waitFor } = await partListUi();
   try {
     const rows = [...d.querySelectorAll('.pl-have-input')];
     assert.deepEqual(
@@ -198,7 +198,7 @@ test('demand and inventory are merged via the same number', async () => {
       'the display shows the BrickLink number, the key stays Rebrickable',
     );
     d.getElementById('btn-pl-stock').click();
-    assert.ok(await warte(() => rows[0].value === '2'));
+    assert.ok(await waitFor(() => rows[0].value === '2'));
     assert.deepEqual(
       rows.map(el => el.value),
       ['2', '1'],
@@ -215,18 +215,18 @@ test('demand and inventory are merged via the same number', async () => {
  */
 test('the inventory reconciliation reads its scope from its own choice', async () => {
   // Not the parts tab's account filter: without the tick only the own account, with it the household.
-  const { w, d, warte, aufrufe } = await partListUi();
-  const owned = () => aufrufe.filter(a => a.url.includes('/v2/parts/owned')).map(a => a.url.replace(/^.*\/api/, ''));
+  const { w, d, waitFor, calls } = await partListUi();
+  const owned = () => calls.filter(a => a.url.includes('/v2/parts/owned')).map(a => a.url.replace(/^.*\/api/, ''));
   try {
     w.localStorage.setItem('bim_scope_parts', '7');
     d.getElementById('btn-pl-stock').click();
-    assert.ok(await warte(() => owned().length === 1));
-    assert.ok(await warte(() => !d.getElementById('btn-pl-stock').disabled), 'the button stays busy');
+    assert.ok(await waitFor(() => owned().length === 1));
+    assert.ok(await waitFor(() => !d.getElementById('btn-pl-stock').disabled), 'the button stays busy');
     d.getElementById('pl-stock-subs').checked = true;
     d.getElementById('btn-pl-stock').click();
-    assert.ok(await warte(() => owned().length === 2));
+    assert.ok(await waitFor(() => owned().length === 2));
     assert.deepEqual(owned(), ['/v2/parts/owned?accounts=own', '/v2/parts/owned']);
-    const body = JSON.parse(aufrufe.find(a => a.url.includes('/v2/parts/owned')).body);
+    const body = JSON.parse(calls.find(a => a.url.includes('/v2/parts/owned')).body);
     assert.deepEqual(body.parts, [
       { part_number: '3001a', color_id: 5 },
       { part_number: '3001b', color_id: 5 },

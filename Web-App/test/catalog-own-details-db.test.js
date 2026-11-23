@@ -61,24 +61,24 @@ test('own catalog details stay with the account and its household', { concurrenc
     }
   }
   const suffix = process.pid;
-  const konto = async n =>
+  const account = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`${n}-${suffix}`])).id;
-  const alice = await konto('alice'),
-    bob = await konto('bob'),
-    carol = await konto('carol'),
-    kind = await konto('kind');
+  const alice = await account('alice'),
+    bob = await account('bob'),
+    carol = await account('carol'),
+    kind = await account('kind');
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [carol, kind]);
   t.after(() => db.run('DELETE FROM users WHERE id = ANY($1)', [[alice, bob, carol, kind]]).catch(() => {}));
 
   const api = uid => {
-    const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-    return async (methode, path, body) => {
+    const { base } = testServer(_req, { session: { userId: uid }, t });
+    return async (method, path, body) => {
       const r = await fetch(base + '/api/v2' + path, {
-        method: methode,
+        method: method,
         ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
       const j = await r.json();
-      assert.equal(r.status, 200, `${methode} ${path}: ${JSON.stringify(j)}`);
+      assert.equal(r.status, 200, `${method} ${path}: ${JSON.stringify(j)}`);
       return j;
     };
   };
@@ -151,9 +151,9 @@ test('own catalog details stay with the account and its household', { concurrenc
   await t.test("household: the main account sees the sub-account's details", async () => {
     await K('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1, part_name: 'Kinds Name' });
     await B('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1 });
-    const zeilen = (await C('GET', '/parts/manual')).parts.filter(p => p.part_number === 'haus-1');
+    const lines = (await C('GET', '/parts/manual')).parts.filter(p => p.part_number === 'haus-1');
     assert.deepEqual(
-      zeilen.map(p => [p.user_id, p.part_name]),
+      lines.map(p => [p.user_id, p.part_name]),
       [[kind, 'Kinds Name']],
     );
     assert.ok(!(await listen(B)).includes('Kinds Name'), 'Bob sees the name of the sub-account');

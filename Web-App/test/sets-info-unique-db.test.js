@@ -39,12 +39,12 @@ test('the name lookup under /api/v2/sets is unambiguous', { concurrency: 1 }, as
   const fremdId = (
     await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])
   ).id;
-  const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
-  const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
+  const [fremd, own, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
+  const numbers = ['price-history-1', `${process.pid}-1`, fremd, own];
   for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
-    await catalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
-  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
+    await catalogSet(db, numbers[i], { name: name ?? `Set ${numbers[i]}` });
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, own]);
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME, isAdmin: false }, t });
 
   try {
     await t.test('an ordinary number', async () => {
@@ -62,14 +62,14 @@ test('the name lookup under /api/v2/sets is unambiguous', { concurrency: 1 }, as
       assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, in_catalog: false });
     });
     await t.test('an own placeholder and a catalog entry apply', async () => {
-      const e = await info(eigen);
-      assert.deepEqual([e.name, e.in_catalog], [`Set ${eigen}`, true], 'an own placeholder …');
+      const e = await info(own);
+      assert.deepEqual([e.name, e.in_catalog], [`Set ${own}`, true], 'an own placeholder …');
       const k = await info(`${process.pid}-1`);
       assert.deepEqual([k.name, k.in_catalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'a catalogue entry …');
     });
   } finally {
-    await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [nummern]);
-    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [numbers]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [numbers]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, fremdId]]);
     await db.pool.end().catch(() => {});
   }

@@ -58,8 +58,8 @@ test('repeated set import keeps storage location and identifier', { concurrency:
     [INV],
   );
 
-  const figur = nr => db.get('SELECT id, storage_id FROM minifigs WHERE user_id=$1 AND fig_number=$2', [uid, nr]);
-  const teil = nr =>
+  const minifig = nr => db.get('SELECT id, storage_id FROM minifigs WHERE user_id=$1 AND fig_number=$2', [uid, nr]);
+  const part = nr =>
     db.get(`SELECT id, storage_id, added_at::text AS added_at FROM parts WHERE user_id=$1 AND part_number=$2`, [
       uid,
       nr,
@@ -69,27 +69,26 @@ test('repeated set import keeps storage location and identifier', { concurrency:
     await t.test('the minifigure keeps identifier and storage location', async () => {
       assert.equal(await importMinifigs(SN, uid), 2);
       await db.run('UPDATE minifigs SET storage_id=$1 WHERE user_id=$2 AND fig_number=$3', [location, uid, 'fig-t1']);
-      const vorher = await figur('fig-t1');
-      assert.equal(vorher.storage_id, location);
+      const prior = await minifig('fig-t1');
+      assert.equal(prior.storage_id, location);
       assert.equal(await importMinifigs(SN, uid), 2);
-      assert.deepEqual(await figur('fig-t1'), vorher);
+      assert.deepEqual(await minifig('fig-t1'), prior);
     });
 
     await t.test('a dropped minifigure goes, a typed-in one stays', async () => {
       await db.run(`DELETE FROM set_minifigs WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
       assert.equal(await importMinifigs(SN, uid), 1);
-      assert.equal(await figur('fig-t2'), undefined);
-      assert.ok(await figur('fig-t1'));
-      assert.ok(await figur('fig-t9'), 'the typed-in figure without a set does not belong to the import');
+      assert.equal(await minifig('fig-t2'), undefined);
+      assert.ok(await minifig('fig-t1'));
+      assert.ok(await minifig('fig-t9'), 'the typed-in figure without a set does not belong to the import');
     });
 
     await t.test('build part and spare part of the same color', async () => {
       assert.equal(await importParts(SN, uid), 3);
-      const liste = await db.get(
-        `SELECT quantity, is_spare FROM set_parts WHERE set_number=$1 AND part_number='tp-1'`,
-        [SN],
-      );
-      assert.deepEqual(liste, { quantity: 4, is_spare: false }, 'the part quantity counts, not the spare parts');
+      const list = await db.get(`SELECT quantity, is_spare FROM set_parts WHERE set_number=$1 AND part_number='tp-1'`, [
+        SN,
+      ]);
+      assert.deepEqual(list, { quantity: 4, is_spare: false }, 'the part quantity counts, not the spare parts');
     });
 
     await t.test('the part keeps identifier, storage location and date', async () => {
@@ -97,17 +96,17 @@ test('repeated set import keeps storage location and identifier', { concurrency:
         `UPDATE parts SET storage_id=$1, added_at='2020-01-02T00:00:00Z' WHERE user_id=$2 AND part_number='tp-1'`,
         [location, uid],
       );
-      const vorher = await teil('tp-1');
-      assert.equal(vorher.storage_id, location);
+      const prior = await part('tp-1');
+      assert.equal(prior.storage_id, location);
       await importParts(SN, uid);
-      assert.deepEqual(await teil('tp-1'), vorher);
+      assert.deepEqual(await part('tp-1'), prior);
     });
 
     await t.test('a dropped part goes', async () => {
       await db.run(`DELETE FROM rb_inventory_parts WHERE inventory_id=$1 AND part_num='tp-2'`, [INV]);
       await importParts(SN, uid);
-      assert.equal(await teil('tp-2'), undefined);
-      assert.ok(await teil('tp-1'));
+      assert.equal(await part('tp-2'), undefined);
+      assert.ok(await part('tp-1'));
     });
   } finally {
     await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id=$1', [INV]);

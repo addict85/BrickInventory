@@ -80,8 +80,8 @@ test('search text and storage location also hit the manually captured lists', { 
                   ('3001',4,'Red'), ('3002',4,'Red'), ('3003',4,'Red')`);
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES ('part','3002','9999')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
-  const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
-  await holdsPart(db, UID, '3001', { colorId: 4, quantity: 10, storageId: ORT });
+  const PLACE = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
+  await holdsPart(db, UID, '3001', { colorId: 4, quantity: 10, storageId: PLACE });
   await holdsPart(db, UID, '3002', { colorId: 4, quantity: 5 });
   await holdsPart(db, UID, '3003', { colorId: 4, quantity: 1 });
   // A set part with the same number: it must NEVER show up in this list,
@@ -95,13 +95,13 @@ test('search text and storage location also hit the manually captured lists', { 
 
   const parts = _req('src/parts/queries.js');
   const minifigs = _req('src/minifigs/queries.js');
-  const nummern = async opt => (await parts.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
+  const numbers = async opt => (await parts.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNumbers = async opt =>
     (await minifigs.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('without search text everything is there', async () => {
     assert.deepEqual(
-      await nummern({}),
+      await numbers({}),
       ['3001', '3002', '3003'],
       'The list without a filter is the reference point for everything that follows',
     );
@@ -109,7 +109,7 @@ test('search text and storage location also hit the manually captured lists', { 
   });
 
   await t.test('the search for the part number leaves only it', async () => {
-    const g = await nummern({ search: '3001' });
+    const g = await numbers({ search: '3001' });
     assert.deepEqual(
       g,
       ['3001'],
@@ -120,7 +120,7 @@ test('search text and storage location also hit the manually captured lists', { 
 
   await t.test('the search finds the name from the catalog', async () => {
     assert.deepEqual(
-      await nummern({ search: '2 x 3' }),
+      await numbers({ search: '2 x 3' }),
       ['3003'],
       'The part name lives in part_catalog since migration 0034 — the ' +
         'condition must go through the JOIN, not through parts',
@@ -128,7 +128,7 @@ test('search text and storage location also hit the manually captured lists', { 
   });
 
   await t.test('the search finds the BrickLink number from the tile', async () => {
-    const g = await nummern({ search: '9999' });
+    const g = await numbers({ search: '9999' });
     assert.deepEqual(
       g,
       ['3002'],
@@ -140,7 +140,7 @@ test('search text and storage location also hit the manually captured lists', { 
 
   await t.test('without hits the list stays empty — not full', async () => {
     assert.deepEqual(
-      await nummern({ search: '4711' }),
+      await numbers({ search: '4711' }),
       [],
       'A search text without hits must yield an empty list. If the whole ' +
         'list came back, it would look like „passiert nichts" again.',
@@ -149,32 +149,32 @@ test('search text and storage location also hit the manually captured lists', { 
 
   await t.test('the storage location filters the same list', async () => {
     assert.deepEqual(
-      await nummern({ storage: 'Kiste 3' }),
+      await numbers({ storage: 'Kiste 3' }),
       ['3001'],
       'The location filter sits in the same bar and belongs to the same ' + 'promise',
     );
-    assert.deepEqual(await nummern({ storage: 'Regal B' }), [], 'A location without parts yields an empty list');
+    assert.deepEqual(await numbers({ storage: 'Regal B' }), [], 'A location without parts yields an empty list');
   });
 
   await t.test('search text and storage location together', async () => {
     assert.deepEqual(
-      await nummern({ search: '3001', storage: 'Kiste 3' }),
+      await numbers({ search: '3001', storage: 'Kiste 3' }),
       ['3001'],
       'Both placeholders are in ONE query; if their numbers are swapped, ' +
         'each condition gets the value of the other and the list ' +
         'is empty',
     );
     assert.deepEqual(
-      await nummern({ search: '3002', storage: 'Kiste 3' }),
+      await numbers({ search: '3002', storage: 'Kiste 3' }),
       [],
       'Both conditions apply together, not alternatively',
     );
   });
 
   await t.test('the set part stays out, even as a search hit', async () => {
-    const alle = await parts.manualPartsList([UID], UID, { search: '3001' });
+    const all = await parts.manualPartsList([UID], UID, { search: '3001' });
     assert.deepEqual(
-      alle.map(p => p.color_id),
+      all.map(p => p.color_id),
       [4],
       'This list shows only source=manual. The set part 3001 in colour 7 ' +
         'belongs in the wall below — the search text must not pull it in.',

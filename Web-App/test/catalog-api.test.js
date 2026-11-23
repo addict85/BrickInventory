@@ -190,8 +190,8 @@ test('catalog API (Postgres integration)', async t => {
       `INSERT INTO rb_sets (set_num, name, source) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`,
     );
     const r = await get('/catalog/sets?q=Future&limit=60');
-    const bilder = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
-    assert.deepEqual(bilder, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
+    const images = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
+    assert.deepEqual(images, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
     assert.equal((await get('/catalog/sets?q=9100')).body.total, 0, 'a placeholder is missing in the list');
     assert.equal((await get('/catalog/sets/9100-1')).status, 404, 'and in the detail');
   });
@@ -218,13 +218,13 @@ test('catalog API (Postgres integration)', async t => {
     assert.equal(r.body.page, 2);
     assert.equal(r.body.sets.length, 10);
     // page_size is the name for all lists; limit stays for older apps.
-    const neu = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
+    const fresh = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
     assert.deepEqual(
-      neu.body.sets.map(s => s.set_number),
+      fresh.body.sets.map(s => s.set_number),
       r.body.sets.map(s => s.set_number),
     );
-    assert.equal(neu.body.page_size, 10);
-    assert.equal(neu.body.pages, 9);
+    assert.equal(fresh.body.page_size, 10);
+    assert.equal(fresh.body.pages, 9);
   });
 
   srv.close();

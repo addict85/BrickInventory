@@ -36,7 +36,7 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 const { chrome } = require('./helpers/app-browser');
 
 /** The building blocks as they appear in collection and finances; `n` is the prefix of the name. */
-function abschnitt(n) {
+function section(n) {
   return `
   <div class="tw"><table class="dt dt-fin"><thead><tr><th data-k="${n}: Tabellenkopf">Einstand</th></tr></thead><tbody><tr>
     <td><span class="number-small" data-k="${n}: Setnummer in der Tabelle">10294-1</span></td>
@@ -69,9 +69,9 @@ function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   const parts = [];
   for (const d of DESIGNS)
-    for (const dunkel of d === 'werkbank' ? [true] : [false, true])
+    for (const dark of d === 'werkbank' ? [true] : [false, true])
       parts.push(
-        `<section data-theme="${d}"${dunkel ? ' data-dark' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dark' : 'hell'}`)}</div></section>`,
+        `<section data-theme="${d}"${dark ? ' data-dark' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${section(`${d} ${dark ? 'dark' : 'hell'}`)}</div></section>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}</style></head><body>${parts.join('\n')}
@@ -80,16 +80,16 @@ function testPage() {
 function rgba(s){ const v=(s.match(/[\\d.]+/g)||[]).map(Number); return v.length<4?[...v,1]:v; }
 function lum([r,g,b]){ const f=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)}; return .2126*f(r)+.7152*f(g)+.0722*f(b); }
 /** Grund: deckende Flächen von innen nach aussen, halbdurchsichtige darüber gemischt. */
-function grund(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
+function reason(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
   let farbe=[255,255,255]; for(const s of schichten.reverse()) farbe=farbe.map((c,i)=>c*(1-s[3])+s[i]*s[3]); return farbe; }
 window.addEventListener('load', () => document.fonts.ready.then(() => {
-  const werte = [...document.querySelectorAll('[data-k]')].map(el => {
-    const f = rgba(getComputedStyle(el).color), g = grund(el);
-    const vorn = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
-    const a = lum(vorn), b = lum(g);
+  const values = [...document.querySelectorAll('[data-k]')].map(el => {
+    const f = rgba(getComputedStyle(el).color), g = reason(el);
+    const front = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
+    const a = lum(front), b = lum(g);
     return { name: el.dataset.k, wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(werte) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(values) + 'ENDE';
 }));
 </script></body></html>`;
 }
@@ -100,10 +100,10 @@ test('contrast in all themes, light and dark', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -114,7 +114,7 @@ test('contrast in all themes, light and dark', t => {
       '--window-size=1200,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );

@@ -138,32 +138,32 @@ test('chown as root follows no symlink', () => {
 test('the repair step follows no symlink and stays on the volume', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-chown-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const daten = path.join(ordner, 'data'),
-    aussen = path.join(ordner, 'aussen');
-  fs.mkdirSync(path.join(daten, 'images'), { recursive: true });
-  fs.mkdirSync(aussen);
-  fs.writeFileSync(path.join(daten, 'images', 'bild.jpg'), 'x');
-  fs.writeFileSync(path.join(aussen, 'passwd'), 'root');
-  fs.symlinkSync(aussen, path.join(daten, 'verweis'));
-  const bin = path.join(ordner, 'bin'),
-    protokoll = path.join(ordner, 'chown.log');
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-chown-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const data = path.join(folder, 'data'),
+    outer = path.join(folder, 'aussen');
+  fs.mkdirSync(path.join(data, 'images'), { recursive: true });
+  fs.mkdirSync(outer);
+  fs.writeFileSync(path.join(data, 'images', 'bild.jpg'), 'x');
+  fs.writeFileSync(path.join(outer, 'passwd'), 'root');
+  fs.symlinkSync(outer, path.join(data, 'verweis'));
+  const bin = path.join(folder, 'bin'),
+    logText = path.join(folder, 'chown.log');
   fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, 'chown'), `#!/bin/sh\nfor a in "$@"; do echo "$a"; done >> '${protokoll}'\n`, {
+  fs.writeFileSync(path.join(bin, 'chown'), `#!/bin/sh\nfor a in "$@"; do echo "$a"; done >> '${logText}'\n`, {
     mode: 0o755,
   });
-  const fn = ep.slice(ep.indexOf('berichtige() {'), ep.indexOf('setzeMarke() {')).replaceAll('/app/data', daten);
+  const fn = ep.slice(ep.indexOf('berichtige() {'), ep.indexOf('setzeMarke() {')).replaceAll('/app/data', data);
   assert.match(fn, /find \S+ -xdev /, 'find does not stay in the volume');
   const r = spawnSync('sh', ['-c', `${fn}\nberichtige`], {
     env: { PATH: `${bin}:${process.env.PATH}`, ZIEL_UID: '424242' },
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
-  const changed = fs.readFileSync(protokoll, 'utf8').split('\n').filter(Boolean);
-  assert.ok(changed.includes(path.join(daten, 'images', 'bild.jpg')), changed.join('\n'));
-  assert.ok(changed.includes(path.join(daten, 'verweis')), 'the symlink itself belongs to the service');
-  assert.equal(changed.filter(z => z.startsWith(aussen)).length, 0, 'root changes a file behind the symlink');
+  const changed = fs.readFileSync(logText, 'utf8').split('\n').filter(Boolean);
+  assert.ok(changed.includes(path.join(data, 'images', 'bild.jpg')), changed.join('\n'));
+  assert.ok(changed.includes(path.join(data, 'verweis')), 'the symlink itself belongs to the service');
+  assert.equal(changed.filter(z => z.startsWith(outer)).length, 0, 'root changes a file behind the symlink');
   assert.ok(changed.includes('-h'));
 });
 
@@ -172,24 +172,24 @@ test('the repair step follows no symlink and stays on the volume', t => {
 test('the marker does not write through a symlink', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-marke-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const fremd = path.join(ordner, 'fremd'),
-    marke = path.join(ordner, '.eigentuemer');
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-marke-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const fremd = path.join(folder, 'fremd'),
+    mark = path.join(folder, '.eigentuemer');
   fs.writeFileSync(fremd, 'unberuehrt');
-  fs.symlinkSync(fremd, marke);
+  fs.symlinkSync(fremd, mark);
   const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
   // su-exec only exists in the image; here it does not switch the user.
-  fs.mkdirSync(path.join(ordner, 'bin'));
-  fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+  fs.mkdirSync(path.join(folder, 'bin'));
+  fs.writeFileSync(path.join(folder, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
   const r = spawnSync('sh', ['-c', `${fn}\nsetzeMarke`], {
-    env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}`, MARKE: marke, ZIEL_UID: '1234' },
+    env: { PATH: `${path.join(folder, 'bin')}:${process.env.PATH}`, MARKE: mark, ZIEL_UID: '1234' },
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(fs.readFileSync(fremd, 'utf8'), 'unberuehrt');
-  assert.equal(fs.lstatSync(marke).isSymbolicLink(), false);
-  assert.equal(fs.readFileSync(marke, 'utf8'), '1234');
+  assert.equal(fs.lstatSync(mark).isSymbolicLink(), false);
+  assert.equal(fs.readFileSync(mark, 'utf8'), '1234');
 });
 
 // Counter-checks (measured 04.11.2026, round 12 H2): after `umask 077` again
@@ -198,26 +198,26 @@ test('the marker does not write through a symlink', t => {
 test('what the service created and uploaded only it reads', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const daten = path.join(ordner, 'data'),
-    alt = path.join(daten, 'uploads', '3', 'rechnung.pdf');
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const data = path.join(folder, 'data'),
+    alt = path.join(data, 'uploads', '3', 'rechnung.pdf');
   fs.mkdirSync(path.dirname(alt), { recursive: true });
   fs.writeFileSync(alt, '%PDF');
   fs.chmodSync(alt, 0o644);
-  fs.mkdirSync(path.join(ordner, 'bin'));
-  fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
-  const teil = ep
+  fs.mkdirSync(path.join(folder, 'bin'));
+  fs.writeFileSync(path.join(folder, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+  const part = ep
     .slice(ep.indexOf('umask 077'), ep.indexOf('echo "[daten-rechte] fertig'))
-    .replaceAll('/app/data', daten);
-  const r = spawnSync('sh', ['-c', `umask 022\n${teil}`], {
-    env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}` },
+    .replaceAll('/app/data', data);
+  const r = spawnSync('sh', ['-c', `umask 022\n${part}`], {
+    env: { PATH: `${path.join(folder, 'bin')}:${process.env.PATH}` },
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
-  const rechte = p => (fs.statSync(p).mode & 0o777).toString(8);
+  const rights = p => (fs.statSync(p).mode & 0o777).toString(8);
   assert.deepEqual(
-    [rechte(path.join(daten, 'images', 'sets')), rechte(alt), rechte(path.dirname(alt))],
+    [rights(path.join(data, 'images', 'sets')), rights(alt), rights(path.dirname(alt))],
     ['700', '600', '700'],
   );
 });
@@ -229,15 +229,15 @@ test('what the service created and uploaded only it reads', t => {
 test('started as brickinv the entrypoint goes directly to the server without a root step', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-einstieg-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const bin = path.join(ordner, 'bin');
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-einstieg-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const bin = path.join(folder, 'bin');
   fs.mkdirSync(bin);
   // compose.yaml starts app and jobs with `user: brickinv`; `id` and `node` stand in for that here.
   fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 100\n', { mode: 0o755 });
   fs.writeFileSync(path.join(bin, 'node'), '#!/bin/sh\necho "umask=$(umask) node $*"\n', { mode: 0o755 });
   const r = spawnSync('sh', [path.join(__dirname, '..', 'docker-entrypoint.sh')], {
-    cwd: ordner,
+    cwd: folder,
     encoding: 'utf8',
     env: { PATH: `${bin}:/usr/bin:/bin`, ROLE: 'web' },
   });

@@ -84,37 +84,37 @@ test('wishlist: market price from the cache', async t => {
     // not to the Number() in the wishlist code. The check
     // stays here anyway: if the parser went away, both UIs would later
     // compare text, and that would otherwise only show up when sorting.
-    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
-    const neu = liste.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(typeof neu.market_price, 'number', `marktpreis is ${typeof neu.market_price}`);
-    assert.equal(neu.market_price, 500);
-    assert.equal(neu.currency, 'EUR');
+    const list = await M.wantedItemsOf([U.ich], undefined, 'EUR');
+    const fresh = list.find(w => w.set_number === '10179-1' && w.condition === 'N');
+    assert.equal(typeof fresh.market_price, 'number', `market_price is ${typeof fresh.market_price}`);
+    assert.equal(fresh.market_price, 500);
+    assert.equal(fresh.currency, 'EUR');
   });
 
   await t.test('2. every condition gets ITS price', async () => {
     // Without the condition clause in the JOIN the used wishlist item would show
     // the new price — and nobody could tell from the number.
-    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
-    const karte = Object.fromEntries(
-      liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.market_price]),
+    const list = await M.wantedItemsOf([U.ich], undefined, 'EUR');
+    const card = Object.fromEntries(
+      list.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.market_price]),
     );
-    assert.deepEqual(karte, { N: 500, U: 300 }, 'The used wanted item does not show the used price.');
+    assert.deepEqual(card, { N: 500, U: 300 }, 'The used wanted item does not show the used price.');
   });
 
   await t.test("3. the reader's currency decides", async () => {
     const chf = await M.wantedItemsOf([U.ich], undefined, 'CHF');
-    const neu = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
-    assert.equal(neu.market_price, 999, 'The price comes from the wrong currency.');
-    assert.equal(neu.currency, 'CHF');
+    const fresh = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
+    assert.equal(fresh.market_price, 999, 'The price comes from the wrong currency.');
+    assert.equal(fresh.currency, 'CHF');
   });
 
   await t.test('4. no price in the cache means null, not 0', async () => {
     // 0 would be "worthless", null is "none there yet" — the UIs show
     // a dash for it. The difference is that between a statement and
     // a missing statement.
-    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
-    const ohne = liste.find(w => w.set_number === '75192-1');
-    assert.equal(ohne.market_price, null);
+    const list = await M.wantedItemsOf([U.ich], undefined, 'EUR');
+    const without = list.find(w => w.set_number === '75192-1');
+    assert.equal(without.market_price, null);
   });
 
   await t.test('5. the filter on ONE set still works', async () => {
@@ -122,10 +122,10 @@ test('wishlist: market price from the cache', async t => {
     // on whether the set filter is set. Exactly there a transposed number
     // would arise, and it would be silent: Postgres would get the currency as
     // set number and return nothing.
-    const eins = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
-    assert.equal(eins.length, 2, `${eins.length} rows instead of 2 — parameter order shifted?`);
-    assert.ok(eins.every(w => w.set_number === '10179-1'));
-    assert.equal(eins.find(w => w.condition === 'U').market_price, 300);
+    const one = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
+    assert.equal(one.length, 2, `${one.length} rows instead of 2 — parameter order shifted?`);
+    assert.ok(one.every(w => w.set_number === '10179-1'));
+    assert.equal(one.find(w => w.condition === 'U').market_price, 300);
   });
 
   await db.pool.end().catch(() => {});

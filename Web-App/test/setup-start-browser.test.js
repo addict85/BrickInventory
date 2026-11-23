@@ -30,18 +30,18 @@ const { startApp } = require('./helpers/app-browser');
 const { holdsSet } = require('./helpers/inventory');
 
 const AXE = require('axe-core').source;
-const SCHLUESSEL = ['rebrickable_api_key', 'einrichtung_erledigt'];
+const KEY = ['rebrickable_api_key', 'einrichtung_erledigt'];
 
 test('setup wizard only above an empty collection', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `einr_${process.pid}`,
     holding: async db => {
-      await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+      await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
     },
     // The fetch at Rebrickable runs in the server; here its response is fixed.
     intercept: [
       {
-        muster: '*test-source*',
+        pattern: '*test-source*',
         contains: 'test-source',
         response: {
           success: false,
@@ -56,21 +56,21 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     t.skip(app.reason);
     return;
   }
-  const { b, bis, db, uid, ruhig } = app;
+  const { b, until, db, uid, settle } = app;
   const open = `document.getElementById('setup-modal').classList.contains('open')`;
 
   await t.test('empty collection: wizard, text and headings', async () => {
-    await bis(open, 'Assistent');
-    const text = await b.auswerten(`document.querySelector('#setup-modal .wiz-step.active')?.textContent || ''`);
+    await until(open, 'Assistent');
+    const text = await b.evaluate(`document.querySelector('#setup-modal .wiz-step.active')?.textContent || ''`);
     assert.match(text, /Rebrickable/);
     assert.doesNotMatch(text, /bleibt die Sammlung leer/);
-    const funde = await b.auswerten(`(async () => { if (!window.axe) (0, eval)(${JSON.stringify(AXE)});
+    const findings = await b.evaluate(`(async () => { if (!window.axe) (0, eval)(${JSON.stringify(AXE)});
       const r = await axe.run(document, { runOnly: ['heading-order'] }); return r.violations.flatMap(v => v.nodes.map(n => v.id + ' ' + n.target.join(' '))); })()`);
-    assert.deepEqual(funde, []);
+    assert.deepEqual(findings, []);
     // Whether axe reports heading-order depends on which heading stands before it on
     // the page (above 12 sets: h1, in the empty state: h2). The title of the
     // dialog is not a heading; its steps therefore begin at h2.
-    const layers = await b.auswerten(
+    const layers = await b.evaluate(
       `[...document.querySelectorAll('#setup-modal h1, #setup-modal h2, #setup-modal h3, #setup-modal h4')].map(h => +h.tagName[1])`,
     );
     assert.ok(layers.length >= 3, `Testdaten: ${layers}`);
@@ -82,53 +82,53 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
 
   await t.test('check key: error at the field, in plain text', async () => {
     const check = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
-    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, invalid: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
-      fokus: document.activeElement?.id, zeichen: document.getElementById('wiz-status-rebrickable').className,
+    const state = `({ error: document.getElementById('wiz-error-rebrickable').textContent, invalid: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
+      focused: document.activeElement?.id, chars: document.getElementById('wiz-status-rebrickable').className,
       toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) })`;
-    await b.auswerten(check);
-    await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
-    const leer = await b.auswerten(state);
-    assert.match(leer.fehler, /Schlüssel eintragen/);
-    assert.deepEqual([leer.invalid, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
-    await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
-    await b.auswerten(check);
-    await bis(
+    await b.evaluate(check);
+    await until(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
+    const empty = await b.evaluate(state);
+    assert.match(empty.error, /Schlüssel eintragen/);
+    assert.deepEqual([empty.invalid, empty.focused, empty.toasts], ['true', 'wiz-rb', []]);
+    await b.evaluate(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
+    await b.evaluate(check);
+    await until(
       `/nicht erreichbar/.test(document.getElementById('wiz-error-rebrickable').textContent)`,
       'Klartext statt Rohtext',
       100,
     );
-    const z = await b.auswerten(state);
+    const z = await b.evaluate(state);
     assert.ok(
       await db.get("SELECT 1 FROM global_settings WHERE key = 'rebrickable_api_key'"),
       'during setup the wizard saves the first key without a password prompt',
     );
-    assert.match(z.fehler, /Technische Details/, 'the technical cause is shown alongside, expandable');
-    assert.match(z.zeichen, /missing/, '✗ next to the title');
+    assert.match(z.error, /Technische Details/, 'the technical cause is shown alongside, expandable');
+    assert.match(z.chars, /missing/, '✗ next to the title');
     assert.deepEqual(z.toasts, []);
-    await b.auswerten(
+    await b.evaluate(
       `document.getElementById('toasts').append(Object.assign(document.createElement('div'), { className: 'toast success', textContent: 'Verbindung steht' })); document.getElementById('wiz-next').click(); true`,
     );
     assert.equal(
-      await b.auswerten(`document.querySelectorAll('#toasts .toast').length`),
+      await b.evaluate(`document.querySelectorAll('#toasts .toast').length`),
       0,
       'messages do not stay across the step change',
     );
-    await b.auswerten(`document.getElementById('wiz-back').click(); true`);
+    await b.evaluate(`document.getElementById('wiz-back').click(); true`);
     // The wizard has stored the sample key; the banner below needs it missing.
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
   });
 
   await t.test('filled collection: no wizard, but the banner', async () => {
-    await b.auswerten(`document.querySelector('#setup-modal [data-click="setupLater"]').click(); true`);
-    await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
+    await b.evaluate(`document.querySelector('#setup-modal [data-click="setupLater"]').click(); true`);
+    await holdsSet(db, uid, '10294-1', 1, { price: 100 });
     await b.tab('Page.reload');
-    await bis(
+    await until(
       `(() => { const g = document.getElementById('gallery'); return !!g && g.querySelectorAll('[data-click="openModal"], .card, .scard').length > 0; })()`,
       'Sammlung mit Set',
       300,
     );
-    await ruhig();
-    assert.equal(await b.auswerten(open), false, 'wizard above the filled collection');
-    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'hint band is missing');
+    await settle();
+    assert.equal(await b.evaluate(open), false, 'wizard above the filled collection');
+    assert.equal(await b.evaluate(`document.getElementById('rb-hint').hidden`), false, 'hint band is missing');
   });
 });

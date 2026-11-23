@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const ROT = {
   part_number: '3001',
@@ -46,13 +46,13 @@ const SET_PART = {
 };
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ');
-const sichtbar = el => !!el && el.style.display !== 'none';
+const visible = el => !!el && el.style.display !== 'none';
 
-async function parts(antworten) {
-  const o = await openUi(antworten);
-  await reiter(o.w, 'parts');
-  await warte(() => !o.d.querySelector('#parts-main .loading, #parts-main .lade'), 3000);
-  await o.ruhig();
+async function parts(answers) {
+  const o = await openUi(answers);
+  await switchTab(o.w, 'parts');
+  await waitFor(() => !o.d.querySelector('#parts-main .loading, #parts-main .lade'), 3000);
+  await o.settle();
   return o;
 }
 
@@ -60,7 +60,7 @@ test('parts: manual ones there, from sets empty — no empty state', async () =>
   const { w, d } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT] } });
   try {
     assert.equal(d.querySelectorAll('#manual-parts-list .man-tile').length, 1);
-    assert.ok(sichtbar(d.getElementById('manual-parts-box')));
+    assert.ok(visible(d.getElementById('manual-parts-box')));
     assert.ok(
       !text(d.getElementById('tab-parts')).includes('Noch keine Teile'),
       'Below a list with entries there is „Noch keine Teile“',
@@ -73,19 +73,19 @@ test('parts: manual ones there, from sets empty — no empty state', async () =>
 test('parts: both empty — exactly one empty state, the empty box disappears', async () => {
   const { w, d } = await parts({});
   try {
-    const leer = d.querySelectorAll('#tab-parts .empty-state');
-    assert.equal(leer.length, 1, `${leer.length} empty states`);
-    assert.ok(text(leer[0]).includes('Noch keine Teile'));
+    const empty = d.querySelectorAll('#tab-parts .empty-state');
+    assert.equal(empty.length, 1, `${empty.length} empty states`);
+    assert.ok(text(empty[0]).includes('Noch keine Teile'));
     assert.ok(
       d.querySelector('#tab-parts .capture-bar [data-click="openCapture"][data-arg="part"]'),
       'The bar offers adding',
     );
     // The same icon as the “parts" tab — not a puzzle piece.
     assert.equal(
-      leer[0].querySelector('.empty-ico use')?.getAttribute('href'),
+      empty[0].querySelector('.empty-ico use')?.getAttribute('href'),
       d.querySelector('.collection-choice [data-arg="parts"] use')?.getAttribute('href'),
     );
-    assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
+    assert.equal(visible(d.getElementById('manual-parts-box')), false);
   } finally {
     w.close();
   }
@@ -95,7 +95,7 @@ test('parts: only from sets — no empty box for manual ones', async () => {
   const { w, d } = await parts({ '/v2/parts': { success: true, parts: [SET_PART], total: 1 } });
   try {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
-    assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
+    assert.equal(visible(d.getElementById('manual-parts-box')), false);
     assert.equal(d.querySelectorAll('#tab-parts .empty-state').length, 0);
   } finally {
     w.close();
@@ -103,30 +103,30 @@ test('parts: only from sets — no empty box for manual ones', async () => {
 });
 
 test('the color filter stands above the lists and acts on both lists', async () => {
-  const { w, d, aufrufe, ruhig } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT, BLUE] } });
+  const { w, d, calls, settle } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT, BLUE] } });
   try {
-    const wahl = d.getElementById('parts-color');
-    assert.ok(sichtbar(wahl), 'The color field is hidden although there are two colors');
+    const choice = d.getElementById('parts-color');
+    assert.ok(visible(choice), 'The color field is hidden although there are two colors');
     assert.ok(
-      wahl.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
+      choice.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
       'The color filter is not above the lists',
     );
     // The value stays English (that is how it is in the data), the label is translated.
     assert.deepEqual(
-      [...wahl.options].map(o => o.value),
+      [...choice.options].map(o => o.value),
       ['', 'Red', 'Blue'],
     );
     assert.deepEqual(
-      [...wahl.options].map(o => o.textContent),
+      [...choice.options].map(o => o.textContent),
       ['Alle Farben', 'Rot', 'Blau'],
     );
-    wahl.value = 'Blue';
-    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await ruhig();
-    const namen = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
-    assert.deepEqual(namen, ['Brick 2 x 2'], 'Color filter applies to both lists');
+    choice.value = 'Blue';
+    choice.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await settle();
+    const names = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
+    assert.deepEqual(names, ['Brick 2 x 2'], 'Color filter applies to both lists');
     assert.ok(
-      aufrufe.some(a => a.url.includes('/v2/parts?') && a.url.includes('color=Blue')),
+      calls.some(a => a.url.includes('/v2/parts?') && a.url.includes('color=Blue')),
       'The parts from sets are not asked for the color',
     );
   } finally {
@@ -134,10 +134,10 @@ test('the color filter stands above the lists and acts on both lists', async () 
   }
 });
 
-async function minifigs(antworten) {
-  const o = await openUi(antworten);
-  await reiter(o.w, 'minifigs');
-  await o.ruhig();
+async function minifigs(answers) {
+  const o = await openUi(answers);
+  await switchTab(o.w, 'minifigs');
+  await o.settle();
   return o;
 }
 
@@ -157,10 +157,10 @@ test('figures: manual ones there, from sets empty — no empty state', async () 
 test('figures: both empty — exactly one empty state', async () => {
   const { w, d } = await minifigs({});
   try {
-    const leer = d.querySelectorAll('#tab-minifigs .empty-state');
-    assert.equal(leer.length, 1, `${leer.length} empty states`);
-    assert.ok(text(leer[0]).includes('Noch keine Minifiguren'));
-    assert.equal(sichtbar(d.getElementById('manual-figs-box')), false);
+    const empty = d.querySelectorAll('#tab-minifigs .empty-state');
+    assert.equal(empty.length, 1, `${empty.length} empty states`);
+    assert.ok(text(empty[0]).includes('Noch keine Minifiguren'));
+    assert.equal(visible(d.getElementById('manual-figs-box')), false);
   } finally {
     w.close();
   }

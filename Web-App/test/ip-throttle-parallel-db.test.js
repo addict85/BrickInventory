@@ -44,7 +44,7 @@ async function dbDa(t) {
   }
 }
 
-function starte(t, mount) {
+function start(t, mount) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -62,17 +62,17 @@ const parallel = (n, f) => Promise.all(Array.from({ length: n }, f));
 test('1. 25 concurrent requests: exactly 5 get through, in every round', async t => {
   if (!(await dbDa(t))) return;
   // Several rounds: the old version's race did not occur in every burst.
-  for (let runde = 1; runde <= 5; runde++) {
+  for (let round = 1; round <= 5; round++) {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'parallel-probe|%'`);
-    let durch = 0;
-    const base = starte(t, app =>
+    let via = 0;
+    const base = start(t, app =>
       app.post('/probe', ipThrottle('parallel-probe', 5, 60 * 60 * 1000), (_req, res) => {
-        durch++;
+        via++;
         res.json({ ok: true });
       }),
     );
     const status = await parallel(25, () => fetch(`${base}/probe`, { method: 'POST' }).then(r => r.status));
-    assert.equal(durch, 5, `Round ${runde}: ${durch} of 25 let through, 5 are allowed`);
+    assert.equal(via, 5, `Round ${round}: ${via} of 25 let through, 5 are allowed`);
     assert.equal(status.filter(s => s === 429).length, 20);
   }
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'parallel-probe|%'`);
@@ -82,7 +82,7 @@ test('2. the same at the real route /forgot-password', async t => {
   if (!(await dbDa(t))) return;
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
   t.after(() => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`));
-  const base = starte(t, app => app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js')));
+  const base = start(t, app => app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js')));
   const status = await parallel(25, () =>
     fetch(`${base}${AUTH}/forgot-password`, {
       method: 'POST',

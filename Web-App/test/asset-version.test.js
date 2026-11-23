@@ -20,10 +20,10 @@ test('all ?v= references in index.html carry the version from package.json', () 
   // green. MEASURED there are eight.
   assert.ok(references.length >= 5, `Only ${references.length} versioned references found — pattern outdated?`);
 
-  const falsch = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
+  const wrong = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
   assert.deepEqual(
-    falsch,
+    wrong,
     [],
-    `These references carry a different version than package.json:\n  ${falsch.join('\n  ')}\nThe browser takes them from its cache for up to seven days (server.ts, maxAge 7d) — the deploy would have no effect for exactly this file.`,
+    `These references carry a different version than package.json:\n  ${wrong.join('\n  ')}\nThe browser takes them from its cache for up to seven days (server.ts, maxAge 7d) — the deploy would have no effect for exactly this file.`,
   );
 });

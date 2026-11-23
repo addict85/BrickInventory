@@ -25,7 +25,7 @@ const db = testData();
 const { holdsSet, holdsPart, holdsMinifig } = require('./helpers/inventory');
 
 const MIGRATION = path.join(ROOT, 'db/migrations/0058-fremdschluessel-und-pruefungen.sql');
-const SCHLUESSEL = [
+const KEY = [
   ['parts', 'parts_set_fk'],
   ['minifigs', 'minifigs_set_fk'],
   ['instructions', 'instructions_set_fk'],
@@ -43,15 +43,15 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
   const SN = `77${process.pid % 1000}-1`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, OTHER]]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  const andere = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [OTHER]))
+  const others = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [OTHER]))
     .id;
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, andere]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, others]]);
     await db.pool.end().catch(() => {});
   });
 
   await t.test('a deleted set takes its contents along — only in the own account', async () => {
-    for (const k of [uid, andere]) {
+    for (const k of [uid, others]) {
       await holdsSet(db, k, SN, 1);
       await holdsPart(db, k, '3001', { setNumber: SN, quantity: 4 });
       await holdsMinifig(db, k, 'sw0001', { setNumber: SN });
@@ -65,7 +65,7 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       const n = async k =>
         Number((await db.get(`SELECT COUNT(*) AS n FROM ${tab} WHERE user_id = $1 AND set_number = $2`, [k, SN])).n);
       assert.equal(await n(uid), 0, `${tab} of the deleted set stayed`);
-      assert.equal(await n(andere), 1, `${tab} of the other account was deleted along with it`);
+      assert.equal(await n(others), 1, `${tab} of the other account was deleted along with it`);
     }
   });
 
@@ -112,17 +112,17 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       await c.query(
         'ALTER TABLE csv_import_jobs RENAME CONSTRAINT import_status_status_check TO csv_import_jobs_status_check',
       );
-      for (const [tab, name] of SCHLUESSEL) await c.query(`ALTER TABLE ${tab} DROP CONSTRAINT ${name}`);
+      for (const [tab, name] of KEY) await c.query(`ALTER TABLE ${tab} DROP CONSTRAINT ${name}`);
       await c.query(
         `INSERT INTO parts (user_id, set_number, part_number, color_id) VALUES ($1, 'verwaist-1', '3001', 0)`,
         [uid],
       );
       await c.query(fs.readFileSync(MIGRATION, 'utf8'));
       const r = await c.query(`SELECT conname, convalidated FROM pg_constraint WHERE conname = ANY($1)`, [
-        SCHLUESSEL.map(s => s[1]),
+        KEY.map(s => s[1]),
       ]);
       const state = Object.fromEntries(r.rows.map(z => [z.conname, z.convalidated]));
-      assert.equal(Object.keys(state).length, SCHLUESSEL.length, 'not every key was created');
+      assert.equal(Object.keys(state).length, KEY.length, 'not every key was created');
       assert.equal(state.parts_set_fk, false, 'the violated key counts as validated');
       assert.equal(state.minifigs_set_fk, true, 'a clean key stayed unvalidated');
     } finally {

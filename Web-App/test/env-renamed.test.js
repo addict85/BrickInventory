@@ -46,9 +46,9 @@ test('startBans reads the old names too', () => {
 test('every renamed variable maps an old German name to a new one', () => {
   const pairs = Object.entries(RENAMED_VARIABLES);
   assert.ok(pairs.length >= 20, `only ${pairs.length} renamed variables`);
-  for (const [neu, alt] of pairs) {
-    assert.notEqual(neu, alt);
-    assert.match(neu, /^[A-Z][A-Z0-9_]*$/);
+  for (const [fresh, alt] of pairs) {
+    assert.notEqual(fresh, alt);
+    assert.match(fresh, /^[A-Z][A-Z0-9_]*$/);
     assert.equal(loadConfig({ [alt]: undefined }).renamed.length, 0);
   }
 });

@@ -30,9 +30,9 @@ const { dataOrSkip } = require('./helpers/db');
 
 const PRELOAD = `
 const Module = require('node:module');
-const echt = Module.prototype.require;
+const original = Module.prototype.require;
 Module.prototype.require = function (name) {
-  const m = echt.apply(this, arguments);
+  const m = original.apply(this, arguments);
   if (typeof name === 'string' && /(?:jobQueue[/\\\\]|^\\.\\/)schedule(\\.js)?$/.test(name))
     return { ...m, planAll: async () => { throw new Error('Testfehler: planAll'); } };
   return m;
@@ -46,10 +46,10 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));
 
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
-  const preload = path.join(ordner, 'planAll-wirft.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
+  const preload = path.join(dir, 'planAll-wirft.js');
   fs.writeFileSync(preload, PRELOAD);
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
   const srv = spawn(process.execPath, ['--require', preload, path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
@@ -63,19 +63,19 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   srv.stderr.on('data', d => {
     log += d;
   });
-  const ende = await new Promise(fertig => {
-    const frist = setTimeout(() => {
+  const end = await new Promise(done => {
+    const deadline = setTimeout(() => {
       srv.kill('SIGKILL');
-      fertig('lief weiter');
+      done('lief weiter');
     }, 20_000);
     srv.on('exit', code => {
-      clearTimeout(frist);
-      fertig(code);
+      clearTimeout(deadline);
+      done(code);
     });
   });
 
   await t.test('the process ends with exit code 1', () => {
-    assert.equal(ende, 1, log.slice(-1500));
+    assert.equal(end, 1, log.slice(-1500));
     assert.match(log, /Start gescheitert: .*Testfehler: planAll/);
   });
 

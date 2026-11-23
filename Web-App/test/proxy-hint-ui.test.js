@@ -9,7 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const jobs = proxy_hint => ({
@@ -36,8 +36,8 @@ test('the hint is under background jobs', async () => {
     jobs({ kind: 'single_address', vars: { ip: '172.28.73.20', minutes: 61, count: 301 } }),
   );
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.getElementById('mon-proxy-hint'));
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.getElementById('mon-proxy-hint'));
     const t = text(d.getElementById('mon-proxy-hint'));
     assert.match(t, /Seit 61 Minuten kommen alle 301 Anfragen mit derselben Client-Adresse 172\.28\.73\.20/);
     assert.match(t, /VORGELAGERTER_PROXY/);
@@ -49,8 +49,8 @@ test('the hint is under background jobs', async () => {
 test('without a hint nothing is shown', async () => {
   const { w, d } = await openUi(jobs(null));
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#monitor-content table'));
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.querySelector('#monitor-content table'));
     assert.equal(d.getElementById('mon-proxy-hint'), null);
   } finally {
     w.close();

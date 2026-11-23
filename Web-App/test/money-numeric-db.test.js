@@ -19,7 +19,7 @@ const { holdsSet } = require('./helpers/inventory');
  * All columns that carry money.
  */
 const MONEY_COLUMNS = `
-  SELECT table_name || '.' || column_name AS spalte, data_type
+  SELECT table_name || '.' || column_name AS "column", data_type
     FROM information_schema.columns
    WHERE table_schema = 'public'
      AND (column_name LIKE '%\\_price' OR column_name LIKE '%\\_price\\_%'
@@ -46,11 +46,11 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
   }
 
   await t.test('a new installation has no money column as REAL', async () => {
-    const spalten = await db.all(MONEY_COLUMNS);
-    assert.ok(spalten.length > 15, `only ${spalten.length} money columns found — the check would test nothing`);
-    const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
+    const columns = await db.all(MONEY_COLUMNS);
+    assert.ok(columns.length > 15, `only ${columns.length} money columns found — the check would test nothing`);
+    const real = columns.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
     assert.deepEqual(
-      real.map(s => s.spalte),
+      real.map(s => s.column),
       [],
       'Floating point for money — totals drift and the display gets trailing decimals',
     );
@@ -73,11 +73,11 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       condition TEXT, qty_avg_price REAL, min_price REAL, max_price REAL)`);
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
     await db.run("DELETE FROM schema_migrations WHERE name LIKE '0007%'");
-    const vorher = await db.get(
+    const prior = await db.get(
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(vorher.data_type, 'real', 'precondition: column is REAL again');
+    assert.equal(prior.data_type, 'real', 'precondition: column is REAL again');
 
     const c2 = await db.pool.connect();
     try {
@@ -86,11 +86,11 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       c2.release();
     }
 
-    const nachher = await db.get(
+    const later = await db.get(
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(nachher.data_type, 'numeric', 'The migration did not convert the column');
+    assert.equal(later.data_type, 'numeric', 'The migration did not convert the column');
 
     // And restore the final state
     for (const [tab, sp] of [
@@ -131,8 +131,8 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       [uid],
     );
 
-    const summe = await db.get(`SELECT SUM(purchase_price) AS s FROM set_acquisitions WHERE user_id=$1`, [uid]);
-    assert.equal(Number(summe.s), 70, `total ${summe.s} instead of exactly 70`);
+    const sum = await db.get(`SELECT SUM(purchase_price) AS s FROM set_acquisitions WHERE user_id=$1`, [uid]);
+    assert.equal(Number(sum.s), 70, `total ${sum.s} instead of exactly 70`);
   });
 
   await t.test('a stored purchase price comes back unchanged', async () => {
@@ -146,18 +146,22 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
 
     const { readSets } = require('./helpers/sources').handlerModule(_req);
     const r = await readSets([uid], { search: '99002' });
-    const satz = r.sets.find(s => s.set_number === '99002-1');
-    assert.ok(satz, 'set not found');
+    const record = r.sets.find(s => s.set_number === '99002-1');
+    assert.ok(record, 'set not found');
 
     // `purchase_price` stood here in the list too. Since migration 0032 the set response
     // no longer carries the field (the column is gone); the purchase price
     // is delivered by the two aggregates from the acquisitions. Without this change
     // the loop checked a missing field and reported `NaN !== 49.9`.
     for (const field of ['avg_purchase_price', 'max_purchase_price']) {
-      const wert = Number(satz[field]);
-      assert.equal(wert, 49.9, `${field} = ${satz[field]} — exactly this floating-point tail used to go to the client`);
+      const value = Number(record[field]);
+      assert.equal(
+        value,
+        49.9,
+        `${field} = ${record[field]} — exactly this floating-point tail used to go to the client`,
+      );
       // And the value survives the way through JSON in the same form.
-      assert.equal(JSON.parse(JSON.stringify({ v: wert })).v, 49.9);
+      assert.equal(JSON.parse(JSON.stringify({ v: value })).v, 49.9);
     }
   });
 

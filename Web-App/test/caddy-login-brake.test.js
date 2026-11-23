@@ -43,7 +43,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
   let now = 0,
     highest = 0,
-    halten = 300;
+    hold = 300;
   const lengths = [];
   const app = http.createServer((req, res) => {
     now++;
@@ -54,7 +54,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
       setTimeout(() => {
         now--;
         res.end('ok');
-      }, halten),
+      }, hold),
     );
   });
   await new Promise(r => app.listen(0, '127.0.0.1', () => r(null)));
@@ -78,8 +78,8 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   let port = 0;
   let error = '';
   const agent = new https.Agent({ keepAlive: false, maxSockets: Infinity });
-  const anfrage = (methode, path, rumpf = '{}') =>
-    new Promise(fertig => {
+  const request = (method, path, body = '{}') =>
+    new Promise(done => {
       const r = https.request(
         {
           host: '127.0.0.1',
@@ -87,30 +87,30 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
           servername: 'nas.example.lan',
           rejectUnauthorized: false,
           agent,
-          method: methode,
+          method: method,
           path: path,
           headers: { host: 'nas.example.lan', 'content-type': 'application/json' },
         },
         res => {
           res.resume();
-          res.on('end', () => fertig(res.statusCode));
+          res.on('end', () => done(res.statusCode));
         },
       );
-      r.on('error', () => fertig(null));
-      if (methode === 'POST') r.end(rumpf);
+      r.on('error', () => done(null));
+      if (method === 'POST') r.end(body);
       else r.end();
     });
-  let bereit = null;
-  for (let versuch = 1; bereit !== 200; versuch++) {
+  let ready = null;
+  for (let attempt = 1; ready !== 200; attempt++) {
     port = await freePort();
-    const umleitung = await freePort();
-    const datei = fs
+    const redirect = await freePort();
+    const file = fs
       .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
-      .replace('http:// {', `http://:${umleitung} {`)
+      .replace('http:// {', `http://:${redirect} {`)
       .replaceAll('app:3000', `127.0.0.1:${portOf(app)}`);
-    assert.ok(datei.includes('import anmeldung'), 'the block „(anmeldung)“ is not imported');
-    fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
+    assert.ok(file.includes('import anmeldung'), 'the block „(anmeldung)“ is not imported');
+    fs.writeFileSync(path.join(tmp, 'Caddyfile'), file);
     error = '';
     caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
       stdio: ['ignore', 'ignore', 'pipe'],
@@ -128,63 +128,63 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
       error = (error + d).slice(-4000);
     });
     // Under load Caddy with own CA starts slowly; if it ends before, its stderr is in the message.
-    const bis = Date.now() + 30_000;
-    while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
-      bereit = await anfrage('GET', '/api/v2/health');
-      if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
+    const until = Date.now() + 30_000;
+    while (ready !== 200 && caddy.exitCode === null && Date.now() < until) {
+      ready = await request('GET', '/api/v2/health');
+      if (ready !== 200) await new Promise(r => setTimeout(r, 200));
     }
-    if (bereit === 200 || versuch >= 3 || !error.includes('address already in use')) break;
+    if (ready === 200 || attempt >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy does not answer (exit ${caddy.exitCode}): ${error.slice(-600)}`);
+  assert.equal(ready, 200, `Caddy does not answer (exit ${caddy.exitCode}): ${error.slice(-600)}`);
 
   // Held long so that even a slow run has all 16 open at once.
   now = 0;
   highest = 0;
-  halten = 1500;
-  const logins = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v2/auth/login')));
-  halten = 300;
+  hold = 1500;
+  const logins = await Promise.all(Array.from({ length: 16 }, () => request('POST', '/api/v2/auth/login')));
+  hold = 300;
   assert.deepEqual(logins, Array(16).fill(200), 'Sign-ins get lost');
   assert.ok(highest > 8, `Caddy lets the sign-ins through to the app unthrottled (${highest} at once)`);
 
   assert.equal(
-    await anfrage('POST', '/api/v2/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
+    await request('POST', '/api/v2/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
     413,
     'a body over 16 KB reaches the sign-in',
   );
 
   // Header immediately, only part of the body, then silence: four barely started
   // and four that go exactly up to the limit of max_size.
-  const langsam = (laenge, upfront) =>
-    new Promise(bereit => {
+  const slowOne = (len, upfront) =>
+    new Promise(ready => {
       const s = tls.connect(
         { host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
         () => {
           s.write(
             `POST /api/v2/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n` +
-              `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(upfront)}`,
-            bereit,
+              `Content-Length: ${len}\r\n\r\n${'x'.repeat(upfront)}`,
+            ready,
           );
         },
       );
       s.on('error', () => {});
       open.push(s);
     });
-  await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
+  await Promise.all([...Array(4)].map(() => slowOne(200, 1)).concat([...Array(4)].map(() => slowOne(17_000, 16_000))));
   await new Promise(r => setTimeout(r, 500));
-  assert.equal(await anfrage('POST', '/api/v2/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
+  assert.equal(await request('POST', '/api/v2/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
   const slow = lengths.filter(l => l === '200' || l === '17000');
   assert.deepEqual(slow, [], 'no started body reaches the app');
 
   const headerStart = Date.now();
-  const headerTo = await new Promise(fertig => {
+  const headerTo = await new Promise(done => {
     const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () =>
       s.write('POST /api/v2/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'),
     );
     s.on('error', () => {});
-    s.once('close', () => fertig(Date.now() - headerStart));
+    s.once('close', () => done(Date.now() - headerStart));
     open.push(s);
-    setTimeout(() => fertig(null), 15_000);
+    setTimeout(() => done(null), 15_000);
   });
   assert.ok(
     headerTo !== null && headerTo < 13_000,

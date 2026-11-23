@@ -37,11 +37,11 @@ test('the checked-in Kotlin types are generated from openapi-v2.json', () => {
   assert.equal(r.status, 0, r.stderr);
 });
 
-/** An empty mapping, overridden as needed. @param {Record<string, any>} [mehr] */
-const zuordnung = (mehr = {}) => ({
+/** An empty mapping, overridden as needed. @param {Record<string, any>} [more] */
+const mapping = (more = {}) => ({
   OMIT: new Set(),
   STRICT: new Set(),
-  DOMAIN_TYPES: { Zustand: { pkg: 'ch.brickinventoryapp.model.domain.Zustand', empty: 'Zustand.NEU' } },
+  DOMAIN_TYPES: { Condition: { pkg: 'ch.brickinventoryapp.model.domain.Condition', empty: 'Condition.NEU' } },
   NAMES: {},
   FIELD_TYPES: {},
   DEFAULTS: {},
@@ -51,78 +51,78 @@ const zuordnung = (mehr = {}) => ({
   REQUIRED: new Set(),
   NULL_SEND: new Set(),
   REQUESTS: {},
-  ...mehr,
+  ...more,
 });
 
 /** The Kotlin file from a mini contract. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
-const aus = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (zuordnung(z)));
+const out = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (mapping(z)));
 
 test('every response field has a default: empty value, null only with a null branch', () => {
-  const kt = aus({
+  const kt = out({
     Probe: {
       type: 'object',
-      properties: { set_number: { type: 'string' }, name: { type: 'string' }, menge: { type: 'integer' } },
+      properties: { set_number: { type: 'string' }, name: { type: 'string' }, quantity: { type: 'integer' } },
       required: ['set_number'],
     },
   });
   assert.match(kt, /@SerialName\("set_number"\) val setNumber: String = "",/);
   assert.match(kt, /@SerialName\("name"\) val name: String = "",/);
-  assert.match(kt, /@SerialName\("menge"\) val menge: Int = 0,/);
-  const nullbar = aus(
+  assert.match(kt, /@SerialName\("quantity"\) val quantity: Int = 0,/);
+  const nullable = out(
     { Probe: { type: 'object', properties: { name: { type: 'string' } } } },
     {
       NULLABLE: new Set(['Probe.name']),
     },
   );
-  assert.match(nullbar, /val name: String\? = null,/, 'Z.NULLBAR: fehlt heisst null');
+  assert.match(nullable, /val name: String\? = null,/, 'NULLABLE: missing means null');
 });
 
 test('a required field whose shape has no empty value gets no default', () => {
-  const kt = aus(
+  const kt = out(
     {
-      Konto: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
+      Account: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
       Probe: {
         type: 'object',
-        properties: { user: { $ref: '#/components/schemas/Konto' }, alt: { $ref: '#/components/schemas/Konto' } },
+        properties: { user: { $ref: '#/components/schemas/Account' }, alt: { $ref: '#/components/schemas/Account' } },
         required: ['user'],
       },
     },
-    { STRICT: new Set(['Konto.id']) },
+    { STRICT: new Set(['Account.id']) },
   );
-  assert.match(kt, /val user: Konto,/, 'Konto() gäbe es nicht: Konto hat ein Pflichtfeld ohne Vorgabe');
-  assert.match(kt, /val alt: Konto\? = null,/);
+  assert.match(kt, /val user: Account,/, 'Account() would not exist: Account has a required field without a default');
+  assert.match(kt, /val alt: Account\? = null,/);
 });
 
 test('a field with a null branch is nullable', () => {
-  const kt = aus({
+  const kt = out({
     Probe: {
       type: 'object',
-      properties: { jahr: { anyOf: [{ type: 'integer', minimum: 0, maximum: 3000 }, { type: 'null' }] } },
-      required: ['jahr'],
+      properties: { year: { anyOf: [{ type: 'integer', minimum: 0, maximum: 3000 }, { type: 'null' }] } },
+      required: ['year'],
     },
   });
-  assert.match(kt, /val jahr: Int\? = null,/);
+  assert.match(kt, /val year: Int\? = null,/);
 });
 
 test('lists, references and nested objects get their type', () => {
-  const kt = aus({
+  const kt = out({
     set_item: { type: 'object', properties: { n: { type: 'string' } } },
     Probe: {
       type: 'object',
       properties: {
         sets: { type: 'array', items: { $ref: '#/components/schemas/set_item' } },
-        seite: { type: 'object', properties: { nummer: { type: 'integer' } }, required: ['nummer'] },
+        page: { type: 'object', properties: { number: { type: 'integer' } }, required: ['number'] },
       },
-      required: ['sets', 'seite'],
+      required: ['sets', 'page'],
     },
   });
   assert.match(kt, /val sets: List<SetItem> = emptyList\(\),/);
-  assert.match(kt, /val seite: ProbeSeite = ProbeSeite\(\),/);
-  assert.match(kt, /data class ProbeSeite\(\n {4}@SerialName\("nummer"\) val nummer: Int = 0,/);
+  assert.match(kt, /val page: ProbePage = ProbePage\(\),/);
+  assert.match(kt, /data class ProbePage\(\n {4}@SerialName\("number"\) val number: Int = 0,/);
 });
 
 test('a domain type replaces the text, list and nullability stay', () => {
-  const kt = aus(
+  const kt = out(
     {
       Probe: {
         type: 'object',
@@ -130,29 +130,29 @@ test('a domain type replaces the text, list and nullability stay', () => {
         required: ['condition', 'conditions'],
       },
     },
-    { FIELD_TYPES: { 'Probe.condition': 'Zustand', 'Probe.conditions': 'Zustand' } },
+    { FIELD_TYPES: { 'Probe.condition': 'Condition', 'Probe.conditions': 'Condition' } },
   );
-  assert.match(kt, /val condition: Zustand = Zustand\.NEU,/);
-  assert.match(kt, /val conditions: List<Zustand> = emptyList\(\),/);
-  assert.match(kt, /^import ch\.brickinventoryapp\.model\.domain\.Zustand$/m);
+  assert.match(kt, /val condition: Condition = Condition\.NEU,/);
+  assert.match(kt, /val conditions: List<Condition> = emptyList\(\),/);
+  assert.match(kt, /^import ch\.brickinventoryapp\.model\.domain\.Condition$/m);
 });
 
 test('shapes with the same name become one: fields merged, required only where all require it', () => {
-  const kt = aus(
+  const kt = out(
     {
       A: {
         type: 'object',
-        properties: { id: { type: 'integer' }, nur_a: { type: 'string' } },
-        required: ['id', 'nur_a'],
+        properties: { id: { type: 'integer' }, only_a: { type: 'string' } },
+        required: ['id', 'only_a'],
       },
       B: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
     },
-    { NAMES: { A: 'Konto', B: 'Konto' } },
+    { NAMES: { A: 'Account', B: 'Account' } },
   );
-  assert.equal((kt.match(/data class Konto\(/g) ?? []).length, 1);
+  assert.equal((kt.match(/data class Account\(/g) ?? []).length, 1);
   assert.match(kt, /val id: Int = 0,/);
-  assert.match(kt, /val nurA: String = "",/);
-  const rumpf = aus(
+  assert.match(kt, /val onlyA: String = "",/);
+  const body = out(
     {},
     { REQUESTS: { 'POST /a': 'Rumpf', 'PUT /b/{id}': 'Rumpf' } },
     {
@@ -160,8 +160,8 @@ test('shapes with the same name become one: fields merged, required only where a
       '/b/{nr}': { put: { requestBody: bodySchema({ x: { type: 'string' }, y: { type: 'string' } }, ['y']) } },
     },
   );
-  assert.match(rumpf, /val y: String,/, 'y verlangen beide Routen');
-  assert.match(rumpf, /@EncodeDefault\(EncodeDefault\.Mode\.NEVER\) val x: String\? = null,/, 'x nur eine');
+  assert.match(body, /val y: String,/, 'both routes require y');
+  assert.match(body, /@EncodeDefault\(EncodeDefault\.Mode\.NEVER\) val x: String\? = null,/, 'only one requires x');
 });
 
 /** @param {Record<string, any>} properties @param {string[]} [required] */
@@ -174,25 +174,25 @@ test('an optional body field only goes out when set, unless it should say null',
     '/r': {
       put: {
         requestBody: bodySchema({
-          menge: { anyOf: [{ type: 'integer' }, { type: 'string' }, { type: 'null' }] },
-          lagerort: { type: ['string', 'null'] },
+          quantity: { anyOf: [{ type: 'integer' }, { type: 'string' }, { type: 'null' }] },
+          storage: { type: ['string', 'null'] },
           name: { type: 'string' },
         }),
       },
     },
   };
-  const kt = aus(
+  const kt = out(
     {},
     {
       REQUESTS: { 'PUT /r': 'Aenderung' },
-      FIELD_TYPES: { 'Aenderung.menge': 'Int' },
-      NULL_SEND: new Set(['Aenderung.lagerort']),
+      FIELD_TYPES: { 'Aenderung.quantity': 'Int' },
+      NULL_SEND: new Set(['Aenderung.storage']),
       REQUIRED: new Set(['Aenderung.name']),
     },
     paths,
   );
-  assert.match(kt, /@EncodeDefault\(EncodeDefault\.Mode\.NEVER\) val menge: Int\? = null,/);
-  assert.match(kt, /@SerialName\("lagerort"\) val lagerort: String\? = null,/, 'null heisst beim Server leeren');
-  assert.match(kt, /@SerialName\("name"\) val name: String,/, 'Z.PFLICHT: immer gesetzt');
+  assert.match(kt, /@EncodeDefault\(EncodeDefault\.Mode\.NEVER\) val quantity: Int\? = null,/);
+  assert.match(kt, /@SerialName\("storage"\) val storage: String\? = null,/, 'null means clear on the server');
+  assert.match(kt, /@SerialName\("name"\) val name: String,/, 'REQUIRED: always set');
   assert.match(kt, /^@file:OptIn\(ExperimentalSerializationApi::class\)$/m);
 });

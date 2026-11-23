@@ -24,7 +24,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -41,7 +41,7 @@ const SET = {
 };
 
 test('unknown set number: ask first, then create', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/catalog/sets/99999-1': {
       $status: 404,
       success: false,
@@ -53,18 +53,18 @@ test('unknown set number: ask first, then create', async () => {
     d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
     d.getElementById('add-num').value = '99999';
     d.getElementById('btn-add').click();
-    await warte(() => !d.getElementById('add-unknown').hidden);
+    await waitFor(() => !d.getElementById('add-unknown').hidden);
     assert.match(text(d.getElementById('add-unknown')), /99999-1 ist im Katalog \(noch\) unbekannt/);
     assert.equal(text(d.getElementById('btn-add')), 'Trotzdem anlegen');
     assert.equal(
-      aufrufe.some(a => a.url.includes('add-stream')),
+      calls.some(a => a.url.includes('add-stream')),
       false,
       'created without a confirmation prompt',
     );
     d.getElementById('btn-add').click();
-    await warte(() => aufrufe.some(a => a.url.includes('add-stream')));
+    await waitFor(() => calls.some(a => a.url.includes('add-stream')));
     assert.ok(
-      aufrufe.some(a => a.url.includes('add-stream')),
+      calls.some(a => a.url.includes('add-stream')),
       'not created after the confirmation',
     );
   } finally {
@@ -73,7 +73,7 @@ test('unknown set number: ask first, then create', async () => {
 });
 
 test('price history: purchase price as a point, not as the start of the curve', async () => {
-  const historie = [
+  const pastEntries = [
     { recorded_at: '2026-06-01', avg_price: 199.99, is_purchase_price: true },
     { recorded_at: '2026-09-01', avg_price: 186 },
     { recorded_at: '2026-10-01', avg_price: 190 },
@@ -84,21 +84,23 @@ test('price history: purchase price as a point, not as the start of the curve', 
     '/v2/sets/21318-1/price-history': {
       success: true,
       currency: 'EUR',
-      history_new: historie,
+      history_new: pastEntries,
       history_used: [],
       by_condition: { N: { purchase_price: 199.99, market_price: 190 } },
       chart: {
-        x: historie.map(h => h.recorded_at),
-        values: [{ name: 'N', firstRealIndex: 0, values: historie.map(h => ({ x: h.recorded_at, y: h.avg_price })) }],
+        x: pastEntries.map(h => h.recorded_at),
+        values: [
+          { name: 'N', firstRealIndex: 0, values: pastEntries.map(h => ({ x: h.recorded_at, y: h.avg_price })) },
+        ],
       },
     },
   });
   try {
-    await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
+    await waitFor(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => d.querySelector('#set-modal svg.chart-price'), 4000);
-    const linie = d.querySelector('#set-modal svg.chart-price polyline');
-    assert.equal(linie.getAttribute('points').trim().split(/\s+/).length, 2, 'purchase price in the market curve');
+    await waitFor(() => d.querySelector('#set-modal svg.chart-price'), 4000);
+    const line = d.querySelector('#set-modal svg.chart-price polyline');
+    assert.equal(line.getAttribute('points').trim().split(/\s+/).length, 2, 'purchase price in the market curve');
     assert.equal(d.querySelectorAll('#set-modal .purchase-dot').length, 1);
   } finally {
     w.close();
@@ -106,34 +108,34 @@ test('price history: purchase price as a point, not as the start of the curve', 
 });
 
 test('account: currency applies immediately, password has its own button', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profile');
+    await view(w, 'profile');
     const field = d.getElementById('s-cur');
     field.value = 'CHF';
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
     // Before the change a prompt says that the market prices are reloaded.
     assert.ok(
-      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'),
       'confirmation prompt before the currency change',
     );
     assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && /CHF/.test(a.body)));
-    await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
+    await waitFor(() => calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && /CHF/.test(a.body)));
+    await waitFor(() => d.getElementById('confirm-modal').style.display !== 'flex');
     assert.ok(
-      aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && JSON.parse(a.body).currency === 'CHF'),
+      calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && JSON.parse(a.body).currency === 'CHF'),
     );
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
-    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex');
     d.getElementById('cd-pw').value = 'alt-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/auth/change-password')));
+    await waitFor(() => calls.some(a => a.url.endsWith('/v2/auth/change-password')));
     assert.equal(
-      aufrufe.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
+      calls.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
       false,
       'password saves the profile along with it',
     );
@@ -143,21 +145,21 @@ test('account: currency applies immediately, password has its own button', async
 });
 
 test('delete pending item: undo creates it again', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/wanted': (_u, o) =>
       o.method === 'POST'
         ? { success: true, item: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
         : { success: true, item: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] },
   });
   try {
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-row .delbtn'));
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('.mk-row .delbtn'));
     d.querySelector('.mk-row .delbtn').click();
-    await warte(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
+    await waitFor(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
     [...d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/wanted')));
-    const neu = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v2/wanted'));
-    assert.deepEqual(JSON.parse(neu.body), { set_number: '10276-1', condition: 'N', owner_user_id: 1 });
+    await waitFor(() => calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/wanted')));
+    const fresh = calls.find(a => a.method === 'POST' && a.url.endsWith('/v2/wanted'));
+    assert.deepEqual(JSON.parse(fresh.body), { set_number: '10276-1', condition: 'N', owner_user_id: 1 });
   } finally {
     w.close();
   }
@@ -175,8 +177,8 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
     },
   });
   try {
-    await sicht(w, 'vouchers');
-    await warte(() => d.querySelector('.voucher-row'));
+    await view(w, 'vouchers');
+    await waitFor(() => d.querySelector('.voucher-row'));
     assert.equal(d.getElementById('v-currency').value, 'CHF');
     assert.match(text(d.querySelector('.voucher-deviation')), /nicht CHF wie das Ausgabeland/);
     assert.match(text(d.getElementById('voucher-country-currency')), /CHF/);
@@ -186,14 +188,14 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
 });
 
 test('create price alert in its view', async () => {
-  const { w, d, aufrufe } = await openUi({ '/v2/alerts': { success: true, alerts: [] } });
+  const { w, d, calls } = await openUi({ '/v2/alerts': { success: true, alerts: [] } });
   try {
-    await sicht(w, 'alerts');
+    await view(w, 'alerts');
     d.getElementById('alert-new-set').value = '10294';
     d.getElementById('alert-new-price').value = '599,90';
     d.getElementById('alert-new-button').click();
-    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
-    const callFn = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
+    await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/alert')));
+    const callFn = calls.find(a => a.method === 'PUT' && a.url.includes('/alert'));
     assert.match(callFn.url, /\/v2\/sets\/10294-1\/alert$/);
     assert.deepEqual(JSON.parse(callFn.body), { direction: 'below', threshold: 599.9, condition: 'N' });
   } finally {
@@ -202,7 +204,7 @@ test('create price alert in its view', async () => {
 });
 
 test('background jobs: labeled columns, error in the row, time in 24 h', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/admin/job-status': { success: true, job: { running: false } },
     '/v2/admin/jobs': {
       success: true,
@@ -229,25 +231,25 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
     },
   });
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#jobs-card table') && d.querySelector('#monitor-content table'));
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.querySelector('#jobs-card table') && d.querySelector('#monitor-content table'));
     const headers = [...d.querySelectorAll('#jobs-card .mon-kinds th')].map(text);
     assert.deepEqual(headers, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
     assert.ok(d.querySelector('#jobs-card tbody tr .error-box'), 'error not in the row of its job');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
-    await reiter(w, 'settings');
-    await warte(() => d.querySelector('#settings-schedules input.mon-time'));
-    const zeit = d.querySelector('#settings-schedules input.mon-time');
-    assert.equal(zeit.type, 'text');
-    zeit.value = '3:5';
-    zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(30);
-    assert.equal(zeit.getAttribute('aria-invalid'), 'true');
-    zeit.value = '4:30';
-    zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/admin/job-schedule')));
-    assert.equal(JSON.parse(aufrufe.find(a => a.url.endsWith('/v2/admin/job-schedule')).body).time, '04:30');
+    await switchTab(w, 'settings');
+    await waitFor(() => d.querySelector('#settings-schedules input.mon-time'));
+    const time = d.querySelector('#settings-schedules input.mon-time');
+    assert.equal(time.type, 'text');
+    time.value = '3:5';
+    time.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await tick(30);
+    assert.equal(time.getAttribute('aria-invalid'), 'true');
+    time.value = '4:30';
+    time.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await waitFor(() => calls.some(a => a.url.endsWith('/v2/admin/job-schedule')));
+    assert.equal(JSON.parse(calls.find(a => a.url.endsWith('/v2/admin/job-schedule')).body).time, '04:30');
   } finally {
     w.close();
   }
@@ -259,7 +261,7 @@ test('date in English with month names', async () => {
     { language: 'en' },
   );
   try {
-    await warte(() => d.querySelector('#gallery .tile-date'));
+    await waitFor(() => d.querySelector('#gallery .tile-date'));
     assert.match(text(d.querySelector('#gallery .tile-date')), /\b(1 Jun 2026|Jun 1, 2026)\b/);
   } finally {
     w.close();

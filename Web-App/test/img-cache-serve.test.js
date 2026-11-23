@@ -23,19 +23,19 @@ const deliverFromCache = (...a) =>
 /** A res that only records what happened to it. */
 function fakeRes() {
   const r = {
-    kopf: {},
+    head: {},
     status: 200,
-    beendet: false,
+    ended: false,
     streamed: null,
     setHeader(k, v) {
-      this.kopf[k.toLowerCase()] = String(v);
+      this.head[k.toLowerCase()] = String(v);
     },
     status_(c) {
       this.status = c;
       return this;
     },
     end() {
-      this.beendet = true;
+      this.ended = true;
       return this;
     },
   };
@@ -64,13 +64,13 @@ async function callFn(dir, { wantThumb, createMay = true, fresh = false }) {
     wantThumb,
     createMay,
     note: () => noted.push(1),
-    streamFileToResponse: (_res, datei) => streamed.push(datei),
+    streamFileToResponse: (_res, file) => streamed.push(file),
   });
   return { done, res, streamed, noted };
 }
 
 /** Create a file with `n` bytes. */
-function datei(p, n) {
+function file(p, n) {
   fs.writeFileSync(p, Buffer.alloc(n, 0x41));
 }
 
@@ -78,20 +78,20 @@ test('delivery order of the image cache', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'imgcache-'));
   const orig = path.join(dir, 'bild');
   const thumb = path.join(dir, 'bild_thumb.jpg');
-  const aufraeumen = () => {
+  const cleanUp = () => {
     for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f));
   };
 
   await t.test('nothing in the cache → the caller has to fetch from the CDN', async () => {
-    aufraeumen();
+    cleanUp();
     const { done, streamed } = await callFn(dir, { wantThumb: false });
     assert.equal(done, false, 'false means: not answered, please fetch');
     assert.deepEqual(streamed, []);
   });
 
   await t.test('original there, preview wanted → original IMMEDIATELY, preview reserved', async () => {
-    aufraeumen();
-    datei(orig, 5000);
+    cleanUp();
+    file(orig, 5000);
     const { done, streamed, res } = await callFn(dir, { wantThumb: true });
     assert.equal(done, true);
     assert.deepEqual(
@@ -100,24 +100,24 @@ test('delivery order of the image cache', async t => {
       'There must NOT be a wait for the downscaling — that once was ' +
         'about 150 ms per image and seconds for a tile wall',
     );
-    assert.equal(res.kopf['content-length'], '5000');
-    assert.match(res.kopf['cache-control'] || '', /max-age=86400/);
+    assert.equal(res.head['content-length'], '5000');
+    assert.match(res.head['cache-control'] || '', /max-age=86400/);
   });
 
   await t.test('preview there → preview instead of original', async () => {
-    aufraeumen();
-    datei(orig, 5000);
-    datei(thumb, 900);
+    cleanUp();
+    file(orig, 5000);
+    file(thumb, 900);
     const { streamed, res } = await callFn(dir, { wantThumb: true });
     assert.deepEqual(streamed, [thumb], 'The preview has priority if it exists');
-    assert.equal(res.kopf['content-type'], 'image/jpeg');
-    assert.equal(res.kopf['content-length'], '900');
+    assert.equal(res.head['content-type'], 'image/jpeg');
+    assert.equal(res.head['content-length'], '900');
   });
 
   await t.test('preview there, but NOT wanted → original', async () => {
-    aufraeumen();
-    datei(orig, 5000);
-    datei(thumb, 900);
+    cleanUp();
+    file(orig, 5000);
+    file(thumb, 900);
     const { streamed } = await callFn(dir, { wantThumb: false });
     assert.deepEqual(streamed, [orig], 'Without ?thumb=1 the original goes out, even if a preview exists');
   });
@@ -126,9 +126,9 @@ test('delivery order of the image cache', async t => {
     // The limit is 200 bytes. An empty or truncated file is
     // not an image — delivered, it would look like a broken box in the browser,
     // and permanently so, because it lies in the cache.
-    aufraeumen();
-    datei(orig, 5000);
-    datei(thumb, 50);
+    cleanUp();
+    file(orig, 5000);
+    file(thumb, 50);
     const { streamed } = await callFn(dir, { wantThumb: true });
     assert.deepEqual(streamed, [orig], 'The unusable preview was delivered');
     assert.equal(fs.existsSync(thumb), false, 'The unusable preview must be deleted, otherwise it stays forever');
@@ -137,8 +137,8 @@ test('delivery order of the image cache', async t => {
   await t.test('gen=0 computes nothing but only leaves a note', async () => {
     // The REQUEST must not trigger a downscale — that is done by the
     // background job, throttled and only in the primary process.
-    aufraeumen();
-    datei(orig, 5000);
+    cleanUp();
+    file(orig, 5000);
     const { noted } = await callFn(dir, { wantThumb: true, createMay: false });
     assert.deepEqual(noted, [1], 'Without the right to generate, it must be reserved');
   });
@@ -148,14 +148,14 @@ test('delivery order of the image cache', async t => {
     // `return res.status(304).end()` must not become a mere `res.status(304)`
     // — otherwise the flow would continue and write into an already
     // ended response.
-    aufraeumen();
-    datei(orig, 5000);
-    datei(thumb, 900);
+    cleanUp();
+    file(orig, 5000);
+    file(thumb, 900);
 
     const v = await callFn(dir, { wantThumb: true, fresh: true });
     assert.equal(v.done, true, '304 is a FINISHED response');
     assert.equal(v.res.code, 304);
-    assert.equal(v.res.beendet, true);
+    assert.equal(v.res.ended, true);
     assert.deepEqual(v.streamed, [], 'On 304 no image may go out anymore');
 
     fs.unlinkSync(thumb);
@@ -170,7 +170,7 @@ test('delivery order of the image cache', async t => {
     // CDN. An SVG is the only image format that becomes active when opened
     // as a document — it must not be delivered under the own origin,
     // even if an old cache entry claims it.
-    for (const [abgelegt, erwartet] of [
+    for (const [stored, expected] of [
       ['image/png', 'image/png'],
       ['image/svg+xml', 'image/jpeg'],
       ['text/html', 'image/jpeg'],
@@ -179,32 +179,32 @@ test('delivery order of the image cache', async t => {
       ['image/webp; charset=binary', 'image/webp'],
       ['image/x-icon', 'image/jpeg'],
     ]) {
-      aufraeumen();
-      datei(orig, 5000);
-      fs.writeFileSync(orig + '.ct', abgelegt);
+      cleanUp();
+      file(orig, 5000);
+      fs.writeFileSync(orig + '.ct', stored);
       const { res } = await callFn(dir, { wantThumb: false });
-      assert.equal(res.kopf['content-type'], erwartet, `Stored as ${abgelegt} → must be delivered as ${erwartet}`);
+      assert.equal(res.head['content-type'], expected, `Stored as ${stored} → must be delivered as ${expected}`);
     }
   });
 
   await t.test('the service names file, type, length and ETag without sending', async () => {
     // Sending happens in src/images/http/; the service gets to see no response.
-    aufraeumen();
-    datei(orig, 5000);
+    cleanUp();
+    file(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
     const { cacheHit } = _req('src/images/imgCacheServe.js');
-    const treffer = await cacheHit({
+    const hits = await cacheHit({
       cacheFile: orig,
       thumbFile: thumb,
       wantThumb: false,
       createMay: false,
       note() {},
     });
-    assert.equal(treffer.file, orig);
-    assert.equal(treffer.contentType, 'image/png');
-    assert.equal(treffer.size, 5000);
-    assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
-    aufraeumen();
+    assert.equal(hits.file, orig);
+    assert.equal(hits.contentType, 'image/png');
+    assert.equal(hits.size, 5000);
+    assert.match(String(hits.etag), /^"c-5000-\d+"$/);
+    cleanUp();
     assert.equal(
       await cacheHit({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
       null,

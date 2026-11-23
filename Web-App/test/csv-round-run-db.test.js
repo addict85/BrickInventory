@@ -27,14 +27,14 @@ const db = testData();
 test('CSV round trip: export and import fit together', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const konto = async n => {
+  const account = async n => {
     await db.run('DELETE FROM users WHERE username=$1', [`${n}-${process.pid}`]);
     return (
       await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${n}-${process.pid}`])
     ).id;
   };
-  const A = await konto('rundlauf-a'),
-    B = await konto('rundlauf-b');
+  const A = await account('rundlauf-a'),
+    B = await account('rundlauf-b');
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
     await db.pool.end().catch(() => {});
@@ -70,11 +70,11 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
 
-  const acqList = (tabelle, number, farbe, u) =>
+  const acqList = (table, number, color, u) =>
     db.all(
-      `SELECT ${number}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
+      `SELECT ${number}${color ? ', color_id' : ''}, quantity, ${table === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
             condition, day::text AS tag
-       FROM ${tabelle} WHERE user_id=$1 ORDER BY day, condition`,
+       FROM ${table} WHERE user_id=$1 ORDER BY day, condition`,
       [u],
     );
 

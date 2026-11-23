@@ -51,25 +51,25 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const client = await db.pool.connect();
   await runMigrations(client);
-  const vorher = new Set(await backups());
+  const prior = new Set(await backups());
   const probe = path.join(DIST, 'db/migrations', PROBE);
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SECOND]]);
-  const anlegen = async n =>
+  const create = async n =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, 'x', true, true) RETURNING id`,
         [n],
       )
     ).id;
-  const haupt = await anlegen(NAME),
-    kind = await anlegen(SECOND);
+  const main = await create(NAME),
+    kind = await create(SECOND);
   // A household link: the table has no column user_id, only foreign keys on users.
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [main, kind]);
   t.after(async () => {
     fs.rmSync(probe, { force: true });
     await db.run('DELETE FROM schema_migrations WHERE name = $1', [PROBE]).catch(() => {});
-    for (const s of await backups()) if (!vorher.has(s)) await db.run(`DROP SCHEMA ${s} CASCADE`).catch(() => {});
+    for (const s of await backups()) if (!prior.has(s)) await db.run(`DROP SCHEMA ${s} CASCADE`).catch(() => {});
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SECOND]]).catch(() => {});
     client.release();
     await db.pool.end().catch(() => {});
@@ -77,7 +77,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
 
   await t.test('without an open migration no backup', async () => {
     await runMigrations(client, { backup: true });
-    assert.deepEqual(new Set(await backups()), vorher);
+    assert.deepEqual(new Set(await backups()), prior);
   });
 
   await t.test('open migration: first backed up, then applied without a time limit', async () => {
@@ -95,25 +95,28 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     );
     const applied = await runMigrations(client, { backup: true });
     assert.deepEqual(applied, [PROBE]);
-    const neu = (await backups()).filter(s => !vorher.has(s));
-    assert.equal(neu.length, 1, 'no backup before the migration');
-    const kopie = await db.get(`SELECT username FROM ${neu[0]}.users WHERE username = $1`, [NAME]);
-    assert.ok(kopie, 'The backup does not contain the accounts');
-    const tabellen = (
-      await db.all(`SELECT table_name FROM information_schema.tables WHERE table_schema = $1`, [neu[0]])
+    const fresh = (await backups()).filter(s => !prior.has(s));
+    assert.equal(fresh.length, 1, 'no backup before the migration');
+    const copy = await db.get(`SELECT username FROM ${fresh[0]}.users WHERE username = $1`, [NAME]);
+    assert.ok(copy, 'The backup does not contain the accounts');
+    const tables = (
+      await db.all(`SELECT table_name FROM information_schema.tables WHERE table_schema = $1`, [fresh[0]])
     ).map(r => r.table_name);
-    assert.ok(tabellen.includes('set_acquisitions'), `Tables with user_id are missing: ${tabellen.join(', ')}`);
-    assert.ok(!tabellen.includes('set_catalog'), 'The catalogue does not belong in the backup');
+    assert.ok(tables.includes('set_acquisitions'), `Tables with user_id are missing: ${tables.join(', ')}`);
+    assert.ok(!tables.includes('set_catalog'), 'The catalogue does not belong in the backup');
     for (const n of ['account_links', 'account_link_invites', 'household_former_links', 'admin_log'])
-      assert.ok(tabellen.includes(n), `${n} is missing in the backup`);
+      assert.ok(tables.includes(n), `${n} is missing in the backup`);
     assert.ok(
-      await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),
+      await db.get(`SELECT 1 FROM ${fresh[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [
+        main,
+        kind,
+      ]),
       'The household link is missing in the backup',
     );
     // The copy carries no policy: without RLS the runtime role would read hashes and tokens of all accounts.
     const open = await db.all(
       `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r' AND NOT relrowsecurity`,
-      [neu[0]],
+      [fresh[0]],
     );
     assert.deepEqual(open, [], 'copies without row protection');
   });
@@ -121,65 +124,67 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   const SHORT = { deadlineMs: 200, attempts: 2 };
   const LOCK_PROBE = `9998-sperre-${process.pid}.sql`,
     TABLE_NAME = `migsperre_${process.pid}`;
-  /** A second connection holds `tabelle` exclusively until `frei()` is called –
+  /** A second connection holds `table` exclusively until `free()` is called –
    * at the latest after 4 s, so that a version without a deadline turns red instead of hanging. */
-  const holdLock = async tabelle => {
+  const holdLock = async table => {
     const c2 = await db.pool.connect();
     await c2.query('BEGIN');
-    await c2.query(`LOCK TABLE ${tabelle} IN ACCESS EXCLUSIVE MODE`);
+    await c2.query(`LOCK TABLE ${table} IN ACCESS EXCLUSIVE MODE`);
     let open = true;
-    const frei = async () => {
+    const free = async () => {
       if (!open) return;
       open = false;
       clearTimeout(emergency);
       await c2.query('ROLLBACK');
       c2.release();
     };
-    const emergency = setTimeout(frei, 4000);
-    return frei;
+    const emergency = setTimeout(free, 4000);
+    return free;
   };
   /** Record console.warn as long as `f` runs. */
   const withWarnings = async f => {
-    const echt = console.warn,
-      gesehen = [];
-    console.warn = (...a) => gesehen.push(a.join(' '));
+    const original = console.warn,
+      seen = [];
+    console.warn = (...a) => seen.push(a.join(' '));
     try {
-      return { ergebnis: await f().catch(e => e), gesehen };
+      return { ergebnis: await f().catch(e => e), seen };
     } finally {
-      console.warn = echt;
+      console.warn = original;
     }
   };
 
   await t.test('a held lock: deadline, retry, clear message', { timeout: 15_000 }, async () => {
-    const datei = path.join(DIST, 'db/migrations', LOCK_PROBE);
+    const file = path.join(DIST, 'db/migrations', LOCK_PROBE);
     await db.run(`CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (x int)`);
     t.after(async () => {
-      fs.rmSync(datei, { force: true });
+      fs.rmSync(file, { force: true });
       await db.run('DELETE FROM schema_migrations WHERE name = $1', [LOCK_PROBE]).catch(() => {});
       await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     });
-    fs.writeFileSync(datei, `SELECT count(*) FROM ${TABLE_NAME};`);
-    const frei = await holdLock(TABLE_NAME);
-    const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { lock: SHORT }));
-    await frei();
-    assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
+    fs.writeFileSync(file, `SELECT count(*) FROM ${TABLE_NAME};`);
+    const free = await holdLock(TABLE_NAME);
+    const { ergebnis: outcome, seen } = await withWarnings(() => runMigrations(client, { lock: SHORT }));
+    await free();
+    assert.ok(outcome instanceof Error, `back without error: ${outcome}`);
     assert.match(
-      ergebnis.message,
+      outcome.message,
       new RegExp(
         `Migration ${LOCK_PROBE} fehlgeschlagen: .*nach 0.2 s keine Sperre erhalten.*Aufgegeben nach 2 Versuchen`,
       ),
     );
-    assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
+    assert.equal(seen.filter(w => w.includes('Versuch 2/2')).length, 1, seen.join('\n'));
     assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [LOCK_PROBE]), undefined);
     assert.deepEqual(await runMigrations(client, { lock: SHORT }), [LOCK_PROBE], 'without a lock it runs through');
   });
 
   await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {
-    const frei = await holdLock('users');
-    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { deadlineMs: 200, attempts: 1 }));
-    await frei();
-    assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
-    assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
+    const free = await holdLock('users');
+    const { ergebnis: outcome } = await withWarnings(() =>
+      secureUserData(client, ['probe'], { deadlineMs: 200, attempts: 1 }),
+    );
+    await free();
+    assert.ok(outcome instanceof Error, `back without error: ${outcome}`);
+    assert.match(outcome.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
   });
 
   await t.test('the three most recent backups stay', async () => {

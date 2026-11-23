@@ -8,18 +8,18 @@ const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
 /** Builds an archive like routes/api/settings.ts and returns the bytes. */
-function zipIt(dateien) {
+function zipIt(files) {
   const { ZipArchive } = require('archiver');
-  return new Promise((fertig, error) => {
+  return new Promise((done, error) => {
     const parts = [];
     const out = new PassThrough();
     out.on('data', c => parts.push(c));
-    out.on('end', () => fertig(Buffer.concat(parts)));
+    out.on('end', () => done(Buffer.concat(parts)));
     const archive = new ZipArchive({ zlib: { level: 9 } });
     archive.on('error', error);
     archive.pipe(out);
-    for (const [name, inhalt] of Object.entries(dateien)) {
-      archive.append('\uFEFF' + inhalt, { name });
+    for (const [name, content] of Object.entries(files)) {
+      archive.append('\uFEFF' + content, { name });
     }
     archive.finalize().catch(error);
   });
@@ -68,13 +68,13 @@ test('the data export produces an unpackable ZIP', async () => {
     const zip = path.join(dir, 'e.zip');
     fs.writeFileSync(zip, b);
     require('node:child_process').execFileSync('unzip', ['-q', '-o', zip, '-d', dir]);
-    const inhalt = fs.readFileSync(path.join(dir, 'sets.csv'));
+    const content = fs.readFileSync(path.join(dir, 'sets.csv'));
     assert.equal(
-      inhalt.slice(0, 3).toString('hex'),
+      content.slice(0, 3).toString('hex'),
       'efbbbf',
       'The BOM is missing — Excel then reads the umlauts wrongly',
     );
-    assert.ok(inhalt.toString('utf8').includes('Titanic'), 'The content did not arrive');
+    assert.ok(content.toString('utf8').includes('Titanic'), 'The content did not arrive');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

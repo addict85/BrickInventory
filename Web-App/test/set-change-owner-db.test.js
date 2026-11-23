@@ -29,19 +29,19 @@ test("purchase price and condition land in the owner's account", { concurrency: 
   const MAIN = `besitz-haupt-${process.pid}`,
     SUB = `besitz-sub-${process.pid}`;
   const SET = `60445-1`;
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM sets WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM users WHERE username IN ($1,$2)', [MAIN, SUB]).catch(() => {});
   };
-  await aufraeumen();
+  await cleanUp();
 
   try {
     const mainId = await factory.konto(MAIN);
     const subId = await factory.konto(SUB);
     await factory.subAccount(mainId, subId);
     // Set AND acquisition belong to the SUB-ACCOUNT.
-    await factory.setRecorded(subId, SET, { preis: 10, condition: 'N' });
+    await factory.setRecorded(subId, SET, { price: 10, condition: 'N' });
 
     const { changeSet } = require('./helpers/sources').areaPage('sets');
     // Purchase price and condition stand in the acquisition, the quantity is its sum.
@@ -90,12 +90,12 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     // 4. The quantity, on the other hand, deliberately goes to the OWN account: whoever increases gets
     //    an own purchase price entry instead of changing the inventory of another account.
     await changeSet(mainId, SET, { quantity: 2 });
-    const je = await db.all(
+    const per = await db.all(
       'SELECT user_id, SUM(quantity)::int AS n FROM set_acquisitions WHERE set_number=$1 GROUP BY user_id ORDER BY user_id',
       [SET],
     );
     assert.deepEqual(
-      je.map((/** @type {any} */ z) => [z.user_id, z.n]),
+      per.map((/** @type {any} */ z) => [z.user_id, z.n]),
       [
         [mainId, 1],
         [subId, 1],
@@ -103,7 +103,7 @@ test("purchase price and condition land in the owner's account", { concurrency: 
       'without an account given, the new quantity lands with the caller',
     );
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
@@ -114,20 +114,20 @@ test("purchase price and condition land in the owner's account", { concurrency: 
 // has even become more important: it is now the ONLY write path.
 test('the last entry is written in exactly one place', () => {
   // Found, not enumerated.
-  const dateien = [];
+  const files = [];
   const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
       if (e.isDirectory()) go(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer works`);
 
   const placeList = [];
-  for (const f of dateien) {
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')

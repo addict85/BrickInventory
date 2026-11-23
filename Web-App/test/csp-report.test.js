@@ -30,26 +30,26 @@ test('CSP reports', async t => {
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/csp-bericht`;
   const log = [];
-  const echt = console.warn;
+  const original = console.warn;
   console.warn = (...a) => {
     log.push(a.join(' '));
   };
   t.after(() => {
-    console.warn = echt;
+    console.warn = original;
   });
   let n = 0;
-  const melde = async (rumpf, typ, address = `10.0.0.${++n}`) => {
+  const notify = async (body, kind, address = `10.0.0.${++n}`) => {
     log.length = 0;
     const r = await fetch(basis, {
       method: 'POST',
-      headers: { 'content-type': typ, 'x-forwarded-for': address },
-      body: typeof rumpf === 'string' ? rumpf : JSON.stringify(rumpf),
+      headers: { 'content-type': kind, 'x-forwarded-for': address },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
     });
     return { status: r.status, text: await r.text() };
   };
 
   await t.test('report-uri: rule, target and page, without the query part', async () => {
-    const r = await melde(
+    const r = await notify(
       {
         'csp-report': {
           'effective-directive': 'require-trusted-types-for',
@@ -70,7 +70,7 @@ test('CSP reports', async t => {
   });
 
   await t.test('report-to: the list of the Reporting API', async () => {
-    await melde(
+    await notify(
       [
         {
           type: 'csp-violation',
@@ -88,29 +88,29 @@ test('CSP reports', async t => {
   });
 
   await t.test('an address reports at most ten per minute', async () => {
-    const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
-    const zeilen = [];
+    const report = { 'csp-report': { 'effective-directive': 'img-src' } };
+    const lines = [];
     for (let i = 0; i < 12; i++) {
-      await melde(bericht, 'application/csp-report', '10.9.9.9');
-      zeilen.push(...log);
+      await notify(report, 'application/csp-report', '10.9.9.9');
+      lines.push(...log);
     }
-    assert.equal(zeilen.length, 10);
+    assert.equal(lines.length, 10);
   });
 
   await t.test('an overlong or broken body does not get into the log', async () => {
-    assert.equal((await melde('x'.repeat(9000), 'application/csp-report')).status, 413);
-    assert.equal((await melde('{kaputt', 'application/csp-report')).status, 204);
+    assert.equal((await notify('x'.repeat(9000), 'application/csp-report')).status, 413);
+    assert.equal((await notify('{kaputt', 'application/csp-report')).status, 204);
     assert.deepEqual(log, []);
   });
 
   await t.test('many senders do not crowd each other out', async () => {
-    const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
-    const zeilen = [];
+    const report = { 'csp-report': { 'effective-directive': 'img-src' } };
+    const lines = [];
     for (let i = 0; i < 70; i++) {
-      await melde(bericht, 'application/csp-report', `10.7.${Math.floor(i / 200)}.${i % 200}`);
-      zeilen.push(...log);
+      await notify(report, 'application/csp-report', `10.7.${Math.floor(i / 200)}.${i % 200}`);
+      lines.push(...log);
     }
-    assert.equal(zeilen.length, 70);
+    assert.equal(lines.length, 70);
   });
 
   await t.test('what was throttled stands as one summary line in the log', () => {
@@ -119,10 +119,10 @@ test('CSP reports', async t => {
     // A new window, free of the reports of the subtests before.
     cspMessageFree('10.1.1.2', morgen);
     log.length = 0;
-    const frei = Array.from({ length: 12 }, () => cspMessageFree('2001:db8:1:2::7', morgen));
+    const free = Array.from({ length: 12 }, () => cspMessageFree('2001:db8:1:2::7', morgen));
     // The same /64 counts as one sender.
-    frei.push(cspMessageFree('2001:db8:1:2::8', morgen));
-    assert.equal(frei.filter(Boolean).length, 10);
+    free.push(cspMessageFree('2001:db8:1:2::8', morgen));
+    assert.equal(free.filter(Boolean).length, 10);
     assert.equal(cspMessageFree('10.1.1.1', morgen + 60_000), true);
     assert.deepEqual(log, ['[csp] 3 gedrosselt']);
   });
@@ -131,11 +131,11 @@ test('CSP reports', async t => {
     const { cspMessageFree } = _req('src/http/cspReport.js');
     const tag = Date.now() + 2 * 86_400_000;
     cspMessageFree('10.1.1.3', tag);
-    const frei = [
+    const free = [
       ...Array.from({ length: 10 }, () => cspMessageFree('2001:db8::1', tag)),
       ...Array.from({ length: 10 }, () => cspMessageFree('2001:db8::2', tag)),
     ];
-    assert.equal(frei.filter(Boolean).length, 10);
+    assert.equal(free.filter(Boolean).length, 10);
     // Another /64 has its own quota.
     assert.equal(cspMessageFree('2001:db8:0:1::1', tag), true);
     cspMessageFree('10.1.1.3', tag + 60_000);
@@ -143,7 +143,7 @@ test('CSP reports', async t => {
   });
 
   await t.test('only directives and addresses get into the log, no free text', async () => {
-    await melde(
+    await notify(
       {
         'csp-report': {
           'violated-directive': "script-src 'self'",
@@ -155,18 +155,18 @@ test('CSP reports', async t => {
       'application/csp-report',
     );
     assert.deepEqual(log, ['[csp] script-src blockierte ? auf ?']);
-    await melde({ 'csp-report': { 'effective-directive': 'Freitext mit Leerzeichen!' } }, 'application/csp-report');
-    await melde({ 'csp-report': { 'effective-directive': 'X'.repeat(30) } }, 'application/csp-report');
+    await notify({ 'csp-report': { 'effective-directive': 'Freitext mit Leerzeichen!' } }, 'application/csp-report');
+    await notify({ 'csp-report': { 'effective-directive': 'X'.repeat(30) } }, 'application/csp-report');
     assert.deepEqual(log, [], 'no directive, no line');
   });
 
   await t.test("the browser's image view reports nothing, an SVG does", async () => {
-    const bericht = seite => ({
-      'csp-report': { 'effective-directive': 'style-src-attr', 'blocked-uri': 'inline', 'document-uri': seite },
+    const report = page => ({
+      'csp-report': { 'effective-directive': 'style-src-attr', 'blocked-uri': 'inline', 'document-uri': page },
     });
-    await melde(bericht('https://lego.test/images/sets/11515-1.jpg'), 'application/csp-report');
+    await notify(report('https://lego.test/images/sets/11515-1.jpg'), 'application/csp-report');
     assert.deepEqual(log, []);
-    await melde(bericht('https://lego.test/images/sets/x.svg'), 'application/csp-report');
+    await notify(report('https://lego.test/images/sets/x.svg'), 'application/csp-report');
     assert.deepEqual(log, ['[csp] style-src-attr blockierte inline auf https://lego.test/images/sets/x.svg']);
   });
 });

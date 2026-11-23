@@ -95,8 +95,8 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     });
 
     await tt.test('jobs and pauses of unknown kind drop', async () => {
-      assert.deepEqual((await c.query('SELECT art FROM auftraege')).rows, [{ art: 'preise' }]);
-      assert.deepEqual((await c.query('SELECT art FROM auftrag_pausen')).rows, [{ art: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art AS kind FROM auftraege')).rows, [{ kind: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art AS kind FROM auftrag_pausen')).rows, [{ kind: 'preise' }]);
     });
 
     await tt.test('afterwards the schema rejects unknown values', async () => {
@@ -110,13 +110,13 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
   });
 
   await t.test('job_types knows exactly the registered kinds', async () => {
-    const angemeldet = require('./helpers/sources')
+    const signedIn = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
       .map(a => a.kind);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
-    assert.ok(angemeldet.length > 15, `only ${angemeldet.length} kinds registered`);
-    assert.deepEqual(inDb, [...angemeldet].sort());
+    assert.ok(signedIn.length > 15, `only ${signedIn.length} kinds registered`);
+    assert.deepEqual(inDb, [...signedIn].sort());
   });
 
   await t.test('a condition other than N and U is rejected', async () => {

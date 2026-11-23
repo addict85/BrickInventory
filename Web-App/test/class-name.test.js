@@ -24,11 +24,11 @@ const CLASS = /\.(-?[A-Za-z_][\w-]*)(?=[\s,{:.[)>~+]|$)/g;
 /** All source files of the UI — without comments, without the bundle. */
 function sources() {
   const out = [];
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (!/node_modules|locales/.test(p)) lauf(p);
+        if (!/node_modules|locales/.test(p)) run(p);
         continue;
       }
       if (e.name === 'app.bundle.js') continue;
@@ -38,31 +38,31 @@ function sources() {
       out.push([path.relative(ROOT, p), s]);
     }
   };
-  lauf(PUB);
+  run(PUB);
   return out;
 }
 
 test('every class name styles something or is a handle', () => {
-  const dateien = sources();
-  assert.ok(dateien.length >= 20, `Only ${dateien.length} source files found`);
+  const files = sources();
+  assert.ok(files.length >= 20, `Only ${files.length} source files found`);
 
   // Defined: everything that stands as a selector in a stylesheet — AND what the
   // script itself assembles as style. The log page (monitor.js) builds
   // its own <style> as a string; without this step its six classes would
   // count as undefined.
-  const definiert = new Set();
-  for (const [rel, s] of dateien) if (/\.(css|js)$/.test(rel)) for (const m of s.matchAll(CLASS)) definiert.add(m[1]);
+  const defined = new Set();
+  for (const [rel, s] of files) if (/\.(css|js)$/.test(rel)) for (const m of s.matchAll(CLASS)) defined.add(m[1]);
   // Plus the one inline style in index.html (startup skeleton, via hash in the CSP).
-  for (const [rel, s] of dateien)
+  for (const [rel, s] of files)
     if (rel.endsWith('index.html'))
       for (const m of (/<style id="start-style">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
-        definiert.add(m[1]);
+        defined.add(m[1]);
   // MEASURED there are 600.
-  assert.ok(definiert.size >= 300, `Only ${definiert.size} class names in the stylesheets — pattern outdated?`);
+  assert.ok(defined.size >= 300, `Only ${defined.size} class names in the stylesheets — pattern outdated?`);
 
   // Handles: names by which JavaScript finds or toggles elements.
   const griffe = new Set();
-  for (const [rel, s] of dateien) {
+  for (const [rel, s] of files) {
     if (!rel.endsWith('.js')) continue;
     for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
     for (const m of s.matchAll(
@@ -73,19 +73,19 @@ test('every class name styles something or is a handle', () => {
   }
   assert.ok(griffe.size >= 20, `Only ${griffe.size} hooks found — pattern outdated?`);
 
-  const benutzt = new Map();
-  for (const [rel, s] of dateien) {
+  const usedBy = new Map();
+  for (const [rel, s] of files) {
     if (rel.endsWith('.css')) continue;
     // No `$` and no brace: `class="chip ${aktiv}"` is composed.
     for (const m of s.matchAll(/class="([^"$<>{]*)"/g))
-      for (const k of m[1].trim().split(/\s+/)) if (k && !benutzt.has(k)) benutzt.set(k, rel);
-    for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
+      for (const k of m[1].trim().split(/\s+/)) if (k && !usedBy.has(k)) usedBy.set(k, rel);
+    for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) if (!usedBy.has(m[1])) usedBy.set(m[1], rel);
   }
   // MEASURED there are 161.
-  assert.ok(benutzt.size >= 100, `Only ${benutzt.size} used class names found — pattern outdated?`);
+  assert.ok(usedBy.size >= 100, `Only ${usedBy.size} used class names found — pattern outdated?`);
 
-  const ineffective = [...benutzt]
-    .filter(([k]) => !definiert.has(k) && !griffe.has(k))
+  const ineffective = [...usedBy]
+    .filter(([k]) => !defined.has(k) && !griffe.has(k))
     .map(([k, rel]) => `${k}   (${rel})`)
     .sort();
   assert.deepEqual(

@@ -42,23 +42,23 @@ async function vorgelesen(b, sel) {
   const { nodeId } = await b.tab('DOM.querySelector', { nodeId: root.nodeId, selector: sel });
   assert.ok(nodeId, `${sel} is missing`);
   const { nodes } = await b.tab('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
-  return { name: nodes[0].name?.value || '', beschreibung: nodes[0].description?.value || '' };
+  return { name: nodes[0].name?.value || '', description: nodes[0].description?.value || '' };
 }
 
-async function groesse(b, breite, hoehe, telefon) {
+async function size(b, width, height, phone) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
-    width: breite,
-    height: hoehe,
+    width: width,
+    height: height,
     deviceScaleFactor: 1,
-    mobile: telefon,
+    mobile: phone,
   });
 }
 
-async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(CLOSE);
-  await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, 200);
-  await a.ruhig(5000);
+async function geh(a, hash, ready, was) {
+  await a.b.evaluate(CLOSE);
+  await a.b.evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
+  await a.until(ready, was, 200);
+  await a.settle(5000);
 }
 
 async function kachelnamen(_t, a, name) {
@@ -66,84 +66,84 @@ async function kachelnamen(_t, a, name) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery [data-arg="21318-1"]')`, 'Sammlung');
   const set = await vorgelesen(b, '#gallery .sc[data-arg="21318-1"]');
   assert.equal(set.name, '21318-1 Tree House');
-  assert.match(set.beschreibung, /2019 · Ideas/);
-  assert.match(set.beschreibung, /Marktpreis/);
-  assert.match(set.beschreibung, new RegExp(`${name} \\(ich\\)`));
+  assert.match(set.description, /2019 · Ideas/);
+  assert.match(set.description, /Marktpreis/);
+  assert.match(set.description, new RegExp(`${name} \\(ich\\)`));
 
   await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
-  const teil = await vorgelesen(b, '#tab-parts .part-card');
-  assert.match(teil.name, /^\d+ (Brick|Plate) \d x \d \S+$/);
-  assert.ok(teil.name.length <= 40, teil.name);
-  assert.match(teil.beschreibung, /×12/);
+  const part = await vorgelesen(b, '#tab-parts .part-card');
+  assert.match(part.name, /^\d+ (Brick|Plate) \d x \d \S+$/);
+  assert.ok(part.name.length <= 40, part.name);
+  assert.match(part.description, /×12/);
 
   await geh(a, '#/minifiguren', `!!document.querySelector('#tab-minifigs [role="button"]')`, 'Minifiguren');
-  const figur = await vorgelesen(b, '#tab-minifigs [role="button"][data-arg2="fig-000001"]');
-  assert.equal(figur.name, 'fig-000001 Marty McFly');
+  const minifig = await vorgelesen(b, '#tab-minifigs [role="button"][data-arg2="fig-000001"]');
+  assert.equal(minifig.name, 'fig-000001 Marty McFly');
 
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
-  const katalog = await vorgelesen(b, '#catalog-grid .sc[data-arg="10294-1"]');
-  assert.equal(katalog.name, '10294-1 Titanic');
-  assert.match(katalog.beschreibung, /Teile/);
+  const catalog = await vorgelesen(b, '#catalog-grid .sc[data-arg="10294-1"]');
+  assert.equal(catalog.name, '10294-1 Titanic');
+  assert.match(catalog.description, /Teile/);
 }
 
 async function wantedUnknown(_t, a) {
-  const { b, bis } = a;
+  const { b, until } = a;
   await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
   assert.equal((await vorgelesen(b, '#mk-list .mk-row')).name, '10276-1');
-  assert.match(await b.auswerten(text('#mk-list .mk-row .mk-sub')), /^Set noch nicht im Katalog · Neuware$/);
-  const vorher = b.eventList.length;
-  await b.auswerten(`document.querySelector('#mk-list .mk-row').click(); true`);
-  await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Detail');
-  await a.ruhig(5000);
-  assert.match(await b.auswerten(text('#mk-m-det')), /Katalog ?Set noch nicht im Katalog — Name, Jahr und Thema/);
-  assert.doesNotMatch(await b.auswerten(text('#mk-m-det')), /Jahr —/);
+  assert.match(await b.evaluate(text('#mk-list .mk-row .mk-sub')), /^Set noch nicht im Katalog · Neuware$/);
+  const prior = b.eventList.length;
+  await b.evaluate(`document.querySelector('#mk-list .mk-row').click(); true`);
+  await until(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Detail');
+  await a.settle(5000);
+  assert.match(await b.evaluate(text('#mk-m-det')), /Katalog ?Set noch nicht im Katalog — Name, Jahr und Thema/);
+  assert.doesNotMatch(await b.evaluate(text('#mk-m-det')), /Jahr —/);
   const catalogRequests = b.eventList
-    .slice(vorher)
+    .slice(prior)
     .filter(e => e.method === 'Network.requestWillBeSent' && /\/catalog\/sets\/10276-1/.test(e.params.request.url));
   assert.equal(catalogRequests.length, 0, 'request to the catalogue that ends with 404');
-  await b.auswerten(CLOSE);
+  await b.evaluate(CLOSE);
 }
 
 async function kontoangaben(_t, a, name) {
-  const { b, bis } = a;
+  const { b, until } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery [data-arg="21318-1"]')`, 'Sammlung');
   assert.deepEqual(
-    await b.auswerten(
+    await b.evaluate(
       `[...document.querySelectorAll('#gallery .sc[data-arg="21318-1"] .owner-badge')].map(e => e.textContent)`,
     ),
     [`${name} (ich)`, `${name}_kind`],
   );
-  await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
-  await bis(`document.querySelectorAll('#m-quantity .quantity-account').length === 2`, 'Set-Detail');
-  assert.equal(await b.auswerten(text('#m-subtitle')), `21318-1 · Konten: ${name} (ich), ${name}_kind`);
-  const schrift = await b.auswerten(`({ kopf: getComputedStyle(document.getElementById('m-subtitle')).fontFamily,
+  await b.evaluate(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
+  await until(`document.querySelectorAll('#m-quantity .quantity-account').length === 2`, 'Set-Detail');
+  assert.equal(await b.evaluate(text('#m-subtitle')), `21318-1 · Konten: ${name} (ich), ${name}_kind`);
+  const font = await b.evaluate(`({ head: getComputedStyle(document.getElementById('m-subtitle')).fontFamily,
     nr: getComputedStyle(document.querySelector('#m-subtitle .setnr')).fontFamily,
     mono: getComputedStyle(document.documentElement).getPropertyValue('--mono') })`);
-  assert.notEqual(schrift.kopf, schrift.nr, 'accounts in monospace');
-  await b.auswerten(CLOSE);
+  assert.notEqual(font.head, font.nr, 'accounts in monospace');
+  await b.evaluate(CLOSE);
 }
 
 async function preiskasten(_t, a) {
   const { b } = a;
   await geh(a, '#/sammlung', `document.querySelectorAll('#gallery .price-badge:not([hidden])').length >= 3`, 'Preise');
-  const unten = await b.auswerten(`(() => {
-    const k = [...document.querySelectorAll('#gallery .sc')].map(c => ({ oben: Math.round(c.getBoundingClientRect().top),
+  const lower = await b.evaluate(`(() => {
+    const k = [...document.querySelectorAll('#gallery .sc')].map(c => ({ upper: Math.round(c.getBoundingClientRect().top),
       p: c.querySelector('.price-badge:not([hidden])')?.getBoundingClientRect().bottom }));
-    const zeile = k.filter(x => x.oben === k[0].oben && x.p);
-    return zeile.map(x => Math.round(x.p)); })()`);
-  assert.ok(unten.length >= 3, `too few tiles in the first row: ${unten}`);
-  assert.equal(new Set(unten).size, 1, `price boxes at different heights: ${unten}`);
+    const line = k.filter(x => x.upper === k[0].upper && x.p);
+    return line.map(x => Math.round(x.p)); })()`);
+  assert.ok(lower.length >= 3, `too few tiles in the first row: ${lower}`);
+  assert.equal(new Set(lower).size, 1, `price boxes at different heights: ${lower}`);
 }
 
-async function lagerorte(_t, a) {
+async function storageLocations(_t, a) {
   const { b } = a;
   await geh(a, '#/lagerorte', `document.querySelectorAll('#storage-list .location-input').length > 0`, 'Lagerorte');
-  const cells = await b.auswerten(`[...document.querySelector('#storage-list .location-grid > div').children]
+  const cells = await b.evaluate(`[...document.querySelector('#storage-list .location-grid > div').children]
     .map(z => { const r = z.getBoundingClientRect(); return [r.left, r.right, getComputedStyle(z).borderBottomWidth]; })`);
   for (let i = 1; i < cells.length; i++)
     assert.ok(Math.abs(cells[i][0] - cells[i - 1][1]) < 1, `gap in the divider: ${JSON.stringify(cells)}`);
   assert.equal(
-    await b.auswerten(`document.querySelector('#storage-list .location-input').getAttribute('aria-label')`),
+    await b.evaluate(`document.querySelector('#storage-list .location-input').getAttribute('aria-label')`),
     'Lagerort umbenennen: Regal',
   );
 }
@@ -157,22 +157,22 @@ async function menueseiten(_t, a) {
     ['#/konto', '#tab-profile'],
   ]) {
     await geh(a, hash, `document.querySelector('${sel}').classList.contains('active')`, hash);
-    const ohne = await b.auswerten(`[...document.querySelectorAll('${sel} h2.stit')].filter(h => h.checkVisibility())
+    const without = await b.evaluate(`[...document.querySelectorAll('${sel} h2.stit')].filter(h => h.checkVisibility())
       .filter(h => !h.querySelector('svg')).map(h => h.textContent.trim())`);
-    assert.deepEqual(ohne, [], `${hash}: card heading without an icon`);
+    assert.deepEqual(without, [], `${hash}: card heading without an icon`);
   }
   // The main button stands at the bottom right of the form.
   await geh(a, '#/gutscheine', `!!document.querySelector('[data-click="saveVoucher"]')?.checkVisibility()`, 'Voucher');
-  const rechts = await b.auswerten(`(() => { const k = document.querySelector('[data-click="saveVoucher"]');
+  const right = await b.evaluate(`(() => { const k = document.querySelector('[data-click="saveVoucher"]');
     const f = document.getElementById('v-number').getBoundingClientRect();
     return [k.getBoundingClientRect().right, document.getElementById('v-number').closest('.sform, .ssec').getBoundingClientRect().right, f.right]; })()`);
-  assert.ok(rechts[0] > rechts[2] - 2 || rechts[1] - rechts[0] < 40, `save not on the right: ${rechts}`);
+  assert.ok(right[0] > right[2] - 2 || right[1] - right[0] < 40, `save not on the right: ${right}`);
   // Amount and currency of the price alert on one line, even when narrow.
-  await groesse(b, 320, 700, true);
+  await size(b, 320, 700, true);
   try {
     await geh(a, '#/alarme', `!!document.querySelector('#alerts-list .alert-item-field')`, 'Alarme');
     const situation =
-      await b.auswerten(`(() => { const f = document.querySelector('#alerts-list .alert-item-field').getBoundingClientRect(),
+      await b.evaluate(`(() => { const f = document.querySelector('#alerts-list .alert-item-field').getBoundingClientRect(),
       w = document.querySelector('#alerts-list .alert-item-currency').getBoundingClientRect();
       return { fieldTop: f.top, fieldBottom: f.bottom, wMiddle: (w.top + w.bottom) / 2, wLinks: w.left, fieldRight: f.right }; })()`);
     assert.ok(
@@ -181,101 +181,101 @@ async function menueseiten(_t, a) {
     );
     assert.ok(situation.wLinks >= situation.fieldRight, 'EUR not to the right of the field');
   } finally {
-    await groesse(b, 1280, 900, false);
+    await size(b, 1280, 900, false);
   }
 }
 
-async function bauliste(_t, a) {
+async function buildList(_t, a) {
   const { b } = a;
-  await b.auswerten(
+  await b.evaluate(
     `(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('bim_rb_hint_dismissed')) localStorage.removeItem(k); return true; })()`,
   );
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), true, 'band is missing');
+  assert.equal(await b.evaluate(`document.getElementById('rb-hint').checkVisibility()`), true, 'band is missing');
   await geh(a, '#/finanzen', `document.getElementById('tab-finance').classList.contains('active')`, 'Finanzen');
-  assert.equal(await b.auswerten(`document.getElementById('rb-hint').checkVisibility()`), false, 'band in finances');
+  assert.equal(await b.evaluate(`document.getElementById('rb-hint').checkVisibility()`), false, 'band in finances');
 }
 
 async function largeFont(_t, a) {
   const { b } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   try {
-    await b.auswerten(`document.documentElement.style.fontSize = '32px'; true`);
-    await a.ruhig(2000);
-    const m = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect();
-      return { kopf: r('header').bottom, knopf: r('.ubadge-button').bottom, buttonTop: r('.ubadge-button').top, nav: r('nav').top }; })()`);
-    assert.ok(m.knopf <= m.kopf && m.buttonTop >= 0, `account button sticks out of the header: ${JSON.stringify(m)}`);
-    assert.ok(Math.abs(m.nav - m.kopf) < 1, `tab bar not below the header: ${JSON.stringify(m)}`);
+    await b.evaluate(`document.documentElement.style.fontSize = '32px'; true`);
+    await a.settle(2000);
+    const m = await b.evaluate(`(() => { const r = s => document.querySelector(s).getBoundingClientRect();
+      return { head: r('header').bottom, button: r('.ubadge-button').bottom, buttonTop: r('.ubadge-button').top, nav: r('nav').top }; })()`);
+    assert.ok(m.button <= m.head && m.buttonTop >= 0, `account button sticks out of the header: ${JSON.stringify(m)}`);
+    assert.ok(Math.abs(m.nav - m.head) < 1, `tab bar not below the header: ${JSON.stringify(m)}`);
   } finally {
-    await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
+    await b.evaluate(`document.documentElement.style.fontSize = ''; true`);
   }
 }
 
 async function setDetail(_t, a) {
-  const { b, bis } = a;
-  for (const [breite, telefon] of [
+  const { b, until } = a;
+  for (const [width, phone] of [
     [1280, false],
     [390, true],
   ]) {
-    await groesse(b, breite, telefon ? 844 : 900, telefon);
+    await size(b, width, phone ? 844 : 900, phone);
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
-    await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
-    await bis(`!!document.querySelector('#m-sparkline-content svg')`, 'Preisverlauf');
-    const l = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
-      const zeilen = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
-      return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), letzte: zeilen.at(-1) }; })()`);
-    if (!telefon) {
+    await b.evaluate(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
+    await until(`!!document.querySelector('#m-sparkline-content svg')`, 'Preisverlauf');
+    const l = await b.evaluate(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
+      const lines = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
+      return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), last: lines.at(-1) }; })()`);
+    if (!phone) {
       assert.ok(l.chart.right <= l.det.left, `price history not in the left column: ${JSON.stringify(l)}`);
       assert.ok(l.chart.top >= l.image.bottom, 'price history not below the image');
-    } else assert.ok(l.chart.top >= l.letzte.bottom, 'phone: price history not at the end');
-    await b.auswerten(CLOSE);
+    } else assert.ok(l.chart.top >= l.last.bottom, 'phone: price history not at the end');
+    await b.evaluate(CLOSE);
   }
-  await groesse(b, 1280, 900, false);
+  await size(b, 1280, 900, false);
 }
 
-async function telefon(_t, a) {
-  const { b, bis } = a;
-  await groesse(b, 390, 844, true);
+async function phone(_t, a) {
+  const { b, until } = a;
+  await size(b, 390, 844, true);
   try {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-    const knopf = '#tab-gallery .filter-button';
-    const zu = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
-    await b.auswerten(`document.querySelector('${knopf}').click(); true`);
-    await bis(`document.querySelector('${knopf}').getAttribute('aria-expanded') === 'true'`, 'Filter offen');
-    const open = await b.auswerten(`getComputedStyle(document.querySelector('${knopf}')).backgroundColor`);
-    assert.notEqual(open, zu, 'filter button open looks like closed');
-    await b.auswerten(`document.querySelector('${knopf}').click(); true`);
+    const button = '#tab-gallery .filter-button';
+    const closed = await b.evaluate(`getComputedStyle(document.querySelector('${button}')).backgroundColor`);
+    await b.evaluate(`document.querySelector('${button}').click(); true`);
+    await until(`document.querySelector('${button}').getAttribute('aria-expanded') === 'true'`, 'Filter offen');
+    const open = await b.evaluate(`getComputedStyle(document.querySelector('${button}')).backgroundColor`);
+    assert.notEqual(open, closed, 'filter button open looks like closed');
+    await b.evaluate(`document.querySelector('${button}').click(); true`);
 
     // Number row on one baseline.
-    const oben =
-      await b.auswerten(`[...document.querySelectorAll('#tab-gallery .bstat')].filter(x => x.checkVisibility())
+    const upper =
+      await b.evaluate(`[...document.querySelectorAll('#tab-gallery .bstat')].filter(x => x.checkVisibility())
       .map(x => Math.round(x.querySelector('.bstat-v').getBoundingClientRect().bottom))`);
-    assert.equal(new Set(oben).size, 1, `metrics staggered: ${oben}`);
+    assert.equal(new Set(upper).size, 1, `metrics staggered: ${upper}`);
 
     // Parts and figures in as many columns as the sets.
     await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
-    const spalten = await b.auswerten(`new Set([...document.querySelectorAll('#tab-parts .parts-grid')].at(-1)
+    const columns = await b.evaluate(`new Set([...document.querySelectorAll('#tab-parts .parts-grid')].at(-1)
       .querySelectorAll('.part-card').values().map(k => Math.round(k.getBoundingClientRect().left))).size`);
-    assert.equal(spalten, 2, 'parts not in two columns');
+    assert.equal(columns, 2, 'parts not in two columns');
 
     // Background jobs: if the heading only sticks out a few pixels below the header, the
     // title does not additionally stand in the header.
     await geh(a, '#/hintergrund', `!!document.querySelector('#tab-monitor .ptitle')?.checkVisibility()`, 'Hintergrund');
-    await b.auswerten(`(() => { const kopf = document.querySelector('header').getBoundingClientRect().bottom;
+    await b.evaluate(`(() => { const head = document.querySelector('header').getBoundingClientRect().bottom;
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
-      window.scrollBy(0, h.bottom - kopf - 6); return true; })()`);
-    await a.ruhig(1000);
-    const doppelt = await b.auswerten(`(() => { const k = document.getElementById('header-view');
+      window.scrollBy(0, h.bottom - head - 6); return true; })()`);
+    await a.settle(1000);
+    const twice = await b.evaluate(`(() => { const k = document.getElementById('header-view');
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
-      return { kopf: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
-    assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `title twice: ${JSON.stringify(doppelt)}`);
-    await bis(`!!document.querySelector('#jobs-card .mon-single > summary')`, 'Einzelne Aufträge');
-    const zeichen =
-      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#jobs-card .mon-single > summary'), '::before');
-      return { inhalt: v.content, breite: parseFloat(v.width) }; })()`);
-    assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `no expand marker (${JSON.stringify(zeichen)})`);
+      return { head: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
+    assert.ok(!(twice.head && twice.ueberstand > 0), `title twice: ${JSON.stringify(twice)}`);
+    await until(`!!document.querySelector('#jobs-card .mon-single > summary')`, 'Einzelne Aufträge');
+    const chars =
+      await b.evaluate(`(() => { const v = getComputedStyle(document.querySelector('#jobs-card .mon-single > summary'), '::before');
+      return { content: v.content, width: parseFloat(v.width) }; })()`);
+    assert.ok(chars.content !== 'none' && chars.width > 3, `no expand marker (${JSON.stringify(chars)})`);
   } finally {
-    await groesse(b, 1280, 900, false);
+    await size(b, 1280, 900, false);
   }
 }
 
@@ -295,19 +295,19 @@ test('tile names, grid, 200 % font, phone', { concurrency: 1, timeout: 400_000 }
     return;
   }
   t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'account_files' AND status = 'pending'`).catch(() => {}));
-  await a.ruhig();
+  await a.settle();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [
     ['Kachelnamen', kachelnamen],
     ['Merkliste: Set nicht im Katalog', wantedUnknown],
     ['Kontoangaben', kontoangaben],
     ['Preiskasten auf einer Höhe', preiskasten],
-    ['Lagerorte', lagerorte],
+    ['Lagerorte', storageLocations],
     ['Menüseiten', menueseiten],
-    ['Bauliste mit Schlüsselband', bauliste],
+    ['Bauliste mit Schlüsselband', buildList],
     ['200 % Schrift', largeFont],
     ['Set-Detail nutzt die linke Spalte', setDetail],
-    ['Telefon', telefon],
+    ['Telefon', phone],
   ];
-  for (const [titel, fn] of pruefungen) await t.test(titel, () => fn(t, a, name));
+  for (const [title, fn] of pruefungen) await t.test(title, () => fn(t, a, name));
 });

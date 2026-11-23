@@ -24,17 +24,17 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 test('household routes: payload and refusal', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const namen = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const PASS = 'absage-Passwort-1',
     hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get('INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [n, hash])).id);
   const [a, b, c] = ids;
   // Account c carries another currency: the refusal carries placeholders.
@@ -43,12 +43,12 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const server = Object.fromEntries(ids.map(id => [id, testServer(_req, { sitzung: { userId: id }, t }).base]));
-  const post = async (id, path, rumpf = {}) => {
+  const server = Object.fromEntries(ids.map(id => [id, testServer(_req, { session: { userId: id }, t }).base]));
+  const post = async (id, path, body = {}) => {
     const r = await fetch(`${server[id]}/api/v2/settings/household/${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'accept-language': 'de' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
     return { status: r.status, body: await r.json() };
   };
@@ -58,7 +58,7 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     return r.body.code;
   };
   /** A refusal: 409, the code next to it, a German sentence without open placeholders. */
-  const absage = (r, code) => {
+  const refusal = (r, code) => {
     assert.equal(r.status, 409, `${code}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.success, false);
     assert.equal(r.body.code, code);
@@ -74,26 +74,26 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
   });
 
   await t.test('every refusal on redeeming comes as 409 with a sentence', async () => {
-    absage(await post(b, 'redeem', { code: 'kurz', password: PASS }), 'invite_code_invalid');
-    absage(await post(b, 'redeem', { code: 'ABCD-EFGH-IJKL', password: PASS }), 'invite_code_expired');
-    absage(await post(a, 'redeem', { code: await invitation(a), password: PASS }), 'account_with_itself');
+    refusal(await post(b, 'redeem', { code: 'kurz', password: PASS }), 'invite_code_invalid');
+    refusal(await post(b, 'redeem', { code: 'ABCD-EFGH-IJKL', password: PASS }), 'invite_code_expired');
+    refusal(await post(a, 'redeem', { code: await invitation(a), password: PASS }), 'account_with_itself');
     const currency = await post(c, 'redeem', { code: await invitation(a), password: PASS });
-    absage(currency, 'currency_mismatch');
+    refusal(currency, 'currency_mismatch');
     assert.match(currency.body.error, /CHF/, 'The currencies are not in the sentence');
 
     const ok = await post(b, 'redeem', { code: await invitation(a), password: PASS });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.equal(ok.body.linked_to.id, a);
-    absage(await post(b, 'redeem', { code: await invitation(a), password: PASS }), 'account_already_linked');
-    absage(await post(a, 'redeem', { code: await invitation(b), password: PASS }), 'link_creates_cycle');
+    refusal(await post(b, 'redeem', { code: await invitation(a), password: PASS }), 'account_already_linked');
+    refusal(await post(a, 'redeem', { code: await invitation(b), password: PASS }), 'link_creates_cycle');
     // The pre-check says the same before anybody enters their password.
-    absage(await post(a, 'redeem/check', { code: await invitation(b) }), 'link_creates_cycle');
+    refusal(await post(a, 'redeem/check', { code: await invitation(b) }), 'link_creates_cycle');
   });
 
   await t.test('a cancelled invitation stays redeemable', async () => {
     // The refusal releases the code: it was not the error.
     const code = await invitation(c);
-    absage(await post(a, 'redeem', { code, password: PASS }), 'currency_mismatch');
+    refusal(await post(a, 'redeem', { code, password: PASS }), 'currency_mismatch');
     await db.run(`DELETE FROM user_settings WHERE user_id = $1 AND key = 'currency'`, [c]);
     const r = await post(a, 'redeem', { code, password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -121,7 +121,7 @@ test('errorText does not fall over on an unknown code', () => {
 test('after the currency change the household card is redrawn', async () => {
   // The card names the currency; without reloading the old one would stand there until the next page call.
   let currency = 'EUR';
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/settings': (_u, o) => {
       if (o.method === 'POST') currency = JSON.parse(o.body).currency;
       return { success: true };
@@ -135,19 +135,19 @@ test('after the currency change the household card is redrawn', async () => {
     }),
   });
   try {
-    await sicht(w, 'profile');
-    const karte = () => d.getElementById('household-state').textContent;
-    assert.ok(await warte(() => /Währung: EUR/.test(karte())), `card before: ${karte()}`);
+    await view(w, 'profile');
+    const card = () => d.getElementById('household-state').textContent;
+    assert.ok(await waitFor(() => /Währung: EUR/.test(card())), `card before: ${card()}`);
     const field = d.getElementById('s-cur');
     field.value = 'CHF';
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(
-      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'),
       'confirmation prompt before the switch',
     );
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => aufrufe.some(x => x.method === 'POST' && x.url.endsWith('/v2/settings'))), 'not saved');
-    assert.ok(await warte(() => /Währung: CHF/.test(karte())), `card after: ${karte()}`);
+    assert.ok(await waitFor(() => calls.some(x => x.method === 'POST' && x.url.endsWith('/v2/settings'))), 'not saved');
+    assert.ok(await waitFor(() => /Währung: CHF/.test(card())), `card after: ${card()}`);
   } finally {
     w.close();
   }

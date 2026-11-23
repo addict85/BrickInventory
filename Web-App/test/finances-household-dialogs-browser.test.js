@@ -27,7 +27,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startApp, warte } = require('./helpers/app-browser');
+const { startApp, sleep } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
@@ -42,14 +42,14 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     t.skip(app.reason);
     return;
   }
-  const { b, bis, db, ruhig } = app;
+  const { b, until, db, settle } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
+  await settle();
   const geh = async path => {
-    await b.auswerten(`location.hash = '#/${path}'; true`);
-    await warte(300);
+    await b.evaluate(`location.hash = '#/${path}'; true`);
+    await sleep(300);
   };
-  const telefon = an =>
+  const phone = an =>
     b.tab(
       'Emulation.setDeviceMetricsOverride',
       an
@@ -59,16 +59,16 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('finances: one purchase per row, with account', async () => {
     await geh('finanzen');
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances loaded', 200);
-    const zeilen = await b.auswerten(`[...document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody tr')]
+    await until(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances loaded', 200);
+    const lines = await b.evaluate(`[...document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody tr')]
       .filter(r => r.textContent.includes('Tree House')).map(r => [...r.querySelectorAll('.owner-badge')].map(x => x.textContent.replace('Konto: ', '')))`);
     assert.deepEqual(
-      zeilen.map(z => z.join()).sort(),
+      lines.map(z => z.join()).sort(),
       [KIND, `${NAME} (ich)`].sort(),
       'one row per purchase with its account',
     );
     assert.match(
-      await b.auswerten(text('#fin-tbl .fin-legend')),
+      await b.evaluate(text('#fin-tbl .fin-legend')),
       /Kaufpreis dieser Zeile/,
       'the legend explains the percentages',
     );
@@ -76,10 +76,10 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
 
   await t.test('finances: sums without double counting', async () => {
     const z =
-      await b.auswerten(`Promise.all([fetch('/api/v2/finance/pnl').then(r => r.json()), fetch('/api/v2/finance/valuation').then(r => r.json())])
-      .then(([p, v]) => ({ kauf: p.totals.sets_purchase, markt: v.totals.avg, baum: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
+      await b.evaluate(`Promise.all([fetch('/api/v2/finance/pnl').then(r => r.json()), fetch('/api/v2/finance/valuation').then(r => r.json())])
+      .then(([p, v]) => ({ purchase: p.totals.sets_purchase, market: v.totals.avg, tree: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
     // 679.99 + 650 + 0 (gift) + 199.99 + 210; market value 712.40 + 801.50 + 163.80 + 2 × 186.20.
-    assert.deepEqual(z, { kauf: '1739.98', markt: '2050.10', baum: [2] });
+    assert.deepEqual(z, { purchase: '1739.98', market: '2050.10', tree: [2] });
   });
 
   await t.test('delete dialog names the account', async () => {
@@ -88,91 +88,91 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       [OTHERS, `${OTHERS}@example.org`],
     );
     await geh('einstellungen/benutzer');
-    await bis(
+    await until(
       `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(OTHERS)}))`,
       'Benutzerliste',
       100,
     );
-    for (const [action, titel] of /** @type {[string, RegExp][]} */ ([
+    for (const [action, title] of /** @type {[string, RegExp][]} */ ([
       ['delUser', /^Konto „r12x_\d+“ löschen\?$/],
       ['toggleAdmin', /^„r12x_\d+“ zum Administrator machen\?$/],
       ['toggleActive', /^Konto „r12x_\d+“ deaktivieren\?$/],
     ])) {
-      await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(OTHERS)});
+      await b.evaluate(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(OTHERS)});
         z.querySelector('[data-click="${action}"]').click(); return true; })()`);
-      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${action}`);
-      assert.match(await b.auswerten(text('#cd-title')), titel);
+      await until(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${action}`);
+      assert.match(await b.evaluate(text('#cd-title')), title);
       if (action === 'delUser')
-        assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${OTHERS}“ endgültig löschen`));
-      await b.auswerten(klick('#cd-cancel'));
-      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Dialog zu');
+        assert.match(await b.evaluate(text('#cd-confirm')), new RegExp(`${OTHERS}“ endgültig löschen`));
+      await b.evaluate(klick('#cd-cancel'));
+      await until(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Dialog zu');
     }
     await db.run('DELETE FROM users WHERE username = $1', [OTHERS]);
   });
 
   await t.test('logo and card names once', async () => {
     await geh('sammlung');
-    await bis(`!!document.querySelector('#gallery .sc')`, 'Collection');
+    await until(`!!document.querySelector('#gallery .sc')`, 'Collection');
     await b.tab('Accessibility.enable');
     const { nodes } = await b.tab('Accessibility.getFullAXTree');
-    const namen = nodes.filter(n => !n.ignored && n.name?.value).map(n => `${n.role?.value}: ${n.name.value}`);
+    const names = nodes.filter(n => !n.ignored && n.name?.value).map(n => `${n.role?.value}: ${n.name.value}`);
     assert.deepEqual(
-      namen.filter(n => /BIM|6\+/.test(n)),
+      names.filter(n => /BIM|6\+/.test(n)),
       [],
       'the logo is not read aloud',
     );
     // Since UI review 22 only number and name; the rest is description.
-    const karte = namen.find(n => n === 'button: 10294-1 Titanic');
-    assert.ok(karte, 'Tile Titanic as a button');
-    assert.equal(karte.match(/Titanic/g).length, 1, `Name once: ${karte}`);
+    const card = names.find(n => n === 'button: 10294-1 Titanic');
+    assert.ok(card, 'Tile Titanic as a button');
+    assert.equal(card.match(/Titanic/g).length, 1, `Name once: ${card}`);
   });
 
   await t.test('color name in German', async () => {
     await geh('teile');
-    await bis(
+    await until(
       `!!document.querySelector('.part-card[data-click="openSetItemDetail"][data-arg3="0"]')`,
       'Parts from sets',
     );
-    await b.auswerten(klick('.part-card[data-click="openSetItemDetail"][data-arg3="0"]'));
-    await bis(
+    await b.evaluate(klick('.part-card[data-click="openSetItemDetail"][data-arg3="0"]'));
+    await until(
       `document.getElementById('setitem-modal').classList.contains('open') && /·/.test(document.getElementById('setitem-sub').textContent)`,
       'Teil-Dialog',
     );
-    assert.match(await b.auswerten(text('#setitem-sub')), /· Schwarz$/);
-    await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
+    assert.match(await b.evaluate(text('#setitem-sub')), /· Schwarz$/);
+    await b.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
   });
 
   await t.test('placeholder does not look like a value', async () => {
-    const z = await b.auswerten(`(() => { const f = document.getElementById('alert-new-set');
-      return { text: f.placeholder, stil: getComputedStyle(f, '::placeholder').fontStyle }; })()`);
-    assert.deepEqual(z, { text: 'z. B. 75192-1', stil: 'italic' });
+    const z = await b.evaluate(`(() => { const f = document.getElementById('alert-new-set');
+      return { text: f.placeholder, style: getComputedStyle(f, '::placeholder').fontStyle }; })()`);
+    assert.deepEqual(z, { text: 'z. B. 75192-1', style: 'italic' });
   });
 
   // ── Phone ─────────────────────────────────────────────────────────────────
-  await telefon(true);
+  await phone(true);
 
   await t.test('wishlist: list before the form', async () => {
     await geh('merkliste');
-    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Wishlist');
-    const z = await b.auswerten(`({ offen: document.getElementById('mk-box').open,
-      oben: document.querySelector('#mk-list .mk-row').getBoundingClientRect().top, hoehe: innerHeight })`);
-    assert.equal(z.offen, false, 'Form collapsed on the phone');
-    assert.ok(z.oben < z.hoehe * 0.6, `first watch item in the first view: ${JSON.stringify(z)}`);
+    await until(`!!document.querySelector('#mk-list .mk-row')`, 'Wishlist');
+    const z = await b.evaluate(`({ isOpen: document.getElementById('mk-box').open,
+      upper: document.querySelector('#mk-list .mk-row').getBoundingClientRect().top, height: innerHeight })`);
+    assert.equal(z.isOpen, false, 'Form collapsed on the phone');
+    assert.ok(z.upper < z.height * 0.6, `first watch item in the first view: ${JSON.stringify(z)}`);
   });
 
   await t.test('toast does not cover the title', async () => {
     await geh('sammlung/set/99999-9');
-    await bis(
+    await until(
       `[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`,
       'Toast',
     );
-    await b.auswerten(`scrollTo(0, 0); true`);
-    await ruhig();
-    const z = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
-      const toast = r(document.querySelector('#toasts .toast')), titel = r(document.querySelector('#tab-gallery h1')), leiste = r(document.querySelector('nav.tabs, nav:not(.settings-nav)'));
-      return { viaTitle: toast.top < titel.bottom && toast.bottom > titel.top, viaBar: toast.bottom <= leiste.top + 1, unten: toast.top > innerHeight / 2 }; })()`);
-    assert.deepEqual(z, { viaTitle: false, viaBar: true, unten: true });
-    await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
+    await b.evaluate(`scrollTo(0, 0); true`);
+    await settle();
+    const z = await b.evaluate(`(() => { const r = e => e.getBoundingClientRect();
+      const toast = r(document.querySelector('#toasts .toast')), title = r(document.querySelector('#tab-gallery h1')), bar = r(document.querySelector('nav.tabs, nav:not(.settings-nav)'));
+      return { viaTitle: toast.top < title.bottom && toast.bottom > title.top, viaBar: toast.bottom <= bar.top + 1, lower: toast.top > innerHeight / 2 }; })()`);
+    assert.deepEqual(z, { viaTitle: false, viaBar: true, lower: true });
+    await b.evaluate(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
   });
 
   await t.test('offline: button opaque', async () => {
@@ -184,11 +184,11 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       uploadThroughput: -1,
     });
     try {
-      await bis(`document.querySelector('.button-floating')?.disabled === true`, 'Button disabled');
-      const z = await b.auswerten(`(() => { const s = getComputedStyle(document.querySelector('.button-floating'));
-        return { deckend: s.opacity, grund: s.backgroundColor }; })()`);
+      await until(`document.querySelector('.button-floating')?.disabled === true`, 'Button disabled');
+      const z = await b.evaluate(`(() => { const s = getComputedStyle(document.querySelector('.button-floating'));
+        return { deckend: s.opacity, reason: s.backgroundColor }; })()`);
       assert.equal(z.deckend, '1', 'the disabled button is opaque');
-      assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `with an opaque background: ${z.grund}`);
+      assert.doesNotMatch(z.reason, /rgba\(.*, 0(\.\d+)?\)$/, `with an opaque background: ${z.reason}`);
     } finally {
       await b.tab('Network.emulateNetworkConditions', {
         offline: false,
@@ -196,26 +196,26 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
         downloadThroughput: -1,
         uploadThroughput: -1,
       });
-      await b.auswerten(`dispatchEvent(new Event('online')); true`);
+      await b.evaluate(`dispatchEvent(new Event('online')); true`);
     }
-    await bis(`document.querySelector('.button-floating')?.disabled === false`, 'free again', 100);
+    await until(`document.querySelector('.button-floating')?.disabled === false`, 'free again', 100);
   });
 
   await t.test('user card starts with the name', async () => {
     await geh('einstellungen/benutzer');
-    await bis(`!!document.querySelector('#users-tbl tbody tr')`, 'Benutzerliste');
-    const z = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('#users-tbl tbody tr')];
-      return { erste: zeilen.map(r => [...r.cells].find(c => c.checkVisibility()).textContent.trim()), namen: zeilen.map(r => r.querySelector('strong').textContent),
+    await until(`!!document.querySelector('#users-tbl tbody tr')`, 'Benutzerliste');
+    const z = await b.evaluate(`(() => { const lines = [...document.querySelectorAll('#users-tbl tbody tr')];
+      return { first: lines.map(r => [...r.cells].find(c => c.checkVisibility()).textContent.trim()), names: lines.map(r => r.querySelector('strong').textContent),
         ids: [...document.querySelectorAll('#users-tbl .user-id')].filter(c => c.checkVisibility()).length }; })()`);
-    assert.ok(z.namen.includes(NAME), 'Test data: the own account is in the list');
-    assert.deepEqual(z.erste, z.namen, 'every card starts with the name');
+    assert.ok(z.names.includes(NAME), 'Test data: the own account is in the list');
+    assert.deepEqual(z.first, z.names, 'every card starts with the name');
     assert.equal(z.ids, 0, 'the ID is not shown on the phone');
   });
 
   await t.test('voucher: one button size', async () => {
-    await b.auswerten(klick('.umenu-item[data-arg="vouchers"]'));
-    await bis(`!!document.querySelector('.voucher-row')`, 'Vouchers');
-    const sizes = await b.auswerten(
+    await b.evaluate(klick('.umenu-item[data-arg="vouchers"]'));
+    await until(`!!document.querySelector('.voucher-row')`, 'Vouchers');
+    const sizes = await b.evaluate(
       `[...document.querySelectorAll('.voucher-row :is(.v-btn, .btn)')].filter(k => k.checkVisibility()).map(k => getComputedStyle(k).fontSize)`,
     );
     assert.ok(sizes.length >= 4, `only ${sizes.length} buttons`);
@@ -223,42 +223,42 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
   });
 
   await t.test('200 %: axis short, header gives way', async () => {
-    await b.auswerten(
+    await b.evaluate(
       `document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`,
     );
     try {
       await geh('sammlung');
       await geh('finanzen');
-      await bis(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm', 200);
+      await until(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm', 200);
       assert.ok(
-        await b.auswerten(
+        await b.evaluate(
           `[...document.querySelectorAll('#portfolio-chart svg text')].some(x => /Tsd\\./.test(x.textContent))`,
         ),
         'Thousands short',
       );
-      await b.auswerten(`scrollTo(0, 0); true`);
-      await warte(200);
-      await b.auswerten(`scrollTo(0, 600); true`);
-      await warte(400);
-      const z = await b.auswerten(
-        `({ kopf: getComputedStyle(document.querySelector('header')).transform, leiste: getComputedStyle(document.querySelector('nav:not(.settings-nav)')).transform })`,
+      await b.evaluate(`scrollTo(0, 0); true`);
+      await sleep(200);
+      await b.evaluate(`scrollTo(0, 600); true`);
+      await sleep(400);
+      const z = await b.evaluate(
+        `({ head: getComputedStyle(document.querySelector('header')).transform, bar: getComputedStyle(document.querySelector('nav:not(.settings-nav)')).transform })`,
       );
-      assert.notEqual(z.kopf, 'none', 'the header moves away when scrolling');
-      assert.notEqual(z.leiste, 'none', 'the bar moves away when scrolling');
+      assert.notEqual(z.head, 'none', 'the header moves away when scrolling');
+      assert.notEqual(z.bar, 'none', 'the bar moves away when scrolling');
     } finally {
-      await b.auswerten(`document.documentElement.style.fontSize = ''; scrollTo(0, 0); true`);
+      await b.evaluate(`document.documentElement.style.fontSize = ''; scrollTo(0, 0); true`);
     }
   });
 
   await t.test('401 without success ends the session', async () => {
     // Like an upstream proxy: 401 without a JSON field success.
-    await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v2/wanted')
+    await b.evaluate(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v2/wanted')
       ? Promise.resolve(new Response('{"message":"Unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) : f(u, o); return true; })()`);
     await geh('merkliste');
-    await bis(
+    await until(
       `getComputedStyle(document.getElementById('login-screen')).display !== 'none' && !document.getElementById('login-hint').hidden`,
       'Sign-in with a hint',
     );
-    assert.match(await b.auswerten(text('#login-hint')), /Sitzung abgelaufen/);
+    assert.match(await b.evaluate(text('#login-hint')), /Sitzung abgelaufen/);
   });
 });

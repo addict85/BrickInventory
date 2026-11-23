@@ -42,7 +42,7 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
         ['99902-1', 'Wunsch'],
       ])
         await catalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
-      await holdsSet(db, uid, '99901-1', 1, { preis: 10 });
+      await holdsSet(db, uid, '99901-1', 1, { price: 10 });
       await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [
         location,
         uid,
@@ -52,12 +52,12 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
         `INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
         [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`],
       );
-      await holdsPart(db, uid, 'xss1', { storageId: location, preis: 1 });
+      await holdsPart(db, uid, 'xss1', { storageId: location, price: 1 });
       await db.run(`INSERT INTO minifig_custom (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
         uid,
         `${SPUR} Figur ${N}`,
       ]);
-      await holdsMinifig(db, uid, 'fig-xss1', { storageId: location, preis: 1 });
+      await holdsMinifig(db, uid, 'fig-xss1', { storageId: location, price: 1 });
       await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '99902-1', 'N')`, [uid]);
     },
   });
@@ -65,39 +65,42 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
+  const { b, until, settle } = app;
   // The start loads settings and prices afterwards; only then is the state settled.
-  await ruhig();
+  await settle();
 
   /** @param {string} name @param {string} hash @param {string} [ready] expression that becomes true when the data is in place */
-  const ansicht = async (name, hash, ready) => {
+  const viewName = async (name, hash, ready) => {
     await t.test(name, async () => {
-      await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-      await bis(ready ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
-      await ruhig();
-      const r = await b.auswerten(CHECK);
+      await b.evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
+      await until(
+        ready ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`,
+        `${name}: Daten sichtbar`,
+      );
+      await settle();
+      const r = await b.evaluate(CHECK);
       assert.deepEqual(r.fremd, [], `${name}: markup from data in the DOM`);
       assert.equal(r.xss, null, `${name}: payload executed`);
       assert.ok(r.asText, `${name}: payload is not shown as text — does the test still check anything?`);
     });
   };
-  await ansicht(
+  await viewName(
     'Sammlung',
     '#/sammlung',
     `document.querySelector('#gallery')?.innerText.includes(${JSON.stringify(SPUR + ' Set')})`,
   );
-  await ansicht(
+  await viewName(
     'Set-Detail',
     '#/sammlung/set/99901-1',
     `document.querySelector('#set-modal.open')?.innerText.includes(${JSON.stringify(SPUR)})`,
   );
-  await b.auswerten(`document.querySelector('#set-modal.open [data-click="closeModal"]')?.click(); true`);
-  await ansicht('Teile', '#/teile');
-  await ansicht('Figuren', '#/minifiguren');
-  await ansicht('Merkliste', '#/merkliste');
-  await ansicht('Finanzen', '#/finanzen');
+  await b.evaluate(`document.querySelector('#set-modal.open [data-click="closeModal"]')?.click(); true`);
+  await viewName('Teile', '#/teile');
+  await viewName('Figuren', '#/minifiguren');
+  await viewName('Merkliste', '#/merkliste');
+  await viewName('Finanzen', '#/finanzen');
   // The locations are in input fields here (rename); the name is then a value, not text.
-  await ansicht(
+  await viewName(
     'Lagerorte',
     '#/lagerorte',
     `[...document.querySelectorAll('.location-input')].some(i => i.value.includes(${JSON.stringify(SPUR)}))`,

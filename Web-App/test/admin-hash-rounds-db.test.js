@@ -31,12 +31,12 @@ test('admin account with the same number of rounds', async t => {
   t.after(() => db.pool.end().catch(() => {}));
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
-  const echt = console.log;
+  const original = console.log;
   console.log = () => {};
   try {
     await db.initSchema();
   } finally {
-    console.log = echt;
+    console.log = original;
   }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'no admin account created');

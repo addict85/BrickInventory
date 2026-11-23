@@ -24,65 +24,65 @@ const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const BOOT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8');
 
 /** A window with server design, device choice and system color. */
-function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
+function win({ server = 'classic', choice = null, dark = false } = {}) {
   const dom = new jsdom.JSDOM(`<!doctype html><html data-theme="${server}"><head></head><body></body></html>`, {
     runScripts: 'outside-only',
     url: 'http://localhost/',
   });
   const w = dom.window;
   const listener = [];
-  const mq = { matches: dunkel, addEventListener: (_e, f) => listener.push(f) };
+  const mq = { matches: dark, addEventListener: (_e, f) => listener.push(f) };
   w.matchMedia = () => mq;
   w.fetch = async () => ({ ok: false });
-  if (wahl) w.localStorage.setItem('bim_dark', wahl);
+  if (choice) w.localStorage.setItem('bim_dark', choice);
   w.eval(BOOT);
   const systemSwitch = d => {
     mq.matches = d;
     for (const f of listener) f();
   };
-  const hatDark = () => w.document.documentElement.hasAttribute('data-dark');
-  return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDark, systemSwitch };
+  const hasDark = () => w.document.documentElement.hasAttribute('data-dark');
+  return { w, theme: () => w.document.documentElement.getAttribute('data-theme'), dark: hasDark, systemSwitch };
 }
 
 test('without a choice the device follows the system', () => {
-  const { w, thema, dunkel } = fenster({ dunkel: true });
-  assert.equal(thema(), 'classic');
-  assert.equal(dunkel(), true, 'Default is „system“, the dark system was ignored');
+  const { w, theme, dark } = win({ dark: true });
+  assert.equal(theme(), 'classic');
+  assert.equal(dark(), true, 'Default is „system“, the dark system was ignored');
   assert.equal(w.__bimDarkValue(), 'system');
 });
 
 test('with the choice "server" the theme stays light — even with a dark system', () => {
-  const { thema, dunkel } = fenster({ wahl: 'server', dunkel: true });
-  assert.equal(thema(), 'classic');
-  assert.equal(dunkel(), false);
+  const { theme, dark } = win({ choice: 'server', dark: true });
+  assert.equal(theme(), 'classic');
+  assert.equal(dark(), false);
 });
 
 test('with the choice "system": dark with a dark system, and it follows the change', () => {
-  const { w, thema, dunkel, systemSwitch } = fenster({ wahl: 'system', dunkel: true });
-  assert.equal(dunkel(), true, 'stays light although the system is dark');
-  assert.equal(thema(), 'classic', 'the design stays — dark is a variant, not a different design');
+  const { w, theme, dark, systemSwitch } = win({ choice: 'system', dark: true });
+  assert.equal(dark(), true, 'stays light although the system is dark');
+  assert.equal(theme(), 'classic', 'the design stays — dark is a variant, not a different design');
   assert.equal(w.localStorage.getItem('bim_theme'), 'classic', 'Cache: the server design is remembered');
   systemSwitch(false);
-  assert.equal(dunkel(), false);
+  assert.equal(dark(), false);
   systemSwitch(true);
-  assert.equal(dunkel(), true);
-  assert.equal(thema(), 'classic');
+  assert.equal(dark(), true);
+  assert.equal(theme(), 'classic');
 });
 
 test('werkbank is already dark and gets no variant', () => {
-  const { thema, dunkel } = fenster({ server: 'werkbank', wahl: 'system', dunkel: true });
-  assert.equal(thema(), 'werkbank');
-  assert.equal(dunkel(), false);
+  const { theme, dark } = win({ server: 'werkbank', choice: 'system', dark: true });
+  assert.equal(theme(), 'werkbank');
+  assert.equal(dark(), false);
 });
 
 test('a later theme from the server applies, the device stays dark', () => {
-  const { w, thema, dunkel } = fenster({ wahl: 'system', dunkel: true });
+  const { w, theme, dark } = win({ choice: 'system', dark: true });
   w.__bimApplyTheme('brick');
-  assert.equal(thema(), 'brick');
-  assert.equal(dunkel(), true);
+  assert.equal(theme(), 'brick');
+  assert.equal(dark(), true);
   assert.equal(w.localStorage.getItem('bim_theme'), 'brick', 'Cache');
   w.__bimDark('server');
-  assert.equal(thema(), 'brick');
-  assert.equal(dunkel(), false);
+  assert.equal(theme(), 'brick');
+  assert.equal(dark(), false);
   assert.equal(w.__bimDarkValue(), 'server');
 });

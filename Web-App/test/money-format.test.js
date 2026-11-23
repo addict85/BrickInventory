@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 const { buildTestBundle } = require('./helpers/bundle');
 process.env.TEST_BUNDLE = buildTestBundle('geldformat', "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n");
-const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
+const { openUi, SIGNED_IN, waitFor } = require('./helpers/ui');
 
 /**
  * Does this call have a SECOND argument?
@@ -22,7 +22,7 @@ const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
  * parentheses (`fmtN(v.total_value, v.currency || accountCurrency)`) and calls. Therefore
  * the parenthesis depth is counted along and only a comma on level 1 counts.
  */
-function hatSecondArgument(src, ab) {
+function hasSecondArgument(src, ab) {
   let depth = 0;
   for (let i = ab; i < src.length; i++) {
     const c = src[i];
@@ -36,7 +36,7 @@ function hatSecondArgument(src, ab) {
 }
 
 test('every fmtN call names the currency', () => {
-  const dateien = fs
+  const files = fs
     .readdirSync(JS)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
     .map(f => [
@@ -46,18 +46,18 @@ test('every fmtN call names the currency', () => {
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, ''),
     ]);
-  assert.ok(dateien.length >= 10, `Only ${dateien.length} script files found`);
+  assert.ok(files.length >= 10, `Only ${files.length} script files found`);
 
   let found = 0;
-  const ohne = [];
-  for (const [rel, src] of dateien)
+  const without = [];
+  for (const [rel, src] of files)
     for (const m of src.matchAll(/\bfmtN\(/g)) {
       // The definition itself is not a call.
       if (/function\s+fmtN\($/.test(src.slice(0, m.index + 5))) continue;
       found++;
-      if (!hatSecondArgument(src, m.index + 4)) {
+      if (!hasSecondArgument(src, m.index + 4)) {
         const row = src.slice(0, m.index).split('\n').length;
-        ohne.push(`${rel}:${row}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
+        without.push(`${rel}:${row}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
       }
     }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
@@ -65,10 +65,10 @@ test('every fmtN call names the currency', () => {
   assert.ok(found >= 20, `Only ${found} fmtN calls found — pattern outdated?`);
 
   assert.deepEqual(
-    ohne.sort(),
+    without.sort(),
     [],
     'These fmtN calls name no currency:\n  ' +
-      ohne.join('\n  ') +
+      without.join('\n  ') +
       '\nEither it is missing (then the currency of another user shows there), ' +
       'or it is not an amount of money at all — then it should be ' +
       '`(n||0).toLocaleString(locale())`, as on the part tile.',
@@ -82,10 +82,10 @@ test('every fmtN call names the currency', () => {
  */
 test('the fallback of fmtN is the configured currency', async () => {
   const { w } = await openUi({
-    '/v2/settings/raw': { success: true, settings: { ...ANMELDUNG['/v2/settings/raw'].settings, currency: 'CHF' } },
+    '/v2/settings/raw': { success: true, settings: { ...SIGNED_IN['/v2/settings/raw'].settings, currency: 'CHF' } },
   });
   try {
-    assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `without currency: ${w.__fmtN(12.5)}`);
+    assert.ok(await waitFor(() => /CHF/.test(w.__fmtN(12.5))), `without currency: ${w.__fmtN(12.5)}`);
     assert.match(w.__fmtN(12.5, 'USD'), /\$|USD/, 'The named currency wins');
   } finally {
     w.close();

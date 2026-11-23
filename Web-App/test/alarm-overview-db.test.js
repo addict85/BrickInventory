@@ -23,7 +23,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, loadTranslations, ohneKommentare, testData } = require('./helpers/sources');
+const { buildAndRequire, loadTranslations, withoutComments, testData } = require('./helpers/sources');
 const { catalogSet } = require('./helpers/inventory');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -134,35 +134,35 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
 
   await t.test('3. with set name — and an unknown set does not drop out', async () => {
     const a = await allAlerts(ich.id);
-    const bekannt = a.find(x => x.set_number === '70002-1');
-    const unbekannt = a.find(x => x.set_number === '99999-9');
-    assert.equal(bekannt.name, 'Lennox Feuerwehr', 'Without names the list is a list of numbers — nobody reads that.');
+    const known = a.find(x => x.set_number === '70002-1');
+    const unknownOne = a.find(x => x.set_number === '99999-9');
+    assert.equal(known.name, 'Lennox Feuerwehr', 'Without names the list is a list of numbers — nobody reads that.');
     assert.ok(
-      unbekannt,
+      unknownOne,
       'An alert on a set the catalog does not know has disappeared. ' +
         'But that is exactly the row one looks for, because it behaves oddly (INNER instead of LEFT JOIN).',
     );
-    assert.equal(unbekannt.name, null, 'Unknown means null, not guessed as empty.');
+    assert.equal(unknownOne.name, null, 'Unknown means null, not guessed as empty.');
   });
 
   await t.test('4. the section is in the web app and gets loaded', () => {
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'The section is missing in the markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'The section has no heading.');
-    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
+    const gallery = withoutComments(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
     assert.match(
-      galerie,
+      gallery,
       /loadAlertOverview\(\)/,
       'Opening the settings does not load the overview — the section would stay empty.',
     );
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
+    const js = withoutComments(require('./helpers/sources').viewSource('settings'));
     // Changing and deleting go via the EXISTING route to the set: two
     // write paths to the same state would be two places where the rules
     // auseinanderlaufen.
     assert.match(
       js,
       /'PUT', `\/v2\/sets\/\$\{encodeURIComponent\(setNumber\)\}\/alert`/,
-      'Der Wert lässt sich nicht ändern — genau das hat Marco verlangt.',
+      'The value cannot be changed — exactly what Marco asked for.',
     );
     assert.match(js, /'DELETE', `\/v2\/sets\//, 'The alert cannot be deleted — exactly what Marco asked for.');
   });
@@ -204,7 +204,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('6. the row opens the detail dialog, the number field does not', () => {
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
+    const js = withoutComments(require('./helpers/sources').viewSource('settings'));
     assert.match(
       js,
       /data-click="openModal"/,
@@ -214,27 +214,27 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     // data-click. Without `stopEvent` on the input field every click into the field opened
     // the dialog above the field one was just about to type into.
     assert.match(js, /data-click="stopEvent"/, 'The number field does not stop the click — typing opened the dialog.');
-    assert.match(js, /thumbUrl\(/, 'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
+    assert.match(js, /thumbUrl\(/, 'The row shows no preview image — like the finances, that was the assignment.');
   });
 
   await t.test('7. every delivered field also arrives in the app', async () => {
     const a = await allAlerts(ich.id);
-    const felder = Object.keys(a[0]);
-    assert.ok(felder.length >= 10, `Only ${felder.length} fields — query broken?`);
+    const fields = Object.keys(a[0]);
+    assert.ok(fields.length >= 10, `Only ${fields.length} fields — query broken?`);
     // The app's model (shared/app-interface.json, generated from its source text).
     const app = require('./helpers/contract').appInterface().models.PriceAlert?.fields ?? [];
     assert.ok(app.includes('set_number'), 'Model PriceAlert not found — renamed?');
-    const fehlen = felder.filter(k => !app.includes(k));
+    const absent = fields.filter(k => !app.includes(k));
     assert.deepEqual(
-      fehlen,
+      absent,
       [],
-      `/v2/alerts delivers these fields, and the app has no place for them:\n  ${fehlen.join('\n  ')}\nThey would arrive there as null, without an error and without a hint.`,
+      `/v2/alerts delivers these fields, and the app has no place for them:\n  ${absent.join('\n  ')}\nThey would arrive there as null, without an error and without a hint.`,
     );
   });
 
   await t.test('8. armed/disarmed is recognizable without color', () => {
     // Marco's finding from 26.09.
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
+    const js = withoutComments(require('./helpers/sources').viewSource('settings'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. The marker comes from a class, not from a color in the markup.
@@ -244,17 +244,17 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     assert.match(js, /alert-badge-off/, 'The disarmed state has no class of its own.');
     assert.ok(
       !/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
-      'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.',
+      'The badge still colours directly in the markup — then the statement depends on colour again.',
     );
 
     // 2. The AREA distinguishes: filled versus outlined. That is the
     //    difference one sees even when both colors look
     //    the same.
     const an = (css.match(/\.alert-badge-on\{([^}]*)\}/) || [])[1] || '';
-    const aus = (css.match(/\.alert-badge-off\{([^}]*)\}/) || [])[1] || '';
-    assert.ok(an && aus, 'The two classes are not styled.');
+    const out = (css.match(/\.alert-badge-off\{([^}]*)\}/) || [])[1] || '';
+    assert.ok(an && out, 'The two classes are not styled.');
     assert.match(an, /background:var\(--s200\)/, 'The armed state is not filled.');
-    assert.match(aus, /border-color:var\(--bdr\)/, 'The disarmed state is not outlined.');
+    assert.match(out, /border-color:var\(--bdr\)/, 'The disarmed state is not outlined.');
     assert.match(an, /font-weight:600/, 'The font weight does not distinguish the two either — one feature less.');
 
     // 3. The WORD is a pair, in BOTH languages. Previously it was “scharf"
@@ -316,13 +316,13 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('10. deleting works', async () => {
-    const vorher = (await allAlerts(ich.id)).length;
+    const prior = (await allAlerts(ich.id)).length;
     await deleteAlert(ich.id, '99999-9', 'U');
     const a = await allAlerts(ich.id);
     // Against the number measured BEFORE and not against a fixed one: whoever adds
     // an alert above should not fail here. Exactly that just
     // happened when the household case was added.
-    assert.equal(a.length, vorher - 1, `After deleting there are ${a.length} alerts, before there were ${vorher}.`);
+    assert.equal(a.length, prior - 1, `After deleting there are ${a.length} alerts, before there were ${prior}.`);
     assert.ok(!a.some(x => x.set_number === '99999-9'), 'The deleted alert is still in the overview.');
   });
 });

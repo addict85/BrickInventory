@@ -47,37 +47,37 @@ test('HTML comment ends on the content line', () => {
 });
 
 test('without a reference the text stays unchanged; a second run changes nothing', () => {
-  const ohne = '/** Warum.\n *\n */\n\n\n// x\n';
-  assert.equal(removeReferences(ohne), ohne);
-  const einmal = removeReferences(`/** Warum.\n * ${V} */\n// a ${V}\n`);
-  assert.equal(removeReferences(einmal), einmal);
+  const without = '/** Warum.\n *\n */\n\n\n// x\n';
+  assert.equal(removeReferences(without), without);
+  const once = removeReferences(`/** Warum.\n * ${V} */\n// a ${V}\n`);
+  assert.equal(removeReferences(once), once);
 });
 
 test('the script cleans a tree and leaves node_modules and foreign files alone', () => {
-  const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'begr-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'begr-'));
   const script = (/** @type {string[]} */ ...args) =>
-    spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'remove-rationales.js'), ...args, wurzel], {
+    spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'remove-rationales.js'), ...args, root], {
       encoding: 'utf8',
     });
-  const lies = (/** @type {string} */ rel) => fs.readFileSync(path.join(wurzel, rel), 'utf8');
+  const read = (/** @type {string} */ rel) => fs.readFileSync(path.join(root, rel), 'utf8');
   try {
-    fs.mkdirSync(path.join(wurzel, 'baum'));
-    fs.mkdirSync(path.join(wurzel, 'node_modules'));
-    fs.writeFileSync(path.join(wurzel, 'baum', 'a.ts'), `// Warum.\n// ${V}\n`);
-    fs.writeFileSync(path.join(wurzel, 'node_modules', 'b.js'), `// ${V}\n`);
-    fs.writeFileSync(path.join(wurzel, 'baum', 'c.md'), `${V}\n`);
+    fs.mkdirSync(path.join(root, 'baum'));
+    fs.mkdirSync(path.join(root, 'node_modules'));
+    fs.writeFileSync(path.join(root, 'baum', 'a.ts'), `// Warum.\n// ${V}\n`);
+    fs.writeFileSync(path.join(root, 'node_modules', 'b.js'), `// ${V}\n`);
+    fs.writeFileSync(path.join(root, 'baum', 'c.md'), `${V}\n`);
     const check = script('--pruefen');
     assert.equal(check.status, 1);
     assert.match(check.stdout, /1 Dateien mit Verweisen\nbaum[\\/]a\.ts/);
-    assert.equal(lies('baum/a.ts'), `// Warum.\n// ${V}\n`, '--pruefen does not write');
+    assert.equal(read('baum/a.ts'), `// Warum.\n// ${V}\n`, '--pruefen does not write');
     assert.equal(script().status, 0);
-    assert.equal(lies('baum/a.ts'), '// Warum.\n');
-    assert.equal(lies('node_modules/b.js'), `// ${V}\n`);
-    assert.equal(lies('baum/c.md'), `${V}\n`);
-    const nochmal = script('--pruefen');
-    assert.equal(nochmal.status, 0, 'a second run finds nothing');
-    assert.match(nochmal.stdout, /0 Dateien mit Verweisen/);
+    assert.equal(read('baum/a.ts'), '// Warum.\n');
+    assert.equal(read('node_modules/b.js'), `// ${V}\n`);
+    assert.equal(read('baum/c.md'), `${V}\n`);
+    const again = script('--pruefen');
+    assert.equal(again.status, 0, 'a second run finds nothing');
+    assert.match(again.stdout, /0 Dateien mit Verweisen/);
   } finally {
-    fs.rmSync(wurzel, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });

@@ -33,7 +33,7 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     NEIGHBOR = `Nachbar_${process.pid}`,
     PASS = 'Regeln-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEIGHBOR]]);
-  const anlegen = async n =>
+  const create = async n =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -41,18 +41,18 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
         [n, `${n.toLowerCase()}@example.org`, await bcrypt.hash(PASS, 4)],
       )
     ).id;
-  const uid = await anlegen(NAME);
-  await anlegen(NEIGHBOR);
+  const uid = await create(NAME);
+  await create(NEIGHBOR);
   t.after(async () => {
     await db.run('DROP TRIGGER IF EXISTS regeln_token_sperre ON api_tokens').catch(() => {});
     await db.run('DROP FUNCTION IF EXISTS regeln_token_sperre()').catch(() => {});
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEIGHBOR]]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const callFn = async (methode, path, body) => {
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
+  const callFn = async (method, path, body) => {
     const r = await fetch(`${base}/api/v2/auth${path}`, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: body && JSON.stringify(body),
     });
@@ -67,8 +67,8 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     const erst = await pairQr((p, body) => callFn('POST', p, body), qr.body);
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.body.userId, uid);
-    const zweit = await callFn('POST', '/qr-login', { token: qr.body.token });
-    assert.equal(zweit.status, 401, 'The same code opens the account a second time');
+    const secondTry = await callFn('POST', '/qr-login', { token: qr.body.token });
+    assert.equal(secondTry.status, 401, 'The same code opens the account a second time');
   });
 
   await t.test('profile: username by the same rule and regardless of case', async () => {
@@ -76,8 +76,8 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     assert.deepEqual([invalid.status, invalid.body.code], [400, 'username_invalid']);
     const mail = await callFn('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
     assert.equal(mail.status, 400, 'An e-mail address as user name — the sign-in searches both');
-    const vergeben = await callFn('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
-    assert.deepEqual([vergeben.status, vergeben.body.code], [400, 'username_taken']);
+    const taken = await callFn('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
+    assert.deepEqual([taken.status, taken.body.code], [400, 'username_taken']);
     assert.equal((await db.get('SELECT username FROM users WHERE id = $1', [uid])).username, NAME);
   });
 

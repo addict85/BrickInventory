@@ -90,7 +90,7 @@ function fromZip(buf, name) {
   // archiver writes exactly one such header per file.
   for (let i = 0; i + 30 <= buf.length; i++) {
     if (buf.readUInt32LE(i) !== 0x04034b50) continue;
-    const methode = buf.readUInt16LE(i + 8);
+    const method = buf.readUInt16LE(i + 8);
     const namLen = buf.readUInt16LE(i + 26);
     const extraLen = buf.readUInt16LE(i + 28);
     const fileName = buf.slice(i + 30, i + 30 + namLen).toString('utf-8');
@@ -100,9 +100,9 @@ function fromZip(buf, name) {
     // (bit 3 of the flags field). archiver streams and sets the bit —
     // then the size is 0 and the rest of the buffer is inflated until
     // zlib detects the end of the stream. inflateRawSync can do that.
-    const roh = buf.slice(start);
-    if (methode === 0) return roh.toString('utf-8');
-    return zlib.inflateRawSync(roh, { finishFlush: zlib.constants.Z_SYNC_FLUSH }).toString('utf-8');
+    const raw = buf.slice(start);
+    if (method === 0) return raw.toString('utf-8');
+    return zlib.inflateRawSync(raw, { finishFlush: zlib.constants.Z_SYNC_FLUSH }).toString('utf-8');
   }
   return null;
 }
@@ -119,13 +119,13 @@ function csvFromItem() {
 /** Rows of a CSV as objects — the header row determines the keys. */
 function csvRows(text) {
   const withoutBom = text.replace(/^﻿/, '');
-  const [kopf, ...rest] = withoutBom.trim().split(/\r?\n/);
-  const spalten = kopf.split(',').map(s => s.replace(/^"|"$/g, ''));
+  const [head, ...rest] = withoutBom.trim().split(/\r?\n/);
+  const columns = head.split(',').map(s => s.replace(/^"|"$/g, ''));
   return rest
     .filter(z => z.trim())
     .map(z => {
       const values = z.split(',').map(s => s.replace(/^"|"$/g, ''));
-      return Object.fromEntries(spalten.map((s, i) => [s, values[i] ?? '']));
+      return Object.fromEntries(columns.map((s, i) => [s, values[i] ?? '']));
     });
 }
 
@@ -139,7 +139,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   await setup();
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
 
   let csvText = '';
 
@@ -152,8 +152,8 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     csvText = fromZip(buf, 'merkliste.csv');
     assert.ok(
       csvText !== null,
-      'merkliste.csv is NOT in the archive. Marco asked for „analog den anderen ' +
-        'Seiten" — the three others are there, this one must be too.',
+      '„merkliste.csv“ is NOT in the archive. Marco asked for „analog den anderen Seiten“ ' +
+        '— the three others are there, this one must be too.',
     );
     // And the three existing ones are still there: an export that brings the new
     // file along and loses an old one is no progress.
@@ -163,14 +163,14 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   });
 
   await t.test('2. the file carries number, condition and date of every wishlist item', () => {
-    const zeilen = csvRows(csvText);
+    const lines = csvRows(csvText);
     assert.equal(
-      zeilen.length,
+      lines.length,
       ITEM.length,
-      `${zeilen.length} rows instead of ${ITEM.length} — the whole list is exported`,
+      `${lines.length} rows instead of ${ITEM.length} — the whole list is exported`,
     );
     for (const p of ITEM) {
-      const z = zeilen.find(x => x.set_number === p.sn && x.condition === p.c);
+      const z = lines.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(
         z,
         `(${p.sn}, ${p.c}) is missing in the export. Without the condition in the file ` +
@@ -196,15 +196,15 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     assert.equal(b.added, ITEM.length, `${b.added} created instead of ${ITEM.length}`);
     assert.equal(b.errors, 0, `${b.errors} errors: ${JSON.stringify(b.results)}`);
 
-    const wieder = await db.all(
+    const again = await db.all(
       `SELECT set_number, condition,
               TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS am
          FROM wanted WHERE user_id=$1 ORDER BY set_number, condition`,
       [MAIN],
     );
-    assert.equal(wieder.length, ITEM.length, 'Not all wanted items are back');
+    assert.equal(again.length, ITEM.length, 'Not all wanted items are back');
     for (const p of ITEM) {
-      const z = wieder.find(x => x.set_number === p.sn && x.condition === p.c);
+      const z = again.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(z, `(${p.sn}, ${p.c}) did not come back`);
       // The core of point 3: the date is the OLD one, not today. „Auf der
       // Liste seit" is the only statement a wishlist item makes about

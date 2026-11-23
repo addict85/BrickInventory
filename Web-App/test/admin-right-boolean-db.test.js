@@ -29,11 +29,11 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [id]);
     await db.pool.end().catch(() => {});
   });
-  const voll = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
+  const full = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
   const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
 
   await t.test('a token with scope full carries true, with app false', async () => {
-    assert.equal((await A.checkToken(voll)).user?.is_admin, true);
+    assert.equal((await A.checkToken(full)).user?.is_admin, true);
     assert.equal((await A.checkToken(app)).user?.is_admin, false);
   });
 
@@ -41,16 +41,16 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
     const { requireToken } = _req('routes/api/middleware.js').guardFor(
       require('./helpers/sources').testServices().account,
     );
-    for (const [token, soll] of [
-      [voll, true],
+    for (const [token, want] of [
+      [full, true],
       [app, false],
     ]) {
       const req = { method: 'GET', path: '/x', headers: { authorization: `Bearer ${token}` }, ip: '127.0.0.1' };
-      await new Promise((weiter, error) => {
+      await new Promise((next, error) => {
         const res = { status: () => res, json: r => error(new Error(JSON.stringify(r))), setHeader: () => {} };
-        requireToken(req, res, weiter);
+        requireToken(req, res, next);
       });
-      assert.equal(req.apiUser.is_admin, soll);
+      assert.equal(req.apiUser.is_admin, want);
     }
   });
 });

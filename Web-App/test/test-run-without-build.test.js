@@ -18,29 +18,29 @@ const ROOT = path.join(__dirname, '..');
 
 test('a run inside a run does not build', { timeout: 120_000 }, t => {
   require('./helpers/sources').buildAndRequire();
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-ohne-bau-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const output = path.join(ordner, 'marke.txt');
-  const datei = path.join(ordner, 'marke.test.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-ohne-bau-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const output = path.join(dir, 'marke.txt');
+  const file = path.join(dir, 'marke.test.js');
   fs.writeFileSync(
-    datei,
+    file,
     `require('node:test')('marke', () => require('node:fs').writeFileSync(${JSON.stringify(output)}, String(process.env.TEST_RUN_BUILT)));\n`,
   );
   const times = () =>
     ['dist/server.js', 'dist/db/migrations', 'public/js/app.bundle.js'].map(
       f => fs.statSync(path.join(ROOT, f)).mtimeMs,
     );
-  const vorher = times();
+  const prior = times();
   const env = { ...process.env, TEST_RUN_BUILT: '1' };
-  for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
+  for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_OWN', 'NODE_TEST_CONTEXT'])
     delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), datei], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), file], {
     cwd: ROOT,
     env,
     encoding: 'utf8',
     timeout: 100_000,
   });
   assert.equal(r.status, 0, (r.stdout + r.stderr).slice(-2000));
-  assert.deepEqual(times(), vorher, 'dist/ and bundles stay untouched');
+  assert.deepEqual(times(), prior, 'dist/ and bundles stay untouched');
   assert.equal(fs.readFileSync(output, 'utf8'), '1', 'the children inherit the marker');
 });

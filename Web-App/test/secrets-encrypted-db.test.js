@@ -38,9 +38,9 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'");
+  const prior = await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'");
   t.after(async () => {
-    if (vorher) await db.run("UPDATE global_settings SET value = $1 WHERE key = 'brickset_api_key'", [vorher.value]);
+    if (prior) await db.run("UPDATE global_settings SET value = $1 WHERE key = 'brickset_api_key'", [prior.value]);
     else await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -49,15 +49,15 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
 
   await t.test('global keys', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');
-    const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
-    assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
+    const raw = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
+    assert.ok(raw.startsWith('v2:') && !raw.includes('4242'), raw);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
     const parsed = await settings.readSettings(uid, true);
     assert.equal(parsed.brickset_api_key, '\u2022'.repeat(12), 'the mask only says „gesetzt“');
   });
 
   await t.test('voucher PIN', async () => {
-    const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+    const { base } = testServer(_req, { session: { userId: uid }, t });
     const r = await fetch(`${base}/api/v2/vouchers`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -66,8 +66,8 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.equal(b.voucher.pin, '•••', 'only the mask to the outside');
-    const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
-    assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
+    const raw = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
+    assert.ok(raw.startsWith('v2:') && !raw.includes('8642'), raw);
     assert.equal(
       (await require('./helpers/sources').testArea('vouchers').vouchers.voucher(uid, b.voucher.id)).pin,
       '8642',
@@ -78,9 +78,9 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
   await t.test('TOTP secret', async () => {
     const zf = _req('src/factors/secondFactor.js');
     const secret = await zf.beginSetup(uid);
-    const roh = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
-    assert.ok(roh.startsWith('v2:') && !roh.includes(secret), roh);
-    assert.equal(g.decrypt(roh, zf.secondFactorContext(uid)), secret);
+    const raw = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
+    assert.ok(raw.startsWith('v2:') && !raw.includes(secret), raw);
+    assert.equal(g.decrypt(raw, zf.secondFactorContext(uid)), secret);
   });
 
   await t.test('legacy stock is encrypted afterwards', async () => {
@@ -96,21 +96,21 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
     });
     await db.run("UPDATE vouchers SET pin = '9753' WHERE id = $1", [id]);
     await gs.reencryptNumbers();
-    const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
-    assert.ok(roh.startsWith('v2:'), roh);
-    assert.equal(g.decrypt(roh, gs.pinContext(uid, id)), '9753');
+    const raw = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
+    assert.ok(raw.startsWith('v2:'), raw);
+    assert.equal(g.decrypt(raw, gs.pinContext(uid, id)), '9753');
   });
 
   await t.test('wrong key yields null, not nonsense', async () => {
-    const wert = g.encrypt('geheim', g.context('probe'));
+    const value = g.encrypt('geheim', g.context('probe'));
     environment({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
     g._forgetKey();
-    const echt = console.warn;
+    const original = console.warn;
     console.warn = () => {};
     try {
-      assert.equal(g.decrypt(wert, g.context('probe')), null);
+      assert.equal(g.decrypt(value, g.context('probe')), null);
     } finally {
-      console.warn = echt;
+      console.warn = original;
     }
   });
 });

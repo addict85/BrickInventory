@@ -45,15 +45,15 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   const D = { ...D_, rememberPricesBefore: n => asAccount(uid, () => rememberPricesBefore(n)) };
   const repo = require('./helpers/sources').testArea('jobQueue').jobs;
   const { createWorker } = _req('jobs/jobWorker.js');
-  const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'price_refresh'`);
-  const zeilen = () =>
+  const clear = () => db.run(`DELETE FROM jobs WHERE type = 'price_refresh'`);
+  const lines = () =>
     db.all(
       `SELECT id::text AS id, status, waiting, payload->'items' AS items, payload->>'currency' AS currency
          FROM jobs WHERE type = 'price_refresh' AND user_id = $1 ORDER BY id`,
       [uid],
     );
   t.after(async () => {
-    await leeren();
+    await clear();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await require('./helpers/sources')
       .testArea('jobQueue')
@@ -61,14 +61,14 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await leeren();
+  await clear();
 
   await t.test('per account and currency one open job that takes in new items', async () => {
     const a = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1), set(2)] });
     const b = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(2), set(3)] });
     assert.equal(b, a, 'a second list queued a second job');
     await D.rememberPricesBefore({ user_id: uid, currency: 'EUR', items: [set(9)] });
-    const z = await zeilen();
+    const z = await lines();
     assert.deepEqual(
       z.map(x => [x.currency, x.status, x.items.map(p => p.number)]),
       [
@@ -79,36 +79,36 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   });
 
   await t.test('at most 2000 items, the older ones first', async () => {
-    await leeren();
-    const viele = (von, n) => Array.from({ length: n }, (_, i) => set(von + i));
-    await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: viele(0, 1500) });
-    await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: viele(1000, 1500) });
-    const [z] = await zeilen();
+    await clear();
+    const many = (from, n) => Array.from({ length: n }, (_, i) => set(from + i));
+    await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: many(0, 1500) });
+    await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: many(1000, 1500) });
+    const [z] = await lines();
     assert.equal(z.items.length, 2000);
     assert.deepEqual([z.items[0].number, z.items[1999].number], ['0-1', '1999-1']);
   });
 
   await t.test('concurrent valuations still enqueue only one', async () => {
-    await leeren();
+    await clear();
     await Promise.all(
       Array.from({ length: 8 }, (_, i) =>
         D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(100 + i), set(200)] }),
       ),
     );
-    const z = await zeilen();
+    const z = await lines();
     assert.equal(z.length, 1, `${z.length} open jobs`);
     assert.equal(z[0].items.length, 9);
   });
 
   await t.test('while one runs, at most one follow-up job is added', async () => {
-    await leeren();
+    await clear();
     await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1)] });
-    const lauf = await repo.claimJob(['price_refresh'], 60);
-    assert.ok(lauf);
+    const run = await repo.claimJob(['price_refresh'], 60);
+    assert.ok(run);
     await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(2)] });
     await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(3)] });
     assert.deepEqual(
-      (await zeilen()).map(x => [x.status, x.items.length]),
+      (await lines()).map(x => [x.status, x.items.length]),
       [
         ['running', 1],
         ['pending', 2],
@@ -117,22 +117,22 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   });
 
   await t.test('the running one goes back while its follow-up job waiting', async () => {
-    const bis = new Date(Date.now() + 6 * 3600_000);
-    for (const zurueck of [
-      a => D.moved(a, bis, 'BrickLink-Tageskontingent erschöpft', false),
+    const until = new Date(Date.now() + 6 * 3600_000);
+    for (const back of [
+      a => D.moved(a, until, 'BrickLink-Tageskontingent erschöpft', false),
       a => D.failed(a, 'Quelle weg'),
       a => repo.giveBack(a),
     ]) {
-      await leeren();
+      await clear();
       await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1)] });
-      const lauf = await repo.claimJob(['price_refresh'], 60);
+      const run = await repo.claimJob(['price_refresh'], 60);
       const sequence = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1), set(2)] });
-      await zurueck(lauf);
-      const z = await zeilen();
+      await back(run);
+      const z = await lines();
       assert.deepEqual(
         z.map(x => [x.id, x.status]),
         [
-          [lauf.id, 'cancelled'],
+          [run.id, 'cancelled'],
           [sequence, 'pending'],
         ],
       );
@@ -140,40 +140,40 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   });
 
   await t.test('postponed waiting, no longer occupies', async () => {
-    await leeren();
+    await clear();
     await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1)] });
-    const lauf = await repo.claimJob(['price_refresh'], 60);
-    await D.moved(lauf, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
+    const run = await repo.claimJob(['price_refresh'], 60);
+    await D.moved(run, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
     assert.deepEqual(
-      (await zeilen()).map(x => [x.status, x.waiting]),
+      (await lines()).map(x => [x.status, x.waiting]),
       [['pending', true]],
     );
     await repo.claimJob(['price_refresh'], 60);
     assert.deepEqual(
-      (await zeilen()).map(x => [x.status, x.waiting]),
+      (await lines()).map(x => [x.status, x.waiting]),
       [['running', false]],
     );
   });
 
   await t.test('progress in whole numbers, and a failed report does not stop the following ones', async () => {
-    await leeren();
+    await clear();
     const id = await D.rememberPricesBefore({ user_id: uid, currency: 'CHF', items: [set(1)] });
     const state = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);
-    const gesehen = [];
+    const seen = [];
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
       price_refresh: {
         run: async (_n, k) => {
           await k.progress({ done: 5.532, total: 8 });
-          gesehen.push(await state());
+          seen.push(await state());
           // BigInt cannot be written as JSON: this one report fails.
           await assert.rejects(k.progress({ done: 6, gross: 1n }));
-          gesehen.push(await k.progress({ done: 7, total: 8 }));
-          gesehen.push(await state());
+          seen.push(await k.progress({ done: 7, total: 8 }));
+          seen.push(await state());
         },
       },
     });
     assert.equal(await w.processOne(), true);
-    assert.deepEqual(gesehen, [{ done: 5, total: 8 }, true, { done: 7, total: 8 }]);
-    assert.equal((await zeilen())[0].status, 'done');
+    assert.deepEqual(seen, [{ done: 5, total: 8 }, true, { done: 7, total: 8 }]);
+    assert.equal((await lines())[0].status, 'done');
   });
 });

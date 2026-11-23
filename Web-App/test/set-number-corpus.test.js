@@ -18,20 +18,20 @@ const { setNumberCandidates } = _req('src/catalog/productTitle.js');
 
 const ROOT = path.join(__dirname, '..');
 const CORPUS_FILE = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
-const korpus = JSON.parse(fs.readFileSync(CORPUS_FILE, 'utf8')).faelle;
+const corpus = JSON.parse(fs.readFileSync(CORPUS_FILE, 'utf8')).faelle;
 
 test('every case of the shared corpus yields the same first candidate', () => {
   let withExpectation = 0,
     withoutCandidate = 0,
     threeDigit = 0;
-  for (const [i, fall] of korpus.entries()) {
+  for (const [i, fall] of corpus.entries()) {
     const k = setNumberCandidates(fall.text, 2026);
-    const ist = k[0] ?? null;
+    const actual = k[0] ?? null;
     assert.equal(
-      ist,
+      actual,
       fall.erwartet,
       `corpus case ${i}: ${JSON.stringify(fall.text)}\n` +
-        `  expected: ${fall.erwartet}\n  got: ${ist}  (all: ${JSON.stringify(k)})\n` +
+        `  expected: ${fall.erwartet}\n  got: ${actual}  (all: ${JSON.stringify(k)})\n` +
         `  why: ${fall.warum}`,
     );
     if (fall.erwartet === null) withoutCandidate++;
@@ -40,7 +40,7 @@ test('every case of the shared corpus yields the same first candidate', () => {
   }
 
   // Self-proof 1: the corpus was really read.
-  assert.ok(korpus.length >= 15, `only ${korpus.length} cases — has the file shrunk?`);
+  assert.ok(corpus.length >= 15, `only ${corpus.length} cases — has the file shrunk?`);
   // Self-proof 2: both directions are represented. Without that the corpus could
   // degenerate into nothing but zero hits and still be green.
   assert.ok(withExpectation >= 10, `only ${withExpectation} cases with an expected number`);
@@ -53,12 +53,12 @@ test('every case of the shared corpus yields the same first candidate', () => {
 test('every corpus case has a rationale', () => {
   // A case without `warum` can no longer be assessed in half a year —
   // and whoever then sees it red does not know whether he may change it.
-  for (const [i, fall] of korpus.entries()) {
+  for (const [i, fall] of corpus.entries()) {
     assert.equal(typeof fall.text, 'string', `case ${i} without text`);
     assert.ok((fall.warum || '').length >= 20, `case ${i} without a reason: ${fall.warum}`);
     assert.ok(
       fall.erwartet === null || typeof fall.erwartet === 'string',
-      `case ${i}: "erwartet" must be a string or null`,
+      `case ${i}: „erwartet“ must be a string or null`,
     );
   }
 });

@@ -14,47 +14,47 @@ const ROOT = path.join(__dirname, '..');
 const EXCEPTIONS = new Set([]);
 
 /** Source text without comments, line by line: a regex would take the /* in '/data/x/*' for a comment. */
-function ohneKommentare(s) {
-  const zeilen = [];
-  let imBlock = false;
+function withoutComments(s) {
+  const lines = [];
+  let inBlock = false;
   for (const z of String(s).split('\n')) {
     const t = z.trim();
-    if (imBlock) {
-      zeilen.push('');
-      if (t.endsWith('*/')) imBlock = false;
+    if (inBlock) {
+      lines.push('');
+      if (t.endsWith('*/')) inBlock = false;
       continue;
     }
     if (t.startsWith('/*')) {
-      zeilen.push('');
-      if (!t.includes('*/')) imBlock = true;
+      lines.push('');
+      if (!t.includes('*/')) inBlock = true;
       continue;
     }
-    zeilen.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
+    lines.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
   }
-  return zeilen.join('\n');
+  return lines.join('\n');
 }
 
 /** All .ts files of the inner layers. */
 function innerFiles() {
   const found = [];
-  const lauf = rel => {
-    const voll = path.join(ROOT, rel);
-    if (!fs.existsSync(voll)) return;
-    for (const e of fs.readdirSync(voll, { withFileTypes: true })) {
+  const run = rel => {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)) return;
+    for (const e of fs.readdirSync(full, { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
+      if (e.isDirectory()) run(kind);
       else if (e.name.endsWith('.ts')) found.push(kind);
     }
   };
   // startup/ is the outsourced server start (only server.ts uses it) and
   // counts to the outer layer; its own rule stands further below.
-  ['src', 'jobs', 'clients', 'db'].forEach(lauf);
+  ['src', 'jobs', 'clients', 'db'].forEach(run);
   return found;
 }
 
 /** Source text of a file (relative to ROOT) without comments. */
 function sourceText(rel) {
-  return ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  return withoutComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 }
 
 /** All targets of import/require of a file (relative to ROOT), raw. */
@@ -65,26 +65,26 @@ function importList(rel) {
 
 /** Imports and require() from routes/, per file. */
 function afterOuter(rel) {
-  const treffer = new Set();
-  for (const ziel of importList(rel).filter(z => /routes\//.test(z)))
-    treffer.add(ziel.replace(/^.*?(routes\/)/, '$1').replace(/\.js$/, ''));
-  return [...treffer];
+  const hits = new Set();
+  for (const target of importList(rel).filter(z => /routes\//.test(z)))
+    hits.add(target.replace(/^.*?(routes\/)/, '$1').replace(/\.js$/, ''));
+  return [...hits];
 }
 
 test('no domain layer imports from routes/ — except the named cases', () => {
-  const dateien = innerFiles();
+  const files = innerFiles();
   // Self-proof: if the search finds no files, the check below would be
   // silently green. MEASURED there are over sixty.
-  assert.ok(dateien.length > 40, `Only ${dateien.length} files found in the inner layers — folder renamed?`);
+  assert.ok(files.length > 40, `Only ${files.length} files found in the inner layers — folder renamed?`);
 
-  const neu = [];
-  for (const d of dateien)
-    for (const ziel of afterOuter(d)) {
-      const marke = `${d} -> ${ziel}`;
-      if (!EXCEPTIONS.has(marke)) neu.push(marke);
+  const fresh = [];
+  for (const d of files)
+    for (const target of afterOuter(d)) {
+      const mark = `${d} -> ${target}`;
+      if (!EXCEPTIONS.has(mark)) fresh.push(mark);
     }
   assert.deepEqual(
-    neu,
+    fresh,
     [],
     'New dependency from a domain file on a ROUTE. The function belongs ' +
       'in the layer that needs it — otherwise every user pulls in the HTTP machinery ' +
@@ -96,14 +96,14 @@ test('a v1 route imports no other route file', () => {
   // Shared things belong in src/<bereich>/ (manualParts, manualMinifigs). A
   // route that imports a route drags its router including middleware along.
   // Counter-check (28.10.2026): require('../parts') in wanted.ts → red.
-  const ordner = path.join(ROOT, 'routes/api');
-  const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
-  assert.ok(dateien.length > 10, `only ${dateien.length} v1 files found`);
-  const treffer = [];
-  for (const f of dateien)
-    for (const ziel of importList(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
-      treffer.push(`api/${f} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+  const folder = path.join(ROOT, 'routes/api');
+  const files = fs.readdirSync(folder).filter(f => f.endsWith('.ts'));
+  assert.ok(files.length > 10, `only ${files.length} v1 files found`);
+  const hits = [];
+  for (const f of files)
+    for (const target of importList(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
+      hits.push(`api/${f} -> ${target}`);
+  assert.deepEqual(hits, []);
 });
 
 test('no route imports another route file', () => {
@@ -111,36 +111,36 @@ test('no route imports another route file', () => {
   // api/index.ts, auth.ts (from routes/auth/) and api/settings.ts (settingsGlobal behind requireLogin) are allowed.
   // Counter-check (10.11.2026): `import { requireLogin } from '../auth'` in routes/api/minifigs.ts → red;
   // (14.11.2026) `import { buildSetsRouter } from './sets'` in routes/api/settingsGlobal.ts → rot.
-  const dateien = [];
-  const lauf = rel => {
+  const files = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) dateien.push(kind);
+      if (e.isDirectory()) run(kind);
+      else if (e.name.endsWith('.ts')) files.push(kind);
     }
   };
-  lauf('routes');
-  assert.ok(dateien.length > 15, `only ${dateien.length} route files found`);
-  const treffer = [];
-  for (const d of dateien.filter(d => d !== 'routes/api/index.ts'))
-    for (const ziel of importList(d).filter(z => z.startsWith('.'))) {
-      const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
+  run('routes');
+  assert.ok(files.length > 15, `only ${files.length} route files found`);
+  const hits = [];
+  for (const d of files.filter(d => d !== 'routes/api/index.ts'))
+    for (const target of importList(d).filter(z => z.startsWith('.'))) {
+      const full = path.posix.normalize(path.posix.join(path.posix.dirname(d), target)).replace(/\.js$/, '');
       if (
-        voll.startsWith('routes/') &&
-        voll !== 'routes/api/middleware' &&
-        !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/')) &&
-        !(d === 'routes/api/settings.ts' && voll === 'routes/api/settingsGlobal')
+        full.startsWith('routes/') &&
+        full !== 'routes/api/middleware' &&
+        !(d === 'routes/auth.ts' && full.startsWith('routes/auth/')) &&
+        !(d === 'routes/api/settings.ts' && full === 'routes/api/settingsGlobal')
       )
-        treffer.push(`${d} -> ${ziel}`);
+        hits.push(`${d} -> ${target}`);
     }
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 });
 
 test('no state on global', () => {
   // What processes share stands in one module (src/jobQueue/startState.ts) and
   // can be found via the import. Counter-check (29.10.2026): a line
   // `global.startupStatus = …` in server.ts → rot.
-  const treffer = [];
+  const hits = [];
   for (const d of [
     'server.ts',
     ...innerFiles(),
@@ -153,24 +153,24 @@ test('no state on global', () => {
     for (const m of sourceText(d).matchAll(
       /\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g,
     ))
-      treffer.push(`${d}: ${m[0].trim()}`);
+      hits.push(`${d}: ${m[0].trim()}`);
   // The UI shares state via public/js/state.js, not via `window._…`.
   // Counter-check (15.11.2026): `window._finGrandTotal = kopfWert` back in finanzen.js → red.
   const js = path.join(ROOT, 'public', 'js');
   for (const f of fs.readdirSync(js).filter(f => f.endsWith('.js') && !f.includes('bundle')))
-    for (const m of ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8')).matchAll(/\bwindow\._[a-zA-Z]\w*/g))
-      treffer.push(`public/js/${f}: ${m[0]}`);
-  assert.deepEqual(treffer, []);
+    for (const m of withoutComments(fs.readFileSync(path.join(js, f), 'utf8')).matchAll(/\bwindow\._[a-zA-Z]\w*/g))
+      hits.push(`public/js/${f}: ${m[0]}`);
+  assert.deepEqual(hits, []);
 });
 
 test('src/ and clients/ import nothing from jobs/', () => {
   // Whatever background work src/ triggers, it enqueues as a job (src/jobQueue);
   // the execution is set up by startup/wiring.ts.
   // Counter-check (28.10.2026): require('../jobs/imageQueue') in wanted.ts → red.
-  const treffer = [];
+  const hits = [];
   for (const d of innerFiles().filter(f => /^(src|clients)\//.test(f)))
-    for (const ziel of importList(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+    for (const target of importList(d).filter(z => /jobs\//.test(z))) hits.push(`${d} -> ${target}`);
+  assert.deepEqual(hits, []);
 });
 
 test('db/, clients/ and jobs/ know no HTTP response', () => {
@@ -178,10 +178,10 @@ test('db/, clients/ and jobs/ know no HTTP response', () => {
   // to the response (src/http/httpResponse.ts, routes).
   // Counter-check (05.11.2026): `import { fehlertext } from '../src/http/httpResponse'`
   // in db/migrate.ts → rot.
-  const treffer = [];
+  const hits = [];
   for (const d of innerFiles().filter(f => /^(db|clients|jobs)\//.test(f)))
-    for (const ziel of importList(d).filter(z => /httpAntwort|^express$/.test(z))) treffer.push(`${d} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+    for (const target of importList(d).filter(z => /httpAntwort|^express$/.test(z))) hits.push(`${d} -> ${target}`);
+  assert.deepEqual(hits, []);
 });
 
 /** Code lines without blank lines and comments. */
@@ -196,12 +196,12 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
   // Code lines in Biome format (line width 120).
   // Counter-checks (09.11.2026): `import * as db from '../db/database'` in jobs/startJobs.ts → red
   // (db/); fetchAndCachePrice and statesJeSet back to jobs/startJobs.ts → red (113
-  // lines); `import { STAPEL } from '../src/images/imageDemand'` in jobs/jobWorker.ts → red.
+  // lines); `import { BATCH } from '../src/images/imageDemand'` in jobs/jobWorker.ts → red.
   const KERN = 'jobs/jobWorker.ts';
-  const dateien = tsBelow('jobs');
-  assert.ok(dateien.includes(KERN) && dateien.includes('jobs/startJobs.ts'), 'Worker or handler table is missing');
+  const files = tsBelow('jobs');
+  assert.ok(files.includes(KERN) && files.includes('jobs/startJobs.ts'), 'Worker or handler table is missing');
   assert.deepEqual(
-    dateien.flatMap(d =>
+    files.flatMap(d =>
       importList(d)
         .filter(z => /(?:^|\/)db\//.test(z))
         .map(z => `${d} -> ${z}`),
@@ -213,36 +213,36 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
     z => z.startsWith('src/') && !['jobQueue', 'infra'].includes(areaOf(`${z}/`)),
   );
   assert.deepEqual(fremd, [], 'The worker knows no domains, only jobs');
-  const zuLang = dateien.filter(d => d !== KERN && codeRows(d) > 80).map(d => `${d} (${codeRows(d)})`);
-  assert.deepEqual(zuLang, [], 'A handler calls a service; its work belongs in src/<domain>/');
+  const tooLong = files.filter(d => d !== KERN && codeRows(d) > 80).map(d => `${d} (${codeRows(d)})`);
+  assert.deepEqual(tooLong, [], 'A handler calls a service; its work belongs in src/<domain>/');
   const LIMIT = 326;
-  const summe = dateien.reduce((n, d) => n + codeRows(d), 0);
-  assert.ok(summe <= LIMIT, `${summe} lines of code in jobs/, ${LIMIT} are allowed`);
-  if (summe < LIMIT) console.log(`  ℹ lines of code in jobs/: ${summe} (limit ${LIMIT}) — tighten the limit`);
+  const sum = files.reduce((n, d) => n + codeRows(d), 0);
+  assert.ok(sum <= LIMIT, `${sum} lines of code in jobs/, ${LIMIT} are allowed`);
+  if (sum < LIMIT) console.log(`  ℹ lines of code in jobs/: ${sum} (limit ${LIMIT}) — tighten the limit`);
 });
 
 test('db/ imports nothing from jobs/', () => {
   // The database layer is the lowest; the image services are started by
   // startup/database.ts. Counter-check (28.10.2026): the import of
   // setUpImageDemand back in db/database.ts → red.
-  const treffer = [];
+  const hits = [];
   for (const d of innerFiles().filter(f => f.startsWith('db/')))
-    for (const ziel of importList(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+    for (const target of importList(d).filter(z => /jobs\//.test(z))) hits.push(`${d} -> ${target}`);
+  assert.deepEqual(hits, []);
 });
 
 /** All .ts files under routes/, relative to ROOT. */
 function routesFiles() {
-  const dateien = [];
-  const lauf = rel => {
+  const files = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) dateien.push(kind);
+      if (e.isDirectory()) run(kind);
+      else if (e.name.endsWith('.ts')) files.push(kind);
     }
   };
-  lauf('routes');
-  return dateien;
+  run('routes');
+  return files;
 }
 
 test('no route executes SQL or imports from db/', () => {
@@ -251,15 +251,15 @@ test('no route executes SQL or imports from db/', () => {
   // Counter-checks: `import * as db from '../../db/database'` and a db.get line
   // in routes/api/catalog.ts → red, both hits (29.10.2026);
   // `import { withInventoryLock } from '../../db/txLock'` in api/sets.ts → rot (05.11.2026).
-  const dateien = routesFiles();
-  assert.ok(dateien.length > 15, `only ${dateien.length} route files found`);
-  const treffer = [];
-  for (const d of dateien) {
+  const files = routesFiles();
+  assert.ok(files.length > 15, `only ${files.length} route files found`);
+  const hits = [];
+  for (const d of files) {
     for (const m of sourceText(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g))
-      treffer.push(`${d}: ${m[0]}`);
-    for (const ziel of importList(d).filter(z => /(?:^|\/)db\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+      hits.push(`${d}: ${m[0]}`);
+    for (const target of importList(d).filter(z => /(?:^|\/)db\//.test(z))) hits.push(`${d} -> ${target}`);
   }
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 });
 
 test('no route imports from jobs/ or clients/', () => {
@@ -268,10 +268,11 @@ test('no route imports from jobs/ or clients/', () => {
   // Counter-check (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts and `import { getSetByEan } from '../../clients/brickset'` in
   // api/sets.ts → red, both hits.
-  const treffer = [];
+  const hits = [];
   for (const d of routesFiles())
-    for (const ziel of importList(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+    for (const target of importList(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z)))
+      hits.push(`${d} -> ${target}`);
+  assert.deepEqual(hits, []);
 });
 
 test('only clients/ goes to the network, via src/infra/fetch.ts', () => {
@@ -280,11 +281,11 @@ test('only clients/ goes to the network, via src/infra/fetch.ts', () => {
   // Counter-check (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
   // src/catalog/partsImport.ts back → red: “src/catalog/partsImport.ts”.
   const ALLOWED = new Set(['src/infra/fetch.ts']);
-  const treffer = tsBelow('src', 'routes', 'jobs', 'startup', 'db')
+  const hits = tsBelow('src', 'routes', 'jobs', 'startup', 'db')
     .concat('server.ts')
     .filter(d => !ALLOWED.has(d))
     .filter(d => /\b(holeHttps|openHttps)\b|from '(?:node:)?https'|\bfetch\(/.test(sourceText(d)));
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 });
 
 test('startup/ and routes/ know each other in only one direction, router factories take Pick<Dienste, …>', () => {
@@ -296,38 +297,38 @@ test('startup/ and routes/ know each other in only one direction, router factori
   // startup/jobsProcess.ts → red (10.11.2026); `import type { Dienste } from
   // '../../startup/wiring'` back in routes/api/catalog.ts → red with this file,
   // `buildCatalogRouter(d: Dienste)` in the same place → red with “buildCatalogRouter” (14.11.2026).
-  const treffer = [];
+  const hits = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
-    for (const ziel of importList(`startup/${f}`).filter(z => /routes\//.test(z)))
-      treffer.push(`startup/${f} -> ${ziel}`);
-  assert.deepEqual(treffer, []);
+    for (const target of importList(`startup/${f}`).filter(z => /routes\//.test(z)))
+      hits.push(`startup/${f} -> ${target}`);
+  assert.deepEqual(hits, []);
 
-  const dateien = [];
-  const lauf = rel => {
+  const files = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) dateien.push(kind);
+      if (e.isDirectory()) run(kind);
+      else if (e.name.endsWith('.ts')) files.push(kind);
     }
   };
-  ['routes', 'jobs'].forEach(lauf);
-  assert.ok(dateien.length > 20, `only ${dateien.length} files in routes/ and jobs/ — does the search still match?`);
-  const zuStartup = dateien.flatMap(d =>
+  ['routes', 'jobs'].forEach(run);
+  assert.ok(files.length > 20, `only ${files.length} files in routes/ and jobs/ — does the search still match?`);
+  const toStartup = files.flatMap(d =>
     importList(d)
       .filter(z => /(^|\/)startup\//.test(z))
       .map(z => `${d} -> ${z}`),
   );
-  assert.deepEqual(zuStartup, []);
+  assert.deepEqual(toStartup, []);
 
-  const factories = dateien.flatMap(d =>
+  const factories = files.flatMap(d =>
     [...sourceText(d).matchAll(/export function (build\w*Router)\(\s*\w+: ([^,)]+?)[,)]/g)].map(m => ({
       name: m[1],
-      typ: m[2].trim(),
+      kind: m[2].trim(),
     })),
   );
   assert.ok(factories.length >= 23, `only ${factories.length} router factories found — does the search still match?`);
   assert.deepEqual(
-    factories.filter(f => !f.typ.startsWith('Pick<')).map(f => f.name),
+    factories.filter(f => !f.kind.startsWith('Pick<')).map(f => f.name),
     [],
   );
 });
@@ -340,18 +341,18 @@ test('no import cycles in the inner layers', () => {
   // (05.11.2026) `import type { SetMaster } from '../dienst'` in
   // src/sets/repository/setDetail.ts → red (setDetail → dienst → setDetail).
   // (08.11.2026) `import('./database')` as a type in db/migrate.ts → red (migrate ↔ database).
-  const dateien = new Set(innerFiles());
+  const files = new Set(innerFiles());
   const kanten = new Map();
-  for (const d of dateien) {
+  for (const d of files) {
     const src = sourceText(d);
     // Two separate searches: `import … from` only at the start of a line, `require(…)`/`import(…)` everywhere.
-    const kopf = [...src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]/gm)].map(m => m[1]);
+    const head = [...src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]/gm)].map(m => m[1]);
     const call = [...src.matchAll(/(?:require|import)\(\s*['"](\.[^'"]+)['"]\s*\)?/g)].map(m => m[1]);
-    const ziele = [...kopf, ...call]
+    const targets = [...head, ...call]
       .map(r => path.posix.normalize(path.posix.join(path.posix.dirname(d), r)).replace(/\.js$/, ''))
       .flatMap(z => [z + '.ts', z + '/index.ts'])
-      .filter(z => dateien.has(z));
-    kanten.set(d, ziele);
+      .filter(z => files.has(z));
+    kanten.set(d, targets);
   }
   const cycles = [];
   const visitState = new Map(); // 1 = on the path, 2 = done
@@ -366,7 +367,7 @@ test('no import cycles in the inner layers', () => {
     trail.pop();
     visitState.set(d, 2);
   };
-  for (const d of dateien) if (!visitState.has(d)) visit(d);
+  for (const d of files) if (!visitState.has(d)) visit(d);
   assert.deepEqual(cycles, []);
 });
 
@@ -377,7 +378,7 @@ test('the exception list stays honest — every entry still has a case', () => {
   // in a year a collection of claims about code that no longer exists
   // stands here.
   const alive = new Set();
-  for (const d of innerFiles()) for (const ziel of afterOuter(d)) alive.add(`${d} -> ${ziel}`);
+  for (const d of innerFiles()) for (const target of afterOuter(d)) alive.add(`${d} -> ${target}`);
 
   const tot = [...EXCEPTIONS].filter(a => !alive.has(a));
   assert.deepEqual(tot, [], 'These exceptions no longer apply to anything — please remove them from the list');
@@ -396,19 +397,19 @@ test('nothing lies in routes/ that is not a route', () => {
     [],
     'allowedWithoutRouter names files that no longer exist',
   );
-  const dateien = [];
-  const lauf = rel => {
+  const files = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) dateien.push(kind);
+      if (e.isDirectory()) run(kind);
+      else if (e.name.endsWith('.ts')) files.push(kind);
     }
   };
-  lauf('routes');
-  assert.ok(dateien.length > 5, `Only ${dateien.length} route files — folder renamed?`);
+  run('routes');
+  assert.ok(files.length > 5, `Only ${files.length} route files — folder renamed?`);
 
-  const withoutRoute = dateien.filter(d => {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
+  const withoutRoute = files.filter(d => {
+    const src = withoutComments(fs.readFileSync(path.join(ROOT, d), 'utf8'));
     if (/\b(router|app)\.(get|post|put|delete|patch|use|endpoint|attachOne)\s*\(/.test(src)) return false;
     return !allowedWithoutRouter[d.replace(/^routes\//, '')];
   });
@@ -432,25 +433,25 @@ const areaOf = rel => (rel.match(/^src\/([^/]+)\//) || [])[1] || null;
  * `import type` only with `withTypes`: for the load order types disappear
  * on compilation, for the dependency between layers they do not. */
 function resolvedImports(rel, { withTypes = false } = {}) {
-  const roh = sourceText(rel);
-  const src = withTypes ? roh : roh.replace(/^\s*(?:import|export) type\b[^;]*;/gm, '');
+  const raw = sourceText(rel);
+  const src = withTypes ? raw : raw.replace(/^\s*(?:import|export) type\b[^;]*;/gm, '');
   return [...src.matchAll(/(?:from\s+|import\(\s*)['"](\.[^'"]+)['"]/g)].map(m =>
     path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''),
   );
 }
 
 /** All .ts files under the folders, relative to ROOT. */
-function tsBelow(...ordner) {
-  const raus = [];
-  const lauf = rel => {
+function tsBelow(...folder) {
+  const result = [];
+  const run = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) raus.push(kind);
+      if (e.isDirectory()) run(kind);
+      else if (e.name.endsWith('.ts')) result.push(kind);
     }
   };
-  ordner.forEach(lauf);
-  return raus;
+  folder.forEach(run);
+  return result;
 }
 
 /** SQL in code: a statement as a string or a call on a connection. */
@@ -462,7 +463,7 @@ const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
 /** A piece of a statement in a string: sorting, condition, upsert, join. */
 const SQL_CLAUSE =
   /[`'"][^`'"\n]*\b(?:ILIKE|COALESCE\(|ON CONFLICT|EXCLUDED\.|NULLS (?:LAST|FIRST)|ORDER BY|GROUP BY|(?:LEFT |INNER )?JOIN \w+ \w+ ON|RETURNING|WHERE \w)/;
-const hatSql = rel => {
+const hasSql = rel => {
   const s = sourceText(rel);
   return SQL_TEXT.test(s) || SQL_CALL.test(s) || SQL_FRAGMENT.test(s) || SQL_CLAUSE.test(s);
 };
@@ -472,14 +473,14 @@ test('SQL only lives in repositories and in db/', () => {
   // 31.10.2026. Counter-checks (31.10.2026): `await db.get('SELECT 1')` in
   // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
   // (05.11.2026) the EXISTS fragment back to src/finances/priceAlert.ts → red.
-  const dateien = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
-  assert.ok(dateien.length > 150, `only ${dateien.length} files found`);
+  const files = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
+  assert.ok(files.length > 150, `only ${files.length} files found`);
   assert.deepEqual(
-    dateien.filter(d => !isRepository(d) && hatSql(d)),
+    files.filter(d => !isRepository(d) && hasSql(d)),
     [],
     'SQL belongs in the repository of the domain (src/<domain>/repository…).',
   );
-  assert.ok(tsBelow('src').filter(isRepository).every(hatSql), 'a repository without SQL is not one');
+  assert.ok(tsBelow('src').filter(isRepository).every(hasSql), 'a repository without SQL is not one');
   // The clause search must work in the repositories, otherwise it would see nothing outside either.
   assert.ok(
     tsBelow('src')
@@ -513,15 +514,15 @@ test('outside of repository/ and db/ nobody queries the database', () => {
   // `import * as datenbank from '../../db/database'` and `datenbank.all(repo.SQL)` in
   // src/sets/delete.ts → red “src/sets/delete.ts: all”, the check above stayed green;
   // the wishlist sorting (COALESCE … NULLS LAST) back in src/wanted/wanted.ts → red above.
-  const treffer = [];
-  let gesehen = 0;
+  const hits = [];
+  let seen = 0;
   for (const d of tsBelow('src', 'jobs', 'clients', 'routes', 'startup')
     .concat('server.ts')
     .filter(d => !isRepository(d))) {
     const s = sourceText(d);
     for (const m of s.matchAll(/import\s+(type\s+)?(?:\*\s+as\s+(\w+)|\{([^}]*)\})\s+from\s+'[./]+\/db\/database'/g)) {
-      gesehen++;
-      const namen = m[2]
+      seen++;
+      const names = m[2]
         ? [...s.matchAll(new RegExp(`\\b${m[2]}\\.(\\w+)`, 'g'))].map(x => x[1])
         : m[3]
             .split(',')
@@ -533,21 +534,21 @@ test('outside of repository/ and db/ nobody queries the database', () => {
                   .split(/\s+as\s+/)[0],
             )
             .filter(Boolean);
-      for (const n of namen) if (!DB_OUTSIDE.has(n)) treffer.push(`${d}: ${n}`);
+      for (const n of names) if (!DB_OUTSIDE.has(n)) hits.push(`${d}: ${n}`);
     }
   }
-  assert.ok(gesehen > 20, `only ${gesehen} imports of db/database found — does the search still match?`);
-  assert.deepEqual(treffer, []);
+  assert.ok(seen > 20, `only ${seen} imports of db/database found — does the search still match?`);
+  assert.deepEqual(hits, []);
   workUnitAtCallLocation();
 });
 
 test('routes, jobs and clients import no repositories', () => {
   // Counter-check (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
   // in routes/api/admin.ts → rot.
-  const treffer = [];
+  const hits = [];
   for (const d of tsBelow('routes', 'jobs', 'clients', 'startup').concat('server.ts'))
-    for (const z of resolvedImports(d)) if (isRepository(z)) treffer.push(`${d} -> ${z}`);
-  assert.deepEqual(treffer, []);
+    for (const z of resolvedImports(d)) if (isRepository(z)) hits.push(`${d} -> ${z}`);
+  assert.deepEqual(hits, []);
 
   // xBereich() delivers bound repositories and the access (db); a route takes
   // the services the scope offers in its index.ts. Counter-checks (13.11.2026):
@@ -569,16 +570,16 @@ test('routes, jobs and clients import no repositories', () => {
   const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;
   for (const d of tsBelow('routes')) {
     const s = sourceText(d);
-    for (const m of s.matchAll(CALL)) treffer.push(`${d}: ${m[0].replace(/\s/g, '')}`);
+    for (const m of s.matchAll(CALL)) hits.push(`${d}: ${m[0].replace(/\s/g, '')}`);
     for (const m of s.matchAll(IMPORT))
       for (const n of m[1].split(',').map(x => x.trim().split(/\s+as\s+/)[0]))
-        if (FACTORIES.includes(n)) treffer.push(`${d}: ${n} (Import)`);
+        if (FACTORIES.includes(n)) hits.push(`${d}: ${n} (Import)`);
   }
   assert.ok(
     CALL.test('createAccount(deps).accounts.accountShort(1)') && tsBelow('routes').length > 15,
     'Self-proof: the pattern finds a call, and there are routes',
   );
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
   routesOnlyViaFactory();
   routesWithoutSlotFlow();
 });
@@ -612,24 +613,24 @@ function routesWithoutSlotFlow() {
     ),
     'Self-proof: every pattern finds its example',
   );
-  const treffer = [];
+  const hits = [];
   for (const d of tsBelow('routes'))
-    for (const [re, was] of PATTERN) for (const _ of sourceText(d).matchAll(re)) treffer.push(`${d}: ${was}`);
-  assert.deepEqual(treffer, []);
+    for (const [re, was] of PATTERN) for (const _ of sourceText(d).matchAll(re)) hits.push(`${d}: ${was}`);
+  assert.deepEqual(hits, []);
 }
 
 /** The bound services per scope, as src/<bereich>/bereich.ts offers them. */
 function boundServices() {
-  const raus = new Map();
+  const result = new Map();
   for (const b of fs.readdirSync(path.join(ROOT, 'src'))) {
     const f = ['bereich.ts', 'area.ts'].map(n => path.join(ROOT, 'src', b, n)).find(p => fs.existsSync(p));
     if (!f) continue;
     const s = fs.readFileSync(f, 'utf8');
-    const namen = new Set();
-    for (const m of s.matchAll(/^ {4,8}(\w+): (?:bound\(|imSystem\(|\(\(|\(<)/gm)) namen.add(m[1]);
-    raus.set(b, namen);
+    const names = new Set();
+    for (const m of s.matchAll(/^ {4,8}(\w+): (?:bound\(|imSystem\(|\(\(|\(<)/gm)) names.add(m[1]);
+    result.set(b, names);
   }
-  return raus;
+  return result;
 }
 
 /** Routes only take services via their factory (baueXRouter(d)). */
@@ -638,9 +639,9 @@ function routesOnlyViaFactory() {
   // see which services it needs. Excepted: the guards in front of all routers.
   // Counter-check (13.11.2026): `import { readParts } from '../../src/parts'` in
   // routes/api/parts.ts → rot „routes/api/parts.ts: parts.partsList“.
-  const dienste = boundServices();
-  assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Self-proof: bound services found');
-  const treffer = [];
+  const services = boundServices();
+  assert.ok(services.get('parts')?.has('readParts') && services.size >= 14, 'Self-proof: bound services found');
+  const hits = [];
   for (const d of tsBelow('routes')) {
     if (d === 'routes/api/middleware.ts') continue;
     for (const m of sourceText(d).matchAll(/import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/(\w+)'/g))
@@ -648,9 +649,9 @@ function routesOnlyViaFactory() {
         .split(',')
         .map(x => x.trim())
         .filter(x => x && !x.startsWith('type ')))
-        if (dienste.get(m[2])?.has(n.split(/\s+as\s+/)[0])) treffer.push(`${d}: ${m[2]}.${n}`);
+        if (services.get(m[2])?.has(n.split(/\s+as\s+/)[0])) hits.push(`${d}: ${m[2]}.${n}`);
   }
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 }
 
 /** Services that still take a raw handle; the list may only shrink. The catalog
@@ -670,35 +671,35 @@ function workUnitAtCallLocation() {
   // Counter-checks (14.11.2026): a function with `z.transaction(` in db/txLock.ts → red
   // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbInterface, …)` in
   // src/inventory/trash.ts → red “…: service with raw handle probe”.
-  const treffer = [];
-  const alle = [...tsBelow('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
-  for (const d of alle) {
+  const hits = [];
+  const all = [...tsBelow('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
+  for (const d of all) {
     const s = sourceText(d);
-    if (d !== 'src/infra/area.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
-    if (/transact\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
+    if (d !== 'src/infra/area.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) hits.push(`${d}: .transaction(`);
+    if (/transact\(\s*(?:async\s*)?\(\)/.test(s)) hits.push(`${d}: transaktion ohne Kontext`);
     if (d.startsWith('src/') && !isRepository(d) && !RAW_HANDLE_STILL.has(d))
       for (const m of s.matchAll(/export\s+(?:async\s+)?function\s+(\w+)[^(]*\(([^)]*)\)/g))
         if (/\b(?:tx|dbh)\??\s*:\s*(?:Pick<\s*)?(?:DbInterface|Db|Writer)\b/.test(m[2]))
-          treffer.push(`${d}: Dienst mit rohem Griff ${m[1]}`);
+          hits.push(`${d}: Dienst mit rohem Griff ${m[1]}`);
   }
   assert.ok(
     tsBelow('src').some(d => /\.transact\(async t\b/.test(sourceText(d))) &&
       /\.transaction\(/.test(sourceText('src/infra/area.ts')),
     'Selbstbeweis: es gibt Arbeitseinheiten, und die Suche findet die eine Stelle',
   );
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 }
 
 test('a domain area accesses another only via its services and index.ts', () => {
   // A scope's repository is its inside; other scopes use the
   // services. Counter-check (31.10.2026): `import { accountShort } from
   // '../konto/repository/konten'` in src/household/household.ts → red.
-  const treffer = [];
-  const dateien = tsBelow('src');
-  assert.ok(dateien.filter(isRepository).length >= 10, 'too few repositories found');
-  for (const d of dateien)
-    for (const z of resolvedImports(d)) if (isRepository(z) && areaOf(z) !== areaOf(d)) treffer.push(`${d} -> ${z}`);
-  assert.deepEqual(treffer, []);
+  const hits = [];
+  const files = tsBelow('src');
+  assert.ok(files.filter(isRepository).length >= 10, 'too few repositories found');
+  for (const d of files)
+    for (const z of resolvedImports(d)) if (isRepository(z) && areaOf(z) !== areaOf(d)) hits.push(`${d} -> ${z}`);
+  assert.deepEqual(hits, []);
 
   // And the services too only via the scope's index.ts:
   // how a scope cuts its files thus stays its own business. Excepted
@@ -707,7 +708,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
   // Counter-check (11.11.2026): `export { catalogPart as _probe } from '../katalog/katalogPflege'`
   // in src/parts/manualParts.ts → rot.
   const FREE = ['infra', 'contract', 'http'];
-  const tief = (d, z) => {
+  const deep = (d, z) => {
     const b = areaOf(`${z}/`);
     return (
       !!b &&
@@ -718,18 +719,18 @@ test('a domain area accesses another only via its services and index.ts', () => 
       !z.startsWith(`src/${b}/http/`)
     );
   };
-  const depth = dateien =>
-    dateien.flatMap(d =>
+  const depth = files =>
+    files.flatMap(d =>
       resolvedImports(d, { withTypes: true })
-        .filter(z => tief(d, z))
+        .filter(z => deep(d, z))
         .map(z => `${d} -> ${z}`),
     );
   // Counter-check (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
   // in routes/auth/users.ts → rot.
   assert.deepEqual(depth(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
-  const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
-  assert.ok(indizes.length >= 15, `only ${indizes.length} index.ts found`);
-  indexWithoutAccess(indizes);
+  const indexes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
+  assert.ok(indexes.length >= 15, `only ${indexes.length} index.ts found`);
+  indexWithoutAccess(indexes);
 });
 
 /** With access: a database access, context or service set as a parameter, or asynchronous (network, files). */
@@ -737,9 +738,9 @@ const ACCESS_PARAMETER = /\b(?:Db|DbInterface|Pool|PoolClient|ClientBase|\w+Kont
 
 /** The declaration of an exported name, also via `export { … } from` and further imports. */
 function declaration(rel, name, depth = 0) {
-  const voll = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
-  if (!voll) return null;
-  const s = sourceText(voll);
+  const full = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
+  if (!full) return null;
+  const s = sourceText(full);
   const fn =
     new RegExp(
       `(?:^|\\n)(?:export )?(async )?function ${name}\\b(?:<[^(]*>)?\\(([\\s\\S]*?)\\)\\s*(?::\\s*([^{]+))?\\{`,
@@ -748,44 +749,44 @@ function declaration(rel, name, depth = 0) {
   if (fn) return { zugang: !!fn[1] || /Promise</.test(fn[3] ?? '') || ACCESS_PARAMETER.test(fn[2]) };
   if (new RegExp(`export (?:const|let|class|enum) ${name}\\b`).test(s)) return { zugang: false };
   for (const m of s.matchAll(/(?:export|import) \{([^}]*)\} from '(\.[^']+)'/g))
-    for (const teil of m[1].split(',')) {
-      const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (b === name && depth < 3) return declaration(path.posix.join(path.posix.dirname(voll), m[2]), a, depth + 1);
+    for (const part of m[1].split(',')) {
+      const [a, b = a] = part.trim().split(/\s+as\s+/);
+      if (b === name && depth < 3) return declaration(path.posix.join(path.posix.dirname(full), m[2]), a, depth + 1);
     }
   return null;
 }
 
 /** What an index.ts hands out as a value, except the factory (erzeugeX), including access. */
 function valueExports(index) {
-  const raus = [];
+  const result = [];
   for (const m of sourceText(index).matchAll(/export \{([^}]*)\} from '(\.[^']+)'/g))
-    for (const teil of m[1].split(',').map(x => x.trim())) {
-      if (!teil || teil.startsWith('type ')) continue;
-      const [a, b = a] = teil.split(/\s+as\s+/);
+    for (const part of m[1].split(',').map(x => x.trim())) {
+      if (!part || part.startsWith('type ')) continue;
+      const [a, b = a] = part.split(/\s+as\s+/);
       if (/^(?:erzeuge|create)[A-Z]/.test(b)) continue;
       const d = declaration(path.posix.join(path.posix.dirname(index), m[2]), a);
-      raus.push({ name: `${index.replace(/\/index\.ts$/, '')}.${b}`, zugang: !!d?.zugang });
+      result.push({ name: `${index.replace(/\/index\.ts$/, '')}.${b}`, zugang: !!d?.zugang });
     }
-  return raus;
+  return result;
 }
 
 /** A scope only hands out types, its factory and pure functions via index.ts: whatever needs a database,
  * network or files another scope calls via the context (`k.<bereich>.…`), so that it
  * runs in a transaction via `t` and a test replaces it at the wiring. */
-function indexWithoutAccess(indizes) {
+function indexWithoutAccess(indexes) {
   // Counter-checks (14.11.2026): `export { catalogStatus } from './setMaster'` back in
   // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/images/index.ts → red (asynchronous).
-  const alle = indizes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
-  assert.ok(alle.length > 50, `only ${alle.length} value exports found — does the search still match?`);
+  const all = indexes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
+  assert.ok(all.length > 50, `only ${all.length} value exports found — does the search still match?`);
   assert.ok(
-    alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
+    all.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
       declaration('src/sets/read', 'readSets')?.zugang &&
       declaration('src/images/thumbs', 'previewFrom')?.zugang,
     'Self-proof: asIds is pure, setsLesen (context) and vorschauErzeugenAus (async) have access',
   );
   assert.deepEqual(
-    alle.filter(x => x.zugang).map(x => x.name),
+    all.filter(x => x.zugang).map(x => x.name),
     [],
     'Pass it via the context (service of the domain), not as an import',
   );
@@ -799,12 +800,11 @@ test('a repository knows no services, not even their types', () => {
   // src/settings/repository/values.ts → rot (31.10.2026); (05.11.2026)
   // `import type { SetMaster } from '../dienst'` back in
   // src/sets/repository/setDetail.ts → rot.
-  const treffer = [];
+  const hits = [];
   for (const d of tsBelow('src').filter(isRepository))
     for (const z of resolvedImports(d, { withTypes: true }))
-      if (z.startsWith('src/') && !isRepository(z) && areaOf(z) !== 'infra' && !isSheet(z))
-        treffer.push(`${d} -> ${z}`);
-  assert.deepEqual(treffer, []);
+      if (z.startsWith('src/') && !isRepository(z) && areaOf(z) !== 'infra' && !isSheet(z)) hits.push(`${d} -> ${z}`);
+  assert.deepEqual(hits, []);
 });
 
 test('routes do not resolve accounts — the services do that', () => {
@@ -814,10 +814,10 @@ test('routes do not resolve accounts — the services do that', () => {
   // routes/api/misc.ts → rot.
   const RESOLUTION =
     /\b(?:scopeIds|schreibbereich|writeTargetOrNull|scopeKind|darfSchreibenFuer|asIds|storageAccounts|scopeFrom|writeAreaFrom)\s*\(/;
-  const dateien = tsBelow('routes');
-  assert.ok(dateien.length > 15, 'too few route files found');
+  const files = tsBelow('routes');
+  assert.ok(files.length > 15, 'too few route files found');
   assert.deepEqual(
-    dateien.filter(d => RESOLUTION.test(sourceText(d))),
+    files.filter(d => RESOLUTION.test(sourceText(d))),
     [],
   );
 });
@@ -833,16 +833,16 @@ test("only src/http, the areas' HTTP sides and the routes know Express", () => {
   const usesExpress = d =>
     /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(sourceText(d));
   // startup/app.ts assembles the app, as server.ts did before.
-  const treffer = tsBelow('src', 'db', 'clients', 'jobs', 'startup')
+  const hits = tsBelow('src', 'db', 'clients', 'jobs', 'startup')
     .filter(d => areaOf(d) !== 'http' && !isHttp(d) && d !== 'startup/app.ts')
     .filter(usesExpress);
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
   assert.ok(tsBelow('src/http').filter(usesExpress).length >= 8, 'the search no longer finds Express in src/http');
   assert.ok(tsBelow('src').some(isHttp), 'no HTTP side found under src/<domain>/http/');
 
   // Services answer with an error kind, not with an HTTP status; clients/
   // itself speaks HTTP outward. Counter-check (10.11.2026): in
-  // src/account/passwordConfirmation.ts again `return { status: 429, ...gesperrt }` → red.
+  // src/account/passwordConfirmation.ts again `return { status: 429, ...locked }` → red.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
   // Counter-check (11.11.2026): `res.status(304)` back in src/images/imgCacheServe.ts → red.
   const withStatus = tsBelow('src', 'db', 'jobs')
@@ -855,10 +855,10 @@ test('only routes, server and HTTP sides import an HTTP side or src/http', () =>
   // A service that imports the HTTP side depends on the request again.
   // Counter-check (31.10.2026): `import { adresse } from './http/anmeldung'` in
   // src/account/deviceToken.ts → rot.
-  const treffer = [];
+  const hits = [];
   for (const d of tsBelow('src', 'jobs', 'clients').filter(d => !isHttp(d)))
-    for (const z of resolvedImports(d)) if (isHttp(z)) treffer.push(`${d} -> ${z}`);
-  assert.deepEqual(treffer, []);
+    for (const z of resolvedImports(d)) if (isHttp(z)) hits.push(`${d} -> ${z}`);
+  assert.deepEqual(hits, []);
 
   // The same for src/http/: the shared helpers depend on the request, a service
   // that fetches them would too; conversely src/http only knows src/infra.
@@ -868,14 +868,14 @@ test('only routes, server and HTTP sides import an HTTP side or src/http', () =>
   const http = tsBelow('src').filter(d => areaOf(d) === 'http');
   assert.ok(http.length >= 8, `only ${http.length} files under src/http`);
   const nachHttp = z => areaOf(z) === 'http';
-  const hinein = tsBelow('src', 'jobs', 'clients', 'db')
+  const into = tsBelow('src', 'jobs', 'clients', 'db')
     .filter(d => !nachHttp(d) && !isHttp(d))
     .flatMap(d =>
       resolvedImports(d, { withTypes: true })
         .filter(nachHttp)
         .map(z => `${d} -> ${z}`),
     );
-  assert.deepEqual(hinein, []);
+  assert.deepEqual(into, []);
   const up = http.flatMap(d =>
     resolvedImports(d, { withTypes: true })
       .filter(z => z.startsWith('src/') && !['http', 'infra', 'contract'].includes(areaOf(`${z}/`)))
@@ -904,7 +904,7 @@ test("routes catch no errors — the router's error path answers", () => {
   // routes/auth/users.ts again `if (r === LAST_ADMIN) fachfehler(…)` → red “route
   // translates a refusal”; likewise `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
   // fachfehler(…)` in routes/auth.ts → rot.
-  const ist = new Map();
+  const actual = new Map();
   const sendIt = new Map();
   const conversions = [];
   const rejections = [];
@@ -912,19 +912,19 @@ test("routes catch no errors — the router's error path answers", () => {
     const q = sourceText(d);
     // The service throws a refusal (fachfehler); a state that shapes the response stays allowed.
     const results = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
-    const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
+    const comparison = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
     for (const z of q.split('\n')) {
-      const wirft = /\b(?:failDomain|notFound)\(|\bthrow\b/.test(z);
-      if (wirft && (results.some(n => vergleich(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
+      const throws = /\b(?:failDomain|notFound)\(|\bthrow\b/.test(z);
+      if (throws && (results.some(n => comparison(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
         rejections.push(`${d}: ${z.trim()}`);
     }
     const n = (q.match(/\btry\s*\{/g) || []).length;
-    if (n) ist.set(d, n);
+    if (n) actual.set(d, n);
     const s = (q.match(/\bsendError\(/g) || []).length;
     if (s) sendIt.set(d, s);
     for (const m of q.matchAll(CONVERSION)) conversions.push(`${d}: ${m[0]}`);
   }
-  assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
+  assert.deepEqual(Object.fromEntries(actual), Object.fromEntries(TRY_IN_ROUTES));
   assert.deepEqual(Object.fromEntries(sendIt), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in routes');
   // The contract delivers the domain format (z.transform); a route does not convert afterwards.
   assert.deepEqual(conversions, [], 'Conversions of validated input in routes');
@@ -967,11 +967,11 @@ const areaName = rel => (rel.startsWith('src/') ? rel.split('/').slice(0, 2).joi
  * and `export … from`. A regex missed type imports and paths via index.ts. */
 function translatorEdges(output) {
   const kanten = [];
-  let ziel = null;
+  let target = null;
   for (const z of output.split('\n')) {
-    if (/^\S/.test(z)) ziel = z.trim();
+    if (/^\S/.test(z)) target = z.trim();
     const m = /^\s+Imported via '[^']+' from file '([^']+)'/.exec(z);
-    if (m && ziel && !ziel.includes('node_modules')) kanten.push({ d: m[1], ziel });
+    if (m && target && !target.includes('node_modules')) kanten.push({ d: m[1], target });
   }
   return kanten;
 }
@@ -987,8 +987,8 @@ function areaEdges() {
       { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     _kanten = translatorEdges(r.stdout)
-      .filter(k => !/^test\//.test(k.d) && !/^test\//.test(k.ziel))
-      .map(k => ({ ...k, von: areaName(k.d), nach: areaName(k.ziel) }))
+      .filter(k => !/^test\//.test(k.d) && !/^test\//.test(k.target))
+      .map(k => ({ ...k, von: areaName(k.d), nach: areaName(k.target) }))
       .filter(k => k.von !== k.nach);
   }
   return _kanten;
@@ -1004,7 +1004,7 @@ test('every area only imports areas of lower levels', () => {
   // → red “scope without level”; the late binding `d().katalog.…` back in verdrahtung.ts → red.
   assert.deepEqual(
     translatorEdges("a.ts\n   Imported via './a' from file 'b.ts'\nc.ts\n   Matched by include pattern"),
-    [{ d: 'b.ts', ziel: 'a.ts' }],
+    [{ d: 'b.ts', target: 'a.ts' }],
     'Self-proof: the output of --explainFiles is read',
   );
   // A higher scope listens to an event of the lower one; late binding would bypass the levels.
@@ -1013,10 +1013,10 @@ test('every area only imports areas of lower levels', () => {
   assert.ok(kanten.length > 500, `only ${kanten.length} edges found — does the search still match?`);
   const withoutLevel = [...new Set(kanten.flatMap(k => [k.von, k.nach]))].filter(b => !levelOf.has(b));
   assert.deepEqual(withoutLevel, [], 'Domain without a level: add it to LEVELS');
-  const falsch = kanten
+  const wrong = kanten
     .filter(k => levelOf.get(k.nach) >= levelOf.get(k.von))
-    .map(k => `${k.d} -> ${k.ziel} (${k.von} → ${k.nach})`);
-  assert.deepEqual(falsch, []);
+    .map(k => `${k.d} -> ${k.target} (${k.von} → ${k.nach})`);
+  assert.deepEqual(wrong, []);
 });
 
 test('clients are only reached via src/externalSources/sources.ts', () => {
@@ -1026,10 +1026,10 @@ test('clients are only reached via src/externalSources/sources.ts', () => {
   // src/parts/manualParts.ts → rot (05.11.2026); `import { createBrickset } from
   // '../clients/brickset'` in startup/wiring.ts → rot (14.11.2026).
   const kanten = areaEdges();
-  const treffer = kanten
+  const hits = kanten
     .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/externalSources/sources.ts')
-    .map(k => `${k.d} -> ${k.ziel}`);
-  assert.deepEqual(treffer, []);
+    .map(k => `${k.d} -> ${k.target}`);
+  assert.deepEqual(hits, []);
   assert.ok(
     kanten.some(k => k.d === 'src/externalSources/sources.ts' && k.nach === 'clients'),
     '„quellen.ts“ no longer fetches a client?',
@@ -1039,8 +1039,8 @@ test('clients are only reached via src/externalSources/sources.ts', () => {
 test('docs/architecture.md names the order of the areas like LEVELS', () => {
   // Counter-check: `src/mail` and `src/settings` swapped in the table → red.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
-  const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
-  const levels = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
+  const table = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
+  const levels = [...table.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
     [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]),
   );
   assert.ok(levels.length > 5, 'The ranking table cannot be found');
@@ -1049,11 +1049,11 @@ test('docs/architecture.md names the order of the areas like LEVELS', () => {
 
 /** Every file below `dir` (relative to ROOT), without products and dependencies. */
 function filesBelow(dir) {
-  const voll = path.join(ROOT, dir);
-  if (!fs.existsSync(voll)) return [];
-  if (fs.statSync(voll).isFile()) return [dir];
+  const full = path.join(ROOT, dir);
+  if (!fs.existsSync(full)) return [];
+  if (fs.statSync(full).isFile()) return [dir];
   return fs
-    .readdirSync(voll, { withFileTypes: true })
+    .readdirSync(full, { withFileTypes: true })
     .flatMap(e =>
       ['node_modules', 'dist', 'data', 'coverage', 'locales'].includes(e.name)
         ? []
@@ -1067,24 +1067,24 @@ function filesBelow(dir) {
 function pathExists(p) {
   const segment = s => new RegExp(`^${s.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/<[^>]+>|\*/g, '[^/]+')}$`);
   const from = base => {
-    let kandidaten = [base];
-    for (const teil of p.replace(/\/$/, '').split('/')) {
-      kandidaten = kandidaten.flatMap(k => {
+    let candidates = [base];
+    for (const part of p.replace(/\/$/, '').split('/')) {
+      candidates = candidates.flatMap(k => {
         if (!fs.existsSync(k) || !fs.statSync(k).isDirectory()) return [];
-        if (!/<|\*/.test(teil)) return fs.existsSync(path.join(k, teil)) ? [path.join(k, teil)] : [];
+        if (!/<|\*/.test(part)) return fs.existsSync(path.join(k, part)) ? [path.join(k, part)] : [];
         return fs
           .readdirSync(k)
-          .filter(n => segment(teil).test(n))
+          .filter(n => segment(part).test(n))
           .map(n => path.join(k, n));
       });
     }
-    return kandidaten.length > 0;
+    return candidates.length > 0;
   };
   return [p, `${p}.ts`, `${p}.js`].some(x => {
-    const vorher = p;
+    const prior = p;
     p = x;
     const da = from(ROOT) || from(path.join(ROOT, '..'));
-    p = vorher;
+    p = prior;
     return da;
   });
 }
@@ -1097,40 +1097,40 @@ test('docs/architecture.md names only what exists', () => {
   require('./helpers/bundle').placeBundleSafe(); // the chapter “Oberfläche” names the bundle, a product
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8').replace(/```[\s\S]*?```/g, '');
   const spans = [...doc.matchAll(/`([^`\n]+)`/g)].map(m => m[1]);
-  const dateien = [
+  const files = [
     ...['src', 'db', 'routes', 'startup', 'jobs', 'clients', 'scripts', 'test', 'public', 'biome', 'types'].flatMap(
       filesBelow,
     ),
     ...['frontend-types', 'postgres', 'server.ts', 'package.json', 'Caddyfile', 'compose.yaml'].flatMap(filesBelow),
   ];
   // Without comments: a German name that only survives in a comment does not count as code.
-  const code = dateien
+  const code = files
     .filter(d => /\.(ts|js|sql|grit|json|sh|yaml)$|Caddyfile$/.test(d))
-    .map(d => ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8')).replace(/^\s*(--|#).*$/gm, ''))
+    .map(d => withoutComments(fs.readFileSync(path.join(ROOT, d), 'utf8')).replace(/^\s*(--|#).*$/gm, ''))
     .join('\n');
   const woerter = new Set(code.match(/[A-Za-z_$][\w$]*/g));
-  const namen = new Set(dateien.map(d => path.posix.basename(d)));
-  const oben = new Set([...fs.readdirSync(ROOT), ...fs.readdirSync(path.join(ROOT, '..'))]);
+  const names = new Set(files.map(d => path.posix.basename(d)));
+  const upper = new Set([...fs.readdirSync(ROOT), ...fs.readdirSync(path.join(ROOT, '..'))]);
   // Spelling conventions, not names; `createX` stands for createVouchers, createRebrickable …
   const KONVENTIONEN = new Set(['snake_case', 'camelCase']);
   const present = w =>
     woerter.has(w) ||
     KONVENTIONEN.has(w) ||
     (/[a-z]X[A-Z]|[a-z]X$/.test(w) && [...woerter].some(v => new RegExp(`^${w.replace('X', '[A-Z]\\w*')}$`).test(v)));
-  const fehlt = [];
+  const missing = [];
   for (const s of spans) {
     if (/^\/[\w/:-]*$/.test(s)) {
-      if (![`'${s}`, `/api/v2${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
+      if (![`'${s}`, `/api/v2${s}`, ` ${s}`].some(x => code.includes(x))) missing.push(s);
     } else if (
       /^[\w-]+\.(ts|js|json|md|sql|html|grit|sh|yaml|txt)$/.test(s) ||
-      (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (oben.has(s.split('/')[0]) || /^[<*]/.test(s)))
+      (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (upper.has(s.split('/')[0]) || /^[<*]/.test(s)))
     ) {
-      if (s.includes('/') ? !pathExists(s) : !namen.has(s)) fehlt.push(s);
-    } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!present(w)) fehlt.push(w);
+      if (s.includes('/') ? !pathExists(s) : !names.has(s)) missing.push(s);
+    } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!present(w)) missing.push(w);
   }
   assert.ok(spans.length > 300, `only ${spans.length} names in backticks — does the search still match?`);
-  assert.ok(namen.has('jobWorker.ts') && woerter.has('buildServices'), 'Self-proof: files and code found');
-  assert.deepEqual([...new Set(fehlt)], [], 'named in docs/architecture.md, not present in the code');
+  assert.ok(names.has('jobWorker.ts') && woerter.has('buildServices'), 'Self-proof: files and code found');
+  assert.deepEqual([...new Set(missing)], [], 'named in docs/architecture.md, not present in the code');
 });
 
 test('the queue knows no domain areas and payload shapes, events go via ereignis.ts', () => {
@@ -1140,20 +1140,20 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   const ALLOWED = new Set(['src/infra', 'src/settings', 'db']);
   const fremd = areaEdges()
     .filter(k => k.von === 'src/jobQueue' && !ALLOWED.has(k.nach))
-    .map(k => `${k.d} -> ${k.ziel}`);
+    .map(k => `${k.d} -> ${k.target}`);
   assert.deepEqual(fremd, [], 'src/jobQueue importiert einen Fachbereich');
 
-  const dateien = tsBelow('src/jobQueue');
-  const shapes = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(sourceText(d)));
+  const files = tsBelow('src/jobQueue');
+  const shapes = files.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(sourceText(d)));
   assert.deepEqual(shapes, [], 'Payload shape in src/jobQueue: into the domain that registers the kind');
 
   // The kinds stand where the scopes register their payload (declare module … JobPayloads).
-  const arten = tsBelow('src')
+  const kinds = tsBelow('src')
     .flatMap(d => [...sourceText(d).matchAll(/interface JobPayloads \{([^}]*)\}/g)])
     .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
-  assert.ok(arten.length > 15, `only ${arten.length} registered kinds found — does the search still match?`);
-  const literals = dateien.flatMap(d =>
-    [...sourceText(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
+  assert.ok(kinds.length > 15, `only ${kinds.length} registered kinds found — does the search still match?`);
+  const literals = files.flatMap(d =>
+    [...sourceText(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => kinds.includes(m[1])).map(m => `${d}: ${m[1]}`),
   );
   assert.deepEqual(literals, [], 'src/jobQueue names a job kind');
 
@@ -1162,12 +1162,12 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   // `fach('currencyChange', () => new Set<() => void>())` → red (own listeners);
   // in src/jobQueue/importJob.ts again `k.db.notification.listen('csv_import_progress', f)`
   // → red (NOTIFY by hand); `new EventEmitter()` back in importJob.ts → red.
-  const EREIGNIS = 'src/infra/event.ts';
-  const alle = tsBelow('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
-  const treffer = muster =>
-    alle.flatMap(d => [...sourceText(d).matchAll(muster)].map(m => `${d}: ${m[0].replace(/\s+/g, ' ')}`));
-  assert.ok(/new Set<Listener<A>>/.test(sourceText(EREIGNIS)), 'Self-proof: the listeners are in „ereignis.ts“');
-  assert.deepEqual(treffer(/new Set<\s*(?:\(|\w*(?:Horcher|Listener)\b)/g), [], 'eigene Horcher: ereignis() nehmen');
-  assert.deepEqual(treffer(/\bbenachrichtigung\s*\.\s*(?:listen|unlisten|notify)\(/g), [], 'NOTIFY von Hand');
-  assert.deepEqual(treffer(/\bnew EventEmitter\b/g), [], 'own event bus');
+  const EVENT = 'src/infra/event.ts';
+  const all = tsBelow('src', 'routes', 'jobs').filter(d => d !== EVENT);
+  const hits = pattern =>
+    all.flatMap(d => [...sourceText(d).matchAll(pattern)].map(m => `${d}: ${m[0].replace(/\s+/g, ' ')}`));
+  assert.ok(/new Set<Listener<A>>/.test(sourceText(EVENT)), 'Self-proof: the listeners are in „ereignis.ts“');
+  assert.deepEqual(hits(/new Set<\s*(?:\(|\w*(?:Horcher|Listener)\b)/g), [], 'own listeners: use event()');
+  assert.deepEqual(hits(/\bbenachrichtigung\s*\.\s*(?:listen|unlisten|notify)\(/g), [], 'NOTIFY von Hand');
+  assert.deepEqual(hits(/\bnew EventEmitter\b/g), [], 'own event bus');
 });

@@ -30,16 +30,16 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
     FC = `fig-sc${P}`,
     TA = `sa${P}`,
     TB = `sb${P}`;
-  const weg = async () => {
+  const route = async () => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
     await db.run('DELETE FROM minifig_price_history WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
     await db.run('DELETE FROM minifig_parts_cache WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
     await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[TA, TB]]);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -59,7 +59,7 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
       [TA],
     );
     const r = await figMarketPriceWithOrigin(FA, uid, null, 'N');
-    assert.deepEqual({ preis: r.price, estimated: r.estimated }, { preis: 7, estimated: false });
+    assert.deepEqual({ price: r.price, estimated: r.estimated }, { price: 7, estimated: false });
   });
 
   await t.test('without a BrickLink price it is estimated from the parts, in the requested condition', async () => {
@@ -76,26 +76,26 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
       [TA],
     );
     // Part TA: new 1, used 1.5; part TB without a price → half coverage.
-    const neu = await figMarketPriceWithOrigin(FB, uid, null, 'N');
+    const fresh = await figMarketPriceWithOrigin(FB, uid, null, 'N');
     assert.deepEqual(
-      { preis: neu.price, estimated: neu.estimated, abdeckung: neu.abdeckung },
-      { preis: 2, estimated: true, abdeckung: 0.5 },
+      { price: fresh.price, estimated: fresh.estimated, abdeckung: fresh.abdeckung },
+      { price: 2, estimated: true, abdeckung: 0.5 },
     );
-    const gebraucht = await figMarketPriceWithOrigin(FB, uid, null, 'U');
-    assert.equal(gebraucht.price, 3, 'in the condition of the request');
+    const used = await figMarketPriceWithOrigin(FB, uid, null, 'U');
+    assert.equal(used.price, 3, 'in the condition of the request');
   });
 
   await t.test('the estimate is cached and recorded', async () => {
     const z = await db.all(
-      `SELECT condition, avg_price::float AS preis, estimated FROM minifig_price_cache
+      `SELECT condition, avg_price::float AS price, estimated FROM minifig_price_cache
                              WHERE fig_number = $1 ORDER BY condition`,
       [FB],
     );
     assert.deepEqual(
       z,
       [
-        { condition: 'N', preis: 2, estimated: true },
-        { condition: 'U', preis: 3, estimated: true },
+        { condition: 'N', price: 2, estimated: true },
+        { condition: 'U', price: 3, estimated: true },
       ],
       'the estimate is cached',
     );

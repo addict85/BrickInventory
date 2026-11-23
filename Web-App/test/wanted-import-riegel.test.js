@@ -22,17 +22,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
-const BERICHT = { success: true, preview: true, parsed: 1, items: [], created: 0, topped_up: 0, failed: 0 };
+const REPORT = { success: true, preview: true, parsed: 1, items: [], created: 0, topped_up: 0, failed: 0 };
 
 /** Opens the UI; requests to the XML import are answered by `antwort(nr)` (promise of a Response). */
 async function withImport(response) {
   const o = await openUi();
   const importList = [];
-  const davor = o.w.fetch;
+  const before = o.w.fetch;
   o.w.fetch = (url, opt) => {
-    if (!String(url).includes('/wanted-list/import/xml')) return davor(url, opt);
+    if (!String(url).includes('/wanted-list/import/xml')) return before(url, opt);
     importList.push(String(url));
     return response(importList.length);
   };
@@ -41,80 +41,80 @@ async function withImport(response) {
     Object.defineProperty(field, 'files', { configurable: true, value: [new o.w.File(['<INVENTORY/>'], name)] });
     field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
   };
-  const knopf = id => o.d.getElementById(id);
-  return { ...o, importList, choose, knopf };
+  const button = id => o.d.getElementById(id);
+  return { ...o, importList, choose, button };
 }
 
-const alsJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
+const asJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
 
 test('a second click starts no second run, a new file is rejected', async () => {
-  let freigeben;
-  const { w, d, importList, choose, knopf } = await withImport(
+  let release;
+  const { w, d, importList, choose, button } = await withImport(
     () =>
       new Promise(r => {
-        freigeben = () => r(alsJson(BERICHT));
+        release = () => r(asJson(REPORT));
       }),
   );
   try {
     choose('liste.xml');
-    assert.ok(await warte(() => importList.length === 1), 'The file starts no run');
+    assert.ok(await waitFor(() => importList.length === 1), 'The file starts no run');
     assert.deepEqual(
-      [knopf('wanted-xml-new').disabled, knopf('wanted-xml-write').disabled],
+      [button('wanted-xml-new').disabled, button('wanted-xml-write').disabled],
       [true, true],
       'During the run both buttons are disabled',
     );
     // Locked or not: a triggered click and a new file also come to nothing.
-    knopf('wanted-xml-new').disabled = false;
-    knopf('wanted-xml-new').click();
-    knopf('wanted-xml-write').disabled = false;
-    knopf('wanted-xml-write').click();
+    button('wanted-xml-new').disabled = false;
+    button('wanted-xml-new').click();
+    button('wanted-xml-write').disabled = false;
+    button('wanted-xml-write').click();
     choose('andere.xml');
-    assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'No message about the rejected file');
+    assert.ok(await waitFor(() => d.querySelector('#toasts .toast')), 'No message about the rejected file');
     assert.equal(importList.length, 1, 'A second import added up the quantities');
     // Back to locked, as updateButtons() would keep it: the release must bring the preview.
-    knopf('wanted-xml-new').disabled = true;
-    knopf('wanted-xml-write').disabled = true;
-    freigeben();
-    assert.ok(await warte(() => d.getElementById('wanted-xml-sub').textContent !== ''), 'The preview does not come');
+    button('wanted-xml-new').disabled = true;
+    button('wanted-xml-write').disabled = true;
+    release();
+    assert.ok(await waitFor(() => d.getElementById('wanted-xml-sub').textContent !== ''), 'The preview does not come');
     assert.deepEqual(
-      [knopf('wanted-xml-new').disabled, knopf('wanted-xml-write').disabled],
+      [button('wanted-xml-new').disabled, button('wanted-xml-write').disabled],
       [false, false],
       'After the preview both buttons are free',
     );
     assert.equal(d.getElementById('wanted-xml-sub').textContent, 'liste.xml', 'The file was swapped');
     // Re-read with the preview showing: writing is locked now too, as long as it runs.
-    knopf('wanted-xml-new').click();
-    assert.ok(await warte(() => importList.length === 2));
-    assert.equal(knopf('wanted-xml-write').disabled, true, 'Writing is operable during the re-read');
-    freigeben();
-    assert.ok(await warte(() => !knopf('wanted-xml-write').disabled));
+    button('wanted-xml-new').click();
+    assert.ok(await waitFor(() => importList.length === 2));
+    assert.equal(button('wanted-xml-write').disabled, true, 'Writing is operable during the re-read');
+    release();
+    assert.ok(await waitFor(() => !button('wanted-xml-write').disabled));
   } finally {
     w.close();
   }
 });
 
 test('the latch opens again even after an error', async () => {
-  const { w, importList, choose, knopf } = await withImport(async nr => {
+  const { w, importList, choose, button } = await withImport(async nr => {
     if (nr === 1) throw new Error('Netz weg');
-    return alsJson(BERICHT);
+    return asJson(REPORT);
   });
   try {
     choose('liste.xml');
-    assert.ok(await warte(() => importList.length === 1));
-    assert.ok(await warte(() => !knopf('wanted-xml-new').disabled), 'After the error the dialog stays locked');
-    knopf('wanted-xml-new').click();
-    assert.ok(await warte(() => importList.length === 2), 'Re-reading starts nothing after the error');
+    assert.ok(await waitFor(() => importList.length === 1));
+    assert.ok(await waitFor(() => !button('wanted-xml-new').disabled), 'After the error the dialog stays locked');
+    button('wanted-xml-new').click();
+    assert.ok(await waitFor(() => importList.length === 2), 'Re-reading starts nothing after the error');
   } finally {
     w.close();
   }
 });
 
 test('the progress arrives piece by piece and fills the bar', async () => {
-  const stuecke = [
+  const pieces = [
     `${JSON.stringify({ progress: { phase: 'rebrickable', done: 1, total: 4 } })}\n{"success":true,"preview":tr`,
     `ue,"parsed":7,"items":[]}\n`,
   ];
-  let weiter;
+  let next;
   const { w, d, importList, choose } = await withImport(async () => ({
     ok: true,
     status: 200,
@@ -126,9 +126,9 @@ test('the progress arrives piece by piece and fills the bar', async () => {
           read: async () => {
             if (i === 1)
               await new Promise(r => {
-                weiter = r;
+                next = r;
               });
-            return i < stuecke.length ? { value: new TextEncoder().encode(stuecke[i++]), done: false } : { done: true };
+            return i < pieces.length ? { value: new TextEncoder().encode(pieces[i++]), done: false } : { done: true };
           },
         };
       },
@@ -143,14 +143,14 @@ test('the progress arrives piece by piece and fills the bar', async () => {
       ['progressbar', '0', '100'],
     );
     choose('liste.xml');
-    assert.ok(await warte(() => typeof weiter === 'function'));
-    assert.match(importList[0], /[?&]stream=1\b/, 'Without strom=1 the server answers in one piece');
+    assert.ok(await waitFor(() => typeof next === 'function'));
+    assert.match(importList[0], /[?&]stream=1\b/, 'Without stream=1 the server answers in one piece');
     assert.equal(box.style.display, '');
     assert.equal(wrap.getAttribute('aria-valuenow'), '25');
     assert.match(d.getElementById('wanted-xml-progress-text').textContent, /1.*4/);
-    weiter();
+    next();
     assert.ok(
-      await warte(() => /7/.test(d.getElementById('wanted-xml-report').textContent)),
+      await waitFor(() => /7/.test(d.getElementById('wanted-xml-report').textContent)),
       `The report over two pieces does not arrive: ${d.getElementById('wanted-xml-report').textContent}`,
     );
     assert.equal(box.style.display, 'none', 'After the run the bar disappears');

@@ -31,24 +31,24 @@ const ALLOWED = {
 };
 
 /** All .ts under routes/, also in subfolders. */
-function routesFiles(dir, praefix = '') {
+function routesFiles(dir, prefix = '') {
   const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) found.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) found.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...routesFiles(path.join(dir, e.name), prefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([prefix + e.name, path.join(dir, e.name)]);
   }
   return found;
 }
 
 test('no handler asks the session for the user identifier itself', () => {
-  const dateien = routesFiles(ROUTES);
-  assert.ok(dateien.length >= 10, `Only ${dateien.length} router files found — then the rest checks nothing.`);
+  const files = routesFiles(ROUTES);
+  assert.ok(files.length >= 10, `Only ${files.length} router files found — then the rest checks nothing.`);
 
   const violations = [];
-  const gebraucht = new Set();
-  for (const [rel, voll] of dateien) {
+  const used = new Set();
+  for (const [rel, full] of files) {
     const src = fs
-      .readFileSync(voll, 'utf8')
+      .readFileSync(full, 'utf8')
       // Comments out: an explanatory text that NAMES `req.session.userId`
       // (this one for example) is not a use.
       .split('\n')
@@ -60,19 +60,19 @@ test('no handler asks the session for the user identifier itself', () => {
       // the exception still describes something. Whoever skips it instead
       // never notices when it becomes moot — and then a dead
       // entry permanently exempts a whole file from the check.
-      if (rel in ALLOWED) gebraucht.add(rel);
+      if (rel in ALLOWED) used.add(rel);
       else violations.push(`${rel}:${row}  ${m[0]}`);
     }
   }
 
-  const veraltet = Object.keys(ALLOWED)
-    .filter(k => !gebraucht.has(k))
+  const stale = Object.keys(ALLOWED)
+    .filter(k => !used.has(k))
     .sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
     'These entries in ALLOWED no longer describe anything:\n  ' +
-      veraltet.join('\n  ') +
+      stale.join('\n  ') +
       '\nThe file no longer reads the session directly — remove it.',
   );
 
@@ -93,21 +93,21 @@ test('no router brings its own guard', () => {
   // and requireAdmin itself — session-bound, while src/account/http/login.ts and
   // routes/api/middleware.ts had long had token-capable versions. Three
   // versions of one rule, and the app could only fulfill one.
-  const dateien = routesFiles(ROUTES);
-  const eigene = [];
-  for (const [rel, voll] of dateien) {
-    const src = fs.readFileSync(voll, 'utf8');
+  const files = routesFiles(ROUTES);
+  const owned = [];
+  for (const [rel, full] of files) {
+    const src = fs.readFileSync(full, 'utf8');
     for (const m of src.matchAll(/^\s*(?:export\s+)?function\s+(require\w+)\s*\(/gm)) {
       // api/middleware.ts is the place WHERE they should stand.
       if (rel === 'api/middleware.ts') continue;
-      eigene.push(`${rel}  function ${m[1]}`);
+      owned.push(`${rel}  function ${m[1]}`);
     }
   }
   assert.deepEqual(
-    eigene,
+    owned,
     [],
     'These routers define their own login guard:\n  ' +
-      eigene.join('\n  ') +
+      owned.join('\n  ') +
       '\nThere are exactly two: requireLoginOrToken (src/account/http/login.ts) and ' +
       'requireApiAdmin (routes/api/middleware.ts). Both accept session OR ' +
       'token. A third version reliably locks out the app.',

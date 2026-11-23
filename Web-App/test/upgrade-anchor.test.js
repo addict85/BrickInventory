@@ -17,58 +17,58 @@ const { spawnSync } = require('node:child_process');
 
 const sources = require('./helpers/sources');
 const WEB = path.join(__dirname, '..');
-const ANKER = new Set(
+const ANCHOR = new Set(
   [...fs.readFileSync(path.join(WEB, 'UPGRADE.md'), 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)].map(m => m[1]),
 );
 const REFERENCE = /UPGRADE\.md#([\w-]+)((?:, #[\w-]+)*)/g;
 
 /** What operators see: code, scripts, configuration and UI texts (not tests, docs, generated files). */
-function dateien() {
-  const raus = [];
-  (function lauf(d) {
+function files() {
+  const result = [];
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
         if (['node_modules', 'dist', '.git', 'test', 'docs', 'vendor', 'coverage'].includes(n)) continue;
-        lauf(p);
-      } else if (/\.(ts|js|sh|ya?ml)$|^(Caddyfile|Dockerfile[\w.]*)$/.test(n)) raus.push(p);
+        run(p);
+      } else if (/\.(ts|js|sh|ya?ml)$|^(Caddyfile|Dockerfile[\w.]*)$/.test(n)) result.push(p);
     }
   })(WEB);
-  return raus;
+  return result;
 }
 
 const references = text => [...text.matchAll(REFERENCE)].flatMap(m => [m[1], ...m[2].split(', #').filter(Boolean)]);
 
 test('every reference hits an anchor, no more section numbers; the startup message as superuser points to an anchor', () => {
-  assert.ok(ANKER.size >= 10, `only ${ANKER.size} anchors in UPGRADE.md`);
+  assert.ok(ANCHOR.size >= 10, `only ${ANCHOR.size} anchors in UPGRADE.md`);
   assert.deepEqual(references('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
 
   const absent = [],
-    nummern = [];
+    numbers = [];
   let found = 0;
-  for (const f of dateien()) {
+  for (const f of files()) {
     const text = fs.readFileSync(f, 'utf8');
     const rel = path.relative(WEB, f);
     for (const a of references(text)) {
       found++;
-      if (!ANKER.has(a)) absent.push(`${rel}: #${a}`);
+      if (!ANCHOR.has(a)) absent.push(`${rel}: #${a}`);
     }
-    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(sources.ohneKommentare(text)))
-      nummern.push(rel);
+    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(sources.withoutComments(text)))
+      numbers.push(rel);
   }
   assert.ok(found >= 20, `only ${found} references found — does the search still work?`);
   assert.deepEqual(absent, [], 'every reference to UPGRADE.md hits an anchor');
-  assert.deepEqual(nummern, [], 'no more section numbers');
+  assert.deepEqual(numbers, [], 'no more section numbers');
 
   // The message the operator really sees at startup: superuser without a way out.
   sources.buildDist();
-  const lauf = spawnSync(
+  const run = spawnSync(
     process.execPath,
     ['-e', "require('./dist/startup/database.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],
     { cwd: WEB, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DB_SUPERUSER_ALLOWED: '' } },
   );
-  assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
-  const inMessage = references(lauf.stderr);
-  assert.deepEqual(inMessage, ['eigene-datenbankrolle', 'superuser-ausnahme'], lauf.stderr);
-  for (const a of inMessage) assert.ok(ANKER.has(a), `the start message as superuser points to an anchor: #${a}`);
+  assert.equal(run.status, 1, run.stdout + run.stderr);
+  const inMessage = references(run.stderr);
+  assert.deepEqual(inMessage, ['eigene-datenbankrolle', 'superuser-ausnahme'], run.stderr);
+  for (const a of inMessage) assert.ok(ANCHOR.has(a), `the start message as superuser points to an anchor: #${a}`);
 });

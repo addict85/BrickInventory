@@ -27,23 +27,23 @@ function languageTexts() {
 }
 
 test('every fallback text shows what the language text says', () => {
-  const texte = languageTexts();
+  const texts = languageTexts();
   const placeList = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Self-proof: MEASURED there are over 200. If the derivation finds nothing,
   // the loop would be silently green.
   assert.ok(placeList.length > 150, `Only ${placeList.length} places derived — does the search still work?`);
 
   const deviating = [];
-  let geprueft = 0;
-  for (const [, tag, schluessel, text] of placeList) {
+  let checked = 0;
+  for (const [, tag, key, text] of placeList) {
     if (tag.includes('data-i18n-attr')) continue; // exception 1
-    const soll = texte.get(schluessel);
-    if (soll === undefined) continue; // i18n.test.js covers missing keys
-    if (soll.includes('{')) continue; // exception 2
-    geprueft++;
-    if (escHtml(soll) !== text.trim()) deviating.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
+    const want = texts.get(key);
+    if (want === undefined) continue; // i18n.test.js covers missing keys
+    if (want.includes('{')) continue; // exception 2
+    checked++;
+    if (escHtml(want) !== text.trim()) deviating.push(`${key}: Markup "${text.trim()}" ≠ "${want}"`);
   }
-  assert.ok(geprueft > 100, `Only ${geprueft} places actually checked — are the exceptions too broad?`);
+  assert.ok(checked > 100, `Only ${checked} places actually checked — are the exceptions too broad?`);
   assert.deepEqual(
     deviating,
     [],
@@ -64,22 +64,22 @@ test('no element with data-i18n has child elements', () => {
     // Up to the matching closing tag, nested ones of the same name counted.
     let depth = 1,
       i = 0,
-      ende = -1;
+      end = -1;
     while (i < rest.length && depth > 0) {
-      const auf = rest.indexOf('<' + tag, i);
-      const zu = rest.indexOf('</' + tag, i);
-      if (zu === -1) break;
-      if (auf !== -1 && auf < zu) {
+      const opened = rest.indexOf('<' + tag, i);
+      const closed = rest.indexOf('</' + tag, i);
+      if (closed === -1) break;
+      if (opened !== -1 && opened < closed) {
         depth++;
-        i = auf + 1;
+        i = opened + 1;
       } else {
         depth--;
-        i = zu + 1;
-        ende = zu;
+        i = closed + 1;
+        end = closed;
       }
     }
-    const inhalt = ende === -1 ? '' : rest.slice(0, ende);
-    if (/<[a-z]/i.test(inhalt)) bad.push(`${m[3]}: <${tag}> enthält ${inhalt.match(/<[a-z][^\s>]*/i)[0]}…`);
+    const content = end === -1 ? '' : rest.slice(0, end);
+    if (/<[a-z]/i.test(content)) bad.push(`${m[3]}: <${tag}> enthält ${content.match(/<[a-z][^\s>]*/i)[0]}…`);
   }
   assert.deepEqual(
     bad,

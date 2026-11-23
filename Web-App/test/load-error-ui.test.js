@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, tick } = require('./helpers/ui');
 
 const SERVER_ERROR = { $status: 500, success: false, error: 'Interner Fehler', code: 'internal_error' };
 const TWO_SETS = {
@@ -31,16 +31,16 @@ test('collection: a server error on the first load shows the reason and "try aga
   let response = SERVER_ERROR;
   const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
-    await warte(() => d.querySelector('#gallery .error-state'));
+    await waitFor(() => d.querySelector('#gallery .error-state'));
     const box = d.querySelector('#gallery .error-state');
     assert.ok(box, `No error state: „${d.getElementById('gallery').textContent.trim().slice(0, 80)}“`);
     assert.match(box.textContent, /Interner Fehler/);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /Noch keine Sets/);
-    const knopf = box.querySelector('button[data-click="loadGallery"]');
-    assert.match(knopf.textContent, /Erneut versuchen/);
+    const button = box.querySelector('button[data-click="loadGallery"]');
+    assert.match(button.textContent, /Erneut versuchen/);
     response = TWO_SETS;
-    knopf.click();
-    await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
+    button.click();
+    await waitFor(() => d.querySelectorAll('#gallery .sc').length === 2);
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'Retry does not reload');
   } finally {
     w.close();
@@ -52,10 +52,10 @@ test('collection: if reloading fails, the old list stays', async () => {
   let response = TWO_SETS;
   const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
-    await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
+    await waitFor(() => d.querySelectorAll('#gallery .sc').length === 2);
     response = SERVER_ERROR;
-    await reiter(w, 'gallery');
-    await warte(() => d.querySelector('#toasts .toast.error'));
+    await switchTab(w, 'gallery');
+    await waitFor(() => d.querySelector('#toasts .toast.error'));
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'the old list is gone');
     assert.match(
       d.querySelector('#toasts .toast.error').textContent,
@@ -67,18 +67,18 @@ test('collection: if reloading fails, the old list stays', async () => {
 });
 
 test('every list shows its load error with the same building block', async () => {
-  const kaputt = () => {
+  const broken = () => {
     throw new TypeError('Failed to fetch');
   };
   const { w, d } = await openUi({
-    '/v2/wanted': kaputt,
-    '/v2/parts': kaputt,
-    '/v2/minifigs': kaputt,
-    '/v2/catalog/sets': kaputt,
-    '/v2/finance/valuation': kaputt,
+    '/v2/wanted': broken,
+    '/v2/parts': broken,
+    '/v2/minifigs': broken,
+    '/v2/catalog/sets': broken,
+    '/v2/finance/valuation': broken,
   });
   try {
-    for (const [tab, ziel] of [
+    for (const [tab, target] of [
       ['wanted', '#mk-list'],
       ['parts', '#parts-main'],
       ['minifigs', '#figs-list'],
@@ -86,10 +86,10 @@ test('every list shows its load error with the same building block', async () =>
       // Since round 24 (M2) at the top of the chart box, as long as nothing was loaded yet.
       ['finance', '#portfolio-chart'],
     ]) {
-      await reiter(w, tab);
-      await warte(() => d.querySelector(`${ziel} .error-state`));
-      const box = d.querySelector(`${ziel} .error-state`);
-      assert.ok(box, `${tab}: no error state — „${d.querySelector(ziel)?.textContent.trim().slice(0, 60)}“`);
+      await switchTab(w, tab);
+      await waitFor(() => d.querySelector(`${target} .error-state`));
+      const box = d.querySelector(`${target} .error-state`);
+      assert.ok(box, `${tab}: no error state — „${d.querySelector(target)?.textContent.trim().slice(0, 60)}“`);
       assert.match(box.textContent, /Keine Verbindung zum Server/, `${tab}: reason is missing`);
       assert.doesNotMatch(box.textContent, /Failed to fetch/, `${tab}: roher Browsertext`);
       assert.ok(box.querySelector('button[data-click]'), `${tab}: no „Erneut versuchen“`);
@@ -109,7 +109,7 @@ test('network error when capturing: "no connection to the server" instead of "Fa
     d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
     d.getElementById('add-num').value = '10497-1';
     d.getElementById('btn-add').click();
-    await warte(() => d.querySelector('#toasts .toast.error'));
+    await waitFor(() => d.querySelector('#toasts .toast.error'));
     const text = d.querySelector('#toasts .toast.error')?.textContent || '';
     assert.match(text, /Keine Verbindung zum Server/);
     assert.doesNotMatch(text, /Failed to fetch/);
@@ -125,12 +125,12 @@ test('banner without connection: "no connection since …"', async () => {
     assert.equal(band.hidden, true, 'the band is already there with a connection');
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
     w.dispatchEvent(new w.Event('offline'));
-    await takt(10);
+    await tick(10);
     assert.equal(band.hidden, false, 'no band without a connection');
     assert.match(band.textContent, /^Keine Verbindung seit heute, \d{2}:\d{2}\./);
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
     w.dispatchEvent(new w.Event('online'));
-    await takt(10);
+    await tick(10);
     assert.equal(band.hidden, true, 'the band stays after the return');
   } finally {
     w.close();

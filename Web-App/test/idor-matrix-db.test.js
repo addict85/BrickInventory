@@ -22,9 +22,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'idor-'));
-fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
-process.env.APP_ROOT = WURZEL;
+const ROOT_CERT = fs.mkdtempSync(path.join(os.tmpdir(), 'idor-'));
+fs.writeFileSync(path.join(ROOT_CERT, 'package.json'), '{}');
+process.env.APP_ROOT = ROOT_CERT;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://localhost';
 
@@ -41,14 +41,14 @@ const bcrypt = require('bcryptjs');
 const auth = _req('src/account/deviceToken.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
-const MARKE = `IDOR${process.pid}`;
+const MARK = `IDOR${process.pid}`;
 const VICTIM = `idor_opfer_${process.pid}`,
   FREMD = `idor_fremd_${process.pid}`,
   PASS = 'Idor-Passwort-1!';
 const SET = '99281-1',
   SET2 = '99282-1',
   PART = '3001ik',
-  FARBE = 5,
+  COLOR = 5,
   FIGURE = 'ik0001';
 const VOUCHER = '5045076374450029876';
 /** Parameters that name a row (or a file) of an account. */
@@ -56,15 +56,15 @@ const ROW_IDS = /^(id|acqId|instrId|tokenId|jobId)$/;
 
 /** Method and full path of every route of the app, with the router's mount prefix. */
 function routesOf(app) {
-  const aus = [];
-  const walk = (r, praefix) => {
+  const out = [];
+  const walk = (r, prefix) => {
     for (const l of r.stack) {
-      if (l.route) for (const m of Object.keys(l.route.methods)) aus.push([m.toUpperCase(), praefix + l.route.path]);
-      else if (l.handle?.stack) walk(l.handle, l.handle.praefix ?? praefix);
+      if (l.route) for (const m of Object.keys(l.route.methods)) out.push([m.toUpperCase(), prefix + l.route.path]);
+      else if (l.handle?.stack) walk(l.handle, l.handle.prefix ?? prefix);
     }
   };
   walk(app.router, '');
-  return aus;
+  return out;
 }
 
 test('IDOR: identifiers of another household give 403/404 on every route', {
@@ -74,7 +74,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[VICTIM, FREMD]]);
   const hash = await bcrypt.hash(PASS, 4);
-  const anlegen = async n =>
+  const create = async n =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
@@ -82,121 +82,120 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
         [n, hash],
       )
     ).id;
-  const opfer = await anlegen(VICTIM),
-    fremd = await anlegen(FREMD);
-  for (const k of [opfer, fremd])
+  const victim = await create(VICTIM),
+    fremd = await create(FREMD);
+  for (const k of [victim, fremd])
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
        ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`,
       [k],
     );
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[opfer, fremd]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[victim, fremd]]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[SET, SET2]]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM part_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGURE]).catch(() => {});
     await db.pool.end().catch(() => {});
-    fs.rmSync(WURZEL, { recursive: true, force: true });
+    fs.rmSync(ROOT_CERT, { recursive: true, force: true });
   });
   for (const s of [SET, SET2]) await catalogSet(db, s, { name: 'Idorprobe', year: 2024, theme: 'Test', pieces: 10 });
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein') ON CONFLICT DO NOTHING`, [PART]);
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
      ON CONFLICT DO NOTHING`,
-    [PART, FARBE],
+    [PART, COLOR],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Figur') ON CONFLICT DO NOTHING`, [
     FIGURE,
   ]);
 
-  const sitzung = {};
-  const als = uid => {
-    for (const k of Object.keys(sitzung)) delete sitzung[k];
-    Object.assign(sitzung, { userId: uid, username: uid === opfer ? VICTIM : FREMD, isAdmin: false });
+  const session = {};
+  const as = uid => {
+    for (const k of Object.keys(session)) delete session[k];
+    Object.assign(session, { userId: uid, username: uid === victim ? VICTIM : FREMD, isAdmin: false });
   };
-  const { app, base } = testServer(_req, { sitzung, t });
-  const callFn = async (methode, weg, body) => {
-    const r = await fetch(base + weg, {
-      method: methode,
+  const { app, base } = testServer(_req, { session, t });
+  const callFn = async (method, route, body) => {
+    const r = await fetch(base + route, {
+      method: method,
       headers: body === undefined ? {} : { 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(5000),
     }).catch(e => ({ status: 0, text: async () => String(e?.name) }));
     return { status: r.status, text: await r.text() };
   };
-  const ok = async (methode, weg, body) => {
-    const r = await callFn(methode, weg, body);
-    assert.equal(r.status, 200, `${methode} ${weg}: ${r.text.slice(0, 300)}`);
+  const ok = async (method, route, body) => {
+    const r = await callFn(method, route, body);
+    assert.equal(r.status, 200, `${method} ${route}: ${r.text.slice(0, 300)}`);
     return JSON.parse(r.text);
   };
 
   // ── What the victim owns, created through the API ───────────────────────
-  als(opfer);
-  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
+  as(victim);
+  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARK}` })).location.id;
   await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
   await ok('POST', '/api/v2/parts', {
     part_number: PART,
-    color_id: FARBE,
+    color_id: COLOR,
     color_name: 'Rot',
     quantity: 3,
     condition: 'N',
   });
   await ok('POST', '/api/v2/minifigs', { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' });
-  const gutschein = (
-    await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' })
-  ).voucher.id;
-  const id1 = sql => db.get(sql, [opfer]).then(z => z.id);
+  const voucher = (await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' }))
+    .voucher.id;
+  const id1 = sql => db.get(sql, [victim]).then(z => z.id);
   const setAcq = await id1('SELECT id FROM set_acquisitions WHERE user_id = $1');
-  const teilAcq = await id1('SELECT id FROM part_acquisitions WHERE user_id = $1');
+  const partAcq = await id1('SELECT id FROM part_acquisitions WHERE user_id = $1');
   const figAcq = await id1('SELECT id FROM minifig_acquisitions WHERE user_id = $1');
-  const anleitung = (
+  const instruction = (
     await db.get(
       `INSERT INTO instructions (user_id, set_number, url, description, local_path)
        VALUES ($1, $2, 'https://example.org/a.pdf', $3, $4) RETURNING id`,
-      [opfer, SET, `Anleitung ${MARKE}`, `/data/instructions/${SET}_1.pdf`],
+      [victim, SET, `Anleitung ${MARK}`, `/data/instructions/${SET}_1.pdf`],
     )
   ).id;
   await ok('POST', '/api/v2/sets', { set_number: SET2, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v2/sets/${SET2}`);
   const trash = await id1('SELECT id FROM trash WHERE user_id = $1');
-  const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
+  const token = await auth.createToken(victim, `Gerät ${MARK}`, true);
   const nonce = `idor${process.pid}${Date.now()}`;
   const qr = (
     await db.get(
       `INSERT INTO qr_login_tokens (token, user_id, expires_at, pickup_code, code_hash, device)
        VALUES ($1, $2, NOW() + INTERVAL '5 minutes', $3, 'x', $4) RETURNING id`,
-      [auth.tokenDigest(nonce), opfer, `abh${process.pid}`, `Gerät ${MARKE}`],
+      [auth.tokenDigest(nonce), victim, `abh${process.pid}`, `Gerät ${MARK}`],
     )
   ).id;
-  const datei = path.join(WURZEL, 'data', 'uploads', String(opfer));
-  fs.mkdirSync(datei, { recursive: true });
-  fs.writeFileSync(path.join(datei, 'rechnung.pdf'), `Rechnung ${MARKE}`);
-  fs.mkdirSync(path.join(WURZEL, 'data', 'instructions'), { recursive: true });
-  fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SET}_1.pdf`), `Anleitung ${MARKE}`);
+  const file = path.join(ROOT_CERT, 'data', 'uploads', String(victim));
+  fs.mkdirSync(file, { recursive: true });
+  fs.writeFileSync(path.join(file, 'rechnung.pdf'), `Rechnung ${MARK}`);
+  fs.mkdirSync(path.join(ROOT_CERT, 'data', 'instructions'), { recursive: true });
+  fs.writeFileSync(path.join(ROOT_CERT, 'data', 'instructions', `${SET}_1.pdf`), `Anleitung ${MARK}`);
 
   // The victim reaches its own rows with the same identifiers: the matrix hits real rows.
   assert.equal((await callFn('GET', `/api/v2/auth/qr-pairing/${qr}`)).status, 200);
-  assert.equal((await callFn('GET', `/data/uploads/${opfer}/rechnung.pdf`)).status, 200);
+  assert.equal((await callFn('GET', `/data/uploads/${victim}/rechnung.pdf`)).status, 200);
   assert.equal((await callFn('GET', `/data/instructions/${SET}_1.pdf`)).status, 200);
 
-  const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
+  const columns = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
   const holding = async () => {
-    const aus = { users: (await db.all('SELECT * FROM users WHERE id = $1', [opfer])).map(z => JSON.stringify(z)) };
-    for (const { table_name: tab, column_name: sp } of spalten)
-      aus[`${tab}.${sp}`] = (await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]))
+    const out = { users: (await db.all('SELECT * FROM users WHERE id = $1', [victim])).map(z => JSON.stringify(z)) };
+    for (const { table_name: tab, column_name: sp } of columns)
+      out[`${tab}.${sp}`] = (await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [victim]))
         .map(z => JSON.stringify(z))
         .sort();
-    return aus;
+    return out;
   };
-  const vorher = await holding();
+  const prior = await holding();
 
   // ── The routes from the routers, and the victim's values for them ────────
   const ids = {
-    id: [location, gutschein, trash, qr, opfer, setAcq],
-    acqId: [setAcq, teilAcq, figAcq],
-    instrId: [anleitung],
+    id: [location, voucher, trash, qr, victim, setAcq],
+    acqId: [setAcq, partAcq, figAcq],
+    instrId: [instruction],
     tokenId: [auth.tokenDigest(token).slice(0, 16)],
     jobId: ['1700000000000-abcd'],
   };
@@ -204,21 +203,21 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
     setNumber: SET,
     sn: SET,
     partNumber: PART,
-    colorId: FARBE,
+    colorId: COLOR,
     figNumber: FIGURE,
     condition: 'N',
     kind: 'x',
   };
-  const routen = routesOf(app).filter(
+  const routes = routesOf(app).filter(
     ([, p]) => p.startsWith('/data/') || [...p.matchAll(/:(\w+)/g)].some(m => ROW_IDS.test(m[1])),
   );
-  const geprueft = new Set();
+  const checked = new Set();
   const deviating = [],
     leaks = [],
-    erreicht = new Set();
+    reached = new Set();
   /** What a request with this route but an identifier nobody has gets: foreign must look the same. */
-  const keiner = muster =>
-    muster.replace(/:(\w+)/g, (_, n) =>
+  const nobody = pattern =>
+    pattern.replace(/:(\w+)/g, (_, n) =>
       ROW_IDS.test(n)
         ? n === 'tokenId'
           ? 'f'.repeat(16)
@@ -227,56 +226,56 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
             : '2000000000'
         : encodeURIComponent(String(fest[n] ?? 'x')),
     );
-  const wert = k => ({ password: PASS, admin_password: PASS, name: 'Name des Fremden' })[k];
-  als(fremd);
-  for (const [methode, muster] of routen) {
-    const vertrag = CONTRACT[`${methode} ${muster}`];
-    const param = [...muster.matchAll(/:(\w+)/g)].map(m => m[1]).find(n => ROW_IDS.test(n));
-    const pathList = muster.startsWith('/data/')
-      ? [muster.includes('instructions') ? `/data/instructions/${SET}_1.pdf` : `/data/uploads/${opfer}/rechnung.pdf`]
+  const value = k => ({ password: PASS, admin_password: PASS, name: 'Name des Fremden' })[k];
+  as(fremd);
+  for (const [method, pattern] of routes) {
+    const contract = CONTRACT[`${method} ${pattern}`];
+    const param = [...pattern.matchAll(/:(\w+)/g)].map(m => m[1]).find(n => ROW_IDS.test(n));
+    const pathList = pattern.startsWith('/data/')
+      ? [pattern.includes('instructions') ? `/data/instructions/${SET}_1.pdf` : `/data/uploads/${victim}/rechnung.pdf`]
       : (ids[param] ?? []).map(v =>
-          muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(n === param ? v : (fest[n] ?? 'x')))),
+          pattern.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(n === param ? v : (fest[n] ?? 'x')))),
         );
-    if (param) geprueft.add(param);
+    if (param) checked.add(param);
     // Without, then with the optional fields: one of the two should get past the input check.
     const bodies =
-      methode === 'GET' || vertrag?.formular
+      method === 'GET' || contract?.formular
         ? [undefined]
-        : [example(vertrag?.input, wert), example(vertrag?.input, wert, true)];
-    for (const rumpf of bodies) {
-      const leer = muster.startsWith('/data/') ? null : await callFn(methode, keiner(muster), rumpf);
-      for (const weg of pathList) {
-        const r = await callFn(methode, weg, rumpf);
-        if (r.status !== 400) erreicht.add(`${methode} ${muster}`);
-        for (const geheim of [MARKE, VOUCHER]) if (r.text.includes(geheim)) leaks.push(`${methode} ${weg}`);
+        : [example(contract?.input, value), example(contract?.input, value, true)];
+    for (const reqBody of bodies) {
+      const empty = pattern.startsWith('/data/') ? null : await callFn(method, nobody(pattern), reqBody);
+      for (const route of pathList) {
+        const r = await callFn(method, route, reqBody);
+        if (r.status !== 400) reached.add(`${method} ${pattern}`);
+        for (const secret of [MARK, VOUCHER]) if (r.text.includes(secret)) leaks.push(`${method} ${route}`);
         if (r.status === 403 || r.status === 404) continue;
         // A DELETE that answers `deleted: 0` for a missing row may say the same for a foreign one.
-        if (r.status === 200 && leer?.status === 200 && r.text === leer.text) continue;
-        if (r.status !== 400) deviating.push(`${methode} ${weg} → ${r.status} ${r.text.slice(0, 120)}`);
+        if (r.status === 200 && empty?.status === 200 && r.text === empty.text) continue;
+        if (r.status !== 400) deviating.push(`${method} ${route} → ${r.status} ${r.text.slice(0, 120)}`);
       }
     }
   }
-  als(opfer);
+  as(victim);
 
   await t.test('the input check lets the requests through to the ownership', () => {
     // A 400 says nothing about ownership; per route at least one body must get past it.
-    const neverReached = routen.map(([m, p]) => `${m} ${p}`).filter(r => !erreicht.has(r));
+    const neverReached = routes.map(([m, p]) => `${m} ${p}`).filter(r => !reached.has(r));
     assert.deepEqual(neverReached, []);
   });
   await t.test('all kinds of identifiers are covered', () => {
-    assert.deepEqual([...geprueft].sort(), ['acqId', 'id', 'instrId', 'jobId', 'tokenId']);
-    assert.ok(routen.length >= 30, `only ${routen.length} routes with an ID`);
+    assert.deepEqual([...checked].sort(), ['acqId', 'id', 'instrId', 'jobId', 'tokenId']);
+    assert.ok(routes.length >= 30, `only ${routes.length} routes with an ID`);
     assert.ok(
-      routen.some(([, p]) => p === '/data/uploads/*pfad'),
+      routes.some(([, p]) => p === '/data/uploads/*pfad'),
       'the files outside the contract are missing',
     );
   });
   await t.test('never a 2xx, always 403 or 404', () => assert.deepEqual(deviating, []));
   await t.test("no response carries the victim's data", () => assert.deepEqual(leaks, []));
   await t.test("none of the victim's rows changes", async () => {
-    const nachher = await holding();
+    const later = await holding();
     assert.deepEqual(
-      Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k])),
+      Object.keys(prior).filter(k => JSON.stringify(prior[k]) !== JSON.stringify(later[k])),
       [],
     );
   });

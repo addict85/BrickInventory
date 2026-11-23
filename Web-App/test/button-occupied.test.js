@@ -12,10 +12,10 @@ const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 
-/** The content of the bracket group from `auf` — strings and comments respected. */
-function gruppe(t, auf) {
+/** The content of the bracket group from `opened` — strings and comments respected. */
+function group(t, opened) {
   let depth = 0,
-    i = auf;
+    i = opened;
   while (i < t.length) {
     const c = t[i];
     if (c === '/' && t[i + 1] === '/') {
@@ -39,7 +39,7 @@ function gruppe(t, auf) {
     if (c === '(') depth++;
     else if (c === ')') {
       depth--;
-      if (!depth) return t.slice(auf + 1, i);
+      if (!depth) return t.slice(opened + 1, i);
     }
     i++;
   }
@@ -47,21 +47,21 @@ function gruppe(t, auf) {
 }
 
 test('buttonBusy(): the second argument is a label, not a callback', () => {
-  const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Only ${dateien.length} scripts — does the search still match?`);
+  const files = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
+  assert.ok(files.length >= 10, `Only ${files.length} scripts — does the search still match?`);
 
-  const falsch = [],
+  const wrong = [],
     unused = [];
   let found = 0;
-  for (const name of dateien) {
+  for (const name of files) {
     const src = fs.readFileSync(path.join(JS, name), 'utf8');
     for (const m of src.matchAll(/buttonBusy\s*\(/g)) {
       // Skip the definition itself and the import.
-      const davor = src.slice(Math.max(0, m.index - 30), m.index);
-      if (/function\s+$/.test(davor) || /import .*$/.test(davor)) continue;
+      const before = src.slice(Math.max(0, m.index - 30), m.index);
+      if (/function\s+$/.test(before) || /import .*$/.test(before)) continue;
       found++;
       const row = src.slice(0, m.index).split('\n').length;
-      const args = gruppe(src, m.index + m[0].length - 1);
+      const args = group(src, m.index + m[0].length - 1);
       // Split off the second argument at the top level.
       let depth = 0,
         secondOne = null;
@@ -74,16 +74,16 @@ test('buttonBusy(): the second argument is a label, not a callback', () => {
           break;
         }
       }
-      if (secondOne && /^(async\b|\(|function\b)/.test(secondOne)) falsch.push(`${name}:${row}`);
+      if (secondOne && /^(async\b|\(|function\b)/.test(secondOne)) wrong.push(`${name}:${row}`);
       // And the return value MUST land somewhere — otherwise the button stays
       // occupied forever.
-      if (!/(=|return|\?|:)\s*$/.test(davor.trimEnd() + ' '.repeat(0)) && !/[=?:]\s*$/.test(davor.trimEnd()))
+      if (!/(=|return|\?|:)\s*$/.test(before.trimEnd() + ' '.repeat(0)) && !/[=?:]\s*$/.test(before.trimEnd()))
         unused.push(`${name}:${row}`);
     }
   }
   assert.ok(found >= 5, `Only ${found} calls found — does the search still match?`);
   assert.deepEqual(
-    falsch,
+    wrong,
     [],
     'A FUNCTION is passed as the label here. It ends up as text ' +
       'on the button, and its body never runs — exactly the bug from Marco’s screenshot.',
@@ -107,22 +107,22 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
 
   // Take the real function from the source text — not rebuilt.
   const src = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
-  const auf = src.indexOf('export function buttonBusy');
-  assert.ok(auf > 0, 'buttonBusy() not found — renamed?');
-  const start = src.indexOf('{', src.indexOf(')', auf));
+  const opened = src.indexOf('export function buttonBusy');
+  assert.ok(opened > 0, 'buttonBusy() not found — renamed?');
+  const start = src.indexOf('{', src.indexOf(')', opened));
   let depth = 0,
-    ende = start;
+    end = start;
   for (let i = start; i < src.length; i++) {
     if (src[i] === '{') depth++;
     else if (src[i] === '}') {
       depth--;
       if (!depth) {
-        ende = i;
+        end = i;
         break;
       }
     }
   }
-  const source = src.slice(auf, ende + 1).replace(/^export\s+/, '');
+  const source = src.slice(opened, end + 1).replace(/^export\s+/, '');
   const buttonOccupied = new Function(`${source}; return buttonBusy;`)();
 
   const LABEL = '📦 Bereits vorhandene Teile eintragen';
@@ -130,11 +130,11 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   const btn = dom.window.document.getElementById('b');
   // jsdom computes no layout; offsetWidth is always 0 there. The measured
   // width of the real button is therefore passed in by hand.
-  const breite = px => Object.defineProperty(btn, 'offsetWidth', { value: px, configurable: true });
-  breite(235);
+  const width = px => Object.defineProperty(btn, 'offsetWidth', { value: px, configurable: true });
+  width(235);
 
   // 1. Occupied: the label stays, the state is visible anyway.
-  const frei = buttonOccupied(btn);
+  const free = buttonOccupied(btn);
   assert.equal(
     btn.textContent,
     LABEL,
@@ -147,7 +147,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   assert.equal(btn.disabled, true);
 
   // 2. Released: everything back.
-  frei();
+  free();
   assert.equal(btn.textContent, LABEL);
   assert.equal(btn.classList.contains('occupied'), false);
   assert.equal(btn.disabled, false);
@@ -164,7 +164,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
   btn.style.minWidth = '';
 
   // 4. An invisible button (offsetWidth 0) gets nothing imposed.
-  breite(0);
+  width(0);
   buttonOccupied(btn);
   assert.equal(btn.style.minWidth, '', 'At width 0 there is nothing to freeze.');
   btn.disabled = false;
@@ -172,7 +172,7 @@ test('buttonBusy(): label and width stay as long as the button is busy', () => {
 
   // 5. WITH its own waiting text: the text changes — and the width is
   //    held, otherwise this button would tear the line along.
-  breite(235);
+  width(235);
   const freePdf = buttonOccupied(btn, 'erstelle…');
   assert.equal(btn.textContent, 'erstelle…');
   assert.equal(

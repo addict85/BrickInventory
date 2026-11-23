@@ -55,35 +55,35 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const callFn = async (weg, token, method = 'GET') => {
-    const r = await fetch(basis + '/api/v2' + weg, { method, headers: { authorization: `Bearer ${token}` } });
+  const callFn = async (route, token, method = 'GET') => {
+    const r = await fetch(basis + '/api/v2' + route, { method, headers: { authorization: `Bearer ${token}` } });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
   await t.test('six concurrent exchanges: one new, the others 409', async () => {
     const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
-    const antworten = await Promise.all(Array.from({ length: 6 }, () => callFn('/auth/rotate-token', alt, 'POST')));
-    const state = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
-    const neu = antworten.filter(a => a.status === 200);
-    assert.equal(neu.length, 1, state);
+    const answers = await Promise.all(Array.from({ length: 6 }, () => callFn('/auth/rotate-token', alt, 'POST')));
+    const state = JSON.stringify(answers.map(a => [a.status, a.body?.code]));
+    const fresh = answers.filter(a => a.status === 200);
+    assert.equal(fresh.length, 1, state);
     assert.ok(
-      antworten.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'token_swap_running'),
+      answers.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'token_swap_running'),
       state,
     );
     tokenCache.emptyTokenCache();
-    assert.equal((await callFn('/stats', neu[0].body.token)).status, 200, 'the issued token is valid');
+    assert.equal((await callFn('/stats', fresh[0].body.token)).status, 200, 'the issued token is valid');
   });
 
   await t.test('a second exchange from another network ends the family', async () => {
     const alt = await auth.createToken(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
-    const erster = await auth.rotateToken(alt, '10.1.2.77');
-    assert.ok(erster && typeof erster === 'object', 'precondition: the first swap succeeds');
+    const firstOne = await auth.rotateToken(alt, '10.1.2.77');
+    assert.ok(firstOne && typeof firstOne === 'object', 'precondition: the first swap succeeds');
     await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
-      auth.tokenDigest(erster.token),
+      auth.tokenDigest(firstOne.token),
     ]);
     assert.equal(await auth.rotateToken(alt, '192.0.2.5'), null);
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.userForToken(erster.token), null, 'the successor is gone');
+    assert.equal(await auth.userForToken(firstOne.token), null, 'the successor is gone');
     assert.equal(await auth.userForToken(alt), null, 'the old one is gone');
   });
 });

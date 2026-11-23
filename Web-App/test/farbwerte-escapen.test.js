@@ -12,7 +12,7 @@ const path = require('node:path');
 const JS = path.join(__dirname, '..', 'public', 'js');
 
 test('color values only get into the markup via escHex', () => {
-  const treffer = [];
+  const hits = [];
   let checked = 0;
   for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js') && n !== 'app.bundle.js')) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
@@ -23,7 +23,7 @@ test('color values only get into the markup via escHex', () => {
         // Two allowed versions of the same check: escHex() delivers
         // `#RRGGBB` for style, rawHex() the bare six digits for
         // attributes whose readers add the hash themselves.
-        if (!m[1].includes('escHex(') && !m[1].includes('rawHex(')) treffer.push(`${f}:${i + 1}  \${${m[1].trim()}}`);
+        if (!m[1].includes('escHex(') && !m[1].includes('rawHex(')) hits.push(`${f}:${i + 1}  \${${m[1].trim()}}`);
       }
     });
   }
@@ -31,8 +31,8 @@ test('color values only get into the markup via escHex', () => {
   // would also be green if nobody displayed colors anymore.
   assert.ok(checked >= 5, `only ${checked} interpolated color values found — field name changed?`);
   assert.deepEqual(
-    treffer,
+    hits,
     [],
-    `These places write a color value raw into the markup:\n  ${treffer.join('\n  ')}\nescHex(value, fallback) checks for six hex digits and otherwise returns the fallback — see the note in escaping.js.`,
+    `These places write a color value raw into the markup:\n  ${hits.join('\n  ')}\nescHex(value, fallback) checks for six hex digits and otherwise returns the fallback — see the note in escaping.js.`,
   );
 });

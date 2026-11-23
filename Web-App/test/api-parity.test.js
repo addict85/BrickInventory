@@ -355,12 +355,12 @@ test('API parity web app ↔ Android', async t => {
     // All three kinds share src/finances/priceHistory.ts. What is checked therefore
     // is that they deliver the same FIELDS — if one kind drifts out of shape, it
     // shows here, even without a second route to compare.
-    const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
+    const fields = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
     const set = (await get('/api/v2/sets/75192-1/price-history')).body;
     for (const path of ['/api/v2/parts/3001/4/price-history', '/api/v2/minifigs/sw0001/price-history']) {
       const b = (await get(path)).body;
       assert.equal(b.success, true, `${path} does not answer`);
-      for (const k of felder)
+      for (const k of fields)
         assert.ok(k in b, `${path}: field ${k} is missing (the set delivers it: ${typeof set[k]})`);
     }
   });

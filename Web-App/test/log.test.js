@@ -59,10 +59,10 @@ test('a line is JSON with time, level, message, request and context', t => {
 test('a line break stays in one entry; placeholders take the values', async t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
-  const geschrieben = [];
+  const written = [];
   P.logToDatabase({
     query: async (sql, values) => {
-      if (sql.startsWith('INSERT')) geschrieben.push(values);
+      if (sql.startsWith('INSERT')) written.push(values);
     },
   });
   // As a request could send it: a forged second entry in the path.
@@ -73,23 +73,23 @@ test('a line break stays in one entry; placeholders take the values', async t =>
   assert.equal(json.message, '[route] GET /x ⏎ [route] gefälscht ⏎  404:');
   assert.deepEqual(json.kontext, { ok: 1 });
   assert.equal(JSON.parse(m.out[0]).message, 'ohne Platzhalter ab');
-  for (const [, text] of geschrieben) assert.doesNotMatch(text, /[\r\n]/, text);
+  for (const [, text] of written) assert.doesNotMatch(text, /[\r\n]/, text);
 });
 
 test('app_logs gets the lines in the previous text format', async t => {
   const { output } = transcript();
   t.after(P.installLog(output));
-  const geschrieben = [];
+  const written = [];
   P.logToDatabase({
     query: async (sql, values) => {
-      if (sql.startsWith('INSERT')) geschrieben.push(values);
+      if (sql.startsWith('INSERT')) written.push(values);
     },
   });
   P.requestContext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
   await P.emptyLog();
-  assert.equal(geschrieben.length, 1);
-  assert.equal(geschrieben[0][0], 'info');
-  assert.match(geschrieben[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
+  assert.equal(written.length, 1);
+  assert.equal(written[0][0], 'info');
+  assert.match(written[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
 });
 
 test('write errors: immediately, then collected per minute', async t => {
@@ -109,23 +109,23 @@ test('write errors: immediately, then collected per minute', async t => {
   await row(2);
   m.clock += 10_000;
   await row(4);
-  const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.message.startsWith('app_logs:'));
-  assert.equal(meldungen().length, 1, 'within the minute only the first message');
-  assert.equal(meldungen()[0].message, 'app_logs: 3 Zeile(n) nicht geschrieben');
-  assert.equal(meldungen()[0].kontext.last_error, 'Datenbank weg');
+  const messages = () => m.err.map(z => JSON.parse(z)).filter(z => z.message.startsWith('app_logs:'));
+  assert.equal(messages().length, 1, 'within the minute only the first message');
+  assert.equal(messages()[0].message, 'app_logs: 3 Zeile(n) nicht geschrieben');
+  assert.equal(messages()[0].kontext.last_error, 'Datenbank weg');
   m.clock += 60_000;
   P.reportWriteError();
-  assert.equal(meldungen().length, 2);
-  assert.equal(meldungen()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'the rest of the minute in one line');
+  assert.equal(messages().length, 2);
+  assert.equal(messages()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'the rest of the minute in one line');
 });
 
 test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
-  for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
-    assert.equal(P.requestId(gut), gut);
-  for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
-    const k = P.requestId(boese);
-    assert.notEqual(k, boese);
-    assert.match(k, /^[0-9a-z]{4,}$/, `own ID instead of ${JSON.stringify(boese)}`);
+  for (const good of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
+    assert.equal(P.requestId(good), good);
+  for (const evil of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
+    const k = P.requestId(evil);
+    assert.notEqual(k, evil);
+    assert.match(k, /^[0-9a-z]{4,}$/, `own ID instead of ${JSON.stringify(evil)}`);
   }
   assert.notEqual(P.requestId(''), P.requestId(''), 'own IDs keep counting');
 });

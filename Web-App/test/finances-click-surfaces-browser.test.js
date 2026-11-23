@@ -27,27 +27,27 @@ test('finances on the computer: controls at least 32 px', { concurrency: 1, time
   const app = await startApp(t, {
     name: `finklick_${process.pid}`,
     holding: async (db, uid) => {
-      await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
-      await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
+      await holdsSet(db, uid, '10294-1', 2, { price: 100 });
+      await holdsSet(db, uid, '75192-1', 1, { price: 50 });
     },
   });
   if (app.reason) {
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  await ruhig();
-  await b.auswerten(`location.hash = '#/finanzen'; true`);
-  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in the finance table');
+  const { b, until, settle } = app;
+  await settle();
+  await b.evaluate(`location.hash = '#/finanzen'; true`);
+  await until(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in the finance table');
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-  await ruhig();
+  await settle();
 
   await t.test('controls of the finances', async () => {
-    assert.deepEqual(await b.auswerten(TO_SMALL), []);
+    assert.deepEqual(await b.evaluate(TO_SMALL), []);
     const m =
-      await b.auswerten(`({ sort: document.querySelectorAll('.sort-button').length, zeile: document.querySelectorAll('.row-open').length,
-      kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
-    assert.ok(m.sort >= 3 && m.zeile >= 1, `too little measured: ${JSON.stringify(m)}`);
-    assert.equal(m.kopf, 58, 'Header bar is no longer 58 px high');
+      await b.evaluate(`({ sort: document.querySelectorAll('.sort-button').length, line: document.querySelectorAll('.row-open').length,
+      head: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
+    assert.ok(m.sort >= 3 && m.line >= 1, `too little measured: ${JSON.stringify(m)}`);
+    assert.equal(m.head, 58, 'Header bar is no longer 58 px high');
   });
 });

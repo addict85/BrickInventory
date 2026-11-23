@@ -34,9 +34,9 @@ const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost
 const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const { catalogSet } = require('./helpers/inventory');
 const NAME = testName('schema_frisch');
-const ziel = new URL(BASIS);
-ziel.pathname = '/' + NAME;
-process.env.DATABASE_URL = ziel.toString();
+const target = new URL(BASIS);
+target.pathname = '/' + NAME;
+process.env.DATABASE_URL = target.toString();
 
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const { buildAndRequire, testData } = require('./helpers/sources');
@@ -50,14 +50,14 @@ const WITHOUT_KEY = new Map([
 ]);
 
 async function schemaImage(db) {
-  const spalten = await db.all(`SELECT table_name, column_name, data_type, is_nullable, column_default
+  const columns = await db.all(`SELECT table_name, column_name, data_type, is_nullable, column_default
                                   FROM information_schema.columns WHERE table_schema = 'public'
                                  ORDER BY 1, 2`);
-  const schranken = await db.all(`SELECT conrelid::regclass::text AS t, conname, pg_get_constraintdef(oid) AS d
+  const limits = await db.all(`SELECT conrelid::regclass::text AS t, conname, pg_get_constraintdef(oid) AS d
                                     FROM pg_constraint WHERE connamespace = 'public'::regnamespace ORDER BY 1, 2`);
-  const indizes = await db.all(`SELECT tablename, indexname, indexdef FROM pg_indexes
+  const indexes = await db.all(`SELECT tablename, indexname, indexdef FROM pg_indexes
                                  WHERE schemaname = 'public' ORDER BY 1, 2`);
-  return { spalten, schranken, indizes };
+  return { columns, limits, indexes };
 }
 
 test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -75,19 +75,19 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = testData();
   // The same path as at server start: initSchema only the first time, the
   // migrations always.
-  const starte = () => db.initSchemaOnce();
+  const start = () => db.initSchemaOnce();
   t.after(async () => {
     await db.pool.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });
 
-  await starte();
+  await start();
 
   await t.test('every account column has a foreign key', async () => {
     const open = await db.all(
       `
-      SELECT c.table_name || '.' || c.column_name AS spalte
+      SELECT c.table_name || '.' || c.column_name AS "column"
         FROM information_schema.columns c
         JOIN information_schema.tables tb ON tb.table_name = c.table_name AND tb.table_schema = 'public'
                                          AND tb.table_type = 'BASE TABLE'
@@ -101,15 +101,15 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
       [ACCOUNT_COLUMNS],
     );
     assert.deepEqual(
-      open.map(r => r.spalte).filter(s => !WITHOUT_KEY.has(s)),
+      open.map(r => r.column).filter(s => !WITHOUT_KEY.has(s)),
       [],
     );
-    const alle = await db.get(
+    const all = await db.get(
       `SELECT COUNT(*)::int AS n FROM information_schema.columns
                                 WHERE table_schema = 'public' AND column_name = ANY($1)`,
       [ACCOUNT_COLUMNS],
     );
-    assert.ok(alle.n >= 20, `Only ${alle.n} account columns found — does the search still work?`);
+    assert.ok(all.n >= 20, `Only ${all.n} account columns found — does the search still work?`);
   });
 
   await t.test('an account disappears completely', async () => {
@@ -142,42 +142,42 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   });
 
   await t.test('deleting searches via an index', async () => {
-    const ohne = await db.all(`
+    const without = await db.all(`
       SELECT k.conrelid::regclass::text AS t FROM pg_constraint k
        WHERE k.contype = 'f' AND k.confrelid = 'users'::regclass
          AND NOT EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = k.conrelid AND i.indkey[0] = k.conkey[1])
        ORDER BY 1`);
     assert.deepEqual(
-      ohne.map(r => r.t),
+      without.map(r => r.t),
       [],
       'Without an index every account deletion scans the whole table',
     );
   });
 
   await t.test('db/schema-snapshot.sql shows the schema that results', async () => {
-    const { schemaText, OUT_FILE: DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
-    const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
+    const { schemaText, OUT_FILE: FILE } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
+    const checkedIn = require('node:fs').readFileSync(FILE, 'utf8');
     assert.equal(
       await schemaText(db),
-      eingecheckt,
+      checkedIn,
       'db/schema-snapshot.sql is outdated — regenerate: npm run build && npm run schema:snapshot',
     );
   });
 
   await t.test('a second start changes nothing in the schema', async () => {
-    const vorher = await schemaImage(db);
-    await starte();
-    assert.deepEqual(await schemaImage(db), vorher);
+    const prior = await schemaImage(db);
+    await start();
+    assert.deepEqual(await schemaImage(db), prior);
   });
 
   await t.test('even a forced run does not bring back deleted items', async () => {
-    const vorher = await schemaImage(db);
+    const prior = await schemaImage(db);
     process.env.FORCE_SCHEMA_INIT = '1';
     try {
-      await starte();
+      await start();
     } finally {
       delete process.env.FORCE_SCHEMA_INIT;
     }
-    assert.deepEqual(await schemaImage(db), vorher, 'FORCE_SCHEMA_INIT creates columns again that migrations deleted');
+    assert.deepEqual(await schemaImage(db), prior, 'FORCE_SCHEMA_INIT creates columns again that migrations deleted');
   });
 });

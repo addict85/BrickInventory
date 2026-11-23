@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ohneKommentare, testData } = require('./helpers/sources');
+const { withoutComments, testData } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
@@ -28,9 +28,9 @@ test('deleting asks at most once', async () => {
   // Counter-checks (22.11.2026, each alone): delSet asks with confirmDelete first → red “own set” (a dialog);
   // deletionChoice without `if (!foreign) return ''` → red the same test; a cancelled choice still deletes
   // (`account === null` check removed) → red “household”.
-  const { openUi, warte, takt } = require('./helpers/ui');
+  const { openUi, waitFor, tick } = require('./helpers/ui');
   const mk = owners => ({ set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, owners });
-  const deletes = aufrufe => aufrufe.filter(a => a.method === 'DELETE').map(a => a.url.replace(/^.*\/api/, ''));
+  const deletes = calls => calls.filter(a => a.method === 'DELETE').map(a => a.url.replace(/^.*\/api/, ''));
   const modalOpen = d => d.getElementById('confirm-modal')?.style.display === 'flex';
   for (const [kind, owners] of [
     ['own set', [{ id: 1, username: 'anna' }]],
@@ -43,7 +43,7 @@ test('deleting asks at most once', async () => {
     ],
   ]) {
     const SET = mk(owners);
-    const { w, d, aufrufe } = await openUi(
+    const { w, d, calls } = await openUi(
       {
         '/v2/sets/household-members': {
           success: true,
@@ -65,17 +65,17 @@ test('deleting asks at most once', async () => {
     );
     try {
       const trash = () => d.querySelector('#gallery .delbtn[data-click="delSetStop"]');
-      assert.ok(await warte(() => trash()), `${kind}: no trash on the tile`);
+      assert.ok(await waitFor(() => trash()), `${kind}: no trash on the tile`);
       trash().click();
       if (kind === 'own set') {
-        assert.ok(await warte(() => deletes(aufrufe).length === 1), `${kind}: nothing deleted`);
+        assert.ok(await waitFor(() => deletes(calls).length === 1), `${kind}: nothing deleted`);
         assert.equal(modalOpen(d), false, `${kind}: a question for a restorable set`);
-        assert.deepEqual(deletes(aufrufe), ['/v2/sets/10294-1']);
+        assert.deepEqual(deletes(calls), ['/v2/sets/10294-1']);
       } else {
-        assert.ok(await warte(() => modalOpen(d)), `${kind}: no account choice`);
+        assert.ok(await waitFor(() => modalOpen(d)), `${kind}: no account choice`);
         d.getElementById('cd-cancel').click();
-        await takt(50);
-        assert.deepEqual(deletes(aufrufe), [], `${kind}: deleted after cancelling`);
+        await tick(50);
+        assert.deepEqual(deletes(calls), [], `${kind}: deleted after cancelling`);
       }
     } finally {
       w.close();
@@ -84,7 +84,7 @@ test('deleting asks at most once', async () => {
 });
 
 test('the quantity multiplication is in all places', () => {
-  const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
+  const h = withoutComments(require('./helpers/sources').handlerSource());
   // Parts and minifigures of a set count PER COPY times the set count.
   const placeList = (h.match(/quantityFrom\('sm', ?1\)/g) || []).length;
   assert.ok(
@@ -97,7 +97,7 @@ test('the quantity multiplication is in all places', () => {
   // green with a multiplication that aborts at runtime.
   assert.ok(
     (h.match(/setQuantityJoin\(/g) || []).length >= 3,
-    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.quantity`, und den Alias hängt ' + 'erst setQuantityJoin() an',
+    'Too few JOIN sources: quantityFrom() reads `sm.quantity`, and only ' + 'setQuantityJoin() adds the alias',
   );
 
   // That the summary follows a quantity change is checked by
@@ -107,18 +107,18 @@ test('the quantity multiplication is in all places', () => {
 test('deletion and quantity change against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const NUTZER = `dl-${process.pid}`;
+  const USER = `dl-${process.pid}`;
   const SN = `76${(process.pid % 900) + 100}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'parts', 'minifigs', 'price_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  await aufraeumen();
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
+  await cleanUp();
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(
@@ -138,10 +138,10 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
   await holdsPart(db, uid, '3001', { setNumber: SN, quantity: 10, colorId: 4 });
   await holdsMinifig(db, uid, 'cty0001', { setNumber: SN, quantity: 1 });
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModule(_req);
-  const setzen = n =>
+  const put = n =>
     fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -154,15 +154,15 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       assert.equal(st.total_parts, 10, 'Vorbedingung');
       assert.equal(st.total_minifigs, 1, 'Vorbedingung');
 
-      await setzen(3);
+      await put(3);
       st = await H.getStats([uid]);
       assert.equal(st.total_parts, 30, `parts ${st.total_parts} instead of 30`);
       assert.equal(st.total_minifigs, 3, `minifigures ${st.total_minifigs} instead of 3`);
 
       // The LISTS too, not only the metrics — they query differently.
       const p = await H.partsQuery([uid], {});
-      const teil = (p.parts || []).find(x => x.part_number === '3001');
-      assert.equal(Number(teil?.quantity ?? teil?.total_quantity), 30, 'the parts list does not multiply');
+      const part = (p.parts || []).find(x => x.part_number === '3001');
+      assert.equal(Number(part?.quantity ?? part?.total_quantity), 30, 'the parts list does not multiply');
       const m = await H.readMinifigs([uid], {});
       assert.equal(
         Number(m.figs[0]?.total_quantity ?? m.figs[0]?.quantity),
@@ -175,7 +175,7 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
     await t.test('fewer sets = fewer parts and minifigures', async () => {
       // The opposite direction: without it the test would also be green if the number
       // only ever grew.
-      await setzen(1);
+      await put(1);
       const st = await H.getStats([uid]);
       assert.equal(st.total_parts, 10, `parts ${st.total_parts} instead of 10`);
       assert.equal(st.total_minifigs, 1, `minifigures ${st.total_minifigs} instead of 1`);
@@ -183,18 +183,18 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       // reading, not when writing. Since migration 0038 it no longer stands
       // in `parts` (the column does not exist), but ONCE in the catalog of the
       // set. If 30 stood there, somebody would have calculated the set count into it, and …
-      const roh = await db.get(`SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`, [
+      const raw = await db.get(`SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`, [
         SN,
       ]);
-      assert.equal(Number(roh.quantity), 10, 'the catalogue piece count must be the one PER COPY');
+      assert.equal(Number(raw.quantity), 10, 'the catalogue piece count must be the one PER COPY');
       // And in `parts` itself there is no quantity any more into which something
       // COULD be calculated. Without this second assertion the
       // test would also be green if the column showed up again.
-      const spalte = await db.get(
+      const column = await db.get(
         `SELECT 1 AS da FROM information_schema.columns
           WHERE table_name='parts' AND column_name='quantity'`,
       );
-      assert.equal(spalte, undefined, 'parts.quantity is back — then the piece count exists twice again');
+      assert.equal(column, undefined, 'parts.quantity is back — then the piece count exists twice again');
     });
 
     await t.test('deleting takes parts, minifigures and purchase prices along', async () => {
@@ -210,8 +210,8 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       assert.equal(st.total_minifigs, 0, "the set's minifigures still count");
     });
   } finally {
-    await aufraeumen();
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await cleanUp();
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

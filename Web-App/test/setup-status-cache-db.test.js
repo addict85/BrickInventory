@@ -29,7 +29,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const db = testData();
 
 after(() => db.pool.end().catch(() => {}));
@@ -37,15 +37,15 @@ after(() => db.pool.end().catch(() => {}));
 test('setup state: remembered, separated by administrator, throttled', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
+  const key = ['einrichtung_erledigt', 'rebrickable_api_key'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [key]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
   const counterRoute = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'einrichtung-stand|%'");
   await counterRoute();
   t.after(async () => {
     await counterRoute();
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
-    for (const z of vorher) {
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
+    for (const z of prior) {
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ($1, $2)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -59,26 +59,26 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
   // On the pool instead of on the repository: imports are bound, a replaced export would never arrive.
   const parsed = [];
   // In the pools of the app (runtime, system and web system role), not in the access of the test data.
-  const zugang = require('./helpers/sources').testAccess();
-  const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
-  const echt = pools.map(p => p.query);
+  const access = require('./helpers/sources').testAccess();
+  const pools = [...new Set([access.pool, access.systemPool, access.systemWebPool])];
+  const original = pools.map(p => p.query);
   for (const [i, p] of pools.entries())
     p.query = (sql, params) => {
       if (/FROM global_settings/i.test(String(sql))) parsed.push(params?.[0]);
-      return echt[i].call(p, sql, params);
+      return original[i].call(p, sql, params);
     };
   t.after(() => {
-    for (const [i, p] of pools.entries()) p.query = echt[i];
+    for (const [i, p] of pools.entries()) p.query = original[i];
   });
 
   await t.test('within the window only the first call computes', async () => {
     state.forgetSetupStatus();
     parsed.length = 0;
     await state.setupStatus();
-    const erster = parsed.length;
-    assert.ok(erster >= 5, `the counter sees nothing (${erster}) — the counter-check would prove nothing`);
+    const firstOne = parsed.length;
+    assert.ok(firstOne >= 5, `the counter sees nothing (${firstOne}) — the counter-check would prove nothing`);
     await Promise.all([state.setupStatus(), state.setupStatus()]);
-    assert.equal(parsed.length, erster, 'further calls within the window must not read anything');
+    assert.equal(parsed.length, firstOne, 'further calls within the window must not read anything');
   });
 
   await t.test('a written value applies immediately', async () => {
@@ -90,31 +90,31 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
 
   await t.test('a value from another process clears the state here (NOTIFY)', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
-    const weg = require('./helpers/sources').testServices().settings.listenForGlobalChanges();
+    const route = require('./helpers/sources').testServices().settings.listenForGlobalChanges();
     t.after(async () => {
-      weg();
-      await zugang.notification.close();
+      route();
+      await access.notification.close();
     });
-    assert.ok(await bis(() => zugang.notification.listensTo('globale_einstellung')), 'no LISTEN');
+    assert.ok(await until(() => access.notification.listensTo('globale_einstellung')), 'no LISTEN');
     state.forgetSetupStatus();
     assert.equal((await state.setupStatus()).configured, false);
     // A second set of services with its own compartments writes like another process.
-    const anderer = _req('startup/wiring.js').buildServices(zugang);
-    await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
+    const otherOne = _req('startup/wiring.js').buildServices(access);
+    await otherOne.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(
-      await bis(async () => (await state.setupStatus()).configured, 3000),
+      await until(async () => (await state.setupStatus()).configured, 3000),
       'the state here kept the old value until its period expired',
     );
   });
 
   await t.test('administrator and public response are separate', async () => {
     state.forgetSetupStatus();
-    const verwalter = await state.setupStatus({ isAdmin: true });
+    const admin = await state.setupStatus({ isAdmin: true });
     const open = await state.setupStatus({ isAdmin: false });
     assert.equal(open.base_url, null, 'the public response must not carry the base URL');
-    assert.notEqual(verwalter, open);
+    assert.notEqual(admin, open);
     const k = _req('src/infra/config.js').config();
-    assert.equal(verwalter.base_url, k.appBaseUrl);
+    assert.equal(admin.base_url, k.appBaseUrl);
   });
 
   await t.test('after completion no key is read', async () => {
@@ -134,11 +134,11 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
   });
 
   await t.test('the address is throttled', async () => {
-    const srv = testServer(_req, { sitzung: {}, t });
-    let letzter = 0;
-    for (let i = 0; i < 125 && letzter !== 429; i++) {
-      letzter = (await fetch(srv.base + '/api/v2/setup/state')).status;
+    const srv = testServer(_req, { session: {}, t });
+    let lastOne = 0;
+    for (let i = 0; i < 125 && lastOne !== 429; i++) {
+      lastOne = (await fetch(srv.base + '/api/v2/setup/state')).status;
     }
-    assert.equal(letzter, 429, 'even after 125 calls the open page still answers');
+    assert.equal(lastOne, 429, 'even after 125 calls the open page still answers');
   });
 });

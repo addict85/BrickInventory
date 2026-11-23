@@ -22,9 +22,9 @@ const db = testData();
 // real client throws in exactly this situation — here it is only COUNTED how
 // often it is asked at all.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
-const echt = require(blPath);
+const original = require(blPath);
 let fetches = [];
-require.cache[blPath].exports = Object.assign({}, echt, {
+require.cache[blPath].exports = Object.assign({}, original, {
   priceGuideQuery: async (_k, sn, cond) => {
     fetches.push(`${sn}|${cond}`);
     throw new Error(`${sn} — kein BrickLink-Preis verfuegbar`);
@@ -45,9 +45,9 @@ test('the catalog answers the same no matter how the number is written', { concu
 
   const BLANK = `g${process.pid}`; // this is how the caller asks
   const WITH_V = `${BLANK}-1`; // this is how clients/bricklink.ts stores it
-  const aufraeumen = () =>
+  const cleanUp = () =>
     db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[BLANK, WITH_V]]).catch(() => {});
-  await aufraeumen();
+  await cleanUp();
 
   try {
     // Write the marker exactly as clients/bricklink.ts writes it.
@@ -79,29 +79,29 @@ test('the catalog answers the same no matter how the number is written', { concu
       assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
     }
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
 
 test('the spelling is not computed again anywhere', () => {
   // Found, not enumerated.
-  const dateien = [];
+  const files = [];
   const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
       if (e.isDirectory()) go(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer works`);
 
-  const eigene = [],
+  const owned = [],
     prechecker = [];
-  for (const f of dateien) {
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -115,14 +115,14 @@ test('the spelling is not computed again anywhere', () => {
       /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//,
     ]) // and the truncation
       if (m.test(code)) {
-        eigene.push(rel);
+        owned.push(rel);
         break;
       }
     if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) prechecker.push(rel);
   }
   // No exceptions: two places that compute the same notation drift apart.
   assert.deepEqual(
-    eigene,
+    owned,
     ['src/infra/setNumber.ts'],
     'The spelling is computed once more elsewhere — that is exactly how ' +
       'two places that mean the same thing drift apart',

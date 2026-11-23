@@ -51,7 +51,7 @@ test('price and history of a new set come in condition N', { concurrency: 1 }, a
        FROM (VALUES ('N', 100), ('U', 50)) AS z(c, p), generate_series(1, 5) d`,
     [SET],
   );
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, username: NAME, isAdmin: false }, t });
   try {
     let j = await (await fetch(`${base}/api/v2/sets/${SET}/price`)).json();
     assert.equal(j.avg_price, 100, '/price takes the new price');

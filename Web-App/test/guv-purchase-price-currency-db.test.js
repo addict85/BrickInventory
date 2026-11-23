@@ -26,15 +26,15 @@ const db = testData();
 const { holdsSet, record, catalogSet } = require('./helpers/inventory');
 
 const NAME = `guvwaehrung_${process.pid}`;
-const NR = { eur: `9${process.pid}1-1`, gemischt: `9${process.pid}2-1`, null: `9${process.pid}3-1` };
+const NR = { eur: `9${process.pid}1-1`, mixed: `9${process.pid}2-1`, null: `9${process.pid}3-1` };
 
 test('P&L: one purchase price, in the display currency', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
-  const nummern = Object.values(NR);
-  for (const nr of nummern) {
+  const numbers = Object.values(NR);
+  for (const nr of numbers) {
     await catalogSet(db, nr, { name: nr });
     await db.run(
       `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
@@ -42,8 +42,8 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
       [nr],
     );
   }
-  const withCurrency = async (nr, quantity, preis, currency, am) => {
-    await record(db, uid, nr, quantity, { preis, am });
+  const withCurrency = async (nr, quantity, price, currency, am) => {
+    await record(db, uid, nr, quantity, { price, am });
     await db.run(
       `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
       [currency, uid],
@@ -51,15 +51,15 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   };
   await holdsSet(db, uid, NR.eur, 0);
   await withCurrency(NR.eur, 2, 100, 'EUR');
-  await holdsSet(db, uid, NR.gemischt, 0);
-  await withCurrency(NR.gemischt, 1, 80, 'CHF', '2026-01-02');
-  await withCurrency(NR.gemischt, 3, 999, 'EUR', '2026-01-03');
+  await holdsSet(db, uid, NR.mixed, 0);
+  await withCurrency(NR.mixed, 1, 80, 'CHF', '2026-01-02');
+  await withCurrency(NR.mixed, 3, 999, 'EUR', '2026-01-03');
   await holdsSet(db, uid, NR.null, 0);
   await withCurrency(NR.null, 1, 0, 'CHF');
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [nummern]);
-    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [numbers]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [numbers]);
     await db.pool.end().catch(() => {});
   });
 
@@ -77,7 +77,7 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   });
 
   await t.test('mixed: only the acquisition in CHF counts', () => {
-    const z = row(NR.gemischt);
+    const z = row(NR.mixed);
     assert.equal(z.purchase_price, 80);
     assert.equal(z.pnl_pct, '50.0');
   });

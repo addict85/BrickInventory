@@ -11,21 +11,21 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 
-const sichtbar = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+const visible = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('English: tab and wishlist are called “Wishlist”', async () => {
   const o = await openUi({ '/v2/wanted': { success: true, items: [], total: 0 } }, { language: 'en' });
   try {
     const { d, w } = o;
-    assert.equal(sichtbar(d.querySelector('.ntab[data-tab="wanted"]')), 'Wishlist', 'Reiter');
-    await reiter(w, 'wanted');
+    assert.equal(visible(d.querySelector('.ntab[data-tab="wanted"]')), 'Wishlist', 'Reiter');
+    await switchTab(w, 'wanted');
     const tab = d.getElementById('tab-wanted');
-    assert.match(sichtbar(tab.querySelector('h1, .ptitle, .tab-titel') || tab), /Wishlist/);
+    assert.match(visible(tab.querySelector('h1, .ptitle, .tab-titel') || tab), /Wishlist/);
     assert.equal(d.getElementById('mks').getAttribute('placeholder'), 'Search the wishlist…');
     assert.equal(d.getElementById('mks').getAttribute('aria-label'), 'Search the wishlist');
-    const text = sichtbar(tab);
+    const text = visible(tab);
     assert.match(text, /Add a wishlist item/);
     assert.doesNotMatch(text, /wanted/i, `„wanted“ in the wanted list: ${text.slice(0, 300)}`);
   } finally {
@@ -36,9 +36,9 @@ test('English: tab and wishlist are called “Wishlist”', async () => {
 test('English: export button of the settings names the “wishlist”', async () => {
   const o = await openUi({}, { language: 'en' });
   try {
-    const knopf = o.d.querySelector('[data-i18n="settings.data_zip_btn"]');
-    assert.ok(knopf, 'export button not found');
-    assert.equal(sichtbar(knopf), 'Export sets, parts, minifigures, wishlist & alerts (ZIP)');
+    const button = o.d.querySelector('[data-i18n="settings.data_zip_btn"]');
+    assert.ok(button, 'export button not found');
+    assert.equal(visible(button), 'Export sets, parts, minifigures, wishlist & alerts (ZIP)');
   } finally {
     o.w.close();
   }

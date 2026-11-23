@@ -21,39 +21,39 @@ for (const language of ['de', 'en']) {
   test(`${language}: signposts are correct`, async () => {
     const { w, d } = await openUi({}, { language });
     try {
-      const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
+      const menu = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
       const sections = [...d.querySelectorAll('.settings-nav a')].map(a => a.textContent.trim());
-      assert.ok(menue.length >= 8 && sections.length >= 5, `menu/sections not rendered: ${menue} / ${sections}`);
+      assert.ok(menu.length >= 8 && sections.length >= 5, `menu/sections not rendered: ${menu} / ${sections}`);
       const words = language === 'de' ? w.I18N_DE : w.I18N_EN;
       const MENU = language === 'de' ? 'Menü' : 'Menu';
-      const funde = [];
-      let gesehen = 0;
+      const findings = [];
+      let seen = 0;
       for (const [k, text] of Object.entries(words)) {
         if (typeof text !== 'string') continue;
-        if (WITHOUT_PATH.test(text)) funde.push(`${k}: Ziel ohne Pfad — „${text.match(WITHOUT_PATH)[0]}“`);
+        if (WITHOUT_PATH.test(text)) findings.push(`${k}: Ziel ohne Pfad — „${text.match(WITHOUT_PATH)[0]}“`);
         // After „Menü → “ a menu item must stand (the longest one that fits);
         // after „Einstellungen → “ a section of the settings.
-        const einst = language === 'de' ? 'Einstellungen' : 'Settings';
-        const begins = (rest, namen) =>
-          [...namen]
+        const settings = language === 'de' ? 'Einstellungen' : 'Settings';
+        const begins = (rest, names) =>
+          [...names]
             .sort((x, y) => y.length - x.length)
             .find(n => rest.startsWith(n) && !/^[\p{L}\d]/u.test(rest.slice(n.length)));
         for (const m of text.matchAll(/\b(Menü|Menu|menu) → /g)) {
-          gesehen++;
-          if (m[1] !== MENU) funde.push(`${k}: „${m[1]}“ statt „${MENU}“`);
+          seen++;
+          if (m[1] !== MENU) findings.push(`${k}: „${m[1]}“ statt „${MENU}“`);
           const rest = text.slice(m.index + m[0].length);
-          const ziel = begins(rest, menue);
-          if (!ziel) {
-            funde.push(`${k}: „${rest.slice(0, 24)}…“ beginnt mit keinem Menüpunkt`);
+          const target = begins(rest, menu);
+          if (!target) {
+            findings.push(`${k}: „${rest.slice(0, 24)}…“ beginnt mit keinem Menüpunkt`);
             continue;
           }
-          const danach = rest.slice(ziel.length);
-          if (ziel === einst && danach.startsWith(' → ') && !begins(danach.slice(3), sections))
-            funde.push(`${k}: „${danach.slice(3, 27)}…“ ist kein Abschnitt der Einstellungen`);
+          const afterwards = rest.slice(target.length);
+          if (target === settings && afterwards.startsWith(' → ') && !begins(afterwards.slice(3), sections))
+            findings.push(`${k}: „${afterwards.slice(3, 27)}…“ ist kein Abschnitt der Einstellungen`);
         }
       }
-      assert.ok(gesehen >= 4, `only ${gesehen} signposts found — does the search still check anything?`);
-      assert.deepEqual(funde, []);
+      assert.ok(seen >= 4, `only ${seen} signposts found — does the search still check anything?`);
+      assert.deepEqual(findings, []);
     } finally {
       w.close();
     }

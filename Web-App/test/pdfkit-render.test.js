@@ -11,16 +11,16 @@ const path = require('node:path');
 const os = require('node:os');
 
 /** Collects the data stream of a document into a buffer. */
-function render(bauen) {
+function render(build) {
   const PDFDocument = require('pdfkit');
-  return new Promise((fertig, error) => {
+  return new Promise((done, error) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     const parts = [];
     doc.on('data', c => parts.push(c));
     doc.on('error', error);
-    doc.on('end', () => fertig(Buffer.concat(parts)));
+    doc.on('end', () => done(Buffer.concat(parts)));
     try {
-      bauen(doc);
+      build(doc);
       doc.end();
     } catch (e) {
       error(e);
@@ -28,10 +28,10 @@ function render(bauen) {
   });
 }
 
-function isValidPdf(b, wo) {
-  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${wo}: no PDF header`);
-  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${wo}: no EOF marker`);
-  assert.ok(b.length > 500, `${wo}: only ${b.length} bytes — that cannot be a document`);
+function isValidPdf(b, where) {
+  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${where}: no PDF header`);
+  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${where}: no EOF marker`);
+  assert.ok(b.length > 500, `${where}: only ${b.length} bytes — that cannot be a document`);
 }
 
 test('the parts list export draws a valid PDF', async () => {
@@ -98,9 +98,9 @@ test('jpeg-exif is no longer in the dependency tree', () => {
   // library, that should stand out — nobody reliably reads the warning
   // in the installation log.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
-  const treffer = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
+  const hits = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
   assert.deepEqual(
-    treffer,
+    hits,
     [],
     'jpeg-exif is back. It is no longer maintained and last came in via ' +
       'pdfkit < 0.20 — it has been dropped there since.',

@@ -27,14 +27,14 @@ test('a real currency change triggers the price job, a no-op save does not', { c
   const Z = _req('src/jobQueue/schedule.js');
   await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
   await Z.planNext('prices');
-  const spaeter = () =>
+  const subsequent = () =>
     db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'prices' AND status = 'pending'`);
-  const faellig = async () =>
+  const due = async () =>
     (await db.get(`SELECT due_at <= NOW() AS now FROM jobs WHERE type = 'prices' AND status = 'pending'`))?.now ===
     true;
   const waitOnRun = async () => {
     for (let i = 0; i < 40; i++) {
-      if (await faellig()) return true;
+      if (await due()) return true;
       await new Promise(r => setTimeout(r, 50));
     }
     return false;
@@ -52,7 +52,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
     [uid],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const postWeb = body =>
     fetch(`${base}/api/v2/settings`, {
@@ -63,7 +63,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
 
   try {
     // 1) Real change via the web app route → the date is now.
-    assert.equal(await faellig(), false, 'Precondition: the run is in the future');
+    assert.equal(await due(), false, 'Precondition: the run is in the future');
     let r = await postWeb({ currency: 'CHF' });
     assert.equal(r.status, 200);
     assert.ok(await waitOnRun(), 'EUR → CHF must trigger the price job');
@@ -73,11 +73,11 @@ test('a real currency change triggers the price job, a no-op save does not', { c
     );
 
     // 2) The same currency again (the form always sends all fields) → no run.
-    await spaeter();
+    await subsequent();
     r = await postWeb({ currency: 'CHF', language: 'de' });
     assert.equal(r.status, 200);
     await new Promise(res => setTimeout(res, 700));
-    assert.equal(await faellig(), false, 'saving WITHOUT a currency change must not cost a run');
+    assert.equal(await due(), false, 'saving WITHOUT a currency change must not cost a run');
 
     // 3) Parity: the same rule on the v1 route.
     r = await fetch(`${base}/api/v2/settings`, {

@@ -20,11 +20,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // jsdom formats “1.500 €” or “EUR 1’500” depending on the environment; compared without separators.
-const zahl = s => {
+const num = s => {
   const o = s.replace(/[’'\s\u00a0]/g, '');
   return /,\d\d/.test(o) ? o.replace(/\./g, '').replace(/,/g, '.') : o;
 };
@@ -108,33 +108,33 @@ const SETS = {
 test('gift in tile, table and detail', async () => {
   const { w, d } = await openUi(SETS);
   try {
-    await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
-    const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
+    await waitFor(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
+    const tile = text(d.querySelector('[data-price-for="10300-1"]'));
     // Since UI review 13 as a badge next to the condition, not in the price box.
     assert.match(
       text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.sbadges')),
       /Geschenk/,
     );
-    assert.doesNotMatch(kachel, /%|Geschenk/, `Tile: ${kachel}`);
+    assert.doesNotMatch(tile, /%|Geschenk/, `Tile: ${tile}`);
     assert.match(
       text(d.querySelector('[data-price-for="21318-1"]')),
       /[−-]6[.,]9/,
       'the other set keeps its percentage',
     );
 
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl tbody tr'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#fin-tbl tbody tr'));
     const row = d.querySelector('#fin-tbl tbody tr');
     assert.equal(text(row.querySelector('.fin-guv')), 'Geschenk');
-    assert.match(zahl(text(row.querySelectorAll('.price-cell')[0])), /^(EUR)?0\.00(€)?$/);
+    assert.match(num(text(row.querySelectorAll('.price-cell')[0])), /^(EUR)?0\.00(€)?$/);
 
-    await reiter(w, 'gallery');
+    await switchTab(w, 'gallery');
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
+    await waitFor(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
     // Since UX review 24 (N6) also in the purchase price row “gift” instead of “0,00 €”.
     assert.match(text(d.getElementById('m-acq-summary')), /Geschenk/, 'Purchase price in the detail');
     assert.doesNotMatch(
-      zahl(text(d.getElementById('m-acq-summary'))),
+      num(text(d.getElementById('m-acq-summary'))),
       /0\.00/,
       'Purchase price in the detail as an amount',
     );
@@ -155,7 +155,7 @@ test('set without image: the same cube as in the tile', () => {
 test('menu page: no tab marked, name in the header', async () => {
   const { w, d } = await openUi({ '/v2/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
-    await sicht(w, 'profile');
+    await view(w, 'profile');
     assert.deepEqual(
       [...d.querySelectorAll('.ntab[aria-current], .ntab.group-active, .ntab.active')].map(x => x.dataset.tab),
       [],
@@ -163,7 +163,7 @@ test('menu page: no tab marked, name in the header', async () => {
     assert.equal(d.getElementById('header-view').hidden, false);
     assert.equal(text(d.getElementById('header-view')), 'Konto');
     assert.match(d.title, /^Konto – /);
-    await reiter(w, 'finance');
+    await switchTab(w, 'finance');
     assert.equal(d.getElementById('header-view').hidden, true, 'Name stays after the tab switch');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
     assert.match(d.title, /^Finanzen – /);
@@ -176,18 +176,18 @@ test('import as one menu', async () => {
   const { w, d } = await openUi({});
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
-      const leiste = d.querySelector(`#tab-${tab} .capture-bar`);
+      const bar = d.querySelector(`#tab-${tab} .capture-bar`);
       assert.deepEqual(
-        [...leiste.children].map(e => e.tagName + '.' + e.className.replace(' button-floating', '')),
+        [...bar.children].map(e => e.tagName + '.' + e.className.replace(' button-floating', '')),
         ['BUTTON.btn bp', 'DETAILS.import-menu'],
         tab,
       );
-      const menue = leiste.querySelector('details');
+      const menu = bar.querySelector('details');
       // Plus in the set menu "last import" (UI review 17 M4), hidden as long as there is none.
-      assert.equal(menue.querySelectorAll('.import-toggle > :not([hidden])').length, 3, `${tab}: drei Importwege`);
-      menue.open = true;
+      assert.equal(menu.querySelectorAll('.import-toggle > :not([hidden])').length, 3, `${tab}: drei Importwege`);
+      menu.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      assert.equal(menue.open, false, `${tab}: Escape closes the menu`);
+      assert.equal(menu.open, false, `${tab}: Escape closes the menu`);
     }
   } finally {
     w.close();
@@ -197,10 +197,10 @@ test('import as one menu', async () => {
 test('theme complete', async () => {
   const { w, d } = await openUi(SETS);
   try {
-    await warte(() => d.querySelector('#gallery .smeta-text'));
-    const thema = d.querySelector('[data-arg="10300-1"] .smeta-text');
-    assert.match(text(thema), /Icons \/ Modular Buildings Collection$/);
-    assert.equal(thema.getAttribute('title'), 'Icons / Modular Buildings Collection');
+    await waitFor(() => d.querySelector('#gallery .smeta-text'));
+    const theme = d.querySelector('[data-arg="10300-1"] .smeta-text');
+    assert.match(text(theme), /Icons \/ Modular Buildings Collection$/);
+    assert.equal(theme.getAttribute('title'), 'Icons / Modular Buildings Collection');
   } finally {
     w.close();
   }
@@ -223,22 +223,22 @@ test('value chart: currency, cost basis, axis break, crosshair via keyboard', as
     '/v2/finance/pnl': { ...SETS['/v2/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart svg'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart svg'));
     const svg = d.querySelector('#portfolio-chart svg');
     const axisLine = [...svg.querySelectorAll('text[text-anchor="end"]')]
       .filter(t => +t.getAttribute('x') < 90)
       .map(text);
     assert.ok(axisLine.length >= 3 && axisLine.every(t => /€|EUR/.test(t)), `Axis: ${axisLine.join(' | ')}`);
-    assert.match(zahl(text(svg.querySelector('.cost-basis-line'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
+    assert.match(num(text(svg.querySelector('.cost-basis-line'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
     assert.equal(svg.querySelector('.cost-basis-line line').getAttribute('stroke-dasharray'), '6 4');
     assert.ok(svg.querySelector('.axis-break'), 'the axis does not start at 0 and does not show that');
     assert.match(svg.getAttribute('aria-label'), /beginnt bei \D*1\D?500[.,]00/);
     svg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     const fk = svg.querySelector('.crosshair');
     assert.equal(fk.getAttribute('visibility'), 'visible');
-    assert.match(zahl(text(fk.querySelector('.fk-text'))), /01\.?10\.?2026.*1720\.00/);
-    assert.match(zahl(text(svg.parentElement.querySelector('.chart-announcement'))), /1720\.00/);
+    assert.match(num(text(fk.querySelector('.fk-text'))), /01\.?10\.?2026.*1720\.00/);
+    assert.match(num(text(svg.parentElement.querySelector('.chart-announcement'))), /1720\.00/);
   } finally {
     w.close();
   }
@@ -250,15 +250,15 @@ test('period without history', async () => {
     '/v2/finance/portfolio-history': { success: true, currency: 'EUR', points: [], data_points: 0 },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .chart-empty'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .chart-empty'));
     assert.deepEqual(
       [...d.querySelectorAll('.period-choice .period-btn')].map(b => b.disabled),
       [true, true, true, true],
     );
     w.document.querySelector('.period-choice .period-btn[data-period="week"]').disabled = false;
     w.document.querySelector('.period-choice .period-btn[data-period="week"]').click();
-    await takt(50);
+    await tick(50);
     assert.ok(
       d.querySelector('#fin-filter [data-kind=""]').classList.contains('active'),
       'the chip „Alle“ lost its selection',
@@ -269,13 +269,13 @@ test('period without history', async () => {
 });
 
 test('placeholders per language', async () => {
-  for (const [language, erwartet] of [
+  for (const [language, expected] of [
     ['de', 'z. B. 79,99'],
     ['en', 'e.g. 79.99'],
   ]) {
     const { w, d } = await openUi({}, { language });
     try {
-      assert.equal(d.getElementById('add-price').placeholder, erwartet);
+      assert.equal(d.getElementById('add-price').placeholder, expected);
     } finally {
       w.close();
     }

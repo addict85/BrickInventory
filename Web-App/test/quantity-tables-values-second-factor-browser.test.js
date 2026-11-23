@@ -43,85 +43,85 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 const ROOT = path.join(__dirname, '..');
 
-async function groesse(b, breite, telefon) {
+async function size(b, width, phone) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
-    width: breite,
-    height: telefon ? 844 : 900,
+    width: width,
+    height: phone ? 844 : 900,
     deviceScaleFactor: 1,
-    mobile: telefon,
+    mobile: phone,
   });
 }
 
-async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(CLOSE);
-  await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, 200);
-  await a.ruhig(5000);
+async function geh(a, hash, ready, was) {
+  await a.b.evaluate(CLOSE);
+  await a.b.evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
+  await a.until(ready, was, 200);
+  await a.settle(5000);
 }
 
 async function language(a, lang) {
-  await a.b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = '${lang}';
+  await a.b.evaluate(`(() => { const s = document.getElementById('lang-select'); s.value = '${lang}';
     s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
-  await a.bis(`document.documentElement.lang === '${lang}'`, `Sprache ${lang}`);
-  await a.ruhig();
+  await a.until(`document.documentElement.lang === '${lang}'`, `Sprache ${lang}`);
+  await a.settle();
 }
 
 /** A PNG with an alpha channel; `farbe(x, y, border)` returns [r, g, b, a]. The red border shows whether something is cut off. */
-function png(w, h, farbe) {
-  const block = (typ, daten) => {
-    const laenge = Buffer.alloc(4);
-    laenge.writeUInt32BE(daten.length);
-    const inhalt = Buffer.concat([Buffer.from(typ), daten]);
-    const pruef = Buffer.alloc(4);
-    pruef.writeUInt32BE(zlib.crc32(inhalt));
-    return Buffer.concat([laenge, inhalt, pruef]);
+function png(w, h, color) {
+  const block = (kind, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const content = Buffer.concat([Buffer.from(kind), data]);
+    const checksum = Buffer.alloc(4);
+    checksum.writeUInt32BE(zlib.crc32(content));
+    return Buffer.concat([len, content, checksum]);
   };
-  const kopf = Buffer.alloc(13);
-  kopf.writeUInt32BE(w, 0);
-  kopf.writeUInt32BE(h, 4);
-  kopf[8] = 8;
-  kopf[9] = 6;
-  const roh = Buffer.alloc((w * 4 + 1) * h);
+  const head = Buffer.alloc(13);
+  head.writeUInt32BE(w, 0);
+  head.writeUInt32BE(h, 4);
+  head[8] = 8;
+  head[9] = 6;
+  const raw = Buffer.alloc((w * 4 + 1) * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++)
-      roh.set(farbe(x, y, x < 2 || y < 2 || x >= w - 2 || y >= h - 2), y * (w * 4 + 1) + 1 + x * 4);
+      raw.set(color(x, y, x < 2 || y < 2 || x >= w - 2 || y >= h - 2), y * (w * 4 + 1) + 1 + x * 4);
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    block('IHDR', kopf),
-    block('IDAT', zlib.deflateSync(roh)),
+    block('IHDR', head),
+    block('IDAT', zlib.deflateSync(raw)),
     block('IEND', Buffer.alloc(0)),
   ]);
 }
-const voll = (_x, _y, rand) => (rand ? [255, 0, 0, 255] : [40, 120, 200, 255]);
+const full = (_x, _y, rand) => (rand ? [255, 0, 0, 255] : [40, 120, 200, 255]);
 const transparent = (x, y, rand) => (rand ? [255, 0, 0, 255] : (x + y) % 2 ? [0, 0, 0, 0] : [200, 40, 40, 255]);
 /** Number, width, height, pattern: landscape, portrait, square, very wide, small with transparency. */
 const IMAGES = [
-  ['r25quer-1', 400, 200, voll],
-  ['r25hoch-1', 200, 400, voll],
-  ['r25quadrat-1', 300, 300, voll],
-  ['r25breit-1', 800, 100, voll],
+  ['r25quer-1', 400, 200, full],
+  ['r25hoch-1', 200, 400, full],
+  ['r25quadrat-1', 300, 300, full],
+  ['r25breit-1', 800, 100, full],
   ['r25klein-1', 32, 32, transparent],
 ];
 
 /** How the app stores its set images: <nr>.jpg under data/images/sets, the preview next to it (vorschauErzeugenAus). */
 async function putImages(t, db, uid, req) {
-  const ordner = path.join(ROOT, 'data', 'images', 'sets');
-  fs.mkdirSync(ordner, { recursive: true });
-  const weg = () => {
+  const dir = path.join(ROOT, 'data', 'images', 'sets');
+  fs.mkdirSync(dir, { recursive: true });
+  const route = () => {
     for (const [nr] of IMAGES)
-      for (const datei of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(ordner, datei), { force: true });
+      for (const file of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(dir, file), { force: true });
   };
-  weg();
-  t.after(weg);
+  route();
+  t.after(route);
   for (const [nr, w, h, f] of IMAGES) {
-    fs.writeFileSync(path.join(ordner, `${nr}.jpg`), png(w, h, f));
+    fs.writeFileSync(path.join(dir, `${nr}.jpg`), png(w, h, f));
     assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), `preview ${nr}`);
     await catalogSet(db, nr, { name: `Bildprobe ${nr}`, year: 2020, theme: 'Bildprobe', pieces: 100 });
     await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
       nr,
       `/images/sets/${nr}.jpg`,
     ]);
-    await holdsSet(db, uid, nr, 1, { preis: 10, am: '2026-06-03T10:00:00Z' });
+    await holdsSet(db, uid, nr, 1, { price: 10, am: '2026-06-03T10:00:00Z' });
   }
 }
 
@@ -131,96 +131,96 @@ const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify
     const r = i.getBoundingClientRect(), s = getComputedStyle(i);
     const bw = r.width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth);
     const bh = r.height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom) - parseFloat(s.borderTopWidth) - parseFloat(s.borderBottomWidth);
-    const datei = i.naturalWidth / i.naturalHeight;
+    const file = i.naturalWidth / i.naturalHeight;
     let gw = bw, gh = bh;
-    if (s.objectFit === 'contain' || s.objectFit === 'scale-down') { if (bw / bh > datei) gw = bh * datei; else gh = bw / datei; }
-    const rahmen = i.closest('.sci, td, .m-header, .modal').getBoundingClientRect();
-    return { nr: (i.currentSrc || i.src).replace(/.*sets\\/|(_thumb)?\\.jpg.*/g, ''), geladen: i.complete && i.naturalWidth > 0,
-      datei: +datei.toFixed(3), painted: +(gw / gh).toFixed(3), fit: s.objectFit,
-      raus: r.left < rahmen.left - 0.5 || r.right > rahmen.right + 0.5 || r.top < rahmen.top - 0.5 || r.bottom > rahmen.bottom + 0.5 };
+    if (s.objectFit === 'contain' || s.objectFit === 'scale-down') { if (bw / bh > file) gw = bh * file; else gh = bw / file; }
+    const frame = i.closest('.sci, td, .m-header, .modal').getBoundingClientRect();
+    return { nr: (i.currentSrc || i.src).replace(/.*sets\\/|(_thumb)?\\.jpg.*/g, ''), loaded: i.complete && i.naturalWidth > 0,
+      file: +file.toFixed(3), painted: +(gw / gh).toFixed(3), fit: s.objectFit,
+      result: r.left < frame.left - 0.5 || r.right > frame.right + 0.5 || r.top < frame.top - 0.5 || r.bottom > frame.bottom + 0.5 };
   }))()`;
 
-function checkImages(m, wo, count) {
-  assert.equal(m.length, count, `${wo}: ${m.length} images instead of ${count}`);
+function checkImages(m, where, count) {
+  assert.equal(m.length, count, `${where}: ${m.length} images instead of ${count}`);
   for (const x of m) {
-    const soll = IMAGES.find(([nr]) => nr === x.nr);
-    assert.ok(soll && x.geladen, `${wo}: ${x.nr} not loaded`);
-    const source = Number(soll[1]) / Number(soll[2]);
+    const want = IMAGES.find(([nr]) => nr === x.nr);
+    assert.ok(want && x.loaded, `${where}: ${x.nr} not loaded`);
+    const source = Number(want[1]) / Number(want[2]);
     // A preview may be smaller, but not shaped differently: a square one would mean „zugeschnitten“.
-    assert.ok(Math.abs(x.datei / source - 1) < 0.05, `${wo}: ${x.nr} file ${x.datei} instead of ${source} (cropped)`);
+    assert.ok(Math.abs(x.file / source - 1) < 0.05, `${where}: ${x.nr} file ${x.file} instead of ${source} (cropped)`);
     assert.ok(
       Math.abs(x.painted / source - 1) < 0.05,
-      `${wo}: ${x.nr} painted ${x.painted} instead of ${source} (stretched)`,
+      `${where}: ${x.nr} painted ${x.painted} instead of ${source} (stretched)`,
     );
-    assert.ok(!x.raus, `${wo}: ${x.nr} sticks out of its frame`);
+    assert.ok(!x.result, `${where}: ${x.nr} sticks out of its frame`);
   }
 }
 
-async function bilder(_t, a) {
-  const { b, bis } = a;
+async function images(_t, a) {
+  const { b, until } = a;
   try {
-    for (const dunkel of [false, true]) {
-      await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
-      for (const [breite, telefon] of [
+    for (const dark of [false, true]) {
+      await b.evaluate(`document.documentElement.toggleAttribute('data-dark', ${dark}); true`);
+      for (const [width, phone] of [
         [1280, false],
         [390, true],
         [320, true],
       ]) {
-        const wo = `${breite} px ${dunkel ? 'dark' : 'hell'}`;
-        await groesse(b, breite, telefon);
+        const where = `${width} px ${dark ? 'dark' : 'hell'}`;
+        await size(b, width, phone);
         await geh(a, '#/sammlung', `document.querySelectorAll('#gallery .sc').length >= 9`, 'Sammlung');
-        await b.auswerten(`document.getElementById('vg').click(); true`);
-        await bis(`!!document.querySelector('#gallery .sgrid')`, 'Kacheln');
-        await b.auswerten(`document.querySelectorAll('#gallery img').forEach(i => { i.loading = 'eager'; }); true`);
-        await bis(
+        await b.evaluate(`document.getElementById('vg').click(); true`);
+        await until(`!!document.querySelector('#gallery .sgrid')`, 'Kacheln');
+        await b.evaluate(`document.querySelectorAll('#gallery img').forEach(i => { i.loading = 'eager'; }); true`);
+        await until(
           `[...document.querySelectorAll('#gallery .sci img')].filter(i => /r25/.test(i.src)).every(i => i.complete && i.naturalWidth)`,
-          `${wo}: Kachelbilder`,
+          `${where}: Kachelbilder`,
         );
-        checkImages(await b.auswerten(IMAGE_SIZE('#gallery .sci img')), `Kacheln ${wo}`, IMAGES.length);
+        checkImages(await b.evaluate(IMAGE_SIZE('#gallery .sci img')), `Kacheln ${where}`, IMAGES.length);
         // Calm grid: in one row all image areas are the same size.
-        const reihen = await b.auswerten(`(() => { const m = {};
+        const rows = await b.evaluate(`(() => { const m = {};
           for (const k of document.querySelectorAll('#gallery .sc')) { const r = k.getBoundingClientRect(), s = k.querySelector('.sci').getBoundingClientRect();
             (m[Math.round(r.top)] ||= new Set()).add(Math.round(s.width) + 'x' + Math.round(s.height)); }
           return Object.values(m).map(s => [...s]); })()`);
         assert.ok(
-          reihen.every(r => r.length === 1),
-          `${wo}: image areas within a row differ: ${JSON.stringify(reihen)}`,
+          rows.every(r => r.length === 1),
+          `${where}: image areas within a row differ: ${JSON.stringify(rows)}`,
         );
-        if (!telefon) {
-          await b.auswerten(`document.getElementById('vl').click(); true`);
-          await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
-          await b.auswerten(`document.querySelectorAll('#gallery img').forEach(i => { i.loading = 'eager'; }); true`);
-          await bis(
+        if (!phone) {
+          await b.evaluate(`document.getElementById('vl').click(); true`);
+          await until(`!!document.querySelector('#gallery table')`, 'Tabelle');
+          await b.evaluate(`document.querySelectorAll('#gallery img').forEach(i => { i.loading = 'eager'; }); true`);
+          await until(
             `[...document.querySelectorAll('#gallery table img')].filter(i => /r25/.test(i.src)).every(i => i.complete && i.naturalWidth)`,
-            `${wo}: Tabellenbilder`,
+            `${where}: Tabellenbilder`,
           );
-          checkImages(await b.auswerten(IMAGE_SIZE('#gallery table img')), `Tabelle ${wo}`, IMAGES.length);
-          await b.auswerten(`document.getElementById('vg').click(); true`);
+          checkImages(await b.evaluate(IMAGE_SIZE('#gallery table img')), `Tabelle ${where}`, IMAGES.length);
+          await b.evaluate(`document.getElementById('vg').click(); true`);
         }
         for (const [nr] of IMAGES) {
-          await b.auswerten(
+          await b.evaluate(
             `document.querySelector('#gallery [data-click="openModal"][data-arg="${nr}"]').click(); true`,
           );
-          await bis(
+          await until(
             `(i => document.getElementById('set-modal').classList.contains('open') && /${nr}\\.jpg/.test(i.src) && i.complete && i.naturalWidth)(document.getElementById('m-img'))`,
-            `${wo}: Detail ${nr}`,
+            `${where}: Detail ${nr}`,
           );
-          checkImages(await b.auswerten(IMAGE_SIZE('#m-img')), `Detail ${wo}`, 1);
-          await b.auswerten(CLOSE);
+          checkImages(await b.evaluate(IMAGE_SIZE('#m-img')), `Detail ${where}`, 1);
+          await b.evaluate(CLOSE);
         }
       }
     }
   } finally {
-    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
-    await groesse(b, 1280, false);
+    await b.evaluate(`document.documentElement.removeAttribute('data-dark'); true`);
+    await size(b, 1280, false);
   }
 }
 
 async function minusAtOne(_t, a) {
-  const { b, bis } = a;
+  const { b, until } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
-  await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
-  await bis(`document.getElementById('m-qty')?.value === '1' && !!document.getElementById('m-qty-dec')`, 'Detail');
+  await b.evaluate(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
+  await until(`document.getElementById('m-qty')?.value === '1' && !!document.getElementById('m-qty-dec')`, 'Detail');
   const writing = () =>
     b.eventList.filter(
       e =>
@@ -229,28 +229,28 @@ async function minusAtOne(_t, a) {
         /\/api\/v2\/sets\/10300-1/.test(e.params.request.url),
     ).length;
   const state = () =>
-    b.auswerten(`(() => { const k = document.getElementById('m-qty-dec');
-      return { wert: document.getElementById('m-qty').value, gesperrt: k.getAttribute('aria-disabled'), titel: k.title,
-        beschreibung: document.getElementById(k.getAttribute('aria-describedby') || '-')?.textContent || '' }; })()`);
-  const vorher = writing();
+    b.evaluate(`(() => { const k = document.getElementById('m-qty-dec');
+      return { wert: document.getElementById('m-qty').value, locked: k.getAttribute('aria-disabled'), title: k.title,
+        description: document.getElementById(k.getAttribute('aria-describedby') || '-')?.textContent || '' }; })()`);
+  const prior = writing();
   const m = await state();
-  assert.equal(m.gesperrt, 'true', `„−“ not disabled with one copy: ${JSON.stringify(m)}`);
-  assert.equal(m.titel, 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“');
-  assert.equal(m.beschreibung, m.titel, 'screen readers do not hear the hint');
-  await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
-  await a.warte(700);
-  assert.deepEqual([(await state()).wert, writing() - vorher], ['1', 0], '„−“ at 1 did something');
-  await b.auswerten(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
-  await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
-  assert.equal((await state()).titel, '', 'hint stays at 2');
-  await bis(`document.querySelector('#m-quantity .field-status')?.textContent.trim() !== ''`, 'saved');
-  await a.ruhig();
-  await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
-  await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'true'`, 'zurück auf 1');
+  assert.equal(m.locked, 'true', `„−“ not disabled with one copy: ${JSON.stringify(m)}`);
+  assert.equal(m.title, 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“');
+  assert.equal(m.description, m.title, 'screen readers do not hear the hint');
+  await b.evaluate(`document.getElementById('m-qty-dec').click(); true`);
+  await a.sleep(700);
+  assert.deepEqual([(await state()).wert, writing() - prior], ['1', 0], '„−“ at 1 did something');
+  await b.evaluate(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
+  await until(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
+  assert.equal((await state()).title, '', 'hint stays at 2');
+  await until(`document.querySelector('#m-quantity .field-status')?.textContent.trim() !== ''`, 'saved');
+  await a.settle();
+  await b.evaluate(`document.getElementById('m-qty-dec').click(); true`);
+  await until(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'true'`, 'zurück auf 1');
   // Saving happens 400 ms later; closed before that, the 2 would remain.
-  await a.warte(700);
-  await a.ruhig();
-  await b.auswerten(CLOSE);
+  await a.sleep(700);
+  await a.settle();
+  await b.evaluate(CLOSE);
 }
 
 async function floatingButton(_t, a) {
@@ -259,72 +259,69 @@ async function floatingButton(_t, a) {
   try {
     // B3: the date field inherits the language of the page.
     assert.deepEqual(
-      await b.auswerten(
-        `({ lang: document.documentElement.lang, eigen: document.getElementById('add-date').closest('[lang]')?.tagName })`,
+      await b.evaluate(
+        `({ lang: document.documentElement.lang, own: document.getElementById('add-date').closest('[lang]')?.tagName })`,
       ),
-      { lang: 'en', eigen: 'HTML' },
+      { lang: 'en', own: 'HTML' },
     );
-    for (const breite of [390, 320]) {
-      await groesse(b, breite, true);
+    for (const width of [390, 320]) {
+      await size(b, width, true);
       for (const [hash, tab] of [
         ['#/teile', 'parts'],
         ['#/sammlung', 'gallery'],
         ['#/minifiguren', 'minifigs'],
       ]) {
         await geh(a, hash, `document.getElementById('tab-${tab}').classList.contains('active')`, tab);
-        await a.warte(300);
-        await b.auswerten(`scrollTo(0, document.documentElement.scrollHeight); true`);
-        await a.ruhig();
+        await a.sleep(300);
+        await b.evaluate(`scrollTo(0, document.documentElement.scrollHeight); true`);
+        await a.settle();
         const m =
-          await b.auswerten(`(() => { const f = document.querySelector('#tab-${tab} .button-floating').getBoundingClientRect();
+          await b.evaluate(`(() => { const f = document.querySelector('#tab-${tab} .button-floating').getBoundingClientRect();
           const blaetter = [...document.querySelectorAll('#tab-${tab} *')].filter(e => !e.closest('.button-floating') && !e.children.length
             && (e.textContent.trim() || e.matches('img, svg')) && e.checkVisibility());
-          const unten = blaetter.map(e => ({ e, r: e.getBoundingClientRect() })).filter(x => x.r.height > 0 && x.r.bottom > 0)
+          const lower = blaetter.map(e => ({ e, r: e.getBoundingClientRect() })).filter(x => x.r.height > 0 && x.r.bottom > 0)
             .sort((x, y) => y.r.bottom - x.r.bottom)[0];
-          const ueber = blaetter.filter(e => { const r = e.getBoundingClientRect();
+          const over = blaetter.filter(e => { const r = e.getBoundingClientRect();
             return r.height > 0 && r.bottom > f.top && r.top < f.bottom && r.right > f.left && r.left < f.right; });
-          return { buttonTop: Math.round(f.top), letzte: unten && { text: unten.e.textContent.trim().slice(0, 40), unten: Math.round(unten.r.bottom) },
-            ueber: ueber.map(e => e.textContent.trim().slice(0, 30) || e.tagName) }; })()`);
-        assert.ok(m.letzte, `${tab} ${breite} px: no last row found`);
-        assert.deepEqual(m.ueber, [], `${tab} ${breite} px: covered by the button: ${JSON.stringify(m)}`);
-        assert.ok(
-          m.letzte.unten <= m.buttonTop,
-          `${tab} ${breite} px: last row under the button: ${JSON.stringify(m)}`,
-        );
+          return { buttonTop: Math.round(f.top), last: lower && { text: lower.e.textContent.trim().slice(0, 40), lower: Math.round(lower.r.bottom) },
+            over: over.map(e => e.textContent.trim().slice(0, 30) || e.tagName) }; })()`);
+        assert.ok(m.last, `${tab} ${width} px: no last row found`);
+        assert.deepEqual(m.over, [], `${tab} ${width} px: covered by the button: ${JSON.stringify(m)}`);
+        assert.ok(m.last.lower <= m.buttonTop, `${tab} ${width} px: last row under the button: ${JSON.stringify(m)}`);
       }
     }
   } finally {
-    await groesse(b, 1280, false);
+    await size(b, 1280, false);
     await language(a, 'de');
   }
 }
 
 async function tabellenansicht(_t, a) {
-  const { b, bis } = a;
+  const { b, until } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-  await b.auswerten(`document.getElementById('vl').click(); true`);
-  await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
+  await b.evaluate(`document.getElementById('vl').click(); true`);
+  await until(`!!document.querySelector('#gallery table')`, 'Tabelle');
   // Re-sorted, the list reloads: the table stands there before the prices, the market value comes afterwards.
-  await b.auswerten(`document.querySelector('#gallery thead [data-click="sortSets"][data-arg="num"]').click(); true`);
+  await b.evaluate(`document.querySelector('#gallery thead [data-click="sortSets"][data-arg="num"]').click(); true`);
   // Wait for the market value column itself: a later redraw briefly resets it to „—“.
-  await a.ruhig();
-  await bis(
-    `(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
-      const z = document.querySelector('#gallery tr[data-arg="75192-1"]')?.children[kopf.indexOf('Marktwert')];
+  await a.settle();
+  await until(
+    `(() => { const head = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
+      const z = document.querySelector('#gallery tr[data-arg="75192-1"]')?.children[head.indexOf('Marktwert')];
       return /€.*%/.test(z?.textContent || ''); })()`,
     'Marktwert mit Entwicklung in der Tabelle',
   );
   const m =
-    await b.auswerten(`(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
-    const zelle = (nr, k) => { const z = document.querySelector('#gallery tr[data-arg="' + nr + '"]').children[kopf.indexOf(k)].cloneNode(true);
+    await b.evaluate(`(() => { const head = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
+    const cell = (nr, k) => { const z = document.querySelector('#gallery tr[data-arg="' + nr + '"]').children[head.indexOf(k)].cloneNode(true);
       z.querySelectorAll('.vh').forEach(v => v.remove()); return z.textContent.replace(/\\s+/g, ' ').trim(); };
-    return { kopf, untertitel: ${text('#tab-gallery .ptitle-sub')},
-      falcon: [zelle('75192-1', 'Kaufpreis'), zelle('75192-1', 'Marktwert')], geschenk: zelle('10300-1', 'Kaufpreis') }; })()`);
-  await b.auswerten(`document.getElementById('vg').click(); true`);
+    return { head, untertitel: ${text('#tab-gallery .ptitle-sub')},
+      falcon: [cell('75192-1', 'Kaufpreis'), cell('75192-1', 'Marktwert')], geschenk: cell('10300-1', 'Kaufpreis') }; })()`);
+  await b.evaluate(`document.getElementById('vg').click(); true`);
   assert.match(m.untertitel, /Kaufpreis und Marktwert|Kaufpreis, Marktwert/, 'Testdaten: Untertitel verspricht beides');
-  assert.ok(m.kopf.includes('Kaufpreis') && m.kopf.includes('Marktwert'), `columns missing: ${m.kopf.join(' | ')}`);
+  assert.ok(m.head.includes('Kaufpreis') && m.head.includes('Marktwert'), `columns missing: ${m.head.join(' | ')}`);
   assert.match(m.falcon[0], /^650,00\s€$/);
-  assert.match(m.falcon[1], /^801,50\s€\s*\+23,3\s%$/, `Marktwert mit Entwicklung: ${m.falcon[1]}`);
+  assert.match(m.falcon[1], /^801,50\s€\s*\+23,3\s%$/, `market value with trend: ${m.falcon[1]}`);
   assert.equal(m.geschenk, 'Geschenk');
 }
 
@@ -332,18 +329,18 @@ async function financeColumns(_t, a) {
   const { b } = a;
   await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-kind="parts"] tbody tr')`, 'Finanzen');
   const m =
-    await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
+    await b.evaluate(`(() => { const visible = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };
-    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-kind] table')].flatMap(t => {
-      const kopf = [...t.querySelectorAll('thead th')].map(k => k.textContent.trim());
-      const zeilen = [...t.querySelectorAll('tbody tr')];
-      return kopf.filter((k, i) => zeilen.length && zeilen.every(z => !sichtbar(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
+    const empty = [...document.querySelectorAll('#fin-tbl [data-fin-kind] table')].flatMap(t => {
+      const head = [...t.querySelectorAll('thead th')].map(k => k.textContent.trim());
+      const lines = [...t.querySelectorAll('tbody tr')];
+      return head.filter((k, i) => lines.length && lines.every(z => !visible(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
     });
     const teil = [...document.querySelectorAll('[data-fin-kind="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
-    return { leer, headers: [...document.querySelectorAll('[data-fin-kind="sets"] thead th')].map(k => k.textContent.trim()),
-      teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
+    return { empty, headers: [...document.querySelectorAll('[data-fin-kind="sets"] thead th')].map(k => k.textContent.trim()),
+      teil: teil && [...teil.children].map(visible).filter(x => /0,12/.test(x)) }; })()`);
   assert.ok(!m.headers.includes('Stückpreis'), `column „Stückpreis“ is still there: ${m.headers.join(' | ')}`);
-  assert.deepEqual(m.leer, [], 'column without a value');
+  assert.deepEqual(m.empty, [], 'column without a value');
   assert.ok(m.teil, 'test data: part at 0.12 € per piece');
   assert.equal(m.teil.length, 1, `unit price twice: ${JSON.stringify(m.teil)}`);
   assert.match(m.teil[0], /^30,00\s€\s*je 0,12\s€$/);
@@ -351,29 +348,29 @@ async function financeColumns(_t, a) {
 
 async function financeTerms(_t, a) {
   const { b } = a;
-  const zeilen = `(z => Math.round(z.getBoundingClientRect().height / parseFloat(getComputedStyle(z).lineHeight)))(document.querySelector('#fin-basis > span'))`;
-  await groesse(b, 390, true);
+  const lines = `(z => Math.round(z.getBoundingClientRect().height / parseFloat(getComputedStyle(z).lineHeight)))(document.querySelector('#fin-basis > span'))`;
+  await size(b, 390, true);
   try {
     await geh(a, '#/finanzen', `!document.getElementById('fin-basis').hidden`, 'Finanzen');
-    const telefon = await b.auswerten(zeilen);
-    assert.ok(telefon <= 3, `explanation row on the phone over ${telefon} lines`);
+    const phone = await b.evaluate(lines);
+    assert.ok(phone <= 3, `explanation row on the phone over ${phone} lines`);
   } finally {
-    await groesse(b, 1280, false);
+    await size(b, 1280, false);
   }
   await geh(a, '#/finanzen', `!document.getElementById('fin-basis').hidden`, 'Finanzen');
   const m =
-    await b.auswerten(`({ titel: ${text('#fin-cost-basis-title')}, help: document.getElementById('fin-cost-basis-title').title,
-    unter: ${text('#fin-cost-basis-sub')}, zeilen: ${zeilen}, basis: ${text('#fin-basis')} })`);
-  assert.equal(m.titel, 'Kaufpreis (bewertete Positionen)');
+    await b.evaluate(`({ title: ${text('#fin-cost-basis-title')}, help: document.getElementById('fin-cost-basis-title').title,
+    sub: ${text('#fin-cost-basis-sub')}, lines: ${lines}, basis: ${text('#fin-basis')} })`);
+  assert.equal(m.title, 'Kaufpreis (bewertete Positionen)');
   assert.match(m.help, /Kauf- und Marktpreis/, 'explanation in the tooltip is missing');
-  assert.match(m.unter, /^Insgesamt bezahlt: [\d.]+,\d\d €$/);
-  assert.ok(m.zeilen <= 1, `explanation row over ${m.zeilen} lines: ${m.basis}`);
+  assert.match(m.sub, /^Insgesamt bezahlt: [\d.]+,\d\d €$/);
+  assert.ok(m.lines <= 1, `explanation row over ${m.lines} lines: ${m.basis}`);
   assert.match(m.basis, /je Kauf und Konto/, 'test data: several rows per item, the explanation is in the tooltip');
 }
 
 /** Reloads the page (like round 24): the error should come on the first load, not over an old state. */
 async function serverErrorAdmin(_t, a) {
-  const { b, bis } = a;
+  const { b, until } = a;
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__echt = window.fetch;
       window.fetch = (u, o) => /finance\\/valuation/.test(String(u))
@@ -382,23 +379,23 @@ async function serverErrorAdmin(_t, a) {
         : window.__echt(u, o);`,
   });
   try {
-    await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
-    await bis(`!window.__alt && !!document.querySelector('.tab.active .error-state')`, 'Error', 300);
-    const m = await b.auswerten(text('.tab.active .error-state'));
+    await b.evaluate(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
+    await until(`!window.__alt && !!document.querySelector('.tab.active .error-state')`, 'Error', 300);
+    const m = await b.evaluate(text('.tab.active .error-state'));
     assert.match(m, /Hintergrundarbeiten → „Protokoll anzeigen“/, m);
     assert.doesNotMatch(m, /hilft der Administrator/, 'admin is referred to themselves');
   } finally {
     await b.tab('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-    await b.auswerten(`location.reload(); true`);
-    await bis(`!!document.querySelector('#gallery .sc, .tab.active')`, 'neu geladen', 300);
-    await a.ruhig();
+    await b.evaluate(`location.reload(); true`);
+    await until(`!!document.querySelector('#gallery .sc, .tab.active')`, 'neu geladen', 300);
+    await a.settle();
   }
 }
 
 async function jobs(_t, a) {
   const { b } = a;
   // One service waiting with work (total > 0), one running: only the running one shows the bar.
-  await b.auswerten(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
+  await b.evaluate(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
     if (!/v2\\/admin\\/jobs$/.test(String(u))) return r;
     const d = await r.clone().json(); const [x, y] = Object.keys(d.jobs);
     d.jobs[x] = { ...d.jobs[x], status: 'idle', total: 10, progress: 3 }; d.jobs[y] = { ...d.jobs[y], status: 'running', total: 10, progress: 5 };
@@ -410,97 +407,96 @@ async function jobs(_t, a) {
       `!!window.__dienste && !!document.querySelector('.mon-services tbody tr') && !!document.querySelector('.mon-kinds .mon-extra')`,
       'Hintergrund',
     );
-    const m = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('.mon-services tbody tr')];
-      const balken = zeilen.filter(z => z.querySelector('.mon-bar')).map(z => z.querySelector('.mon-state').className);
-      const idle = zeilen.some(z => z.querySelector('.mon-bar') && z.querySelector('.mon-idle'));
+    const m = await b.evaluate(`(() => { const lines = [...document.querySelectorAll('.mon-services tbody tr')];
+      const balken = lines.filter(z => z.querySelector('.mon-bar')).map(z => z.querySelector('.mon-state').className);
+      const idle = lines.some(z => z.querySelector('.mon-bar') && z.querySelector('.mon-idle'));
       const z = [...document.querySelectorAll('.mon-kinds tbody tr')].find(r => r.querySelector('.mon-extra'));
-      const td = z.querySelector('.mon-extra').closest('td'), zahl = td.querySelector('.mon-digit').getBoundingClientRect();
-      const zusatz = td.querySelector('.mon-extra').getBoundingClientRect(), zelle = td.getBoundingClientRect();
-      return { balken, idle, rechts: Math.round(zelle.right - parseFloat(getComputedStyle(td).paddingRight) - zahl.right),
-        darunter: zusatz.top >= zahl.bottom - 1, text: td.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
+      const td = z.querySelector('.mon-extra').closest('td'), num = td.querySelector('.mon-digit').getBoundingClientRect();
+      const extra = td.querySelector('.mon-extra').getBoundingClientRect(), cell = td.getBoundingClientRect();
+      return { balken, idle, right: Math.round(cell.right - parseFloat(getComputedStyle(td).paddingRight) - num.right),
+        darunter: extra.top >= num.bottom - 1, text: td.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
     assert.ok(m.balken.length > 0, 'test data: a running service with a bar');
     assert.ok(
       m.balken.every(k => /mon-running/.test(k)) && !m.idle,
       `bar not only for the running service: ${JSON.stringify(m)}`,
     );
-    assert.ok(Math.abs(m.rechts) <= 1, `number „Offen“ not right-aligned: ${JSON.stringify(m)}`);
+    assert.ok(Math.abs(m.right) <= 1, `number „Offen“ not right-aligned: ${JSON.stringify(m)}`);
     assert.ok(m.darunter, `„davon … nach Fehler“ not below the number: ${JSON.stringify(m)}`);
     assert.match(m.text, /^\d+\s*davon \d+ nach Fehler$/);
   } finally {
-    await b.auswerten(`window.fetch = window.__echt; true`);
+    await b.evaluate(`window.fetch = window.__echt; true`);
   }
 }
 
-async function zweiterFaktor(_t, a) {
-  const { b, bis } = a;
+async function secondFactor(_t, a) {
+  const { b, until } = a;
   await geh(a, '#/konto', `!!document.querySelector('#sf-surface [data-click="newRecoveryCodes"]')`, 'Konto');
-  assert.equal(await b.auswerten(`!!document.querySelector('#sf-surface input')`), false, 'code field for two actions');
-  const dialog = `({ offen: document.getElementById('confirm-modal').style.display === 'flex', titel: ${text('#cd-title')},
+  assert.equal(await b.evaluate(`!!document.querySelector('#sf-surface input')`), false, 'code field for two actions');
+  const dialog = `({ isOpen: document.getElementById('confirm-modal').style.display === 'flex', title: ${text('#cd-title')},
     code: !document.getElementById('cd-code-wrap').hidden, pw: !document.getElementById('cd-pw-wrap').hidden })`;
   // New codes: the code in its own dialog.
-  await b.auswerten(`document.querySelector('#sf-surface [data-click="newRecoveryCodes"]').click(); true`);
-  await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Dialog „Neue Codes“');
-  const neu = await b.auswerten(dialog);
-  assert.deepEqual([neu.code, neu.pw], [true, false], JSON.stringify(neu));
-  assert.match(neu.titel.replace(/­/g, ''), /Neue Wiederherstellungscodes/);
-  await b.auswerten(`document.getElementById('cd-code').value = ${JSON.stringify(a.furtherCodes[0])};
+  await b.evaluate(`document.querySelector('#sf-surface [data-click="newRecoveryCodes"]').click(); true`);
+  await until(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Dialog „Neue Codes“');
+  const fresh = await b.evaluate(dialog);
+  assert.deepEqual([fresh.code, fresh.pw], [true, false], JSON.stringify(fresh));
+  assert.match(fresh.title.replace(/­/g, ''), /Neue Wiederherstellungscodes/);
+  await b.evaluate(`document.getElementById('cd-code').value = ${JSON.stringify(a.furtherCodes[0])};
     document.getElementById('cd-confirm').click(); true`);
-  await bis(`!!document.getElementById('sf-codes')`, 'neue Codes');
-  await b.auswerten(`document.getElementById('sf-saved').click(); true`);
-  await bis(`!!document.querySelector('#sf-surface [data-click="disableSecondFactor"]')`, 'zurück');
+  await until(`!!document.getElementById('sf-codes')`, 'neue Codes');
+  await b.evaluate(`document.getElementById('sf-saved').click(); true`);
+  await until(`!!document.querySelector('#sf-surface [data-click="disableSecondFactor"]')`, 'zurück');
   // For admins switching off means „Neu einrichten“: a dialog with password and code, cancelled.
-  await b.auswerten(`document.querySelector('#sf-surface [data-click="disableSecondFactor"]').click(); true`);
-  await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
-  const ab = await b.auswerten(dialog);
+  await b.evaluate(`document.querySelector('#sf-surface [data-click="disableSecondFactor"]').click(); true`);
+  await until(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
+  const ab = await b.evaluate(dialog);
   assert.deepEqual([ab.code, ab.pw], [true, true], JSON.stringify(ab));
-  assert.match(ab.titel, /Neu einrichten/);
-  await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
-  await bis(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
+  assert.match(ab.title, /Neu einrichten/);
+  await b.evaluate(`document.getElementById('cd-cancel').click(); true`);
+  await until(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
 }
 
 async function pageTitle(_t, a) {
-  const { b, bis } = a;
+  const { b, until } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
-  const vorher = await b.auswerten('document.title');
-  await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
-  await bis(`document.title === 'Back to the Future Time Machine – BrickInventory'`, 'Titel mit Setnamen', 50);
-  await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
-  await bis(`document.title === ${JSON.stringify(vorher)}`, `Titel nach dem Schliessen: ${vorher}`, 50);
+  const prior = await b.evaluate('document.title');
+  await b.evaluate(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
+  await until(`document.title === 'Back to the Future Time Machine – BrickInventory'`, 'Titel mit Setnamen', 50);
+  await b.evaluate(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
+  await until(`document.title === ${JSON.stringify(prior)}`, `Titel nach dem Schliessen: ${prior}`, 50);
 }
 
-async function bauliste(_t, a) {
+async function buildList(_t, a) {
   const { b } = a;
   try {
-    for (const [breite, telefon] of [
+    for (const [width, phone] of [
       [1280, false],
       [390, true],
     ]) {
-      await groesse(b, breite, telefon);
+      await size(b, width, phone);
       await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-      const m = await b.auswerten(`({ field: document.getElementById('pl-setnr').getBoundingClientRect().width,
-        karte: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
-      if (telefon)
-        assert.ok(m.field >= m.karte - 1, `${breite} px: field does not span the full width: ${JSON.stringify(m)}`);
-      else assert.ok(m.field >= 480, `${breite} px: field too narrow for several set numbers: ${JSON.stringify(m)}`);
+      const m = await b.evaluate(`({ field: document.getElementById('pl-setnr').getBoundingClientRect().width,
+        card: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
+      if (phone)
+        assert.ok(m.field >= m.card - 1, `${width} px: field does not span the full width: ${JSON.stringify(m)}`);
+      else assert.ok(m.field >= 480, `${width} px: field too narrow for several set numbers: ${JSON.stringify(m)}`);
     }
   } finally {
-    await groesse(b, 1280, false);
+    await size(b, 1280, false);
   }
 }
 
 async function wantedTo(_t, a) {
   const { b } = a;
-  await groesse(b, 390, true);
+  await size(b, 390, true);
   try {
     await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
-    const m =
-      await b.auswerten(`(() => { const d = document.getElementById('mk-box'), h = d.querySelector('summary h2');
+    const m = await b.evaluate(`(() => { const d = document.getElementById('mk-box'), h = d.querySelector('summary h2');
       const kd = d.getBoundingClientRect(), kh = h.getBoundingClientRect();
-      return { offen: d.open, oben: Math.round(kh.top - kd.top), unten: Math.round(kd.bottom - kh.bottom) }; })()`);
-    assert.equal(m.offen, false, 'test data: collapsed on the phone');
-    assert.ok(Math.abs(m.oben - m.unten) <= 2, `empty space below the collapsed card: ${JSON.stringify(m)}`);
+      return { isOpen: d.open, upper: Math.round(kh.top - kd.top), lower: Math.round(kd.bottom - kh.bottom) }; })()`);
+    assert.equal(m.isOpen, false, 'test data: collapsed on the phone');
+    assert.ok(Math.abs(m.upper - m.lower) <= 2, `empty space below the collapsed card: ${JSON.stringify(m)}`);
   } finally {
-    await groesse(b, 1280, false);
+    await size(b, 1280, false);
   }
 }
 
@@ -522,7 +518,7 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
     return;
   }
   t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'pending'`).catch(() => {}));
-  await a.ruhig();
+  await a.settle();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
     ['„−“ bei einem Exemplar', minusAtOne],
@@ -532,13 +528,13 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
     ['Finanzbegriffe', financeTerms],
     ['Aufträge und Fortschritt', jobs],
     ['Seitentitel im Set-Detail', pageTitle],
-    ['Bauliste: breites Feld', bauliste],
+    ['Bauliste: breites Feld', buildList],
     ['Merkliste zugeklappt', wantedTo],
-    ['Bilder verschiedener Form', bilder],
+    ['Bilder verschiedener Form', images],
     // Reloads the page.
     ['Serverfehler für Verwalter', serverErrorAdmin],
     // Replaces the recovery codes: last.
-    ['Zweiter Faktor: Code im Dialog', zweiterFaktor],
+    ['Zweiter Faktor: Code im Dialog', secondFactor],
   ];
-  for (const [titel, fn] of pruefungen) await t.test(titel, () => fn(t, a));
+  for (const [title, fn] of pruefungen) await t.test(title, () => fn(t, a));
 });

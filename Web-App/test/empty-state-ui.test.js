@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const STYLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const withStyle = w =>
@@ -22,7 +22,7 @@ const withStyle = w =>
     s.textContent = STYLE;
     w.document.head.append(s);
   });
-const sichtbar = (w, sel) =>
+const visible = (w, sel) =>
   [...w.document.querySelectorAll(sel)].filter(e => {
     for (let x = e; x && x.nodeType === 1; x = x.parentElement)
       if (w.getComputedStyle(x).display === 'none') return false;
@@ -32,8 +32,8 @@ const sichtbar = (w, sel) =>
 test('add set exactly once', async () => {
   const { w, d } = await openUi({}, { before: withStyle });
   try {
-    await warte(() => !!d.querySelector('#gallery .empty.empty-state'));
-    const buttonList = sichtbar(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
+    await waitFor(() => !!d.querySelector('#gallery .empty.empty-state'));
+    const buttonList = visible(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
     assert.equal(buttonList.length, 1);
     assert.ok(buttonList[0].closest('#gallery .empty.empty-state'), 'the visible button is not in the empty state');
     assert.match(d.querySelector('#gallery .empty.empty-state').textContent, /Noch keine Sets/);
@@ -49,9 +49,9 @@ test('parts and minifigures likewise', async () => {
       ['parts', 'part'],
       ['minifigs', 'fig'],
     ]) {
-      await reiter(w, tab);
-      await warte(() => !!w.document.querySelector(`#tab-${tab} .empty.empty-state`));
-      assert.equal(sichtbar(w, `#tab-${tab} [data-click="openCapture"][data-arg="${kind}"]`).length, 1, tab);
+      await switchTab(w, tab);
+      await waitFor(() => !!w.document.querySelector(`#tab-${tab} .empty.empty-state`));
+      assert.equal(visible(w, `#tab-${tab} [data-click="openCapture"][data-arg="${kind}"]`).length, 1, tab);
     }
   } finally {
     w.close();

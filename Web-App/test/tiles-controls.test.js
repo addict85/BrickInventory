@@ -12,10 +12,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const TABBAR = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
-const tabbar = wurzel => [...wurzel.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
+const tabbar = root => [...root.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
 
 test('gallery: the trash is not in the tab order', async () => {
   const { w, d } = await openUi({
@@ -30,13 +30,13 @@ test('gallery: the trash is not in the tab order', async () => {
     },
   });
   try {
-    await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
-    const galerie = d.getElementById('gallery');
-    assert.equal(galerie.querySelectorAll('.delbtn').length, 2, 'the tiles carry no trash can');
-    const imTab = tabbar(galerie);
-    assert.deepEqual(imTab.filter(el => el.classList.contains('delbtn')).length, 0, 'a trash can is in the tab order');
-    assert.equal(imTab.length, 2, 'exactly one stop per tile');
-    for (const b of galerie.querySelectorAll('.delbtn'))
+    await waitFor(() => d.querySelectorAll('#gallery .sc').length === 2);
+    const gallery = d.getElementById('gallery');
+    assert.equal(gallery.querySelectorAll('.delbtn').length, 2, 'the tiles carry no trash can');
+    const inTab = tabbar(gallery);
+    assert.deepEqual(inTab.filter(el => el.classList.contains('delbtn')).length, 0, 'a trash can is in the tab order');
+    assert.equal(inTab.length, 2, 'exactly one stop per tile');
+    for (const b of gallery.querySelectorAll('.delbtn'))
       assert.equal(b.getAttribute('aria-hidden'), 'true', 'the trash can sits in the tile as a second button');
   } finally {
     w.close();
@@ -51,8 +51,8 @@ test('wishlist: without a name the number appears once, space stays on the right
     },
   });
   try {
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-row'));
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('.mk-row'));
     const row = d.querySelector('.mk-row');
     const n = (row.textContent.match(/99999-1/g) || []).length;
     assert.equal(n, 1, `wanted list: number once — it appears ${n} times`);

@@ -56,25 +56,25 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
-  const sende = async (methode, path, rumpf) => {
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME, isAdmin: true }, t });
+  const send = async (method, path, body) => {
     const r = await fetch(base + path, {
-      method: methode,
+      method: method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));
     return { status: r.status, code: j.code ?? null };
   };
 
   await t.test('an object instead of a storage location name is not saved', async () => {
-    assert.deepEqual(await sende('POST', '/api/v2/storage/locations', { name: { $ne: 1 } }), {
+    assert.deepEqual(await send('POST', '/api/v2/storage/locations', { name: { $ne: 1 } }), {
       status: 400,
       code: 'input_invalid',
     });
     assert.equal((await db.get('SELECT count(*)::int AS n FROM storage_locations WHERE user_id = $1', [uid])).n, 0);
     assert.equal(
-      (await sende('POST', '/api/v2/storage/locations', { name: 'Kiste 1' })).status,
+      (await send('POST', '/api/v2/storage/locations', { name: 'Kiste 1' })).status,
       200,
       'Test data: a text works',
     );
@@ -88,17 +88,17 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
   });
 
   await t.test('every writing route rejects an object in one of its fields', async () => {
-    const routen = Object.entries(CONTRACT).filter(([k, r]) => !k.startsWith('GET ') && !r.form);
-    assert.ok(routen.length >= 100, `only ${routen.length} writing routes`);
-    const durch = [];
-    for (const [k, r] of routen) {
-      const [methode, path] = k.split(' ');
+    const routes = Object.entries(CONTRACT).filter(([k, r]) => !k.startsWith('GET ') && !r.form);
+    assert.ok(routes.length >= 100, `only ${routes.length} writing routes`);
+    const via = [];
+    for (const [k, r] of routes) {
+      const [method, path] = k.split(' ');
       // The first field that according to the contract takes no object (passkey: `antwort` is one).
       const form = r.input?.shape ?? {};
       const field = Object.keys(form).find(f => !form[f].safeParse({ $ne: 1 }).success) ?? 'feld';
-      const a = await sende(methode, path.replace(/:\w+/g, '1'), { [field]: { $ne: 1 } });
-      if (a.status !== 400) durch.push(`${k} (${field}) → ${a.status} ${a.code}`);
+      const a = await send(method, path.replace(/:\w+/g, '1'), { [field]: { $ne: 1 } });
+      if (a.status !== 400) via.push(`${k} (${field}) → ${a.status} ${a.code}`);
     }
-    assert.deepEqual(durch, []);
+    assert.deepEqual(via, []);
   });
 });

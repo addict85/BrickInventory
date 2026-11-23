@@ -36,24 +36,24 @@ const STILE = [
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** The header as in production: data-style as style (styles.js), flap open, name set. */
-function kopfleiste() {
+function headerBar() {
   const html = require('./helpers/sources').withoutHtmlComments(fs.readFileSync(P('public', 'index.html'), 'utf8'));
-  const kopf = html
+  const head = html
     .slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
     .replace(/data-style="/g, 'style="')
     .replace('<span class="ubadge-name" id="ubadge">—</span>', '<span class="ubadge-name" id="ubadge">anna</span>');
-  assert.match(kopf, /id="umenu-pop"/, 'The menu toggle is no longer in the header bar');
-  return kopf;
+  assert.match(head, /id="umenu-pop"/, 'The menu toggle is no longer in the header bar');
+  return head;
 }
 
 function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${P('public', s)}">`).join('\n');
-  const kopf = kopfleiste();
+  const head = headerBar();
   const parts = [];
   for (const d of DESIGNS)
-    for (const dunkel of d === 'werkbank' ? [true] : [false, true])
+    for (const dark of d === 'werkbank' ? [true] : [false, true])
       parts.push(
-        `<div class="probe" data-theme="${d}"${dunkel ? ' data-dark' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`,
+        `<div class="probe" data-theme="${d}"${dark ? ' data-dark' : ''} data-name="${d} ${dark ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${head}</div>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}#umenu-pop{display:block!important;position:static!important}</style></head><body>${parts.join('\n')}
@@ -61,23 +61,23 @@ function testPage() {
 <script>
 function rgba(s){ const v=(s.match(/[\\d.]+/g)||[]).map(Number); return v.length<4?[...v,1]:v; }
 function lum([r,g,b]){ const f=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)}; return .2126*f(r)+.7152*f(g)+.0722*f(b); }
-function grund(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
+function reason(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
   let farbe=[255,255,255]; for(const s of schichten.reverse()) farbe=farbe.map((c,i)=>c*(1-s[3])+s[i]*s[3]); return farbe; }
 window.addEventListener('load', () => document.fonts.ready.then(() => {
-  const werte = [];
+  const values = [];
   for (const probe of document.querySelectorAll('.probe')) {
     for (const el of probe.querySelectorAll('header *')) {
       const text = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
       if (!text || !el.getClientRects().length || el.closest("[hidden], svg")) continue;
       const st = getComputedStyle(el);
       if (st.visibility === 'hidden' || st.display === 'none' || el.offsetWidth <= 1 || el.offsetHeight <= 1) continue;
-      const f = rgba(st.color), g = grund(el);
-      const vorn = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
-      const a = lum(vorn), b = lum(g);
-      werte.push({ name: probe.dataset.name + ': ' + text.slice(0, 30), wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 });
+      const f = rgba(st.color), g = reason(el);
+      const front = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
+      const a = lum(front), b = lum(g);
+      values.push({ name: probe.dataset.name + ': ' + text.slice(0, 30), wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 });
     }
   }
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(werte) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(values) + 'ENDE';
 }));
 </script></body></html>`;
 }
@@ -88,10 +88,10 @@ test('every text in the header bar is readable in every theme', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kopfleiste-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kopfleiste-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -102,7 +102,7 @@ test('every text in the header bar is readable in every theme', t => {
       '--window-size=1200,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );

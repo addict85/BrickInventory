@@ -30,23 +30,23 @@ test('an already supplied set triggers no fetch', async t => {
   }
 
   const fetches = [];
-  const nein = name => async () => {
+  const no = name => async () => {
     fetches.push(name);
     throw new Error(`${name}: no network in the test`);
   };
   testSources(t, {
-    scrapeInstructions: nein('scrapeInstructions'),
-    brickset: { getInstructions: nein('brickset.getInstructions') },
+    scrapeInstructions: no('scrapeInstructions'),
+    brickset: { getInstructions: no('brickset.getInstructions') },
   });
-  for (const [name, modul] of [
+  for (const [name, mod] of [
     ['http', http],
     ['https', https],
   ])
     for (const kind of ['request', 'get']) {
-      const echt = modul[kind];
-      t.mock.method(/** @type {any} */ (modul), kind, (/** @type {any[]} */ ...a) => {
+      const original = mod[kind];
+      t.mock.method(/** @type {any} */ (mod), kind, (/** @type {any[]} */ ...a) => {
         fetches.push(`${name}.${kind}`);
-        return echt.apply(modul, a);
+        return original.apply(mod, a);
       });
     }
 

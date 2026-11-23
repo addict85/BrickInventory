@@ -36,8 +36,8 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -67,10 +67,10 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
     client.release();
   }
 
-  const nachher = await columnsOf('parts');
+  const later = await columnsOf('parts');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
     assert.ok(
-      !nachher.includes(sp),
+      !later.includes(sp),
       `parts.${sp} is still there after all migrations — migration 0035 did not ` +
         'delete it, or something creates the column again afterwards.',
     );
@@ -80,7 +80,7 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   // the BrickLink number stands in bl_mapping (once per part instead of per
   // account). See test/bricklink-mapping-db.test.js. …
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
-    assert.ok(nachher.includes(sp), `parts.${sp} is missing — the column belongs to the stock`);
+    assert.ok(later.includes(sp), `parts.${sp} is missing — the column belongs to the stock`);
   }
 
   const figsAfter = await columnsOf('minifigs');
@@ -89,12 +89,12 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   }
 
   // Not disappeared but moved.
-  for (const [tab, spalten] of [
+  for (const [tab, columns] of [
     ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
   ]) {
     const existing = await columnsOf(tab);
-    for (const sp of spalten) {
+    for (const sp of columns) {
       assert.ok(existing.includes(sp), `${tab}.${sp} is missing — then the purchase price exists nowhere any more`);
     }
   }
@@ -148,11 +148,11 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   const M = _req('src/minifigs/queries.js');
 
   const parts = await H.manualPartsList([uid], uid);
-  const teil = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3002');
-  assert.ok(teil, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
-  assert.equal(Number(teil.unit_price), 2.0, 'unit_price must be the price of the NEWEST acquisition');
-  assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price is the display value and must not be empty');
-  assert.equal(teil.condition, 'U', 'A used acquisition makes the part used (conditionFromAcquisitions)');
+  const part = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3002');
+  assert.ok(part, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
+  assert.equal(Number(part.unit_price), 2.0, 'unit_price must be the price of the NEWEST acquisition');
+  assert.equal(Number(part.purchase_price), 2.0, 'purchase_price is the display value and must not be empty');
+  assert.equal(part.condition, 'U', 'A used acquisition makes the part used (conditionFromAcquisitions)');
 
   const figs = await M.readManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-5');

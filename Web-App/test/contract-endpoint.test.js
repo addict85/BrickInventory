@@ -69,11 +69,11 @@ test('a route with a step brand only answers if the entrance checked exactly its
   const srv = app.listen(0);
   t.after(() => new Promise(x => srv.close(x)));
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}`;
-  const callFn = async schritt =>
+  const callFn = async step =>
     (
       await fetch(`${basis}/api/v2/vouchers/1/plaintext`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', ...(schritt ? { 'x-schritt': schritt } : {}) },
+        headers: { 'content-type': 'application/json', ...(step ? { 'x-schritt': step } : {}) },
         body: JSON.stringify({ password: 'x', code: '' }),
       })
     ).status;

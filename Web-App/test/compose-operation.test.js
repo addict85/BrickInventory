@@ -57,9 +57,9 @@ function withConfig(t) {
 test('every service has limited logs', t => {
   const j = withConfig(t);
   if (!j) return;
-  const dienste = Object.entries(j.services);
-  assert.ok(dienste.length >= 6, Object.keys(j.services).join(', '));
-  const ohne = dienste
+  const services = Object.entries(j.services);
+  assert.ok(services.length >= 6, Object.keys(j.services).join(', '));
+  const without = services
     .filter(
       ([, d]) =>
         !(
@@ -70,21 +70,21 @@ test('every service has limited logs', t => {
         ),
     )
     .map(([n, d]) => `${n}: ${JSON.stringify(d.logging ?? null)}`);
-  assert.deepEqual(ohne, []);
+  assert.deepEqual(without, []);
 });
 
 test('every tmpfs is without exec, without setuid and limited in size', t => {
   const j = withConfig(t);
   if (!j) return;
-  const falsch = [];
+  const wrong = [];
   for (const [n, d] of Object.entries(j.services))
     for (const entryRow of d.tmpfs ?? []) {
       const options = entryRow.split(':')[1]?.split(',') ?? [];
-      const noetig = [entryRow.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
-      if (!noetig.every(o => options.includes(o)) || !options.some(o => /^size=\d+[km]$/.test(o)))
-        falsch.push(`${n}: ${entryRow}`);
+      const needed = [entryRow.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
+      if (!needed.every(o => options.includes(o)) || !options.some(o => /^size=\d+[km]$/.test(o)))
+        wrong.push(`${n}: ${entryRow}`);
     }
-  assert.deepEqual(falsch, []);
+  assert.deepEqual(wrong, []);
   assert.ok(
     Object.values(j.services).filter(d => d.tmpfs?.length).length >= 4,
     'the list of tmpfs is empty — does the check still match?',

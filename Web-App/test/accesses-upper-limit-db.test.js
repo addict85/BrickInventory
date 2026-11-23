@@ -58,16 +58,16 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
       )
     ).id;
   const uid = await put(NAME),
-    anderer = await put(OTHER);
-  const sitzungen = id =>
+    otherOne = await put(OTHER);
+  const sessions = id =>
     db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1 ORDER BY sid`, [String(id)]);
   t.after(async () => {
-    await db.run(`DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = ANY($1)`, [[String(uid), String(anderer)]]);
+    await db.run(`DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = ANY($1)`, [[String(uid), String(otherOne)]]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
       `%konto:${uid}%`,
       '%203.0.113.77%',
     ]);
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, anderer]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, otherOne]]);
     await db.pool.end().catch(() => {});
   });
 
@@ -75,7 +75,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     // 60 old sessions: alt_00 expired first (unused the longest), alt_59 last.
     for (const [id, n] of [
       [uid, 60],
-      [anderer, 3],
+      [otherOne, 3],
     ]) {
       for (let i = 0; i < n; i++) {
         await db.run(
@@ -103,10 +103,10 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     });
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
-    const klar = (await (await fetch(`http://127.0.0.1:${srv.address().port}/an`, { method: 'POST' })).json()).sid;
+    const plain = (await (await fetch(`http://127.0.0.1:${srv.address().port}/an`, { method: 'POST' })).json()).sid;
     // The table holds the hash of the id (src/account/sessionStore.ts).
-    const sid = _req('src/account/sessionStore.js').sessionDigest(klar);
-    const rest = (await sitzungen(uid)).map(z => z.sid);
+    const sid = _req('src/account/sessionStore.js').sessionDigest(plain);
+    const rest = (await sessions(uid)).map(z => z.sid);
     assert.equal(rest.length, 50, 'at most 50 sessions …');
     assert.ok(rest.includes(sid), 'the new session stays');
     assert.deepEqual(
@@ -114,7 +114,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
       Array.from({ length: 49 }, (_, i) => `${uid}_alt_${i + 11}`),
       'at most 50 sessions … (the longest unused ones are dropped)',
     );
-    assert.equal((await sitzungen(anderer)).length, 3, 'foreign sessions stay');
+    assert.equal((await sessions(otherOne)).length, 3, 'foreign sessions stay');
   });
 
   await t.test('at most 50 tokens per account, a swapped one does not count', async () => {
@@ -131,14 +131,14 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
       `grenze_${uid}_54`,
     ]);
     const auth = _req('src/account/deviceToken.js');
-    const neu = auth.tokenDigest(await auth.createToken(uid, 'neu'));
+    const fresh = auth.tokenDigest(await auth.createToken(uid, 'neu'));
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
     );
-    assert.ok(rest.includes(neu), 'the new token stays');
+    assert.ok(rest.includes(fresh), 'the new token stays');
     assert.ok(rest.includes(`grenze_${uid}_00`), 'at most 50 tokens … (the rotated one stays until the overlap ends)');
     assert.deepEqual(
-      rest.filter(x => x !== neu && x !== `grenze_${uid}_00`),
+      rest.filter(x => x !== fresh && x !== `grenze_${uid}_00`),
       Array.from({ length: 49 }, (_, i) => `grenze_${uid}_${String(i + 6).padStart(2, '0')}`),
       'at most 50 tokens …',
     );

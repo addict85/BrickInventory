@@ -28,22 +28,22 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { isDockerGateway } = _req('src/infra/proxyTrust.js');
 const { proxyHint, ONE_ADDRESS } = _req('src/http/proxyHint.js');
 
-const anfrage = (von, xff) => ({ socket: { remoteAddress: von }, headers: xff ? { 'x-forwarded-for': xff } : {} });
-function lauf(trust, anfragen) {
-  const meldungen = [];
-  const mw = proxyHint(trust, t => meldungen.push(t));
-  let weiter = 0;
-  for (const a of anfragen)
+const request = (from, xff) => ({ socket: { remoteAddress: from }, headers: xff ? { 'x-forwarded-for': xff } : {} });
+function run(trust, requests) {
+  const messages = [];
+  const mw = proxyHint(trust, t => messages.push(t));
+  let next = 0;
+  for (const a of requests)
     mw(a, {}, () => {
-      weiter++;
+      next++;
     });
-  assert.equal(weiter, anfragen.length, 'every request goes on');
-  return meldungen;
+  assert.equal(next, requests.length, 'every request goes on');
+  return messages;
 }
 
 test('proxy via the gateway is reported, only once — without advice to trust the gateway', () => {
   for (const trust of [undefined, '172.28.73.10']) {
-    const m = lauf(trust, [anfrage('::ffff:172.18.0.1', '198.51.100.4'), anfrage('172.18.0.1', '198.51.100.5')]);
+    const m = run(trust, [request('::ffff:172.18.0.1', '198.51.100.4'), request('172.18.0.1', '198.51.100.5')]);
     assert.equal(m.length, 1, `TRUST_PROXY=${trust}`);
     assert.match(m[0], /Docker-Gateway 172\.18\.0\.1/);
     assert.doesNotMatch(m[0], /TRUST_PROXY=172\.18\.0\.1/, 'advises trusting the clients behind the gateway');
@@ -51,17 +51,17 @@ test('proxy via the gateway is reported, only once — without advice to trust t
 });
 
 test('proxy in the Docker network without matching TRUST_PROXY: hint at exactly its address', () => {
-  const m = lauf(undefined, [anfrage('172.28.73.10', '198.51.100.4')]);
+  const m = run(undefined, [request('172.28.73.10', '198.51.100.4')]);
   assert.equal(m.length, 1);
   assert.match(m[0], /TRUST_PROXY=172\.28\.73\.10/);
   assert.doesNotMatch(m[0], /TRUST_PROXY=docker/);
 });
 
 test('no hint without a proxy header, from other addresses or with matching TRUST_PROXY', () => {
-  assert.deepEqual(lauf(undefined, [anfrage('172.18.0.1')]), []);
-  assert.deepEqual(lauf(undefined, [anfrage('127.0.0.1', '198.51.100.4'), anfrage('192.168.1.20', '1.2.3.4')]), []);
-  assert.deepEqual(lauf('172.28.73.10', [anfrage('172.28.73.10', '198.51.100.4')]), []);
-  assert.deepEqual(lauf('false', [anfrage('172.18.0.1', '198.51.100.4')]), [], 'explicitly without a proxy');
+  assert.deepEqual(run(undefined, [request('172.18.0.1')]), []);
+  assert.deepEqual(run(undefined, [request('127.0.0.1', '198.51.100.4'), request('192.168.1.20', '1.2.3.4')]), []);
+  assert.deepEqual(run('172.28.73.10', [request('172.28.73.10', '198.51.100.4')]), []);
+  assert.deepEqual(run('false', [request('172.18.0.1', '198.51.100.4')]), [], 'explicitly without a proxy');
 });
 
 test('gateway detection', () => {
@@ -72,48 +72,48 @@ test('gateway detection', () => {
 
 /** Requests via the trusted proxy; `ip` is what Express reads from X-Forwarded-For. */
 function viaProxy(trust, ips, { minutes }) {
-  const meldungen = [];
+  const messages = [];
   let now = 0;
   const mw = proxyHint(
     trust,
-    t => meldungen.push(t),
+    t => messages.push(t),
     () => now,
   );
   ips.forEach((ip, i) => {
     now = Math.round((i / Math.max(ips.length - 1, 1)) * minutes * 60_000);
     mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
   });
-  return meldungen;
+  return messages;
 }
-const viele = (ip, n = ONE_ADDRESS.requests + 10) => Array(n).fill(ip);
+const many = (ip, n = ONE_ADDRESS.requests + 10) => Array(n).fill(ip);
 
 test('a single client address over an hour is reported — once, with VORGELAGERTER_PROXY', () => {
-  const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * ONE_ADDRESS.requests), { minutes: 61 });
+  const m = viaProxy('172.28.73.10', many('::ffff:172.28.73.20', 2 * ONE_ADDRESS.requests), { minutes: 61 });
   assert.equal(m.length, 1, 'a single client address over an hour is reported');
   assert.match(m[0], /Client-Adresse 172\.28\.73\.20\b/);
   assert.match(m[0], /VORGELAGERTER_PROXY/);
 });
 
 test('two client addresses, too short or without TRUST_PROXY: no hint', () => {
-  const gemischt = viele('192.168.1.20');
-  gemischt[10] = '192.168.1.21';
-  assert.deepEqual(viaProxy('172.28.73.10', gemischt, { minutes: 120 }), [], 'two client addresses: no hint');
+  const mixed = many('192.168.1.20');
+  mixed[10] = '192.168.1.21';
+  assert.deepEqual(viaProxy('172.28.73.10', mixed, { minutes: 120 }), [], 'two client addresses: no hint');
   assert.deepEqual(
-    viaProxy('172.28.73.10', viele('192.168.1.20'), { minutes: 10 }),
+    viaProxy('172.28.73.10', many('192.168.1.20'), { minutes: 10 }),
     [],
     'after ten minutes still no hint',
   );
   assert.deepEqual(
-    viaProxy('172.28.73.10', viele('192.168.1.20', ONE_ADDRESS.requests - 1), { minutes: 120 }),
+    viaProxy('172.28.73.10', many('192.168.1.20', ONE_ADDRESS.requests - 1), { minutes: 120 }),
     [],
     'too few requests',
   );
   // Without TRUST_PROXY only the hint about the untrusted proxy reports (above).
   assert.deepEqual(
-    viaProxy(undefined, viele('192.168.1.20'), { minutes: 120 }).filter(t => /VORGELAGERTER_PROXY/.test(t)),
+    viaProxy(undefined, many('192.168.1.20'), { minutes: 120 }).filter(t => /VORGELAGERTER_PROXY/.test(t)),
     [],
     'without TRUST_PROXY',
   );
   // Without an evaluated X-Forwarded-For req.ip is the proxy itself.
-  assert.deepEqual(viaProxy('172.28.73.10', viele('172.28.73.10'), { minutes: 120 }), [], 'without evaluation');
+  assert.deepEqual(viaProxy('172.28.73.10', many('172.28.73.10'), { minutes: 120 }), [], 'without evaluation');
 });

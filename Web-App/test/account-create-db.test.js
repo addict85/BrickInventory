@@ -36,11 +36,11 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const CHEF = `anlage_chef_${process.pid}`,
   PASS = 'richtigesPasswort1';
-const NEU = [`anlage_a_${process.pid}`, `anlage_b_${process.pid}`, `anlage_c_${process.pid}`];
+const NEW = [`anlage_a_${process.pid}`, `anlage_b_${process.pid}`, `anlage_c_${process.pid}`];
 
 test('create account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEU]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEW]]);
   await db.run(
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [CHEF, await bcrypt.hash(PASS, 4)],
@@ -54,11 +54,11 @@ test('create account', { concurrency: 1 }, async t => {
   const basis = `http://localhost:${srv.address().port}`;
   t.after(async () => {
     srv.close();
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEU]]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEW]]);
     await db.pool.end().catch(() => {});
   });
-  const callFn = async (weg, body, cookie) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, body, cookie) => {
+    const r = await fetch(basis + route, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
       body: JSON.stringify(body),
@@ -68,32 +68,32 @@ test('create account', { concurrency: 1 }, async t => {
   const a = await callFn(AUTH + '/login', { username: CHEF, password: PASS, without_token: true });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const cookie = a.cookie.split(';')[0];
-  const konto = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
+  const account = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
 
   await t.test('no account without admin password', async () => {
-    const r = await callFn(AUTH + '/users', { username: NEU[0], password: 'einPasswort123' }, cookie);
+    const r = await callFn(AUTH + '/users', { username: NEW[0], password: 'einPasswort123' }, cookie);
     assert.notEqual(r.status, 200);
-    assert.equal(await konto(NEU[0]), undefined);
+    assert.equal(await account(NEW[0]), undefined);
   });
 
   await t.test('"false" creates no admin', async () => {
     const r = await callFn(
       AUTH + '/users',
-      { username: NEU[1], password: 'einPasswort123', isAdmin: 'false', admin_password: PASS },
+      { username: NEW[1], password: 'einPasswort123', isAdmin: 'false', admin_password: PASS },
       cookie,
     );
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(Number((await konto(NEU[1])).is_admin), 0);
+    assert.equal(Number((await account(NEW[1])).is_admin), 0);
   });
 
   await t.test('the web UI creates an admin with is_admin, and the log records both', async () => {
     const r = await callFn(
       AUTH + '/users',
-      { username: NEU[2], password: 'einPasswort123', is_admin: true, admin_password: PASS },
+      { username: NEW[2], password: 'einPasswort123', is_admin: true, admin_password: PASS },
       cookie,
     );
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const k = await konto(NEU[2]);
+    const k = await account(NEW[2]);
     assert.equal(Number(k.is_admin), 1, 'the checkbox „Admin“ has no effect');
     const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
       z => z.action,
@@ -104,18 +104,18 @@ test('create account', { concurrency: 1 }, async t => {
   await t.test('a name in a different spelling is taken', async () => {
     const r = await callFn(
       AUTH + '/users',
-      { username: NEU[1].toUpperCase(), password: 'einPasswort123', admin_password: PASS },
+      { username: NEW[1].toUpperCase(), password: 'einPasswort123', admin_password: PASS },
       cookie,
     );
     assert.equal(r.status, 409, JSON.stringify(r.body));
     assert.equal(r.body.code, 'username_taken');
-    const n = await db.get('SELECT COUNT(*)::int AS n FROM users WHERE lower(username) = lower($1)', [NEU[1]]);
+    const n = await db.get('SELECT COUNT(*)::int AS n FROM users WHERE lower(username) = lower($1)', [NEW[1]]);
     assert.equal(n.n, 1);
   });
 
   await t.test('the database rejects names that only differ in spelling', async () => {
     await assert.rejects(
-      db.run('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEU[2].toUpperCase(), 'x']),
+      db.run('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEW[2].toUpperCase(), 'x']),
       (/** @type {any} */ e) => e.code === '23505',
     );
   });
@@ -129,10 +129,10 @@ test('create account', { concurrency: 1 }, async t => {
     try {
       await k.query('BEGIN');
       await k.query('DROP INDEX users_username_lower');
-      await k.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEU[2].toUpperCase(), 'x']);
+      await k.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEW[2].toUpperCase(), 'x']);
       await assert.rejects(
         k.query(sql),
-        (/** @type {any} */ e) => e.message.includes(NEU[2]) && e.message.includes(NEU[2].toUpperCase()),
+        (/** @type {any} */ e) => e.message.includes(NEW[2]) && e.message.includes(NEW[2].toUpperCase()),
       );
     } finally {
       await k.query('ROLLBACK');

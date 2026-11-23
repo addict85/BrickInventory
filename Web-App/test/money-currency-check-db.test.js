@@ -39,12 +39,12 @@ test('money and currency checked in the database', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
     await db.pool.end().catch(() => {});
   });
-  const record = (preis, currency) =>
+  const record = (price, currency) =>
     db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, currency) VALUES ($1, '99901-1', 1, $2, $3)`,
-      [uid, preis, currency],
+      [uid, price, currency],
     );
-  const abgelehnt = async p => {
+  const rejected = async p => {
     try {
       await p;
       return null;
@@ -54,18 +54,18 @@ test('money and currency checked in the database', { concurrency: 1 }, async t =
   };
 
   await t.test('a valid acquisition goes through', async () => {
-    assert.equal(await abgelehnt(record(19.9, 'CHF')), null);
+    assert.equal(await rejected(record(19.9, 'CHF')), null);
   });
 
   await t.test('a currency in lower case is rejected', async () => {
-    assert.equal(await abgelehnt(record(5, 'chf')), '23514');
-    assert.equal(await abgelehnt(record(5, 'EURO')), '23514');
+    assert.equal(await rejected(record(5, 'chf')), '23514');
+    assert.equal(await rejected(record(5, 'EURO')), '23514');
   });
 
   await t.test('a negative amount is rejected', async () => {
-    assert.equal(await abgelehnt(record(-1, 'CHF')), '23514');
+    assert.equal(await rejected(record(-1, 'CHF')), '23514');
     assert.equal(
-      await abgelehnt(
+      await rejected(
         require('./helpers/sources')
           .testArea('vouchers')
           .vouchers.createVoucher(uid, { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' }),
@@ -77,7 +77,7 @@ test('money and currency checked in the database', { concurrency: 1 }, async t =
   await t.test('the email stays unique', async () => {
     assert.equal(await db.get(`SELECT 1 FROM pg_indexes WHERE indexname = 'users_email_unique'`), undefined);
     assert.equal(
-      await abgelehnt(
+      await rejected(
         db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x')`, [
           `${NAME}_2`,
           `${NAME}@example.org`,

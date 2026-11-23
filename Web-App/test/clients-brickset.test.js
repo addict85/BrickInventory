@@ -20,9 +20,9 @@ const { createBrickset } = _req('clients/brickset.js');
 
 /** One answer per call, in order; the last one repeats. */
 const nacheinander =
-  (...antworten) =>
+  (...answers) =>
   (_c, res) => {
-    const a = antworten.length > 1 ? antworten.shift() : antworten[0];
+    const a = answers.length > 1 ? answers.shift() : answers[0];
     if (a === 'abbruch') res.socket?.destroy();
     else if (a !== 'haengt') reply(res, .../** @type {[number, any, Record<string, string>?]} */ (a));
   };
@@ -162,20 +162,20 @@ test('a hanging Brickset ends at the deadline and stays queued', async t => {
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
   const z = clientsAccess();
-  const lauf = createBrickset(z).getInstructions('10294-1');
-  let fertig = false;
-  void lauf.then(() => {
-    fertig = true;
+  const run = createBrickset(z).getInstructions('10294-1');
+  let done = false;
+  void run.then(() => {
+    done = true;
   });
   // Two attempts of 30 s, between them the light retry of 1.5 s.
   await stub.nextCall();
-  while (!fertig) {
+  while (!done) {
     mock.timers.tick(30_000);
     await new Promise(r => setImmediate(r));
     mock.timers.tick(1500);
     await new Promise(r => setImmediate(r));
   }
-  assert.deepEqual(await lauf, { instructions: [], usesFallback: false });
+  assert.deepEqual(await run, { instructions: [], usesFallback: false });
   assert.match(z.seen.reserved[0]?.error ?? '', /Zeitlimit 30000 ms/);
 });
 

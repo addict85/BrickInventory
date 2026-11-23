@@ -59,14 +59,14 @@ test('a moved set takes the image paths of all its components along', { concurre
 
     // Like the collection: in one transaction via its context; two foreign accounts only in the system frame.
     const { inSystemContext } = _req('src/infra/accountContext.js');
-    const sammlung = require('./helpers/sources').testContext('collection');
-    await inSystemContext('Testdaten', () => sammlung.transact(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
+    const collection = require('./helpers/sources').testContext('collection');
+    await inSystemContext('Testdaten', () => collection.transact(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 
     // Read via the same JOIN that the UIs use — i.e.
     // via the effect. A query on parts.image_local no longer exists,
     // and it would also be the wrong question: the user wants to see the image, and
     // whether it is copied or looked up does not matter to him.
-    const teil = await db.get(
+    const part = await db.get(
       `SELECT pcc.image_local
          FROM parts p
          LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
@@ -74,7 +74,7 @@ test('a moved set takes the image paths of all its components along', { concurre
         WHERE p.user_id=$1 AND p.part_number=$2`,
       [nachId, PN],
     );
-    const figur = await db.get(
+    const minifig = await db.get(
       `SELECT mc.image_local
          FROM minifigs m
          LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
@@ -82,25 +82,25 @@ test('a moved set takes the image paths of all its components along', { concurre
       [nachId, FN],
     );
 
-    assert.ok(teil, 'The part never arrived in the target account');
-    assert.ok(figur, 'The minifigure never arrived in the target account');
+    assert.ok(part, 'The part never arrived in the target account');
+    assert.ok(minifig, 'The minifigure never arrived in the target account');
 
     assert.equal(
-      figur.image_local,
+      minifig.image_local,
       PATH_MINIFIG,
-      `The moved minifigure has image_local=${figur.image_local} instead of "${PATH_MINIFIG}". ` +
+      `The moved minifigure has image_local=${minifig.image_local} instead of "${PATH_MINIFIG}". ` +
         'The figure image is not visible in the target account, and until the next ' +
         'server start it comes from the CDN through the proxy again.',
     );
     assert.equal(
-      teil.image_local,
+      part.image_local,
       PATH_PART,
-      `The moved part has image_local=${teil.image_local} instead of "${PATH_PART}".`,
+      `The moved part has image_local=${part.image_local} instead of "${PATH_PART}".`,
     );
 
     // The actual rule: both branches deliver the same result.
     assert.deepEqual(
-      { teil: teil.image_local !== null, figur: figur.image_local !== null },
+      { teil: part.image_local !== null, figur: minifig.image_local !== null },
       { teil: true, figur: true },
       'Parts and minifigures come out differently when moved — ' +
         'copyContents() copies two tables with the same intent, and in ' +

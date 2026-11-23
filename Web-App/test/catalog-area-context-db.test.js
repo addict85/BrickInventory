@@ -28,19 +28,19 @@ const SN = '99872-1';
 const INVENTORY = 987655;
 
 /** An access that records every query and passes it to the real one. */
-function countingAccess(echt, sql) {
+function countingAccess(original, sql) {
   const remember = f => (text, p) => {
     sql.push(text);
     return f(text, p);
   };
-  const huelle = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
-  return new Proxy(echt, {
-    get(ziel, name) {
+  const shell = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
+  return new Proxy(original, {
+    get(target, name) {
       // The handle carries its access (tx.db) from which t is created: it counts too.
       if (name === 'transaction')
-        return (fn, o) => ziel.transaction(tx => fn({ ...huelle(tx), db: countingAccess(tx.db, sql) }), o);
-      if (['all', 'get', 'run', 'exec'].includes(String(name))) return huelle(ziel)[name];
-      return Reflect.get(ziel, name);
+        return (fn, o) => target.transaction(tx => fn({ ...shell(tx), db: countingAccess(tx.db, sql) }), o);
+      if (['all', 'get', 'run', 'exec'].includes(String(name))) return shell(target)[name];
+      return Reflect.get(target, name);
     },
   });
 }
@@ -48,24 +48,24 @@ function countingAccess(echt, sql) {
 test('catalog with its own access', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const weg = async () => {
+  const route = async () => {
     await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTORY]);
     await sources.testServices().externalSources.setQuotaBack('brickset');
   };
   t.after(async () => {
     sources.buildAndRequire();
-    await weg();
+    await route();
     await db.pool.end();
   });
-  await weg();
+  await route();
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTORY, SN]);
 
   const sql = [];
   const contexts = {};
-  const { catalog: katalog } = buildServices(countingAccess(sources.testAccess(), sql), { contexts });
+  const { catalog } = buildServices(countingAccess(sources.testAccess(), sql), { contexts });
 
   await t.test('reading goes via the passed access', async () => {
-    assert.equal(await katalog.newestInventory(SN), INVENTORY);
+    assert.equal(await catalog.newestInventory(SN), INVENTORY);
     assert.ok(
       sql.some(s => /FROM rb_inventories/.test(s)),
       `counted: ${sql.join(' | ').slice(0, 300)}`,

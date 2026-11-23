@@ -22,7 +22,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const ohneKommentare = require('./helpers/sources').ohneKommentare;
+const withoutComments = require('./helpers/sources').withoutComments;
 const { handleRouteError, sendError } = _req('src/http/httpResponse.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const { failDomain, asDuplicate } = _req('src/infra/errorTexts.js');
@@ -30,14 +30,14 @@ const { failDomain, asDuplicate } = _req('src/infra/errorTexts.js');
 /** What handleRouteError writes to a response. */
 function response(e) {
   let status = 0,
-    rumpf = null;
+    body = null;
   const res = {
     headersSent: false,
     status(c) {
       status = c;
       return {
         json(b) {
-          rumpf = b;
+          body = b;
         },
       };
     },
@@ -52,7 +52,7 @@ function response(e) {
     console.warn = warn;
     console.error = err;
   }
-  return { status, code: rumpf?.code };
+  return { status, code: body?.code };
 }
 const thrown = fn => {
   try {
@@ -64,7 +64,7 @@ const thrown = fn => {
 };
 
 test('every kind yields its status', () => {
-  const erwartet = {
+  const expected = {
     invalid: 400,
     not_signed_in: 401,
     forbidden: 403,
@@ -84,23 +84,23 @@ test('every kind yields its status', () => {
     misdirected: 421,
     upgrade_required: 426,
   };
-  assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
-  for (const [kind, status] of Object.entries(erwartet)) {
+  assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(expected).sort());
+  for (const [kind, status] of Object.entries(expected)) {
     assert.deepEqual(
       response(thrown(() => failDomain(kind, 'set_not_found'))),
       { status, code: 'set_not_found' },
       kind,
     );
     // Whoever answers themselves (guards, HTTP sides) names the kind; the same table chooses the status.
-    let gesendet = 0;
+    let sent = 0;
     const res = {
       status: c => {
-        gesendet = c;
+        sent = c;
         return { json: () => {} };
       },
     };
     sendError({ headers: {} }, res, kind, 'set_not_found');
-    assert.equal(gesendet, status, `sendError ${kind}`);
+    assert.equal(sent, status, `sendError ${kind}`);
   }
 });
 
@@ -113,32 +113,32 @@ test('a duplicate from the database becomes a conflict', () => {
 });
 
 /** All TypeScript sources except src/http and the test helpers. */
-function dienste() {
-  const raus = [];
-  (function lauf(d) {
+function services() {
+  const result = [];
+  (function run(d) {
     for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
       const rel = path.posix.join(d, e.name);
-      if (e.isDirectory()) lauf(rel);
-      else if (e.name.endsWith('.ts')) raus.push(rel);
+      if (e.isDirectory()) run(rel);
+      else if (e.name.endsWith('.ts')) result.push(rel);
     }
   })('src');
   // The HTTP sides of the scopes (src/<bereich>/http/) belong to the HTTP layer.
-  return raus.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
+  return result.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
 }
 
 test('only src/http maps kinds to status, no service names a status', () => {
-  const liste = dienste();
-  assert.ok(liste.length > 200, `only ${liste.length} services found — does the search still match?`);
+  const list = services();
+  assert.ok(list.length > 200, `only ${list.length} services found — does the search still match?`);
   const IMPORT = /from '[./]+\/http\/errorKind'/;
   assert.ok(IMPORT.test("from '../http/errorKind'"), 'self-proof: the pattern finds the import');
-  const treffer = liste.filter(d => IMPORT.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
-  assert.deepEqual(treffer, []);
+  const hits = list.filter(d => IMPORT.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
+  assert.deepEqual(hits, []);
 
   // No service names a status: a number as the second argument would mean that
   // someone brings back the former form (code and status number).
   const status = [];
-  for (const d of liste) {
-    const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
+  for (const d of list) {
+    const s = withoutComments(fs.readFileSync(path.join(ROOT, d), 'utf8'));
     for (const m of s.matchAll(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/g)) status.push(`${d}: ${m[0]}`);
     for (const m of s.matchAll(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }

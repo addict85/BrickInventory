@@ -10,7 +10,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
+const { buildAndRequire, withoutComments, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
 const { touchThrottle } = _req('src/account/sessionTouch.js');
@@ -18,25 +18,25 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 
-const gesehen = [];
+const seen = [];
 let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
-  if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+  if (count) seen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
   return altQuery(text, ...rest);
 };
-const howOften = muster => gesehen.filter(q => muster.test(q)).length;
-const LESEN = /SELECT sess FROM "?user_sessions"?/;
+const howOften = pattern => seen.filter(q => pattern.test(q)).length;
+const READ = /SELECT sess FROM "?user_sessions"?/;
 const WRITE = /UPDATE "?user_sessions"? SET expire/;
 
-/** A server with a real session store; `frist` controls the throttling. */
-async function startServer(frist) {
-  const speicher = new pgSession({ pool: db.pool, tableName: 'user_sessions', createTableIfMissing: false });
-  if (frist !== null) touchThrottle(speicher, frist);
+/** A server with a real session store; `deadline` controls the throttling. */
+async function startServer(deadline) {
+  const storage = new pgSession({ pool: db.pool, tableName: 'user_sessions', createTableIfMissing: false });
+  if (deadline !== null) touchThrottle(storage, deadline);
   const app = express();
   app.use(
     session({
-      store: speicher,
+      store: storage,
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -54,7 +54,7 @@ async function startServer(frist) {
   return { srv, base: `http://localhost:${srv.address().port}` };
 }
 
-async function anmelden(base) {
+async function signIn(base) {
   const r = await fetch(base + '/anmelden');
   await r.text(); // the session only stands in the store after the last byte
   return (r.headers.get('set-cookie') || '').split(';')[0];
@@ -73,14 +73,14 @@ test('session: always read, written only every few minutes', async t => {
     // ── 1. With throttling: N reads, ONE write ──────────────
     const a = await startServer(5 * 60 * 1000);
     server.push(a.srv);
-    const keksA = await anmelden(a.base);
-    gesehen.length = 0;
+    const keksA = await signIn(a.base);
+    seen.length = 0;
     count = true;
-    let letzte = null;
-    for (let i = 0; i < N; i++) letzte = await (await fetch(a.base + '/bild', { headers: { cookie: keksA } })).json();
+    let last = null;
+    for (let i = 0; i < N; i++) last = await (await fetch(a.base + '/bild', { headers: { cookie: keksA } })).json();
     count = false;
 
-    assert.equal(howOften(LESEN), N, `it is read on every request — expected ${N}, counted ${howOften(LESEN)}`);
+    assert.equal(howOften(READ), N, `it is read on every request — expected ${N}, counted ${howOften(READ)}`);
     // EXACTLY one, and both deviations are errors: more means the
     // throttling does not apply; ZERO means it throttles too much and the
     // expiry time is never carried along.
@@ -93,7 +93,7 @@ test('session: always read, written only every few minutes', async t => {
 
     // ── 2. The session lives on ─────────────────────────────────────────
     // Without this assertion „not writing at all any more" would be the best grade.
-    assert.equal(letzte.uid, 990601, 'the session must stay valid across all requests');
+    assert.equal(last.uid, 990601, 'the session must stay valid across all requests');
 
     // ── 3. And the expiry time really stands in the database ──────────────
     const sid = decodeURIComponent(keksA.split('=')[1]).slice(2).split('.')[0];
@@ -109,8 +109,8 @@ test('session: always read, written only every few minutes', async t => {
     // saving above would come from something other than the throttling.
     const b = await startServer(0);
     server.push(b.srv);
-    const keksB = await anmelden(b.base);
-    gesehen.length = 0;
+    const keksB = await signIn(b.base);
+    seen.length = 0;
     count = true;
     for (let i = 0; i < N; i++) await fetch(b.base + '/bild', { headers: { cookie: keksB } });
     count = false;
@@ -124,7 +124,7 @@ test('session: always read, written only every few minutes', async t => {
     // A helper that nobody calls is the most expensive way of doing nothing —
     // and the assertions above would stay green, because they build their store
     // themselves.
-    const source = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+    const source = withoutComments(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(
       source,
       /touchThrottle\(sessionStorage[,)]/,

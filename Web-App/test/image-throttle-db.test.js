@@ -12,13 +12,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Intercept the download and set the status code.
 let response = 403;
 const thumbAttempts = { n: 0 };
-let versuche = 0;
+let attempts = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async (_u, _sn, info) => {
-    versuche++;
+    attempts++;
     if (info) info.status = response;
     return null;
   },
@@ -47,15 +47,15 @@ test('a hopeless preview is only attempted ONCE', { concurrency: 1 }, async t =>
   const fsm = require('node:fs');
   fsm.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `WB${process.pid}`;
-  const datei = path.join(SET_IMAGES_DIR, `${P}_1.jpg`);
-  fsm.writeFileSync(datei, 'x'); // image present, preview impossible
-  const IM = _req('src/images/imageMisses.js');
+  const file = path.join(SET_IMAGES_DIR, `${P}_1.jpg`);
+  fsm.writeFileSync(file, 'x'); // image present, preview impossible
+  const MISSES = _req('src/images/imageMisses.js');
   const IQ = _req('src/images/imageDemandRun.js');
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%']);
 
   try {
     thumbAttempts.n = 0;
-    for (let runde = 1; runde <= 3; runde++) {
+    for (let round = 1; round <= 3; round++) {
       await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
       await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1,$2)`, [`https://cdn/${P}_1.jpg`, `${P}_1`]);
       await IQ._workStack();
@@ -66,13 +66,13 @@ test('a hopeless preview is only attempted ONCE', { concurrency: 1 }, async t =>
       `${thumbAttempts.n} attempts in three passes — a preview that cannot ` +
         'succeed may cost computing time only once',
     );
-    await IM._writeBuffer();
-    const gemerkt = (
+    await MISSES._writeBuffer();
+    const remembered = (
       await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%'])
     ).c;
-    assert.equal(gemerkt, 1, 'The failure was not remembered permanently');
+    assert.equal(remembered, 1, 'The failure was not remembered permanently');
   } finally {
-    fsm.rmSync(datei, { force: true });
+    fsm.rmSync(file, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%']).catch(() => {});
   }
@@ -102,7 +102,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
   };
   const open = async () =>
     (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [P + '%'])).c;
-  const gemerkt = async () =>
+  const remembered = async () =>
     (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%'])).c;
 
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
@@ -110,11 +110,11 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
   try {
     await t.test('403 locks out no image and loses no note', async () => {
       response = 403;
-      versuche = 0;
+      attempts = 0;
       await fill();
       const IQ = _req('src/images/imageDemandRun.js');
       const e = await IQ._workStack();
-      assert.equal(versuche, 1, `${versuche} attempts — after the first throttling the batch must abort`);
+      assert.equal(attempts, 1, `${attempts} attempts — after the first throttling the batch must abort`);
 
       // Put back is NOT processed
       assert.equal(
@@ -135,19 +135,19 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
         'Notes got lost. The batch is fetched with DELETE … RETURNING ' + '— on abort the WHOLE rest must be put back.',
       );
       assert.equal(
-        await gemerkt(),
+        await remembered(),
         0,
         'A throttling was remembered as „Bild fehlt“ — then the rush locks out ' + 'exactly the images that exist',
       );
     });
 
     await t.test('the pause holds back the next run', async () => {
-      const vorher = versuche;
+      const prior = attempts;
       const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
       assert.equal(n, 0);
       assert.equal(
-        versuche,
-        vorher,
+        attempts,
+        prior,
         'It kept asking — stubbornly asking again is exactly the behavior ' + 'that prolongs a block',
       );
     });
@@ -157,12 +157,16 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       await db.run(`DELETE FROM job_pauses WHERE type = 'image_demand'`);
       const IQ = _req('src/images/imageDemandRun.js');
       response = 404;
-      versuche = 0;
+      attempts = 0;
       await fill();
       await IQ._workStack();
       await _req('src/images/imageMisses.js')._writeBuffer();
-      assert.equal(versuche, 10, `${versuche} attempts — on 404 the batch runs through`);
-      assert.equal(await gemerkt(), 10, 'Missing images are not remembered — then the job asks for them again forever');
+      assert.equal(attempts, 10, `${attempts} attempts — on 404 the batch runs through`);
+      assert.equal(
+        await remembered(),
+        10,
+        'Missing images are not remembered — then the job asks for them again forever',
+      );
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});

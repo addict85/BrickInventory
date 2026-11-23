@@ -38,20 +38,20 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 // No fetch at the sources: the reload finds nothing here.
 const instrPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
-const echt = require(instrPath);
-require.cache[instrPath].exports = Object.assign({}, echt, { loadSetInstructions: async () => [] });
+const original = require(instrPath);
+require.cache[instrPath].exports = Object.assign({}, original, { loadSetInstructions: async () => [] });
 
 const db = testData();
 const SET = '99072-1',
   URL_A = 'https://quelle.example/99072.pdf';
-const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
+const NAMES = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
 test('reload instructions', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]);
   const ids = [];
-  for (const n of NAMEN)
+  for (const n of NAMES)
     ids.push(
       (
         await db.get(
@@ -65,7 +65,7 @@ test('reload instructions', { concurrency: 1 }, async t => {
   await adminWithFactor(_req, ids[1]);
   await catalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await holdsSet(db, ids[0], SET, 1);
-  const anleitung = () =>
+  const instruction = () =>
     db.run(
       `INSERT INTO shared_instructions (set_number, url) VALUES ($1, $2)
                                   ON CONFLICT DO NOTHING`,
@@ -73,31 +73,31 @@ test('reload instructions', { concurrency: 1 }, async t => {
     );
   const existing = async () => !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
 
-  const drossel = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`anleitung-neu|${SET}`]);
-  await drossel();
+  const throttle = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`anleitung-neu|${SET}`]);
+  await throttle();
   t.after(async () => {
-    await drossel().catch(() => {});
+    await throttle().catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
-  const loadNew = async (als, number = SET) => {
-    Object.assign(sitzung, als);
+  const session = {};
+  const { base } = testServer(_req, { session, t });
+  const loadNew = async (as, number = SET) => {
+    Object.assign(session, as);
     return (await fetch(`${base}/api/v2/sets/${number}/instructions`, { method: 'POST' })).status;
   };
 
   await t.test('a foreign account', async () => {
-    await anleitung();
+    await instruction();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: false }), 404);
     assert.ok(await existing(), 'The shared instruction is gone although the account does not have the set');
   });
 
   await t.test('whoever has the set does not replace a shared instruction', async () => {
-    await anleitung();
+    await instruction();
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 403);
     assert.ok(await existing(), 'the shared instruction is gone for everyone');
   });
@@ -113,19 +113,19 @@ test('reload instructions', { concurrency: 1 }, async t => {
   });
 
   await t.test('the admin replaces', async () => {
-    await anleitung();
+    await instruction();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202);
     assert.ok(!(await existing()), 'the admin did not replace the old row');
-    const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'instructions' AND dedupe_key = $1`, [
+    const job = await db.get(`SELECT status FROM jobs WHERE type = 'instructions' AND dedupe_key = $1`, [
       `instructions:${SET}`,
     ]);
-    assert.equal(auftrag?.status, 'pending', 'the reload is pending as a job');
-    await anleitung();
+    assert.equal(job?.status, 'pending', 'the reload is pending as a job');
+    await instruction();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'the throttle does not hold the admin');
   });
 
   await t.test('a number with path parts', async () => {
-    for (const roh of ['%2E%2E%2Fx', '%2E%2E%3Fx%3D', 'users'])
-      assert.equal(await loadNew({ userId: ids[1], isAdmin: true }, roh), 400, roh);
+    for (const raw of ['%2E%2E%2Fx', '%2E%2E%3Fx%3D', 'users'])
+      assert.equal(await loadNew({ userId: ids[1], isAdmin: true }, raw), 400, raw);
   });
 });

@@ -39,7 +39,7 @@ test('image route: login and CDN healing', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const anon = testServer(_req, { t });
-  const signedIn = testServer(_req, { sitzung: { userId: uid, username: name }, t });
+  const signedIn = testServer(_req, { session: { userId: uid, username: name }, t });
   const get = base => fetch(`${base}/images/parts/${PART}_4.jpg`, { redirect: 'manual' });
 
   await t.test('without login nothing goes out', async () => {
@@ -68,7 +68,7 @@ test('image route: login and CDN healing', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200);
     assert.ok(body.equals(fs.readFileSync(original)), 'the answer is not the original');
     assert.equal(fs.existsSync(preview), false, 'the request waited for the preview');
-    const { bis } = require('./helpers/time');
-    assert.ok(await bis(() => fs.existsSync(preview), 10000), 'the preview is never created');
+    const { until } = require('./helpers/time');
+    assert.ok(await until(() => fs.existsSync(preview), 10000), 'the preview is never created');
   });
 });

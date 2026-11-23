@@ -14,15 +14,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { tileValues } = _req('src/finances/setValue.js');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const row = (nr, markt, kauf) => ({
+const row = (nr, market, purchase) => ({
   set_number: nr,
   quantity: 1,
-  current_price: markt,
-  purchase_price: kauf,
-  baseline_price: kauf,
+  current_price: market,
+  purchase_price: purchase,
+  baseline_price: purchase,
   pnl_pct: null,
   baseline_pnl_pct: null,
 });
@@ -56,16 +56,19 @@ test('tile price: market and purchase price labeled as the server delivers them'
     },
   });
   try {
-    await warte(() => /preis/.test(text(d.querySelector('[data-price-for="21318-1"] .price-kind'))));
-    await warte(() => d.querySelector('[data-price-for="42115-1"] .price-kind'));
+    await waitFor(() => /preis/.test(text(d.querySelector('[data-price-for="21318-1"] .price-kind'))));
+    await waitFor(() => d.querySelector('[data-price-for="42115-1"] .price-kind'));
     assert.equal(
       text(d.querySelector('[data-price-for="42115-1"] .price-kind')),
       'Kaufpreis',
       'without a market price',
     );
     assert.equal(text(d.querySelector('[data-price-for="21318-1"] .price-kind')), 'Marktpreis');
-    const kauf = text(d.querySelector('[data-price-for="42115-1"]'));
-    assert.ok(kauf.includes('99,99') && !kauf.includes('160'), `the quantity-weighted purchase price: ${kauf}`);
+    const purchase = text(d.querySelector('[data-price-for="42115-1"]'));
+    assert.ok(
+      purchase.includes('99,99') && !purchase.includes('160'),
+      `the quantity-weighted purchase price: ${purchase}`,
+    );
   } finally {
     w.close();
   }

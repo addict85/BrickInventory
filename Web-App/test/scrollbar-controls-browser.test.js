@@ -27,20 +27,20 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     allDesigns: true,
     // Enough tiles that the page is taller than the window.
     holding: async (db, uid) => {
-      for (let i = 0; i < 40; i++) await holdsSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });
+      for (let i = 0; i < 40; i++) await holdsSet(db, uid, `${10000 + i}-1`, 1, { price: 10 });
     },
   });
   if (app.reason) {
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
+  const { b, until, settle } = app;
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 600, deviceScaleFactor: 1, mobile: false });
-  await b.auswerten(
+  await b.evaluate(
     `(() => { const s = document.createElement('style'); s.textContent = '*{transition:none!important}'; document.head.append(s); return true; })()`,
   );
-  await ruhig();
-  await bis(
+  await settle();
+  await until(
     `document.documentElement.scrollHeight > innerHeight + 500 && getComputedStyle(document.getElementById('app-scrollbar')).display !== 'none'`,
     'Balken sichtbar',
   );
@@ -48,19 +48,19 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
   await t.test('thumb stands out in every design (3:1)', async () => {
     const values = [];
     for (const design of DESIGNS)
-      for (const dunkel of design === 'werkbank' ? [true] : [false, true]) {
-        await b.auswerten(
-          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.${dunkel ? `setAttribute('data-dark', '')` : `removeAttribute('data-dark')`}; true`,
+      for (const dark of design === 'werkbank' ? [true] : [false, true]) {
+        await b.evaluate(
+          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.${dark ? `setAttribute('data-dark', '')` : `removeAttribute('data-dark')`}; true`,
         );
-        const k = await b.auswerten(`(() => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+        const k = await b.evaluate(`(() => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
         const l = ([r, g, b]) => { const c = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
           return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b); };
         const [x, y] = [l(f(getComputedStyle(document.getElementById('app-scrollbar-thumb')).backgroundColor)),
                         l(f(getComputedStyle(document.body).backgroundColor))].sort((p, q) => q - p);
         return Math.round((x + 0.05) / (y + 0.05) * 100) / 100; })()`);
-        values.push({ design: `${design} ${dunkel ? 'dark' : 'hell'}`, kontrast: k });
+        values.push({ design: `${design} ${dark ? 'dark' : 'hell'}`, kontrast: k });
       }
-    await b.auswerten(
+    await b.evaluate(
       `document.documentElement.setAttribute('data-theme', 'classic'); document.documentElement.removeAttribute('data-dark'); true`,
     );
     assert.equal(values.length, 11);
@@ -72,9 +72,9 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
   });
 
   await t.test('dragging the thumb scrolls the page', async () => {
-    await b.auswerten(`scrollTo(0, 0); true`);
+    await b.evaluate(`scrollTo(0, 0); true`);
     const g =
-      await b.auswerten(`(() => { const r = document.getElementById('app-scrollbar-thumb').getBoundingClientRect();
+      await b.evaluate(`(() => { const r = document.getElementById('app-scrollbar-thumb').getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
     const mouse = (type, y) =>
       b.tab('Input.dispatchMouseEvent', {
@@ -88,24 +88,25 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     await mouse('mouseMoved', g.y);
     await mouse('mousePressed', g.y);
     await mouse('mouseMoved', g.y + 150);
-    const during = await b.auswerten(
+    const during = await b.evaluate(
       `({ y: scrollY, zieht: document.getElementById('app-scrollbar').classList.contains('dragging') })`,
     );
     await mouse('mouseReleased', g.y + 150);
-    const danach = await b.auswerten(`({ zieht: document.getElementById('app-scrollbar').classList.contains('dragging'),
-      etikett: getComputedStyle(document.getElementById('app-scrollbar-label')).display })`);
+    const afterwards =
+      await b.evaluate(`({ zieht: document.getElementById('app-scrollbar').classList.contains('dragging'),
+      label: getComputedStyle(document.getElementById('app-scrollbar-label')).display })`);
     assert.ok(during.y > 300, `page scrolled by only ${during.y} px`);
     assert.equal(during.zieht, true);
-    assert.equal(danach.zieht, false, 'the bar stays in the dragging state');
-    assert.equal(danach.etikett, 'none', 'the label stays after releasing');
+    assert.equal(afterwards.zieht, false, 'the bar stays in the dragging state');
+    assert.equal(afterwards.label, 'none', 'the label stays after releasing');
   });
 
   await t.test("contrast mode: the browser's bar stays", async () => {
     const state = () =>
-      b.auswerten(`({ eigen: getComputedStyle(document.getElementById('app-scrollbar')).display,
+      b.evaluate(`({ own: getComputedStyle(document.getElementById('app-scrollbar')).display,
       browserBar: innerWidth - document.documentElement.clientWidth })`);
     const normal = await state();
-    assert.equal(normal.eigen, 'block', 'precondition: the custom scrollbar is there');
+    assert.equal(normal.own, 'block', 'precondition: the custom scrollbar is there');
     assert.equal(normal.browserBar, 0, "precondition: the browser's bar is hidden");
     await b.tab('Emulation.setEmulatedMedia', {
       features: [
@@ -113,7 +114,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
         { name: 'prefers-reduced-motion', value: 'reduce' },
       ],
     });
-    await bis(
+    await until(
       `getComputedStyle(document.getElementById('app-scrollbar')).display === 'none'`,
       'Eigenbau im Kontrastmodus weg',
     );
@@ -124,7 +125,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
         { name: 'prefers-reduced-motion', value: 'reduce' },
       ],
     });
-    assert.equal(kontrast.eigen, 'none', 'the custom scrollbar stays visible although the system sets the colours');
+    assert.equal(kontrast.own, 'none', 'the custom scrollbar stays visible although the system sets the colours');
     assert.ok(kontrast.browserBar > 0, `the browser's bar is missing (${kontrast.browserBar} px)`);
   });
 });

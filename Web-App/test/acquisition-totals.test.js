@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -114,8 +114,8 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
     [uid, FN],
   );
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  for (const [kind, path, erwartet] of /** @type {[string, string, object][]} */ ([
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  for (const [kind, path, expected] of /** @type {[string, string, object][]} */ ([
     [
       'sets',
       `sets/${SN}/acquisitions`,
@@ -130,7 +130,7 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
   ])) {
     const r = await (await fetch(`${base}/api/v2/${path}`)).json();
     assert.equal(r.acquisitions?.length > 0, true, `${kind}: no acquisitions in the response`);
-    assert.deepEqual(r.totals, erwartet, kind);
+    assert.deepEqual(r.totals, expected, kind);
   }
 });
 
@@ -138,10 +138,10 @@ test('no UI computes the sum again', async () => {
   // The server sends the total row as `totals`; here deliberately NOT the sum of the rows
   // (10 + 20 at quantity 2): what the UI shows must come from the server.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
-  const row = (id, preis) => ({
+  const row = (id, price) => ({
     id,
     quantity: 1,
-    purchase_price: preis,
+    purchase_price: price,
     condition: 'N',
     currency: 'EUR',
     created_at: '2026-10-01T10:00:00Z',
@@ -156,11 +156,14 @@ test('no UI computes the sum again', async () => {
       totals: { quantity: 5, amount: 99, currency: 'EUR' },
     },
   }).then(async o => {
-    assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'No button to the purchase prices');
+    assert.ok(
+      await waitFor(() => o.d.querySelector('[data-click="openAcqModal"]')),
+      'No button to the purchase prices',
+    );
     o.d.querySelector('[data-click="openAcqModal"]').click();
-    assert.ok(await warte(() => o.d.getElementById('acq-total-price')), 'No totals row');
+    assert.ok(await waitFor(() => o.d.getElementById('acq-total-price')), 'No totals row');
     return o;
   });
   try {

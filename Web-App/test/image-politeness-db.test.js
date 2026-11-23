@@ -85,11 +85,11 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
     await t.test('at most 30 requests per minute', () => {
       // The rate results from batch size and tick; both come from the
       // module so that the test repeats no number that may change.
-      const { BATCH: stapel, TICK_MS: takt } = _req('src/images/imageDemandRun.js');
-      assert.ok(stapel > 0 && takt > 0, '„STAPEL“ or „TAKT_MS“ not found');
-      const jeMinute = stapel * (60_000 / takt);
-      assert.ok(jeMinute <= 30, `${jeMinute} requests per minute — at most 30 are wanted`);
-      assert.equal(n, stapel, `${n} images in one pass instead of ${stapel}`);
+      const { BATCH: stack, TICK_MS: tick } = _req('src/images/imageDemandRun.js');
+      assert.ok(stack > 0 && tick > 0, '„STAPEL“ or „TAKT_MS“ not found');
+      const perMinute = stack * (60_000 / tick);
+      assert.ok(perMinute <= 30, `${perMinute} requests per minute — at most 30 are wanted`);
+      assert.equal(n, stack, `${n} images in one pass instead of ${stack}`);
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -113,12 +113,12 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
-  const dateien = [];
+  const files = [];
   // Images present, previews missing — Marco's situation.
   for (let i = 1; i <= 10; i++) {
     const f = path.join(SET_IMAGES_DIR, `${P}_${i}.jpg`);
     fs.writeFileSync(f, 'x');
-    dateien.push(f);
+    files.push(f);
   }
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   await db.run(
@@ -141,7 +141,7 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
         'the CPU is then busy, and database queries run into the timeout.',
     );
   } finally {
-    for (const f of dateien) fs.rmSync(f, { force: true });
+    for (const f of files) fs.rmSync(f, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
     // Last test with database in this file — cleanup happens here.
     await db.pool.end().catch(() => {});

@@ -56,7 +56,7 @@ test('search with % and _ only finds literal hits', { concurrency: 1 }, async t 
   await holdsSet(db, uid, '77701-1', 1);
   await holdsSet(db, uid, '77702-1', 1);
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const hole = async path => {
     const r = await fetch(base + '/api/v2' + path);
     const j = await r.json();

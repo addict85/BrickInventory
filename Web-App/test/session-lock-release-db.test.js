@@ -28,14 +28,14 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const SCHLUESSEL = 7_654_321;
+const KEY = 7_654_321;
 
 /** The next borrowed connection makes pg_advisory_unlock fail. */
 function unlockFailsOnce() {
-  const echt = testAccess().pool.connect.bind(testAccess().pool);
+  const original = testAccess().pool.connect.bind(testAccess().pool);
   const incident = { releaseWithError: /** @type {unknown} */ (undefined), released: false };
   testAccess().pool.connect = async () => {
-    const c = await echt();
+    const c = await original();
     const query = c.query.bind(c);
     const release = c.release.bind(c);
     c.query = (/** @type {any} */ sql, /** @type {any} */ p) =>
@@ -45,7 +45,7 @@ function unlockFailsOnce() {
     c.release = (/** @type {any} */ err) => {
       incident.released = true;
       incident.releaseWithError = err;
-      testAccess().pool.connect = echt;
+      testAccess().pool.connect = original;
       return release(err);
     };
     return c;
@@ -57,8 +57,8 @@ function unlockFailsOnce() {
 async function lockFree() {
   const c = await testAccess().pool.connect();
   try {
-    const { rows } = await c.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [SCHLUESSEL]);
-    if (rows[0].ok) await c.query('SELECT pg_advisory_unlock($1, 0)', [SCHLUESSEL]);
+    const { rows } = await c.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [KEY]);
+    if (rows[0].ok) await c.query('SELECT pg_advisory_unlock($1, 0)', [KEY]);
     return !!rows[0].ok;
   } finally {
     c.release();
@@ -79,7 +79,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     const incident = unlockFailsOnce();
     const r = await withSessionLock(
       testAccess(),
-      SCHLUESSEL,
+      KEY,
       async () => 'ergebnis',
       () => {
         throw new Error('belegt');
@@ -93,7 +93,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     const incident = unlockFailsOnce();
     await withSessionLock(
       testAccess(),
-      SCHLUESSEL,
+      KEY,
       async () => 1,
       () => {
         throw new Error('belegt');
@@ -108,7 +108,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     await assert.rejects(
       withSessionLock(
         testAccess(),
-        SCHLUESSEL,
+        KEY,
         async () => {
           throw new Error('lauf kaputt');
         },
@@ -123,9 +123,9 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
 
   await t.test('receiptsSessionLock: the lock is free after a release error', async () => {
     const incident = unlockFailsOnce();
-    const frei = await receiptsSessionLock(testAccess(), SCHLUESSEL);
-    assert.ok(frei, 'the lock was already taken');
-    await frei();
+    const free = await receiptsSessionLock(testAccess(), KEY);
+    assert.ok(free, 'the lock was already taken');
+    await free();
     assert.ok(incident.releaseWithError instanceof Error, 'the connection was returned without an error');
     assert.equal(await lockFree(), true, 'the lock hangs on a connection in the pool');
   });

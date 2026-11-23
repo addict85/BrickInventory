@@ -13,14 +13,14 @@ const fs = require('node:fs');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Intercept download and downscaling — what counts here is WHAT is called.
-let geladen = 0;
+let loaded = 0;
 const shrunk = [];
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async (_u, sn) => {
-    geladen++;
+    loaded++;
     return `/images/sets/${sn}.jpg`;
   },
   createPreview: async p => {
@@ -49,12 +49,12 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `KN${process.pid}`;
-  const NUTZER = `kn-${process.pid}`;
-  const dateien = [`${P}_1.jpg`, `${P}_2.jpg`, `${P}_2_thumb.jpg`];
+  const USER = `kn-${process.pid}`;
+  const files = [`${P}_1.jpg`, `${P}_2.jpg`, `${P}_2_thumb.jpg`];
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM rb_sets WHERE set_num LIKE $1`, [P + '%']);
   await db.run(`DELETE FROM image_wanted`);
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
@@ -75,7 +75,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO image_misses (cache_key) VALUES ($1)`, [`set:${P}_4`]);
 
   await adminWithFactor(_req, uid);
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
 
   try {
     await t.test('the button queues, without known negative results', async () => {
@@ -157,7 +157,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       // breakdown instead of a bare number — otherwise the job was silent
       // exactly when it only skips.
       for (let i = 0; i < 3; i++) n += (await IQ._workStack()).total;
-      assert.equal(geladen, 7, `${geladen} downloads instead of 7 — existing images must not ` + 'be fetched again');
+      assert.equal(loaded, 7, `${loaded} downloads instead of 7 — existing images must not ` + 'be fetched again');
       assert.ok(n >= 8, `only ${n} jobs processed`);
     });
 
@@ -167,7 +167,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       assert.ok(shrunk.includes(`/images/sets/${P}_1.jpg`), 'The existing image without a preview does not get one');
       assert.ok(!shrunk.includes(`/images/sets/${P}_2.jpg`), 'An image with an existing preview is computed again');
       // And every freshly fetched image gets one.
-      assert.equal(shrunk.length, geladen + 1, `${shrunk.length} previews for ${geladen} downloads + 1 caught up`);
+      assert.equal(shrunk.length, loaded + 1, `${shrunk.length} previews for ${loaded} downloads + 1 caught up`);
     });
 
     // ── LAST, because this substep changes the stage ───────────────
@@ -195,11 +195,11 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       );
     });
   } finally {
-    for (const f of dateien) fs.rmSync(path.join(SET_IMAGES_DIR, f), { force: true });
+    for (const f of files) fs.rmSync(path.join(SET_IMAGES_DIR, f), { force: true });
     await db.run(`DELETE FROM rb_sets WHERE set_num LIKE $1`, [P + '%']).catch(() => {});
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }
@@ -207,9 +207,9 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
 
 test('the button is wired in the tile', async () => {
   // In the real bundle: the image tile carries the button, a click queues and names both numbers.
-  const { openUi, reiter } = require('./helpers/ui');
+  const { openUi, switchTab } = require('./helpers/ui');
   const { de } = require('./helpers/sources').loadTranslations();
-  const { w, d, warte, ruhig, aufrufe } = await openUi({
+  const { w, d, waitFor, settle, calls } = await openUi({
     '/v2/admin/job-status': { success: true, job: { running: false } },
     '/v2/admin/jobs': {
       success: true,
@@ -228,16 +228,16 @@ test('the button is wired in the tile', async () => {
     '/v2/admin/catalog-images': { success: true, pending: 12, skipped: 3, discarded: 2, duration_minutes: 4 },
   });
   try {
-    await reiter(w, 'monitor');
-    await ruhig();
-    assert.ok(await warte(() => d.querySelector('[data-click="queueCatalogImages"]')), 'the button is missing');
+    await switchTab(w, 'monitor');
+    await settle();
+    assert.ok(await waitFor(() => d.querySelector('[data-click="queueCatalogImages"]')), 'the button is missing');
     d.querySelector('[data-click="queueCatalogImages"]').click();
     const toasts = () => d.getElementById('toasts')?.textContent || '';
     const expected = de['monitor.catalog_images_queued_skipped'].replace('{n}', '12').replace('{done}', '3');
-    assert.ok(await warte(() => toasts().includes(expected)), `message: ${toasts()}`);
+    assert.ok(await waitFor(() => toasts().includes(expected)), `message: ${toasts()}`);
     assert.ok(toasts().includes(de['monitor.catalog_images_retried'].replace('{n}', '2')), toasts());
     assert.ok(toasts().includes(de['monitor.catalog_images_eta'].replace('{n}', '4')), toasts());
-    assert.ok(aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/api/v2/admin/catalog-images')));
+    assert.ok(calls.some(a => a.method === 'POST' && a.url.endsWith('/api/v2/admin/catalog-images')));
   } finally {
     w.close();
   }

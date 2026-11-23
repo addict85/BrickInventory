@@ -24,7 +24,7 @@ const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inv
 const NAME = `mengenschnitt_${process.pid}`;
 const SET = `7${process.pid}2-1`,
   PART = `mt${process.pid}`,
-  FARBE = 11,
+  COLOR = 11,
   FIGURE = `mf${process.pid}`;
 const SET_PRICE = 37.5,
   PART_PRICE = 0.25,
@@ -58,16 +58,16 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, $2, 'N', 'CHF', 0, $3, NOW())`,
-    [PART, FARBE, PART_PRICE],
+    [PART, COLOR, PART_PRICE],
   );
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, 'N', 'CHF', 0, $2, NOW())`,
     [FIGURE, MINIFIG_PRICE],
   );
-  await holdsSet(db, uid, SET, 2, { preis: 30 });
-  await holdsPart(db, uid, PART, { colorId: FARBE, quantity: 4, preis: 0.2 });
-  await holdsMinifig(db, uid, FIGURE, { quantity: 1, preis: 5 });
+  await holdsSet(db, uid, SET, 2, { price: 30 });
+  await holdsPart(db, uid, PART, { colorId: COLOR, quantity: 4, price: 0.2 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1, price: 5 });
 
   const f = _req('src/finances/financeCalc.js');
 
@@ -93,15 +93,15 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
 
   await t.test('Wertkurve', async () => {
     const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
-    const kurve = await portfolioHistory(uid, [uid], 'month');
-    assert.ok(kurve.points.length > 0, 'no points');
-    assert.equal(kurve.points.at(-1).value, 75);
+    const curve = await portfolioHistory(uid, [uid], 'month');
+    assert.ok(curve.points.length > 0, 'no points');
+    assert.equal(curve.points.at(-1).value, 75);
   });
 
   await t.test('price history', async () => {
     const pv = _req('src/finances/priceHistory.js');
     assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
-    assert.equal((await pv.priceHistoryPart([uid], PART, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);
+    assert.equal((await pv.priceHistoryPart([uid], PART, COLOR, 'CHF')).by_condition.N.market_price, PART_PRICE);
     assert.equal((await pv.priceHistoryMinifig([uid], FIGURE, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
   });
 });

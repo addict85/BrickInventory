@@ -38,8 +38,8 @@ test('indexes', { concurrency: 1 }, async t => {
 
   try {
     await t.test('no index is the start of another', async () => {
-      const alle = await db.all(`WITH ix AS (${INDEXES}) SELECT COUNT(*)::int AS n FROM ix`);
-      assert.ok(alle[0].n > 100, `only ${alle[0].n} indexes found — does the query still work?`);
+      const all = await db.all(`WITH ix AS (${INDEXES}) SELECT COUNT(*)::int AS n FROM ix`);
+      assert.ok(all[0].n > 100, `only ${all[0].n} indexes found — does the query still work?`);
       const double = await db.all(`
         WITH ix AS (${INDEXES})
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d
@@ -57,7 +57,7 @@ test('indexes', { concurrency: 1 }, async t => {
     });
 
     await t.test('every foreign key has an index', async () => {
-      const ohne = await db.all(`
+      const without = await db.all(`
         WITH ix AS (${INDEXES})
         SELECT c.conname || ' (' || c.conrelid::regclass || ')' AS d
           FROM pg_constraint c
@@ -69,7 +69,7 @@ test('indexes', { concurrency: 1 }, async t => {
                                     WHERE attrelid = c.conrelid AND attnum = c.conkey[array_upper(c.conkey, 1)]) || ' IS NOT NULL)'))
          ORDER BY 1`);
       assert.deepEqual(
-        ohne.map(z => z.d),
+        without.map(z => z.d),
         [],
       );
     });

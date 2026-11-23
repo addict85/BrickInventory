@@ -67,14 +67,14 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
     (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
 
   await t.test('the set list only has its own columns', async () => {
-    const spalten = (
+    const columns = (
       await c.query(
         `SELECT column_name FROM information_schema.columns
       WHERE table_schema = $1 AND table_name = 'set_teile' ORDER BY column_name`,
         [SCHEMA],
       )
     ).rows.map(r => r.column_name);
-    assert.deepEqual(spalten, ['color_id', 'is_spare', 'part_number', 'quantity', 'set_number', 'updated_at']);
+    assert.deepEqual(columns, ['color_id', 'is_spare', 'part_number', 'quantity', 'set_number', 'updated_at']);
   });
 
   await t.test('the view shows the same values as before', async () => {
@@ -90,8 +90,9 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
 
   await t.test('the verified name from the set list replaces the placeholder', async () => {
     assert.equal((await row('3001')).part_name, 'Brick 2 x 4');
-    const k = (await c.query(`SELECT part_name, name_von FROM part_catalog WHERE part_number = '3001'`)).rows[0];
-    assert.deepEqual(k, { part_name: 'Brick 2 x 4', name_von: null });
+    const k = (await c.query(`SELECT part_name, name_von AS name_from FROM part_catalog WHERE part_number = '3001'`))
+      .rows[0];
+    assert.deepEqual(k, { part_name: 'Brick 2 x 4', name_from: null });
   });
 
   await t.test('an existing verified value stays', async () => {

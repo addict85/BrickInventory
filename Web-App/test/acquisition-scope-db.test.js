@@ -63,7 +63,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
   const srvSub = appFor(subId).listen(0);
   const baseMain = `http://localhost:${srvMain.address().port}`;
   const baseSub = `http://localhost:${srvSub.address().port}`;
-  const preis = async () =>
+  const price = async () =>
     parseFloat((await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [acqId])).purchase_price);
 
   try {
@@ -74,7 +74,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
       body: JSON.stringify({ purchase_price: 25.5 }),
     });
     assert.equal(r.status, 200, 'the web app route must no longer return 404 „Not found"');
-    assert.equal(await preis(), 25.5, 'the new purchase price must be saved');
+    assert.equal(await price(), 25.5, 'the new purchase price must be saved');
 
     // The write goes into the OWNER's entry, not the viewer's:
     // this ownership question is what this test is about.
@@ -91,7 +91,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
       body: JSON.stringify({ purchase_price: 31.0 }),
     });
     assert.equal(r.status, 200, 'the Android route must no longer return 404');
-    assert.equal(await preis(), 31.0);
+    assert.equal(await price(), 31.0);
 
     // 3. “Read wide, write narrow": the SUB-ACCOUNT may NOT write backwards into
     //    an entry of the main account. This asymmetry is the
@@ -111,8 +111,8 @@ test('the main account can change the purchase price of a sub-account acquisitio
       body: JSON.stringify({ purchase_price: 1.0 }),
     });
     assert.equal(r.status, 404, 'a sub-account must NOT change the main account acquisition');
-    const unveraendert = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [foreignId]);
-    assert.equal(parseFloat(unveraendert.purchase_price), 99.0, 'and it must not have changed');
+    const unchanged = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [foreignId]);
+    assert.equal(parseFloat(unchanged.purchase_price), 99.0, 'and it must not have changed');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SET]).catch(() => {});

@@ -43,8 +43,8 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   const A = 'smtp_host',
     B = 'smtp_user',
     T = 'smtp_from';
-  const alle = [A, B, T];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [alle]);
+  const all = [A, B, T];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [all]);
   const holding = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
 
   try {
@@ -77,15 +77,15 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     // 4. The dangerous case: no key named. The table carries the
     //    registration lock, the API limits and the BrickLink credentials —
     //    an accidental emptying could not be undone.
-    const zahl = await holding();
-    assert.ok(zahl > 0, 'for this probe the table must contain something');
+    const num = await holding();
+    assert.ok(num > 0, 'for this probe the table must contain something');
     await deleteGlobalValues();
-    assert.equal(await holding(), zahl, 'a call without keys must delete NOTHING');
+    assert.equal(await holding(), num, 'a call without keys must delete NOTHING');
     await deleteGlobalValues(...[]);
-    assert.equal(await holding(), zahl, 'an empty array must delete NOTHING either');
+    assert.equal(await holding(), num, 'an empty array must delete NOTHING either');
   } finally {
-    await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
-    for (const z of vorher)
+    await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [all]).catch(() => {});
+    for (const z of prior)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]).catch(() => {});
     await deleteState(T).catch(() => {});
     await db.pool.end().catch(() => {});

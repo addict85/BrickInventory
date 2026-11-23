@@ -19,30 +19,30 @@ const ROOT = path.join(__dirname, '..');
 const ALLOWED = {};
 
 /** All .ts under the given folders, also in subfolders. */
-function tsFiles(dir, praefix = '') {
+function tsFiles(dir, prefix = '') {
   const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) found.push(...tsFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) found.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...tsFiles(path.join(dir, e.name), prefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([prefix + e.name, path.join(dir, e.name)]);
   }
   return found;
 }
 
 test('no route sends a fixed error sentence', () => {
-  const dateien = [
+  const files = [
     ...tsFiles(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
-  assert.ok(dateien.length >= 30, `Only ${dateien.length} files found — then the rest checks nothing.`);
+  assert.ok(files.length >= 30, `Only ${files.length} files found — then the rest checks nothing.`);
 
   const violations = [];
-  const gebraucht = new Set();
-  for (const [, voll] of dateien) {
+  const used = new Set();
+  for (const [, full] of files) {
     // The key in ALLOWED is the path from Web-App/ — assemble it here.
-    const belowFolder = path.relative(ROOT, voll).split(path.sep).join('/');
+    const belowFolder = path.relative(ROOT, full).split(path.sep).join('/');
     const src = fs
-      .readFileSync(voll, 'utf8')
+      .readFileSync(full, 'utf8')
       .split('\n')
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
@@ -60,7 +60,7 @@ test('no route sends a fixed error sentence', () => {
       // in the violations, but proves that the exception is still
       // needed. If one skips it right away instead, its entry can
       // remain for years without describing anything any more.
-      if (belowFolder in ALLOWED) gebraucht.add(belowFolder);
+      if (belowFolder in ALLOWED) used.add(belowFolder);
       else violations.push(`${belowFolder}:${row}  ${text.slice(0, 60)}`);
     }
   }
@@ -70,14 +70,14 @@ test('no route sends a fixed error sentence', () => {
   // as `{ de: '…', en: '…' }`, never as `error: '…'`. So the entry hid
   // nothing, but of all files exempted the one in which ALL error texts
   // stand from this check. So that this does not come back:
-  const veraltet = Object.keys(ALLOWED)
-    .filter(k => !gebraucht.has(k))
+  const stale = Object.keys(ALLOWED)
+    .filter(k => !used.has(k))
     .sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
     'These entries in ALLOWED no longer describe anything:\n  ' +
-      veraltet.join('\n  ') +
+      stale.join('\n  ') +
       '\nThe file no longer contains a fixed error sentence. The entry still exempts it ' +
       'from the check — remove it.',
   );
@@ -118,9 +118,9 @@ test('the web app tells the server which language it shows', async () => {
   // Without this header the server would fall back to German, and the table above would be ineffective.
   const { openUi } = require('./helpers/ui');
   for (const language of ['en', 'de']) {
-    const { w, aufrufe } = await openUi({}, { language });
+    const { w, calls } = await openUi({}, { language });
     try {
-      const api = aufrufe.filter(a => a.url.includes('/api/v2/'));
+      const api = calls.filter(a => a.url.includes('/api/v2/'));
       assert.ok(api.length >= 5, `only ${api.length} requests`);
       assert.deepEqual(
         api.filter(a => a.headers['Accept-Language'] !== language).map(a => a.url),

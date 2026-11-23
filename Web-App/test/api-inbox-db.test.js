@@ -27,7 +27,7 @@ const { buildAndRequire, v1Routes, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 /** Deliberately reachable without login — with a reason. If the list grows, someone must justify it. */
@@ -88,17 +88,17 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await sleep(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
 
-  const alle = v1Routes();
-  assert.ok(alle.length > 150, `only ${alle.length} routes found — does the search still match?`);
+  const all = v1Routes();
+  assert.ok(all.length > 150, `only ${all.length} routes found — does the search still match?`);
   const open = new Set();
-  for (const [m, p] of alle) {
+  for (const [m, p] of all) {
     const url = p.replace(/:[A-Za-z_]+\??/g, '1').replace(/\*[a-z]+/g, 'a');
     // Empty body: a public endpoint then answers 400, but not 401.
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {

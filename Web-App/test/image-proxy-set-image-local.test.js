@@ -28,16 +28,16 @@ test('image proxy delivers existing set images from images/sets', async t => {
   const { proxyAddress, proxyCacheKey } = _req('src/images/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const { notes, ende } = require('./helpers/sources').imageNotes();
+  const { notes, end } = require('./helpers/sources').imageNotes();
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   /** @type {string[]} */
   const created = [];
-  const put = (/** @type {string} */ datei, /** @type {Buffer} */ inhalt) => {
-    fs.writeFileSync(datei, inhalt);
-    created.push(datei);
+  const put = (/** @type {string} */ file, /** @type {Buffer} */ content) => {
+    fs.writeFileSync(file, content);
+    created.push(file);
   };
 
   const app = express();
@@ -48,14 +48,14 @@ test('image proxy delivers existing set images from images/sets', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
-    ende();
+    end();
     for (const f of created) fs.rmSync(f, { force: true });
   });
-  const hole = async (/** @type {string} */ anfrage) => {
+  const hole = async (/** @type {string} */ request) => {
     notes.length = 0;
     const port = /** @type {import('node:net').AddressInfo} */ (server.address()).port;
-    const r = await fetch(`http://127.0.0.1:${port}/p?${anfrage}`);
-    return { status: r.status, inhalt: Buffer.from(await r.arrayBuffer()) };
+    const r = await fetch(`http://127.0.0.1:${port}/p?${request}`);
+    return { status: r.status, content: Buffer.from(await r.arrayBuffer()) };
   };
 
   const ORIGINAL = Buffer.alloc(400, 2);
@@ -75,13 +75,13 @@ test('image proxy delivers existing set images from images/sets', async t => {
   await t.test('the original comes from images/sets, not from the proxy cache', async () => {
     const r = await hole(`url=${encodeURIComponent(withCacheUrl)}`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, ORIGINAL);
+    assert.deepEqual(r.content, ORIGINAL);
   });
 
   await t.test('with thumb=1 the local preview comes, without a note for the image job', async () => {
     const r = await hole(`url=${encodeURIComponent(withCacheUrl)}&thumb=1&gen=0`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, PREVIEW);
+    assert.deepEqual(r.content, PREVIEW);
     assert.deepEqual(notes, []);
   });
 
@@ -95,18 +95,18 @@ test('image proxy delivers existing set images from images/sets', async t => {
     await countRequest('bild-abruf', 'konto:1', 60_000);
     const r = await hole(`url=${encodeURIComponent(url)}&thumb=1`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, PREVIEW);
+    assert.deepEqual(r.content, PREVIEW);
   });
 
   await t.test('if the preview is missing in images/sets, the previous path stays', async () => {
-    const halb = `3${process.pid}-1`;
-    const url = `https://cdn.rebrickable.com/media/sets/${halb}.jpg`;
-    put(path.join(SET_IMAGES_DIR, `${halb}.jpg`), ORIGINAL);
+    const half = `3${process.pid}-1`;
+    const url = `https://cdn.rebrickable.com/media/sets/${half}.jpg`;
+    put(path.join(SET_IMAGES_DIR, `${half}.jpg`), ORIGINAL);
     const f = path.join(cacheDir, proxyCacheKey(proxyAddress(url) ?? url));
     put(f, CACHE);
     put(`${f}.ct`, Buffer.from('image/jpeg'));
     const r = await hole(`url=${encodeURIComponent(url)}`);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.inhalt, CACHE);
+    assert.deepEqual(r.content, CACHE);
   });
 });

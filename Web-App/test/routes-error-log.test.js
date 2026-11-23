@@ -17,10 +17,10 @@ const { handleRouteError } = _req('src/http/httpResponse.js');
 
 /** Calls handleRouteError; delivers the one line including the level (error/warn). */
 function logWithLevel(error, req) {
-  const zeilen = [];
-  const echt = { error: console.error, warn: console.warn };
-  console.error = (...parts) => zeilen.push({ stufe: 'error', row: require('node:util').format(...parts) });
-  console.warn = (...parts) => zeilen.push({ stufe: 'warn', row: require('node:util').format(...parts) });
+  const lines = [];
+  const original = { error: console.error, warn: console.warn };
+  console.error = (...parts) => lines.push({ stufe: 'error', row: require('node:util').format(...parts) });
+  console.warn = (...parts) => lines.push({ stufe: 'warn', row: require('node:util').format(...parts) });
   // A response that can do only as much as handleRouteError needs.
   const res = {
     headersSent: false,
@@ -34,10 +34,10 @@ function logWithLevel(error, req) {
   try {
     handleRouteError(res, error, undefined, req);
   } finally {
-    Object.assign(console, echt);
+    Object.assign(console, original);
   }
-  assert.equal(zeilen.length, 1, 'Exactly one line should be written');
-  return zeilen[0];
+  assert.equal(lines.length, 1, 'Exactly one line should be written');
+  return lines[0];
 }
 const logIt = (error, req) => logWithLevel(error, req).row;
 
@@ -85,7 +85,7 @@ test('a 4xx is a warning without a stack, a 5xx an error with a stack', () => {
   assert.match(nicht.row, /Nicht gefunden/);
   assert.ok(!/\n\s+at /.test(nicht.row), `stack in a 4xx line: ${nicht.row}`);
 
-  const kaputt = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v2/sets' });
-  assert.equal(kaputt.stufe, 'error');
-  assert.match(kaputt.row, /\n\s+at /, 'a 5xx carries its stack');
+  const broken = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v2/sets' });
+  assert.equal(broken.stufe, 'error');
+  assert.match(broken.row, /\n\s+at /, 'a 5xx carries its stack');
 });

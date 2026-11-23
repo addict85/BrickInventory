@@ -80,11 +80,11 @@ test('acquisitions of the sub-account: change and delete for all three element k
       [subId, FN],
     );
   };
-  const acqId = async (tabelle, spalte, wert) =>
-    (await db.get(`SELECT id FROM ${tabelle} WHERE user_id=$1 AND ${spalte}=$2`, [subId, wert])).id;
+  const acqId = async (table, column, value) =>
+    (await db.get(`SELECT id FROM ${table} WHERE user_id=$1 AND ${column}=$2`, [subId, value])).id;
 
   /** @type {[string, string, () => Promise<string>, unknown][]} */
-  const faelle = [
+  const cases = [
     [
       'Set-Erfassung ändern',
       'PUT',
@@ -124,11 +124,11 @@ test('acquisitions of the sub-account: change and delete for all three element k
   ];
 
   try {
-    for (const [name, methode, pathFn, body] of faelle) {
+    for (const [name, method, pathFn, body] of cases) {
       await setUp();
       const path = await pathFn();
       const r = await fetch(`${base}${path}`, {
-        method: methode,
+        method: method,
         headers: { 'content-type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
       });
@@ -149,7 +149,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
     assert.equal(rest.c, 0, 'the acquisition must really be gone after deletion');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
-    for (const [tab, sp, wert] of [
+    for (const [tab, sp, value] of [
       ['set_acquisitions', 'set_number', SN],
       ['sets', 'set_number', SN],
       ['part_acquisitions', 'part_number', PN],
@@ -157,7 +157,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
       ['minifig_acquisitions', 'fig_number', FN],
       ['minifigs', 'fig_number', FN],
     ])
-      await db.run(`DELETE FROM ${tab} WHERE ${sp}=$1`, [wert]).catch(() => {});
+      await db.run(`DELETE FROM ${tab} WHERE ${sp}=$1`, [value]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

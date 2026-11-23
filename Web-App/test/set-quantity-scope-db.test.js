@@ -37,8 +37,8 @@ test('a quantity increase on the sub-account set lands in the own account', { co
   ]);
 
   // The web app comes with the session, the app with a real token and without a session.
-  const web = testServer(_req, { sitzung: { userId: mainId }, t });
-  const app = testServer(_req, { sitzung: {}, t });
+  const web = testServer(_req, { session: { userId: mainId }, t });
+  const app = testServer(_req, { session: {}, t });
   const token = await _req('src/account/deviceToken.js').createToken(mainId, 'test-app', false, null, {
     scope: 'app',
   });
@@ -69,12 +69,12 @@ test('a quantity increase on the sub-account set lands in the own account', { co
   };
 
   try {
-    const ohne = await fetch(`${app.base}/api/v2/sets/${SN}`, {
+    const without = await fetch(`${app.base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: 3 }),
     });
-    assert.equal(ohne.status, 401, 'the app path must not get through without a token');
+    assert.equal(without.status, 401, 'the app path must not get through without a token');
     /** @type {[string, string, Record<string, string>][]} */
     const pathList = [
       ['Webapp', web.base, {}],
@@ -105,22 +105,22 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       // And the acquisitions follow — in the own account, with a price.
       const acq = await db.get(
         `SELECT COALESCE(SUM(quantity),0)::int AS q,
-                COUNT(*) FILTER (WHERE purchase_price IS NOT NULL)::int AS mit_preis
+                COUNT(*) FILTER (WHERE purchase_price IS NOT NULL)::int AS with_price
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
         [mainId, SN],
       );
       assert.equal(acq.q, 2, `${name}: the acquisition quantity of the own account must follow`);
       assert.ok(
-        acq.mit_preis > 0,
+        acq.with_price > 0,
         `${name}: the new acquisition needs a purchase price — otherwise it is missing in every total`,
       );
-      const preis = await db.get(
+      const price = await db.get(
         `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
           ORDER BY id DESC LIMIT 1`,
         [mainId, SN],
       );
       assert.equal(
-        Number(preis.purchase_price),
+        Number(price.purchase_price),
         77,
         `${name}: it must be the MARKET PRICE (77), not the purchase price of the other account (108)`,
       );

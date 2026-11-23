@@ -30,16 +30,16 @@ const { testServer } = require('./helpers/server');
 // Before loading the route: record import and Rebrickable fetch instead of running them.
 const importList = [];
 const fetches = [];
-const replace = (rel, zusatz) => {
+const replace = (rel, extra) => {
   const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, extra);
 };
 // Rebrickable set up at the wiring: every set of services asks via it.
 sources.testSources(null, {
   fetchSetParts: async n => {
     fetches.push(n);
-    return { parts: [], verweigert: false };
+    return { parts: [], denied: false };
   },
 });
 replace('src/sets/setContentImport.js', {
@@ -56,10 +56,10 @@ const P = process.pid;
 test('parts import only in scope', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push(
       (
         await db.get(
@@ -71,15 +71,15 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
     );
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
-  const UNTER = `TIU${P}-1`,
+  const SUB = `TIU${P}-1`,
     FREMD = `TIF${P}-1`,
-    KAPUTT = `TIK${P}-1`;
+    BROKEN = `TIK${P}-1`;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4), ($1, $5)', [
     U,
-    UNTER,
+    SUB,
     F,
     FREMD,
-    KAPUTT,
+    BROKEN,
   ]);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   t.after(async () => {
@@ -88,10 +88,10 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
-  const importIt = async (als, sn) => {
-    sitzung.userId = als;
+  const session = {};
+  const { base } = testServer(_req, { session, t });
+  const importIt = async (as, sn) => {
+    session.userId = as;
     const r = await fetch(`${base}/api/v2/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });
     return { status: r.status, body: await r.json() };
   };
@@ -104,14 +104,14 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
   });
 
   await t.test("the main account imports the sub-account's set for its owner", async () => {
-    const r = await importIt(H, UNTER);
+    const r = await importIt(H, SUB);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body, { success: true, count: 3 });
-    assert.deepEqual(importList, [[UNTER, U]]);
+    assert.deepEqual(importList, [[SUB, U]]);
   });
 
   await t.test('a failed import is an error, not an empty list', async () => {
-    const r = await importIt(H, KAPUTT);
+    const r = await importIt(H, BROKEN);
     assert.equal(r.status, 500, JSON.stringify(r.body));
     assert.equal(r.body.success, false);
     assert.equal(r.body.count, undefined);
@@ -120,9 +120,9 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
 
   await t.test('at most 30 imports per hour per account', async () => {
     const status = [];
-    for (let i = 0; i < 30; i++) status.push((await importIt(U, UNTER)).status);
+    for (let i = 0; i < 30; i++) status.push((await importIt(U, SUB)).status);
     assert.deepEqual([...new Set(status)], [200], 'up to the limit every one goes through');
-    const toMuch = await importIt(U, UNTER);
+    const toMuch = await importIt(U, SUB);
     assert.equal(toMuch.status, 429);
     assert.equal(toMuch.body.code, 'too_many_requests');
     assert.equal((await importIt(F, FREMD)).status, 200, 'another account counts on its own');
@@ -130,9 +130,9 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
 
   await t.test('an empty response is remembered', async () => {
     const { allPartsOfSet } = _req('src/catalog/rebrickableCatalog.js');
-    const leer = `TIL${P}-1`;
-    assert.deepEqual(await allPartsOfSet(leer), []);
-    assert.deepEqual(await allPartsOfSet(leer), []);
-    assert.deepEqual(fetches, [leer], 'the second question went to Rebrickable again');
+    const empty = `TIL${P}-1`;
+    assert.deepEqual(await allPartsOfSet(empty), []);
+    assert.deepEqual(await allPartsOfSet(empty), []);
+    assert.deepEqual(fetches, [empty], 'the second question went to Rebrickable again');
   });
 });

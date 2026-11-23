@@ -28,42 +28,42 @@ const _req = sources.buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
 /** Before loading the services: they hold the module object they get when loading. */
-const replace = (rel, zusatz) => {
+const replace = (rel, extra) => {
   const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, extra);
 };
 const outage = { log: false, rememberPdf: false, writePdf: false };
-const kaputt = was => {
+const broken = was => {
   throw new Error(`Störung: ${was}`);
 };
 const realLog = _req('src/account/repository/log.js');
 replace('src/account/repository/log.js', {
-  logEntry: (...a) => (outage.log ? kaputt('protokoll') : realLog.logEntry(...a)),
+  logEntry: (...a) => (outage.log ? broken('protokoll') : realLog.logEntry(...a)),
 });
 const realFiles = _req('src/vouchers/voucherFiles.js');
 replace('src/vouchers/voucherFiles.js', {
-  writeVoucherPdf: (...a) => (outage.writePdf ? kaputt('pdf') : realFiles.writeVoucherPdf(...a)),
+  writeVoucherPdf: (...a) => (outage.writePdf ? broken('pdf') : realFiles.writeVoucherPdf(...a)),
 });
 
 /** Two readers: the first waits after reading until the second has begun
  * to read. Without a row lock both then read the same old state. */
 let limit = null;
-const echtRepo = _req('src/vouchers/repository/vouchers.js');
+const origRepo = _req('src/vouchers/repository/vouchers.js');
 const withLimit =
   name =>
   async (...a) => {
     const s = limit;
     const ich = s ? ++s.n : 0;
     if (ich === 2) s.secondDa();
-    const z = await echtRepo[name](...a);
-    if (ich === 1) await s.zweiter;
+    const z = await origRepo[name](...a);
+    if (ich === 1) await s.secondOne;
     return z;
   };
 replace('src/vouchers/repository/vouchers.js', {
   voucher: withLimit('voucher'),
   lockedVoucher: withLimit('lockedVoucher'),
-  rememberVoucherPdf: (...a) => (outage.rememberPdf ? kaputt('pdf merken') : echtRepo.rememberVoucherPdf(...a)),
+  rememberVoucherPdf: (...a) => (outage.rememberPdf ? broken('pdf merken') : origRepo.rememberVoucherPdf(...a)),
 });
 
 test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async t => {
@@ -71,20 +71,20 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
   if (!db) return;
   const NAME = `atomar-${process.pid}`;
   await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
-  const neu = async (n, admin = false) =>
+  const fresh = async (n, admin = false) =>
     (
       await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', $2) RETURNING id`, [
         n,
         admin,
       ])
     ).id;
-  const chef = await neu(`${NAME}-chef`, true);
-  const nutzer = await neu(`${NAME}-nutzer`);
+  const chef = await fresh(`${NAME}-chef`, true);
+  const user = await fresh(`${NAME}-nutzer`);
   const K = require('./helpers/sources').testServices().account;
   const G = _req('src/vouchers/service.js');
-  const ordner = path.join(_req('src/vouchers/index.js').VOUCHER_DIR, String(nutzer));
+  const dir = path.join(_req('src/vouchers/index.js').VOUCHER_DIR, String(user));
   t.after(async () => {
-    fs.rmSync(ordner, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
     await db.pool.end().catch(() => {});
   });
@@ -107,42 +107,42 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
   });
 
   await t.test('if the log entry fails while locking, the account stays active', async () => {
-    await disrupt('log', () => K.admin.setActive(chef, nutzer, false));
-    assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [nutzer])).is_active, true);
+    await disrupt('log', () => K.admin.setActive(chef, user, false));
+    assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [user])).is_active, true);
   });
 
   const pdf = Buffer.from('%PDF-1.4\n% Test\n');
-  const zeilen = async () => (await db.all('SELECT id FROM vouchers WHERE user_id = $1', [nutzer])).length;
-  const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner).filter(n => n.endsWith('.pdf')) : []);
+  const lines = async () => (await db.all('SELECT id FROM vouchers WHERE user_id = $1', [user])).length;
+  const files = () => (fs.existsSync(dir) ? fs.readdirSync(dir).filter(n => n.endsWith('.pdf')) : []);
 
   await t.test('if remembering the path fails, no voucher row and no orphaned file remain', async () => {
     const w = { number: '6000111122223333', pin: '123', amount: 25, currency: 'EUR' };
-    await disrupt('rememberPdf', () => G.createVoucherWithPdf(nutzer, w, pdf));
-    assert.equal(await zeilen(), 0);
-    assert.deepEqual(dateien(), []);
-    await disrupt('writePdf', () => G.createVoucherWithPdf(nutzer, w, pdf));
-    assert.equal(await zeilen(), 0);
+    await disrupt('rememberPdf', () => G.createVoucherWithPdf(user, w, pdf));
+    assert.equal(await lines(), 0);
+    assert.deepEqual(files(), []);
+    await disrupt('writePdf', () => G.createVoucherWithPdf(user, w, pdf));
+    assert.equal(await lines(), 0);
     // Without interference: row and file, and the row knows the file.
-    const z = await G.createVoucherWithPdf(nutzer, w, pdf);
-    assert.equal(z.pdf_path, `${nutzer}/${z.id}.pdf`);
-    assert.deepEqual(dateien(), [`${z.id}.pdf`]);
-    assert.deepEqual(await G.voucherPdf(nutzer, z.id), pdf);
+    const z = await G.createVoucherWithPdf(user, w, pdf);
+    assert.equal(z.pdf_path, `${user}/${z.id}.pdf`);
+    assert.deepEqual(files(), [`${z.id}.pdf`]);
+    assert.deepEqual(await G.voucherPdf(user, z.id), pdf);
   });
 
   await t.test('two concurrent changes lose none', async () => {
-    const z = await G.createVoucher(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
+    const z = await G.createVoucher(user, { number: '6000444455556666', pin: '111', amount: 10 });
     let secondDa;
-    limit = { n: 0, zweiter: new Promise(r => (secondDa = r)) };
+    limit = { n: 0, secondOne: new Promise(r => (secondDa = r)) };
     limit.secondDa = secondDa;
     try {
       await Promise.all([
-        G.changeVoucher(nutzer, z.id, { amount: 42 }),
-        G.changeVoucher(nutzer, z.id, { pin: '999', number: G.masked(z).number }),
+        G.changeVoucher(user, z.id, { amount: 42 }),
+        G.changeVoucher(user, z.id, { pin: '999', number: G.masked(z).number }),
       ]);
     } finally {
       limit = null;
     }
-    const now = await G.voucherPlaintext(nutzer, z.id);
+    const now = await G.voucherPlaintext(user, z.id);
     assert.equal(Number(now.amount), 42, 'the amount of the first change got lost');
     assert.equal(now.pin, '999');
     assert.equal(now.number, '6000444455556666');

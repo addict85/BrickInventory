@@ -62,16 +62,16 @@ const PLACES = [
   ['src/http/fileUpload.ts', 'o.types', /o\.types\s*\[/],
 ];
 
-for (const [datei, name, muster] of PLACES) {
-  test(`${datei}: ${name} is no longer indexed directly`, () => {
+for (const [file, name, pattern] of PLACES) {
+  test(`${file}: ${name} is no longer indexed directly`, () => {
     // Comment lines out: the rationale ABOVE the code names the old
     // pattern on purpose, and this test should not trigger on it.
     const code = fs
-      .readFileSync(path.join(ROOT, datei), 'utf8')
+      .readFileSync(path.join(ROOT, file), 'utf8')
       .split('\n')
       .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*') && !z.trim().startsWith('/*'))
       .join('\n');
-    assert.ok(!muster.test(code), `${datei} still accesses ${name}[…] directly — use fromTable().`);
-    assert.match(code, new RegExp(`fromTable\\(\\s*${name}`), `${datei} sollte fromTable(${name}, …) benutzen.`);
+    assert.ok(!pattern.test(code), `${file} still accesses ${name}[…] directly — use fromTable().`);
+    assert.match(code, new RegExp(`fromTable\\(\\s*${name}`), `${file} sollte fromTable(${name}, …) benutzen.`);
   });
 }

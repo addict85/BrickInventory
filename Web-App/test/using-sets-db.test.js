@@ -17,7 +17,7 @@ const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inv
 const db = testData();
 const { usingSets } = _req('src/inventory/shared.js');
 
-async function erreichbar() {
+async function reachable() {
   try {
     await db.get('SELECT 1');
     return true;
@@ -29,7 +29,7 @@ async function erreichbar() {
 after(() => db.pool.end());
 
 test('the list of using sets follows the viewport', async t => {
-  if (!(await erreichbar())) {
+  if (!(await reachable())) {
     noDb(t);
     return;
   }
@@ -48,12 +48,12 @@ test('the list of using sets follows the viewport', async t => {
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('haupt'),
+  const main = await id('haupt'),
     kind = await id('kind');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [main, kind]);
 
-  await holdsSet(db, haupt, '75192-1', 1);
-  await holdsSet(db, haupt, '10305-1', 1);
+  await holdsSet(db, main, '75192-1', 1);
+  await holdsSet(db, main, '10305-1', 1);
   await holdsSet(db, kind, '21058-1', 1);
   // Since migration 0033 the set name stands in the catalog; the list of
   // using sets fetches it with its own JOIN on it.
@@ -74,20 +74,20 @@ test('the list of using sets follows the viewport', async t => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
 
   // The same part in three sets — twice at the main account, once at the child.
-  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', quantity: 15, colorId: 4 });
-  await holdsPart(db, haupt, '3001', { setNumber: '10305-1', quantity: 7, colorId: 4 });
+  await holdsPart(db, main, '3001', { setNumber: '75192-1', quantity: 15, colorId: 4 });
+  await holdsPart(db, main, '3001', { setNumber: '10305-1', quantity: 7, colorId: 4 });
   await holdsPart(db, kind, '3001', { setNumber: '21058-1', quantity: 3, colorId: 4 });
-  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', quantity: 99, colorId: 1 });
+  await holdsPart(db, main, '3001', { setNumber: '75192-1', quantity: 99, colorId: 1 });
 
   // Captured manually: NO set number. Must not show up.
-  await holdsPart(db, haupt, '3001', { quantity: 42, colorId: 4 });
+  await holdsPart(db, main, '3001', { quantity: 42, colorId: 4 });
 
-  await holdsMinifig(db, haupt, 'sw0001', { setNumber: '75192-1', quantity: 2 });
+  await holdsMinifig(db, main, 'sw0001', { setNumber: '75192-1', quantity: 2 });
   await holdsMinifig(db, kind, 'sw0001', { setNumber: '21058-1', quantity: 1 });
-  await holdsMinifig(db, haupt, 'sw0001', { quantity: 9 });
+  await holdsMinifig(db, main, 'sw0001', { quantity: 9 });
 
   // ── Part, scope of the main account (household) ───────────────────────────
-  const { item, sets: inHousehold } = await usingSets([haupt, kind], 'parts', {
+  const { item, sets: inHousehold } = await usingSets([main, kind], 'parts', {
     part_number: '3001',
     color_id: 4,
   });
@@ -108,7 +108,7 @@ test('the list of using sets follows the viewport', async t => {
       db.run(
         `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
                   VALUES ($1,'75192-1','3001',4,'set')`,
-        [haupt],
+        [main],
       ),
     /idx_parts_unique|duplicate key/,
     'A second parts row for the same account, set, part and colour ' +
@@ -127,27 +127,27 @@ test('the list of using sets follows the viewport', async t => {
   assert.equal(nach['75192-1'].set_name, 'Millennium Falcon', 'Without the name the dialog only shows a number');
 
   // The manual position (42 pieces, without a set) must be in no sum.
-  const summe = inHousehold.reduce((n, s) => n + s.quantity, 0);
-  assert.equal(summe, 25, `total ${summe} — the manually recorded row was counted as well`);
+  const sum = inHousehold.reduce((n, s) => n + s.quantity, 0);
+  assert.equal(sum, 25, `total ${sum} — the manually recorded row was counted as well`);
 
   // ── The COLOR separates ─────────────────────────────────────────────────────
-  const blau = (await usingSets([haupt, kind], 'parts', { part_number: '3001', color_id: 1 })).sets;
+  const blue = (await usingSets([main, kind], 'parts', { part_number: '3001', color_id: 1 })).sets;
   assert.deepEqual(
-    blau.map(s => [s.set_number, s.quantity]),
+    blue.map(s => [s.set_number, s.quantity]),
     [['75192-1', 99]],
     'The colour is not distinguished — then the dialog shows foreign stock',
   );
 
   // ── A single account sees only its own set ───────────────────────────────
-  const nurKind = (await usingSets([kind], 'parts', { part_number: '3001', color_id: 4 })).sets;
+  const onlyChild = (await usingSets([kind], 'parts', { part_number: '3001', color_id: 4 })).sets;
   assert.deepEqual(
-    nurKind.map(s => s.set_number),
+    onlyChild.map(s => s.set_number),
     ['21058-1'],
     'Without a household only the own set may appear',
   );
 
   // ── Figures: the same function, the same rules ─────────────────────────
-  const { item: figItem, sets: minifigs } = await usingSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
+  const { item: figItem, sets: minifigs } = await usingSets([main, kind], 'minifigs', { fig_number: 'sw0001' });
   assert.deepEqual(
     minifigs.map(s => [s.set_number, s.quantity]),
     [
@@ -192,7 +192,7 @@ test('the list of using sets follows the viewport', async t => {
 });
 
 test('a disallowed column is rejected', async t => {
-  if (!(await erreichbar())) {
+  if (!(await reachable())) {
     t.skip('no test DB');
     return;
   }

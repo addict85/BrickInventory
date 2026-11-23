@@ -15,21 +15,21 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 test('the file has its own copy of the template', async t => {
-  const vorlage = process.env.TEST_DB_TEMPLATE;
-  if (!vorlage) {
+  const template = process.env.TEST_DB_TEMPLATE;
+  if (!template) {
     t.skip('no parallel run');
     return;
   }
   const url = new URL(process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest');
-  assert.equal(url.pathname, `/${vorlage}_${process.pid}`);
+  assert.equal(url.pathname, `/${template}_${process.pid}`);
   const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
   const c = new Client({ connectionString: url.toString() });
   await c.connect();
   try {
     const r = await c.query(`SELECT to_regclass('public.users') IS NOT NULL AS schema,
-                                    (SELECT count(*)::int FROM schema_migrations) AS migrationen`);
+                                    (SELECT count(*)::int FROM schema_migrations) AS migrations`);
     assert.equal(r.rows[0].schema, true, 'the copy carries the schema of the template');
-    assert.ok(r.rows[0].migrationen > 50);
+    assert.ok(r.rows[0].migrations > 50);
   } finally {
     await c.end();
   }

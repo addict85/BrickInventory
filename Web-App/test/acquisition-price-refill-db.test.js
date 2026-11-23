@@ -45,7 +45,7 @@ test('a cleared purchase price is filled from the market price — web app AND a
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','CHF')
                 ON CONFLICT (key) DO UPDATE SET value='CHF'`);
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId }, t });
 
   // Starting point: set of the SUB-ACCOUNT with two entries (used + new).
   const setUp = async () => {
@@ -114,16 +114,12 @@ test('a cleared purchase price is filled from the market price — web app AND a
       // And the tile at the top — that is where Marco's dash was. Since
       // migration 0032 it computes from the entries; the stock has two here (7.30
       // used, 12.55 new, one copy each), the mean is 9.925.
-      const kachel = await _req('src/sets/read.js').conditionAggregate(
+      const tile = await _req('src/sets/read.js').conditionAggregate(
         require('./helpers/sources').testContext('sets'),
         [subId],
         SN,
       );
-      assert.equal(
-        kachel.avg_purchase_price,
-        9.925,
-        `${name}: the tile must include the filled price, not show a dash`,
-      );
+      assert.equal(tile.avg_purchase_price, 9.925, `${name}: the tile must include the filled price, not show a dash`);
       results[name] = Number(acq.purchase_price);
     }
 

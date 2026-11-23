@@ -18,7 +18,7 @@ require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test';
@@ -40,7 +40,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     noDb(t, e);
     return;
   }
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['parts', 'set_acquisitions', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[U, U2]]);
     await db.run(`DELETE FROM set_parts WHERE set_number IN ('ORD-1', 'ORD-2')`);
@@ -49,9 +49,9 @@ test('order of the parts list', { concurrency: 1 }, async t => {
       await db.run(`DELETE FROM ${tab} WHERE part_number = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
     await db.run(`DELETE FROM bl_mapping WHERE rb_id = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
   };
-  await aufraeumen();
+  await cleanUp();
   t.after(async () => {
-    await aufraeumen().catch(() => {});
+    await cleanUp().catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -77,7 +77,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     name: ['ORD3', 'ORD1', 'ORD2'],
     quantity: ['ORD1', 'ORD3', 'ORD2'],
   };
-  const abfrage = order => ({ exclude_manual: '1', page: 1, page_size: 50, order });
+  const query = order => ({ exclude_manual: '1', page: 1, page_size: 50, order });
   const rowList = r => r.parts.map(p => p.part_number);
 
   await t.test('the server sorts as chosen on every path', async () => {
@@ -85,34 +85,34 @@ test('order of the parts list', { concurrency: 1 }, async t => {
     for (const order of Object.keys(EXPECTED)) {
       await db.run('DELETE FROM parts_summary_state WHERE user_id = ANY($1)', [[U, U2]]);
       await db.run('DELETE FROM parts_summary WHERE user_id = ANY($1)', [[U, U2]]);
-      const live = await H.partsQuery(U, abfrage(order));
-      const liveHousehold = await H.partsQuery([U, U2], abfrage(order));
+      const live = await H.partsQuery(U, query(order));
+      const liveHousehold = await H.partsQuery([U, U2], query(order));
       await PS.rebuildNow(U);
       await PS.rebuildNow(U2);
-      const zsf = await H.partsQuery(U, abfrage(order));
-      const sumHousehold = await H.partsQuery([U, U2], abfrage(order));
-      for (const [weg, r, source] of [
+      const summary = await H.partsQuery(U, query(order));
+      const sumHousehold = await H.partsQuery([U, U2], query(order));
+      for (const [route, r, source] of [
         ['Live', live, 'db'],
         ['Live Haushalt', liveHousehold, 'db'],
-        ['Zusammenfassung', zsf, 'summary'],
+        ['Zusammenfassung', summary, 'summary'],
         ['Zusammenfassung Haushalt', sumHousehold, 'summary'],
       ])
         results.push({
           order,
-          weg,
+          route,
           source: r.source,
           rowList: rowList(r),
-          erwartet: { source, rowList: EXPECTED[order] },
+          expected: { source, rowList: EXPECTED[order] },
         });
     }
     assert.deepEqual(
-      results.map(e => `${e.order}/${e.weg}: ${e.source} ${e.rowList}`),
-      results.map(e => `${e.order}/${e.weg}: ${e.erwartet.source} ${e.erwartet.rowList}`),
+      results.map(e => `${e.order}/${e.route}: ${e.source} ${e.rowList}`),
+      results.map(e => `${e.order}/${e.route}: ${e.expected.source} ${e.expected.rowList}`),
     );
   });
 
   await t.test('an unknown value counts as color', async () => {
-    assert.deepEqual(rowList(await H.partsQuery(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
+    assert.deepEqual(rowList(await H.partsQuery(U, query('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
   });
 
   await t.test('ungrouped, the UI draws no color tiles', async () => {
@@ -120,17 +120,17 @@ test('order of the parts list', { concurrency: 1 }, async t => {
       { part_number: '3003', part_name: 'Axle', color_id: 3, color_name: 'Yellow', total_quantity: 7 },
       { part_number: '3001', part_name: 'Brick', color_id: 5, color_name: 'Red', total_quantity: 3 },
     ];
-    const { w, d, aufrufe } = await openUi({ '/v2/parts': { success: true, parts: parts, total: 2 } });
-    await reiter(w, 'parts');
-    await warte(() => d.querySelectorAll('#parts-main .part-card').length === 2);
+    const { w, d, calls } = await openUi({ '/v2/parts': { success: true, parts: parts, total: 2 } });
+    await switchTab(w, 'parts');
+    await waitFor(() => d.querySelectorAll('#parts-main .part-card').length === 2);
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'by colour: one tile per colour');
 
     const field = d.getElementById('parts-order');
     field.value = 'name';
     field.dispatchEvent(new w.Event('change'));
-    await warte(
+    await waitFor(
       () =>
-        aufrufe.some(a => a.url.includes('ordnung=name')) && d.querySelectorAll('#parts-main .part-card').length === 2,
+        calls.some(a => a.url.includes('ordnung=name')) && d.querySelectorAll('#parts-main .part-card').length === 2,
     );
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 0);
     assert.deepEqual(

@@ -23,20 +23,20 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-/** Every request gets 200 with `koerper` as JSON. */
-async function withBody(koerper, lauf) {
-  const echt = https.get;
+/** Every request gets 200 with `payload` as JSON. */
+async function withBody(payload, run) {
+  const original = https.get;
   // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
   https.get = (_u, _o, atResponse) => {
-    const r = Object.assign(Readable.from([Buffer.from(JSON.stringify(koerper))]), { statusCode: 200, headers: {} });
+    const r = Object.assign(Readable.from([Buffer.from(JSON.stringify(payload))]), { statusCode: 200, headers: {} });
     // @ts-expect-error — not a complete IncomingMessage
     setImmediate(() => atResponse(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };
   try {
-    return await lauf();
+    return await run();
   } finally {
-    https.get = echt;
+    https.get = original;
   }
 }
 

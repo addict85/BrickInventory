@@ -25,17 +25,17 @@ const { revocationListFetch } = _req('clients/googleAttestation.js');
 const { asFetchError } = _req('clients/fetchError.js');
 
 test('UPCitemdb: the first title, otherwise null', async t => {
-  const langsam = [429, { detail: 'Expected available in 0 seconds.' }];
-  const antworten = [
+  const slow = [429, { detail: 'Expected available in 0 seconds.' }];
+  const answers = [
     [200, { items: [{ title: 'LEGO Icons 10294 Titanic' }] }],
     [200, { items: [] }],
-    langsam,
-    langsam,
-    langsam,
+    slow,
+    slow,
+    slow,
     [200, '{'],
   ];
   const stub = await httpsStub(t, (_c, res) =>
-    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift() ?? [500, ''])),
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (answers.shift() ?? [500, ''])),
   );
   const get = createRebrickable(clientsAccess()).httpsGetRobust;
   assert.equal(await productTitle(get, '5702016914313'), 'LEGO Icons 10294 Titanic');
@@ -95,12 +95,12 @@ test('a catalog file: unpacked, progress counted; errors leave nothing usable', 
   );
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rb-csv-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const fortschritt = [];
+  const progress = [];
   await loadCatalogCsv('colors.csv.gz', path.join(dir, 'colors.csv'), {
-    atProgress: (n, ges) => fortschritt.push([n, ges]),
+    atProgress: (n, ges) => progress.push([n, ges]),
   });
   assert.equal(fs.readFileSync(path.join(dir, 'colors.csv'), 'utf8'), csv);
-  assert.deepEqual(fortschritt.at(-1), [gz.length, gz.length]);
+  assert.deepEqual(progress.at(-1), [gz.length, gz.length]);
   assert.equal(stub.calls[0].host, 'cdn.rebrickable.com');
   await assert.rejects(loadCatalogCsv('sets.csv.gz', path.join(dir, 'sets.csv')), /HTTP 404 für sets\.csv\.gz/);
   await assert.rejects(loadCatalogCsv('themes.csv.gz', path.join(dir, 'themes.csv')), /incorrect header check/);
@@ -109,12 +109,12 @@ test('a catalog file: unpacked, progress counted; errors leave nothing usable', 
 });
 
 test('the revocation list: only from Google, no redirect', async t => {
-  const antworten = [
+  const answers = [
     [200, '{"entries":{}}'],
     [302, '', { location: 'https://android.googleapis.com/anders' }],
   ];
   await httpsStub(t, (_c, res) =>
-    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift())),
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (answers.shift())),
   );
   assert.equal((await revocationListFetch()).toString(), '{"entries":{}}');
   await assert.rejects(revocationListFetch(), /Widerrufsliste: HTTP 302/);

@@ -15,18 +15,18 @@ const RENAMES = [
   ...SQL.matchAll(/^ALTER TRIGGER (\S+) ON (\S+) RENAME TO (\S+);$/gm),
 ].map(m => {
   if (m[0].startsWith('ALTER TABLE')) {
-    const [, t, alt, neu] = m;
+    const [, t, alt, fresh] = m;
     return [
-      `ALTER TABLE ${t} RENAME CONSTRAINT ${neu} TO ${alt}`,
-      `ALTER TABLE ${t} RENAME CONSTRAINT ${alt} TO ${neu}`,
+      `ALTER TABLE ${t} RENAME CONSTRAINT ${fresh} TO ${alt}`,
+      `ALTER TABLE ${t} RENAME CONSTRAINT ${alt} TO ${fresh}`,
     ];
   }
   if (m[0].startsWith('ALTER INDEX')) {
-    const [, , alt, neu] = m;
-    return [`ALTER INDEX ${neu} RENAME TO ${alt}`, `ALTER INDEX ${alt} RENAME TO ${neu}`];
+    const [, , alt, fresh] = m;
+    return [`ALTER INDEX ${fresh} RENAME TO ${alt}`, `ALTER INDEX ${alt} RENAME TO ${fresh}`];
   }
-  const [, alt, t, neu] = m;
-  return [`ALTER TRIGGER ${neu} ON ${t} RENAME TO ${alt}`, `ALTER TRIGGER ${alt} ON ${t} RENAME TO ${neu}`];
+  const [, alt, t, fresh] = m;
+  return [`ALTER TRIGGER ${fresh} ON ${t} RENAME TO ${alt}`, `ALTER TRIGGER ${alt} ON ${t} RENAME TO ${fresh}`];
 });
 
 // Objects a probe dropped beforehand, or the old migration dropped, are skipped.

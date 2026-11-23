@@ -29,14 +29,14 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 require('./helpers/sources').buildAndRequire();
 const { noDb } = require('./helpers/db');
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 // The built module itself, not the facade from buildAndRequire().
-const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+const mod = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 
 const TABLE_NAME = `sp_gleichzeitig_${process.pid}`;
 
 test('savepoints of a transaction', { concurrency: 1 }, async t => {
-  const db = modul.createDb(modul.dbConfigFromEnvironment());
+  const db = mod.createDb(mod.dbConfigFromEnvironment());
   try {
     await db.run(`CREATE TABLE ${TABLE_NAME} (wert TEXT NOT NULL)`);
   } catch (e) {
@@ -48,30 +48,30 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
     await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     await db.pool.end();
   });
-  const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABLE_NAME} (wert) VALUES ($1)`, [w]);
+  const write = (tx, w) => tx.run(`INSERT INTO ${TABLE_NAME} (wert) VALUES ($1)`, [w]);
   const values = async () => (await db.all(`SELECT wert FROM ${TABLE_NAME} ORDER BY wert`)).map(z => z.wert);
   /** An inner transaction via the access of the outer one (like t.transact). */
-  const innen = (tx, fn) => tx.db.transaction(fn);
+  const innerPart = (tx, fn) => tx.db.transaction(fn);
   t.beforeEach(() => db.run(`DELETE FROM ${TABLE_NAME}`));
 
   await t.test('two concurrent inner transactions: the second is rejected', async () => {
     let results;
     await db.transaction(async tx => {
-      await schreibe(tx, 'aussen');
+      await write(tx, 'aussen');
       results = await Promise.allSettled([
-        innen(tx, async inner => {
-          await schreibe(inner, 'a');
-          await warte(50);
+        innerPart(tx, async inner => {
+          await write(inner, 'a');
+          await sleep(50);
           throw new Error('a scheitert');
         }),
-        innen(tx, async inner => {
-          await schreibe(inner, 'b');
+        innerPart(tx, async inner => {
+          await write(inner, 'b');
         }),
       ]);
     });
     assert.equal(results[0].status, 'rejected');
     assert.equal(results[1].status, 'rejected', 'the second is rejected instead of reporting success');
-    assert.ok(results[1].reason instanceof modul.ConcurrentSavepoint, String(results[1].reason));
+    assert.ok(results[1].reason instanceof mod.ConcurrentSavepoint, String(results[1].reason));
     assert.match(results[1].reason.message, /sp_\d+ derselben Transaktion noch läuft.*nacheinander ausführen/);
     assert.deepEqual(await values(), ['aussen'], 'what was reported holds');
   });
@@ -79,27 +79,27 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
   await t.test('… also in a savepoint', async () => {
     await assert.rejects(
       db.transaction(async tx =>
-        innen(tx, async inner => {
-          await schreibe(inner, 'x');
-          await Promise.all([innen(inner, async () => warte(20)), innen(inner, async () => warte(20))]);
+        innerPart(tx, async inner => {
+          await write(inner, 'x');
+          await Promise.all([innerPart(inner, async () => sleep(20)), innerPart(inner, async () => sleep(20))]);
         }),
       ),
-      modul.ConcurrentSavepoint,
+      mod.ConcurrentSavepoint,
     );
     assert.deepEqual(await values(), []);
   });
 
   await t.test('a straggler does not spoil the next transaction of its connection', async () => {
     // A pool with one connection: the next transaction surely gets the same.
-    const k = modul.dbConfigFromEnvironment();
-    const eng = modul.createDb({ ...k, pool: { ...k.pool, max: 1 } });
+    const k = mod.dbConfigFromEnvironment();
+    const eng = mod.createDb({ ...k, pool: { ...k.pool, max: 1 } });
     try {
       let stragglers;
       await assert.rejects(
         eng.transaction(async tx => {
           stragglers = tx.db.transaction(async inner => {
-            await warte(80);
-            await schreibe(inner, 'nachzuegler');
+            await sleep(80);
+            await write(inner, 'nachzuegler');
           });
           stragglers.catch(() => {});
           throw new Error('aussen scheitert sofort');
@@ -109,9 +109,9 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
       // The foreign transaction holds the connection until the straggler is done.
       await eng.transaction(async tx => {
         await Promise.allSettled([stragglers]);
-        await schreibe(tx, 'fremd');
+        await write(tx, 'fremd');
       });
-      await assert.rejects(stragglers, modul.TransactionEnded);
+      await assert.rejects(stragglers, mod.TransactionEnded);
       assert.deepEqual(await values(), ['fremd']);
     } finally {
       await eng.pool.end();
@@ -120,25 +120,25 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
 
   await t.test('sequential and nested stay allowed', async () => {
     await db.transaction(async tx => {
-      await schreibe(tx, '1-aussen');
-      await innen(tx, async eins => {
-        await schreibe(eins, '2-eins');
+      await write(tx, '1-aussen');
+      await innerPart(tx, async one => {
+        await write(one, '2-eins');
         await assert.rejects(
-          innen(eins, async tief => {
-            await schreibe(tief, '3-tief');
+          innerPart(one, async deep => {
+            await write(deep, '3-tief');
             throw new Error('tief scheitert');
           }),
           /tief scheitert/,
         );
-        await innen(eins, async tief => schreibe(tief, '4-tief-danach'));
+        await innerPart(one, async deep => write(deep, '4-tief-danach'));
       });
-      await innen(tx, async zwei => schreibe(zwei, '5-zwei'));
+      await innerPart(tx, async two => write(two, '5-zwei'));
     });
     assert.deepEqual(await values(), ['1-aussen', '2-eins', '4-tief-danach', '5-zwei']);
   });
 
   await t.test('separate outer transactions may run concurrently', async () => {
-    await Promise.all(['p', 'q', 'r'].map(w => db.transaction(async tx => schreibe(tx, w))));
+    await Promise.all(['p', 'q', 'r'].map(w => db.transaction(async tx => write(tx, w))));
     assert.deepEqual(await values(), ['p', 'q', 'r']);
   });
 });

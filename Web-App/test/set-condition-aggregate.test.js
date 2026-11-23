@@ -16,10 +16,10 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { checkParameter } = require('./helpers/sources');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('the aggregate rule now exists in only one place', () => {
-  const h = require('./helpers/sources').handlerQuelle();
+  const h = require('./helpers/sources').handlerSource();
   assert.match(h, /function conditionAggregate/, 'The shared helper is missing');
   // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
   // on their own — it stands in conditionFromAcquisitions().
@@ -53,10 +53,10 @@ test('an unknown theme value resets nothing', () => {
   const w = dom.window;
   w.fetch = () => new Promise(() => {});
   w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
-  for (const wert of [undefined, null, '', 'gibtsnicht']) {
-    assert.equal(w.__bimApplyTheme(wert), null, `${wert} was accepted as a design`);
-    assert.equal(w.document.documentElement.getAttribute('data-theme'), 'brick', `${wert} reset the design`);
-    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} overwrote the cache`);
+  for (const value of [undefined, null, '', 'gibtsnicht']) {
+    assert.equal(w.__bimApplyTheme(value), null, `${value} was accepted as a design`);
+    assert.equal(w.document.documentElement.getAttribute('data-theme'), 'brick', `${value} reset the design`);
+    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${value} overwrote the cache`);
   }
   w.close();
 });
@@ -67,7 +67,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   // aktuellerMarktpreis, gainAndLoss, the web app history route and now the
   // Android API each had their own version. From now on exactly one function for
   // callers without already loaded acq_count/used_count fields.
-  const fc = require('./helpers/sources').finanzQuelle();
+  const fc = require('./helpers/sources').financeSource();
   // Since the household view it also takes a list of accounts — the
   // main account queries the condition of a set that belongs to a sub-account.
   checkParameter(fc, 'conditionOfSet', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
@@ -89,7 +89,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   assert.match(
     helper,
     /import \{[^}]*\bsetState\b[^}]*\} from '\.\/financeCalc';/,
-    'src/finances/priceHistory.ts muss den gemeinsamen Helfer benutzen',
+    'src/finances/priceHistory.ts must use the shared helper',
   );
 
   // The price route of the Android API still resolves by itself (it fetches a
@@ -109,7 +109,7 @@ test('CDN requests force IPv4', () => {
   assert.match(
     setsFile,
     /await (?:k\.externalSources\.sources\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
-    'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
+    'The background download on import must also force IPv4 — same cause, same place',
   );
 });
 
@@ -123,20 +123,20 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
   const { recording } = require('./helpers/https-recording');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
-  const aufrufe = await recording(async () => {
+  const calls = await recording(async () => {
     await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000 }).catch(() => {});
     await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, method: 'POST', bodyText: '{}' }).catch(() => {});
     await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
-    aufrufe.map(a => [a.kind, a.options.family]),
+    calls.map(a => [a.kind, a.options.family]),
     [
       ['get', 4],
       ['request', 4],
       ['get', 4],
     ],
   );
-  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'the pool of image CDNs does not force IPv4');
+  assert.equal(calls[2].options.agent?.options?.family, 4, 'the pool of image CDNs does not force IPv4');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,18 +242,18 @@ test('both login paths check the same', async () => {
       name,
     );
 
-  const dateien = dir =>
+  const files = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src'))];
-  assert.ok(alle.length >= 30, `only ${alle.length} files searched — paths outdated?`);
+  const all = [...files(path.join(ROOT, 'routes')), ...files(path.join(ROOT, 'src'))];
+  assert.ok(all.length >= 30, `only ${all.length} files searched — paths outdated?`);
 
-  const kopien = alle
+  const copies = all
     .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/.test(fs.readFileSync(f, 'utf8')))
     .map(f => path.relative(ROOT, f));
-  assert.deepEqual(kopien, [], `own copy of the user name pattern instead of USERNAME_RE: ${kopien.join(', ')}`);
+  assert.deepEqual(copies, [], `own copy of the user name pattern instead of USERNAME_RE: ${copies.join(', ')}`);
 });
 
 test('the tile takes the condition from the server response', async () => {
@@ -286,18 +286,18 @@ test('the tile takes the condition from the server response', async () => {
   });
   const badges = () => d.querySelector('#gallery .sc .sbadges')?.textContent ?? '';
   try {
-    assert.ok(await warte(() => /Neu/.test(badges())), `before: ${badges()}`);
+    assert.ok(await waitFor(() => /Neu/.test(badges())), `before: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('[data-click="openAcqModal"]')));
     d.querySelector('[data-click="openAcqModal"]').click();
     assert.ok(
-      await warte(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
+      await waitFor(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
       'no condition choice',
     );
-    const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
-    wahl.value = 'U';
-    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `after: ${badges()}`);
+    const choice = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
+    choice.value = 'U';
+    choice.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await waitFor(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `after: ${badges()}`);
   } finally {
     w.close();
   }

@@ -42,28 +42,28 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
     const partsList = await manualPartsList([uid], uid);
     const figList = await readManualMinifigs([uid], uid);
-    const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === PART);
-    const figur = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
-    assert.ok(teil, 'The part is not in the list');
-    assert.ok(figur, 'The figure is not in the list');
+    const part = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === PART);
+    const minifig = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
+    assert.ok(part, 'The part is not in the list');
+    assert.ok(minifig, 'The figure is not in the list');
 
     // Without input nothing stands in „Preis/Stk" — for both.
-    assert.equal(teil.unit_price, null, 'The part claims a price input');
-    assert.equal(figur.unit_price, null, 'The figure claims a price input');
+    assert.equal(part.unit_price, null, 'The part claims a price input');
+    assert.equal(minifig.unit_price, null, 'The figure claims a price input');
 
     // The actual finding: the display value carries 0, not NULL — and that
     // equally for both.
-    assert.equal(Number(teil.purchase_price), 0, `The part has ${teil.purchase_price} instead of 0 as purchase price`);
+    assert.equal(Number(part.purchase_price), 0, `The part has ${part.purchase_price} instead of 0 as purchase price`);
     assert.equal(
-      Number(figur.purchase_price),
+      Number(minifig.purchase_price),
       0,
-      `The figure has ${figur.purchase_price} instead of 0 as purchase price. src/finances/financeCalc.ts ` +
+      `The figure has ${minifig.purchase_price} instead of 0 as purchase price. src/finances/financeCalc.ts ` +
         'reads NULL as „no purchase price recorded" and 0 as „0 recorded" — the figure ' +
         'would thus behave differently from the part next to it.',
     );
     assert.equal(
-      figur.purchase_price === null,
-      teil.purchase_price === null,
+      minifig.purchase_price === null,
+      part.purchase_price === null,
       'Part and figure disagree whether an unknown market price is NULL or 0',
     );
 
@@ -72,7 +72,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     // `purchase_price` — looked up, not assumed (\d part_acquisitions).
     // It carries the PRICE OF THIS ACQUISITION; the display value next to it is
     // formed when reading.
-    const teilErf = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
+    const partAcq2 = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
       uid,
       PART,
     ]);
@@ -80,12 +80,12 @@ test('without market price: display value 0, acquisition NULL — for part AND f
       uid,
       FIG,
     ]);
-    assert.ok(teilErf, 'No acquisition was created for the part');
+    assert.ok(partAcq2, 'No acquisition was created for the part');
     assert.ok(figErf, 'No acquisition was created for the figure');
     assert.equal(
-      teilErf.unit_price,
+      partAcq2.unit_price,
       null,
-      `The part acquisition carries ${teilErf.unit_price}; the 0 is a display value ` + 'and does not belong here',
+      `The part acquisition carries ${partAcq2.unit_price}; the 0 is a display value ` + 'and does not belong here',
     );
     assert.equal(
       figErf.unit_price,

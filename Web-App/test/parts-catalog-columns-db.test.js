@@ -45,8 +45,8 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -82,7 +82,7 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
   // he did not name: quantity (piece count), condition, unit_price and
   // purchase_price (the three go into the acquisitions in stage 6) and
   // bl_part_number (goes into the mapping table).
-  const nachher = await columnsOf('parts');
+  const later = await columnsOf('parts');
   for (const sp of [
     'part_name',
     'color_name',
@@ -94,13 +94,13 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
     'created_at',
   ]) {
     assert.ok(
-      !nachher.includes(sp),
+      !later.includes(sp),
       `parts.${sp} is still there after all migrations — migration 0034 did not ` +
         'delete it, or something creates the column again afterwards.',
     );
   }
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
-    assert.ok(nachher.includes(sp), `parts.${sp} is missing — exactly these columns are meant to stay in the table`);
+    assert.ok(later.includes(sp), `parts.${sp} is missing — exactly these columns are meant to stay in the table`);
   }
 
   const figsAfter = await columnsOf('minifigs');
@@ -171,9 +171,9 @@ test('the parts list delivers description and storage location from the catalogs
   const handlers = _req('src/parts/queries.js');
 
   // ── The description arrives ────────────────────────────────────────────
-  const alle = await handlers.partsQuery(uid, { exclude_manual: '1' });
-  const nach = nr => alle.parts.find(p => String(p.part_number) === nr);
-  assert.equal(alle.parts.length, 2, `Expected 2 parts, got ${alle.parts.length}: ${JSON.stringify(alle.parts)}`);
+  const all = await handlers.partsQuery(uid, { exclude_manual: '1' });
+  const nach = nr => all.parts.find(p => String(p.part_number) === nr);
+  assert.equal(all.parts.length, 2, `Expected 2 parts, got ${all.parts.length}: ${JSON.stringify(all.parts)}`);
   assert.equal(nach('3001')?.part_name, 'Brick 2x4', 'The part name does not arrive from part_catalog');
   assert.equal(nach('3001')?.color_name, 'Red', 'The colour name does not arrive from part_color_catalog');
   assert.equal(nach('3001')?.color_hex, 'C91A09', 'The colour code does not arrive');
@@ -185,17 +185,17 @@ test('the parts list delivers description and storage location from the catalogs
   // ── is_spare from set_parts_catalog, as a real boolean ─────────────
   assert.equal(nach('3001')?.is_spare, false, 'A required part is reported as a spare part');
   assert.equal(nach('3002')?.is_spare, true, 'The spare-part flag does not arrive from set_parts_catalog');
-  const nurErsatz = await handlers.partsQuery(uid, { exclude_manual: '1', spare: '1' });
+  const onlySpare = await handlers.partsQuery(uid, { exclude_manual: '1', spare: '1' });
   assert.deepEqual(
-    nurErsatz.parts.map(p => String(p.part_number)),
+    onlySpare.parts.map(p => String(p.part_number)),
     ['3002'],
-    `spare=1 does not filter via set_parts_catalog: ${JSON.stringify(nurErsatz.parts.map(p => p.part_number))}`,
+    `spare=1 does not filter via set_parts_catalog: ${JSON.stringify(onlySpare.parts.map(p => p.part_number))}`,
   );
 
   // ── The color filter ───────────────────────────────────────────────────────
-  const nurRot = await handlers.partsQuery(uid, { exclude_manual: '1', color: 'Red' });
+  const onlyRed = await handlers.partsQuery(uid, { exclude_manual: '1', color: 'Red' });
   assert.deepEqual(
-    nurRot.parts.map(p => String(p.part_number)),
+    onlyRed.parts.map(p => String(p.part_number)),
     ['3001'],
     'The colour filter does not work via part_color_catalog',
   );
@@ -246,10 +246,10 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   await holdsMinifig(db, uid, 'fig-000123', { setNumber: '75192-1', quantity: 1 });
 
   const handlers = _req('src/minifigs/queries.js');
-  const liste = await handlers.readMinifigs(uid, {});
-  const figs = liste.minifigs || liste.figs || liste;
+  const list = await handlers.readMinifigs(uid, {});
+  const figs = list.minifigs || list.figs || list;
   const f = (Array.isArray(figs) ? figs : []).find(x => x.fig_number === 'fig-000123');
-  assert.ok(f, `The figure is missing in the response: ${JSON.stringify(liste).slice(0, 400)}`);
+  assert.ok(f, `The figure is missing in the response: ${JSON.stringify(list).slice(0, 400)}`);
   assert.equal(f.fig_name, 'Chewbacca', 'The figure name does not arrive from minifigs_catalog');
   assert.equal(f.image_url, 'http://cdn/chewie.png', 'The figure image does not arrive');
   assert.equal(Number(f.total_quantity), 3, 'The quantity is no longer multiplied by the set count');

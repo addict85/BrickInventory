@@ -38,8 +38,8 @@ test('origin of writing requests', async t => {
   app.all('/x', (_req, res) => res.json({ ok: true }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const callFn = async (method, kopf = {}) =>
-    (await fetch(`http://127.0.0.1:${srv.address().port}/x`, { method, headers: kopf })).status;
+  const callFn = async (method, head = {}) =>
+    (await fetch(`http://127.0.0.1:${srv.address().port}/x`, { method, headers: head })).status;
 
   await t.test('a foreign website', async () => {
     assert.equal(await callFn('POST', { 'sec-fetch-site': 'cross-site' }), 403);
@@ -56,7 +56,7 @@ test('origin of writing requests', async t => {
     assert.equal(await callFn('POST'), 200);
     assert.equal(await callFn('POST', { authorization: 'Bearer abc' }), 200);
   });
-  const eigen = () => `http://127.0.0.1:${srv.address().port}`;
+  const own = () => `http://127.0.0.1:${srv.address().port}`;
   const SESSION = { cookie: '__Host-bim.sid=s%3Aabc' };
   await t.test('a cookie session without any origin information', async () => {
     assert.equal(await callFn('POST', SESSION), 403);
@@ -79,8 +79,8 @@ test('origin of writing requests', async t => {
     }
   });
   await t.test('an old browser from the own site', async () => {
-    assert.equal(await callFn('POST', { ...SESSION, origin: eigen() }), 200);
-    assert.equal(await callFn('POST', { ...SESSION, referer: `${eigen()}/#/sets` }), 200);
+    assert.equal(await callFn('POST', { ...SESSION, origin: own() }), 200);
+    assert.equal(await callFn('POST', { ...SESSION, referer: `${own()}/#/sets` }), 200);
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       assert.equal(await callFn('POST', { ...SESSION, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL');
@@ -118,7 +118,7 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
   t.after(() => new Promise(r => srv.close(r)));
   await new Promise(r => srv.once('listening', r));
   const withHost = (host, path = '/api/v2/auth/me') =>
-    new Promise((fertig, error) => {
+    new Promise((done, error) => {
       const r = http.request(
         { host: '127.0.0.1', port: srv.address().port, path: path, setHost: false, headers: { host } },
         res => {
@@ -126,7 +126,7 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
           res.on('data', d => {
             text += d;
           });
-          res.on('end', () => fertig({ status: res.statusCode, text }));
+          res.on('end', () => done({ status: res.statusCode, text }));
         },
       );
       r.on('error', error);

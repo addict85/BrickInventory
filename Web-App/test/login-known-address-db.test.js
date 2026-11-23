@@ -35,9 +35,9 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
     IP6 = '2001:db8:1:2:3:4:5:6';
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
-  const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%|konto:${uid}'`).catch(() => {});
+  const cleanUp = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%|konto:${uid}'`).catch(() => {});
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -46,10 +46,10 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
   await limiter.loginSucceeded(IP6, name);
 
   await t.test('no plaintext address', async () => {
-    const zeilen = await db.all(
+    const lines = await db.all(
       `SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`,
     );
-    const mine = zeilen.filter(z => z.key.endsWith(`|konto:${uid}`));
+    const mine = lines.filter(z => z.key.endsWith(`|konto:${uid}`));
     assert.equal(mine.length, 4, 'one known row and one success row per address');
     for (const { key } of mine) {
       assert.ok(!key.includes('203.0.113') && !key.includes('2001:db8'), `Plain text in ${key}`);

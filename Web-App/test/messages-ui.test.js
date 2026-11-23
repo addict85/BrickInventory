@@ -14,13 +14,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 // Since 29.10. a list shows its load error itself (errorState);
 // a message comes from an action — here „Auf die Merkliste“.
-const FEHLER = { '/v2/wanted': { success: false, error: 'Merkliste kaputt' } };
+const ERROR = { '/v2/wanted': { success: false, error: 'Merkliste kaputt' } };
 async function createWantedItem(w, d) {
-  await reiter(w, 'wanted');
+  await switchTab(w, 'wanted');
   d.getElementById('mk-num').value = '10294-1';
   d.getElementById('mk-add').click();
 }
@@ -28,31 +28,31 @@ async function createWantedItem(w, d) {
 /** Record timers from now on instead of letting them run. */
 function catchZeitgeber(w) {
   const caughtOne = [];
-  const echt = w.setTimeout;
+  const original = w.setTimeout;
   w.setTimeout = (fn, ms, ...rest) => {
     if (typeof fn === 'function' && ms >= 3000) {
       caughtOne.push({ fn, ms });
       return 0;
     }
-    return echt.call(w, fn, ms, ...rest);
+    return original.call(w, fn, ms, ...rest);
   };
   return caughtOne;
 }
 
 test('errors and button messages do not expire', async () => {
-  const { w, d } = await openUi(FEHLER);
+  const { w, d } = await openUi(ERROR);
   try {
     const caughtOne = catchZeitgeber(w);
     await createWantedItem(w, d);
-    await warte(() => d.querySelector('#toasts .toast.error'));
-    const meldung = d.querySelector('#toasts .toast.error');
-    assert.match(meldung.textContent, /Merkliste kaputt/);
+    await waitFor(() => d.querySelector('#toasts .toast.error'));
+    const message = d.querySelector('#toasts .toast.error');
+    assert.match(message.textContent, /Merkliste kaputt/);
     for (const z of caughtOne) z.fn();
-    assert.ok(meldung.isConnected, 'the error expired after its timeout');
-    const zu = meldung.querySelector('.toast-close');
-    assert.equal(zu.getAttribute('aria-label'), 'Schliessen');
-    zu.click();
-    assert.equal(meldung.isConnected, false, 'the ✕ closes');
+    assert.ok(message.isConnected, 'the error expired after its timeout');
+    const closed = message.querySelector('.toast-close');
+    assert.equal(closed.getAttribute('aria-label'), 'Schliessen');
+    closed.click();
+    assert.equal(message.isConnected, false, 'the ✕ closes');
   } finally {
     w.close();
   }
@@ -66,54 +66,54 @@ test('the mouse on the message stops the deadline', async () => {
     // Like catchZeitgeber, but clearTimeout takes a caught timer out again.
     const open = new Map();
     let n = 1e6;
-    const setzen = w.setTimeout,
-      loeschen = w.clearTimeout;
+    const put = w.setTimeout,
+      remove = w.clearTimeout;
     w.setTimeout = (fn, ms, ...rest) => {
       if (typeof fn === 'function' && ms >= 3000) {
         open.set(++n, fn);
         return n;
       }
-      return setzen.call(w, fn, ms, ...rest);
+      return put.call(w, fn, ms, ...rest);
     };
-    w.clearTimeout = id => (open.has(id) ? open.delete(id) : loeschen.call(w, id));
+    w.clearTimeout = id => (open.has(id) ? open.delete(id) : remove.call(w, id));
     await createWantedItem(w, d);
-    await warte(() => d.querySelector('#toasts .toast.success'));
-    const meldung = d.querySelector('#toasts .toast.success');
-    meldung.dispatchEvent(new w.MouseEvent('mouseenter'));
+    await waitFor(() => d.querySelector('#toasts .toast.success'));
+    const message = d.querySelector('#toasts .toast.success');
+    message.dispatchEvent(new w.MouseEvent('mouseenter'));
     for (const fn of [...open.values()]) fn();
-    assert.ok(meldung.isConnected, 'the timeout expired under the mouse');
-    meldung.dispatchEvent(new w.MouseEvent('mouseleave'));
+    assert.ok(message.isConnected, 'the timeout expired under the mouse');
+    message.dispatchEvent(new w.MouseEvent('mouseleave'));
     for (const fn of [...open.values()]) fn();
-    assert.equal(meldung.isConnected, false, 'after leaving, the timeout runs again');
+    assert.equal(message.isConnected, false, 'after leaving, the timeout runs again');
   } finally {
     w.close();
   }
 });
 
 test('identical errors do not stack', async () => {
-  const { w, d } = await openUi(FEHLER);
+  const { w, d } = await openUi(ERROR);
   try {
     for (let i = 0; i < 3; i++) {
       await createWantedItem(w, d);
-      await warte(() => d.querySelectorAll('#toasts .toast.error').length > 0);
+      await waitFor(() => d.querySelectorAll('#toasts .toast.error').length > 0);
     }
-    await warte(() => d.querySelector('#toasts .toast-count:not([hidden])')?.textContent === '×3', 1000);
-    const meldungen = d.querySelectorAll('#toasts .toast.error');
-    assert.equal(meldungen.length, 1, `${meldungen.length} messages`);
-    assert.equal(meldungen[0].querySelector('.toast-count').textContent, '×3');
+    await waitFor(() => d.querySelector('#toasts .toast-count:not([hidden])')?.textContent === '×3', 1000);
+    const messages = d.querySelectorAll('#toasts .toast.error');
+    assert.equal(messages.length, 1, `${messages.length} messages`);
+    assert.equal(messages[0].querySelector('.toast-count').textContent, '×3');
   } finally {
     w.close();
   }
 });
 
 test('a click clears the message', async () => {
-  const { w, d } = await openUi(FEHLER);
+  const { w, d } = await openUi(ERROR);
   try {
     await createWantedItem(w, d);
-    await warte(() => d.querySelector('#toasts .toast.error'));
-    const meldung = d.querySelector('#toasts .toast.error');
-    meldung.querySelector('.toast-text').click();
-    assert.equal(meldung.isConnected, false);
+    await waitFor(() => d.querySelector('#toasts .toast.error'));
+    const message = d.querySelector('#toasts .toast.error');
+    message.querySelector('.toast-text').click();
+    assert.equal(message.isConnected, false);
   } finally {
     w.close();
   }

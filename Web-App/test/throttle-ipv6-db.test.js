@@ -50,16 +50,17 @@ test('ipThrottle: the sixth attempt from the same /64 is rejected', async t => {
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const von = ip => fetch(`${basis}/probe`, { method: 'POST', headers: { 'x-forwarded-for': ip } }).then(r => r.status);
+  const from = ip =>
+    fetch(`${basis}/probe`, { method: 'POST', headers: { 'x-forwarded-for': ip } }).then(r => r.status);
 
   const status = [];
-  for (let i = 1; i <= 6; i++) status.push(await von(`2001:db8:aa:bb:${i}::${i}`));
+  for (let i = 1; i <= 6; i++) status.push(await from(`2001:db8:aa:bb:${i}::${i}`));
   assert.deepEqual(
     status,
     [200, 200, 200, 200, 200, 429],
     'ipThrottle: the sixth attempt from the same /64 is rejected',
   );
-  assert.equal(await von('2001:db8:aa:cc::1'), 200, 'another /64 is not affected');
+  assert.equal(await from('2001:db8:aa:cc::1'), 200, 'another /64 is not affected');
 });
 
 test('login: spraying from a /64 hits the per-address limit', async t => {
@@ -74,9 +75,9 @@ test('login: spraying from a /64 hits the per-address limit', async t => {
     assert.equal(await L.loginAllowed(ip, name), null, `attempt ${i + 1} is still allowed`);
     await L.loginFailed(ip, name);
   }
-  const sperre = await L.loginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
-  assert.ok(sperre, 'login: spraying from one /64 hits the per-address limit');
-  assert.equal(sperre.code, 'too_many_failed_attempts');
+  const lock = await L.loginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
+  assert.ok(lock, 'login: spraying from one /64 hits the per-address limit');
+  assert.equal(lock.code, 'too_many_failed_attempts');
 });
 
 test('key per address: /64, IPv4 in IPv6, others stay', () => {

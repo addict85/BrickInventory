@@ -13,18 +13,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt, warte } = require('./helpers/ui');
+const { openUi, tick, waitFor } = require('./helpers/ui');
 
 async function record(response, language = 'de') {
   const o = await openUi({ '/v2/sets/add-stream': response }, { language });
   const { d, w } = o;
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
-  await takt(20);
+  await tick(20);
   const field = d.getElementById('add-num');
   field.value = response.set_number;
   field.dispatchEvent(new w.Event('input', { bubbles: true }));
   d.getElementById('btn-add').click();
-  await warte(() => d.querySelector('#toasts .toast'), 3000);
+  await waitFor(() => d.querySelector('#toasts .toast'), 3000);
   return o;
 }
 

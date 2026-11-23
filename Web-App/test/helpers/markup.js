@@ -9,7 +9,7 @@ const path = require('node:path');
 const JS = path.join(__dirname, '..', '..', 'public', 'js');
 
 /** Source text of an exported function, without `export`. */
-function funktion(src, name) {
+function fn(src, name) {
   const a = src.indexOf(`export function ${name}(`);
   if (a < 0) throw new Error(`${name}() not found`);
   const e = src.indexOf('\n}\n', a);
@@ -19,7 +19,7 @@ function funktion(src, name) {
 function markupHelper() {
   const escaping = fs.readFileSync(path.join(JS, 'escaping.js'), 'utf8').replace(/^export /gm, '');
   const dom = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
-  const namen = [
+  const names = [
     'esc',
     'escJs',
     'escUrl',
@@ -37,7 +37,7 @@ function markupHelper() {
   ];
   // eslint-disable-next-line no-new-func
   return new Function(
-    `${escaping}\n${funktion(dom, 'setHtml')}\n${funktion(dom, 'insertHtml')}\nreturn { ${namen.join(', ')} };`,
+    `${escaping}\n${fn(dom, 'setHtml')}\n${fn(dom, 'insertHtml')}\nreturn { ${names.join(', ')} };`,
   )();
 }
 

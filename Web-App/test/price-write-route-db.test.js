@@ -37,9 +37,9 @@ const db = testData();
 // esbuild exports via getters, a `bl.priceGuideQuery = …` would run into
 // nothing — hence the entry in the require cache is replaced.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
-const echt = require(blPath);
+const original = require(blPath);
 let fetches = [];
-require.cache[blPath].exports = Object.assign({}, echt, {
+require.cache[blPath].exports = Object.assign({}, original, {
   priceGuideQuery: async (_k, _sn, cond) => {
     fetches.push(cond);
     // 'N' without a price, 'U' with one — exactly the situation in which the fallback applies.
@@ -68,11 +68,11 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
   const JOB = `schreibweg-${process.pid}-job`;
   const ROUTE = `schreibweg-${process.pid}-weg`;
   const FAIL = `schreibweg-${process.pid}-fehl`;
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM price_cache   WHERE set_number = ANY($1)', [[JOB, ROUTE, FAIL]]).catch(() => {});
     await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [[JOB, ROUTE, FAIL]]).catch(() => {});
   };
-  await aufraeumen();
+  await cleanUp();
 
   try {
     // 1. The job writes the null row too — otherwise the same set costs
@@ -121,7 +121,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     //    the next fetch, and nobody would fill the gap in the history any more.
     const fk = require('./helpers/sources').testContext('finances');
     /** The same context, whose history is not writable — outside and in the transaction. */
-    const kaputt = z => ({
+    const broken = z => ({
       ...z,
       priceCache: {
         ...z.priceCache,
@@ -129,9 +129,9 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
           throw new Error('Verlauf nicht schreibbar (Probe)');
         },
       },
-      transact: fn => z.transact(t => fn(kaputt(t))),
+      transact: fn => z.transact(t => fn(broken(t))),
     });
-    const k = kaputt(fk);
+    const k = broken(fk);
     const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };
     await assert.rejects(
       require(path.join(ROOT, 'dist', 'src/finances/calculation/prices.js')).savePrice(k, FAIL, 'U', 'EUR', guide),
@@ -139,14 +139,14 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     );
     assert.deepEqual(await traces(FAIL), { cache: [], hist: [] });
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
 
 test('the write rule exists in only one place', () => {
   // Found, not enumerated: all .ts of the tree except tests and tooling.
-  const dateien = [];
+  const files = [];
   const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (
@@ -159,16 +159,16 @@ test('the write rule exists in only one place', () => {
         continue;
       const abs = path.join(d, e.name);
       if (e.isDirectory()) go(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule below would be vacuously true.
-  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer works`);
 
   const cacheWriter = [],
     historyWriter = [];
-  for (const f of dateien) {
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')

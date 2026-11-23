@@ -35,7 +35,7 @@ require('./helpers/sources').replaceServices('mail', {
 });
 const db = S.testData();
 const { dataOrSkip } = require('./helpers/db');
-const protokoll = _req('src/infra/log.js');
+const log = _req('src/infra/log.js');
 const { checkConfirmation } = _req('src/account/passwordConfirmation.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -60,37 +60,37 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
       `bestaetigung-hinweis|konto:${uid}`,
     ]);
   await empty();
-  const zeilen = [];
-  const zurueck = protokoll.installLog({ out: () => {}, err: z => zeilen.push(z), now: () => Date.now() });
+  const lines = [];
+  const back = log.installLog({ out: () => {}, err: z => lines.push(z), now: () => Date.now() });
   t.after(async () => {
-    zurueck();
+    back();
     await empty();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const versuch = async (zugang, pw = WRONG) =>
-    STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.kind] ?? 200;
+  const attempt = async (access, pw = WRONG) =>
+    STATUS_THE_KIND[(await checkConfirmation(uid, access, pw, {}))?.kind] ?? 200;
 
   await t.test('across many accesses at most 20 failed attempts per day', async () => {
-    const ist = [];
+    const actual = [];
     // Five accesses with four attempts each: none reaches its own limit (5).
-    for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) ist.push(await versuch(`t:${z}`));
-    assert.deepEqual([...new Set(ist)], [400]);
-    assert.equal(await versuch('t:0'), 429, 'the 21st attempt from a guessing access');
-    assert.equal(await versuch('t:4', PASS), 429, 'even with the correct password, without a check');
+    for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) actual.push(await attempt(`t:${z}`));
+    assert.deepEqual([...new Set(actual)], [400]);
+    assert.equal(await attempt('t:0'), 429, 'the 21st attempt from a guessing access');
+    assert.equal(await attempt('t:4', PASS), 429, 'even with the correct password, without a check');
   });
 
   await t.test("the owner's clean access keeps confirming", async () => {
-    assert.equal(await versuch('s:inhaber', PASS), 200);
+    assert.equal(await attempt('s:inhaber', PASS), 200);
   });
 
   await t.test('mail and log on reaching the brake, the mail once a day', async () => {
     for (let i = 0; i < 40 && mails.length < 1; i++) await new Promise(r => setTimeout(r, 25));
     await new Promise(r => setTimeout(r, 200));
     assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'confirmation_throttled' }]);
-    const gebremst = zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled');
+    const braked = lines.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled');
     assert.deepEqual(
-      gebremst.map(z => [z.kontext.konto, z.kontext.kind]),
+      braked.map(z => [z.kontext.konto, z.kontext.kind]),
       [[uid, 'passwort']],
     );
     // Afterwards one access reaches its own limit: log yes, second mail no.
@@ -98,12 +98,9 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
       `%-bestaetigen|${uid}|%`,
       `%-bestaetigen-konto|${uid}`,
     ]);
-    for (let i = 0; i < 5; i++) await versuch('t:neu');
+    for (let i = 0; i < 5; i++) await attempt('t:neu');
     await new Promise(r => setTimeout(r, 200));
     assert.equal(mails.length, 1, JSON.stringify(mails));
-    assert.equal(
-      zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled').length,
-      2,
-    );
+    assert.equal(lines.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled').length, 2);
   });
 });

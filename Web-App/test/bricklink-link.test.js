@@ -9,7 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
@@ -91,19 +91,19 @@ test("the buy button takes the server's address and is never hidden", async () =
     '/v2/catalog/sets/99999-1': { success: true, set: set('99999-1', null) },
   });
   try {
-    await reiter(w, 'catalog');
-    const knopf = () => d.getElementById('cat-m-bricklink');
+    await switchTab(w, 'catalog');
+    const button = () => d.getElementById('cat-m-bricklink');
     for (const [nr, href, text] of [
       ['col001-1', SEARCH, 'Auf BrickLink suchen'],
       ['5005358-1', GEAR, 'Auf BrickLink kaufen'],
       // Without resolution the search for the number — not a hidden button.
       ['99999-1', 'https://www.bricklink.com/v2/search.page?q=99999-1', 'Auf BrickLink kaufen'],
     ]) {
-      assert.ok(await warte(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Tile ${nr}`);
+      assert.ok(await waitFor(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Tile ${nr}`);
       d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`).click();
-      assert.ok(await warte(() => d.getElementById('cat-m-sub').textContent === nr), `Dialog ${nr}`);
+      assert.ok(await waitFor(() => d.getElementById('cat-m-sub').textContent === nr), `Dialog ${nr}`);
       assert.deepEqual(
-        [knopf().style.display, knopf().getAttribute('href'), knopf().textContent.trim()],
+        [button().style.display, button().getAttribute('href'), button().textContent.trim()],
         ['', href, text],
         nr,
       );

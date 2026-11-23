@@ -24,24 +24,24 @@ test.after(async () => {
 });
 
 /** CSV text → lines as objects (the header determines the names). */
-function zeilen(csv) {
-  const [kopf, ...rest] = csv
+function lines(csv) {
+  const [head, ...rest] = csv
     .trim()
     .split('\n')
     .map(z => z.replace(/\r$/, ''));
-  const namen = kopf.split(',');
+  const names = head.split(',');
   return rest.filter(Boolean).map(z => {
     const values = z.split(',');
-    return Object.fromEntries(namen.map((n, i) => [n, (values[i] ?? '').replace(/^"|"$/g, '')]));
+    return Object.fromEntries(names.map((n, i) => [n, (values[i] ?? '').replace(/^"|"$/g, '')]));
   });
 }
 
 test('sets export: one row per acquisition, without an acquisition the set row', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const nutzer = `csvexp-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const user = `csvexp-${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [user]).catch(() => {});
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [user, 'x']);
   const uid = u.id;
 
   try {
@@ -58,36 +58,36 @@ test('sets export: one row per acquisition, without an acquisition the set row',
     );
 
     const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
-    const r = zeilen(csv);
-    const je = sn => r.filter(x => x.set_number === sn);
+    const r = lines(csv);
+    const per = sn => r.filter(x => x.set_number === sn);
 
     assert.equal(r.length, 5, `5 rows expected (1+2+1+1), got ${r.length}:\n${csv}`);
 
     // Without an entry: one line with quantity 0, without price, without date, condition 'N';
     // quantity and price only come from entries.
-    assert.deepEqual(je('0001-1'), [
+    assert.deepEqual(per('0001-1'), [
       { set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' },
     ]);
 
     // Two entries, oldest first — the order carries the meaning.
-    const zwei = je('0002-1');
-    assert.equal(zwei.length, 2, 'two acquisitions result in two rows');
-    assert.equal(zwei[0].quantity, '1', 'the older acquisition comes first');
-    assert.equal(zwei[1].quantity, '4');
-    assert.equal(zwei[0].condition, 'N');
-    assert.equal(zwei[1].condition, 'U');
-    assert.match(zwei[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'acquisitions carry their date');
+    const two = per('0002-1');
+    assert.equal(two.length, 2, 'two acquisitions result in two rows');
+    assert.equal(two[0].quantity, '1', 'the older acquisition comes first');
+    assert.equal(two[1].quantity, '4');
+    assert.equal(two[0].condition, 'N');
+    assert.equal(two[1].condition, 'U');
+    assert.match(two[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'acquisitions carry their date');
 
     // Entry present but without price → empty field. The confusion with
     // the set price, against which this check was written, can no longer exist since
     // migration 0032; the statement about the output stays.
-    const withoutPrice = je('0003-1');
+    const withoutPrice = per('0003-1');
     assert.equal(withoutPrice.length, 1);
     assert.equal(withoutPrice[0].purchase_price, '', 'an acquisition without a price must result in an empty field');
     assert.equal(withoutPrice[0].condition, 'N', 'a missing condition becomes N');
 
     // Set without an entry: quantity 0, condition 'N', price empty.
-    assert.deepEqual(je('0004-1'), [
+    assert.deepEqual(per('0004-1'), [
       { set_number: '0004-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' },
     ]);
   } finally {
@@ -105,9 +105,9 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
   // load of the machine and needs a threshold that is either too loose
   // or erratically red. The COUNT of queries, by contrast, is the quantity
   // that matters — it must not grow with the stock.
-  const nutzer = `csvcnt-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const user = `csvcnt-${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [user]).catch(() => {});
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [user, 'x']);
   const uid = u.id;
 
   // Counted at pool.query, NOT at db.all
@@ -131,7 +131,7 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
     const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
     db.pool.query = realQuery;
 
-    assert.equal(zeilen(csv).length, 25, 'all 25 sets are in the export');
+    assert.equal(lines(csv).length, 25, 'all 25 sets are in the export');
     // Lower bound: if the patch counted nothing at all, the upper bound below would be
     // trivially fulfilled — exactly the state this test was in at first.
     assert.ok(queryList >= 1, 'the counter recorded nothing — the patch no longer works');
@@ -153,9 +153,9 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
 test('minifigures export: the same rule, the same single query', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const nutzer = `figexp-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const user = `figexp-${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [user]).catch(() => {});
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [user, 'x']);
   const uid = u.id;
 
   const realQuery = db.pool.query.bind(db.pool);
@@ -192,7 +192,7 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
     const csv = await _req('src/inventory/inventoryExport.js').minifigsCsv(uid);
     db.pool.query = realQuery;
 
-    const r = zeilen(csv);
+    const r = lines(csv);
     assert.equal(r.length, 2, `2 rows expected, got ${r.length}:\n${csv}`);
 
     const a = r.find(x => x.fig_number === 'fig-a');
@@ -225,9 +225,9 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
   // Why this case came later
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const nutzer = `teilexp-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const user = `teilexp-${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [user]).catch(() => {});
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [user, 'x']);
   const uid = u.id;
 
   const realQuery = db.pool.query.bind(db.pool);
@@ -235,7 +235,7 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
     // 3001 / color 4   two entries           → two lines, oldest first
     // 3001 / color 1   NO entry              → parts line, not the one of color 4
     // 3002 / color 0   entry without price   → empty field
-    for (const [nr, farbe, farbname] of [
+    for (const [nr, color, colorName] of [
       ['3001', 4, 'Rot'],
       ['3001', 1, 'Blau'],
       ['3002', 0, ''],
@@ -250,11 +250,11 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
       await db.run(
         `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
          ON CONFLICT (part_number, color_id) DO NOTHING`,
-        [nr, farbe, farbname],
+        [nr, color, colorName],
       );
       // Quantity 0: the test creates the entries below deliberately so that the
       // cases “with" and “without price" stay distinguishable.
-      await holdsPart(db, uid, nr, { quantity: 0, colorId: farbe });
+      await holdsPart(db, uid, nr, { quantity: 0, colorId: color });
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
@@ -272,18 +272,18 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
     const csv = await _req('src/inventory/inventoryExport.js').partsCsv(uid);
     db.pool.query = realQuery;
 
-    const r = zeilen(csv);
+    const r = lines(csv);
     assert.equal(r.length, 4, `4 rows expected (2+1+1), got ${r.length}:\n${csv}`);
 
     // The case only parts have: same number, different color.
     const rot = r.filter(x => x.part_number === '3001' && x.color_id === '4');
-    const blau = r.filter(x => x.part_number === '3001' && x.color_id === '1');
+    const blue = r.filter(x => x.part_number === '3001' && x.color_id === '1');
     assert.equal(rot.length, 2, 'the red row has two acquisitions');
-    assert.equal(blau.length, 1, 'the blue row has NO acquisition — it must not inherit those of the red one');
+    assert.equal(blue.length, 1, 'the blue row has NO acquisition — it must not inherit those of the red one');
     // As with fig-a above: without an entry the item count is 0, but the line
     // stays in the export.
-    assert.equal(blau[0].quantity, '0', 'without an acquisition the piece count is 0');
-    assert.equal(blau[0].acquired_at, '', 'no date without an acquisition');
+    assert.equal(blue[0].quantity, '0', 'without an acquisition the piece count is 0');
+    assert.equal(blue[0].acquired_at, '', 'no date without an acquisition');
 
     assert.equal(rot[0].quantity, '2', 'the older acquisition comes first');
     assert.equal(rot[1].quantity, '3');

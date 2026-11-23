@@ -19,19 +19,19 @@ const N = 20; // enough so that „je Stück" can be told apart from „einmalig
 const NR = i => `bwt-teil-${i}`;
 
 // Record all queries of this run.
-const gesehen = [];
+const seen = [];
 let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
   if (count) {
     const sql = String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' ');
-    gesehen.push(sql);
+    seen.push(sql);
   }
   return altQuery(text, ...rest);
 };
-const howOften = muster => gesehen.filter(q => muster.test(q)).length;
+const howOften = pattern => seen.filter(q => pattern.test(q)).length;
 
-async function aufraeumen() {
+async function cleanUp() {
   await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
   await db.run('DELETE FROM part_price_cache WHERE part_number LIKE $1', ['bwt-teil-%']).catch(() => {});
   await db.run("DELETE FROM bl_mapping WHERE type='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
@@ -46,7 +46,7 @@ test('parts valuation: no lookup per part', async t => {
   }
 
   try {
-    await aufraeumen();
+    await cleanUp();
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
       // Since migration 0035 condition and price stand in the acquisition, the
@@ -77,12 +77,12 @@ test('parts valuation: no lookup per part', async t => {
       )
       .catch(() => {});
 
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
-    const ergebnis = await fc.valueParts(UID, [UID]);
+    const outcome = await fc.valueParts(UID, [UID]);
     count = false;
 
-    assert.equal(ergebnis.parts.length, N, 'all parts valued');
+    assert.equal(outcome.parts.length, N, 'all parts valued');
 
     // ── 1. No SINGLE query per part any more ────────────────────────────────
     //
@@ -105,23 +105,23 @@ test('parts valuation: no lookup per part', async t => {
     // ── 3. The color table at most once ────────────────────────────────
     // At most, not exactly: a previous test in the same process may already
     // have loaded it, and then zero is the right number.
-    const farben = howOften(/FROM rb_colors/);
-    assert.ok(farben <= 1, `rb_colors was queried ${farben}x — expected at most 1x for all parts`);
+    const colors = howOften(/FROM rb_colors/);
+    assert.ok(colors <= 1, `rb_colors was queried ${colors}x — expected at most 1x for all parts`);
 
     // ── 4. The total stays below two round trips per part ───────────────
     // Counted: 1.1 per part (the price cache row plus a few one-off ones).
     // The limit stands at 2 so that it does not break on every harmless change
     // — but far below the 4.1 from before.
     assert.ok(
-      gesehen.length < 2 * N,
-      `${gesehen.length} queries for ${N} parts (${(gesehen.length / N).toFixed(1)} per part) — expected below 2 per part`,
+      seen.length < 2 * N,
+      `${seen.length} queries for ${N} parts (${(seen.length / N).toFixed(1)} per part) — expected below 2 per part`,
     );
 
     // ── COUNTER-CHECK ────────────────────────────────────────────────────────
     // Would the counter see the single queries at all? A part that was NOT
     // preloaded must trigger both single paths — otherwise the
     // assertions above check nothing.
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
     count = false;
@@ -132,7 +132,7 @@ test('parts valuation: no lookup per part', async t => {
     );
   } finally {
     db.pool.query = altQuery;
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end().catch(() => {});
   }
 });

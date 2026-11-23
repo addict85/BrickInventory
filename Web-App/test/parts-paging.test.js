@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -77,19 +77,19 @@ test('parts list against the database: pages, color filter and upper bound on bo
   ];
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('pp1','Eins'),('pp2','Zwei'),('pp3','Drei')
                 ON CONFLICT (part_number) DO NOTHING`);
-  for (const [nr, farbe, name] of PARTS) {
+  for (const [nr, color, name] of PARTS) {
     await db.run(
       `INSERT INTO part_color_catalog (part_number,color_id,color_name) VALUES ($1,$2,$3)
                   ON CONFLICT (part_number,color_id) DO UPDATE SET color_name = EXCLUDED.color_name`,
-      [nr, farbe, name],
+      [nr, color, name],
     );
     await db.run(
       `INSERT INTO set_parts (set_number, part_number, color_id, quantity, is_spare) VALUES ($1,$2,$3,1,false)`,
-      [SN, nr, farbe],
+      [SN, nr, color],
     );
   }
   await holdsSet(db, U, SN, 1);
-  for (const [nr, farbe] of PARTS) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity: 1 });
+  for (const [nr, color] of PARTS) await holdsPart(db, U, nr, { setNumber: SN, colorId: color, quantity: 1 });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
     await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
@@ -99,33 +99,33 @@ test('parts list against the database: pages, color filter and upper bound on bo
   });
 
   // Without exclude_manual the live query always answers; with it, after the build, the summary.
-  let abfrage = { page: 1 };
-  const pruefe = async weg => {
-    const page1 = await H.partsQuery(U, { ...abfrage, page_size: 2 });
-    const page2 = await H.partsQuery(U, { ...abfrage, page: 2, page_size: 2 });
-    assert.equal(page1.source, weg);
+  let query = { page: 1 };
+  const check = async route => {
+    const page1 = await H.partsQuery(U, { ...query, page_size: 2 });
+    const page2 = await H.partsQuery(U, { ...query, page: 2, page_size: 2 });
+    assert.equal(page1.source, route);
     // Without total the client does not know when to stop.
-    assert.deepEqual([page1.total, page1.parts.length, page2.parts.length, page1.page_size], [3, 2, 1, 2], weg);
-    const rot = await H.partsQuery(U, { ...abfrage, page_size: 50, color: 'Rot' });
+    assert.deepEqual([page1.total, page1.parts.length, page2.parts.length, page1.page_size], [3, 2, 1, 2], route);
+    const rot = await H.partsQuery(U, { ...query, page_size: 50, color: 'Rot' });
     // The source too: an error in the filter would otherwise fall back to the live query unnoticed.
     assert.deepEqual(
       [rot.source, ...rot.parts.map(p => p.part_number).sort()],
-      [weg, 'pp1', 'pp3'],
-      `${weg}: colour red`,
+      [route, 'pp1', 'pp3'],
+      `${route}: colour red`,
     );
-    assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: upper limit`);
+    assert.equal((await H.partsQuery(U, { ...query, page_size: 100000 })).page_size, 500, `${route}: upper limit`);
   };
-  await pruefe('db');
+  await check('db');
   // The set path may do more at once (a whole parts list), but not arbitrarily much.
   assert.equal((await H.partsQuery(U, { set_number: SN, page_size: 100000 })).page_size, 5000);
   await PS.rebuildNow(U);
-  abfrage = { exclude_manual: '1', page: 1 };
-  await pruefe('summary');
+  query = { exclude_manual: '1', page: 1 };
+  await check('summary');
 });
 
 test('loading more only happens in the visible parts tab', async () => {
   const observer = [];
-  const seite = url => {
+  const page = url => {
     const p = Number(new URL(url, 'http://x').searchParams.get('page'));
     return {
       success: true,
@@ -141,8 +141,8 @@ test('loading more only happens in the visible parts tab', async () => {
       })),
     };
   };
-  const { w, d, aufrufe, ruhig } = await openUi(
-    { '/v2/parts': seite },
+  const { w, d, calls, settle } = await openUi(
+    { '/v2/parts': page },
     {
       before(w) {
         w.IntersectionObserver = class {
@@ -157,21 +157,21 @@ test('loading more only happens in the visible parts tab', async () => {
     },
   );
   try {
-    const seiten = () => aufrufe.filter(a => /\/api\/v2\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => seiten() >= 2), 'The first page does not fill the screen, the second does not come');
-    await ruhig();
-    const sichtbar = () => {
+    const pages = () => calls.filter(a => /\/api\/v2\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => pages() >= 2), 'The first page does not fill the screen, the second does not come');
+    await settle();
+    const visible = () => {
       for (const cb of observer) cb([{ isIntersecting: true }]);
     };
-    const vorher = seiten();
-    sichtbar();
-    assert.ok(await warte(() => seiten() === vorher + 1), 'In the visible tab the sentinel does not load more');
-    await ruhig();
-    await reiter(w, 'gallery');
-    sichtbar();
-    await ruhig();
-    assert.equal(seiten(), vorher + 1, 'The sentinel keeps loading in the background');
+    const prior = pages();
+    visible();
+    assert.ok(await waitFor(() => pages() === prior + 1), 'In the visible tab the sentinel does not load more');
+    await settle();
+    await switchTab(w, 'gallery');
+    visible();
+    await settle();
+    assert.equal(pages(), prior + 1, 'The sentinel keeps loading in the background');
     assert.ok(d.querySelectorAll('#parts-main .part-card').length >= 300);
   } finally {
     w.close();
@@ -179,7 +179,7 @@ test('loading more only happens in the visible parts tab', async () => {
 });
 
 test('arguments from data-arg are treated as strings', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/minifigs/manual': { success: true, figs: [{ fig_number: 'fig-000001', fig_name: 'Figur', quantity: 2 }] },
     '/v2/auth/users': {
       success: true,
@@ -191,24 +191,24 @@ test('arguments from data-arg are treated as strings', async () => {
   });
   try {
     // Plus in the quantity field: 2 becomes 3, not "21".
-    await reiter(w, 'minifigs');
-    assert.ok(await warte(() => d.querySelector('#manual-figs-list [data-click="openManDetail"]')));
+    await switchTab(w, 'minifigs');
+    assert.ok(await waitFor(() => d.querySelector('#manual-figs-list [data-click="openManDetail"]')));
     d.querySelector('#manual-figs-list [data-click="openManDetail"]').click();
-    assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'no quantity button');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'no quantity button');
     assert.equal(d.getElementById('man-det-qty').value, '2');
     d.querySelector('[data-click="manQtyChange"][data-arg="1"]').click();
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/minifigs/fig-000001'))));
-    assert.deepEqual(JSON.parse(aufrufe.find(a => a.method === 'PUT').body), { quantity: 3 });
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/minifigs/fig-000001'))));
+    assert.deepEqual(JSON.parse(calls.find(a => a.method === 'PUT').body), { quantity: 3 });
 
     // Grant rights: is_admin arrives as "0", and !"0" would be false.
-    await reiter(w, 'settings');
-    assert.ok(await warte(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
+    await switchTab(w, 'settings');
+    assert.ok(await waitFor(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
+    assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));
-    assert.equal(JSON.parse(aufrufe.find(a => a.url.includes('/v2/auth/users/4/admin')).body).is_admin, true);
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));
+    assert.equal(JSON.parse(calls.find(a => a.url.includes('/v2/auth/users/4/admin')).body).is_admin, true);
   } finally {
     w.close();
   }

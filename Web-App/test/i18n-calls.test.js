@@ -12,14 +12,14 @@ const { loadTranslations } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 
 /** All source files of the UI — without comments, without the bundle. */
-function oberflaeche() {
+function ui() {
   const out = [];
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       // locales/ itself contains the keys as a definition, not as a call.
       if (e.isDirectory()) {
-        if (!/node_modules|locales/.test(p)) lauf(p);
+        if (!/node_modules|locales/.test(p)) run(p);
         continue;
       }
       if (!/\.(js|html)$/.test(e.name) || e.name === 'app.bundle.js') continue;
@@ -36,7 +36,7 @@ function oberflaeche() {
       ]);
     }
   };
-  lauf(path.join(ROOT, 'public'));
+  run(path.join(ROOT, 'public'));
   return out;
 }
 
@@ -47,21 +47,21 @@ test('every called i18n key is in the dictionary', () => {
   const existing = new Set([...Object.keys(de), ...Object.keys(en)]);
   assert.ok(existing.size >= 400, `Only ${existing.size} keys loaded — path or format outdated?`);
 
-  const dateien = oberflaeche();
-  assert.ok(dateien.length >= 15, `Only ${dateien.length} source files found`);
+  const files = ui();
+  assert.ok(files.length >= 15, `Only ${files.length} source files found`);
 
-  const gerufen = new Map();
-  for (const [rel, src] of dateien)
+  const called = new Map();
+  for (const [rel, src] of files)
     for (const m of src.matchAll(CALL)) {
       const k = m[1] || m[2] || m[3];
-      if (!gerufen.has(k)) gerufen.set(k, rel);
+      if (!called.has(k)) called.set(k, rel);
     }
   // Self-proof: if the pattern no longer matches, the set would be empty and the
   // test green without having checked anything. MEASURED there are 542.
-  assert.ok(gerufen.size >= 300, `Only ${gerufen.size} call sites found — pattern outdated?`);
+  assert.ok(called.size >= 300, `Only ${called.size} call sites found — pattern outdated?`);
 
   // Composed keys (`t('monitor.job.' + k)`) end in a dot.
-  const prefixes = [...gerufen.keys()].filter(k => k.endsWith('.'));
+  const prefixes = [...called.keys()].filter(k => k.endsWith('.'));
   assert.equal(
     prefixes.length,
     1,
@@ -71,7 +71,7 @@ test('every called i18n key is in the dictionary', () => {
       'else.',
   );
 
-  const absent = [...gerufen]
+  const absent = [...called]
     .filter(([k]) => !k.endsWith('.') && !existing.has(k))
     .map(([k, rel]) => `${k}   (${rel})`)
     .sort();
@@ -94,24 +94,24 @@ test('every data-i18n form is also evaluated by applyLang', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   // dataset.i18nAttr → data-i18n-attr; dataset.i18n → data-i18n.
-  const erlaubt = new Set(
+  const allowed = new Set(
     [...i18n.matchAll(/\bdataset\.(i18n[A-Za-z]*)/g)].map(
       m => 'data-' + m[1].replace(/[A-Z]/g, c => '-' + c.toLowerCase()),
     ),
   );
   assert.ok(
-    erlaubt.size >= 3,
-    `Only ${erlaubt.size} forms found in i18n.js (${[...erlaubt].join(', ')}) — pattern outdated?`,
+    allowed.size >= 3,
+    `Only ${allowed.size} forms found in i18n.js (${[...allowed].join(', ')}) — pattern outdated?`,
   );
 
-  const benutzt = new Map();
-  for (const [rel, src] of oberflaeche())
-    for (const m of src.matchAll(/\b(data-i18n[a-z-]*)\s*=/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
+  const usedBy = new Map();
+  for (const [rel, src] of ui())
+    for (const m of src.matchAll(/\b(data-i18n[a-z-]*)\s*=/g)) if (!usedBy.has(m[1])) usedBy.set(m[1], rel);
   // MEASURED there are four forms, 386 occurrences.
-  assert.ok(benutzt.size >= 2, `Only ${benutzt.size} data-i18n forms found in the markup`);
+  assert.ok(usedBy.size >= 2, `Only ${usedBy.size} data-i18n forms found in the markup`);
 
-  const ineffective = [...benutzt]
-    .filter(([f]) => !erlaubt.has(f))
+  const ineffective = [...usedBy]
+    .filter(([f]) => !allowed.has(f))
     .map(([f, rel]) => `${f}   (${rel})`)
     .sort();
   assert.deepEqual(
@@ -119,7 +119,7 @@ test('every data-i18n form is also evaluated by applyLang', () => {
     [],
     'applyLang() does not evaluate these data-i18n forms:\n  ' +
       ineffective.join('\n  ') +
-      `\nOnly these are evaluated: ${[...erlaubt].sort().join(', ')}. An attribute that ` +
+      `\nOnly these are evaluated: ${[...allowed].sort().join(', ')}. An attribute that ` +
       'is none of them looks like a translation and leaves the text as it ' +
       'is in the source — in every language.',
   );

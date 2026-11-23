@@ -40,26 +40,26 @@ test("topping up without a condition follows the user's default", { concurrency:
     // is needed; this is not about the price.
     await acquireSet({ requester: uid, setNumber: SET, quantity: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
-    const zeilen = await db.all(
+    const lines = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions
         WHERE user_id=$1 AND set_number=$2 ORDER BY id`,
       [uid, SET],
     );
     assert.equal(
-      zeilen.length,
+      lines.length,
       2,
-      `${zeilen.length} acquisition(s): ${JSON.stringify(zeilen)}. Expected are ` +
+      `${lines.length} acquisition(s): ${JSON.stringify(lines)}. Expected are ` +
         'TWO — the precondition with "N" and the one of the top-up path with the ' +
         'default "U". A single one would mean that the two conditions are ' +
         'merged again.',
     );
-    assert.equal(zeilen[0].condition, 'N', "precondition: the helper's row");
+    assert.equal(lines[0].condition, 'N', "precondition: the helper's row");
 
-    const neue = zeilen[1];
+    const newOnes = lines[1];
     assert.equal(
-      neue.condition,
+      newOnes.condition,
       'U',
-      `The acquisition of the top-up path is stored as "${neue.condition}" in the ` +
+      `The acquisition of the top-up path is stored as "${newOnes.condition}" in the ` +
         'database, although the user\'s default is "U" and the price was fetched exactly ' +
         'for that. Price and note must mean the same condition — ' +
         'otherwise the entry counts in the wrong group in the finance view.',

@@ -38,97 +38,100 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/ui');
+const { openUi, SIGNED_IN, view, waitFor } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
 /** Since 27.10. the lines are a symbol of the symbol family instead of „☰“. */
-const dashes = knopf => knopf.querySelector('.ubadge-stripes use[href="#i-menu"]');
+const dashes = button => button.querySelector('.ubadge-stripes use[href="#i-menu"]');
 
-function kopfleiste() {
+function headerBar() {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const auf = html.indexOf('<header');
-  const zu = html.indexOf('</header>');
-  assert.ok(auf > 0 && zu > auf, 'No <header> in index.html — does the search still work?');
-  return new JSDOM('<!doctype html><html><body>' + html.slice(auf, zu + 9) + '</body></html>');
+  const opened = html.indexOf('<header');
+  const closed = html.indexOf('</header>');
+  assert.ok(opened > 0 && closed > opened, 'No <header> in index.html — does the search still work?');
+  return new JSDOM('<!doctype html><html><body>' + html.slice(opened, closed + 9) + '</body></html>');
 }
 
 /**
  * Find the menu button via its HANDLER, not via the ID.
  */
 function menuButton(document) {
-  const knopf = document.querySelector('[data-click="userMenu"]');
-  assert.ok(knopf, 'No element with data-click="userMenu" in the header bar');
-  assert.equal(knopf.tagName, 'BUTTON');
-  return knopf;
+  const button = document.querySelector('[data-click="userMenu"]');
+  assert.ok(button, 'No element with data-click="userMenu" in the header bar');
+  assert.equal(button.tagName, 'BUTTON');
+  return button;
 }
 
 test('the lines sit in the button, not next to it', () => {
-  const { document } = kopfleiste().window;
-  const knopf = menuButton(document);
+  const { document } = headerBar().window;
+  const button = menuButton(document);
 
-  assert.ok(dashes(knopf), 'The three bars are not in the menu button — are they a separate element next to it again?');
+  assert.ok(
+    dashes(button),
+    'The three bars are not in the menu button — are they a separate element next to it again?',
+  );
 
   // And the name stands in the SAME button. Exactly that is „integrating": not
   // two elements that lie side by side, but one.
   const name = document.getElementById('ubadge');
   assert.ok(name, 'No #ubadge in the header bar');
-  assert.ok(knopf.contains(name), 'The name label is not in the menu button — name and bars are separated again');
+  assert.ok(button.contains(name), 'The name label is not in the menu button — name and bars are separated again');
 });
 
 test('the lines survive the username', () => {
-  const { document } = kopfleiste().window;
-  const knopf = menuButton(document);
+  const { document } = headerBar().window;
+  const button = menuButton(document);
   const name = document.getElementById('ubadge');
-  assert.ok(name, 'No #ubadge — konto.js writes the name exactly there');
+  assert.ok(name, 'No #ubadge — account.js writes the name exactly there');
 
-  // Exactly what konto.js does in showApp().
+  // Exactly what account.js does in showApp().
   name.textContent = 'marco';
 
   assert.ok(
-    dashes(knopf),
+    dashes(button),
     'The three bars disappeared after setting the name — ' +
       'is `id="ubadge"` on the button instead of on the inner field?',
   );
-  assert.ok(knopf.textContent.includes('marco'), 'The user name is not in the button after setting it');
+  assert.ok(button.textContent.includes('marco'), 'The user name is not in the button after setting it');
 });
 
 test('the button tells a screen reader that it is a menu', () => {
-  const { document } = kopfleiste().window;
-  const knopf = menuButton(document);
+  const { document } = headerBar().window;
+  const button = menuButton(document);
 
   // The ID stays required: closeMenu() and userMenu() in
-  // js/sammlung.js keep `aria-expanded` updated via G('btn-umenu').
+  // js/navigation.js keep `aria-expanded` updated via G('btn-umenu').
   assert.equal(
-    knopf.id,
+    button.id,
     'btn-umenu',
-    'The menu button is no longer called `btn-umenu` — sammlung.js keeps `aria-expanded` up to date through it',
+    'The menu button is no longer called `btn-umenu` — navigation.js keeps `aria-expanded` up to date through it',
   );
 
-  assert.equal(knopf.getAttribute('aria-haspopup'), 'true');
+  assert.equal(button.getAttribute('aria-haspopup'), 'true');
   assert.equal(
-    knopf.getAttribute('aria-expanded'),
+    button.getAttribute('aria-expanded'),
     'false',
     'At the start the menu is closed — `aria-expanded` must say so',
   );
-  assert.equal(knopf.getAttribute('aria-controls'), 'umenu-pop');
+  assert.equal(button.getAttribute('aria-controls'), 'umenu-pop');
 
   // NO aria-label: that replaces the visible name, the screen reader
   // would then not have named the username at all any more. The addition stands
   // instead as read-aloud text in the button.
   assert.equal(
-    knopf.getAttribute('aria-label'),
+    button.getAttribute('aria-label'),
     null,
     'An `aria-label` on the button would hide the user name from screen readers',
   );
 
-  const zusatz = knopf.querySelector('.vh');
+  const extra = button.querySelector('.vh');
   assert.ok(
-    zusatz && zusatz.textContent.trim().length >= 2,
+    extra && extra.textContent.trim().length >= 2,
     'The spoken addition („Menü“) is missing — the button would then only be called „marco ☰“',
   );
 
   // The lines themselves are worth nothing to a screen reader.
-  const glyph = knopf.querySelector('.ubadge-stripes');
+  const glyph = button.querySelector('.ubadge-stripes');
   assert.ok(glyph, 'No .ubadge-stripes in the button');
   assert.equal(
     glyph.getAttribute('aria-hidden'),
@@ -144,7 +147,7 @@ test('the button tells a screen reader that it is a menu', () => {
  * username` instead of showUsernames() → red (after saving).
  */
 test('the signature carries the administrator hint, the tile is gone', () => {
-  const { document } = kopfleiste().window;
+  const { document } = headerBar().window;
   assert.equal(
     document.getElementById('abadge'),
     null,
@@ -165,21 +168,21 @@ test('the signature carries the administrator hint, the tile is gone', () => {
 test('with administrator rights (Administrator) follows, without only the name', async () => {
   // On the bundle in jsdom: log in as admin and as user, in English, and after saving the profile.
   const ich = u => ({
-    '/v2/auth/me': { ...ANMELDUNG['/v2/auth/me'], user: { ...ANMELDUNG['/v2/auth/me'].user, ...u } },
+    '/v2/auth/me': { ...SIGNED_IN['/v2/auth/me'], user: { ...SIGNED_IN['/v2/auth/me'].user, ...u } },
   });
-  const name = async (antworten, opt) => {
-    const o = await openUi(antworten, opt);
-    await warte(() => o.d.getElementById('ubadge').textContent.trim());
+  const name = async (answers, opt) => {
+    const o = await openUi(answers, opt);
+    await waitFor(() => o.d.getElementById('ubadge').textContent.trim());
     return o;
   };
-  for (const [u, opt, soll] of [
+  for (const [u, opt, want] of [
     [{}, {}, 'anna (Administrator)'],
     [{ is_admin: false }, {}, 'anna'],
     [{}, { language: 'en' }, 'anna (Administrator)'],
   ]) {
     const { w, d } = await name(ich(u), opt);
     try {
-      assert.equal(d.getElementById('ubadge').textContent.trim(), soll, JSON.stringify([u, opt]));
+      assert.equal(d.getElementById('ubadge').textContent.trim(), want, JSON.stringify([u, opt]));
     } finally {
       w.close();
     }
@@ -189,15 +192,15 @@ test('with administrator rights (Administrator) follows, without only the name',
     '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profile');
-    await warte(() => d.getElementById('prof-user').value === 'anna');
+    await view(w, 'profile');
+    await waitFor(() => d.getElementById('prof-user').value === 'anna');
     d.getElementById('prof-user').value = 'anna2';
     d.getElementById('btn-sav-prof').click();
-    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex');
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
     assert.ok(
-      await warte(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Administrator)'),
+      await waitFor(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Administrator)'),
       `after saving: ${d.getElementById('ubadge').textContent}`,
     );
   } finally {

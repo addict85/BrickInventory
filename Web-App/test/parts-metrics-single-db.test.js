@@ -71,8 +71,8 @@ test('parts metrics with individually captured parts', { concurrency: 1 }, async
         ..._req('src/parts/repository/partsList.js'),
         ...require('./helpers/sources').testArea('parts').partsList,
       };
-      const zsf = await repo.stats([UB], true);
-      assert.deepEqual(zsf, live);
+      const summary = await repo.stats([UB], true);
+      assert.deepEqual(summary, live);
       assert.deepEqual(await H.partStatsQuery(UB), live);
     });
   } finally {

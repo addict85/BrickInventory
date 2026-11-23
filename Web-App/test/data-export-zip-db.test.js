@@ -53,7 +53,7 @@ test("the data export delivers an unpackable ZIP with the account's data", {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const r = await fetch(`${base}/api/v2/settings/export/data`);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');
@@ -61,12 +61,12 @@ test("the data export delivers an unpackable ZIP with the account's data", {
   fs.writeFileSync(zip, Buffer.from(await r.arrayBuffer()));
 
   execFileSync('unzip', ['-q', '-o', zip, '-d', dir]);
-  const dateien = fs
+  const files = fs
     .readdirSync(dir)
     .filter(n => n.endsWith('.csv'))
     .sort();
   assert.deepEqual(
-    dateien,
+    files,
     ['merkliste.csv', 'minifiguren.csv', 'preisalarme.csv', 'sets.csv', 'teile.csv'],
     'all five files',
   );

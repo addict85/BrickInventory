@@ -45,33 +45,33 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const codes = await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
-  const sende = async (methode, path, rumpf) => {
+  const { base } = testServer(_req, { session: { userId: uid, isAdmin: true }, t });
+  const send = async (method, path, body) => {
     const r = await fetch(base + path, {
-      method: methode,
+      method: method,
       headers: { 'Content-Type': 'application/json' },
-      body: rumpf === undefined ? undefined : JSON.stringify(rumpf),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));
     return { status: r.status, code: j.code ?? null, error: j.error ?? null };
   };
 
   await t.test('a list instead of a name is 400', async () => {
-    const r = await sende('POST', '/api/v2/auth/register', {
+    const r = await send('POST', '/api/v2/auth/register', {
       username: ['abc'],
       email: 'a@b.ch',
       password: 'Lang-genug-1234',
     });
     assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
     assert.match(r.error, /username/);
-    const kein = await sende('POST', '/api/v2/auth/login', { username: { $ne: 1 }, password: 'x' });
-    assert.deepEqual([kein.status, kein.code], [400, 'input_invalid']);
+    const none = await send('POST', '/api/v2/auth/login', { username: { $ne: 1 }, password: 'x' });
+    assert.deepEqual([none.status, none.code], [400, 'input_invalid']);
   });
 
   await t.test('free text is limited', async () => {
-    const r = await sende('PUT', '/api/v2/auth/profile', { first_name: 'x'.repeat(101) });
+    const r = await send('PUT', '/api/v2/auth/profile', { first_name: 'x'.repeat(101) });
     assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
-    const ok = await sende('PUT', '/api/v2/auth/profile', {
+    const ok = await send('PUT', '/api/v2/auth/profile', {
       first_name: 'Marco',
       last_name: null,
       password_current: PASS,
@@ -82,20 +82,20 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
   });
 
   await t.test('a repeated query value is 400', async () => {
-    assert.equal((await sende('GET', '/api/v2/auth/profile?x=1')).status, 200);
-    const r = await sende('GET', '/api/v2/auth/profile?x=1&x=2');
+    assert.equal((await send('GET', '/api/v2/auth/profile?x=1')).status, 200);
+    const r = await send('GET', '/api/v2/auth/profile?x=1&x=2');
     assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
   });
 
   await t.test('the validators from validate.ts answer like the route', async () => {
-    const r = await sende('PUT', `/api/v2/auth/users/${uid}/admin`, { is_admin: 'vielleicht' });
+    const r = await send('PUT', `/api/v2/auth/users/${uid}/admin`, { is_admin: 'vielleicht' });
     assert.equal(r.status, 400);
     assert.notEqual(r.code, 'input_invalid');
     assert.match(r.error, /is_admin/);
   });
 
   await t.test('without login it stays 401, not 400', async () => {
-    const { base: open } = testServer(_req, { sitzung: {}, t });
+    const { base: open } = testServer(_req, { session: {}, t });
     const r = await fetch(`${open}/api/v2/auth/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

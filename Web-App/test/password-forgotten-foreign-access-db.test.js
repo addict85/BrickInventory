@@ -29,7 +29,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailFake, enterMailServer } = require('./helpers/mail-fake');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -38,15 +38,15 @@ test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const gesendet = mailFake();
+  const sent = mailFake();
   t.after(await enterMailServer(db));
   const P = process.pid;
-  const namen = [`pv_opfer_${P}`, `pv_fremd_${P}`, `pv_kind_${P}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {}));
+  const names = [`pv_opfer_${P}`, `pv_fremd_${P}`, `pv_kind_${P}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
+  t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [names]).catch(() => {}));
   const hash = await bcrypt.hash('altes-Passwort-17', 4);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push(
       (
         await db.get(
@@ -105,15 +105,15 @@ test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   });
   await t.test('the pending address change is discarded', async () => {
     const z = await db.get('SELECT email, new_email, new_email_token FROM users WHERE id = $1', [V]);
-    assert.deepEqual(z, { email: `${namen[0]}@example.org`, new_email: null, new_email_token: null });
+    assert.deepEqual(z, { email: `${names[0]}@example.org`, new_email: null, new_email_token: null });
   });
   await t.test('the mail names what was removed', async () => {
-    const an = () => gesendet.find(m => m.to === `${namen[0]}@example.org` && /zurückgesetzt/.test(m.text));
-    assert.ok(await bis(() => !!an(), 10_000), 'no mail to the account');
+    const an = () => sent.find(m => m.to === `${names[0]}@example.org` && /zurückgesetzt/.test(m.text));
+    assert.ok(await until(() => !!an(), 10_000), 'no mail to the account');
     const text = an().text;
-    assert.match(text, new RegExp(`„${namen[1]}“`), 'the detached main account is missing');
+    assert.match(text, new RegExp(`„${names[1]}“`), 'the detached main account is missing');
     assert.match(text, new RegExp(`boese-${P}@example\\.org`), 'the discarded address is missing');
     assert.match(text, /1 offene Haushaltseinladung/);
-    assert.doesNotMatch(text, new RegExp(namen[2]), 'the own sub-account is not detached');
+    assert.doesNotMatch(text, new RegExp(names[2]), 'the own sub-account is not detached');
   });
 });

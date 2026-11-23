@@ -114,12 +114,12 @@ test('429: waits as told, throttles the foreground and tries again', async t => 
   // Three times 429 (fallback wait 5 s, set clock instead of waiting): the status stays.
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
-  const lauf = k.httpsGetRobust('https://rebrickable.com/api/v3/lego/sets/immer-1/', { Authorization: 'key x' });
+  const run = k.httpsGetRobust('https://rebrickable.com/api/v3/lego/sets/immer-1/', { Authorization: 'key x' });
   while (z.seen.throttled.length < 4) {
     await new Promise(r => setImmediate(r));
     mock.timers.tick(5000);
   }
-  assert.deepEqual(await lauf, { status: 429, body: '', buffer: Buffer.alloc(0) });
+  assert.deepEqual(await run, { status: 429, body: '', buffer: Buffer.alloc(0) });
   assert.deepEqual(z.seen.throttled.slice(1), [5000, 5000, 5000]);
   assert.equal(rb.parseThrottleWait('{"detail": "Expected available in 3 seconds."}'), 3500);
 });
@@ -165,13 +165,13 @@ test('a foreign `next` does not get the key', async t => {
   page.next = 'https://example.org/stiehlt-den-schluessel/?page=2';
   const stub = await httpsStub(t, byPath({ [`${API}/sets/10294-1/parts/`]: [200, page] }));
   // fetch.ts would refuse the host as well; the client must not even try, and says why.
-  const gemeldet = [];
-  t.mock.method(console, 'error', (...a) => gemeldet.push(a.join(' ')));
+  const reported = [];
+  t.mock.method(console, 'error', (...a) => reported.push(a.join(' ')));
   const { parts } = await rb.createRebrickable(clientsAccess()).fetchSetParts('10294-1');
   assert.equal(parts.length, 2);
   assert.ok(
-    gemeldet.some(z => /next zeigt auf einen fremden Host, 10294-1 bleibt unvollständig/.test(z)),
-    gemeldet.join('\n'),
+    reported.some(z => /next zeigt auf einen fremden Host, 10294-1 bleibt unvollständig/.test(z)),
+    reported.join('\n'),
   );
   assert.deepEqual(
     stub.calls.map(c => c.host),
@@ -210,8 +210,8 @@ test('minifigs of a set, a minifig, its parts', async t => {
     { part_num: '3003', color_id: 15, quantity: 1, bl_part_num: '3003' },
   ]);
   assert.equal(await k.fetchMinifigParts('fig-999999'), null);
-  const ohne = rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } }));
-  assert.deepEqual([await ohne.getSetMinifigs('10294-1'), await ohne.fetchMinifigParts('fig-1')], [[], null]);
+  const without = rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } }));
+  assert.deepEqual([await without.getSetMinifigs('10294-1'), await without.fetchMinifigParts('fig-1')], [[], null]);
   assert.equal(await rb.createRebrickable(clientsAccess({ allowed: false })).fetchMinifigParts('fig-1'), null);
 });
 
@@ -229,9 +229,9 @@ test('colors once per client; a part with its image in the chosen color', async 
     }),
   );
   const k = rb.createRebrickable(clientsAccess());
-  const farben = await k.getBrickColors();
-  assert.deepEqual(farben[1], { id: 15, name: 'White', hex: 'FFFFFF' });
-  assert.equal(await k.getBrickColors(), farben);
+  const colors = await k.getBrickColors();
+  assert.deepEqual(colors[1], { id: 15, name: 'White', hex: 'FFFFFF' });
+  assert.equal(await k.getBrickColors(), colors);
   assert.equal(stub.calls.filter(c => c.path.startsWith(`${API}/colors/`)).length, 1);
   assert.deepEqual(await k.lookupPart('3001', 15), {
     part_name: 'Brick 2 x 4',
@@ -242,8 +242,8 @@ test('colors once per client; a part with its image in the chosen color', async 
   assert.equal((await k.lookupPart('3001', 4)).image_url, 'https://cdn.rebrickable.com/media/parts/3001.png');
   assert.equal((await k.lookupPart('3001', null)).image_url, 'https://cdn.rebrickable.com/media/parts/3001.png');
   assert.equal(await k.lookupPart('9999', 15), null);
-  const ohne = rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } }));
-  assert.deepEqual([await ohne.getBrickColors(), await ohne.lookupPart('3001')], [[], null]);
+  const without = rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } }));
+  assert.deepEqual([await without.getBrickColors(), await without.lookupPart('3001')], [[], null]);
 });
 
 test('BrickLink → Rebrickable: only a proven number', async t => {
@@ -302,33 +302,33 @@ test('a dropped connection is retried, the third drop is thrown', async t => {
   n = -10;
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
-  const lauf = k.httpsGetRobust('https://rebrickable.com/api/v3/x/', {}, 5000);
-  const erwartet = assert.rejects(lauf, (/** @type {any} */ err) => err.isTransient === true);
+  const run = k.httpsGetRobust('https://rebrickable.com/api/v3/x/', {}, 5000);
+  const expected = assert.rejects(run, (/** @type {any} */ err) => err.isTransient === true);
   while (stub.calls.length < 5) {
     await new Promise(r => setImmediate(r));
     mock.timers.tick(1500);
   }
-  await erwartet;
+  await expected;
 });
 
 test('a hanging Rebrickable ends at the deadline: null for rebrickableJson', async t => {
   const stub = await httpsStub(t, () => {});
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
-  const lauf = rb.createRebrickable(clientsAccess()).rebrickableJson('/lego/sets/10294-1/', RbSet);
-  let fertig = false;
-  void lauf.then(() => {
-    fertig = true;
+  const run = rb.createRebrickable(clientsAccess()).rebrickableJson('/lego/sets/10294-1/', RbSet);
+  let done = false;
+  void run.then(() => {
+    done = true;
   });
   // Three attempts of 8 s, between them 1.5 s; the clock only moves once a request is out.
   await stub.nextCall();
-  while (!fertig) {
+  while (!done) {
     mock.timers.tick(8000);
     await new Promise(r => setImmediate(r));
     mock.timers.tick(1500);
     await new Promise(r => setImmediate(r));
   }
-  assert.equal(await lauf, null);
+  assert.equal(await run, null);
   assert.ok(stub.calls.length >= 1 && stub.calls.length <= 3, `${stub.calls.length} requests`);
 });
 
@@ -357,20 +357,20 @@ test('downloads: only allowed hosts, only complete files with the right start', 
   );
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rb-download-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const ziel = n => path.join(dir, 'unter', n);
+  const target = n => path.join(dir, 'unter', n);
   const PDF = Buffer.from('%PDF-');
   const cdn = n => `https://cdn.rebrickable.com/media/instructions/${n}`;
-  assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf'), undefined, PDF), true);
-  assert.deepEqual(fs.readFileSync(ziel('ok.pdf')), pdf);
-  assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf')), true, 'already there');
+  assert.equal(await rb.downloadFile(cdn('ok.pdf'), target('ok.pdf'), undefined, PDF), true);
+  assert.deepEqual(fs.readFileSync(target('ok.pdf')), pdf);
+  assert.equal(await rb.downloadFile(cdn('ok.pdf'), target('ok.pdf')), true, 'already there');
   for (const [n, max] of /** @type {[string, number | undefined][]} */ ([
     ['klein.pdf', undefined],
     ['falsch.pdf', undefined],
     ['fehlt.pdf', undefined],
     ['gross.pdf', 1000],
   ])) {
-    assert.equal(await rb.downloadFile(cdn(n), ziel(n), max, PDF), false, n);
-    assert.equal(fs.existsSync(ziel(n)), false, `${n} stays behind`);
+    assert.equal(await rb.downloadFile(cdn(n), target(n), max, PDF), false, n);
+    assert.equal(fs.existsSync(target(n)), false, `${n} stays behind`);
   }
-  assert.equal(await rb.downloadFile('https://example.org/x.pdf', ziel('fremd.pdf')), false);
+  assert.equal(await rb.downloadFile('https://example.org/x.pdf', target('fremd.pdf')), false);
 });

@@ -32,13 +32,13 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end();
   });
-  const [MIXED, REIN, REMEMBERED, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
-  for (const sn of [MIXED, REIN, REMEMBERED]) await catalogSet(db, sn, { name: 'Probe' });
+  const [MIXED, IN, REMEMBERED, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
+  for (const sn of [MIXED, IN, REMEMBERED]) await catalogSet(db, sn, { name: 'Probe' });
   const { bookEntry } = _req('src/sets/addSet.js');
   for (const [sn, z] of [
     [MIXED, 'N'],
     [MIXED, 'U'],
-    [REIN, 'U'],
+    [IN, 'U'],
   ]) {
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2) ON CONFLICT DO NOTHING', [uid, sn]);
     await bookEntry(require('./helpers/sources').testContext('sets'), {
@@ -53,13 +53,13 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
   const { statesPerSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
   const sortedList = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
 
-  const z = sortedList(await statesPerSet(uid, [MIXED, REIN, REMEMBERED, FREMD]));
+  const z = sortedList(await statesPerSet(uid, [MIXED, IN, REMEMBERED, FREMD]));
 
   await t.test('a mixed set needs both prices', () => assert.deepEqual(z[MIXED], ['N', 'U']));
-  await t.test('a pure set costs only one request', () => assert.deepEqual(z[REIN], ['U']));
+  await t.test('a pure set costs only one request', () => assert.deepEqual(z[IN], ['U']));
   await t.test('a remembered used condition counts as well', () => assert.deepEqual(z[REMEMBERED], ['U']));
   await t.test('without an entry and pending item, new applies', () => assert.deepEqual(z[FREMD], ['N']));
   await t.test('the condition of a not yet written entry counts', async () => {
-    assert.deepEqual((await conditionsNeededFor(REIN, uid, 'N')).sort(), ['N', 'U']);
+    assert.deepEqual((await conditionsNeededFor(IN, uid, 'N')).sort(), ['N', 'U']);
   });
 });

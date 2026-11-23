@@ -26,8 +26,8 @@ test('foreign uploads', () => {
 });
 
 test('out of the image folder', () => {
-  for (const weg of ['/images/../uploads/7/a.png', '/images/../../package.json', '/images/parts/../../../etc/passwd'])
-    assert.equal(pdfImagePath({ image_local: weg }), null, weg);
+  for (const route of ['/images/../uploads/7/a.png', '/images/../../package.json', '/images/parts/../../../etc/passwd'])
+    assert.equal(pdfImagePath({ image_local: route }), null, route);
   assert.ok(!String(pdfImagePath({ image_local: '/images/sets/a.png' })).startsWith(path.join(DATA_DIR, 'uploads')));
 });
 

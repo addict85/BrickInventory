@@ -44,7 +44,7 @@ test("the app's currency parameter does NOT override the user setting", { concur
     [SET],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const hole = async query => {
     const r = await fetch(`${base}/api/v2/sets/${SET}/price${query}`);

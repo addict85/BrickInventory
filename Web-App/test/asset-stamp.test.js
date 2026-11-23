@@ -30,9 +30,9 @@ const _req = buildAndRequire();
 const { stampAssets, fileStamp } = _req('src/infra/assetStamp.js');
 
 /** A throwaway directory with a file in it. */
-function build(inhalt) {
+function build(content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-'));
-  fs.writeFileSync(path.join(dir, 'a.css'), inhalt);
+  fs.writeFileSync(path.join(dir, 'a.css'), content);
   return dir;
 }
 const HTML = '<link rel="stylesheet" href="/a.css?v=alt">';
@@ -41,14 +41,14 @@ const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
-    const vorher = stampFrom(stampAssets(HTML, dir));
-    assert.ok(vorher && vorher !== 'alt', `No stamp set: ${vorher}`);
+    const prior = stampFrom(stampAssets(HTML, dir));
+    assert.ok(prior && prior !== 'alt', `No stamp set: ${prior}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
-    const nachher = stampFrom(stampAssets(HTML, dir));
+    const later = stampFrom(stampAssets(HTML, dir));
     assert.notEqual(
-      nachher,
-      vorher,
+      later,
+      prior,
       'After the change the same address is there — then every browser keeps ' +
         'its old copy for up to seven days. That was exactly Marco’s finding.',
     );
@@ -60,7 +60,7 @@ test('a changed file gets a new address', () => {
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
     assert.notEqual(
       stampFrom(stampAssets(HTML, dir)),
-      nachher,
+      later,
       'With the same modification time but a different size the address stays ' +
         'the same — then the size is missing in the stamp.',
     );
@@ -110,8 +110,8 @@ test('a missing file leaves the existing value in place', () => {
 test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
-    const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stampAssets(roh, dir), roh, 'A deliberately unversioned reference was touched.');
+    const raw = '<link href="/a.css"><script src="/b.js"></script>';
+    assert.equal(stampAssets(raw, dir), raw, 'A deliberately unversioned reference was touched.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

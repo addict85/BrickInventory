@@ -22,7 +22,7 @@ const _req = buildAndRequire();
 const db = testData();
 const { holdsSet, record } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('readSets delivers the last purchase', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -33,8 +33,8 @@ test('readSets delivers the last purchase', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await holdsSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
-  await record(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
+  await holdsSet(db, uid, '10300-1', 1, { price: 199, am: '2024-03-02T10:00:00Z' });
+  await record(db, uid, '10300-1', 1, { price: 210, am: '2025-07-14T10:00:00Z' });
   const { readSets } = require('./helpers/sources').areaPage('sets');
   const { sets } = await readSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
@@ -64,12 +64,12 @@ test('the tile shows the purchase date', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await warte(() => d.querySelector('.sc .tile-date'));
-    const datum = d.querySelector('.sc .tile-date');
-    assert.ok(datum, 'no date on the tile');
+    await waitFor(() => d.querySelector('.sc .tile-date'));
+    const date = d.querySelector('.sc .tile-date');
+    assert.ok(date, 'no date on the tile');
     // One notation for all dates (fmtDatum): two digits, since 29.10.
-    assert.match(datum.textContent, /14\.07\.2025/);
-    assert.match(datum.textContent, /Gekauft/); // visibly labeled (L3), „Gekauft am“ in the title
+    assert.match(date.textContent, /14\.07\.2025/);
+    assert.match(date.textContent, /Gekauft/); // visibly labeled (L3), „Gekauft am“ in the title
   } finally {
     w.close();
   }

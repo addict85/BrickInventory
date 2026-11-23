@@ -30,18 +30,18 @@ const MAINTENANCE = 'https://maintenance.bricklink.com:443/recovery.html';
 
 /** Every request to BrickLink answers as during maintenance. */
 function maintenanceFake(t) {
-  const aufrufe = [];
+  const calls = [];
   t.mock.method(https, 'get', (url, _o, atResponse) => {
-    aufrufe.push(String(url));
-    const anfrage = Object.assign(new EventEmitter(), { destroy() {} });
+    calls.push(String(url));
+    const request = Object.assign(new EventEmitter(), { destroy() {} });
     const response = Object.assign(new PassThrough(), { statusCode: 302, headers: { location: MAINTENANCE } });
     setImmediate(() => {
       atResponse(response);
       response.end();
     });
-    return anfrage;
+    return request;
   });
-  return aufrufe;
+  return calls;
 }
 
 test('BrickLink in maintenance', { concurrency: 1 }, async t => {
@@ -77,14 +77,14 @@ test('BrickLink in maintenance', { concurrency: 1 }, async t => {
     ).id;
     for (const sn of ['10305-1', '21318-1', '75192-1']) await holdsSet(db, uid, sn);
     await setGlobalSetting('bricklink_consumer_key', 'schluessel');
-    const zeilen = [];
+    const lines = [];
     t.mock.method(console, 'log', (...parts) => {
-      zeilen.push(parts.join(' '));
+      lines.push(parts.join(' '));
     });
     await runPriceRefresh();
     t.mock.restoreAll();
-    assert.equal(zeilen.filter(z => /nicht erreichbar \(Wartung\)/.test(z)).length, 1, zeilen.join('\n'));
-    assert.equal(zeilen.filter(z => /Error /.test(z)).length, 0, zeilen.join('\n'));
-    assert.match(zeilen.find(z => z.includes('Done:')) ?? '', /wegen BrickLink nicht erreichbar ausgelassen/);
+    assert.equal(lines.filter(z => /nicht erreichbar \(Wartung\)/.test(z)).length, 1, lines.join('\n'));
+    assert.equal(lines.filter(z => /Error /.test(z)).length, 0, lines.join('\n'));
+    assert.match(lines.find(z => z.includes('Done:')) ?? '', /wegen BrickLink nicht erreichbar ausgelassen/);
   });
 });

@@ -24,14 +24,14 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 require('./helpers/sources').buildAndRequire();
 const { noDb } = require('./helpers/db');
-const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+const mod = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 const { inSystemContext, asRequest } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'accountContext.js'));
 
 const PID = 'SELECT pg_backend_pid() AS p';
 
 test('queries next to a transaction', { concurrency: 1 }, async t => {
-  const k = modul.dbConfigFromEnvironment();
-  const db = modul.createDb({ ...k, system: { ...k.connection } });
+  const k = mod.dbConfigFromEnvironment();
+  const db = mod.createDb({ ...k, system: { ...k.connection } });
   try {
     await db.get(PID);
   } catch (e) {
@@ -41,21 +41,21 @@ test('queries next to a transaction', { concurrency: 1 }, async t => {
   }
   t.after(() => db.pool.end());
   assert.notEqual(db.systemPool, db.pool, 'without its own system pool the test checked nothing');
-  const konto = f => asRequest({ tokenUserId: 1 }, f);
+  const account = f => asRequest({ tokenUserId: 1 }, f);
 
   await t.test('system frame within an account transaction is rejected', async () => {
-    await konto(() =>
+    await account(() =>
       db.transaction(async tx => {
-        const eigene = (await tx.get(PID)).p;
+        const owned = (await tx.get(PID)).p;
         await assert.rejects(
           inSystemContext('probe', () => db.get(PID)),
-          e => e instanceof modul.BesideTheTransaction && /vor der Transaktion/.test(String(e)),
+          e => e instanceof mod.BesideTheTransaction && /vor der Transaktion/.test(String(e)),
         );
         await assert.rejects(
           inSystemContext('probe', () => db.transaction(inner => inner.get(PID))),
-          modul.BesideTheTransaction,
+          mod.BesideTheTransaction,
         );
-        assert.equal((await tx.get(PID)).p, eigene, 'the transaction stays usable');
+        assert.equal((await tx.get(PID)).p, owned, 'the transaction stays usable');
       }),
     );
   });
@@ -64,8 +64,8 @@ test('queries next to a transaction', { concurrency: 1 }, async t => {
     await inSystemContext('probe', () =>
       db.transaction(async () => {
         await assert.rejects(
-          konto(() => db.get(PID)),
-          modul.BesideTheTransaction,
+          account(() => db.get(PID)),
+          mod.BesideTheTransaction,
         );
       }),
     );
@@ -74,16 +74,16 @@ test('queries next to a transaction', { concurrency: 1 }, async t => {
   await t.test('frame chosen before the transaction: everything goes via tx, the unbound access throws', async () => {
     await inSystemContext('probe', () =>
       db.transaction(async tx => {
-        const eigene = (await tx.get(PID)).p;
-        await assert.rejects(db.get(PID), modul.UnboundQuery);
-        assert.equal((await tx.get(PID)).p, eigene);
+        const owned = (await tx.get(PID)).p;
+        await assert.rejects(db.get(PID), mod.UnboundQuery);
+        assert.equal((await tx.get(PID)).p, owned);
       }),
     );
   });
 
   await t.test('inTransaction tells the truth even after the switch, instead of throwing', async () => {
     assert.equal(db.inTransaction(), false);
-    await konto(() =>
+    await account(() =>
       db.transaction(async () => {
         assert.equal(db.inTransaction(), true);
         assert.equal(

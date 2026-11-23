@@ -25,24 +25,24 @@ const USER_DATA = [
 
 test('no silent catch on a write operation with user data', () => {
   /** @type {string[]} */
-  const dateien = [];
+  const files = [];
   const collect = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', '.git', 'dist', 'coverage', 'public', 'test'].includes(e.name)) continue;
       const p = path.join(d, e.name);
       if (e.isDirectory()) collect(p);
-      else if (e.name.endsWith('.ts')) dateien.push(p);
+      else if (e.name.endsWith('.ts')) files.push(p);
     }
   };
   collect(ROOT);
-  assert.ok(dateien.length >= 60, `only ${dateien.length} files found — the path is wrong`);
+  assert.ok(files.length >= 60, `only ${files.length} files found — the path is wrong`);
 
   // Why parentheses are matched here instead of just reading a window
   const call = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillAfterwards = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
-  const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${USER_DATA.join('|')})\\b`, 'i');
+  const write = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${USER_DATA.join('|')})\\b`, 'i');
 
-  const ohneKommentare = src =>
+  const withoutComments = src =>
     src
       .split('\n')
       .map(z => {
@@ -52,9 +52,9 @@ test('no silent catch on a write operation with user data', () => {
       .join('\n');
 
   const violations = [];
-  let geprueft = 0;
-  for (const datei of dateien) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  let checked = 0;
+  for (const file of files) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(call)) {
       // Up to the closing parenthesis of the call
       let depth = 1,
@@ -66,18 +66,18 @@ test('no silent catch on a write operation with user data', () => {
         i++;
       }
       const instruction = src.slice(m.index, i);
-      if (!schreib.test(instruction)) continue;
-      geprueft++;
+      if (!write.test(instruction)) continue;
+      checked++;
       if (stillAfterwards.test(src.slice(i, i + 90))) {
         const row = src.slice(0, m.index).split('\n').length;
-        violations.push(`${path.relative(ROOT, datei)}:${row}`);
+        violations.push(`${path.relative(ROOT, file)}:${row}`);
       }
     }
   }
 
   // Self-proof: if the pattern finds no writing calls on these
   // tables, an empty result says nothing.
-  assert.ok(geprueft >= 30, `only ${geprueft} writing calls on user data found — pattern outdated`);
+  assert.ok(checked >= 30, `only ${checked} writing calls on user data found — pattern outdated`);
 
   assert.deepEqual(
     violations,
@@ -85,6 +85,6 @@ test('no silent catch on a write operation with user data', () => {
     'These writes to user data fail without a trace:\n  ' +
       violations.join('\n  ') +
       '\nEither pass the error on (no catch at all) or log it with ' +
-      'logAndContinue(kontext).',
+      'logAndContinue(context).',
   );
 });

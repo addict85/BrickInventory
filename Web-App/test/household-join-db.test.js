@@ -41,7 +41,7 @@ test('join household', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND, MAIN2]]);
   const hash = await bcrypt.hash(PASS, 4);
-  const anlegen = async n =>
+  const create = async n =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -49,9 +49,9 @@ test('join household', { concurrency: 1 }, async t => {
         [n, `${n}@example.org`, hash],
       )
     ).id;
-  const haupt = await anlegen(MAIN),
-    kind = await anlegen(KIND),
-    main2 = await anlegen(MAIN2);
+  const main = await create(MAIN),
+    kind = await create(KIND),
+    main2 = await create(MAIN2);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   const checkCounter = () =>
     db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`haushalt-pruefen|konto:${kind}`]);
@@ -59,7 +59,7 @@ test('join household', { concurrency: 1 }, async t => {
   t.after(async () => {
     await checkCounter();
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${kind}|%`]);
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, main2]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[main, kind, main2]]);
     await db.pool.end().catch(() => {});
   });
   const { createInvitation } = {
@@ -67,7 +67,7 @@ test('join household', { concurrency: 1 }, async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const { base } = testServer(_req, { sitzung: { userId: kind }, t });
+  const { base } = testServer(_req, { session: { userId: kind }, t });
   const redeemIt = body =>
     fetch(`${base}/api/v2/settings/household/redeem`, {
       method: 'POST',
@@ -75,27 +75,27 @@ test('join household', { concurrency: 1 }, async t => {
       body: JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
   const linkedOne = async () =>
-    !!(await db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [haupt, kind]));
+    !!(await db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, kind]));
 
   await t.test('checking a code is throttled per account', async () => {
-    const { code } = await createInvitation(haupt);
-    const pruefe = () =>
+    const { code } = await createInvitation(main);
+    const check = () =>
       fetch(`${base}/api/v2/settings/household/redeem/check`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ code }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
-    const erste = await pruefe();
-    assert.deepEqual([erste.status, erste.body.inviter?.username], [200, MAIN], JSON.stringify(erste.body));
-    for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Check ${i + 1}`);
-    const r = await pruefe();
+    const first = await check();
+    assert.deepEqual([first.status, first.body.inviter?.username], [200, MAIN], JSON.stringify(first.body));
+    for (let i = 1; i < 30; i++) assert.equal((await check()).status, 200, `Check ${i + 1}`);
+    const r = await check();
     assert.deepEqual([r.status, r.body.code], [429, 'too_many_requests'], JSON.stringify(r.body));
     assert.equal(r.body.inviter, undefined, 'when throttled the response names nobody');
     await checkCounter();
   });
 
   await t.test('no link without password', async () => {
-    const { code } = await createInvitation(haupt);
+    const { code } = await createInvitation(main);
     for (const body of [{ code }, { code, password: 'falsch' }]) {
       const r = await redeemIt(body);
       assert.equal(r.status, 400, JSON.stringify(r.body));
@@ -105,54 +105,54 @@ test('join household', { concurrency: 1 }, async t => {
   });
 
   await t.test('linked with password, and the owner learns about it', async () => {
-    const { code } = await createInvitation(haupt);
-    const zeilen = [];
-    const echt = console.log;
+    const { code } = await createInvitation(main);
+    const lines = [];
+    const original = console.log;
     console.log = (...a) => {
-      zeilen.push(a.join(' '));
+      lines.push(a.join(' '));
     };
     let r;
     try {
       r = await redeemIt({ code, password: PASS });
-      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+      for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
-      console.log = echt;
+      console.log = original;
     }
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await linkedOne(), true);
     // The console lands in app_logs: the address only stands there masked.
     assert.ok(
-      zeilen.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)),
-      zeilen.join('\n'),
+      lines.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)),
+      lines.join('\n'),
     );
-    assert.ok(!zeilen.some(z => z.includes(`${KIND}@`)), 'the full address is in the log');
+    assert.ok(!lines.some(z => z.includes(`${KIND}@`)), 'the full address is in the log');
     assert.ok(
-      zeilen.some(z => /Haushalt/.test(z)),
+      lines.some(z => /Haushalt/.test(z)),
       'Subject is missing',
     );
   });
 
   await t.test('with a second factor the code is needed too', async () => {
     const zf = _req('src/factors/secondFactor.js');
-    const geheim = await zf.beginSetup(kind);
-    const codes = await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));
+    const secret = await zf.beginSetup(kind);
+    const codes = await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(secret), zf.timeStep()));
     const { code } = await createInvitation(main2);
-    const ohne = await redeemIt({ code, password: PASS });
-    assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
-    assert.equal(ohne.body.code, 'second_factor_required');
+    const without = await redeemIt({ code, password: PASS });
+    assert.equal(without.status, 400, JSON.stringify(without.body));
+    assert.equal(without.body.code, 'second_factor_required');
     // Wait for the hint mail: written to stdout late, it disturbs the test run.
-    const zeilen = [],
-      echt = console.log;
+    const lines = [],
+      original = console.log;
     console.log = (...a) => {
-      zeilen.push(a.join(' '));
+      lines.push(a.join(' '));
     };
-    let mit;
+    let withIt;
     try {
-      mit = await redeemIt({ code, password: PASS, factor_code: codes[0] });
-      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+      withIt = await redeemIt({ code, password: PASS, factor_code: codes[0] });
+      for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
-      console.log = echt;
+      console.log = original;
     }
-    assert.equal(mit.status, 200, JSON.stringify(mit.body));
+    assert.equal(withIt.status, 200, JSON.stringify(withIt.body));
   });
 });

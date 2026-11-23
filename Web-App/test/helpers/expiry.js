@@ -4,14 +4,14 @@
  * open. Since Node 26 --test-timeout only aborts tests, not the file; the
  * runner would otherwise wait for the child until CI aborts the whole job.
  */
-if (process.env.NODE_TEST_CONTEXT === 'child-v8' && !process.env.TEST_AUSLAUF_AKTIV) {
-  process.env.TEST_AUSLAUF_AKTIV = '1';
+if (process.env.NODE_TEST_CONTEXT === 'child-v8' && !process.env.TEST_EXPIRY_ACTIVE) {
+  process.env.TEST_EXPIRY_ACTIVE = '1';
   const path = require('node:path');
-  const datei = path.relative(process.cwd(), process.argv[1] ?? '?');
-  const afterLastTest = Number(process.env.TEST_AUSLAUF_MS) || 30_000;
+  const file = path.relative(process.cwd(), process.argv[1] ?? '?');
+  const afterLastTest = Number(process.env.TEST_EXPIRY_MS) || 30_000;
   const total = Number(process.env.TEST_FILE_DEADLINE_MS) || 0;
   const finish = (/** @type {string} */ reason) => {
-    process.stderr.write(`[auslauf] ${datei}: ${reason} — offen: ${process.getActiveResourcesInfo().join(', ')}\n`);
+    process.stderr.write(`[auslauf] ${file}: ${reason} — offen: ${process.getActiveResourcesInfo().join(', ')}\n`);
     process.exit(1);
   };
   require('node:test').after(() => {

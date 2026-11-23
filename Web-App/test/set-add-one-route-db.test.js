@@ -27,14 +27,14 @@ const { dataOrSkip } = require('./helpers/db');
 test('add a set: one path for input and import', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const netz = [];
+  const net = [];
   testSources(t, {
     holeSet: async sn => {
-      netz.push(sn);
+      net.push(sn);
       return null;
     },
     setDetails: async sn => {
-      netz.push(sn);
+      net.push(sn);
       return null;
     },
   });
@@ -46,7 +46,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
   const SN = `${60000 + (P % 9000)}-1`,
     FREMD = `${50000 + (P % 9000)}-1`;
   const FUNCTION_NAME = `einweg_sperre_${P}`;
-  const weg = async () => {
+  const route = async () => {
     await db.exec(`DROP TRIGGER IF EXISTS ${FUNCTION_NAME} ON jobs; DROP FUNCTION IF EXISTS ${FUNCTION_NAME}();`);
     for (const sn of [SN, FREMD]) {
       await db.run("DELETE FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [sn]);
@@ -54,15 +54,15 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
     }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND]]);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg();
+    await route();
     await db.pool.end().catch(() => {});
   });
-  const neu = async n =>
+  const fresh = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
-  const h = await neu(MAIN),
-    k = await neu(KIND);
+  const h = await fresh(MAIN),
+    k = await fresh(KIND);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [h, k]);
   const quantity = async (uid, sn) =>
     (
@@ -82,12 +82,12 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
       rework: 'csv',
     });
     assert.equal(r.action, 'added');
-    const auftrag = await db.get(
+    const job = await db.get(
       "SELECT payload->>'kind' AS type FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1",
       [SN],
     );
-    assert.equal(auftrag?.type, 'csv');
-    assert.deepEqual(netz, []);
+    assert.equal(job?.type, 'csv');
+    assert.deepEqual(net, []);
   });
 
   await t.test('an import tops up at the owner, without network', async () => {
@@ -102,7 +102,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
     const r = await record(h, { setNumber: SN, quantity: 2, ifPresent: 'aufstocken' });
     assert.equal(r.action, 'updated');
     assert.equal(await quantity(h, SN), 3);
-    assert.deepEqual(netz, [], 'no network during import');
+    assert.deepEqual(net, [], 'no network during import');
   });
 
   await t.test('an import without a location leaves the storage location alone', async () => {

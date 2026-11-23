@@ -44,8 +44,8 @@ test('secrets only as files under /run/secrets', t => {
     t.skip(`no docker compose: ${error}`);
     return;
   }
-  const dienste = Object.keys(j.services).sort();
-  assert.deepEqual(dienste, [
+  const services = Object.keys(j.services).sort();
+  assert.deepEqual(services, [
     'app',
     'caddy',
     'caddy-rechte',
@@ -56,7 +56,7 @@ test('secrets only as files under /run/secrets', t => {
     'postgres',
     'schluessel',
   ]);
-  let dateien = 0;
+  let files = 0;
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};
     const suspicious = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
@@ -65,10 +65,10 @@ test('secrets only as files under /run/secrets', t => {
     for (const [k, v] of Object.entries(env).filter(
       ([k]) => k.endsWith('_FILE') && !['DATA_KEY_FILE', 'DATA_KEY_ALT_FILE'].includes(k),
     )) {
-      dateien++;
+      files++;
       assert.ok(mounted.includes(v), `${name}: ${k} points to a secret that is not mounted (${v})`);
     }
   }
-  assert.ok(dateien >= 8, `only ${dateien} *_FILE entries — does the test still read the right file?`);
+  assert.ok(files >= 8, `only ${files} *_FILE entries — does the test still read the right file?`);
   for (const s of Object.values(j.secrets)) assert.match(s.file, /[\\/]geheimnisse[\\/][a-z_]+$/);
 });

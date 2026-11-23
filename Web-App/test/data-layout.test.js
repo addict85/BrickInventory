@@ -15,7 +15,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 // otherwise opened a comment for it up to the next comment end.
 const strip = s =>
   require('./helpers/sources')
-    .ohneKommentare(s)
+    .withoutComments(s)
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 /** All source files that could write paths. */
@@ -56,7 +56,7 @@ test('part and figure images land in separate folders', async t => {
   const https = require('node:https');
   const { Readable } = require('node:stream');
   const { EventEmitter } = require('node:events');
-  const echt = https.get;
+  const original = https.get;
   /** @type {any} */ (https).get = (_a, _o, cb) => {
     const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
     setImmediate(() =>
@@ -71,7 +71,7 @@ test('part and figure images land in separate folders', async t => {
   };
   const NUM = `ordnertest${process.pid}`;
   t.after(() => {
-    https.get = echt;
+    https.get = original;
     for (const d of [PART_IMAGES_DIR, MINIFIG_IMAGES_DIR]) fs.rmSync(path.join(d, `${NUM}_0.png`), { force: true });
   });
   const cdn = 'https://cdn.rebrickable.com/media/x.png';
@@ -94,11 +94,7 @@ test('part and figure images land in separate folders', async t => {
 test('there is no backward compatibility for the old paths any more', () => {
   // deliberate decision
   const src = read('server.ts');
-  assert.doesNotMatch(
-    src,
-    /app\.get\([^)]*['"`]\/data\/part_images/,
-    'Weiterleitung für den alten Bildpfad ist wieder da',
-  );
+  assert.doesNotMatch(src, /app\.get\([^)]*['"`]\/data\/part_images/, 'The redirect for the old image path is back');
   assert.doesNotMatch(src, /app\.get\([^)]*instructions\/shared/, 'The redirect for the old instruction path is back');
 
   const paths = read('src/infra/appPaths.ts');

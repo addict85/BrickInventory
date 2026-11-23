@@ -19,23 +19,23 @@ test('wishlist: CSV import into the selected account', { timeout: 120_000 }, asy
     t.skip(app.reason);
     return;
   }
-  const { b, bis, db, ruhig } = app;
+  const { b, until, db, settle } = app;
   // The startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
+  await settle();
   const kid = (await db.get('SELECT id FROM users WHERE username = $1', [`mkcsv_${process.pid}_kind`])).id;
-  await b.auswerten(`location.hash = '#/merkliste'; true`);
+  await b.evaluate(`location.hash = '#/merkliste'; true`);
   // The account field appears as soon as the household members are loaded.
-  await bis(
+  await until(
     `[...document.querySelectorAll('#mk-owner option')].some(o => o.value === '${kid}')
     && getComputedStyle(document.getElementById('mk-owner-box')).display !== 'none'`,
     'Konto-Feld',
   );
   // Intercept the upload instead of sending it to the server: what is checked is what the UI sends.
-  await b.auswerten(`(() => {
-    const echt = window.fetch.bind(window);
+  await b.evaluate(`(() => {
+    const original = window.fetch.bind(window);
     window.__upload = null;
     window.fetch = (url, o) => {
-      if (!String(url).includes('/v2/wanted/import/csv')) return echt(url, o);
+      if (!String(url).includes('/v2/wanted/import/csv')) return original(url, o);
       window.__upload = Object.fromEntries([...o.body.entries()].filter(([k]) => k !== 'file'));
       return Promise.resolve(new Response(JSON.stringify({ success: true, total: 0, added: 0, skipped: 0 }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }));
@@ -46,10 +46,6 @@ test('wishlist: CSV import into the selected account', { timeout: 120_000 }, asy
     feld.files = dt.files;
     feld.dispatchEvent(new Event('change', { bubbles: true }));
     return true; })()`);
-  await bis(`window.__upload !== null`, 'Upload gesendet');
-  assert.deepEqual(
-    await b.auswerten(`window.__upload`),
-    { owner_user_id: String(kid) },
-    'target account in the upload',
-  );
+  await until(`window.__upload !== null`, 'Upload gesendet');
+  assert.deepEqual(await b.evaluate(`window.__upload`), { owner_user_id: String(kid) }, 'target account in the upload');
 });

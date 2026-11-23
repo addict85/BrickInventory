@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 const db = testData();
 
 test('server: empty catalog', { concurrency: 1 }, async t => {
@@ -33,36 +33,36 @@ test('server: empty catalog', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end();
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const frage = async nr => (await fetch(`${base}/api/v2/catalog/sets/${nr}`)).json();
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const question = async nr => (await fetch(`${base}/api/v2/catalog/sets/${nr}`)).json();
 
   await db.run('TRUNCATE rb_sets CASCADE');
-  assert.equal((await frage('10294-1')).code, 'catalog_not_loaded', 'empty catalogue');
+  assert.equal((await question('10294-1')).code, 'catalog_not_loaded', 'empty catalogue');
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts) VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541)`,
   );
-  assert.equal((await frage('10294-1')).code, 'set_not_in_catalog', 'loaded catalogue without the number');
-  assert.equal((await frage('75192-1')).success, true, 'known number');
+  assert.equal((await question('10294-1')).code, 'set_not_in_catalog', 'loaded catalogue without the number');
+  assert.equal((await question('75192-1')).success, true, 'known number');
 });
 
 /** Opens „Set hinzufügen“, enters the number and delivers the hint below it. */
-async function versuche(antworten, nr) {
-  const o = await openUi(antworten);
+async function attempts(answers, nr) {
+  const o = await openUi(answers);
   const { d } = o;
   d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
   d.getElementById('add-num').value = nr;
   d.getElementById('btn-add').click();
-  await warte(() => !d.getElementById('add-unknown').hidden);
+  await waitFor(() => !d.getElementById('add-unknown').hidden);
   return {
     ...o,
     hint: d.getElementById('add-unknown').textContent.replace(/\s+/g, ' ').trim(),
-    knopf: d.getElementById('btn-add').textContent.trim(),
+    button: d.getElementById('btn-add').textContent.trim(),
   };
 }
 
 test('UI: set already in the collection', async () => {
   const set = { set_number: '10294-1', name: 'Titanic', quantity: 2, conditions: ['N'], instructions: [] };
-  const { w, d, aufrufe, hint, knopf } = await versuche(
+  const { w, d, calls, hint, button } = await attempts(
     {
       '/v2/sets/10294-1': { success: true, set },
       '/v2/catalog/sets/10294-1': {
@@ -76,15 +76,15 @@ test('UI: set already in the collection', async () => {
   );
   try {
     assert.match(hint, /Titanic \(10294-1\) ist schon in deiner Sammlung \(×2\)/);
-    assert.equal(knopf, 'Set öffnen');
+    assert.equal(button, 'Set öffnen');
     assert.equal(
-      aufrufe.some(a => a.url.includes('add-stream')),
+      calls.some(a => a.url.includes('add-stream')),
       false,
       'created anyway',
     );
     // A button „Set öffnen“ (UI check 17, N2): the main button.
     d.getElementById('btn-add').click();
-    assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'the set opens');
+    assert.ok(await waitFor(() => d.getElementById('set-modal').classList.contains('open')), 'the set opens');
     assert.equal(d.getElementById('add-set-modal').classList.contains('open'), false, 'the add dialog stays open');
   } finally {
     w.close();
@@ -92,7 +92,7 @@ test('UI: set already in the collection', async () => {
 });
 
 test('UI: catalog not loaded', async () => {
-  const { w, hint, knopf } = await versuche(
+  const { w, hint, button } = await attempts(
     {
       '/v2/sets/99999-1': { $status: 404, success: false, code: 'set_not_found', error: 'Set nicht gefunden' },
       '/v2/catalog/sets/99999-1': {
@@ -107,7 +107,7 @@ test('UI: catalog not loaded', async () => {
   try {
     assert.match(hint, /Set-Katalog ist noch nicht geladen/);
     assert.doesNotMatch(hint, /Nummer prüfen/);
-    assert.equal(knopf, 'Trotzdem anlegen');
+    assert.equal(button, 'Trotzdem anlegen');
   } finally {
     w.close();
   }

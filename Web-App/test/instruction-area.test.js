@@ -14,22 +14,22 @@ const express = require('express');
 const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/serveFile.js');
 const { portOf } = require('./helpers/server');
 
-const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
-fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));
-const SIZE = fs.statSync(DATEI).size;
+const FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
+fs.writeFileSync(FILE, Buffer.alloc(5000, 7));
+const SIZE = fs.statSync(FILE).size;
 
 /** Server with EXACTLY the body the instruction route in server.ts has. */
-function starte() {
+function start() {
   const app = express();
-  app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, DATEI));
-  app.get('/fehlt', (_req, res) => deliverFile(res, DATEI + '.gibtesnicht'));
+  app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, FILE));
+  app.get('/fehlt', (_req, res) => deliverFile(res, FILE + '.gibtesnicht'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${portOf(srv)}`;
   return { srv, basis };
 }
 
 test('range requests to an instruction', async t => {
-  const { srv, basis } = starte();
+  const { srv, basis } = start();
   t.after(() => srv.close());
 
   const fetchIt = async (path, range) => await fetch(basis + path, range ? { headers: { Range: range } } : undefined);

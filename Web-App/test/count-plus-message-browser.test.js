@@ -23,7 +23,7 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
     name: `plus_${process.pid}`,
     holding: async (db, uid) => {
       await catalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
-      await holdsSet(db, uid, '21318-1', 1, { preis: 224.99 });
+      await holdsSet(db, uid, '21318-1', 1, { price: 224.99 });
       await db
         .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('21318-1', 'N', 'EUR', 300, 364.32, 400, 364.32, 10, NOW()) ON CONFLICT DO NOTHING`)
@@ -34,27 +34,27 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
     t.skip(app.reason);
     return;
   }
-  const { b, bis, db, uid, ruhig } = app;
+  const { b, until, db, uid, settle } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
-  await b.auswerten(`location.hash = '#/sammlung/set/21318-1'; true`);
-  await bis(
+  await settle();
+  await b.evaluate(`location.hash = '#/sammlung/set/21318-1'; true`);
+  await until(
     `document.getElementById('set-modal')?.classList.contains('open') && !!document.getElementById('m-qty')`,
     'Set-Detail',
   );
-  await b.auswerten(`document.querySelector('#set-modal [data-click="mQtyInc"]').click(); true`);
-  await bis(
+  await b.evaluate(`document.querySelector('#set-modal [data-click="mQtyInc"]').click(); true`);
+  await until(
     `[...document.querySelectorAll('#toasts .toast')].some(x => /angelegt/.test(x.textContent))`,
     'Toast after „+“',
   );
 
   await t.test('toast names the estimated price', async () => {
-    const texte = await b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
+    const texts = await b.evaluate(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
     assert.ok(
-      texte.some(x => /Exemplar mit geschätztem Preis .*364[.,]32.* angelegt/.test(x)),
-      JSON.stringify(texte),
+      texts.some(x => /Exemplar mit geschätztem Preis .*364[.,]32.* angelegt/.test(x)),
+      JSON.stringify(texts),
     );
-    assert.ok(!texte.some(x => /^Gespeichert/.test(x.trim())), `nur „Gespeichert“: ${JSON.stringify(texte)}`);
+    assert.ok(!texts.some(x => /^Gespeichert/.test(x.trim())), `nur „Gespeichert“: ${JSON.stringify(texts)}`);
     const row = await db.get(
       `SELECT price_estimated, purchase_price FROM set_acquisitions WHERE user_id=$1 ORDER BY id DESC LIMIT 1`,
       [uid],
@@ -62,15 +62,15 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
     assert.equal(row.price_estimated, true, 'Test data: the server estimates the price');
   });
   await t.test('the purchase price list explains ≈', async () => {
-    await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'estimated row');
-    const legende = await b.auswerten(`document.querySelector('#m-acq-summary .acq-legend')?.textContent || ''`);
-    assert.match(legende, /≈ geschätzt/);
+    await until(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'estimated row');
+    const legend = await b.evaluate(`document.querySelector('#m-acq-summary .acq-legend')?.textContent || ''`);
+    assert.match(legend, /≈ geschätzt/);
   });
   await t.test('change opens the purchase prices', async () => {
-    const da = await b.auswerten(
+    const da = await b.evaluate(
       `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
     );
     assert.ok(da, 'Button „Ändern“ is missing');
-    await bis(`document.getElementById('acq-modal')?.classList.contains('open')`, 'Kaufpreis-Dialog');
+    await until(`document.getElementById('acq-modal')?.classList.contains('open')`, 'Kaufpreis-Dialog');
   });
 });

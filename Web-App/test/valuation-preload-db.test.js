@@ -28,23 +28,23 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsPart, holdsMinifig, holdsSet } = require('./helpers/inventory');
 
-const gesehen = [];
+const seen = [];
 let count = false;
 // Counted in the pools of the app (runtime, system and web system role), not in the access of the test data.
-const zugang = require('./helpers/sources').testAccess();
-const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
+const access = require('./helpers/sources').testAccess();
+const pools = [...new Set([access.pool, access.systemPool, access.systemWebPool])];
 const altQuery = pools.map(p => p.query);
 for (const [i, p] of pools.entries())
   p.query = (text, ...rest) => {
-    if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+    if (count) seen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
     return altQuery[i].call(p, text, ...rest);
   };
 /** The queries during fn, filtered on a pattern. */
-async function queryList(muster, fn) {
-  gesehen.length = 0;
+async function queryList(pattern, fn) {
+  seen.length = 0;
   count = true;
   try {
-    return { ergebnis: await fn(), treffer: () => gesehen.filter(q => muster.test(q)).length };
+    return { ergebnis: await fn(), hits: () => seen.filter(q => pattern.test(q)).length };
   } finally {
     count = false;
   }
@@ -71,7 +71,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
   });
 
   for (const nr of parts) {
-    await holdsPart(db, uid, nr, { quantity: 2, preis: 1 });
+    await holdsPart(db, uid, nr, { quantity: 2, price: 1 });
     await db.run(
       `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, 0, 'N', 'EUR', 1.5, 1.4)`,
@@ -79,7 +79,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
     );
   }
   for (const nr of minifigs) {
-    await holdsMinifig(db, uid, nr, { quantity: 1, preis: 3 });
+    await holdsMinifig(db, uid, nr, { quantity: 1, price: 3 });
     await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig', $1, $2)`, [nr, nr + 'bl']);
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
@@ -96,7 +96,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
       'not every part came from the cache',
     );
-    assert.equal(m.treffer(), 1, `${m.treffer()} queries on part_price_cache`);
+    assert.equal(m.hits(), 1, `${m.hits()} queries on part_price_cache`);
   });
 
   await t.test('six minifigures, one query on the minifigure cache', async () => {
@@ -106,7 +106,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),
       'not every figure came from the cache',
     );
-    assert.equal(m.treffer(), 1, `${m.treffer()} queries on minifig_price_cache`);
+    assert.equal(m.hits(), 1, `${m.hits()} queries on minifig_price_cache`);
   });
 
   await t.test('the set quantity only reads the entries of the requested accounts', async () => {
@@ -121,15 +121,15 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
       [[uid]],
     );
     /** All nodes that read set_acquisitions, and their delivered rows. */
-    const zeilen = [];
-    (function lauf(k) {
-      if (k['Relation Name'] === 'set_acquisitions') zeilen.push(k['Actual Rows']);
-      for (const u of k.Plans || []) lauf(u);
+    const lines = [];
+    (function run(k) {
+      if (k['Relation Name'] === 'set_acquisitions') lines.push(k['Actual Rows']);
+      for (const u of k.Plans || []) run(u);
     })(plan['QUERY PLAN'][0].Plan);
-    assert.ok(zeilen.length > 0, 'no scan on set_acquisitions in the plan');
+    assert.ok(lines.length > 0, 'no scan on set_acquisitions in the plan');
     assert.ok(
-      zeilen.every(n => n <= 1),
-      `acquisitions read: ${zeilen.join(', ')}`,
+      lines.every(n => n <= 1),
+      `acquisitions read: ${lines.join(', ')}`,
     );
   });
 
@@ -141,14 +141,14 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
       [uid],
     );
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-    for (const [preis, currency] of [
+    for (const [price, currency] of [
       [100, 'CHF'],
       [300, 'EUR'],
     ])
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
                     VALUES ($1, $2, 1, $3, 'N', $4)`,
-        [uid, SN, preis, currency],
+        [uid, SN, price, currency],
       );
     const { readSets } = require('./helpers/sources').areaPage('sets');
     const r = await readSets([uid], {});

@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
@@ -58,58 +58,58 @@ const PNL = {
 
 test('N1 purchase price tile: neutral while loading, the addition only with data', async () => {
   /** @type {null | ((v: unknown) => void)} */
-  let freigeben = null;
-  let anhalten = false;
-  const { w, d, ruhig } = await openUi({
-    '/v2/finance/valuation': () => (anhalten ? new Promise(r => (freigeben = () => r(VALUATION))) : VALUATION),
+  let release = null;
+  let pause = false;
+  const { w, d, settle } = await openUi({
+    '/v2/finance/valuation': () => (pause ? new Promise(r => (release = () => r(VALUATION))) : VALUATION),
     '/v2/finance/pnl': PNL,
   });
   try {
-    const titel = () => text(d.getElementById('fin-cost-basis-title'));
-    const zusatz = () => text(d.getElementById('fin-cost-basis-sub'));
-    assert.equal(titel(), 'Kaufpreis', 'before the first load');
-    assert.equal(zusatz(), '');
-    anhalten = true;
-    await reiter(w, 'finance');
-    await warte(() => freigeben);
-    assert.equal(titel(), 'Kaufpreis', 'while loading');
-    assert.equal(zusatz(), '', 'no addition while loading');
-    freigeben?.(null);
-    await ruhig();
-    assert.equal(titel(), 'Kaufpreis (bewertete Positionen)');
-    assert.match(zusatz(), /^Insgesamt bezahlt: 829/);
+    const title = () => text(d.getElementById('fin-cost-basis-title'));
+    const extra = () => text(d.getElementById('fin-cost-basis-sub'));
+    assert.equal(title(), 'Kaufpreis', 'before the first load');
+    assert.equal(extra(), '');
+    pause = true;
+    await switchTab(w, 'finance');
+    await waitFor(() => release);
+    assert.equal(title(), 'Kaufpreis', 'while loading');
+    assert.equal(extra(), '', 'no addition while loading');
+    release?.(null);
+    await settle();
+    assert.equal(title(), 'Kaufpreis (bewertete Positionen)');
+    assert.match(extra(), /^Insgesamt bezahlt: 829/);
   } finally {
     w.close();
   }
 });
 
 test('N2 finances error: own title, chips and search locked, free after success', async () => {
-  let kaputt = true;
-  const { w, d, ruhig } = await openUi({
+  let broken = true;
+  const { w, d, settle } = await openUi({
     '/v2/finance/valuation': () =>
-      kaputt ? { $status: 500, success: false, error: 'interner Fehler', code: 'internal_error' } : { ...VALUATION },
+      broken ? { $status: 500, success: false, error: 'interner Fehler', code: 'internal_error' } : { ...VALUATION },
     '/v2/finance/pnl': PNL,
   });
   try {
-    const bedienbar = () =>
+    const operable = () =>
       [...d.querySelectorAll('#fin-filter button, #fin-search')].map(el => `${el.id || text(el)}:${!el.disabled}`);
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .error-state'));
-    await ruhig();
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .error-state'));
+    await settle();
     assert.equal(text(d.querySelector('#portfolio-chart .error-state h2')), 'Finanzen konnten nicht geladen werden');
-    assert.deepEqual(bedienbar(), ['Alle:false', 'Sets:false', 'Teile:false', 'Minifiguren:false', 'fin-search:false']);
-    kaputt = false;
+    assert.deepEqual(operable(), ['Alle:false', 'Sets:false', 'Teile:false', 'Minifiguren:false', 'fin-search:false']);
+    broken = false;
     d.querySelector('#portfolio-chart .error-state button[data-click]').click();
-    await warte(() => d.querySelector('#fin-tbl table'));
-    await ruhig();
-    assert.deepEqual(bedienbar(), ['Alle:true', 'Sets:true', 'Teile:true', 'Minifiguren:true', 'fin-search:true']);
+    await waitFor(() => d.querySelector('#fin-tbl table'));
+    await settle();
+    assert.deepEqual(operable(), ['Alle:true', 'Sets:true', 'Teile:true', 'Minifiguren:true', 'fin-search:true']);
   } finally {
     w.close();
   }
 });
 
 test('N3 manually entered parts and minifigures: unit price with “je”', async () => {
-  const { w, d, ruhig } = await openUi({
+  const { w, d, settle } = await openUi({
     '/v2/parts/manual': {
       success: true,
       parts: [
@@ -133,13 +133,13 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
     },
   });
   try {
-    await reiter(w, 'parts');
-    await warte(() => d.querySelector('#manual-parts-list .man-price'));
-    await ruhig();
+    await switchTab(w, 'parts');
+    await waitFor(() => d.querySelector('#manual-parts-list .man-price'));
+    await settle();
     assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'part');
-    await reiter(w, 'minifigs');
-    await warte(() => d.querySelector('#figs-list .man-price, #manual-figs-list .man-price'));
-    await ruhig();
+    await switchTab(w, 'minifigs');
+    await waitFor(() => d.querySelector('#figs-list .man-price, #manual-figs-list .man-price'));
+    await settle();
     assert.equal(text(d.querySelector('.man-tile[data-arg="fig"] .man-price')), 'je 4,50 €', 'figure');
   } finally {
     w.close();
@@ -147,7 +147,7 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
 });
 
 test('N4 login: empty required fields report at the field', async t => {
-  const { w, d, aufrufe } = await openUi(
+  const { w, d, calls } = await openUi(
     {
       '/v2/auth/login': {
         $status: 401,
@@ -159,14 +159,14 @@ test('N4 login: empty required fields report at the field', async t => {
     { loggedIn: false },
   );
   try {
-    await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const logins = () => aufrufe.filter(a => a.url.includes('/v2/auth/login')).length;
+    await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+    const logins = () => calls.filter(a => a.url.includes('/v2/auth/login')).length;
     await t.test('both empty', async () => {
       d.getElementById('btn-login').click();
-      await takt(30);
+      await tick(30);
       assert.equal(logins(), 0, 'server asked');
       assert.equal(text(d.getElementById('lerr')), '', 'combined message at the top');
-      for (const [id, meldung] of [
+      for (const [id, message] of [
         ['lu', 'Bitte Benutzername oder E-Mail eingeben.'],
         ['lp', 'Bitte Passwort eingeben.'],
       ]) {
@@ -174,7 +174,7 @@ test('N4 login: empty required fields report at the field', async t => {
         assert.equal(f.getAttribute('aria-invalid'), 'true', id);
         const ids = (f.getAttribute('aria-describedby') || '').split(/\s+/);
         assert.ok(ids.includes(`${id}-error`), `${id}: aria-describedby`);
-        assert.equal(text(d.getElementById(`${id}-error`)), meldung);
+        assert.equal(text(d.getElementById(`${id}-error`)), message);
       }
       assert.equal(d.activeElement.id, 'lu', 'focus in the first faulty field');
       // The message stands below the password field, not between field and eye button.
@@ -183,7 +183,7 @@ test('N4 login: empty required fields report at the field', async t => {
     await t.test('only the password empty', async () => {
       d.getElementById('lu').value = 'anna';
       d.getElementById('btn-login').click();
-      await takt(30);
+      await tick(30);
       assert.equal(logins(), 0);
       assert.equal(d.getElementById('lu-error').hidden, true);
       assert.equal(d.getElementById('lu').hasAttribute('aria-invalid'), false);
@@ -192,7 +192,7 @@ test('N4 login: empty required fields report at the field', async t => {
     await t.test('wrong credentials stay at the top', async () => {
       d.getElementById('lp').value = 'wrong';
       d.getElementById('btn-login').click();
-      await warte(() => text(d.getElementById('lerr')));
+      await waitFor(() => text(d.getElementById('lerr')));
       assert.equal(logins(), 1);
       assert.equal(text(d.getElementById('lerr')), 'Benutzername oder Passwort falsch');
       assert.equal(d.getElementById('lp-error').hidden, true);
@@ -205,7 +205,7 @@ test('N4 login: empty required fields report at the field', async t => {
 test('N5 account: jump bar to all sections', async () => {
   const { w, d } = await openUi();
   try {
-    await sicht(w, 'profile');
+    await view(w, 'profile');
     const nav = d.querySelector('#tab-profile [role="navigation"].account-nav');
     assert.ok(nav, 'no bar');
     assert.equal(nav.getAttribute('aria-label'), 'Abschnitte');
@@ -218,19 +218,19 @@ test('N5 account: jump bar to all sections', async () => {
       'Passkeys',
       'Gefahrenzone',
     ]);
-    const vorher = w.location.hash;
+    const prior = w.location.hash;
     for (const a of links) {
       /** @type {Element[]} */
-      const gerollt = [];
+      const scrolled = [];
       w.HTMLElement.prototype.scrollIntoView = function () {
-        gerollt.push(this);
+        scrolled.push(this);
       };
       a.click();
-      await takt(10);
-      const ziel = d.getElementById(a.dataset.arg);
-      assert.equal(d.activeElement, ziel, `${text(a)}: focus on the heading`);
-      assert.ok(gerollt[0]?.contains(ziel), `${text(a)}: not scrolled there`);
-      assert.equal(w.location.hash, vorher, `${text(a)}: the hash belongs to the router`);
+      await tick(10);
+      const target = d.getElementById(a.dataset.arg);
+      assert.equal(d.activeElement, target, `${text(a)}: focus on the heading`);
+      assert.ok(scrolled[0]?.contains(target), `${text(a)}: not scrolled there`);
+      assert.equal(w.location.hash, prior, `${text(a)}: the hash belongs to the router`);
     }
   } finally {
     w.close();
@@ -239,12 +239,12 @@ test('N5 account: jump bar to all sections', async () => {
 
 /** Log in; afterwards the collection answers with 401 as without a cookie. */
 async function signInWithoutCookie(sicher) {
-  let angemeldet = false;
+  let signedIn = false;
   const withoutSession = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' };
   const o = await openUi(
     {
       '/v2/auth/login': () => {
-        angemeldet = true;
+        signedIn = true;
         // Like an older server without keks_fehlt: the UI then concludes the missing HTTPS by itself.
         return {
           $contractViolating: 'älterer Server ohne keks_fehlt',
@@ -252,8 +252,8 @@ async function signInWithoutCookie(sicher) {
           user: { id: 1, username: 'anna', is_admin: false },
         };
       },
-      '/v2/sets': () => (angemeldet ? withoutSession : { success: true, sets: [], count: 0, total: 0, themes: [] }),
-      '/v2/stats': () => (angemeldet ? withoutSession : { success: true, stats: {} }),
+      '/v2/sets': () => (signedIn ? withoutSession : { success: true, sets: [], count: 0, total: 0, themes: [] }),
+      '/v2/stats': () => (signedIn ? withoutSession : { success: true, stats: {} }),
     },
     {
       loggedIn: false,
@@ -262,11 +262,11 @@ async function signInWithoutCookie(sicher) {
       ...(sicher ? { url: 'https://localhost/' } : {}),
     },
   );
-  await warte(() => typeof o.d.getElementById('btn-login')?.onclick === 'function');
+  await waitFor(() => typeof o.d.getElementById('btn-login')?.onclick === 'function');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'richtig-richtig';
   o.d.getElementById('btn-login').click();
-  await warte(() => angemeldet && !o.d.getElementById('login-hint').hidden);
+  await waitFor(() => signedIn && !o.d.getElementById('login-hint').hidden);
   return o;
 }
 

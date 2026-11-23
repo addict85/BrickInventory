@@ -39,9 +39,9 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
       c.release();
     }
   }
-  const vorher = await db.get(`SELECT value FROM run_state WHERE key = 'imgdl_pending_count'`);
+  const prior = await db.get(`SELECT value FROM run_state WHERE key = 'imgdl_pending_count'`);
   t.after(async () => {
-    if (vorher) await db.run(`UPDATE run_state SET value = $1 WHERE key = 'imgdl_pending_count'`, [vorher.value]);
+    if (prior) await db.run(`UPDATE run_state SET value = $1 WHERE key = 'imgdl_pending_count'`, [prior.value]);
     else await db.run(`DELETE FROM run_state WHERE key = 'imgdl_pending_count'`);
     await db.run(`DELETE FROM run_state WHERE key = 'job_monitor_probe'`);
     await db.pool.end().catch(() => {});

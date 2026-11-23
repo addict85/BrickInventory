@@ -40,16 +40,16 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
       [NAME],
     )
   ).id;
-  const tabelle = `idem_wirkung_${process.pid}`;
-  await db.run(`CREATE TABLE ${tabelle} (key text)`);
+  const table = `idem_wirkung_${process.pid}`;
+  await db.run(`CREATE TABLE ${table} (key text)`);
   t.after(async () => {
-    await db.run(`DROP TABLE IF EXISTS ${tabelle}`).catch(() => {});
+    await db.run(`DROP TABLE IF EXISTS ${table}`).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   // What the route does after its transaction: answer, abort or fail.
-  let danach = 'antworten',
+  let afterwards = 'antworten',
     rollback = false;
   const app = express();
   app.use(express.json());
@@ -61,11 +61,11 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
   app.use('/api/v2', idempotency(require('./helpers/sources').testServices().idempotency));
   app.post('/api/v2/parts', async (req, res) => {
     await db.transaction(async tx => {
-      await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
+      await tx.run(`INSERT INTO ${table} VALUES ($1)`, [req.get('Idempotency-Key')]);
       if (rollback) throw new Error('rolled back');
     });
-    if (danach === 'abbrechen') return void res.socket.destroy();
-    if (danach === 'scheitern') throw new Error('after the COMMIT');
+    if (afterwards === 'abbrechen') return void res.socket.destroy();
+    if (afterwards === 'scheitern') throw new Error('after the COMMIT');
     res.json({ success: true });
   });
   app.use((_e, _req, res, _next) => {
@@ -74,20 +74,20 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const url = `http://localhost:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/api/v2/parts`;
-  const sende = k =>
+  const send = k =>
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': k },
       body: '{"part_number":"3001"}',
     }).catch(() => null);
-  const effects = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${tabelle} WHERE key = $1`, [k])).n;
+  const effects = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${table} WHERE key = $1`, [k])).n;
   const orphan = k =>
     db.run(
       `UPDATE idempotency SET created_at = NOW() - make_interval(secs => $3)
                                   WHERE user_id = $1 AND key = $2`,
       [uid, k, serviceFn.ORPHANED_AFTER_S + 1],
     );
-  const fertig = async k => {
+  const done = async k => {
     for (let i = 0; i < 50; i++) {
       if (!(await db.get('SELECT 1 FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL', [uid, k])))
         return;
@@ -96,32 +96,32 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
   };
 
   await t.test('aborted after the COMMIT', async () => {
-    danach = 'abbrechen';
-    assert.equal(await sende('k-abbruch'), null, 'Precondition: the connection breaks off');
+    afterwards = 'abbrechen';
+    assert.equal(await send('k-abbruch'), null, 'Precondition: the connection breaks off');
     await orphan('k-abbruch');
-    danach = 'antworten';
-    const r = await sende('k-abbruch');
+    afterwards = 'antworten';
+    const r = await send('k-abbruch');
     assert.equal(r.status, 409);
     assert.equal((await r.json()).code, 'idempotency_not_repeatable');
     assert.equal(await effects('k-abbruch'), 1);
   });
 
   await t.test('a server error after the COMMIT', async () => {
-    danach = 'scheitern';
-    assert.equal((await sende('k-fehler')).status, 500);
-    await fertig('k-fehler');
-    danach = 'antworten';
-    const r = await sende('k-fehler');
+    afterwards = 'scheitern';
+    assert.equal((await send('k-fehler')).status, 500);
+    await done('k-fehler');
+    afterwards = 'antworten';
+    const r = await send('k-fehler');
     assert.equal(r.status, 409);
     assert.equal(await effects('k-fehler'), 1);
   });
 
   await t.test('without COMMIT it may run anew', async () => {
     rollback = true;
-    assert.equal((await sende('k-rollback')).status, 500);
-    await fertig('k-rollback');
+    assert.equal((await send('k-rollback')).status, 500);
+    await done('k-rollback');
     rollback = false;
-    const r = await sende('k-rollback');
+    const r = await send('k-rollback');
     assert.equal(r.status, 200);
     assert.equal(await effects('k-rollback'), 1);
   });

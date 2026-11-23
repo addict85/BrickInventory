@@ -22,14 +22,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 require('./helpers/sources').buildAndRequire();
 const { noDb } = require('./helpers/db');
 const DIST = path.join(__dirname, '..', 'dist');
-const modul = require(path.join(DIST, 'db', 'database.js'));
+const mod = require(path.join(DIST, 'db', 'database.js'));
 const { buildServices } = require(path.join(DIST, 'startup', 'wiring.js'));
 const { config } = require(path.join(DIST, 'src', 'infra', 'config.js'));
 const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'accountContext.js'));
 
 test('transaction context per connection', { concurrency: 1 }, async t => {
-  const k0 = modul.dbConfigFromEnvironment();
-  const db = modul.createDb({ ...k0, pool: { ...k0.pool, max: 1 } });
+  const k0 = mod.dbConfigFromEnvironment();
+  const db = mod.createDb({ ...k0, pool: { ...k0.pool, max: 1 } });
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -56,9 +56,9 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
     /** @type {Promise<unknown> | undefined} */
     let stragglers;
     /** @type {() => void} */
-    let los = () => {};
+    let go = () => {};
     const secondRunning = new Promise(r => {
-      los = /** @type {() => void} */ (r);
+      go = /** @type {() => void} */ (r);
     });
     await asSystem(() =>
       k.transact(async (/** @type {any} */ t) => {
@@ -68,8 +68,8 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
     );
     await asSystem(() =>
       k.transact(async (/** @type {any} */ t) => {
-        los();
-        await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), modul.TransactionEnded);
+        go();
+        await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), mod.TransactionEnded);
         assert.ok((await t.db.get('SELECT txid_current() AS id')).id, 'the second one itself keeps querying');
       }),
     );

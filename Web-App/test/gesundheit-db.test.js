@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -95,21 +95,21 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  const hole = (path, kopf = {}) =>
-    fetch(`http://127.0.0.1:${port}${path}`, { headers: kopf }).then(async r => ({
+  const hole = (path, head = {}) =>
+    fetch(`http://127.0.0.1:${port}${path}`, { headers: head }).then(async r => ({
       status: r.status,
       body: await r.json(),
     }));
-  for (let i = 0; i < 240 && (await hole('/api/v2/health/live').catch(() => null)) === null; i++) await warte(250);
+  for (let i = 0; i < 240 && (await hole('/api/v2/health/live').catch(() => null)) === null; i++) await sleep(250);
 
   await t.test('anonymously only the status, the admin sees more', async () => {
     const anonym = await hole('/api/v2/health');
     assert.deepEqual(anonym, { status: 200, body: { status: 'starting' } }, log.slice(-1500));
-    const verwalter = await hole('/api/v2/health', { authorization: `Bearer ${token}` });
-    assert.deepEqual(Object.keys(verwalter.body).sort(), ['db_pool', 'startup', 'status', 'uptime_seconds']);
+    const adminUser = await hole('/api/v2/health', { authorization: `Bearer ${token}` });
+    assert.deepEqual(Object.keys(adminUser.body).sort(), ['db_pool', 'startup', 'status', 'uptime_seconds']);
   });
 
   await t.test('the startup state only names its fields', async () => {
@@ -161,7 +161,7 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
     for (let i = 0; i < 40; i++) {
       r = await hole('/api/v2/health/ready');
       if (r.status === 200) break;
-      await warte(250);
+      await sleep(250);
     }
     assert.equal(r.status, 200, 'ready does not recover');
   });

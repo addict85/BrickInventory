@@ -26,11 +26,11 @@ test('the schema start reports no swallowed error', async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const gemeldet = [];
+  const reported = [];
   const realWarn = console.warn;
   console.warn = (...args) => {
     const text = args.map(a => (typeof a === 'string' ? a : String(a?.message ?? a))).join(' ');
-    if (text.includes('[weiter-trotz-fehler]')) gemeldet.push(text);
+    if (text.includes('[weiter-trotz-fehler]')) reported.push(text);
     realWarn.apply(console, args);
   };
 
@@ -41,10 +41,10 @@ test('the schema start reports no swallowed error', async t => {
   }
 
   assert.deepEqual(
-    gemeldet,
+    reported,
     [],
     'The schema start swallowed errors and only logged them:\n  ' +
-      gemeldet.join('\n  ') +
+      reported.join('\n  ') +
       '\nEach of these lines is a step that did NOT run — the ' +
       'database is afterwards in a different state than the start claims.',
   );

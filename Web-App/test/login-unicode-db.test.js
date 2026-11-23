@@ -46,27 +46,27 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
       [NAME, MAIL, bcrypt.hashSync('richtig-geheim', 4)],
     )
   ).id;
-  const aufraeumen = () =>
+  const cleanUp = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2`, [
       `%konto:${uid}`,
       `%${MAIL.split('@')[0]}%`,
     ]);
-  await aufraeumen();
+  await cleanUp();
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
   const { checkCredentials } = _req('src/account/loginCheck.js');
 
   await t.test('after five failed attempts the Unicode spelling is locked too', async () => {
-    const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
+    const request = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
-      const r = await checkCredentials(anfrage, MAIL, 'falsch');
+      const r = await checkCredentials(request, MAIL, 'falsch');
       assert.equal(r.refusal?.kind, 'not_signed_in', `Attempt ${i + 1}`);
     }
-    const r = await checkCredentials(anfrage, VARIANT, 'richtig-geheim');
+    const r = await checkCredentials(request, VARIANT, 'richtig-geheim');
     assert.equal(r.refusal?.kind, 'too_many', 'the variant got fresh counters');
   });
 
@@ -75,10 +75,10 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
     app.use(express.json());
     app.use(mounting('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
-    const zeilen = [];
-    const echt = console.log;
+    const lines = [];
+    const original = console.log;
     console.log = (...a) => {
-      zeilen.push(a.join(' '));
+      lines.push(a.join(' '));
     };
     try {
       const r = await fetch(`http://localhost:${srv.address().port}${mounting('auth')}/forgot-password`, {
@@ -87,12 +87,12 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
         body: JSON.stringify({ email: VARIANT.toUpperCase() }),
       });
       assert.equal(r.status, 200);
-      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+      for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
-      console.log = echt;
+      console.log = original;
       srv.close();
     }
-    const an = zeilen.find(z => z.includes('An:')) || '';
+    const an = lines.find(z => z.includes('An:')) || '';
     assert.ok(an.includes(MAIL), `Recipient: ${an}`);
   });
 });

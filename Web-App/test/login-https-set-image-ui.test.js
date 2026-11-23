@@ -13,25 +13,25 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const COOKIE_MISSING = /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./;
 const WITHOUT_SESSION = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' };
 
-/** @param {{ sicher: boolean, url?: string, login: object, danach?: object }} f */
-async function anmelden(f) {
-  let angemeldet = false;
+/** @param {{ sicher: boolean, url?: string, login: object, afterwards?: object }} f */
+async function signIn(f) {
+  let signedIn = false;
   const o = await openUi(
     {
       '/v2/auth/login': () => {
-        angemeldet = true;
+        signedIn = true;
         return f.login;
       },
-      ...(f.danach
+      ...(f.afterwards
         ? {
-            '/v2/sets': () => (angemeldet ? f.danach : { success: true, sets: [], count: 0, total: 0, themes: [] }),
-            '/v2/stats': () => (angemeldet ? f.danach : { success: true, stats: {} }),
+            '/v2/sets': () => (signedIn ? f.afterwards : { success: true, sets: [], count: 0, total: 0, themes: [] }),
+            '/v2/stats': () => (signedIn ? f.afterwards : { success: true, stats: {} }),
           }
         : {}),
     },
@@ -41,17 +41,17 @@ async function anmelden(f) {
       before: w => Object.defineProperty(w, 'isSecureContext', { value: f.sicher }),
     },
   );
-  await warte(() => typeof o.d.getElementById('btn-login')?.onclick === 'function');
+  await waitFor(() => typeof o.d.getElementById('btn-login')?.onclick === 'function');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'richtig-richtig';
   o.d.getElementById('btn-login').click();
-  await warte(() => angemeldet && !o.d.getElementById('login-hint').hidden);
+  await waitFor(() => signedIn && !o.d.getElementById('login-hint').hidden);
   return o;
 }
 
 test('M1 login without a set session cookie', async t => {
   await t.test('server reports keks_fehlt: the app stays closed, hint instead of "expired"', async () => {
-    const { w, d, aufrufe } = await anmelden({
+    const { w, d, calls } = await signIn({
       sicher: true,
       url: 'https://localhost/',
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, cookie_missing: true },
@@ -62,17 +62,17 @@ test('M1 login without a set session cookie', async t => {
       assert.equal(d.getElementById('login-screen').style.display, 'flex');
       assert.equal(d.getElementById('lu').value, 'anna', 'Name stays');
       assert.equal(d.getElementById('lp').value, '', 'Password does not stay');
-      const nachher = aufrufe.slice(aufrufe.findIndex(a => a.url.includes('/v2/auth/login')));
-      assert.equal(nachher.filter(a => a.url.includes('/v2/sets')).length, 0, 'Collection requested without a session');
+      const later = calls.slice(calls.findIndex(a => a.url.includes('/v2/auth/login')));
+      assert.equal(later.filter(a => a.url.includes('/v2/sets')).length, 0, 'Collection requested without a session');
     } finally {
       w.close();
     }
   });
   await t.test('server confirms the cookie (keks_fehlt: false): a 401 means expired', async () => {
-    const { w, d } = await anmelden({
+    const { w, d } = await signIn({
       sicher: true,
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, cookie_missing: false },
-      danach: WITHOUT_SESSION,
+      afterwards: WITHOUT_SESSION,
     });
     try {
       assert.match(text(d.getElementById('login-hint')), /Sitzung abgelaufen/);
@@ -81,14 +81,14 @@ test('M1 login without a set session cookie', async t => {
     }
   });
   await t.test('older server without the information, http://localhost: the cookie hint anyway', async () => {
-    const { w, d } = await anmelden({
+    const { w, d } = await signIn({
       sicher: true,
       login: {
         $contractViolating: 'älterer Server ohne keks_fehlt',
         success: true,
         user: { id: 1, username: 'anna', is_admin: false },
       },
-      danach: WITHOUT_SESSION,
+      afterwards: WITHOUT_SESSION,
     });
     try {
       assert.match(text(d.getElementById('login-hint')), COOKIE_MISSING);
@@ -99,7 +99,7 @@ test('M1 login without a set session cookie', async t => {
 });
 
 test('N1 hint without HTTPS already on the login page', async t => {
-  for (const [fall, url, sicher, sichtbar] of /** @type {[string, string, boolean, boolean][]} */ ([
+  for (const [fall, url, sicher, visible] of /** @type {[string, string, boolean, boolean][]} */ ([
     ['http://localhost', 'http://localhost/', true, true],
     ['http über eine IP (kein sicherer Kontext)', 'http://192.168.1.20/', false, true],
     ['https', 'https://brick.example.org/', true, false],
@@ -110,10 +110,10 @@ test('N1 hint without HTTPS already on the login page', async t => {
         { loggedIn: false, url, before: w => Object.defineProperty(w, 'isSecureContext', { value: sicher }) },
       );
       try {
-        await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+        await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
         const h = d.getElementById('login-without-https');
-        assert.equal(!h.hidden, sichtbar);
-        if (sichtbar) assert.match(text(h), /Verbindung unverschlüsselt/);
+        assert.equal(!h.hidden, visible);
+        if (visible) assert.match(text(h), /Verbindung unverschlüsselt/);
       } finally {
         w.close();
       }
@@ -122,10 +122,10 @@ test('N1 hint without HTTPS already on the login page', async t => {
 });
 
 test('N3 finance error: period, chips and search gone, back after success', async () => {
-  let kaputt = true;
-  const { w, d, ruhig } = await openUi({
+  let broken = true;
+  const { w, d, settle } = await openUi({
     '/v2/finance/valuation': () =>
-      kaputt
+      broken
         ? { $status: 500, success: false, error: 'interner Fehler', code: 'internal_error' }
         : {
             success: true,
@@ -136,14 +136,14 @@ test('N3 finance error: period, chips and search gone, back after success', asyn
   });
   try {
     const tab = d.getElementById('tab-finance');
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .error-state'));
-    await ruhig();
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .error-state'));
+    await settle();
     assert.equal(tab.classList.contains('finances-error'), true, 'on error');
-    kaputt = false;
+    broken = false;
     d.querySelector('#portfolio-chart .error-state button[data-click]').click();
-    await warte(() => d.querySelector('#fin-tbl table'));
-    await ruhig();
+    await waitFor(() => d.querySelector('#fin-tbl table'));
+    await settle();
     assert.equal(tab.classList.contains('finances-error'), false, 'after success');
   } finally {
     w.close();
@@ -167,19 +167,19 @@ test('N7 set image in the detail: a real button, operable with an image', async 
   });
   try {
     const image = d.getElementById('m-img');
-    const knopf = image.parentElement;
-    assert.equal(knopf.tagName, 'BUTTON');
-    assert.equal(knopf.getAttribute('aria-label'), 'Bild vergrössern');
+    const button = image.parentElement;
+    assert.equal(button.tagName, 'BUTTON');
+    assert.equal(button.getAttribute('aria-label'), 'Bild vergrössern');
     assert.equal(image.getAttribute('alt'), '', 'the image carries no second name');
-    assert.equal(knopf.disabled, true, 'disabled without an image');
-    await reiter(w, 'gallery');
-    await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
+    assert.equal(button.disabled, true, 'disabled without an image');
+    await switchTab(w, 'gallery');
+    await waitFor(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => /10300-1\.jpg/.test(image.getAttribute('src') || ''));
-    assert.equal(knopf.disabled, false, 'usable with an image');
-    assert.equal(knopf.hasAttribute('aria-hidden'), false);
-    knopf.click();
-    await warte(() => d.getElementById('lightbox-img').getAttribute('src'));
+    await waitFor(() => /10300-1\.jpg/.test(image.getAttribute('src') || ''));
+    assert.equal(button.disabled, false, 'usable with an image');
+    assert.equal(button.hasAttribute('aria-hidden'), false);
+    button.click();
+    await waitFor(() => d.getElementById('lightbox-img').getAttribute('src'));
     assert.equal(d.getElementById('lightbox-img').getAttribute('src'), IMAGE);
   } finally {
     w.close();

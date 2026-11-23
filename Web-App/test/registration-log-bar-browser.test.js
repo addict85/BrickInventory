@@ -18,14 +18,14 @@ const { startApp } = require('./helpers/app-browser');
 const { catalogSet, holdsSet } = require('./helpers/inventory');
 
 const DESIGNS = ['classic', 'brick', 'noppe', 'werkbank', 'hochglanz', 'farbfaecher'];
-const THEMA = 'Star Wars / Ultimate Collector Series';
+const THEME = 'Star Wars / Ultimate Collector Series';
 
 test('theme, log window, bottom bar and registration', { timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `masse_${process.pid}`,
     allDesigns: true,
     holding: async (db, uid) => {
-      await catalogSet(db, '75192-1', { name: 'Millennium Falcon', year: 2017, theme: THEMA, pieces: 7541 });
+      await catalogSet(db, '75192-1', { name: 'Millennium Falcon', year: 2017, theme: THEME, pieces: 7541 });
       await holdsSet(db, uid, '75192-1');
     },
   });
@@ -33,86 +33,89 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
     t.skip(app.reason);
     return;
   }
-  const { b, bis } = app;
-  const groesse = (w, h, mobileView) =>
+  const { b, until } = app;
+  const size = (w, h, mobileView) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobileView });
 
   await t.test('theme fully on the tile', async () => {
-    await groesse(1280, 900, false);
-    await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"] .smeta-text')`, 'Kachel');
+    await size(1280, 900, false);
+    await until(`!!document.querySelector('#gallery .sc[data-arg="75192-1"] .smeta-text')`, 'Kachel');
     const m =
-      await b.auswerten(`(() => { const e = document.querySelector('#gallery .sc[data-arg="75192-1"] .smeta-text');
+      await b.evaluate(`(() => { const e = document.querySelector('#gallery .sc[data-arg="75192-1"] .smeta-text');
       return { text: e.textContent, sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight }; })()`);
-    assert.ok(m.text.includes(THEMA), JSON.stringify(m));
+    assert.ok(m.text.includes(THEME), JSON.stringify(m));
     assert.ok(m.sw <= m.cw + 1 && m.sh <= m.ch + 1, `abgeschnitten: ${JSON.stringify(m)}`);
   });
 
   await t.test('log window', async () => {
-    const im = (/** @type {string} */ a) =>
+    const within = (/** @type {string} */ a) =>
       `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${a}); })()`;
-    for (const dunkel of [false, true]) {
-      await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel});
+    for (const dark of [false, true]) {
+      await b.evaluate(`document.documentElement.toggleAttribute('data-dark', ${dark});
         document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
-      await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
-      await b.auswerten(`window.open = () => { const f = document.createElement('iframe'); f.id = 'lv-rahmen';
+      await until(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
+      await b.evaluate(`window.open = () => { const f = document.createElement('iframe'); f.id = 'lv-rahmen';
         f.title = 'Protokoll'; f.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:2147483647';
         document.body.append(f); return f.contentWindow; };
         document.querySelector('[data-click="openLogViewer"]').click(); true`);
-      await bis(im(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`), 'Protokoll geladen');
-      const m = await b.auswerten(
-        im(`(() => { const k = [...document.querySelectorAll('button, select, input')];
+      await until(
+        within(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`),
+        'Protokoll geladen',
+      );
+      const m = await b.evaluate(
+        within(`(() => { const k = [...document.querySelectorAll('button, select, input')];
         const b = document.getElementById('btn-info'); b.focus();
-        const grund = getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number);
+        const reason = getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number);
         return { heights: k.map(x => Math.round(x.getBoundingClientRect().height)), ring: getComputedStyle(b).outlineWidth,
-          hell: grund.reduce((s, x) => s + x, 0) / 3, levels: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
+          hell: reason.reduce((s, x) => s + x, 0) / 3, levels: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
       );
       assert.ok(Math.min(...m.heights) >= 24, `buttons ${m.heights.join(', ')} px`);
       assert.equal(m.ring, '3px');
-      assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `background ${m.hell} with dark=${dunkel}`);
+      assert.ok(dark ? m.hell < 80 : m.hell > 200, `background ${m.hell} with dark=${dark}`);
       assert.deepEqual(
         m.levels.map(s => s.replace(/^\W+\s*/, '')),
         ['Hinweise', 'Warnungen', 'Fehler'],
       );
-      await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);
+      await b.evaluate(`document.getElementById('lv-rahmen').remove(); true`);
     }
-    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
+    await b.evaluate(`document.documentElement.removeAttribute('data-dark'); true`);
   });
 
   await t.test('bottom bar in the brick design at 200 % zoom', async () => {
     try {
-      await b.auswerten(`document.documentElement.dataset.theme = 'brick'; true`);
-      await groesse(640, 450, false);
-      await bis(`getComputedStyle(document.querySelector('nav')).position === 'fixed'`, 'Leiste unten');
-      const heights = await b.auswerten(
+      await b.evaluate(`document.documentElement.dataset.theme = 'brick'; true`);
+      await size(640, 450, false);
+      await until(`getComputedStyle(document.querySelector('nav')).position === 'fixed'`, 'Leiste unten');
+      const heights = await b.evaluate(
         `[...document.querySelectorAll('.ntab')].filter(n => n.offsetParent).map(n => Math.round(n.getBoundingClientRect().height))`,
       );
       assert.ok(heights.length >= 4 && Math.min(...heights) >= 44, `bar ${heights.join(', ')} px`);
     } finally {
-      await groesse(1280, 900, false);
+      await size(1280, 900, false);
     }
   });
 
   await t.test('registration at 320 px without overflow', async () => {
-    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
-    await bis(
+    await b.evaluate(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await until(
       `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
       'Anmeldung',
     );
-    await b.auswerten(`(() => { const v = document.getElementById('theme-styles');
+    await b.evaluate(`(() => { const v = document.getElementById('theme-styles');
       return !v || Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
         l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
-    await groesse(320, 700, true);
-    const ueber = [];
+    await size(320, 700, true);
+    const over = [];
     for (const d of DESIGNS) {
-      const m = await b.auswerten(`(async () => { document.documentElement.dataset.theme = ${JSON.stringify(d)};
+      const m = await b.evaluate(`(async () => { document.documentElement.dataset.theme = ${JSON.stringify(d)};
         document.getElementById('link-register').click();
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         const de = document.documentElement;
-        return { sw: de.scrollWidth, cw: de.clientWidth, sichtbar: getComputedStyle(document.getElementById('panel-register')).display };
+        return { sw: de.scrollWidth, cw: de.clientWidth, visible: getComputedStyle(document.getElementById('panel-register')).display };
         })()`);
-      assert.equal(m.sichtbar, 'block', d);
-      if (m.sw > m.cw) ueber.push(`${d}: ${m.sw} > ${m.cw}`);
+      assert.equal(m.visible, 'block', d);
+      if (m.sw > m.cw) over.push(`${d}: ${m.sw} > ${m.cw}`);
     }
-    assert.deepEqual(ueber, []);
+    assert.deepEqual(over, []);
   });
 });

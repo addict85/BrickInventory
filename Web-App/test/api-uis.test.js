@@ -13,11 +13,11 @@ const ROOT = path.join(__dirname, '..');
 // Remove comments — otherwise commented-out routes count too. The helper
 // instead of a naive /\*…\*\/: `'/images/*pfad'` in server.ts otherwise opened
 // a comment for it up to the next real comment end.
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 
 /** All `router.<verb>('<pfad>'` of a file, with the mount point prepended. */
-function routesFrom(datei, mount) {
-  const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+function routesFrom(file, mount) {
+  const src = withoutComments(fs.readFileSync(file, 'utf8'));
   const out = [];
   for (const m of require('./helpers/sources').routesFromSource(src, mount)) {
     const path = (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '') || '/';
@@ -53,7 +53,7 @@ function withoutPrefix(entryRow) {
 
 test('no unjustified route on either API surface', () => {
   const web = new Set();
-  for (const r of webRouter()) for (const x of routesFrom(r.datei, r.mount)) web.add(x);
+  for (const r of webRouter()) for (const x of routesFrom(r.file, r.mount)) web.add(x);
 
   const v1 = new Set();
   const v1Dir = path.join(ROOT, 'routes/api');
@@ -74,8 +74,8 @@ test('no unjustified route on either API surface', () => {
   // without checking anything.
   const webN = new Set([...web].map(withoutPrefix));
   const v1N = new Set([...v1].map(withoutPrefix));
-  const doppelt = [...webN].filter(r => v1N.has(r)).sort();
-  const unjustified = doppelt.filter(r => !ALLOWED.has(r));
+  const twice = [...webN].filter(r => v1N.has(r)).sort();
+  const unjustified = twice.filter(r => !ALLOWED.has(r));
   assert.deepEqual(
     unjustified,
     [],
@@ -84,11 +84,11 @@ test('no unjustified route on either API surface', () => {
 
   // A line that nobody needs anymore is a permission that nobody
   // checks — the same rule as in scripts/check-global-settings.js.
-  const veraltet = [...ALLOWED.keys()].filter(r => !doppelt.includes(r));
+  const stale = [...ALLOWED.keys()].filter(r => !twice.includes(r));
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    `These entries in ALLOWED no longer describe an overlap — remove them:\n  ${veraltet.join('\n  ')}`,
+    `These entries in ALLOWED no longer describe an overlap — remove them:\n  ${stale.join('\n  ')}`,
   );
 });
 
@@ -104,14 +104,14 @@ test('every router hangs under /api/v1', () => {
     `Only ${mountings.length} router mount points found in server.ts — pattern outdated?`,
   );
 
-  const daneben = mountings
+  const beside = mountings
     .map(r => r.mount)
     .filter(m => !m.startsWith('/api/v2') && !STILL_NOT.has(m))
     .sort();
   assert.deepEqual(
-    daneben,
+    beside,
     [],
-    `These routers are NOT mounted under /api/v1 and are not listed as a justified exception either:\n  ${daneben.join('\n  ')}\nEither remount them or add them to STILL_NOT with WHY not yet.`,
+    `These routers are NOT mounted under /api/v1 and are not listed as a justified exception either:\n  ${beside.join('\n  ')}\nEither remount them or add them to STILL_NOT with WHY not yet.`,
   );
 
   // And the exception must not be left lying around: if it is there although the router
@@ -149,22 +149,22 @@ test('the directly registered routes are under /api/v1 too', () => {
   ]);
 
   // All .ts of the server tree, not only server.ts.
-  const dateien = [path.join(ROOT, 'server.ts')];
-  const lauf = d => {
+  const files = [path.join(ROOT, 'server.ts')];
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        lauf(p);
+        run(p);
         continue;
       }
-      if (e.name.endsWith('.ts')) dateien.push(p);
+      if (e.name.endsWith('.ts')) files.push(p);
     }
   };
-  for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner));
-  assert.ok(dateien.length >= 30, `Only ${dateien.length} server files found`);
+  for (const dir of ['routes', 'src', 'jobs']) run(path.join(ROOT, dir));
+  assert.ok(files.length >= 30, `Only ${files.length} server files found`);
 
   // Also registrations via a CONSTANT
-  const sources = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
+  const sources = files.map(d => withoutComments(fs.readFileSync(d, 'utf8')));
   const constants = new Map();
   for (const src of sources)
     for (const m of src.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*=\s*'(\/api\/[^']*)'/g))
@@ -190,21 +190,17 @@ test('the directly registered routes are under /api/v1 too', () => {
   // and startup-status hang in the router routes/health.ts.
   assert.ok(found.length >= 2, `Only ${found.length} directly registered API routes found — pattern outdated?`);
 
-  const daneben = found.filter(r => !r.split(' ')[1].startsWith('/api/v2') && !WITHOUT_VERSION.has(r)).sort();
+  const beside = found.filter(r => !r.split(' ')[1].startsWith('/api/v2') && !WITHOUT_VERSION.has(r)).sort();
   assert.deepEqual(
-    daneben,
+    beside,
     [],
-    `These addresses are registered directly on the app, are not under /api/v1 and have no recorded reason:\n  ${daneben.join('\n  ')}\nEither move them or add them to WITHOUT_VERSION with WHY they must stay unversioned.`,
+    `These addresses are registered directly on the app, are not under /api/v1 and have no recorded reason:\n  ${beside.join('\n  ')}\nEither move them or add them to WITHOUT_VERSION with WHY they must stay unversioned.`,
   );
 
   // The same opposite direction as above: an exception for a route that
   // no longer exists makes the conversion look less finished than it is.
-  const veraltet = [...WITHOUT_VERSION.keys()].filter(r => !found.includes(r));
-  assert.deepEqual(
-    veraltet,
-    [],
-    `These exceptions no longer describe a route — remove them:\n  ${veraltet.join('\n  ')}`,
-  );
+  const stale = [...WITHOUT_VERSION.keys()].filter(r => !found.includes(r));
+  assert.deepEqual(stale, [], `These exceptions no longer describe a route — remove them:\n  ${stale.join('\n  ')}`);
 });
 
 /**
@@ -212,16 +208,16 @@ test('the directly registered routes are under /api/v1 too', () => {
  */
 test('the health check from compose.yaml points to a real address', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  const treffer = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
-  assert.ok(treffer, 'compose.yaml contains no health check on an /api address');
-  const address = treffer[1];
+  const hits = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
+  assert.ok(hits, 'compose.yaml contains no health check on an /api address');
+  const address = hits[1];
 
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const src = withoutComments(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   const direct = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
   // And the GET routes of the routers mounted in server.ts (routes/health.ts).
   for (const r of webRouter())
     for (const m of require('./helpers/sources').routesFromSource(
-      ohneKommentare(fs.readFileSync(r.datei, 'utf8')),
+      withoutComments(fs.readFileSync(r.file, 'utf8')),
       r.mount,
     ))
       if (m[1] === 'get') direct.push(r.mount + m[2]);

@@ -28,12 +28,12 @@ const { noDb } = require('./helpers/db');
  * checks below still ask for the name — that is the statement that
  * matters — only the path there now leads through a JOIN.
  */
-async function locationOf(db, tabelle, bedingung, params) {
+async function locationOf(db, table, condition, params) {
   const r = await db.get(
     `SELECT l.name AS storage
-       FROM ${tabelle} t
+       FROM ${table} t
        LEFT JOIN storage_locations l ON l.id = t.storage_id
-      WHERE ${bedingung}`,
+      WHERE ${condition}`,
     params,
   );
   return r?.storage ?? null;
@@ -84,7 +84,7 @@ test('storage location when capturing — against a real database', async t => {
   const setService = require('./helpers/sources').areaPage('sets');
   const parts = _req('src/parts/manualParts.js');
   const minifigs = _req('src/minifigs/manualMinifigs.js');
-  const merkliste = _req('src/wanted/wanted.js');
+  const wantedModule = _req('src/wanted/wanted.js');
   const L = {
     ..._req('src/inventory/storageLocation.js'),
     ...require('./helpers/sources').testArea('inventory').locationService,
@@ -138,7 +138,7 @@ test('storage location when capturing — against a real database', async t => {
 
   await t.test('5. the adoption from the wishlist passes it through', async () => {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
-    await merkliste.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
+    await wantedModule.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
     const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
     assert.equal(location, 'Dachboden', 'The watch item was taken over, the storage location got lost on the way.');
   });
@@ -146,12 +146,12 @@ test('storage location when capturing — against a real database', async t => {
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
     // figures at another, and nobody could tell from the number what is meant.
-    const liste = await L.storages([U.ich]);
-    const vitrine = liste.find(o => o.location === 'Vitrine');
+    const list = await L.storages([U.ich]);
+    const vitrine = list.find(o => o.location === 'Vitrine');
     assert.ok(vitrine, 'A location that holds ONLY a minifig is missing in the overview.');
     assert.deepEqual([vitrine.sets, vitrine.parts, vitrine.minifigs], [0, 0, 1]);
-    const kiste = liste.find(o => o.location === 'Kiste 3');
-    assert.deepEqual([kiste.sets, kiste.parts, kiste.minifigs], [1, 0, 0]);
+    const crate = list.find(o => o.location === 'Kiste 3');
+    assert.deepEqual([crate.sets, crate.parts, crate.minifigs], [1, 0, 0]);
   });
 
   await t.test('7. a place with only one figure in it cannot be deleted', async () => {

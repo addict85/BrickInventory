@@ -13,7 +13,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Build into dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 const { REBRICKABLE_DEFAULT_DAILY } = _req('src/externalSources/rateLimiter.js');
 
 const EXPECTED = 25000;
@@ -79,21 +79,17 @@ test('the input field shows the same default', async () => {
 test('the call sites wait for the result', () => {
   // loginAllowed is asynchronous since the switch — a forgotten
   // await delivers a promise that is always truthy and locks EVERY login.
-  const dateien = dir =>
+  const files = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [
-    ...dateien(path.join(ROOT, 'routes')),
-    ...dateien(path.join(ROOT, 'src')),
-    path.join(ROOT, 'server.ts'),
-  ];
+  const all = [...files(path.join(ROOT, 'routes')), ...files(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
 
   const withoutAwait = [];
   let found = 0;
-  for (const datei of alle) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  for (const file of all) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/g)) {
       // Look at the line itself — an `await` in front suffices. Import and
       // definition are not calls and do not count.
@@ -102,7 +98,7 @@ test('the call sites wait for the result', () => {
       if (/^\s*(import|export)\b/.test(row) || /\bfunction\s+\w+\s*\(/.test(row)) continue;
       found++;
       if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(row))
-        withoutAwait.push(`${path.relative(ROOT, datei)}: ${row.trim()}`);
+        withoutAwait.push(`${path.relative(ROOT, file)}: ${row.trim()}`);
     }
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
@@ -139,7 +135,7 @@ test('jobs with an external quota have a cross-process lock', () => {
   assert.match(
     fn,
     /finally\s*\{[\s\S]{0,300}releaseLock\(\)/,
-    'Ohne Freigabe im finally sperrt ein Absturz den Job bis zum Neustart',
+    'Without the release in finally a crash blocks the job until the restart',
   );
 
   // The manual kick only brings the scheduled job forward (src/jobQueue/schedule.ts);

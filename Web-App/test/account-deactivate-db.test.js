@@ -41,9 +41,9 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const CHEF = `deakt_chef_${process.pid}`,
-    NUTZER = `deakt_nutzer_${process.pid}`,
+    USER = `deakt_nutzer_${process.pid}`,
     PASS = 'Deakt-Passwort-1';
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NUTZER]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, USER]]);
   const put = async (name, admin) =>
     (
       await db.get(
@@ -53,13 +53,13 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       )
     ).id;
   const chef = await put(CHEF, true),
-    nutzer = await put(NUTZER, false);
+    user = await put(USER, false);
   // Administrator rights require a code generator; every confirmation takes a recovery code.
   const codes = await require('./helpers/admin').adminWithFactor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   t.after(async () => {
-    await db.run('DELETE FROM admin_log WHERE target_id = ANY($1)', [[chef, nutzer]]);
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, nutzer]]);
+    await db.run('DELETE FROM admin_log WHERE target_id = ANY($1)', [[chef, user]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, user]]);
     await db.pool.end().catch(() => {});
   });
 
@@ -84,10 +84,10 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  /** @param {string} methode @param {string} path @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
-  const callIt = (methode, path, { body, cookie, token } = {}) =>
+  /** @param {string} method @param {string} path @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
+  const callIt = (method, path, { body, cookie, token } = {}) =>
     fetch(`http://127.0.0.1:${srv.address().port}/api/v2/auth${path}`, {
-      method: methode,
+      method: method,
       body: body && JSON.stringify(body),
       headers: {
         'content-type': 'application/json',
@@ -99,46 +99,46 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       cookie: (r.headers.get('set-cookie') || '').split(';')[0],
       body: await r.json(),
     }));
-  const anmelden = (name, body = {}) => callIt('POST', '/login', { body: { username: name, password: PASS, ...body } });
+  const signIn = (name, body = {}) => callIt('POST', '/login', { body: { username: name, password: PASS, ...body } });
   const toggle = (id, active, pw = PASS) =>
     callIt('PUT', `/users/${id}/active`, {
       cookie: chefKeks,
       body: { is_active: active, admin_password: pw, code: codes.shift() },
     });
-  const protokoll = async () =>
-    (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [nutzer])).map(z => z.action);
+  const log = async () =>
+    (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [user])).map(z => z.action);
 
-  const chefKeks = (await anmelden(CHEF, { without_token: true, code: codes.shift() })).cookie;
+  const chefKeks = (await signIn(CHEF, { without_token: true, code: codes.shift() })).cookie;
   assert.match(chefKeks, /^bim\.sid=/);
 
   await t.test('token and session stop applying immediately', async () => {
-    const a = { ...(await anmelden(NUTZER)), cookie: (await anmelden(NUTZER, { without_token: true })).cookie };
+    const a = { ...(await signIn(USER)), cookie: (await signIn(USER, { without_token: true })).cookie };
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await callIt('GET', '/profile', { token: a.body.token })).status, 200);
     assert.equal((await callIt('GET', '/profile', { cookie: a.cookie })).status, 200);
 
-    const r = await toggle(nutzer, false);
+    const r = await toggle(user, false);
     assert.deepEqual([r.status, r.body], [200, { success: true, is_active: false }]);
     assert.equal((await callIt('GET', '/profile', { token: a.body.token })).status, 401, 'Token still valid');
     assert.equal((await callIt('GET', '/profile', { cookie: a.cookie })).status, 401, 'Session still valid');
-    assert.equal((await db.get('SELECT count(*)::int n FROM api_tokens WHERE user_id = $1', [nutzer])).n, 0);
+    assert.equal((await db.get('SELECT count(*)::int n FROM api_tokens WHERE user_id = $1', [user])).n, 0);
   });
 
   await t.test('login is blocked, the list shows it, the log names it', async () => {
-    const a = await anmelden(NUTZER);
-    const falsch = await callIt('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
-    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'locked answers like a wrong password');
+    const a = await signIn(USER);
+    const wrong = await callIt('POST', '/login', { body: { username: USER, password: 'Falsches-Passwort-1' } });
+    assert.deepEqual([a.status, a.body], [wrong.status, wrong.body], 'locked answers like a wrong password');
     assert.equal(a.body.code, 'credentials_invalid');
-    const liste = (await callIt('GET', '/users', { cookie: chefKeks })).body.users;
-    assert.equal(liste.find(u => u.id === nutzer).is_active, false);
-    assert.equal(liste.find(u => u.id === chef).is_active, true);
-    assert.deepEqual(await protokoll(), ['account_deactivated']);
+    const list = (await callIt('GET', '/users', { cookie: chefKeks })).body.users;
+    assert.equal(list.find(u => u.id === user).is_active, false);
+    assert.equal(list.find(u => u.id === chef).is_active, true);
+    assert.deepEqual(await log(), ['account_deactivated']);
   });
 
   await t.test('without the admin password nothing changes', async () => {
-    const r = await toggle(nutzer, true, 'falsch');
+    const r = await toggle(user, true, 'falsch');
     assert.equal(r.status, 400);
-    assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [nutzer])).is_active, false);
+    assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [user])).is_active, false);
   });
 
   await t.test('not the own account', async () => {
@@ -148,46 +148,46 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
   });
 
   await t.test('reactivated, the account logs in again', async () => {
-    assert.equal((await toggle(nutzer, true)).status, 200);
-    const a = await anmelden(NUTZER);
+    assert.equal((await toggle(user, true)).status, 200);
+    const a = await signIn(USER);
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await callIt('GET', '/profile', { token: a.body.token })).status, 200);
-    assert.deepEqual(await protokoll(), ['account_deactivated', 'account_reactivated']);
+    assert.deepEqual(await log(), ['account_deactivated', 'account_reactivated']);
   });
 
   await t.test('unconfirmed: the same refusal, new link without account information', async () => {
     const address = `deakt_${process.pid}@example.org`;
     await db.run('UPDATE users SET email = NULL, new_email = $2, registration_pending = true WHERE id = $1', [
-      nutzer,
+      user,
       address,
     ]);
-    const a = await anmelden(NUTZER);
-    const falsch = await callIt('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
-    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'unconfirmed answers like a wrong password');
-    const erneut = email => callIt('POST', '/resend-confirmation', { body: { email } });
-    const unbekannt = await erneut(`niemand_${process.pid}@example.org`);
-    const bekannt = await erneut(address.toUpperCase());
+    const a = await signIn(USER);
+    const wrong = await callIt('POST', '/login', { body: { username: USER, password: 'Falsches-Passwort-1' } });
+    assert.deepEqual([a.status, a.body], [wrong.status, wrong.body], 'unconfirmed answers like a wrong password');
+    const retry = email => callIt('POST', '/resend-confirmation', { body: { email } });
+    const unknownOne = await retry(`niemand_${process.pid}@example.org`);
+    const known = await retry(address.toUpperCase());
     assert.deepEqual(
-      [bekannt.status, bekannt.body],
-      [unbekannt.status, unbekannt.body],
+      [known.status, known.body],
+      [unknownOne.status, unknownOne.body],
       'the response reveals the account',
     );
-    assert.equal(bekannt.status, 200);
+    assert.equal(known.status, 200);
     const z = await db.get(
-      "SELECT new_email_token, new_email_until > NOW() + interval '23 hours' AS frisch FROM users WHERE id = $1",
-      [nutzer],
+      "SELECT new_email_token, new_email_until > NOW() + interval '23 hours' AS fresh FROM users WHERE id = $1",
+      [user],
     );
-    assert.ok(z.new_email_token && z.frisch, 'no new link for the unconfirmed account');
-    await erneut(address);
+    assert.ok(z.new_email_token && z.fresh, 'no new link for the unconfirmed account');
+    await retry(address);
     assert.equal(
-      (await db.get('SELECT new_email_token FROM users WHERE id = $1', [nutzer])).new_email_token,
+      (await db.get('SELECT new_email_token FROM users WHERE id = $1', [user])).new_email_token,
       z.new_email_token,
       'a second link right afterwards',
     );
     await db.run(
       `UPDATE users SET email_verified = true, registration_pending = false, new_email = NULL, new_email_token = NULL,
       new_email_until = NULL WHERE id = $1`,
-      [nutzer],
+      [user],
     );
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   });
@@ -195,9 +195,9 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
   await t.test('the token query checks is_active', async () => {
     const auth = _req('src/account/deviceToken.js');
     const tokenCache = _req('src/account/tokenCache.js');
-    const token = await auth.createToken(nutzer, 'Probe');
+    const token = await auth.createToken(user, 'Probe');
     assert.ok(await auth.userForToken(token));
-    await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);
+    await db.run('UPDATE users SET is_active = false WHERE id = $1', [user]);
     tokenCache.emptyTokenCache();
     assert.equal(await auth.userForToken(token), null);
   });
