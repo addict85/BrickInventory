@@ -1,0 +1,17 @@
+Gegenprobe: Eine exportierte Komponente ausserhalb der Positivliste geht durch
+Modul: app
+Test: ch.brickinventoryapp.app.ManifestCheckTest
+Rot: a foreign exported component stands out, even with a wrong permission
+
+diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
+--- a/Android-App/tools/manifest-check.py
++++ b/Android-App/tools/manifest-check.py
+@@ -97,7 +97,7 @@
+                 continue
+             name, recht = a.get('name', '?'), a.get('permission')
+             if name not in erlaubt:
+-                fehler.append(f'{art} {name} ist exportiert und steht nicht in der Positivliste (Berechtigung {recht})')
++                pass
+             elif erlaubt[name] != recht:
+                 fehler.append(f'{art} {name}: verlangt {recht}, erwartet {erlaubt[name]}')
+     if gesehen == 0:

@@ -13,16 +13,16 @@ import org.junit.Test
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
  *   A  in inForeground() every return locked (`now - since >= 0`) → red „vor Ablauf der Frist fragt die App nicht“
- * ; counter-checks/app-sperre-sofort.patch
+ * ; counter-checks/app-lock-immediate.patch
  *   B  state only in memory (`MutableStateFlow(false)`) → red „eine neue Activity entsperrt nicht“
- * ; counter-checks/app-sperre-vergisst-beim-drehen.patch
+ * ; counter-checks/app-lock-forgets-on-rotation.patch
  *   C  in inForeground() the device-boot comparison removed (`restarted = false`)
  *      → red „locked after a reboot, even if the clock is already further“;
- *      counter-checks/app-sperre-ohne-geraetestart.patch
+ *      counter-checks/app-lock-without-device-boot.patch
  *   D  (kotlinc) hiddenWidget() only `store.locked()` → red „das Widget verdeckt seine Betraege, sobald die Sperre greifen kann“
- * ; counter-checks/widget-trotz-sperre.patch
+ * ; counter-checks/widget-despite-lock.patch
  *   E  (kotlinc) default() always 0 → red „neu installiert mit Displaysperre …“;
- *      counter-checks/app-sperre-vorgabe-aus.patch
+ *      counter-checks/app-lock-default-off.patch
  */
 class AppLockTest {
 

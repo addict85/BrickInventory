@@ -1,0 +1,21 @@
+Gegenprobe: der Bild-Client lädt ohne Host-Wächter
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: the image client talks only via the host guard and throttles moderately
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -105,12 +105,6 @@
+             .addInterceptor(previewTap(preview))
+             // Only the own server (util/ImageHosts.kt); redirects are checked by
+             // the guard itself, OkHttp would otherwise follow them past it.
+-            .addInterceptor(ImageHostGuard(
+-                ownServer = { url ->
+-                    isOwnImageServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.development)
+-                },
+-                basePath = { NetworkPolicy.basePath(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
+-            ))
+             .followRedirects(false)
+             // Throttle image downloads, but not so tightly that tiles starve: this is
+             // the app's one ImageLoader. With 3 connections per host tiles waited, Coil

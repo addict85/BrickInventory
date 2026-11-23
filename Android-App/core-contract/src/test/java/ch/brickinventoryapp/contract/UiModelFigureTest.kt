@@ -36,9 +36,9 @@ import java.time.Instant
  *      “every file with mappings is in the list“ and „Nur 48 Abbildungen“
  *   F  in Profile.asView `emailConfirmed = emailVerified` → `= !emailVerified`
  *      → red “profile, household and CSV state …”; parent accounts from `parents` → red „ohne parents gilt linked_to“
- *   G  counter-checks/geld-auf-rappen-gerundet.patch: Geld.aus rounds to centimes instead of four places
+ *   G  counter-checks/money-rounded-to-rappen.patch: Geld.aus rounds to centimes instead of four places
  *      → red “amounts come as Money to four places …”
- *   H  counter-checks/kauf-ohne-zeitpunkt.patch: Acquisition.asView does not pass createdAt on → red, the same test
+ *   H  counter-checks/purchase-without-timestamp.patch: Acquisition.asView does not pass createdAt on → red, the same test
  *      and “every mapping carries every field of the same name unchanged“ not (filler values are no points in time)
  *   I  SampleFiller.instanceGetters without the static filter → red “the counterpart of a getter is never the
  *      static annotation holder” (WantedItem.getCurrency-…$annotations is listed)

@@ -1,0 +1,16 @@
+Gegenprobe: Lagerortfeld wieder in der eckigen Material-Vorgabe
+Modul: app
+Test: ch.brickinventoryapp.app.DesignTokensTest
+Rot: no input field uses the angular default
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
+@@ -59,7 +59,6 @@
+         modifier = modifier,
+     ) {
+         OutlinedTextField(
+-            shape = Shapes.field,
+             value = text,
+             onValueChange = {
+                 if (it.length <= 60) { text = it; open = true; onValue(it) }

@@ -1,0 +1,17 @@
+Gegenprobe: Ein übernommener Merkposten erscheint nicht in der Galerie
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: a takeover removes the wishlist item from the store and creates the set there
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+@@ -24,7 +24,7 @@
+             else (it.quantity + b.step).takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
+         }
+         is Editing.RecordSet -> recorded(list, b)
+-        is FollowUp.WantedItemAdopted -> sets(list, Editing.RecordSet(b.wish))
++        is FollowUp.WantedItemAdopted -> list
+         is FollowUp.SetQuantitySet -> list.mapNotNull {
+             if (it.setNumber != b.setNumber) it else b.quantity.takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
+         }

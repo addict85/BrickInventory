@@ -26,13 +26,13 @@ import java.util.Base64
  * Counter-checks (only measurable in CI, locally the Android SDK is missing):
  *   A  in challenge() every refusal and every network error as NotBound → expected
  *      red “a refusal of the server stops” and “without network no fallback …”;
- *      counter-checks/schrittbindung-absage-als-ungebunden.patch
+ *      counter-checks/step-binding-rejection-as-unbound.patch
  *   C  in challenge() a 404 again as NotBound (the former fallback) →
  *      expected red “a 404 on the challenge stops”;
- *      counter-checks/schrittbindung-404-als-ungebunden.patch
+ *      counter-checks/step-binding-404-as-unbound.patch
  *   B  in depositChain() the certificates encoded with the URL alphabet →
  *      expected red “the chain goes to the server as Base64 per certificate …”;
- *      counter-checks/schrittbindung-kette-base64url.patch
+ *      counter-checks/step-binding-chain-base64url.patch
  */
 class StepBindingTest {
 

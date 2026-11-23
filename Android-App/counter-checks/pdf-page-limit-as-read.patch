@@ -1,0 +1,17 @@
+Gegenprobe: Das Gutschein-PDF über der Seitengrenze gilt wieder als halb gelesen
+Modul: core-data
+Test: ch.brickinventoryapp.data.ErrorCodeTest
+Rot: a PDF above the page limit is an error with sentence and code, not a half-read one
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ErrorCode.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ErrorCode.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ErrorCode.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ErrorCode.kt
+@@ -15,7 +15,7 @@
+     ONLY_ADMINS("admins_only"),
+     PASSKEY_INVALID("passkey_invalid"),
+     PASSWORD_SWITCH_NEEDED("password_change_required"),
+-    PDF_TOO_MANY_PAGES("pdf_too_many_pages"),
++    PDF_TOO_MANY_PAGES("pdf_seiten"),
+     TOKEN_ROTATION_NEEDED("token_rotation_required"),
+     TOKEN_INVALID("token_invalid"),
+     UPLOAD_RUNNING("upload_running"),

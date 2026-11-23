@@ -11,7 +11,7 @@ import org.junit.Test
  * A 2xx with `success: false` arrives as Ergebnis.Fehler.Absage (the sentence the server sends with an error status),
  * a 2xx with `success: true` as a view: no caller checks the field of the wire format.
  *
- * Counter-check (counter-checks/absage-als-erfolg.patch): `promised` always returns success
+ * Counter-check (counter-checks/rejection-as-success.patch): `promised` always returns success
  * → red “a refusal of the server is an error”.
  */
 class RejectionTest {

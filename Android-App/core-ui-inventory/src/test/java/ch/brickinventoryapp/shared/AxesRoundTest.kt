@@ -18,8 +18,8 @@ import java.util.Locale
  * instead of 787/801/816), and the value chart abbreviates to „1.7k“ at large text sizes.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI):
- *   preisachse-krumm       step without rounding → red „Wertachse des Preisverlaufs …“
- *   wertachse-ausgeschrieben  compact ignored → red „grosse Schrift beschriftet …“
+ *   price-axis-uneven       step without rounding → red „Wertachse des Preisverlaufs …“
+ *   value-axis-spelled-out  compact ignored → red „grosse Schrift beschriftet …“
  */
 class AxesRoundTest {
 

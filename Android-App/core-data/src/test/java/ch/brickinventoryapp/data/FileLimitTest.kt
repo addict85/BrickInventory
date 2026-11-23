@@ -18,7 +18,7 @@ import java.io.InputStream
  * delivers endlessly or names a wrong size does not crash the app.
  *
  * Counter-check (measured locally with kotlinc):
- *   datei-ganz-gelesen  readLimited() reads everything with readBytes() and checks afterwards →
+ *   file-read-whole  readLimited() reads everything with readBytes() and checks afterwards →
  *                       red “an endless stream is not read beyond the limit“
  */
 class FileLimitTest {

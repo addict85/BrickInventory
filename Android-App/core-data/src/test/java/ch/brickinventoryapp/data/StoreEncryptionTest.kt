@@ -29,7 +29,7 @@ import java.io.IOException
  *      derived one → red “the key is created once …” and “plaintext
  *      and foreign data do not count” (widget and cache shared a key)
  *   D  in StoreCipher both `updateAAD(…)` struck → red “a
- *      file under a foreign name does not count”; counter-checks/ablage-ohne-bindung.patch
+ *      file under a foreign name does not count”; counter-checks/store-without-binding.patch
  *   F in erneuere() `known = null` struck →
  *      red “after renewal everything old is unreadable …”
  */

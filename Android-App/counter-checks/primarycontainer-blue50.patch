@@ -1,0 +1,17 @@
+Gegenprobe: primaryContainer im klassischen Design wieder BrandBlue50 (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: every text role reaches 4,5 to 1 on its surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -54,7 +54,7 @@
+     primary             = BrandBlue,
+     onPrimary           = Color.White,
+     // BrandBlue50 carried primary at only 4.24:1; the lighter tone holds 4.5:1.
+-    primaryContainer    = BrandBlueLight,
++    primaryContainer    = BrandBlue50,
+     onPrimaryContainer  = BrandBlueDark,
+     secondary           = BrandBlueDark,
+     onSecondary         = Color.White,

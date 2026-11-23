@@ -31,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
  * anew per visit, and after the excursion into the detail the list is still back at
  * its position. Executed with a real NavHost, as the app's tabs have it.
  *
- * Counter-check (counter-checks/rolle-ohne-rueckkehr.patch): the keeper for LazyColumn no longer
+ * Counter-check (counter-checks/role-without-return.patch): the keeper for LazyColumn no longer
  * jumps back → red “the list is back at its position after the excursion”.
  */
 @RunWith(RobolectricTestRunner::class)

@@ -1,0 +1,16 @@
+Gegenprobe: Beim Speichern bleibt der alte Klartext-Eintrag stehen
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: saving stores only encrypted now
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -373,7 +373,6 @@
+         _authTokenState.value = token
+         dataStore.edit {
+             it[AUTH_TOKEN_ENC] = secret
+-            it.remove(AUTH_TOKEN)
+             if (originSecret != null) it.set(ORIGIN, originSecret) else it.remove(ORIGIN)
+             if (sealed != null) { it[SIGNED_IN_SECRET] = sealed; it.remove(SIGNED_IN_AT) }
+         }

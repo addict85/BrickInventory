@@ -1,0 +1,16 @@
+Gegenprobe: ein Baustein in core-ui holt sich eine Ansicht der Bereiche
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailRow.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailRow.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailRow.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailRow.kt
+@@ -10,6 +10,7 @@
+ import androidx.compose.ui.text.font.FontWeight
+ import ch.brickinventoryapp.ui.theme.ReadingWidth
+ import ch.brickinventoryapp.ui.theme.Spacing
++import ch.brickinventoryapp.model.domain.PurchaseView
+ 
+ /** A row of the detail cards (catalog, wishlist), limited to reading width on the tablet at most. */
+ @Composable

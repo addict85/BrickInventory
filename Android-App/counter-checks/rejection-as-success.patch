@@ -1,0 +1,17 @@
+Gegenprobe: eine Absage (success: false) gilt wieder als Erfolg
+Modul: core-data
+Test: ch.brickinventoryapp.data.RejectionTest
+Rot: a refusal of the server is an error
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+@@ -210,7 +210,7 @@
+  */
+ internal inline fun <T, R> Outcome<T>.promised(success: (T) -> Boolean, sentence: (T) -> String?, f: (T) -> R): Outcome<R> =
+     when (this) {
+-        is Outcome.Success -> if (success(data)) Outcome.Success(f(data), state, buffered)
++        is Outcome.Success -> if (true) Outcome.Success(f(data), state, buffered)
+             else Outcome.Failure.Refusal(sentence(data).orEmpty())
+         is Outcome.Failure -> this
+     }

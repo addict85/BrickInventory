@@ -1,0 +1,19 @@
+Gegenprobe: Offline-Banner wieder in tertiaryContainer (Classic: rot)
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: offline hint reports no error with a red surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+@@ -101,8 +101,8 @@
+     Surface(
+         modifier.fillMaxWidth().padding(horizontal = Spacing.medium, vertical = Spacing.tiny).announce(),
+         shape = Shapes.bar,
+-        color = MaterialTheme.colorScheme.surface,
+-        contentColor = MaterialTheme.colorScheme.onSurface,
++        color = MaterialTheme.colorScheme.tertiaryContainer,
++        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+     ) {
+         Row(

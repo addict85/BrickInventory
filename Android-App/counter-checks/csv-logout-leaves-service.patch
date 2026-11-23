@@ -1,0 +1,16 @@
+Gegenprobe: Beim Abmelden läuft der Vordergrund-Dienst des CSV-Imports weiter
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: after sign-out the bar is empty, the connection closed and the service stopped
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+@@ -42,7 +42,6 @@
+         if (!follows.compareAndSet(false, true)) return
+         try {
+             loggedIn.distinctUntilChanged().collectLatest { an ->
+-                if (!an && _uiState.value.jobRun.running) service.stop()
+                 _uiState.value = CsvImportUiState()
+                 if (an) csvImport.observe().collect { process(it) }
+             }

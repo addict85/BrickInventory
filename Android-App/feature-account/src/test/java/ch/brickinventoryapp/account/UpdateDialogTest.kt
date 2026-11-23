@@ -32,9 +32,9 @@ import org.robolectric.annotation.Config
  * checked by UpdateViewModelTest.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   update-dialog-laedt-selbst   LaunchedEffect loads on show → red "der Hinweis fragt …"
- *   update-spaeter-vergessen     dialogRejected ignored → red "nach Später …"
- *   version-leer                 versionsName() without a fallback → red "ohne bekannte Version …"
+ *   update-dialog-loads-itself   LaunchedEffect loads on show → red "der Hinweis fragt …"
+ *   update-later-forgotten     dialogRejected ignored → red "nach Später …"
+ *   version-empty                 versionsName() without a fallback → red "ohne bekannte Version …"
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

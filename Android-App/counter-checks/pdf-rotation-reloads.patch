@@ -1,0 +1,16 @@
+Gegenprobe: PdfViewerViewModel lädt bei jedem oeffne() neu, wie früher der LaunchedEffect nach einer Drehung
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
+Rot: a rotation does not reload
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
+@@ -48,7 +48,6 @@
+     fun open(pdfUrl: String, serverUrl: String) {
+         val previous = _state.value
+         val rejected = previous is PdfLoadState.Error && previous.reason == PdfError.FOREIGN_HOST
+-        if (pdfUrl == address && !rejected) return
+         address = pdfUrl
+         server = serverUrl
+         // Only addresses of our own server: loaded with the token client.

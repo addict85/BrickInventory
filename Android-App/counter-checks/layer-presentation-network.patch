@@ -1,0 +1,53 @@
+Gegenprobe: Ein Feature-Modul holt sich Retrofit, ein Bildschirm importiert es
+Modul: app
+Test: ch.brickinventoryapp.app.LayerRulesTest
+Rot: presentation fetches nothing from the network itself
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+@@ -53,6 +53,7 @@
+ import ch.brickinventoryapp.ui.components.SelectionChip
+ import ch.brickinventoryapp.ui.components.SortMenu
+ import ch.brickinventoryapp.ui.components.secondaryButtonColors
++import retrofit2.Response
+ import ch.brickinventoryapp.ui.components.secondaryButtonRand
+ import ch.brickinventoryapp.ui.components.withFont
+ import ch.brickinventoryapp.ui.loadingIndicator
+diff --git a/Android-App/feature-collection/build.gradle.kts b/Android-App/feature-collection/build.gradle.kts
+--- a/Android-App/feature-collection/build.gradle.kts
++++ b/Android-App/feature-collection/build.gradle.kts
+@@ -21,6 +21,7 @@
+     implementation(libs.bundles.camera)
+     implementation(libs.mlkit.barcode)
+     implementation(libs.mlkit.textrec)
++    implementation(libs.retrofit)
+ 
+     testImplementation(project(":core-testing"))
+     testImplementation(testFixtures(project(":core-state")))
+diff --git a/Android-App/feature-collection/gradle.lockfile b/Android-App/feature-collection/gradle.lockfile
+--- a/Android-App/feature-collection/gradle.lockfile
++++ b/Android-App/feature-collection/gradle.lockfile
+@@ -229,10 +229,11 @@ com.squareup.okhttp3:mockwebserver3:5.5.1=debugUnitTestCompileClasspath,debugUni
+ com.squareup.okhttp3:mockwebserver:5.5.1=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+ com.squareup.okhttp3:okhttp-android:5.5.1=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ com.squareup.okhttp3:okhttp-sse:5.5.1=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++com.squareup.okhttp3:okhttp:4.12.0=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ com.squareup.okhttp3:okhttp:5.5.1=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ com.squareup.okio:okio-jvm:3.18.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ com.squareup.okio:okio:3.18.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+-com.squareup.retrofit2:retrofit:3.0.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++com.squareup.retrofit2:retrofit:3.0.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ com.squareup:javawriter:2.1.1=debugUnitTestRuntimeClasspath
+ io.coil-kt.coil3:coil-android:3.6.3=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ io.coil-kt.coil3:coil-compose-android:3.6.3=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+@@ -289,7 +290,9 @@ org.jetbrains.compose.ui:ui:1.12.0=debugAndroidTestCompileClasspath,debugAndroid
+ org.jetbrains.kotlin:kotlin-bom:1.8.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlin:kotlin-stdlib-common:2.4.21=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ org.jetbrains.kotlin:kotlin-stdlib:2.4.21=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:atomicfu-jvm:0.28.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:atomicfu:0.28.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath

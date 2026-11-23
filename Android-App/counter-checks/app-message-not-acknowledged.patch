@@ -1,0 +1,17 @@
+Gegenprobe: Die Snackbar quittiert ihre Meldung nicht, die nächste rückt nie nach
+Modul: core-state
+Test: ch.brickinventoryapp.state.AppViewModelTest
+Rot: the snackbar shows the channel, acknowledged the next one moves up
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+@@ -38,7 +38,7 @@
+ 
+     /** Changes stored offline that still need to reach the server — for the bar in the scaffold. */
+     val pendingChanges: StateFlow<Int> = outboxNotifier.pending
+-    fun clearSnackbar() { messages.acknowledge() }
++    fun clearSnackbar() = Unit
+ 
+     /** With a starting password, MainActivity shows the replacement screen instead of the app. */
+     val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.needed

@@ -18,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-check (Robolectric, measurable only in CI; job `counter-checks`):
  *   setVisibility(VISIBILITY_PRIVATE) and setPublicVersion() removed → red
- *   “on the lock screen …” (counter-checks/preisalarm-oeffentlich.patch)
+ *   “on the lock screen …” (counter-checks/price-alarm-public.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class PriceAlertMessageTest {

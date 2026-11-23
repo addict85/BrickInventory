@@ -1,0 +1,18 @@
+Gegenprobe: Der Zertifikatsdialog bietet bei einer Abweichung vom Code Abtippen und Vertrauen an
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: if the server deviates from the code there is nothing to confirm
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+@@ -46,8 +46,7 @@
+     /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
+     deviceSecure: Boolean = true,
+ ) {
+-    if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
+-    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
++    CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
+ }
+ 
+ /** Everything except CODE_MISMATCH: trust after comparing or typing. */

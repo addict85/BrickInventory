@@ -30,9 +30,9 @@ import org.robolectric.annotation.Config
  * feature-finances/VoucherPrivacyScreenTest.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   gutscheinseite-ohne-sichtschutz  PrivacyShield() removed from VouchersRoute → red
+ *   voucher-page-without-screen-protection  PrivacyShield() removed from VouchersRoute → red
  *                                    “the vouchers page …”
- *   gutschein-pdf-ohne-sichtschutz   VoucherPdfProtection without Sichtschutz → red “a voucher PDF …”
+ *   voucher-pdf-without-screen-protection   VoucherPdfProtection without Sichtschutz → red “a voucher PDF …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

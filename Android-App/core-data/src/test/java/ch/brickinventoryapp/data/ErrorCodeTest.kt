@@ -30,9 +30,9 @@ import java.io.File
  *   C  in balance() the read body not passed anew → red “another
  *      429 …” (code missing)
  * Counter-checks:
- *   fehlercode-ohne-verbindungstext   `zu_viele_verbindungen` deleted from errorTextToCode()
+ *   error-code-without-connection-text   `zu_viele_verbindungen` deleted from errorTextToCode()
  *      → red “upload lock, connection limit and page limit …”
- *   pdf-seitengrenze-als-gelesen      the code missed in fromPdf() → red “a PDF above
+ *   pdf-page-limit-as-read      the code missed in fromPdf() → red “a PDF above
  *      the page limit …” (again a „half-read“ PDF instead of an error)
  * Not measurable: the isNull check in Fehlerrumpf.read(). The tests' org.json
  * returns "" for JSON null anyway, Android's returns "null".

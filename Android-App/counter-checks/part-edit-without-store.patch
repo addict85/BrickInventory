@@ -1,0 +1,17 @@
+Gegenprobe: Ein geändertes Teil ändert die Ablage nicht
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: a changed part is in the store without fetching the list again
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+@@ -93,7 +93,7 @@
+         is Editing.RecordPart -> partRecorded(list, b)
+         is Editing.EditPart -> list.map {
+             if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.owner == null || it.userId == b.owner))
+-                it.copy(quantity = newQuantity(it.quantity, b.change), unitPrice = b.change.unitPrice ?: it.unitPrice)
++                it
+             else it
+         }
+         is Editing.DeletePart -> list.filterNot {

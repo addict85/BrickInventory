@@ -1,0 +1,17 @@
+Gegenprobe: die Übernahme prüft die Marke nicht und übernimmt später hingelegten Klartext
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: plaintext placed later does not count and is deleted
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -267,7 +267,7 @@
+     private fun trustAdoptPlaintext() {
+         if (trustChecked) return
+         val old = designMirror.all.filterKeys { it == USER_CA || it.startsWith(PIN_PREFIX) }
+-        val newValue: Map<String, String> = if (designMirror.getBoolean(TRUST_ADOPTED, false)) emptyMap()
++        val newValue: Map<String, String> = if (false) emptyMap()
+             else encryptedLegacyStock(old) ?: return
+         designMirror.edit {
+             newValue.forEach { (k, v) -> putString(k, v) }

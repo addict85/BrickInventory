@@ -1,0 +1,17 @@
+Gegenprobe: Der Alarmschalter speichert nur und plant nicht ein
+Modul: core-state
+Test: ch.brickinventoryapp.state.DevicesSettingsViewModelTest
+Rot: the switch saves and schedules
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
+@@ -48,7 +48,7 @@
+     fun alarmMessages(an: Boolean) {
+         viewModelScope.launch {
+             settings.setAlarmMessages(an)
+-            val error = planner.schedule(an) ?: return@launch
++            val error: Throwable = return@launch
+             messages.show(Message.Resource(R.string.alert_schedule_failed,
+                 listOf("${error::class.java.simpleName}: ${error.message ?: "—"}")))
+         }

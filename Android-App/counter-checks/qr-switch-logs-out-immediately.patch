@@ -1,0 +1,21 @@
+Gegenprobe: Ein QR-Code für einen anderen Server meldet wieder sofort ab, vor Browser-Bestätigung und Konto-Ja
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: a no to the account of another server leaves the previous sign-in
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -220,10 +220,10 @@
+             if (key != null && fingerprint != null) store.holdBefore(key, fingerprint)
+             // Signed in to a different server: it stays until the browser and account-yes confirm the
+             // pairing (pairQr); a cancel would otherwise leave no sign-in at all.
+-            val switch = session.state.value.isLoggedIn && !NetworkPolicy.sameServer(store.serverUrlNow(), newValue)
++            val switch = false
+             pairingWithSwitch = switch
+             try {
+-                if (switch) store.pairingTarget(newValue) else store.saveServerUrl(newValue)
++                setUpOne(newValue)
+                 when (val r = afterCertificateQuestion(newValue) { account.qrLogin(token, device) }) {
+                     is Outcome.Success -> pairQr(r.data, QrTarget(newValue, key, fingerprint, switch))
+                     // A rejection without a sentence means here: the code is not valid.

@@ -1,0 +1,17 @@
+Gegenprobe: Marktwert ohne Preis im Teildetail wieder als Strich
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: part without market price says no price yet
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
+@@ -241,7 +241,7 @@
+     val part = entry.part
+     ValueTiles(
+         market = (fig?.avgPrice ?: part?.avgPrice)?.let { fmtMoney(it, currency) }
+-            ?: stringResource(R.string.detail_price_none_yet),
++            ?: "—",
+         purchase = (fig?.purchasePrice ?: part?.purchasePrice)?.let { fmtMoney(it, currency) }
+             ?: stringResource(R.string.detail_purchase_none),
+         pnl = fig?.pnlPercent ?: part?.pnlPercent,

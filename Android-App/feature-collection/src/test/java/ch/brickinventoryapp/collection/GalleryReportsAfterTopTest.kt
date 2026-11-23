@@ -41,10 +41,10 @@ import java.util.Locale
  * get recorded.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   galerie-filtert-selbst      the grid shows only sets whose name contains the search text → red “search text …”
- *   galerie-sortierwert-falsch  „Name A–Z“ reports name instead of name_asc → red “the sorting …”
- *   galerie-thema-verschluckt   the theme choice in the filter reports nothing → red “a theme …”
- *   galerie-ohne-anleitungen    the instructions chip is missing from the header → red “the header names …”
+ *   gallery-filters-itself      the grid shows only sets whose name contains the search text → red “search text …”
+ *   gallery-sort-value-wrong  „Name A–Z“ reports name instead of name_asc → red “the sorting …”
+ *   gallery-theme-swallowed   the theme choice in the filter reports nothing → red “a theme …”
+ *   gallery-without-instructions    the instructions chip is missing from the header → red “the header names …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

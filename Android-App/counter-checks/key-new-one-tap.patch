@@ -1,0 +1,18 @@
+Gegenprobe: Ein neuer Serverschlüssel unter öffentlicher CA gilt wieder mit einem Tipp, auch ohne CT-Pflicht
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a new server key under the same public root deliberately asks
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -141,7 +141,8 @@
+      */
+     val transcriptNeeded: Boolean get() = when (kind) {
+         Kind.CODE_MISMATCH -> false
+-        Kind.FIRST_CONTACT, Kind.KEY_NEW -> !ctForced
++        Kind.FIRST_CONTACT -> !ctForced
++        Kind.KEY_NEW -> false
+         Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
+     }
+ 

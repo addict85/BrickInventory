@@ -1,0 +1,17 @@
+Gegenprobe: ab Werk wird auch im Mobilfunk vorgewärmt
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewDeviceTest
+Rot: by default warming happens only on Wi-Fi
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -112,7 +112,7 @@
+     // `?: false` is the whole default here — a value never set is
+     // simply not present in DataStore.
+     val warmUpWifi:    Flow<Boolean> = dataStore.data.map { it[WARM_UP_WIFI]    ?: true }
+-    val warmUpMobile:   Flow<Boolean> = dataStore.data.map { it[WARM_UP_MOBILE]   ?: false }
++    val warmUpMobile:   Flow<Boolean> = dataStore.data.map { it[WARM_UP_MOBILE]   ?: true }
+     val warmUpRoaming: Flow<Boolean> = dataStore.data.map { it[WARM_UP_ROAMING] ?: false }
+     val appTheme:  Flow<Design> = dataStore.data.map { p -> Design.from(p[APP_THEME]) ?: Design.DEFAULT }
+ 

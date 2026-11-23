@@ -33,7 +33,7 @@ import org.junit.Test
  *   E  in InitialObserver.launch the check `started` removed → red „ein zweiter Start folgt dem Ausgang nicht doppelt“ (2 instead of 1)
  *   F  in reportDiscarded the check `v.unreadable` removed → red „ein nach dem Update unlesbarer Posten wird als solcher gemeldet“ (only measurable in CI)
  *   (B, D and E measured locally with kotlinc)
- *   counter-checks/verworfen-sofort-quittiert.patch (reportDiscarded acknowledges right after
+ *   counter-checks/discarded-acknowledged-immediately.patch (reportDiscarded acknowledges right after
  *      show) → red „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

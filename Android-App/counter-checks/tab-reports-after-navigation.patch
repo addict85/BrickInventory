@@ -1,0 +1,21 @@
+Gegenprobe: Die Leisten melden den angetippten Reiter erst nach der Navigation
+Modul: app
+Test: ch.brickinventoryapp.app.TabOpensAtTopTest
+Rot: the bottom bar reports the tab before it navigates
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -121,11 +121,11 @@
+     // Bottom bar and side bar share this path so that both treat the
+     // scroll position the same.
+     fun tabChoose(screen: Any) {
+-        onTabTapped(screen)
+         if (navController.currentBackStackEntry?.destination?.hasRoute<ManagementTarget.Monitoring>() == true) {
+             navController.popBackStack()
+         }
+         navController.toTab(screen)
++        onTabTapped(screen)
+     }
+     val toggle: (Any) -> Unit = { target ->
+         onTabTapped(target)

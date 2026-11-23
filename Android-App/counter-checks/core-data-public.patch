@@ -1,0 +1,17 @@
+Gegenprobe: eine nur modulintern gebrauchte Funktion von core-update ist wieder öffentlich
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: the public surface of the data modules does not grow
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateCheck.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateCheck.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateCheck.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateCheck.kt
+@@ -7,7 +7,7 @@
+  * a text comparison would let `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` or
+  * variants with user info, port or fragment through.
+  */
+-internal fun isBelow(url: String, basis: String): Boolean {
++fun isBelow(url: String, basis: String): Boolean {
+     val target = url.toHttpUrlOrNull() ?: return false
+     val b = basis.toHttpUrlOrNull() ?: return false
+     val folder = b.pathSegments.filter { it.isNotEmpty() }

@@ -34,8 +34,8 @@ import org.robolectric.annotation.Config
  * pre-warming networks, the note about the measured Wi-Fi stands there.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   cache-leeren-ohne-frage    „Alles leeren“ clears right away → red “clearing asks …”
- *   vorwaermen-hinweis-fehlt   the note about the measured Wi-Fi is missing → red “at the networks …”
+ *   cache-clear-without-asking    „Alles leeren“ clears right away → red “clearing asks …”
+ *   prewarm-hint-missing   the note about the measured Wi-Fi is missing → red “at the networks …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

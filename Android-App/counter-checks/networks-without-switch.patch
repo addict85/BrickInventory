@@ -1,0 +1,17 @@
+Gegenprobe: die Netze des Vorwärmens ohne Schalterrolle
+Modul: app
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: background work with a title, flush cards, own display and switches
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+@@ -235,7 +235,7 @@
+         val allowed = networks[network] == true
+         Row(
+             Modifier.fillMaxWidth().heightIn(min = 48.dp)
+-                .toggleable(value = allowed, role = Role.Switch, onValueChange = { onNetwork(network, it) }),
++                .toggleable(value = allowed, role = Role.Button, onValueChange = { onNetwork(network, it) }),
+             verticalAlignment = Alignment.CenterVertically,
+         ) {
+             Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))

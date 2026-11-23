@@ -1,0 +1,36 @@
+Gegenprobe: Eine Route liegt wieder in einem Kernmodul, und ein Bereich öffnet sie direkt
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: no area depends on another area or on the app, none names foreign route types
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
+new file mode 100644
+--- /dev/null
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
+@@ -0,0 +1,6 @@
++package ch.brickinventoryapp.model.ui
++
++import kotlinx.serialization.Serializable
++
++@Serializable
++data object Zentralziel
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/AdminGraph.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/AdminGraph.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/AdminGraph.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/AdminGraph.kt
+@@ -12,6 +12,7 @@
+ import ch.brickinventoryapp.resources.R
+ import ch.brickinventoryapp.ui.components.OverlayGuard
+ import ch.brickinventoryapp.ui.components.StepLock
++import ch.brickinventoryapp.model.ui.Zentralziel
+ 
+ /** Management only needs what every area gets. */
+ interface ManagementNavigation : AreaEnvironment
+@@ -21,7 +22,7 @@
+     composable<ManagementTarget.Monitoring> {
+         // If admin rights are lost, the page leaves on its own instead of continuing to collect 403s.
+         val state by navigation.session.collectAsStateWithLifecycle()
+-        LaunchedEffect(state.isAdmin) { if (!state.isAdmin) navigation.navController.popBackStack() }
++        LaunchedEffect(state.isAdmin) { if (!state.isAdmin) navigation.navController.navigate(Zentralziel) }
+         navigation.Tab(stringResource(R.string.nav_monitoring)) {
+             // Admin actions only after the device lock; no tap through an overlay.
+             OverlayGuard()

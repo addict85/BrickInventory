@@ -45,15 +45,15 @@ import org.junit.Test
  *      red “a price alert on a wishlist item is saved debounced …”
  *   E  in loadWanted the source chosen without the search text → red “the list follows
  *      the store, filtered too” (99999-1 appears under „10294“)
- *   F  wantedState does not look at the source (counter-checks/merkliste-ohne-ablage.patch)
+ *   F  wantedState does not look at the source (counter-checks/wanted-list-without-store.patch)
  *      → red “list loaded”: the fetch only writes into the store.
  *   G  deleteWantedItem() deletes immediately on the server again
- *      (counter-checks/merkposten-loeschen-sofort.patch) → red “a deleted wishlist item …”
+ *      (counter-checks/wanted-item-delete-immediately.patch) → red “a deleted wishlist item …”
  *      (“no DELETE yet”)
  *   H  deleteWantedItem() reads the name from the raw list instead of the shown one
- *      (counter-checks/merkposten-name-ohne-ablage.patch) → red “a deleted wishlist item …”
+ *      (counter-checks/wanted-item-name-without-store.patch) → red “a deleted wishlist item …”
  *      (Titanic expected, 10294-1 received; measurable only in the CI)
- *   merkliste-laedt-nicht-beim-zeigen  (counter-checks/) observeLoadOn of the list removed
+ *   wanted-list-does-not-load-on-show  (counter-checks/) observeLoadOn of the list removed
  *      → red “list and detail load as soon as someone shows them”
  */
 @OptIn(ExperimentalCoroutinesApi::class)

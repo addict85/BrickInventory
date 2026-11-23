@@ -1,0 +1,17 @@
+Gegenprobe: inversePrimary (Aktion der Snackbar) wieder ohne Kontrastprüfung (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: every text role reaches 4,5 to 1 on its surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -455,7 +455,7 @@
+         inverseSurface = s.onSurface,
+         inverseOnSurface = s.surface,
+         // The snackbar action: lightened or darkened until it reaches 4.5:1.
+-        inversePrimary = withContrast(lerp(s.primary, if (dark) Color.Black else Color.White, 0.45f), s.onSurface),
++        inversePrimary = lerp(s.primary, if (dark) Color.Black else Color.White, 0.45f),
+         // Material sets #690005 in the dark, only 4.48:1 on the light error tones.
+         onError = if (dark) s.background else Color.White,
+         errorContainer = lerp(s.error, s.surface, 0.85f),

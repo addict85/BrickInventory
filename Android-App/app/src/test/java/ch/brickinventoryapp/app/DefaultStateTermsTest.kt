@@ -18,8 +18,8 @@ import java.util.Locale
  * names, and the hint for the own one names the choice that really exists.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   zwei-vorgaben-gleich-benannt  both again „Standard-Zustand“ → red “the own default …”
- *   hinweis-nennt-leer            hint again „Leer = globale Vorgabe …“ → red “the hint …”
+ *   two-defaults-same-name  both again „Standard-Zustand“ → red “the own default …”
+ *   hint-names-empty            hint again „Leer = globale Vorgabe …“ → red “the hint …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

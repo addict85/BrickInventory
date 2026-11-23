@@ -22,9 +22,9 @@ import org.junit.Test
  * is a refusal (its sentence it sends with an error status), the stock of the parts list is filed per requested part.
  *
  * Counter-checks (patches under counter-checks/):
- *   teile-absage-als-erfolg      createLocation() maps without zugesagt → red “a success false …”
- *   teile-bestand-falscher-schluessel  getOwnedParts() looks for „nummer-farbe“ → red “the stock …”
- *   figur-erfasst-ohne-preiszustand    addMinifig() leaves out priceFromCondition → red “adding a figure …”
+ *   parts-rejection-as-success      createLocation() maps without zugesagt → red “a success false …”
+ *   parts-stock-wrong-key  getOwnedParts() looks for „nummer-farbe“ → red “the stock …”
+ *   figure-captured-without-price-state    addMinifig() leaves out priceFromCondition → red “adding a figure …”
  */
 class PartsSlotValuesTest {
 

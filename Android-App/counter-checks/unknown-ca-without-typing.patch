@@ -1,0 +1,17 @@
+Gegenprobe: Ohne bekannte CA genügt ein Tipp, der Fingerabdruck muss nicht abgetippt werden
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: without a known CA only the typed fingerprint counts, discarding remembers nothing
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -217,7 +217,7 @@
+     override fun confirm(pins: PinStore, input: String?, deviceConfirmed: Boolean): Boolean {
+         val f = _open.value ?: return false
+         if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return false
+-        val verify = f.transcriptNeeded || f.kind == CertificateUnresolved.Kind.FIRST_CONTACT && !input.isNullOrBlank()
++        val verify = f.kind == CertificateUnresolved.Kind.FIRST_CONTACT && !input.isNullOrBlank()
+         if (verify && !Transcript.confirmed(input, f.fingerprint)) return false
+         // Without a screen lock there is nothing to confirm with; then the transcript counts instead.
+         if (f.deviceConfirmationNeeded && !deviceConfirmed && !Transcript.confirmed(input, f.fingerprint)) return false

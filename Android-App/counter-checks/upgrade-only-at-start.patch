@@ -1,0 +1,16 @@
+Gegenprobe: Ein Token unter dem schwächeren Schlüssel wird nach dem Entsperren nicht hochgestuft, erst beim nächsten Start
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: after unlocking a token under the old key goes under the strict one immediately
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -501,6 +501,7 @@
+      */
+     override suspend fun levelTokenHigh() {
+         if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(vault::stale) != true) return
++        return
+         var rekeyed = false
+         dataStore.edit { rekeyed = rekey(it) }
+         if (rekeyed) catchUnlessCancelled { vault.forgetLegacyStock() }

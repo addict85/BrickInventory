@@ -20,11 +20,11 @@ import org.robolectric.annotation.Config
  * own.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   widerrufsdienst-exportiert  tools:node="remove" removed from RevocationBoundService →
+ *   revocation-service-exported  tools:node="remove" removed from RevocationBoundService →
  *                               red “the revocation service of Google sign-in …”
- *   profilempfaenger-exportiert tools:node="remove" removed from ProfileInstallReceiver →
+ *   profile-receiver-exported tools:node="remove" removed from ProfileInstallReceiver →
  *                               red “the profile installer …”
- *   pdf-renderer-im-app-prozess isolatedProcess removed from PdfRenderService → red
+ *   pdf-renderer-in-app-process isolatedProcess removed from PdfRenderService → red
  *                               “the PDF renderer runs isolated …”
  */
 @RunWith(RobolectricTestRunner::class)

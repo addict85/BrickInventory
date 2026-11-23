@@ -1,0 +1,18 @@
+Gegenprobe: bei den Netzen des Vorwärmens fehlt der Hinweis zum gemessenen WLAN
+Modul: feature-management
+Test: ch.brickinventoryapp.management.CacheClearAsksTest
+Rot: the networks show the hint about metered Wi-Fi
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+@@ -245,9 +245,6 @@
+     // A measured Wi-Fi — another phone's hotspot —
+     // counts as mobile data. This is stated here because otherwise it
+     // looks like a broken switch: "But I'm on Wi-Fi."
+-    Text(stringResource(R.string.monitoring_prewarm_hint),
+-        style = MaterialTheme.typography.bodySmall,
+-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+ }
+ 
+ /** The two clear buttons; they only open the confirmation prompt. */

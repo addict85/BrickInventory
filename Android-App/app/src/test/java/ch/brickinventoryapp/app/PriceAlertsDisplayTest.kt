@@ -55,11 +55,11 @@ import java.util.Locale
  * state stands as a word, not only as a color — in both languages.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   preisalarm-laedt-nicht         observeLoadOn of the overview deleted → red “the overview fetches …”
- *   preisalarm-loescht-sofort      the trash can deletes without confirmation → red “the overview fetches …”
- *   preisalarm-zeile-immer-offen   every row clickable → red “a row opens …”
- *   preisalarm-zustand-gleich      the badge always says „Aktiv“ → red “a row opens …”
- *   preisalarm-texte-gleich        alerts_fired equal to alerts_armed (de) → red “the two states …”
+ *   price-alarm-does-not-load         observeLoadOn of the overview deleted → red “the overview fetches …”
+ *   price-alarm-deletes-immediately      the trash can deletes without confirmation → red “the overview fetches …”
+ *   price-alarm-row-always-open   every row clickable → red “a row opens …”
+ *   price-alarm-state-equal      the badge always says „Aktiv“ → red “a row opens …”
+ *   price-alarm-texts-equal        alerts_fired equal to alerts_armed (de) → red “the two states …”
  * Counter-checks (run here): FinanceImage removed from the row → red “a row shows the set's preview …”;
  * “Done” without `number != a.threshold` → red “Done saves only a changed threshold”.
  */

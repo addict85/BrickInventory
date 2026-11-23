@@ -1,0 +1,16 @@
+Gegenprobe: zwischen den Schüben des Vorwärmens keine Pause
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewWarmerTest
+Rot: between batches there is a pause
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+@@ -103,7 +103,6 @@
+             // argument as for the limit one line above.
+             if (!networkAllowed()) return
+             coroutineScope { boost.map { async { fetch(it) } }.awaitAll() }
+-            delay(PAUSE_MS)
+         }
+     }
+ 

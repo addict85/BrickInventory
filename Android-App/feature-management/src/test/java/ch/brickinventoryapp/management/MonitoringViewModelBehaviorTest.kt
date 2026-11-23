@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
  *
  * Counter-checks: in loadJobs() `accessRevoked` not
  * set → red “a 403 only_admins ends the polling …”;
- * counter-checks/monitoring-takt-ohne-ende.patch (holdCurrent() with `while (true)`)
+ * counter-checks/monitoring-interval-endless.patch (holdCurrent() with `while (true)`)
  * → red “the clock polls jobs and background …” (runs until the time limit).
  */
 class MonitoringViewModelBehaviorTest {

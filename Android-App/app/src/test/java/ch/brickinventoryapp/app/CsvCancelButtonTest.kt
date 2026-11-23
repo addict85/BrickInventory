@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  * button stands collapsed in the header row, as in the web app; a finished import shows
  * none.
  *
- * Counter-check (counter-checks/csv-abbrechen-versteckt.patch, Robolectric, measured by CI): the
+ * Counter-check (counter-checks/csv-cancel-hidden.patch, Robolectric, measured by CI): the
  * button only with an expanded bar → red “a running import …”.
  */
 @RunWith(RobolectricTestRunner::class)

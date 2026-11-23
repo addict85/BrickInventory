@@ -105,40 +105,40 @@ import java.util.Locale
  * SetTileTest and ValueTilesTest in the modules that own them.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   tablet-umschalter-oben          switcher in the app bar on the tablet too → red “tablet has the switcher …”
- *   fehlerhinweis-roher-satz        the data layer's sentence also for OFFLINE → red “error hint …”
- *   merkliste-leer-ohne-knoepfe     button „Set merken“ without label → red “empty wishlist …”
- *   detail-ohne-wertkacheln         set detail without value tiles → red “set detail shows market value …”
- *   galerie-zwei-knoepfe            scanning again as a second floating button → red “gallery has a floating button …”
- *   telefon-kontomenue              account icon again in the app bar → red “phone navigates without …”
- *   teile-raster-fest               parts grid again fixed 120 dp → red “parts at 200 percent …”
- *   finanzen-einspaltig             finances single-column on the tablet too → red “finances stand in two columns on the tablet …”
- *   gutschein-pin-klein             PIN row without minimum height → red “voucher buttons …”
- *   bildflaeche-ohne-ersatz         ProductImage without placeholder image → red “gallery without image shows the placeholder image”
- *   leiste-klappt-nicht-ein         TopAppBar without scrollBehavior → red “app bar yields when scrolling”
- *   merkliste-zustand-als-segmente  condition filter of the wishlist again as segments → red “wishlist filters …”
- *   umschalter-chips-bei-200        Sets | Parts | Minifigures from 130 % as a chip row instead of segments
+ *   tablet-toggle-on-top          switcher in the app bar on the tablet too → red “tablet has the switcher …”
+ *   error-hint-raw-sentence        the data layer's sentence also for OFFLINE → red “error hint …”
+ *   wanted-list-empty-without-buttons     button „Set merken“ without label → red “empty wishlist …”
+ *   detail-without-value-tiles         set detail without value tiles → red “set detail shows market value …”
+ *   gallery-two-buttons            scanning again as a second floating button → red “gallery has a floating button …”
+ *   phone-account-menu              account icon again in the app bar → red “phone navigates without …”
+ *   parts-grid-fixed               parts grid again fixed 120 dp → red “parts at 200 percent …”
+ *   finances-single-column             finances single-column on the tablet too → red “finances stand in two columns on the tablet …”
+ *   voucher-pin-small             PIN row without minimum height → red “voucher buttons …”
+ *   image-surface-without-placeholder         ProductImage without placeholder image → red “gallery without image shows the placeholder image”
+ *   bar-does-not-collapse         TopAppBar without scrollBehavior → red “app bar yields when scrolling”
+ *   wanted-list-state-as-segments  condition filter of the wishlist again as segments → red “wishlist filters …”
+ *   toggle-chips-at-200        Sets | Parts | Minifigures from 130 % as a chip row instead of segments
  *                                   → red “the collection switcher shows all three views as segments at 200 percent …” (gap)
- *   umschalter-zeile-bei-200        segments in one row at 200 % too → red “the collection switcher
+ *   toggle-row-at-200        segments in one row at 200 % too → red “the collection switcher
  *                                   shows all three views as segments at 200 percent …” („Minifiguren … abgeschnitten“)
- *   merkliste-detail-ersetzt-liste  wishlist item detail never next to the list → red “tablet shows wishlist and detail …”
- *   detail-mit-zurueckpfeil         detail next to the list with a back arrow instead of X → red “tablet shows wishlist and detail …”
- *   gutschein-formular-immer-offen  form again fixed below the list → red “adding a voucher opens …”
- *   teile-farben-englisch           color names untranslated, part names without language → red “parts name colors …”
- *   merkliste-leer-dreifach         empty wishlist again with button and search row → red “empty wishlist …”
- *   segmente-bei-grosser-schrift    single choice as segments at 200 % too → red “single choice breaks …”
- *   einfachwahl-chips-bei-200       single choice at 200 % again as chips → red “single choice stands as
+ *   wanted-list-detail-replaces-list  wishlist item detail never next to the list → red “tablet shows wishlist and detail …”
+ *   detail-with-back-arrow         detail next to the list with a back arrow instead of X → red “tablet shows wishlist and detail …”
+ *   voucher-form-always-open  form again fixed below the list → red “adding a voucher opens …”
+ *   parts-colors-english           color names untranslated, part names without language → red “parts name colors …”
+ *   wanted-list-empty-threefold         empty wishlist again with button and search row → red “empty wishlist …”
+ *   segments-with-large-font    single choice as segments at 200 % too → red “single choice breaks …”
+ *   single-choice-chips-at-200       single choice at 200 % again as chips → red “single choice stands as
  *                                   segments …”
- *   finanzen-kauf-je-stueck         purchase of the row again per piece → red “finances name …”
- *   finanzen-kopf-ohne-basis        header card from all positions instead of the basis → red “finance header …”
- *   kachel-quelle-ignoriert         tile also calls the purchase price „Marktpreis“ → red “gallery tile …”
- *   mehr-ohne-vergleich             comparison not under “More” → red “comparison and build list mark …”
- *   mehr-pfeil-anders-als-zurueck   arrow always leads to “More” → red “the arrow of a More subpage …”
- *   galerie-kachel-gross            set tile at 200 % too with an image across the width → red “gallery at 200 percent …”
- *   galerie-erfassen-schwebt        add floating at 200 % too → red “gallery at 200 percent …”
- *   teile-erfassen-schwebt          add floating at 200 % too → red “parts at 200 percent …”
- *   teile-kachel-gross              parts tile at 200 % too with an image across the width → red “parts at 200 percent show …”
- *   detail-spalte-ohne-hoechstbreite  set detail single-column again without common maximum width
+ *   finances-purchase-per-piece         purchase of the row again per piece → red “finances name …”
+ *   finances-header-without-base        header card from all positions instead of the basis → red “finance header …”
+ *   tile-source-ignored         tile also calls the purchase price „Marktpreis“ → red “gallery tile …”
+ *   more-without-comparison             comparison not under “More” → red “comparison and build list mark …”
+ *   more-arrow-differs-from-back   arrow always leads to “More” → red “the arrow of a More subpage …”
+ *   gallery-tile-large            set tile at 200 % too with an image across the width → red “gallery at 200 percent …”
+ *   gallery-capture-floats        add floating at 200 % too → red “gallery at 200 percent …”
+ *   parts-capture-floats          add floating at 200 % too → red “parts at 200 percent …”
+ *   parts-tile-large              parts tile at 200 % too with an image across the width → red “parts at 200 percent show …”
+ *   detail-column-without-max-width  set detail single-column again without common maximum width
  *                                   → red “set detail on the tablet in portrait …”
  */
 @RunWith(RobolectricTestRunner::class)

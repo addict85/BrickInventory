@@ -1,0 +1,16 @@
+Gegenprobe: Die Animator-Dauer wird nur einmal gelesen, nicht beobachtet
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: reduced motion follows a change at runtime
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Movement.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Movement.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Movement.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Movement.kt
+@@ -28,7 +28,6 @@
+         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+             override fun onChange(selfChange: Boolean) { reduced = read() }
+         }
+-        resolution.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+         onDispose { resolution.unregisterContentObserver(observer) }
+     }
+     return reduced

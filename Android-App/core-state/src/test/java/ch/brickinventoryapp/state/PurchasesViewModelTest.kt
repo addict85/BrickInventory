@@ -50,8 +50,8 @@ import org.junit.Test
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → red at
  *      the same spot (part)
  *   H  in loadManualPriceHistory() always getPartPriceHistory
- *      (counter-checks/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für Teile und Figuren …“ (figure without history; only measurable in CI)
- *   kaeufe-laden-nicht-beim-zeigen  (counter-checks/) purchasesOf without a fetch on the first observer
+ *      (counter-checks/purchases-history-parts-only.patch) → red „der Preisverlauf kommt für Teile und Figuren …“ (figure without history; only measurable in CI)
+ *   purchases-do-not-load-on-show  (counter-checks/) purchasesOf without a fetch on the first observer
  *      → red „die Kaeufe eines Eintrags laden, sobald …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

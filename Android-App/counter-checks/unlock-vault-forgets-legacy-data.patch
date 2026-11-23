@@ -1,0 +1,18 @@
+Gegenprobe: Ein Token älterer Fassung (ohne Präfix) wird über den Entsperr-Schlüssel geöffnet und ist weg
+Modul: core-security
+Test: ch.brickinventoryapp.security.VaultLockTest
+Rot: a ciphertext without prefix stays readable via the old key
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+@@ -49,8 +49,7 @@
+     override fun decrypt(saved: String): String? = (open(saved) as? VaultFinding.Readable)?.plaintext
+ 
+     override fun open(saved: String): VaultFinding =
+-        if (saved.startsWith(UNLOCKED_PREFIX)) onlyUnlocked.open(saved.removePrefix(UNLOCKED_PREFIX))
+-        else legacyStock.open(saved)
++        onlyUnlocked.open(saved.removePrefix(UNLOCKED_PREFIX))
+ 
+     override fun stale(saved: String): Boolean =
+         !saved.startsWith(UNLOCKED_PREFIX) || onlyUnlocked.stale(saved.removePrefix(UNLOCKED_PREFIX))

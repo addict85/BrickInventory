@@ -1,0 +1,17 @@
+Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungskanal
+Modul: feature-management
+Test: ch.brickinventoryapp.management.BackgroundWorkTest
+Rot: an action runs in the ViewModel and reports via the state
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -191,7 +191,7 @@
+     }
+ 
+     private fun report(action: suspend () -> Message) {
+-        viewModelScope.launch { messages.show(action()) }
++        viewModelScope.launch { action() }
+     }
+ 
+     private suspend fun <T> afterJob(r: Outcome<T>, success: (T) -> Message): Message {

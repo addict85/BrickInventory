@@ -1,0 +1,17 @@
+Gegenprobe: Der Monitoring-Takt fragt nach entzogenem Verwalterrecht weiter
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringViewModelBehaviorTest
+Rot: the tick polls jobs and background until access is revoked
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -111,7 +111,7 @@
+      * every further tick would just fetch another 403.
+      */
+     suspend fun holdCurrent() {
+-        while (!_state.value.accessRevoked) {
++        while (true) {
+             loadJobs()
+             loadBackground()
+             delay(TICK_MS)

@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  *   (a) the line with IS_SECRET removed from secretClip() → red (intended)
  *   (b) the LEEREN branch in SecretClipboard.check() has no effect → red
  *       „ein kopiertes Geheimnis ist nach einer Minute weg …“
- *       (counter-checks/zwischenablage-leert-nicht.patch)
+ *       (counter-checks/clipboard-does-not-clear.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class SecretClipboardTest {

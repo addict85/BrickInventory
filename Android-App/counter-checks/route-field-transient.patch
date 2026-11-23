@@ -1,0 +1,16 @@
+Gegenprobe: Ein Feld einer Route wird nicht mitgegeben (@Transient), das Ziel liest den Vorgabewert
+Modul: app
+Test: ch.brickinventoryapp.app.RoutesRoundTripTest
+Rot: titles with special characters arrive unchanged
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsTarget.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsTarget.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsTarget.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsTarget.kt
+@@ -21,6 +21,6 @@
+         val kind: ItemKind,
+         val id: String,
+         val colorId: Int = NO_COLOR,
+-        val title: String,
++        @kotlinx.serialization.Transient val title: String = "",
+     ) : PartsTarget
+ }

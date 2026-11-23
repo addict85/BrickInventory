@@ -1,0 +1,16 @@
+Gegenprobe: nach dem Leeren des Caches stehen die alten Zahlen da
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringReloadTest
+Rot: after clearing the cache the numbers come anew
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -347,7 +347,6 @@
+      */
+     internal suspend fun emptyCache(everything: Boolean): Outcome<Unit> {
+         val r = admin.clearCache(everything)
+-        if (r is Outcome.Success) loadCacheAndLimits()
+         return r
+     }
+ 

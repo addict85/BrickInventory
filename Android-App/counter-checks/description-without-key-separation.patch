@@ -1,0 +1,17 @@
+Gegenprobe: Die App nimmt die Signatur aus dem Feld des APK-Schlüssels wieder als Beschreibungssignatur
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateSignatureTest
+Rot: the signature of the APK key no longer applies
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignature.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignature.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignature.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignature.kt
+@@ -19,7 +19,7 @@
+ @Serializable
+ internal data class SignedDescription(
+     @SerialName("daten") val data: String,
+-    @SerialName("beschreibungssignatur") val descriptionSignature: String = "",
++    @SerialName("signature") val descriptionSignature: String = "",
+ )
+ 
+ /**

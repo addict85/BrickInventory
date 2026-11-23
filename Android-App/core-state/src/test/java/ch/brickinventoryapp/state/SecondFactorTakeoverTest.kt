@@ -22,9 +22,9 @@ import org.junit.Test
  * 403 is checked by ServerGuardTest.
  *
  * Counter-checks:
- *   faktorpflicht-aus-me-ignoriert   adoptAccount() doesn't report → red „auth me mit Pflicht …“
- *   faktorpflicht-immer              adoptAccount() always reports → red „auth me ohne Pflicht …“
- *   faktorpflicht-feld-umbenannt     User reads `second_factor_required` → red „Anmeldung und auth me …“
+ *   factor-required-from-me-ignored   adoptAccount() doesn't report → red „auth me mit Pflicht …“
+ *   factor-required-always              adoptAccount() always reports → red „auth me ohne Pflicht …“
+ *   factor-required-field-renamed     User reads `second_factor_required` → red „Anmeldung und auth me …“
  */
 class SecondFactorTakeoverTest {
 

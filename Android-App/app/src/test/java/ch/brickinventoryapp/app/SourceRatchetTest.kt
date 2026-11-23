@@ -13,51 +13,51 @@ import java.io.File
  * how many test functions still do that. Counterpart to Web-App/test/ratschen.test.js.
  *
  * Counter-checks (patches under counter-checks/):
- *   schranke-zu-hoch           limit of the source-reading functions +1 → red “test functions
+ *   barrier-too-high           limit of the source-reading functions +1 → red “test functions
  *                              that read source …” (sunk, adjust)
- *   helfer-zaehlt-nicht        a reading helper no longer counts → red, the same test
- *   werkzeugausgabe-zaehlt     the output of a tool counts as source again → red “the output
+ *   helper-does-not-count        a reading helper no longer counts → red, the same test
+ *   tool-output-counts     the output of a tool counts as source again → red “the output
  *                              of a tool …” and “test functions that read source …”
- *   geschichte-im-testkopf     addendum number and reporter in the header of TabOpensAtTopTest → red “long
+ *   history-in-test-header     addendum number and reporter in the header of TabOpensAtTopTest → red “long
  *                              comments in the workflow and in tests …”
- *   kuerzel-im-bau             a check abbreviation again in the comment of settings.gradle.kts → red, the same test
- *   kommentar-zu-lang          six lines of prose above AppViewModel → red “no comment has …”
- *   bau-kommentar-zu-lang      six lines in gradle.properties → red “no comment in build files …”
- *   verweis-aufs-archiv        an „Ausführlich: docs/begruendungen/…“ in TokenVault.kt → red “no reference
+ *   abbreviation-in-build             a check abbreviation again in the comment of settings.gradle.kts → red, the same test
+ *   comment-too-long          six lines of prose above AppViewModel → red “no comment has …”
+ *   build-comment-too-long      six lines in gradle.properties → red “no comment in build files …”
+ *   reference-to-archive        an „Ausführlich: docs/begruendungen/…“ in TokenVault.kt → red “no reference
  *                              to the reasoning archive …”
- *   kdoc-doppelt               an orphaned KDoc block before Alarmabholung → red, the same test
- *   detekt-baseline-waechst    upper limit one below the entries → red “the detekt baseline …”
- *   detekt-baseline-fremde-regel  a MagicNumber entry → red, the same test
- *   start-schluckt-abbruch     makes “no broad catch …” red
+ *   kdoc-twice               an orphaned KDoc block before Alarmabholung → red, the same test
+ *   detekt-baseline-grows    upper limit one below the entries → red “the detekt baseline …”
+ *   detekt-baseline-foreign-rule  a MagicNumber entry → red, the same test
+ *   start-swallows-cancellation     makes “no broad catch …” red
  *   (local) `(lists.metrics() as? Outcome.Success)?.let { … }` back in Parts.kt → red “no load
  *                              result is dropped silently” [Parts.kt:…]
  *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
  *                              → red “no runCatching swallows …”
- *   runcatching-um-suspend-lambda  Offlineablage calls the suspend source (a field of type
+ *   runcatching-around-suspend-lambda  Offlineablage calls the suspend source (a field of type
  *                              `suspend () -> String?`) in runCatching → red, the same test
- *   voll-qualifiziert          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
+ *   fully-qualified          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
  *                              “no fully qualified project name …” and “fully qualified names …”
- *   warten-in-echtzeit         PartsViewModelTest sleeps 200 ms again → red “real-time waiting …”
- *   core-data-oeffentlich      isBelow without internal → red “the public surface of the data modules …”
- *   bereich-oeffentlich        qrSwitchesServer without internal → red “the public surface of the areas …”
- *   erfassung-an-der-activity  EntryViewModel again via `by viewModels()` in MainActivity
+ *   wait-in-real-time         PartsViewModelTest sleeps 200 ms again → red “real-time waiting …”
+ *   core-data-public      isBelow without internal → red “the public surface of the data modules …”
+ *   scope-public        qrSwitchesServer without internal → red “the public surface of the areas …”
+ *   capture-on-the-activity  EntryViewModel again via `by viewModels()` in MainActivity
  *                              → red “the activity no longer holds ViewModels …”
- *   padding-feste-zahl         DetailRow2 again `padding(vertical = 5.dp)` → red “fixed numbers in padding …”
- *   abstand-zwischen-feste-zahl  storage locations again `Spacer(Modifier.width(8.dp))` → red, the same test
- *   dialog-ohne-fenstername    UpdateDialog without paneTitle → red “no AlertDialog without window name …”
- *   dialog-graue-flaeche       UpdateDialog without windowSurface() → red “every AlertDialog lies on the window surface“
- *   gutschein-eigene-knopfreihe  voucher form again with its own row Save | Cancel
+ *   padding-fixed-number         DetailRow2 again `padding(vertical = 5.dp)` → red “fixed numbers in padding …”
+ *   spacing-between-fixed-number  storage locations again `Spacer(Modifier.width(8.dp))` → red, the same test
+ *   dialog-without-window-name    UpdateDialog without paneTitle → red “no AlertDialog without window name …”
+ *   dialog-grey-surface       UpdateDialog without windowSurface() → red “every AlertDialog lies on the window surface“
+ *   voucher-own-button-row  voucher form again with its own row Save | Cancel
  *                              → red “Cancel and main button stand together only in the button row …”
- *   string-format-ohne-locale  MonitoringScreen again `String.format(fmt, sn)` → red “no String-format …”
- *   laden-im-bildschirm        SetDetailScreen loads via LaunchedEffect(setNumber) again
+ *   string-format-without-locale  MonitoringScreen again `String.format(fmt, sn)` → red “no String-format …”
+ *   load-in-screen        SetDetailScreen loads via LaunchedEffect(setNumber) again
  *                              → red “screens do not trigger loading …”
- *   merkliste-laedt-wieder     WantedUiState again with a field `nochLaedt: Boolean` → red
+ *   wanted-list-loads-again     WantedUiState again with a field `nochLaedt: Boolean` → red
  *                              “screens do not trigger loading …, states carry loading …”
- *   merkliste-fehler-als-text  WantedUiState with `errorText: String?` → red, the same test
- *   konto-speichert-wieder     AccountUiState again with `saves: Boolean` → red, the same test
- *   galerie-fehler-als-text    GalleryUiState with `galleryFehlerSatz: String?` → red, the same test
- *   fachtyp-preis-als-double   `val betragAlt: Double?` in PurchaseSumsView → red „Beträge als Double …“
- *   fachtyp-datum-als-text     `val geaendertAm: String?` in PurchaseView → red „Daten als String …“
+ *   wanted-list-error-as-text  WantedUiState with `errorText: String?` → red, the same test
+ *   account-saves-again     AccountUiState again with `saves: Boolean` → red, the same test
+ *   gallery-error-as-text    GalleryUiState with `galleryFehlerSatz: String?` → red, the same test
+ *   domain-type-price-as-double   `val betragAlt: Double?` in PurchaseSumsView → red „Beträge als Double …“
+ *   domain-type-date-as-text     `val geaendertAm: String?` in PurchaseView → red „Daten als String …“
  * Language (word list app/src/test/resources/german-words.txt; local JUnit, no patch yet):
  *   `fun ladeDaten()` in GalleryViewModel → red „German declarations …: ladeDaten“
  *   a file data/repository/Ergebnis.kt → red „German file names …: [Ergebnis.kt]“

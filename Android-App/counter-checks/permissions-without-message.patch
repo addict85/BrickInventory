@@ -1,0 +1,17 @@
+Gegenprobe: Der Entzug der Verwalterrechte wird still übernommen
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: revoked admin rights apply immediately and are reported once
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+@@ -103,7 +103,7 @@
+         area.launch {
+             rights.revoked.filter { it }.collect {
+                 rights.acknowledge()
+-                if (session.followUpRights(account)) messages.show(Message.Resource(R.string.vm_rights_revoked))
++                session.followUpRights(account)
+             }
+         }
+     }

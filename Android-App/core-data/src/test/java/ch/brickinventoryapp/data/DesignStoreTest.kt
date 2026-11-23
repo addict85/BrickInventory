@@ -21,7 +21,7 @@ import java.io.File
  * (DesignOrNothing, DomainTypesTest). Under Robolectric with a real store.
  *
  * Counter-check (patch under counter-checks/, Robolectric, measured by CI):
- *   design-ohne-spiegel   saveAppTheme does not write the mirror → red “the remembered design …”
+ *   theme-without-mirror   saveAppTheme does not write the mirror → red “the remembered design …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

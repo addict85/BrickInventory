@@ -18,8 +18,8 @@ import kotlin.coroutines.CoroutineContext
  * DevicesSettingsViewModelTest.
  *
  * Counter-checks (patches under counter-checks/, measured by CI):
- *   einplanen-wirft         schedule() passes the error on (getOrThrow) → red „einplanen meldet …“
- *   planer-im-aufrufer      WorkManagerAlarmPlanner without withContext(io) → red „der Planer wechselt …“
+ *   schedule-throws         schedule() passes the error on (getOrThrow) → red „einplanen meldet …“
+ *   scheduler-in-caller      WorkManagerAlarmPlanner without withContext(io) → red „der Planer wechselt …“
  */
 class AlarmScheduleTest {
 

@@ -1,0 +1,18 @@
+Gegenprobe: Die Währung ist keine value class mehr und reist als Objekt statt als Text
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.DomainTypesTest
+Rot: a currency travels as plain text and may be unknown
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/CurrencyCode.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/CurrencyCode.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/CurrencyCode.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/CurrencyCode.kt
+@@ -9,8 +9,7 @@
+  * unknown one it shows as text before the amount instead of discarding the response.
+  */
+ @Serializable
+-@JvmInline
+-value class CurrencyCode(val code: String) {
++data class CurrencyCode(val code: String) {
+     /** Empty means: the server named none. */
+     val known: Boolean get() = code.isNotBlank()
+ 

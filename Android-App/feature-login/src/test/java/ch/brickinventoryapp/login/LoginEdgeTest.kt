@@ -61,14 +61,14 @@ import kotlin.math.roundToInt
  * (enableEdgeToEdge). Run with reported bars (status 24 dp, gestures 48 dp)
  *
  * Counter-checks (patches under counter-checks/, measured only in the CI — Robolectric):
- *   anmeldung-hinter-tastatur     imePadding() removed from outsideTheSystemBars → red “Registrieren stays …”
- *   anmeldung-unter-leisten       systemBarsPadding() removed from outsideTheSystemBars → red “Anmelden starts …”
- *   erweitert-ohne-zustand        semantics removed from the „Erweitert“ button → red “Erweitert reports …”
- *   registrieren-tablet-einspaltig  two columns only from 4000 dp → red “on the tablet …”
- *   weiter-wieder-tonal           „Weiter“ back to FilledTonalButton → red “Weiter stands out …”
- *   adresse-langes-etikett        setup_url_label back to „Serveradresse der BrickInventory Manager Web-App“
+ *   login-behind-keyboard     imePadding() removed from outsideTheSystemBars → red “Registrieren stays …”
+ *   login-under-bars       systemBarsPadding() removed from outsideTheSystemBars → red “Anmelden starts …”
+ *   extended-without-state        semantics removed from the „Erweitert“ button → red “Erweitert reports …”
+ *   register-tablet-single-column  two columns only from 4000 dp → red “on the tablet …”
+ *   next-tonal-again           „Weiter“ back to FilledTonalButton → red “Weiter stands out …”
+ *   address-long-label        setup_url_label back to „Serveradresse der BrickInventory Manager Web-App“
  *                                 → red “the address field carries a short label …” (two lines)
- *   anmelden-gesperrt-ohne-felder button active again only with a name and password → red “Anmelden stays tappable …”
+ *   login-locked-without-fields button active again only with a name and password → red “Anmelden stays tappable …”
  *   `.background(…)` removed from TwoPartLayout → red “… the window shows through” in both
  *                                 tests below (transparent instead of the dark background)
  */

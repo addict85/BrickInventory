@@ -21,7 +21,7 @@ import java.io.InputStream
  *
  * Counter-check: in copyCancellable() the
  * check `ensureActive()` removed → red “a cancel ends the copying …”
- * (counter-checks/druck-kopiert-weiter.patch).
+ * (counter-checks/print-copies-on.patch).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CopyCancellableTest {

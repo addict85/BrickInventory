@@ -26,9 +26,9 @@ import org.junit.Test
  *
  * Counter-checks (measured with kotlinc against PartsOrder.kt and stubs of PartView and
  * PartsUiState; the ViewModel part needs Android and is measured in the CI):
- *   teile-menge-aufsteigend   QUANTITY without Descending → red “every order …”
- *   teile-name-ohne-farbe     NAME without the second key, color → red “every order …”
- *   teile-ordnung-vergessen   setPartsOrder does not write to the SavedStateHandle → red “the order …”
+ *   parts-quantity-ascending   QUANTITY without Descending → red “every order …”
+ *   parts-name-without-color     NAME without the second key, color → red “every order …”
+ *   parts-order-forgotten   setPartsOrder does not write to the SavedStateHandle → red “the order …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsOrderTest {

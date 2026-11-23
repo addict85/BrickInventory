@@ -78,7 +78,7 @@ class NumberFormatTest {
     /**
      * The placement of symbol and amount is up to the locale (getCurrencyInstance);
      * assembled by hand, the symbol would stand on the same side everywhere.
-     * Counter-check betrag-symbol-von-hand (symbol before fmtAmount(); kotlinc) → red here.
+     * Counter-check amount-symbol-by-hand (symbol before fmtAmount(); kotlinc) → red here.
      */
     @Test
     fun `the opposite direction stays the platform's business`() {

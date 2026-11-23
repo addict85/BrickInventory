@@ -1,0 +1,22 @@
+Gegenprobe: Das Eingabefeld des Zertifikatsdialogs trägt wieder den ganzen Satz als Etikett, ohne Erklärung darunter
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: the field carries a short label, the instructions are below it
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
+@@ -49,11 +49,11 @@
+         },
+         // Short label, the instructions below it: a sentence as a label used to get
+         // cut off and sat above the field while typing.
+-        label = { Text(stringResource(R.string.cert_input_label)) },
++        label = { Text(help) },
+         isError = errorText != null,
+         supportingText = {
+             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+-                Text(errorText ?: help, modifier = Modifier.weight(1f))
++                Text(errorText.orEmpty(), modifier = Modifier.weight(1f))
+                 Text(stringResource(R.string.cert_input_counter, counted, needed))
+             }
+         },

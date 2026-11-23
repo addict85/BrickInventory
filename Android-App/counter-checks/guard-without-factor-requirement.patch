@@ -1,0 +1,16 @@
+Gegenprobe: Der Wächter übersieht 403 zweiter_faktor_pflicht
+Modul: core-state
+Test: ch.brickinventoryapp.state.ServerGuardTest
+Rot: a 403 second_factor_required requires the setup without signing out
+
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerGuard.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerGuard.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerGuard.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerGuard.kt
+@@ -199,7 +199,6 @@
+         if (response.code == 401 && code !in CONFIRMATION_NEEDED) sessionExpired()
+         if (response.code == 403 && code == ErrorCode.ONLY_ADMINS) rightsRevoked()
+         if (response.code == 403 && code == ErrorCode.PASSWORD_SWITCH_NEEDED) passwordSwitchNeeded()
+-        if (response.code == 403 && code == ErrorCode.SECOND_FACTOR_REQUIRED) secondFactorRequired()
+     }
+ 
+     /** A notice about too old an app or too old a server, once per run. */

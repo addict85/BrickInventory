@@ -1,0 +1,17 @@
+Gegenprobe: Ein quittierter verworfener Posten bleibt in der Datenbank
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.InventoryDatabaseTest
+Rot: a discarded item stays in the database until it is acknowledged, and sign-out clears it
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+@@ -125,7 +125,7 @@
+             }
+         }
+ 
+-    override suspend fun acknowledgeDiscarded(area: String, id: String) = stock.deleteKeys(area, DISCARDED, listOf(id))
++    override suspend fun acknowledgeDiscarded(area: String, id: String) = Unit
+ 
+     private fun read(z: OutboxRow): OutboxItem? =
+         runCatching { InitialForm.decode(json, z.editing) }.getOrNull()

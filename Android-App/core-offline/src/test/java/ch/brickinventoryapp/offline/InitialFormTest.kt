@@ -21,7 +21,7 @@ import org.junit.Test
  * co. as JSON); they lie like this on devices and must stay readable.
  *
  * Counter-checks (measured with kotlinc against core-model and core-offline):
- *   A  counter-checks/ausgangsform-feldname-geaendert.patch (SetRequestF1 `set_number` → `setNumber`) → red “reads and writes every
+ *   A  counter-checks/outbox-form-field-name-changed.patch (SetRequestF1 `set_number` → `setNumber`) → red “reads and writes every
  *      frozen row” (set_erfassen) and “an item of an older app …”
  *   B  in AddSetRequest (setNumber = server model) `@SerialName("set_number")` → `"set_nr"` → stays green:
  *      a change to the network model no longer reaches the disk

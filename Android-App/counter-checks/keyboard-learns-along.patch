@@ -1,0 +1,17 @@
+Gegenprobe: Die Tastatur darf Passwort und Codes lernen (Stand vor sec8 H4)
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
+Rot: the keyboard does not learn password and code
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
+@@ -21,7 +21,7 @@
+             next.startInputMethod(object : PlatformTextInputMethodRequest {
+                 override fun createInputConnection(outAttributes: EditorInfo): InputConnection =
+                     request.createInputConnection(outAttributes).also {
+-                        outAttributes.imeOptions = outAttributes.imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
++                        outAttributes.imeOptions = outAttributes.imeOptions
+                     }
+             })
+         },

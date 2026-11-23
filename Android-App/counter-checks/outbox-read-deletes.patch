@@ -1,0 +1,17 @@
+Gegenprobe: Lesen des Ausgangs löscht einen unlesbaren Posten wieder still
+Modul: core-data
+Test: ch.brickinventoryapp.data.ReconcileOnRoomTest
+Rot: an unreadable item is reported, never silently deleted, and does not block
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+@@ -87,7 +87,7 @@
+         dao.addOne(OutboxRow(area = area, editing = InitialForm.encode(json, editing),
+             created = now, key = key))
+ 
+-    override suspend fun all(area: String) = dao.all(area).mapNotNull { read(it) }
++    override suspend fun all(area: String) = dao.all(area).mapNotNull { z -> read(z) ?: run { dao.remove(z.id); null } }
+ 
+     override suspend fun first(area: String): OutboxItem? = dao.all(area).firstNotNullOfOrNull { read(it) }
+ 

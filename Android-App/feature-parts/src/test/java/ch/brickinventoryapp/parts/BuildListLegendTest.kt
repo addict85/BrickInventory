@@ -24,9 +24,9 @@ import org.robolectric.annotation.Config
  * their own group at the end instead of under "(Keine Farbe)" between the parts.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   bauliste-ohne-legende      the legend is missing → red “above the list stands …”
- *   bauliste-pille-als-zeichen "Vorhanden" back to "8/12" → red “above the list stands …”
- *   bauliste-figuren-gemischt  figures grouped by color again → red “the minifigures …”
+ *   build-list-without-legend      the legend is missing → red “above the list stands …”
+ *   build-list-pill-as-character "Vorhanden" back to "8/12" → red “above the list stands …”
+ *   build-list-figures-mixed  figures grouped by color again → red “the minifigures …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h2400dp-port-xxhdpi")

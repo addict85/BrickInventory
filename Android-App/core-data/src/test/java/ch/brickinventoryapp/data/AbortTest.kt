@@ -15,7 +15,7 @@ import org.junit.Test
  * of a coroutine: a cancelled job does not keep running as an error
  * case.
  *
- * Counter-check (counter-checks/abbruch-verschluckt.patch): the branch
+ * Counter-check (counter-checks/cancellation-swallowed.patch): the branch
  * `catch (abort: CancellationException) { throw abort }` removed → red
  * “a cancelled job does not keep running” and “the cancellation goes through“.
  */

@@ -116,17 +116,17 @@ import java.util.Locale
  * ThemeRowRoleTest), so they can stay internal.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   schalter-ohne-namen          build list checkboxes again with own callback → red “checkboxes of the build list carry …”
- *   suchfeld-ohne-namen          search field without contentDescription → red “search field keeps its name …”
- *   filterwahl-als-kaestchen     FilterChoice again as SelectionChip → red “filter choice is a single choice …”
- *   ansage-ungedrosselt          ThrottledAnnouncement passes on every wording → red “status messages are live regions and …”
- *   bildzoom-nur-geste           zoom bar in the image dialog removed → red “image zoom works with buttons …”
- *   fokus-ohne-rahmen            focusFrame draws nothing → red “keyboard focus shows a frame …”
- *   csv-aufklapper-stumm         state and expanding removed from the CSV bar → red “CSV bar names state, expanding …”
- *   setkachel-name-hinten        name of the set tile again below number and condition → red “set and catalog tile read …”
- *   unterseite-einzeilig         subpage again with single-line title → red “long titles wrap at …”
- *   rueckfrage-ohne-ueberschrift title of the confirmation without heading → red “the confirmation names its …”
- *   notfallcodes-als-wort        emergency codes without readAloudAs → red “emergency codes are read out …”
+ *   switch-without-name          build list checkboxes again with own callback → red “checkboxes of the build list carry …”
+ *   search-field-without-name          search field without contentDescription → red “search field keeps its name …”
+ *   filter-choice-as-checkbox     FilterChoice again as SelectionChip → red “filter choice is a single choice …”
+ *   announcement-unthrottled          ThrottledAnnouncement passes on every wording → red “status messages are live regions and …”
+ *   image-zoom-gesture-only           zoom bar in the image dialog removed → red “image zoom works with buttons …”
+ *   focus-without-frame            focusFrame draws nothing → red “keyboard focus shows a frame …”
+ *   csv-expander-silent         state and expanding removed from the CSV bar → red “CSV bar names state, expanding …”
+ *   set-tile-name-last        name of the set tile again below number and condition → red “set and catalog tile read …”
+ *   subpage-single-line         subpage again with single-line title → red “long titles wrap at …”
+ *   confirmation-without-title title of the confirmation without heading → red “the confirmation names its …”
+ *   recovery-codes-as-word        emergency codes without readAloudAs → red “emergency codes are read out …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

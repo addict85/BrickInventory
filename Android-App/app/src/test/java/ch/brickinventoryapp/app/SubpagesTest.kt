@@ -78,21 +78,21 @@ import java.util.Locale
  * the empty build list stands centered with a margin and offers no reset.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   abmelden-ohne-rueckfrage     „Abmelden“ under More signs out immediately → red “sign-out asks …”
- *   lagerort-loescht-sofort      deleting in the menu without confirmation → red “storage locations stand as rows …”
- *   haushalt-entfernt-sofort     „Entfernen“ unlinks immediately → red “household structures …”
- *   unterseite-doppelter-titel   CSV import again with card header → red “CSV import shows …”
- *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ visible even without sets → red “empty build list …”
- *   lagerort-stern-als-knopf     star again IconButton without location → red “the default star …”
- *   haushalt-entfernen-ohne-name „Entfernen“ without account name → red “removing names …”
- *   preisalarm-nummer-zuerst     confirmation names only the number again → red “price alerts name …”
- *   konto-ohne-wiederholung      changing the password submits without check → red “account changes …”
- *   bauliste-zweistufig          creating only after „+“ → red “build list is created …”
- *   bauliste-plus-ohne-wirkung   „+“ in the field does not take the set → red “build list takes sets …”
- *   bauliste-leert-sofort        „Zurücksetzen“ empties without confirmation → red “build list takes sets …”
- *   konto-profil-ohne-rueckfrage saving without password dialog → red “account asks for the password when saving …”
- *   konto-email-ohne-ausstehend  the requested address not below the field → red “account names …”
- *   abmelden-mitten-im-konto     sign-out again as the last entry of „Konto und App“, before the
+ *   logout-without-confirmation     „Abmelden“ under More signs out immediately → red “sign-out asks …”
+ *   location-deletes-immediately      deleting in the menu without confirmation → red “storage locations stand as rows …”
+ *   household-removes-immediately     „Entfernen“ unlinks immediately → red “household structures …”
+ *   subpage-double-title   CSV import again with card header → red “CSV import shows …”
+ *   build-list-empty-reset  „Zurücksetzen“ visible even without sets → red “empty build list …”
+ *   location-star-as-button     star again IconButton without location → red “the default star …”
+ *   household-remove-without-name „Entfernen“ without account name → red “removing names …”
+ *   price-alarm-number-first     confirmation names only the number again → red “price alerts name …”
+ *   account-without-retry      changing the password submits without check → red “account changes …”
+ *   build-list-two-step          creating only after „+“ → red “build list is created …”
+ *   build-list-plus-without-effect   „+“ in the field does not take the set → red “build list takes sets …”
+ *   build-list-clears-immediately        „Zurücksetzen“ empties without confirmation → red “build list takes sets …”
+ *   account-profile-without-confirmation saving without password dialog → red “account asks for the password when saving …”
+ *   account-email-without-pending  the requested address not below the field → red “account names …”
+ *   logout-mid-account     sign-out again as the last entry of „Konto und App“, before the
  *                                server group → red “sign-out stands apart …”
  */
 @RunWith(RobolectricTestRunner::class)

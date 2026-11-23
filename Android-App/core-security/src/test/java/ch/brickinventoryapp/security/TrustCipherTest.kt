@@ -14,9 +14,9 @@ import java.io.IOException
  *
  * Counter-checks (kotlinc and JUnit locally):
  *   A  name() returns the binding itself → red „ein Name verraet den Server nicht …“;
- *      counter-checks/pin-name-im-klartext.patch
+ *      counter-checks/pin-name-in-plaintext.patch
  *   B  openDetail() fetches the key inside the check (locked becomes „gone“) → red
- *      „locked an entry is readable later, not gone“; counter-checks/angabe-gesperrt-wie-weg.patch
+ *      „locked an entry is readable later, not gone“; counter-checks/detail-locked-as-missing.patch
  */
 class TrustCipherTest {
 

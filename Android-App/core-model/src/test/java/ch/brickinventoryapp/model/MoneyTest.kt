@@ -18,9 +18,9 @@ import java.util.Locale
  * read every form the server writes, and the calendar day stays that of the server.
  *
  * Counter-checks (patches under counter-checks/):
- *   geld-schneidet-ab        Geld.aus truncates instead of rounding → red “an amount is rounded to four places …”
- *   geld-rappen-halb-gerade  onRappen with HALF_EVEN → red “rounding to centimes goes half away from zero”
- *   tag-mit-versatz          Instant.kalendertag with +02:00 instead of UTC → red “the calendar day is the server's …”
+ *   money-truncates        Geld.aus truncates instead of rounding → red “an amount is rounded to four places …”
+ *   money-rappen-half-even  onRappen with HALF_EVEN → red “rounding to centimes goes half away from zero”
+ *   day-with-offset          Instant.kalendertag with +02:00 instead of UTC → red “the calendar day is the server's …”
  */
 class MoneyTest {
 

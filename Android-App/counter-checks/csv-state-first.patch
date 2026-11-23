@@ -1,0 +1,17 @@
+Gegenprobe: Der CSV-Balken entscheidet erst nach dem Überschreiben, „vorher“ ist dann schon der neue Zustand
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: a running import starts the service once, finished reloads and clears after five seconds
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+@@ -53,7 +53,7 @@
+ 
+     private suspend fun process(s: CsvImportStatusView) {
+         // Decide before overwriting — afterwards “before” would already be the new state.
+-        val sequence = csvSequence(wasBeforeActive = _uiState.value.jobRun.running, status = s.status)
++        val sequence = csvSequence(wasBeforeActive = importRunning(s.status), status = s.status)
+         if (sequence == CsvSequence.SERVICE_START) service.start()
+         _uiState.value = CsvImportUiState(
+             jobRun = if (importRunning(s.status)) Operation.Running else Operation.Done,

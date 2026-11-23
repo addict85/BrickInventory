@@ -1,0 +1,17 @@
+Gegenprobe: TokenTausch.faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Anwendungsbereich
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenSwapTest
+Rot: due swaps in the application scope and returns immediately
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -128,7 +128,7 @@
+     /** For the header: do not wait, the request itself succeeded. */
+     override fun due(oldToken: String) {
+         if (lock.isLocked) return
+-        background.launch { swap(oldToken) }
++        runBlocking { swap(oldToken) }
+     }
+ 
+     /**

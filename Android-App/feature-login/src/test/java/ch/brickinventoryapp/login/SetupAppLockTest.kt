@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-check (Robolectric, measurable only in the CI):
  *   the card removed from SetupScreen → red “setup offers the app lock …”;
- *   counter-checks/einrichtung-ohne-app-sperre.patch
+ *   counter-checks/setup-without-app-lock.patch
  */
 @RunWith(RobolectricTestRunner::class)
 class SetupAppLockTest {

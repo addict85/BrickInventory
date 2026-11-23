@@ -1,0 +1,24 @@
+Gegenprobe: Verlauf wieder vor der Kopfkachel der Finanzen
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: finances name the market value before the history
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
+@@ -148,7 +148,6 @@
+             // Account filter — appears only for a main account with sub-accounts. It applies to
+             // ALL numbers of this tab: curve, tiles, sets, parts and minifigures.
+             if (householdMembers.size > 1) item { FinanceScopeRow(householdMembers, scopeMode, onScopeChange) }
+-            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+             if (financeState.extrasLoad is Load.Failure) item { PartialLoadFailed(financeState.extrasLoad, actions::loadValuation) }
+             item {
+                 // Without a market value there is no trend, as on the web: the history would then carry only
+@@ -159,6 +158,7 @@
+             if (onOpenVouchers != null) item {
+                 CrossLink(stringResource(R.string.vouchers_title), onOpenVouchers)
+             }
++            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+         }
+         // The rows: filter, sets, parts, minifigures.
+         val rows: LazyListScope.() -> Unit = {

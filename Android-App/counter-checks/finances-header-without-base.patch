@@ -1,0 +1,19 @@
+Gegenprobe: Kopfkarte nimmt Einstand und Marktwert wieder aus allen Positionen statt aus der Basis
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: finance header shows cost plus P and L equals market value and the basis row
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
+@@ -152,8 +152,8 @@
+     return FinanceHeader(
+         baseKnown = true,
+         withBase = withBase,
+-        cost = if (withBase) amount(t.basisCostBasis) else t.purchase.trim().toBigDecimalOrNull(),
+-        value = if (withBase) amount(t.basisMarketValue) else all,
++        cost = t.purchase.trim().toBigDecimalOrNull(),
++        value = all,
+         pnlAmount = if (withBase) amount(t.basisPnlAmount) else null,
+         pnlPercent = if (withBase) t.pnlPercent else null,
+         total = t.positions ?: 0,

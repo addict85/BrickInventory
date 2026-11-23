@@ -31,12 +31,12 @@ import org.junit.Test
  *      “signed out the widget shows no numbers“
  *   E  widgetValues() without the query of
  *      `show` → red “without permission the amounts are hidden“;
- *      counter-checks/widget-zeigt-betraege.patch
- *   F  counter-checks/widget-guv-aus-allen.patch: basis
+ *      counter-checks/widget-shows-amounts.patch
+ *   F  counter-checks/widget-profit-loss-from-all.patch: basis
  *      skipped → red “with a basis value and P&L stand as in the finance card“
  *      (32.40 instead of 212.40)
  *   G  withoutToken() always LEEREN → red “without a token the worker clears only when signed out …”;
- *      counter-checks/widget-leert-bei-sperre.patch
+ *      counter-checks/widget-clears-on-lock.patch
  */
 class WidgetNumbersTest {
 

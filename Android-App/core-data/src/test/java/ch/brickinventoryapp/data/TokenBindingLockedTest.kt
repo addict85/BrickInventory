@@ -32,11 +32,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * Real TokenStore on Robolectric, a restart is a new instance.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   wechsel-nach-speicher        saveServerUrl decides via tokenNow() again →
+ *   switch-after-save        saveServerUrl decides via tokenNow() again →
  *                                red “a locked keystore …” (the token of A is still there)
- *   verworfenes-token-vergessen  no job for the discarded token → red, the same test
+ *   discarded-token-forgotten  no job for the discarded token → red, the same test
  *                                („A wird nachgeholt abgemeldet“)
- *   altbestand-ungebunden        bindLegacyStock() not called → red “a token
+ *   legacy-data-unbound        bindLegacyStock() not called → red “a token
  *                                of older versions …”
  */
 @RunWith(RobolectricTestRunner::class)

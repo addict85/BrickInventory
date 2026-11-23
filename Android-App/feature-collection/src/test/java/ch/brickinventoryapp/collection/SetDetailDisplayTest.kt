@@ -47,10 +47,10 @@ import org.robolectric.annotation.Config
  * and ServerComputedValuesTest (core-data read screens from feature-collection for that).
  *
  * Counter-checks (Robolectric, measurable only in the CI; patches under counter-checks/):
- *   kaufkachel-letzter-kauf     the purchase-price tile shows maxPurchasePrice → red “the purchase price tile …”
- *   marktpreis-doppelt          the price card shows the market price again → red “the market price …”
- *   mengenregler-ohne-kopplung  `remember(set.setNumber)` without set.quantity → red “the quantity slider …”
- *   verlauf-fehler-ohne-klasse  ErrorHint of the price history without historyFetch.art → red “if the price history fails …”
+ *   purchase-tile-last-purchase     the purchase-price tile shows maxPurchasePrice → red “the purchase price tile …”
+ *   market-price-twice          the price card shows the market price again → red “the market price …”
+ *   quantity-stepper-without-coupling  `remember(set.setNumber)` without set.quantity → red “the quantity slider …”
+ *   history-error-without-class  ErrorHint of the price history without historyFetch.art → red “if the price history fails …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1000dp-h900dp-land")

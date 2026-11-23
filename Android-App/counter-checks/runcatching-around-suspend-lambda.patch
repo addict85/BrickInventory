@@ -1,0 +1,17 @@
+Gegenprobe: Offlineablage.bereich ruft die suspend-Quelle wieder in runCatching auf
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no runCatching swallows the cancellation of a suspending call
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -230,7 +230,7 @@
+     private fun lock(b: String, kind: StockKind) = lock.getOrPut(b to kind) { Mutex() }
+ 
+     /** The valid area, scattered; null = not signed in, then nothing is stored. */
+-    suspend fun area(): String? = valid(catchUnlessCancelled { areaSource() }.getOrNull())
++    suspend fun area(): String? = valid(runCatching { areaSource() }.getOrNull())
+ 
+     private fun valid(b: String?) = b?.takeIf { it.isNotBlank() }
+ 

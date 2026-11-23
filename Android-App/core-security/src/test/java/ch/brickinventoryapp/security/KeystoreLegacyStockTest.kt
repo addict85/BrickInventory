@@ -18,9 +18,9 @@ import javax.crypto.SecretKey
  * legacy path creates no key, and after re-encrypting its alias is gone.
  *
  * Counter-checks (kotlinc and JUnit locally):
- *   tresor-ohne-aad              encrypt() without updateAAD → red „ein neuer Geheimtext traegt die AAD …“
- *   altbestand-legt-schluessel-an  key() also creates one in the legacy path → red „der Altbestand legt keinen Schluessel an …“
- *   ablage-alter-alias-bleibt    wrapNew() without forgetLegacyStock → red „nach dem Umschluesseln ist der alte Alias der Ablage weg …“
+ *   vault-without-aad              encrypt() without updateAAD → red „ein neuer Geheimtext traegt die AAD …“
+ *   legacy-data-creates-key  key() also creates one in the legacy path → red „der Altbestand legt keinen Schluessel an …“
+ *   store-old-alias-stays    wrapNew() without forgetLegacyStock → red „nach dem Umschluesseln ist der alte Alias der Ablage weg …“
  */
 class KeystoreLegacyStockTest {
 

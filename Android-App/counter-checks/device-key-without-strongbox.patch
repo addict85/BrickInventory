@@ -1,0 +1,17 @@
+Gegenprobe: Der Geräteschlüssel entsteht gleich im TEE, StrongBox wird nie versucht
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.StrongBoxFirstTest
+Rot: first StrongBox, without the chip the TEE
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxFirst.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxFirst.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxFirst.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxFirst.kt
+@@ -11,7 +11,7 @@
+  */
+ internal fun <T> strongBoxFirst(generate: (strongBox: Boolean) -> T): T =
+     try {
+-        generate(true)
++        generate(false)
+     } catch (_: ProviderException) {
+         generate(false)
+     }

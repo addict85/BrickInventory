@@ -1,0 +1,14 @@
+Gegenprobe: Einträge älterer Fassungen unter dem MD5 der Adresse bleiben liegen
+Modul: core-data
+Test: ch.brickinventoryapp.data.ImageCacheTest
+Rot: a plain-text cache of older versions disappears, the encrypted one stays
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+@@ -180,5 +180,4 @@
+     }
+     if (plaintext) http.deleteRecursively()
+     // Entries under readable names (MD5 of the address) from older versions: the cache may lose them.
+-    http.listFiles()?.filter { !it.name.startsWith(EncryptedFileSystem.JITTERED) }?.forEach { it.deleteRecursively() }
+ }

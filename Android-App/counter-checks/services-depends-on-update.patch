@@ -1,0 +1,16 @@
+Gegenprobe: core-services bindet core-update ein; die abgespaltenen Module kennen einander nicht
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-services/build.gradle.kts b/Android-App/core-services/build.gradle.kts
+--- a/Android-App/core-services/build.gradle.kts
++++ b/Android-App/core-services/build.gradle.kts
+@@ -13,6 +13,7 @@
+ 
+ dependencies {
+     implementation(project(":core-data"))
++    implementation(project(":core-update"))
+     // Texts and icon of the notifications: the R classes are not transitive.
+     implementation(project(":core-resources"))
+     implementation(libs.androidx.core.ktx)

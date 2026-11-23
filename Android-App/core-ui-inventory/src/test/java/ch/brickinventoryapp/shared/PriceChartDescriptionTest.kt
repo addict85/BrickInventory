@@ -29,7 +29,7 @@ import java.util.Locale
  * The price chart in the set detail is not an empty canvas for TalkBack: its drawing
  * carries a description with condition, start, end, low and high of every line.
  *
- * Counter-check (counter-checks/preisdiagramm-stumm.patch, Robolectric, measured by CI): the
+ * Counter-check (counter-checks/price-chart-silent.patch, Robolectric, measured by CI): the
  * semantics removed from the canvas → red „das Preisdiagramm beschreibt …“.
  */
 @RunWith(RobolectricTestRunner::class)

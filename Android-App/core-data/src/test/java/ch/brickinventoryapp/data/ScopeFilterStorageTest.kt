@@ -9,7 +9,7 @@ import org.junit.Test
 /**
  * Account and storage location filter lie only in memory; the sign-in resets both.
  *
- * Counter-check (counter-checks/anmeldung-behaelt-lagerfilter.patch): resetAll leaves the
+ * Counter-check (counter-checks/login-keeps-storage-filter.patch): resetAll leaves the
  * lager_ keys standing → red “the sign-in also resets the storage location filter”.
  */
 class ScopeFilterStorageTest {

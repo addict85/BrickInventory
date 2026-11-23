@@ -1,0 +1,17 @@
+Gegenprobe: Finanzen auch auf dem Tablet einspaltig
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: finances stand in two columns on the tablet
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
+@@ -272,7 +272,7 @@
+     overview: LazyListScope.() -> Unit,
+     rows: LazyListScope.() -> Unit,
+ ) {
+-    if (twoColumn(widthDp)) {
++    if (false && twoColumn(widthDp)) {
+         Row(Modifier.fillMaxSize()) {
+             LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge, verticalArrangement = spacing) {
+                 overview()

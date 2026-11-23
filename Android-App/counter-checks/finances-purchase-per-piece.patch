@@ -1,0 +1,17 @@
+Gegenprobe: Kauf der Zeile wieder je Stück neben dem Wert aller Stück
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: finances name the purchase total and the profit as an amount for two pieces
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/FinanceRows.kt
+@@ -32,7 +32,7 @@
+      * „Kauf: 400“ next to „899.90“ with two copies read like a profit of 125 %.
+      */
+     val purchaseTotal: Money?
+-        get() = purchasePrice?.let { it * quantity.coerceAtLeast(1) }
++        get() = purchasePrice
+ 
+     /** Profit or loss in money, on the same basis as [pnlPercent]. */
+     val profit: Money?

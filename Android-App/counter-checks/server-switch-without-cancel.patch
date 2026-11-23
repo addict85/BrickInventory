@@ -1,0 +1,16 @@
+Gegenprobe: Ein Serverwechsel ruft die Hörer der Server-Clients nicht
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a different server cancels running calls, the same one does not
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -294,7 +294,6 @@
+         val newOrigin: suspend () -> Boolean = {
+             val different = !NetworkPolicy.sameServer(serverUrlNow(), normalized)
+             // Running calls belong to the old server; their responses should no longer trigger anything.
+-            if (different) serverSwitchListener.forEach { it() }
+             different
+         }
+         tokenLimit.write(newSession = newOrigin) {

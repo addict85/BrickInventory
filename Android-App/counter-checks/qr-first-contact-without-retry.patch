@@ -1,0 +1,17 @@
+Gegenprobe: Nach dem Ja zum Erstkontakt wird die QR-Anmeldung nicht wiederholt
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: after the yes to the first contact the QR code signs in without a new scan
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -255,7 +255,7 @@
+         val key = pinKey(address) ?: return r
+         if (r !is Outcome.Failure || question.open.value?.key != key) return r
+         question.open.first { it == null }
+-        return if (store.rememberedPin(key) != null) fetch() else r
++        return r
+     }
+ 
+     /** The pairing waits for the yes or no to the shown account ([LoginUiState.qrAccount]). */

@@ -1,0 +1,16 @@
+Gegenprobe: Die Seitenkanten aus dem isolierten Renderer gelten ungeprüft
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfLimitsTest
+Rot: page edges outside the format give no dimensions
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
+@@ -55,7 +55,6 @@
+  * are outside the format. [bitmapDimensions] limits the area, here once more for safety.
+  */
+ internal fun pagesDimensions(widthPx: Int, widthPt: Int, heightPt: Int): PagesDimensions? {
+-    if (widthPt !in 1..PDF_PAGE_MAX_PT || heightPt !in 1..PDF_PAGE_MAX_PT) return null
+     val ratio = heightPt.toFloat() / widthPt
+     var (w, h) = bitmapDimensions(widthPx.coerceIn(1, PDF_EDGE_MAX_PX), ratio)
+     // A very tall page is rendered narrower, until the height fits too.

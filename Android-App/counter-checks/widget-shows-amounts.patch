@@ -1,0 +1,17 @@
+Gegenprobe: Das Widget zeigt Geldwerte ohne Erlaubnis des Nutzers (Stand vor sec8 H5)
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetNumbersTest
+Rot: without permission the amounts are hidden
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+@@ -80,7 +80,7 @@
+  * lies on the home screen, readable for anyone who sees the phone.
+  */
+ fun widgetValues(z: WidgetNumbers, show: Boolean): Triple<String, String, String> =
+-    if (!show) Triple(WIDGET_HIDDEN, WIDGET_HIDDEN, WIDGET_HIDDEN)
++    if (false) Triple(WIDGET_HIDDEN, WIDGET_HIDDEN, WIDGET_HIDDEN)
+     else Triple(
+         z.value?.let { fmtMoney(it, z.currency) } ?: "—",
+         gvText(z.today, z.todayPercent, z.currency),

@@ -39,10 +39,10 @@ import java.util.concurrent.TimeUnit
  *   D  redemptionStep(): Gesperrt → GIVEN_UP → red “a locked keystore
  *      waits …”
  *   E in entwerte() the check of the origin removed → red
- *      “a job for a different server sends nothing” (counter-checks/entwerter-ohne-herkunft.patch)
+ *      “a job for a different server sends nothing” (counter-checks/redeemer-without-origin.patch)
  *   F  redemptionStep(): Gesperrt gives up after the maximum attempts even with a locked device
  *      (`!deviceLocked &&` removed) → red “with a locked device the job does not give up”
- *      (counter-checks/entwertung-gibt-bei-sperre-auf.patch; CI only)
+ *      (counter-checks/redemption-gives-up-when-locked.patch; CI only)
  */
 class RedemptionTest {
 

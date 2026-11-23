@@ -1,0 +1,16 @@
+Gegenprobe: die Anfragen des Vorwärmers tragen keine Marke
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewWarmerTest
+Rot: it fetches only missing thumbnails, each once, reading and marked
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+@@ -115,7 +115,6 @@
+         runCatching {
+             val request = Request.Builder()
+                 .url(address)
+-                .tag(WarmUp::class.java, WarmUp)
+                 .build()
+             // No `?.`: `body` is not nullable since OkHttp 5. The value
+             // is discarded anyway — it is only read so that the response

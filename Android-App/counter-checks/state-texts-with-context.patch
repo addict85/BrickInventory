@@ -1,0 +1,15 @@
+Gegenprobe: AppTexts hält wieder einen Context
+Modul: app
+Test: ch.brickinventoryapp.app.LayerRulesTest
+Rot: core-state and core-session know no Context
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+@@ -1,5 +1,6 @@
+ package ch.brickinventoryapp.state.ui.viewmodel
+ 
++import android.content.Context
+ import ch.brickinventoryapp.data.LoginState
+ import ch.brickinventoryapp.data.repository.Outcome
+ import ch.brickinventoryapp.data.repository.errorTextToCode

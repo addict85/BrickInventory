@@ -1,0 +1,18 @@
+Gegenprobe: Die Teileliste übernimmt beim gescheiterten PDF-Auftrag nur den Satz des Servers, auch keinen
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartListViewModelTest
+Rot: an error always has a sentence, even without the server's sentence
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt
+@@ -206,8 +206,7 @@
+     /** Never empty: a fetch speaks like every fetch, a failed job with the server's sentence. */
+     private fun errorText(reason: PdfFailure): Message = when (reason) {
+         is PdfFailure.Fetch -> errorMessage(reason.error)
+-        is PdfFailure.Job -> reason.sentence?.takeIf { it.isNotBlank() }?.let(Message::Text)
+-            ?: Message.Resource(R.string.pdfexp_server_error)
++        is PdfFailure.Job -> Message.Text(reason.sentence.orEmpty())
+     }
+ 
+     fun pdfOpened() = _uiState.update { it.copy(pdfFile = null) }

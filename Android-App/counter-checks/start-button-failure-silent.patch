@@ -1,0 +1,17 @@
+Gegenprobe: ein gescheiterter Start meldet nichts
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringStartButtonsTest
+Rot: a failed start reports and releases the button
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -284,7 +284,7 @@
+                 is Outcome.Failure -> {
+                     setButton(job, null)
+                     val sentence = if (job == Jobstart.INSTRUCTIONS) R.string.monitoring_reimport_error else R.string.monitoring_start_error
+-                    messages.show(Message.Resource(sentence, listOf(errorMessage(r))))
++                    sentence.hashCode()
+                 }
+                 is Outcome.Success -> {
+                     setButton(job, r.data)

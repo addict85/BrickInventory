@@ -13,9 +13,9 @@ import java.security.ProviderException
  *
  * Counter-checks (measured locally with kotlinc):
  *   A  strongBoxFirst() asks `generate(false)` directly → red „zuerst StrongBox, …“;
- *      counter-checks/geraeteschluessel-ohne-strongbox.patch
+ *      counter-checks/device-key-without-strongbox.patch
  *   B  the fallback catches every exception → red „ein anderer Fehler …“;
- *      counter-checks/geraeteschluessel-strongbox-faengt-alles.patch
+ *      counter-checks/device-key-strongbox-catches-all.patch
  */
 class StrongBoxFirstTest {
 

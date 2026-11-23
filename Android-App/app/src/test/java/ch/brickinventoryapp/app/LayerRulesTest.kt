@@ -10,18 +10,19 @@ import java.io.File
  * A structure check: it reads import lines, not comments.
  *
  * Counter-checks (05.11.2026, measured locally with kotlinc, one patch each in counter-checks/):
- *   schicht-viewmodel-android   `import android.net.Uri` in VoucherViewModel → red “a ViewModel …”
- *   schicht-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → red “presentation …”
- *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → red “presentation …”
- *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in WantedListViewModel
+ *   layer-viewmodel-android   `import android.net.Uri` in VoucherViewModel → red “a ViewModel …”
+ *   layer-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → red “presentation …”
+ *   layer-presentation-network  `import retrofit2.Response` in GalleryScreen → red “presentation …”
+ *   layer-scope-api         `import ch.brickinventoryapp.data.api.SetsApi` in WantedListViewModel
  *                               → red “an area does not know the Retrofit interfaces”
- *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexts → the same red
- *   zustand-texte-mit-context   `import android.content.Context` in AppTexts → red “core-state and core-session know no Context“
- *   schicht-zustand-context     `import android.content.Context` in Session.kt (core-session) → red
+ *   layer-state-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexts → the same red
+ *   state-texts-with-context   `import android.content.Context` in AppTexts → red “core-state and core-session know no Context“
+ *   layer-state-context     `import android.content.Context` in Session.kt (core-session) → red
  *                               “core-state and core-session know no Context“
- *   bereich-mehr-wireformat     an import of a response type in CatalogViewModel → red
+ *   scope-more-wire-format     an import of a response type in CatalogViewModel → red
  *                               “an area does not know … only core-data knows the wire format”
- *   bereich-kennt-umsetzung     `import …CatalogRepositoryImpl` in CatalogViewModel → red, the same test
+ *   scope-knows-implementation     CatalogRepositoryImpl made public and imported in CatalogViewModel
+ *                               → red, the same test
  */
 class LayerRulesTest {
 
@@ -74,7 +75,7 @@ class LayerRulesTest {
         val wire = violations({ it.module !in WIRE_MARKER }) { it.startsWith("ch.brickinventoryapp.contract.") }
         assert(wire.isEmpty()) { "imports from core-contract outside core-data:\n  " + wire.joinToString("\n  ") }
         val implementation = violations({ it.module !in setOf("core-data", "core-testing") }) {
-            Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
+            Regex("""^ch\.brickinventoryapp\.data\.(\w+\.)*\w+Impl$""").matches(it)
         }
         assert(implementation.isEmpty()) { "repository implementations outside core-data and core-testing:\n  " + implementation.joinToString("\n  ") }
     }

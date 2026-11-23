@@ -1,0 +1,17 @@
+Gegenprobe: Das ViewModel folgt dem CSV-Strom auch ohne Anmeldung
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: without sign-in nobody connects, the sign-in starts the stream
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
+@@ -32,7 +32,7 @@
+     val csvImportState: StateFlow<CsvImportUiState> = coordinator.uiState
+ 
+     init {
+-        viewModelScope.launch { coordinator.sequence(session.state.map { it.isLoggedIn }) }
++        viewModelScope.launch { coordinator.sequence(session.state.map { true }) }
+     }
+ 
+     /** Cancelling means “no further from here”; created sets stay. */

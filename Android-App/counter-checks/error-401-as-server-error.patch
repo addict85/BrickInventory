@@ -1,0 +1,17 @@
+Gegenprobe: Ein 401 ohne Fehlerrumpf gilt als Serverfehler statt als abgelaufene Sitzung
+Modul: core-state
+Test: ch.brickinventoryapp.state.BrickRepositoryErrorMappingTest
+Rot: 401 is reported as expired session and not as transient
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+@@ -173,7 +173,7 @@
+                 .getOrElse { ErrorBody(null, null) }
+             val text = body.text ?: ""
+             val code = ErrorCode.from(body.code)
+-            if (response.code() == 401) Outcome.Failure.Rejected(text, code)
++            if (response.code() == 401 && body.text != null) Outcome.Failure.Rejected(text, code)
+             else Outcome.Failure.Server(response.code(), text, code)
+         }
+     } catch (e: kotlinx.coroutines.CancellationException) {

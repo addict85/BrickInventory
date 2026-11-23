@@ -94,51 +94,51 @@ import javax.net.ssl.X509ExtendedTrustManager
  * Counter-check:
  *   T  in check() back to `if (pin != null && fitsToPin(chain, pin)) return` (also
  *      for a system root) → red “a pin on a system root only counts with the
- *      system check …”; counter-checks/wurzelpin-ohne-ct.patch
+ *      system check …”; counter-checks/root-pin-without-ct.patch
  * Counter-checks for the pin from the scanned code (measured locally):
  *   U  in check() back to `if (publicPin && public) return` (without
  *      `!fromCode`) → red “a code with a system root must name exactly that root …”;
- *      counter-checks/code-wurzel-ungeprueft.patch
+ *      counter-checks/code-root-unchecked.patch
  *   V  in confirm() the line for CODE_MISMATCH removed → red “a code with a
- *      system root …” (confirmable once typed off); counter-checks/code-abweichung-bestaetigbar.patch
+ *      system root …” (confirmable once typed off); counter-checks/code-mismatch-confirmable.patch
  *   W  on a deviating pin always CHANGED → red “a code with its own CA …”;
- *      counter-checks/code-abweichung-als-rueckfrage.patch
+ *      counter-checks/code-mismatch-as-question.patch
  * Counter-checks for the public pin (12.11.2026, kotlinc against ServerTrust.kt):
  *   X  carriesPin() back to `situation.public && (!fromCode || …)` (any public chain) →
  *      red “a public pin holds onto a chain under a foreign root …”;
- *      counter-checks/oeffentlicher-pin-jede-wurzel.patch
+ *      counter-checks/public-pin-any-root.patch
  *   Y  in carriesPin() and withoutHost() without sameOperator() → red “a new root
  *      of the same operator …” and “without a host, a public pin applies …”;
- *      counter-checks/wurzelfamilie-fragt-neu.patch
+ *      counter-checks/root-family-asks-again.patch
  *   Z  withoutHost() back to `pin in systemRoots → system()` → red “without a host, a
- *      public pin applies …”; counter-checks/ohne-host-jede-wurzel.patch
+ *      public pin applies …”; counter-checks/without-host-any-root.patch
  * Counter-checks for the transcript (12.11.2026, kotlinc):
  *   AA in Abschrift.of() too short back to FITS_NOT → red “a transcript with
- *      colons is too short …”; counter-checks/abschrift-zu-kurz-unerkannt.patch
+ *      colons is too short …”; counter-checks/transcript-too-short-unnoticed.patch
  *   (The colons while typing are checked by core-ui, TranscriptShapeTest.)
  * Counter-checks for the second pin and the CA families (14.11.2026, kotlinc against
  * ServerTrust.kt, local JUnit):
  *   AB in check() back to `if (carriesPin(…)) return` without checkSheet() → red “a new
  *      server key under the same public root …”;
- *      counter-checks/blattpin-ungeprueft.patch
+ *      counter-checks/leaf-pin-unchecked.patch
  *   AC sameOperator() back to the O= in the subject → red “the same O= in the subject
- *      does not yet make a family …”; counter-checks/familie-nach-subjekt.patch
+ *      does not yet make a family …”; counter-checks/family-by-subject.patch
  *   AD in confirm() typing it off on first contact not checked (`optional` even with
  *      input) → red “on first contact, typing it off is optional …”;
- *      counter-checks/erstkontakt-abschrift-ungeprueft.patch
+ *      counter-checks/first-contact-transcript-unchecked.patch
  *   AE in checkSheet() `|| fromCode` removed → red “a code from the signed-in screen
- *      swaps the server key …”; counter-checks/blattpin-code-fragt.patch
+ *      swaps the server key …”; counter-checks/leaf-pin-code-asks.patch
  * Counter-checks for the new server key without a CT requirement (check 476e4a4, M1; CI):
  *   AF transcriptNeeded for KEY_NEW back to `false` → red “a new server key
  *      under the same public root …” (“without a CT requirement, a tap is not enough”);
- *      counter-checks/schluessel-neu-ein-tipp.patch
+ *      counter-checks/key-new-one-tap.patch
  *   AG checkSheet() does not pass ctForced on → red “with a CT requirement …”;
- *      counter-checks/schluessel-neu-ohne-ct-wissen.patch
+ *      counter-checks/key-new-without-ct-knowledge.patch
  * Counter-checks for first contact without a CT requirement (deep review A-S-5; kotlinc, local JUnit):
  *   AH transcriptNeeded for ERSTKONTAKT back to `false` → red “without a CT requirement, on
- *      first contact, no tap is enough …”; counter-checks/erstkontakt-ein-tipp-ohne-ct.patch
+ *      first contact, no tap is enough …”; counter-checks/first-contact-one-tap-without-ct.patch
  *   AI check() reports first contact without ctForced → red “on first contact with
- *      a CT requirement, the comparison is enough”; counter-checks/erstkontakt-ohne-ct-wissen.patch
+ *      a CT requirement, the comparison is enough”; counter-checks/first-contact-without-ct-knowledge.patch
  * Counter-check for the key change from Android 16 (local JUnit):
  *   AJ in confirm() the line with deviceConfirmationNeeded removed → red “with CT requirement a
  *      new server key needs the screen lock …” (“a tap alone …”)

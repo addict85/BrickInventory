@@ -1,0 +1,17 @@
+Gegenprobe: core-data reicht core-network wieder per api an alle weiter, die core-data kennen
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-data/build.gradle.kts b/Android-App/core-data/build.gradle.kts
+--- a/Android-App/core-data/build.gradle.kts
++++ b/Android-App/core-data/build.gradle.kts
+@@ -28,7 +28,7 @@
+     implementation(project(":core-contract"))
+     // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, Protokoll)
+     // includes core-network themselves; nothing of it reaches beyond core-data.
+-    implementation(project(":core-network"))
++    api(project(":core-network"))
+     // Vault, store key and TLS trust; the areas that show something of it name it themselves.
+     implementation(project(":core-security"))
+     // Room and offline store only internally: the repositories deliver Lokal from core-model,

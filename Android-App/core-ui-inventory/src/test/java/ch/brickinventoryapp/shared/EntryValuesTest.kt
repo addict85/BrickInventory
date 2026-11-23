@@ -11,7 +11,7 @@ import org.junit.Test
 /**
  * The capture dialogs read price and quantity like the number fields (NumericInput).
  *
- * Counter-check (counter-checks/erfassung-liest-preis-roh.patch): entryValues reads the
+ * Counter-check (counter-checks/capture-reads-price-raw.patch): entryValues reads the
  * price with replace and toDoubleOrNull again → red „die Erfassung liest den Preis …“.
  */
 class EntryValuesTest {

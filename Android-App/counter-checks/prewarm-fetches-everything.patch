@@ -1,0 +1,16 @@
+Gegenprobe: das Vorwärmen holt auch volle Auflösung und schon Abgelegtes
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewWarmerTest
+Rot: it fetches only missing thumbnails, each once, reading and marked
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+@@ -90,7 +90,6 @@
+             // the tap would not even write — fetching it would be
+             // pure data volume without yield. And what already lies there does not need
+             // the network once more.
+-            .filter { preview.isPreview(it) && !preview.has(it) }
+ 
+         for (boost in open.chunked(CONCURRENT)) {
+             // Measure anew per batch instead of once at the start: meanwhile

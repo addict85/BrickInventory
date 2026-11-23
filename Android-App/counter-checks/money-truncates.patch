@@ -1,0 +1,17 @@
+Gegenprobe: Geld.aus schneidet Nachkommastellen ab statt zu runden
+Modul: core-model
+Test: ch.brickinventoryapp.model.MoneyTest
+Rot: an amount is rounded to four places like the server's inZehntel4
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+@@ -34,7 +34,7 @@
+         val NULL = Money(0)
+ 
+         /** Like the server's inZehntel4(); what is not a finite number is not an amount. */
+-        fun from(amount: Double): Money? = if (amount.isFinite()) Money(Math.round(amount * FACTOR)) else null
++        fun from(amount: Double): Money? = if (amount.isFinite()) Money((amount * FACTOR).toLong()) else null
+ 
+         fun from(amount: BigDecimal): Money = Money(amount.setScale(PLACES, RoundingMode.HALF_UP).unscaledValue().toLong())
+ 

@@ -1,0 +1,17 @@
+Gegenprobe: Eine angetippte Meldung öffnet jede Zeichenkette als Set
+Modul: core-state
+Test: ch.brickinventoryapp.state.AppViewModelTest
+Rot: a tapped notification opens only a valid set number until it is acknowledged
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+@@ -79,7 +79,7 @@
+     /** The intent arrives at the edge of the app, and that edge is the activity. */
+     fun setFromMessageRequest(setNumber: String?) {
+         // Also checked here: the number becomes part of a navigation route.
+-        val sn = setNumberFromMessage(setNumber) ?: return
++        val sn = setNumber ?: return
+         _messageTarget.value = MessageTargetUiState(sn)
+     }
+ 

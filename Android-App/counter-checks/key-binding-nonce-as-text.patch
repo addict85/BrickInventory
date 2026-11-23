@@ -1,0 +1,17 @@
+Gegenprobe: Die Nonce des Servers geht als Text statt als ihre Bytes in die Attestation-Challenge
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.KeyBindingTest
+Rot: the server's nonce becomes the challenge, the whole chain goes to the server
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
+@@ -36,7 +36,7 @@
+             is KeyNonce.Nonce -> n.value
+             is KeyNonce.Rejected -> return Outbox.Rejected(n.message)
+         }
+-        val challenge = runCatching { Base64.getUrlDecoder().decode(nonce) }.getOrNull()
++        val challenge = runCatching { nonce.toByteArray() }.getOrNull()
+             ?: return Outbox.Rejected(null)
+         val chain = withContext(keystore) { runCatching { key.createWithAttestation(challenge) }.getOrNull() }
+         // Without attestation, the Keystore only supplies the key's self-signed certificate.

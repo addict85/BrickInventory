@@ -1,0 +1,26 @@
+Gegenprobe: Leere Merkliste wieder mit schwebendem Knopf und Suchzeile samt Scan-Symbol
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: empty wishlist offers remembering and scanning
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+@@ -194,7 +194,7 @@
+             // error state, neither search nor filter — there's nothing to search.
+             // Without watchlist items, neither search nor filter: the empty message offers watchlisting and
+             // scanning, a second scan button above would be the same path twice.
+-            val withHeader = display != LoadingIndicator.ERROR && display != LoadingIndicator.EMPTY
++            val withHeader = display != LoadingIndicator.ERROR
+             if (withHeader) WantedSearchRow(searchInput, { searchInput = it; actions.setWantedSearch(it) },
+                 condition.sorting, actions, onScan)
+ 
+@@ -224,7 +224,7 @@
+ 
+         // A button as in the gallery; scan sits next to search. Not in the error state,
+         // and not empty either: there "Watchlist set" already sits in the middle of the image.
+-        if (display != LoadingIndicator.ERROR && display != LoadingIndicator.EMPTY) AddFab(
++        if (display != LoadingIndicator.ERROR) AddFab(
+             stringResource(R.string.wanted_add_title), { openMask = true },
+             Modifier.align(Alignment.BottomEnd).padding(Spacing.large),
+         )

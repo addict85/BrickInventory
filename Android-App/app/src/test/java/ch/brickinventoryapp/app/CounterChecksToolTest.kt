@@ -24,6 +24,9 @@ import java.util.concurrent.TimeUnit
  *   E  `return 0` for an empty selection deleted → red “without an affected patch …”
  *   F  the emptiness check again after the split into parts → red “on a push it
  *      measures only …” (part 2/2 returns 1, „Keine Gegenproben unter …“)
+ *   G  in check() `git apply --check` skipped → red “the check mode …” (exit 0 for the
+ *      outdated patch); the test-class lookup dropped → red, the same test (exit 0 for
+ *      `Test: …FehltTest`)
  */
 class CounterChecksToolTest {
 
@@ -35,6 +38,8 @@ class CounterChecksToolTest {
 
     init {
         file.writeText("heil\n")
+        File(project, "core-data/src/test/java/ch/brickinventoryapp/QuelleTest.kt").apply { parentFile.mkdirs() }
+            .writeText("class QuelleTest\n")
         gradle.writeText("""
             modul=${'$'}{1#:}; modul=${'$'}{modul%%:*}; klasse=${'$'}4
             grep -q unuebersetzbar quelle.txt && { echo "e: Übersetzungsfehler"; exit 1; }
@@ -60,21 +65,22 @@ class CounterChecksToolTest {
     }
 
     /** A counter-check that sets [target] to [content], with header. */
-    private fun probe(name: String, content: String, red: String? = null, target: File = file) {
+    private fun probe(name: String, content: String, red: String? = null, target: File = file, test: String = "QuelleTest") {
         target.writeText("$content\n")
         val diff = git("diff")
         git("checkout", "--", ".")
         File(folder, "$name.patch").writeText(
-            "Gegenprobe: $name\nModul: core-data\nTest: ch.brickinventoryapp.QuelleTest\n" +
+            "Gegenprobe: $name\nModul: core-data\nTest: ch.brickinventoryapp.$test\n" +
                 (red?.let { "Rot: $it\n" } ?: "") + "\n" + diff)
     }
 
-    private fun jobRun(basis: String? = null, part: String? = null): Pair<Int, String> {
-        val pb = ProcessBuilder("python3", File("../tools/counter-checks.py").absolutePath, folder.path)
+    private fun jobRun(basis: String? = null, part: String? = null, mode: String? = null): Pair<Int, String> {
+        val pb = ProcessBuilder(listOfNotNull("python3", File("../tools/counter-checks.py").absolutePath, mode, folder.path))
             .directory(project).redirectErrorStream(true)
         pb.environment()["COUNTER_CHECK_GRADLE"] = "sh ${gradle.path}"
         if (basis != null) pb.environment()["COUNTER_CHECK_BASIS"] = basis else pb.environment().remove("COUNTER_CHECK_BASIS")
         pb.environment().remove("GITHUB_STEP_SUMMARY")
+        pb.environment().remove("COUNTER_CHECK_RESULTS")
         if (part != null) pb.environment()["COUNTER_CHECK_TEIL"] = part else pb.environment().remove("COUNTER_CHECK_TEIL")
         val p = pb.start()
         val text = p.inputStream.bufferedReader().readText()
@@ -157,5 +163,23 @@ class CounterChecksToolTest {
         val (code, text) = jobRun()
         assertEquals(text, 1, code)
         assertTrue(text, text.contains("passt nicht mehr"))
+    }
+
+    @Test
+    fun `the check mode needs no Gradle and names every patch that no longer fits`() {
+        probe("macht-kaputt", "kaputt", red = "ist heil")
+        val (code, text) = jobRun(mode = "--check")
+        assertEquals(text, 0, code)
+        assertTrue(text, text.contains("1 von 1 Gegenproben passen"))
+        assertTrue("Gradle ran", !File(project, "core-data/build").exists())
+        probe("falsche-klasse", "kaputt", test = "FehltTest")
+        val (missing, why) = jobRun(mode = "--check")
+        assertEquals(why, 1, missing)
+        assertTrue(why, why.contains("FehltTest"))
+        File(folder, "falsche-klasse.patch").delete()
+        file.writeText("geaendert\n")
+        val (stale, reason) = jobRun(mode = "--check")
+        assertEquals(reason, 1, stale)
+        assertTrue(reason, reason.contains("passt nicht mehr") && reason.contains("0 von 1"))
     }
 }

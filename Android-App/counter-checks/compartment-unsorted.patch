@@ -1,0 +1,39 @@
+Gegenprobe: ein neues Fach in Bestandsart, ohne es einzuordnen
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheAreaTest
+Rot: the offline store knows exactly the classified compartments
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
+@@ -13,5 +13,5 @@
+  */
+ enum class StockKind {
+     SETS, WANTED_LIST, PARTS, FIGURES, MANUAL_PARTS, MANUAL_FIGURES, VOUCHERS, PRICE_ALARMS, STORAGE_LOCATIONS,
+-    METRICS, CATALOG_META,
++    METRICS, CATALOG_META, PROBE,
+ }
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -343,7 +343,7 @@
+         StockKind.STORAGE_LOCATIONS -> applyChangeTo(Slots.STORAGE_LOCATIONS, b, w)
+         // Only delivered by the server, never edited locally.
+         StockKind.PARTS, StockKind.FIGURES, StockKind.VOUCHERS, StockKind.METRICS,
+-        StockKind.CATALOG_META -> Unit
++        StockKind.CATALOG_META, StockKind.PROBE -> Unit
+     }
+ 
+     /** Trigger sending, e.g. at start, in case something is still waiting from last time. */
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+@@ -85,7 +85,7 @@
+         StockKind.FIGURES, StockKind.MANUAL_FIGURES -> ListKind.FIGURES
+         // Never change via the outbox, only online.
+         StockKind.VOUCHERS, StockKind.PRICE_ALARMS, StockKind.STORAGE_LOCATIONS,
+-        StockKind.METRICS, StockKind.CATALOG_META -> null
++        StockKind.METRICS, StockKind.CATALOG_META, StockKind.PROBE -> null
+     }
+ 
+     private suspend fun reconcileList(l: ListKind) {

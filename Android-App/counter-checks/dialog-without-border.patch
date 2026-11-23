@@ -1,0 +1,17 @@
+Gegenprobe: Rückfrage und Erfassen ohne eigenen Rand zum Fenster
+Modul: app
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: confirmation and adding keep distance to the window edge
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
+@@ -182,7 +182,7 @@
+  * window width: that depended on the device, and without it the dialog stood edge-to-edge over the
+  * full width. It centers itself; it never gets wider than 560 dp.
+  */
+-fun Modifier.windowEdge(): Modifier = padding(horizontal = WINDOW_EDGE)
++fun Modifier.windowEdge(): Modifier = padding(horizontal = WINDOW_EDGE * 0)
+ 
+ private val WINDOW_EDGE = 24.dp
+ 

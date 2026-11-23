@@ -40,9 +40,9 @@ import org.robolectric.RobolectricTestRunner
  * by hand; the graph is the same the NavHost builds ([allTargets]).
  *
  * Counter-checks (measurable only in CI, Robolectric):
- *   ziel-nicht-registriert   composable<AccountTarget.Konto> missing in the graph
+ *   target-not-registered   composable<AccountTarget.Konto> missing in the graph
  *                            → red “every destination is in the app's graph“
- *   ziel-ohne-weg            the entry „CSV-Import“ missing on “More”
+ *   target-without-way            the entry „CSV-Import“ missing on “More”
  *                            → red “a path leads to every destination without values“
  */
 @RunWith(RobolectricTestRunner::class)

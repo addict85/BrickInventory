@@ -13,7 +13,7 @@ import java.io.File
  *
  * Counter-check: in the manifest the FileProvider put next to the
  * PartListsProvider → red “the parts list goes out only via the own
- * provider” (counter-checks/fileprovider-extern.patch).
+ * provider” (counter-checks/fileprovider-external.patch).
  */
 class ServicePolishTest {
 

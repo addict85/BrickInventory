@@ -1,0 +1,17 @@
+Gegenprobe: „Weiter“ im Einrichten wieder tonal
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginEdgeTest
+Rot: Next stands out in every design from the card and from the disabled state
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+@@ -226,7 +226,7 @@
+             Spacer(Modifier.height(Spacing.large))
+             // Filled: tonal, it sat almost invisible on the card (1.02:1) and looked active
+             // when it was actually disabled. Disabled, it stays pale until the address is valid.
+-            Button(
++            FilledTonalButton(
+                 onClick = save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                 enabled = url.isNotBlank() && error == null,
+             ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }

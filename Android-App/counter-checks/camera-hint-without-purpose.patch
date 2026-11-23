@@ -1,0 +1,27 @@
+Gegenprobe: Kamera-Hinweis wieder ohne Zweck und ohne Eintippen
+Modul: app
+Test: ch.brickinventoryapp.app.ErrorHintsTest
+Rot: if the camera is missing, the hint says what for and offers typing
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraPermission.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraPermission.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraPermission.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraPermission.kt
+@@ -128,8 +128,6 @@
+         Column(Modifier.padding(Spacing.large), horizontalAlignment = Alignment.CenterHorizontally) {
+             Text(stringResource(R.string.scanner_camera_needed),
+                 color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+-            Spacer(Modifier.height(Spacing.small))
+-            Text(purpose, color = Color.White, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+             if (denied) {
+                 Spacer(Modifier.height(Spacing.small))
+                 Text(stringResource(R.string.scanner_camera_locked), Modifier.announce(),
+@@ -138,9 +136,6 @@
+             Spacer(Modifier.height(Spacing.medium))
+             Button(onClick = onAllow) {
+                 Text(stringResource(if (denied) R.string.scanner_camera_settings else R.string.scanner_allow))
+-            }
+-            TextButton(onClick = typeInOn, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+-                Text(typeIn)
+             }
+         }
+     }

@@ -1,0 +1,17 @@
+Gegenprobe: Die Korrektur nach oben übergeht eine eigene Wischgeste
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: after an own gesture the list stays where the user scrolled it
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+@@ -59,7 +59,7 @@
+     // Latecomers at the top: go to the start, but only if nobody wanted
+     // anything else — neither a stored position nor their own swipe gesture.
+     LaunchedEffect(topTrailing) {
+-        if (topTrailing > 0 && !hadSaved && !userGesture &&
++        if (topTrailing > 0 && !hadSaved &&
+             gridState.firstVisibleItemIndex > 0
+         ) {
+             gridState.scrollToItem(0)

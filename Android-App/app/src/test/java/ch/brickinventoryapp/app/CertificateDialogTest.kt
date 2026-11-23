@@ -36,27 +36,27 @@ import java.util.Base64
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) in the dialog again `fingerprintReadable(question.fingerprint)` instead of the
  *       beginning → red “whoever types it sees no part that is to be typed”
- *       (counter-checks/zertifikat-zeigt-alles.patch)
+ *       (counter-checks/certificate-shows-everything.patch)
  *   (b) `writeOff` only for GEAENDERT → red “via a user CA …”
- *       (counter-checks/nutzerca-ein-tipp.patch)
+ *       (counter-checks/user-ca-one-tap.patch)
  *   (c) CertificateDialog without the branch for CODE_MISMATCH → red “if the
- *       server deviates from the code …” (counter-checks/code-abweichung-im-dialog.patch)
+ *       server deviates from the code …” (counter-checks/code-mismatch-in-dialog.patch)
  *   (d) the field again with the whole sentence as label, without explanation below →
- *       red “the field carries a short label …” (counter-checks/zertifikat-satz-als-etikett.patch)
+ *       red “the field carries a short label …” (counter-checks/certificate-sentence-as-label.patch)
  *   (e) fingerprint field without pairTranscriptIn() (no colons) → red “the transcript
- *       gets colons …” (counter-checks/abschrift-ohne-paare.patch)
+ *       gets colons …” (counter-checks/transcript-without-pairs.patch)
  *   (f) in transcriptError() TO_SHORT like FITS_NOT → red “too short and wrongly …”
- *       (counter-checks/abschrift-zu-kurz-wie-falsch.patch)
+ *       (counter-checks/transcript-too-short-as-wrong.patch)
  *   (g) schliessbar() with `dismissOnClickOutside = true` → red “tapping outside never closes
- *       the dialog …” (counter-checks/zertifikat-daneben-verworfen.patch)
+ *       the dialog …” (counter-checks/certificate-mismatch-discarded.patch)
  *   (h) `writeOff` also for KEY_NEW → red “with CT requirement a new server key is
- *       shown in full …” (counter-checks/schluessel-neu-abtippen.patch)
+ *       shown in full …” (counter-checks/key-new-typing.patch)
  *   (i) the button „stattdessen abtippen“ removed → red “on first contact it can be
- *       typed instead …” (counter-checks/erstkontakt-ohne-abtippen.patch)
+ *       typed instead …” (counter-checks/first-contact-without-typing.patch)
  *   (j) `writeOff` for KEY_NEW always off again → red “without CT requirement a
- *       new server key is typed …” (counter-checks/schluessel-neu-dialog-ohne-feld.patch)
+ *       new server key is typed …” (counter-checks/key-new-dialog-without-field.patch)
  *   (k) `writeOff` on first contact again only on request → red “without CT requirement it is
- *       typed on first contact …” (counter-checks/erstkontakt-dialog-ein-tipp.patch)
+ *       typed on first contact …” (counter-checks/first-contact-dialog-one-tap.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class CertificateDialogTest {

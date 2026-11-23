@@ -14,9 +14,9 @@ import java.io.IOException
  *
  * Counter-checks (kotlinc and JUnit locally):
  *   A  put() returns the text unencrypted → red “the job lies in the queue only
- *      encrypted …”; counter-checks/auftrag-im-klartext.patch
+ *      encrypted …”; counter-checks/job-in-plaintext.patch
  *   B  read() turns Gesperrt into Unlesbar → red “locked the job waits …”;
- *      counter-checks/auftrag-gesperrt-aufgegeben.patch
+ *      counter-checks/job-locked-abandoned.patch
  */
 class JobStoreTest {
 

@@ -23,7 +23,7 @@ import org.junit.Test
  * lists: reading happens only there, writing updates them, and without network
  * the last state stays.
  *
- * Counter-checks (counter-checks/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
+ * Counter-checks (counter-checks/alarm-without-refresh.patch, stock-default-without-refresh.patch):
  *   in AlarmRepositoryImpl.setPriceAlarm only `safeCall` → red “a set and a deleted alert …”
  *   in LocalApplication's storage locations the branch LocationDefault on `list` → red “creating, renaming …”
  */

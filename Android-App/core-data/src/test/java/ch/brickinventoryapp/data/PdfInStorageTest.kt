@@ -19,7 +19,7 @@ import java.io.IOException
  *
  * Counter-check: in loadPdfIntoMemory() the
  * check `content.size() + n > limit` removed → red “a response above the limit
- * is rejected …”; counter-checks/gutschein-pdf-ohne-grenze.patch
+ * is rejected …”; counter-checks/voucher-pdf-without-limit.patch
  */
 class PdfInStorageTest {
 

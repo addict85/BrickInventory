@@ -1,0 +1,19 @@
+Gegenprobe: Leerzustand der Gutscheine wieder nur eine graue Zeile
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherEmptyAndErrorTest
+Rot: without vouchers a heading stands and below it what the page is for
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+@@ -231,8 +231,8 @@
+     else Column(Modifier.fillMaxWidth().padding(vertical = Spacing.medium),
+         horizontalAlignment = Alignment.CenterHorizontally,
+         verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+-        HintText(Icons.Default.Redeem, stringResource(R.string.vouchers_empty),
+-            stringResource(R.string.vouchers_empty_hint))
++        Text(stringResource(R.string.vouchers_empty), style = MaterialTheme.typography.bodySmall,
++            color = MaterialTheme.colorScheme.onSurfaceVariant)
+     }
+ }
+ 

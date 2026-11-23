@@ -1,0 +1,16 @@
+Gegenprobe: Nach dem Abmelden bleibt der Finanzzustand stehen
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.FinanceViewModelTest
+Rot: after sign-out nothing is left
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+@@ -149,7 +149,6 @@
+     }
+ 
+     private fun reset() {
+-        _financeState.value = FinanceUiState()
+         wanted[CATEGORIES] = ArrayList<String>()
+         wanted[PERIOD] = "week"
+     }

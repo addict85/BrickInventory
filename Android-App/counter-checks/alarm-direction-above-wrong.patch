@@ -1,0 +1,17 @@
+Gegenprobe: Die Richtung „über“ schreibt nicht das Wort des Servers
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.AccountSelectionTest
+Rot: the direction reads and writes the server's words
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/AlarmDirection.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/AlarmDirection.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/AlarmDirection.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/AlarmDirection.kt
+@@ -19,7 +19,7 @@
+ @Serializable(with = AlarmDirectionSerializer::class)
+ enum class AlarmDirection(val identifier: String, private val v1: String) {
+     BELOW("below", "unter"),
+-    OVER("above", "ueber");
++    OVER("über", "ueber");
+ 
+     companion object {
+         fun from(identifier: String?): AlarmDirection? = identifier?.trim()?.lowercase()?.let { w ->

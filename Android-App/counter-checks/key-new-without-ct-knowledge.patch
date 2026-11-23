@@ -1,0 +1,17 @@
+Gegenprobe: Die Frage nach einem neuen Serverschlüssel erfährt nie, dass das System CT prüft
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: with CT requirement a new server key needs the screen lock, not a transcript
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -314,7 +314,7 @@
+         if (wanted == newValue) return
+         if (wanted == null || fromCode) return pins.rememberPin(sheetPinKey(key), newValue)
+         throw reported(CertificateUnresolved(key, newValue, CertificateUnresolved.Kind.KEY_NEW,
+-            expected = wanted, ctForced = ctForced))
++            expected = wanted, ctForced = false))
+     }
+ 
+     /** Both are system roots of the same known family; the O= in the subject is chosen by each CA itself. */

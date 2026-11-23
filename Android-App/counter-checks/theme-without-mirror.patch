@@ -1,0 +1,16 @@
+Gegenprobe: saveAppTheme schreibt den synchron lesbaren Spiegel nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.DesignStoreTest
+Rot: the remembered design is there immediately on the next start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -204,7 +204,6 @@
+         dataStore.edit { it[APP_THEME] = theme.identifier }
+         // And into the synchronously readable mirror, see rememberedDesign(). Both in
+         // ONE place so that the two stores cannot drift apart.
+-        designMirror.edit { putString(APP_THEME_MIRROR, theme.identifier) }
+     }
+ 
+     /**

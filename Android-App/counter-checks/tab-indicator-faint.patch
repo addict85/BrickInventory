@@ -1,0 +1,17 @@
+Gegenprobe: Anzeige des gewählten Reiters wieder im blassen secondaryContainer (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: the indicator of the selected tab stands out from bar and side bar
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -415,7 +415,7 @@
+  * surface carries the difference, not the icon's hue alone (WCAG 1.4.11).
+  */
+ fun tabColors(s: ColorScheme) = TabColors(
+-    bar = s.surfaceContainer, display = s.primary, onDisplay = s.onPrimary,
++    bar = s.surfaceContainer, display = s.secondaryContainer, onDisplay = s.onSecondaryContainer,
+     chosen = s.primary, unselected = s.onSurfaceVariant,
+ )
+ 

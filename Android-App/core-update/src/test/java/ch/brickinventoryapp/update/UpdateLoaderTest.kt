@@ -28,13 +28,13 @@ import java.io.IOException
  * partial file behind, and both fetches have an upper bound. A client without network
  * delivers the bytes.
  *
- * Counter-check (Nov 5, 2026, measured with kotlinc locally; counter-checks/update-abbruch-behaelt-teildatei.patch):
+ * Counter-check (Nov 5, 2026, measured with kotlinc locally; counter-checks/update-cancel-keeps-partial-file.patch):
  *   `target.delete()` removed from the abort branch of UpdateLoader.loadApk → red
  *   „an aborted download leaves no partial file“.
  * Counter-checks (patches under counter-checks/, measured locally with kotlinc):
- *   update-apk-ohne-grenze      the check `loaded > upperLimit` removed → red
+ *   update-apk-without-limit      the check `loaded > upperLimit` removed → red
  *                               „ein APK, das mehr bringt als angekündigt …“
- *   update-json-unbegrenzt      body.string() instead of peekBody(UPDATE_JSON_MAX_BYTES) → red
+ *   update-json-unlimited      body.string() instead of peekBody(UPDATE_JSON_MAX_BYTES) → red
  *                               „die Beschreibung wird höchstens …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -28,9 +28,9 @@ import javax.crypto.BadPaddingException
  *      „ein länger gesperrter Keystore meldet das Token nach“
  * Counter-checks for the key that only works on an unlocked device (measured locally):
  *   E  readToken() counts every attempt (`attempt++` unconditionally) → red „bei gesperrtem Geraet wartet das Lesen …“
- * ; counter-checks/sperre-zaehlt-versuche.patch
+ * ; counter-checks/lock-counts-attempts.patch
  *   G  UnlockVault.open() always via `onlyUnlocked` → red „ein Geheimtext ohne Praefix …“
- * ; counter-checks/entsperrtresor-vergisst-altbestand.patch
+ * ; counter-checks/unlock-vault-forgets-legacy-data.patch
  * That UnlockVault never falls back to the key without a condition is checked by StoreUnlockedTest.
  */
 class VaultLockTest {

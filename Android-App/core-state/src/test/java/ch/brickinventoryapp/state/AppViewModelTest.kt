@@ -27,11 +27,11 @@ import org.junit.Test
  * and which set a tapped notification may open.
  *
  * Counter-checks (one patch each under counter-checks/):
- *   app-vordergrund-ohne-sitzung   inForeground() without `if (!state.value.isLoggedIn) return`
+ *   app-foreground-without-session   inForeground() without `if (!state.value.isLoggedIn) return`
  *                                  → red „abgemeldet laedt der Vordergrund nichts nach“
- *   app-meldungsziel-ungeprueft    setFromMessageRequest() without setNumberFromMessage
+ *   app-message-target-unchecked    setFromMessageRequest() without setNumberFromMessage
  *                                  → red „eine angetippte Meldung oeffnet nur eine gueltige Setnummer“
- *   app-meldung-nicht-quittiert    clearSnackbar() doesn't call quittiere() → red „die Snackbar …“
+ *   app-message-not-acknowledged    clearSnackbar() doesn't call quittiere() → red „die Snackbar …“
  */
 class AppViewModelTest {
 

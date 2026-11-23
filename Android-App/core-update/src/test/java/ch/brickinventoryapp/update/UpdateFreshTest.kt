@@ -27,18 +27,18 @@ import java.util.Base64
  * Counter-checks:
  *   A  the line with `seen != null && …` removed from valueFresh() → red
  *      „an older genuinely signed description reports a withholding“;
- *      counter-checks/update-zurueckgehalten.patch
+ *      counter-checks/update-held-back.patch
  *   B  `|| b.validUntil <= nowSec` removed from valueFresh() → red „eine abgelaufene oder fristlose Beschreibung ist nie aktuell“
  * ;
- *      counter-checks/update-ohne-frist.patch
+ *      counter-checks/update-without-deadline.patch
  *   C  in checkFresh() the state advanced even without AKTUELL → red
  *      „eine abgelaufene oder fristlose …“ (an expired one moved the benchmark)
  *   D  the condition
  *      `freshness != UpdateFresh.RESET &&` removed from offerableVersion() → red „aus einer zurueckgesetzten Beschreibung wird nichts angeboten“
  * ;
- *      counter-checks/update-angebot-trotz-zuruecksetzen.patch
+ *      counter-checks/update-offer-despite-reset.patch
  *   E  offerableVersion() requires AKTUELL again → red „eine abgelaufene, neuere Beschreibung wird mit Hinweis angeboten“
- * ; counter-checks/update-abgelaufen-ohne-angebot.patch
+ * ; counter-checks/update-expired-without-offer.patch
  */
 class UpdateFreshTest {
 

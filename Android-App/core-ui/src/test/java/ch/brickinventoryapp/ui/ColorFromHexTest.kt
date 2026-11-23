@@ -12,7 +12,7 @@ import org.junit.Test
  *
  * Counter-check: in argbFromHex() the check
  * for hex digits removed → red „ein unlesbarer Wert …“ (NumberFormatException);
- * counter-checks/farbe-hex-ungeprueft.patch.
+ * counter-checks/color-hex-unchecked.patch.
  */
 class ColorFromHexTest {
 

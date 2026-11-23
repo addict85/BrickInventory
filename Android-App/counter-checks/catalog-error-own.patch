@@ -1,0 +1,17 @@
+Gegenprobe: Katalogfehler ohne Fehlerklasse: allgemeiner Text statt des Zustands der Galerie
+Modul: app
+Test: ch.brickinventoryapp.app.AreaFlowsTest
+Rot: the catalog shows the same error state as the gallery, without a hit count
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+@@ -179,7 +179,7 @@
+         )
+         // The same error state as gallery, parts and watchlist.
+         error != null && state.total == 0 -> StateHint {
+-            ErrorHint(error.message.sentence(), onRefresh, error.kind)
++            ErrorHint(error.message.sentence(), onRefresh, null)
+         }
+         // With search or filter: say why, and offer a way back.
+         state.total == 0 && filtered -> StateHint {

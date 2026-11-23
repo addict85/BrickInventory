@@ -1,0 +1,17 @@
+Gegenprobe: Ein Pin aus dem Code auf eine System-Wurzel deckt jede öffentlich gültige Kette
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a code with a system root must hit exactly this root, a deviation aborts
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -300,7 +300,7 @@
+      * a different operator is treated like a changed key. A code demands exactly its root.
+      */
+     private fun carriesPin(situation: ChainState, pin: String, publicPin: Boolean, fromCode: Boolean): Boolean =
+-        if (publicPin) situation.public && (situation.fingerprint == pin || !fromCode && sameOperator(pin, situation.fingerprint))
++        if (publicPin) situation.public && (fromCode || situation.fingerprint == pin || sameOperator(pin, situation.fingerprint))
+         else situation.viaUserCa && situation.root != null && situation.fingerprint == pin
+ 
+     /**

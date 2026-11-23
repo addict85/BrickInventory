@@ -39,9 +39,9 @@ import java.time.Instant
  * rows are already loaded, a fetch per keystroke would just be a wait.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   protokoll-ohne-uhrzeit          the row does not show loggedAt → red “every row names …”
- *   protokoll-stufe-filtert-nicht   a deselected level chip hides nothing → red “a deselected level …”
- *   protokoll-suche-filtert-nicht   the search text hides nothing → red “the search …”
+ *   log-without-time          the row does not show loggedAt → red “every row names …”
+ *   log-level-does-not-filter   a deselected level chip hides nothing → red “a deselected level …”
+ *   log-search-does-not-filter   the search text hides nothing → red “the search …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

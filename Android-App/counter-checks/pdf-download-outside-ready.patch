@@ -1,0 +1,29 @@
+Gegenprobe: Herunterladen-Knopf steht ausserhalb des Ready-Zweigs und ist schon beim Laden sichtbar
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfDownloadTest
+Rot: while loading there is no download button
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
+@@ -152,13 +152,15 @@
+                     // file, a download of its own would not know the bearer token. Both only
+                     // where saving is allowed: the print dialog offers „Als PDF speichern“.
+                     val s = state
++                    if (savable) {
++                        WithTooltip(stringResource(R.string.pdfview_download)) {
++                            IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { report(savePdfToDownloads(ctx, it.source, title)) } }) {
++                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
++                            }
++                        }
++                    }
+                     if (s is PdfLoadState.Ready) {
+                         if (savable) {
+-                            WithTooltip(stringResource(R.string.pdfview_download)) {
+-                                IconButton(onClick = { report(savePdfToDownloads(ctx, s.source, title)) }) {
+-                                    Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+-                                }
+-                            }
+                             WithTooltip(stringResource(R.string.pdfview_print)) {
+                                 IconButton(onClick = { report(printPdf(ctx, s.source, title, write, area)) }) {
+                                     Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))

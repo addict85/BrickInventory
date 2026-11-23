@@ -1,0 +1,17 @@
+Gegenprobe: Nach der Gerätesperre geht es weiter, ohne dass der Server die Signatur geprüft hat
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.StepApprovalTest
+Rot: if the server rejects the signature, it does not continue
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
+@@ -30,7 +30,7 @@
+             StepResponse.NotBound -> approval.nonce()
+         }
+         val signature = approval.signature(unlock(), message) ?: return Outbox.Cancelled
+-        if (c !is StepResponse.Challenge) return Outbox.Next
++        if (c !is StepResponse.Challenge || c.challenge.isNotEmpty()) return Outbox.Next
+         return when (val f = binding.release(c.challenge, signature)) {
+             StepResponse.Free -> Outbox.Next
+             is StepResponse.Rejected -> Outbox.Rejected(f.message)

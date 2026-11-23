@@ -1,0 +1,17 @@
+Gegenprobe: Die Abfrage des Serverstarts hört nicht auf, wenn der Server bereit ist
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: the server start is followed at intervals until the server is ready
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+@@ -204,7 +204,7 @@
+         if (prefs.serverUrlNow().isBlank()) return
+         while (true) {
+             val r = admin.getStartupStatus()
+-            if (r !is Outcome.Success || r.data.ready) {
++            if (r !is Outcome.Success) {
+                 session.serverStartChanged(null)
+                 return
+             }

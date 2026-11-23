@@ -31,8 +31,8 @@ import org.robolectric.annotation.Config
  * the stock it shows that. The font is as large as the other values (bodyMedium).
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   farbe-als-nummer        fallback back to "Farbe %1$d" with the number → red “without a name it reads …”
- *   farbfeld-kleine-schrift the field back in bodySmall → red “without a name it reads …” (font size)
+ *   color-as-number        fallback back to "Farbe %1$d" with the number → red “without a name it reads …”
+ *   color-field-small-font the field back in bodySmall → red “without a name it reads …” (font size)
  * Counter-check (run here): `if (c.id != current) onChoice(c)` → `onChoice(c)` → red “the current
  * color again is no choice” ([5] instead of []).
  */

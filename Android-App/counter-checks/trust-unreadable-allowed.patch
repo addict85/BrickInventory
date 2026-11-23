@@ -1,0 +1,17 @@
+Gegenprobe: nutzerCaErlaubt() nimmt einen nicht entschlüsselbaren Wert als „an“
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: a changed value does not count, not even with a foreign key
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -232,7 +232,7 @@
+     override fun userCaAllowed(): Boolean {
+         trustAdoptPlaintext()
+         val secret = designMirror.getString(USER_CA_SECRET, null) ?: return false
+-        return trustCipher.decrypt(secret, USER_CA) == AN
++        return trustCipher.decrypt(secret, USER_CA).let { it == null || it == AN }
+     }
+ 
+     // If „on“ cannot be encrypted, the switch stays off: better to ask again

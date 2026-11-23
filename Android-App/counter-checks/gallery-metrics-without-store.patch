@@ -1,0 +1,16 @@
+Gegenprobe: Die Kennzahlen der Galerie folgen der Ablage nicht
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
+Rot: an added part loads the key figures, not the set list
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
+@@ -62,7 +62,6 @@
+     init {
+         logoutSequence(session) { reset() }
+         // The key figures are computed by the server from the stock; if it changes in the store, they are no longer correct.
+-        viewModelScope.launch { changes.inventoryChanged().collect { loadStats() } }
+     }
+ 
+     override fun setScope(view: ScopeFilter.View, value: String) {

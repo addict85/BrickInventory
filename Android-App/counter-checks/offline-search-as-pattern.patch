@@ -1,0 +1,17 @@
+Gegenprobe: `%` und `_` aus der Suche werden nicht maskiert und wirken als Platzhalter
+Modul: core-data
+Test: ch.brickinventoryapp.data.WithoutNetworkFilterTest
+Rot: a percent sign or underscore in the search counts literally
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+@@ -69,7 +69,7 @@
+ 
+ /** „Contains“ as LIKE pattern; `%`, `_` and `\` apply literally as at the server (`likeSearch.ts`). */
+ internal fun containsPattern(search: String): String =
+-    "%" + search.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
++    "%" + search.lowercase().replace("\\", "\\\\") + "%"
+ 
+ /**
+  * [Outbox] via Room; every item lies in the [InitialForm]. Reading never writes:

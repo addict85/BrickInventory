@@ -1,0 +1,16 @@
+Gegenprobe: Das Mengenfeld der Erfassung hat wieder nur bei einem Fehler eine Zeile darunter
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: every field when adding a set has a help line, also while typing
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+@@ -284,7 +284,6 @@
+         isError = NumericInput.quantityInvalid(value),
+         supportingText = {
+             if (NumericInput.quantityInvalid(value)) Text(stringResource(R.string.record_quantity_invalid), Modifier.announce())
+-            else Text(hint)
+         },
+         modifier = Modifier.fillMaxWidth(), singleLine = true,
+         shape = Shapes.field,

@@ -13,9 +13,9 @@ import java.io.PrintStream
  * that throws, since the unit tests run without isReturnDefaultValues.
  *
  * Counter-checks:
- *   protokoll-immer-logcat: default() always picks the Logcat branch → red “without Android a warning ends up …”
+ *   log-always-logcat: default() always picks the Logcat branch → red “without Android a warning ends up …”
  *     (locally with kotlinc against android-all: UnsatisfiedLinkError from Log.w; in CI "not mocked")
- *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in the convention → red “an
+ *   unit-tests-with-default-values: isReturnDefaultValues = true in the convention → red “an
  *     Android method throws …” (only measurable in CI: locally there is no android.jar from AGP)
  */
 class LogWithoutAndroidTest {

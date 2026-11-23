@@ -1,0 +1,17 @@
+Gegenprobe: der Abbrechen-Knopf des CSV-Imports erscheint erst aufgeklappt
+Modul: app
+Test: ch.brickinventoryapp.app.CsvCancelButtonTest
+Rot: a running import can be cancelled while collapsed, a finished one cannot
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
+@@ -134,7 +134,7 @@
+         // wants to cancel should not first have to find out
+         // that the bar can be expanded. In the web app
+         // the button is permanently there as well.
+-        if (running) {
++        if (running && expanded) {
+             // Full 48 dp: the bar becomes a bit taller, but in return
+             // one hits Cancel even on the move.
+             WithTooltip(stringResource(R.string.csv_cancel)) {

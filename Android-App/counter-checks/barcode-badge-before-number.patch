@@ -1,0 +1,27 @@
+Gegenprobe: „Schon in deiner Sammlung“ wieder zwischen Name und Nummer
+Modul: app
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: barcode names the number by its name and has the same help lines
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+@@ -180,6 +180,8 @@
+         if (barcodeState.setName != null)
+             Text(barcodeState.setName, fontWeight = FontWeight.Bold,
+                 style = MaterialTheme.typography.titleMedium)
++        if (barcodeState.ownershipQuantity > 0 && !forPartList)
++            InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
+         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
+             // The recognized set number is shown, not tapped: no link color.
+             Text(barcodeState.result.orEmpty(), style = MaterialTheme.typography.bodySmall,
+@@ -192,9 +194,6 @@
+                 }
+         }
+     }
+-    // As in the catalog: whoever already has a set should see it before entering it a second time.
+-    if (barcodeState.ownershipQuantity > 0 && !forPartList)
+-        InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
+     HorizontalDivider()
+     BarcodeStats(barcodeState)
+ }

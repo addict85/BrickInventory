@@ -1,0 +1,17 @@
+Gegenprobe: PathServer.onTick stellt Abrufe wieder auf OkHttp-Fäden statt im aufrufenden Faden
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: a changed part is in the store without fetching the list again
+
+diff --git a/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt b/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt
+--- a/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt
++++ b/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt
+@@ -152,7 +152,7 @@
+             (pathWithQuery(request).substringBefore('?') in missing).also { if (it) held += send }
+         }
+         val api = TestApi.forTarget("http://im-takt.test/", object : Call.Factory {
+-            override fun newCall(request: Request): Call = ImmediatelyCall(client.newCall(request), staysFrom)
++            override fun newCall(request: Request): Call = client.newCall(request)
+         })
+         synchronized(origin) { origin[api] = this }
+         return api

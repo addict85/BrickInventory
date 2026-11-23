@@ -24,12 +24,12 @@ import java.io.IOException
  * Counter-checks:
  *   A  InstructionStore writes and reads via FileSystem.SYSTEM instead of via
  *      EncryptedFileSystem → red “an instruction lies encrypted …”;
- *      counter-checks/anleitung-klartext.patch
+ *      counter-checks/instruction-plaintext.patch
  *   B  in EncryptedFileSystem `.part` deleted from INTERMEDIATE_STATES → red “an
  *      aborted download is resumed at the plaintext byte …” (the finished file is
  *      bound to the partial file's name and unreadable)
  *   C  in cleanUpInstructions() the line with INSTRUCTION_PREFIX deleted → red
- *      “sign-out clears all instructions …”; counter-checks/anleitungen-ueberleben-abmelden.patch
+ *      “sign-out clears all instructions …”; counter-checks/instructions-survive-logout.patch
  */
 class InstructionStoreTest {
 

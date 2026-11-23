@@ -1,0 +1,17 @@
+Gegenprobe: Gewinn/Verlust steht immer in einer Zeile, auch wenn die Breite nicht reicht
+Modul: app
+Test: ch.brickinventoryapp.app.WrapGuardTest
+Rot: narrow set detail at 200 percent without character wrapping and truncation
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+@@ -446,7 +446,7 @@
+         } + Spacing.medium * 2 + 2.dp
+         val demand = listOf(market, purchase, pnlSingleLine).maxOf { width(it) }
+         // If „amount · percent“ doesn't even fit the full width, both go stacked.
+-        val pnlText = if (width(pnlSingleLine) > maxWidth) pnlParts.joinToString("\n") else pnlSingleLine
++        val pnlText = pnlSingleLine
+         val spacing = Spacing.small
+         val equalHigh = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+         when (tileArrangement(maxWidth, demand, spacing)) {

@@ -28,9 +28,9 @@ import org.junit.Test
  * shape stays readable, and an unknown version is unreadable instead of misread.
  *
  * Counter-checks (patches under counter-checks/):
- *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` without SerialName → red „eine alte Zeile …“
- *   ablage-kauf-feld-vertauscht     in the purchase store row avgPrice and purchasePrice swapped → red "every field …"
- *   ablage-fassung-ignoriert        dekodiere() reads every version with today's reader → red „eine unbekannte Fassung …“
+ *   store-figure-field-renamed     in MinifigRow `fig_number` without SerialName → red „eine alte Zeile …“
+ *   store-purchase-field-swapped     in the purchase store row avgPrice and purchasePrice swapped → red "every field …"
+ *   store-version-ignored        dekodiere() reads every version with today's reader → red „eine unbekannte Fassung …“
  */
 class StoreVersionTest {
 

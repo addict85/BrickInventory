@@ -1,0 +1,27 @@
+Gegenprobe: der Bild-Zwischenspeicher schreibt wieder im Klartext (VerschluesseltesDateisystem reicht durch, Stand vor sec11 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.data.ImageCacheTest
+Rot: the cache lies encrypted and still delivers offline
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+@@ -47,15 +47,11 @@
+         return s.folder / (JITTERED + name)
+     }
+ 
+-    override fun source(file: Path): Source = Inbox(delegate.source(jittered(file)).buffer(), binding(file))
++    override fun source(file: Path): Source = delegate.source(jittered(file))
+ 
+-    override fun sink(file: Path, mustCreate: Boolean): Sink =
+-        Outbox(delegate.sink(jittered(file), mustCreate), binding(file), 0L)
++    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(jittered(file), mustCreate)
+ 
+-    override fun appendingSink(file: Path, mustExist: Boolean): Sink {
+-        val ab = delegate.metadataOrNull(jittered(file))?.size ?: 0L
+-        return Outbox(delegate.appendingSink(jittered(file), mustExist), binding(file), ab)
+-    }
++    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(jittered(file), mustExist)
+ 
+     // Random access would read ciphertext as content; OkHttp doesn't need it.
+     override fun openReadOnly(file: Path): FileHandle = throw IOException("kein wahlfreier Zugriff: $file")

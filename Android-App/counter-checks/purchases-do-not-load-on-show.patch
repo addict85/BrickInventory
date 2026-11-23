@@ -1,0 +1,19 @@
+Gegenprobe: kaeufeVon lädt beim ersten Beobachter nichts
+Modul: core-state
+Test: ch.brickinventoryapp.state.PurchasesViewModelTest
+Rot: the purchases of an entry load as soon as its page shows them
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+@@ -64,9 +64,7 @@
+ 
+     /** An entry's purchases, as its page reads them: whoever shows them loads them. */
+     fun purchasesOf(type: ItemKind, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
+-        Observed(manDetailState) {
+-            if (type == ItemKind.SET) loadAcquisitions(id) else loadManualAcquisitions(type, id, colorId)
+-        }
++        Observed(manDetailState)
+ 
+     private var storageJob: Job? = null
+ 

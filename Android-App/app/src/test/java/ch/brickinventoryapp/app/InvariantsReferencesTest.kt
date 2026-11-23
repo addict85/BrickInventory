@@ -25,12 +25,12 @@ import java.util.Base64
  * description, the parts list only encrypted on disk.
  *
  * Counter-checks:
- *   invarianten-verweis-ins-leere  a reference to `ui/GalleryFeature.kt` → red “every source file and
+ *   invariants-dangling-reference  a reference to `ui/GalleryFeature.kt` → red “every source file and
  *                                  test class named in INVARIANTEN …”
- *   invarianten-fileprovider-zurueck  „FileProvider nur `pdf/`“ again in INVARIANTEN → red, the same test
- *   invarianten-unsigniert-gilt    checkedDescription() accepts a wrapper without signature → red
+ *   invariants-fileprovider-back  „FileProvider nur `pdf/`“ again in INVARIANTEN → red, the same test
+ *   invariants-unsigned-counts    checkedDescription() accepts a wrapper without signature → red
  *                                  “no unsigned or foreign-signed description applies“
- *   invarianten-teileliste-klartext  PartListVault's write stores the plaintext → red “the
+ *   invariants-part-list-plaintext  PartListVault's write stores the plaintext → red “the
  *                                  parts list lies on disk only encrypted”
  */
 class InvariantsReferencesTest {

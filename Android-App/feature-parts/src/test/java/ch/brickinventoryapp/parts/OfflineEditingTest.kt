@@ -54,7 +54,7 @@ import java.util.Collections
  *      red “deleted offline …” (Ergebnis.Fehler instead of buffered)
  *   G  in LocalApplication for DeletePart `filterNot` → `filter` → red “… disappears right away”
  *   H  in PartsRepository.updatePart no step → red “… as quantity and step”
- *   J  counter-checks/ausgang-schritt-verloren.patch: Stueckaenderung.asRequest without quantity_delta → red, the same test
+ *   J  counter-checks/outbox-step-lost.patch: Stueckaenderung.asRequest without quantity_delta → red, the same test
  *   I  in ServerSender on delete `classify` instead of `deleteClassify` → red
  *      “an already deleted part …” (404 discarded and reported)
  */

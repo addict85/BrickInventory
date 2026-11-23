@@ -1,0 +1,24 @@
+Gegenprobe: die Server-Adresse gilt erst nach der Plattenschreibung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenStoredValueTest
+Rot: token and address apply already while writing to disk
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -313,7 +313,6 @@
+                 orphanedToken(plate, oldAddress)?.let { runCatching { redemption.get().plane(it) } }
+                 _authTokenState.value = ""; _tokenOriginState.value = null
+             }
+-            _serverUrlState.value = normalized
+             dataStore.edit {
+                 it.set(ADDRESS, address)
+                 if (other) {
+@@ -321,6 +320,7 @@
+                     it.remove(SIGNED_IN_AT); it.remove(SIGNED_IN_SECRET)
+                 }
+             }
++            _serverUrlState.value = normalized
+         }
+     }
+ 

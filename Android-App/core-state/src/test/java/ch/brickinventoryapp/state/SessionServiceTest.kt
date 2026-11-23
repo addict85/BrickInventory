@@ -60,15 +60,15 @@ import java.time.Instant
  * time (StandardTestDispatcher), so „nothing happens“ is testable without waiting.
  *
  * Counter-checks:
- *   abmelden-ohne-sitzungspruefung  `isLoggedIn` removed from the 401 branch → red „ein 401 …“
- *   rechte-ohne-meldung             the notification on right revocation removed → red „entzogene …“
- *   design-nicht-gemerkt            the mirror after saveAppTheme removed → red „das Design …“
- *   serverstart-ohne-ende           `r.data.ready` removed from the stop condition → red „der Serverstart …“
- *   abgelaufen-vor-dem-start        the 401 collector with drop(1) → red „ein 401 vor dem Start …“
- *   anmeldung-ohne-abbruch          in sequenceLogin `collect` instead of `collectLatest` and the
+ *   logout-without-session-check  `isLoggedIn` removed from the 401 branch → red „ein 401 …“
+ *   permissions-without-message             the notification on right revocation removed → red „entzogene …“
+ *   theme-not-remembered            the mirror after saveAppTheme removed → red „das Design …“
+ *   server-start-endless           `r.data.ready` removed from the stop condition → red „der Serverstart …“
+ *   expired-before-start        the 401 collector with drop(1) → red „ein 401 vor dem Start …“
+ *   login-without-cancel          in sequenceLogin `collect` instead of `collectLatest` and the
  *                                   steps in `area` instead of the sign-in's own scope → red
  *                                   „eine späte Antwort des alten Kontos …“ (CHF instead of USD)
- *   waehrung-zurueckgespiegelt      in launch() restored `session.state.map { it.currency }…
+ *   currency-mirrored-back      in launch() restored `session.state.map { it.currency }…
  *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design kommen aus der Ablage …“ (one write instead of none)
  *   ablauf-ohne-hinweis             the loginExpiresSoon() check in login() removed → red
  *                                   „a sign-in near its end asks …“ (no notification)

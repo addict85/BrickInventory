@@ -25,7 +25,7 @@ import java.time.LocalDate
  *      “every module folder is included”
  *   E  in dependencyResolutionManagement again `google()` → red
  *      “google() only supplies Google's groups“ (Ohne Inhaltsfilter)
- *   F  counter-checks/konvention-mit-modulkante.patch: the area convention
+ *   F  counter-checks/convention-with-module-edge.patch: the area convention
  *      adds core-ui → red “conventions add no module edges“
  *   G  in build-logic/settings.gradle.kts `google()` without filter →
  *      red „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
@@ -37,47 +37,47 @@ import java.time.LocalDate
  *      → red “every vulnerability in the build tooling …” (not in verification-metadata.xml)
  *   H a `PdfRenderer(` in PdfPage.kt →
  *      red “PdfRenderer lives only in the isolated render service“; likewise
- *      counter-checks/pdf-bitmap-aus-dem-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
+ *      counter-checks/pdf-bitmap-from-the-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
  *   M  `internal` removed from `class SetsRepositoryImpl` → red „SetsRepositoryImpl is public“ (layering of the core modules); likewise an import of data.parts.PartsRepositoryImpl
  *      in collection/SetsRepositoryImpl.kt → red „kennt parts.PartsRepositoryImpl“
- *   L  counter-checks/netz-haengt-an-ablage.patch: core-network includes Room →
+ *   L  counter-checks/network-depends-on-store.patch: core-network includes Room →
  *      red „core-network depends on storage or DI“ (layering of the core modules);
  *      only CI measures it, locally there is no Gradle
- *   M  counter-checks/merge-rest-im-baum.patch: a file `Rest.kt.orig` in the tree →
+ *   M  counter-checks/merge-leftover-in-tree.patch: a file `Rest.kt.orig` in the tree →
  *      red “no merge remnant lies in the tree” (every module folder is included …)
- *   N  counter-checks/dienste-haengt-an-update.patch: core-services includes core-update →
+ *   N  counter-checks/services-depends-on-update.patch: core-services includes core-update →
  *      red „layering of the core modules: core-services depends on [core-update]“ (core-data →
  *      core-update is already caught by Gradle as a cycle)
- *   P  counter-checks/zustand-haengt-an-ui.patch: core-state includes core-ui →
+ *   P  counter-checks/state-depends-on-ui.patch: core-state includes core-ui →
  *      red „layering of the core modules: core-state depends on [core-ui]“
- *   Q  counter-checks/gemeinsam-haengt-an-daten.patch: core-ui-inventory includes core-data →
+ *   Q  counter-checks/common-depends-on-data.patch: core-ui-inventory includes core-data →
  *      red „layering of the core modules: core-ui-inventory depends on [core-data]“
- *   U  counter-checks/offline-haengt-an-daten.patch: core-offline includes core-ui →
+ *   U  counter-checks/offline-depends-on-data.patch: core-offline includes core-ui →
  *      red „layering of the core modules: core-offline depends on [core-ui]“ (core-data
  *      would not work: Gradle already aborts the cycle, without a test report)
- *   W  counter-checks/ablage-kennt-wireformat.patch: core-offline includes core-contract again →
+ *   W  counter-checks/store-knows-wire-format.patch: core-offline includes core-contract again →
  *      red „core-offline knows the wire format“ (layering of the core modules)
- *   T  counter-checks/bereich-kennt-bereich.patch: feature-parts includes feature-catalog →
+ *   T  counter-checks/scope-knows-scope.patch: feature-parts includes feature-catalog →
  *      red „feature-parts depends on feature-catalog“
- *   R  counter-checks/ui-kennt-ansicht.patch: a core-ui file imports a view from
+ *   R  counter-checks/ui-knows-view.patch: a core-ui file imports a view from
  *      model.domain → red „core-ui kennt Fachmodelle“ (layering of the core modules)
- *   S  counter-checks/ui-neuer-bildschirm.patch: a new file in core-ui/ui/screens →
+ *   S  counter-checks/ui-new-screen.patch: a new file in core-ui/ui/screens →
  *      red „core-ui/ui/screens contains only the camera building blocks“ (layering …)
- *   O  counter-checks/fremder-paketstamm.patch: feature-parts gets a file in the package
+ *   O  counter-checks/foreign-package-root.patch: feature-parts gets a file in the package
  *      ch.brickinventoryapp.collection → red „outside the package root of their module“
- *   V  counter-checks/daten-reicht-netz-weiter.patch: core-data includes core-network via api →
+ *   V  counter-checks/data-passes-network-on.patch: core-data includes core-network via api →
  *      red „module edges via api only to core-model: [core-data → core-network]“ (layering …)
- *   X  counter-checks/netz-oeffnet-intent.patch: ExternalAddress.kt imports android.content.Intent →
+ *   X  counter-checks/network-opens-intent.patch: ExternalAddress.kt imports android.content.Intent →
  *      red „core-network imports storage, repositories, DI or Android UI“ (layering …)
- *   Y  counter-checks/sitzung-haengt-an-ui.patch: core-session includes core-ui →
+ *   Y  counter-checks/session-depends-on-ui.patch: core-session includes core-ui →
  *      red „layering of the core modules: core-session depends on core-ui“
- *   Z  counter-checks/konto-haengt-an-tresor.patch: feature-account includes core-security again →
+ *   Z  counter-checks/account-depends-on-vault.patch: feature-account includes core-security again →
  *      red „feature-account depends on core-security, which lies below the state“ (no area depends …)
  *   AA core-state switches on brickinventory.android.compose again → red „core-state lies below the UI and switches on Compose“ (layering …; measured with kotlinc, in Gradle
- *      AndroidComposeConvention already aborts); counter-checks/zustand-darf-oberflaeche.patch → red “the edge rule …”
- *   AB counter-checks/bereichs-viewmodel-im-zustand.patch: a ViewModel of only one area in core-state
+ *      AndroidComposeConvention already aborts); counter-checks/state-may-use-ui.patch → red “the edge rule …”
+ *   AB counter-checks/scope-viewmodel-in-state.patch: a ViewModel of only one area in core-state
  *      → red „… lies in core-state without a reason in ModuleEdges.stateViewModels“ (layering …)
- *   W  counter-checks/route-im-kern.patch: a route in core-model, the management opens it →
+ *   W  counter-checks/route-in-core.patch: a route in core-model, the management opens it →
  *      red „feature-management nennt fremde Routentypen: [Zentralziel]“ (no area depends …);
  *      measured locally with kotlinc against the tree, in CI via Gradle
  */
@@ -266,14 +266,14 @@ class ModuleBoundariesTest {
      * The rule itself, on edges that do not exist in the tree.
      *
      * Counter-checks (measured with kotlinc):
-     *   counter-checks/kantenregel-ohne-testausnahme.patch: test configurations count → red here
+     *   counter-checks/edge-rule-without-test-exception.patch: test configurations count → red here
      *   the api line deleted → red here, „Modulkanten per api …“ missing
      *   core-ui entered in cores["core-state"] → red here
-     *   counter-checks/tiefe-kerne-offen.patch: the rule for depthCores deleted → red here
- *   counter-checks/wire-format-fuer-alle.patch: the rule for wireMarker deleted → red here
+     *   counter-checks/deep-internals-open.patch: the rule for depthCores deleted → red here
+ *   counter-checks/wire-format-for-all.patch: the rule for wireMarker deleted → red here
      *
      *   in uiViolation `module in withoutUi &&` deleted → red here (core-navigation)
-     *   counter-checks/zustand-darf-oberflaeche.patch: core-state missing in withoutUi → red here
+     *   counter-checks/state-may-use-ui.patch: core-state missing in withoutUi → red here
  *   the line `k.onlyTest && reverseTest(k)` in ModuleEdges.violations deleted → red here
  *      (core-data tests with core-state … missing)
      */

@@ -1,0 +1,17 @@
+Gegenprobe: abgeglichenEinzeln() legt ab, auch wenn das Konto während des Abrufs wechselte
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheAreaTest
+Rot: if the account changes during the fetch, nothing is stored
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+@@ -142,7 +142,7 @@
+ internal suspend fun <T : Any, E : T?> OfflineStore.reconciledSingle(domain: Domain<T>, call: suspend () -> Outcome<E>): Outcome<E> {
+     val before = area()
+     val fresh = call()
+-    val area = area()?.takeIf { it == before } ?: return fresh
++    val area = area() ?: return fresh
+     if (fresh is Outcome.Success) {
+         // Without a value (a response without stats) the store stays as it is.
+         fresh.data?.let { adopt(domain, listOf(it as T), area) }

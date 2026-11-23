@@ -32,7 +32,7 @@ import org.robolectric.RobolectricTestRunner
  * remains; the code goes to a different device anyway.
  *
  * Counter-check (patch under counter-checks/, Robolectric, measured by CI):
- *   einladung-kopieren-vor-33  the copy button without secretCopyable() → red "unter Android 13 …"
+ *   invite-copy-before-33  the copy button without secretCopyable() → red "unter Android 13 …"
  */
 @RunWith(RobolectricTestRunner::class)
 class InvitationCopyTest {

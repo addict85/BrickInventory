@@ -30,7 +30,7 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   A  trustJob() with `ownServer = { null }` (the old server counts as
  *      foreign host, only system CAs — the older state) → red “the old server with
  *      its own CA is reached with its pin” (LATER instead of ENTWERTET);
- *      counter-checks/entwertung-ohne-alten-pin.patch
+ *      counter-checks/redemption-without-old-pin.patch
  *   B  in the canceller the rejection neither remembered (RemembersRejection) nor searched in the
  *      cause chain (LATER for every IOException) → red “a different
  *      key under the pin gets no token …”. In CI (Conscrypt in the

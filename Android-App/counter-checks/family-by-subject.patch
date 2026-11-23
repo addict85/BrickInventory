@@ -1,0 +1,18 @@
+Gegenprobe: Die Familie einer Wurzel wieder aus dem O= im Subjekt statt aus der festen Liste
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: the same O= in the subject does not make a family, only the fixed list does
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -320,7 +320,8 @@
+     /** Both are system roots of the same known family; the O= in the subject is chosen by each CA itself. */
+     private fun sameOperator(a: String, b: String): Boolean {
+         if (a !in systemRoots || b !in systemRoots) return false
+-        return families[a]?.let { it == families[b] } ?: false
++        fun o(x: String) = systemRoots[x]?.subjectX500Principal?.name?.substringAfter("O=")?.substringBefore(",")
++        return o(a) != null && o(a) == o(b)
+     }
+ 
+     /** The system roots by fingerprint: a pin on one of them means „publicly valid“. */

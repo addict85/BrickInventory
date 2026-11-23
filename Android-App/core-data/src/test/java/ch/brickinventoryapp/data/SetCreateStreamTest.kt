@@ -18,10 +18,10 @@ import org.junit.Test
  * the outbox retry without creating twice.
  *
  * Counter-checks (patches under counter-checks/):
- *   anlegen-json-form-als-abbruch   withoutStream() without the branch for 2xx → red “the JSON form …”
- *   anlegen-absage-ohne-satz        errorTextFrom() always returns "" → red “a refusal carries …”
- *   anlegen-abgelehnt-als-abbruch   sseStream never sets noConnection → red “without a server …”
- *   anlegen-ende-ohne-abschluss     Beendet without step → red “an end without done …”
+ *   create-json-shape-as-cancel   withoutStream() without the branch for 2xx → red “the JSON form …”
+ *   create-rejection-without-sentence        errorTextFrom() always returns "" → red “a refusal carries …”
+ *   create-rejected-as-cancel   sseStream never sets noConnection → red “without a server …”
+ *   create-end-without-completion     Beendet without step → red “an end without done …”
  */
 class SetCreateStreamTest {
 

@@ -1,0 +1,15 @@
+Gegenprobe: core-session importiert Context
+Modul: app
+Test: ch.brickinventoryapp.app.LayerRulesTest
+Rot: core-state and core-session know no Context
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+@@ -1,5 +1,6 @@
+ package ch.brickinventoryapp.session
+ 
++import android.content.Context
+ import ch.brickinventoryapp.data.SecondFactorRequired
+ import ch.brickinventoryapp.data.account.AccountRepository
+ import ch.brickinventoryapp.data.repository.Outcome

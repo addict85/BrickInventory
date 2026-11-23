@@ -66,7 +66,7 @@ class IconButtonLabelTest {
      * The call stands on the same line or up to two lines above. The only exception is
      * WithTooltip.kt itself, which gets the button as content.
      *
-     * Counter-check (counter-checks/symbolknopf-ohne-tooltip.patch): the back arrow of the
+     * Counter-check (counter-checks/icon-button-without-tooltip.patch): the back arrow of the
      * subpage without WithTooltip → red with Unterseite.kt.
      */
     @Test

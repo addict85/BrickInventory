@@ -1,0 +1,17 @@
+Gegenprobe: Galeriekachel nennt auch den Kaufpreis „Marktpreis“ (kachel_quelle übergangen)
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery tile names the purchase price as purchase price
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+@@ -322,7 +322,7 @@
+     // row, the label sits before the amount if the width allows.
+     val source = when (if (amount != null) tileSource(set, price) else null) {
+         TileSource.MARKET -> stringResource(R.string.gallery_card_market)
+-        TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
++        TileSource.PURCHASE -> stringResource(R.string.gallery_card_market)
+         null -> ""
+     }
+     if (!row) Text(source, style = MaterialTheme.typography.bodySmall,

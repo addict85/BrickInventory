@@ -1,0 +1,17 @@
+Gegenprobe: das Angebot fragt nicht mehr nach der Frische, auch eine zurückgesetzte Beschreibung bietet an (Stand vor sec12 H2)
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFreshTest
+Rot: nothing is offered from a reset description
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+@@ -36,7 +36,7 @@
+  * the old version with no label. [sourceStale] gives the hint that something newer might exist.
+  */
+ fun offerableVersion(b: UpdateDescription, freshness: UpdateFresh, running: Int): UpdateDescription? =
+-    b.takeIf { freshness != UpdateFresh.RESET && isNew(running, it.versionCode) }
++    b.takeIf { isNew(running, it.versionCode) }
+ 
+ /**
+  * A genuinely signed but old description silently withholds updates: its

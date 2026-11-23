@@ -1,0 +1,17 @@
+Gegenprobe: einplanen() reicht einen Fehler des WorkManagers weiter, statt ihn zurückzugeben
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmScheduleTest
+Rot: scheduling reports an error of the WorkManager instead of throwing
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
+@@ -70,7 +70,7 @@
+                 )
+                 .build()
+             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, job)
+-        }.exceptionOrNull()
++        }.getOrThrow().let { null }
+ 
+         /**
+          * On the locked screen only „Preisalarm“: set and price would reveal to anyone

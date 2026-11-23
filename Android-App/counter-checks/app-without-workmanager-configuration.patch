@@ -1,0 +1,26 @@
+Gegenprobe: BrickInventoryApp liefert WorkManager keine Konfiguration
+Modul: app
+Test: ch.brickinventoryapp.app.WorkManagerConfigurationTest
+Rot: the app supplies WorkManager its configuration itself
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
+@@ -37,7 +37,7 @@
+ import javax.inject.Inject
+ 
+ @HiltAndroidApp
+-class BrickInventoryApp : Application(), Configuration.Provider {
++class BrickInventoryApp : Application() {
+     // Lazy: the isolated PDF process also creates an Application but must not open any files.
+     @Inject lateinit var tokenAdoptionLazy: dagger.Lazy<TokenAdoption>
+     @Inject lateinit var alertsLazy: dagger.Lazy<AlarmStore>
+@@ -56,7 +56,7 @@
+      * in the manifest: without this interface the first access throws „WorkManager is
+      * not initialized properly“. Hilt's factory builds the @HiltWorker.
+      */
+-    override val workManagerConfiguration: Configuration
++    val workManagerConfiguration: Configuration
+         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
+ 
+     override fun onCreate() {

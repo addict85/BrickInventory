@@ -40,20 +40,20 @@ import org.robolectric.shadows.ShadowDialog
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) MessageEntryPoint exported="true" → red “the entry point of the notifications is
- *       not exported” (counter-checks/einstieg-exportiert.patch)
+ *       not exported” (counter-checks/entry-exported.patch)
  *   (b) OverlayGuard() removed from UserCaDialog → red “the confirmation
- *       …” (counter-checks/nutzerca-ohne-ueberdeckungsschutz.patch)
+ *       …” (counter-checks/user-ca-without-overlay-protection.patch)
  *   (c) forwardMessage() attaches the extra to the app's start → red “the
- *       own notification opens its set …” (counter-checks/einstieg-reicht-extra-durch.patch)
+ *       own notification opens its set …” (counter-checks/entry-passes-extra-through.patch)
  *   (d) OverlayGuard() does not reset when leaving → red “a
  *       protected screen protects the activity only while it is shown”
- *       (counter-checks/ueberdeckung-bleibt-an.patch)
+ *       (counter-checks/overlay-stays-on.patch)
  *   (e) OnlyLauncherStart.onCreate removes nothing any more → red “a foreign
- *       start …” (counter-checks/start-behaelt-extras.patch)
+ *       start …” (counter-checks/start-keeps-extras.patch)
  *   (f) removeForeignDetails() leaves the extras → red “without extras
- *       a foreign deep link …” and “a foreign start …” (counter-checks/extras-bleiben.patch)
+ *       a foreign deep link …” and “a foreign start …” (counter-checks/extras-stay.patch)
  *   (g) partListsSelection() returns the view without createChooser → red
- *       “the parts list goes out only via the system's chooser” (counter-checks/teileliste-ohne-auswahl.patch)
+ *       “the parts list goes out only via the system's chooser” (counter-checks/part-list-without-selection.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ForeignEntryTest {

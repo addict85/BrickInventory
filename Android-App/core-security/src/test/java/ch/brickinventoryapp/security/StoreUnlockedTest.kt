@@ -20,13 +20,13 @@ import java.util.Base64
  *
  * Counter-checks (kotlinc and JUnit locally):
  *   A  in hole() `if (vault.stale(wrapped)) wrapNew(…)` removed → red „ein Altbestand … kommt beim ersten Lesen unter den entsperrten …“
- * ; counter-checks/ablage-bleibt-ohne-sperre.patch
- *   C  in StoreCipher.open() the key wrapped in runCatching again → red „gesperrt entsteht kein neuer Schluessel …“ (null instead of IOException); counter-checks/ablage-gesperrt-wie-unlesbar.patch
+ * ; counter-checks/store-stays-without-lock.patch
+ *   C  in StoreCipher.open() the key wrapped in runCatching again → red „gesperrt entsteht kein neuer Schluessel …“ (null instead of IOException); counter-checks/store-locked-as-unreadable.patch
  *   D  UnlockVault.encrypt() falls back to the legacy key again → red
  *      „locked the unlock vault stores nothing under the weaker key“;
- *      counter-checks/entsperrtresor-mit-ausweg.patch
+ *      counter-checks/unlock-vault-with-escape.patch
  *   E  erneuere() calls hole() without catchUnlessCancelled → red „Abmelden bei gesperrtem Geraet …“;
- *      counter-checks/ablage-erneuern-gesperrt-wirft.patch
+ *      counter-checks/store-renew-locked-throws.patch
  */
 class StoreUnlockedTest {
 

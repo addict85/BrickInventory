@@ -122,29 +122,29 @@ import java.util.Locale
  * before the history.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   fab-unter-snackbar          AddFab without distance to the snackbar → red “add button rises …”
- *   offline-zwei-zeilen         outbox bar also next to the offline hint → red “offline hint names …”
- *   preisalarm-rohzahl          threshold again as „750.0“ → red “price alerts show the threshold …”
- *   fehler-ohne-ansage          ansagen() without live region → red “errors of the sign-in …”
- *   passwortfeld-ohne-autofill  PasswordField without contentType → red “start password form fills …”
- *   startpasswort-volle-breite  form without reading width → red “start password form stands in reading width …”
- *   verwalterrechte-offen       „Erweitert“ open from the start → red “admin rights stand collapsed …”
- *   kennzahlen-ohne-umbruch     key figures in a Row instead of FlowRow → red “collection key figures …”
- *   offline-in-fehlerrot        banner again in tertiaryContainer (Classic: red) → red “offline hint reports …”
- *   server-chip-ohne-aufgabe    chip without description → red “server chip names …”
- *   katalog-einspaltig          catalog detail single-column on the tablet too → red “catalog detail stands …”
- *   finanzen-verlauf-zuerst     history again before the header tile → red “finances name the market value …”
- *   katalog-bild-ohne-grenze    catalog image again without maximum width → red “catalog detail stands …”
- *   alarme-volle-breite         price alerts again in list width → red “account and price alerts …”
- *   alarm-feld-tablet-breit     fields of an alert also fill the tablet card → red “account and price alerts …”
- *   markenkopf-immer-gross      brand header large at 200 % too → red “brand header at 200 percent …”
- *   bewegung-immer-an           movementReduced() always returns false → red “reduced motion …”
- *   einrichtung-einspaltig      setup single-column in landscape too → red “setup in landscape …”
- *   detailzeile-volle-breite    detail row without reading width → red “detail cards stand in reading width …”
- *   bewegung-ohne-beobachter    setting read only once → red “reduced motion follows a change …”
- *   startpasswort-ohne-pruefung button submits without check → red “start password form marks …”
- *   offline-ohne-handlung       banner without „Erneut versuchen“ → red “offline hint offers …”
- *   aufschluesselung-bricht     breakdown again with a space in the same line → red
+ *   fab-under-snackbar          AddFab without distance to the snackbar → red “add button rises …”
+ *   offline-two-lines         outbox bar also next to the offline hint → red “offline hint names …”
+ *   price-alarm-raw-number          threshold again as „750.0“ → red “price alerts show the threshold …”
+ *   error-without-announcement          ansagen() without live region → red “errors of the sign-in …”
+ *   password-field-without-autofill  PasswordField without contentType → red “start password form fills …”
+ *   initial-password-full-width  form without reading width → red “start password form stands in reading width …”
+ *   manager-rights-open       „Erweitert“ open from the start → red “admin rights stand collapsed …”
+ *   metrics-without-wrap     key figures in a Row instead of FlowRow → red “collection key figures …”
+ *   offline-in-error-red        banner again in tertiaryContainer (Classic: red) → red “offline hint reports …”
+ *   server-chip-without-role    chip without description → red “server chip names …”
+ *   catalog-single-column          catalog detail single-column on the tablet too → red “catalog detail stands …”
+ *   finances-history-first     history again before the header tile → red “finances name the market value …”
+ *   catalog-image-without-limit    catalog image again without maximum width → red “catalog detail stands …”
+ *   alarms-full-width         price alerts again in list width → red “account and price alerts …”
+ *   alarm-field-tablet-wide     fields of an alert also fill the tablet card → red “account and price alerts …”
+ *   brand-header-always-large      brand header large at 200 % too → red “brand header at 200 percent …”
+ *   motion-always-on           movementReduced() always returns false → red “reduced motion …”
+ *   setup-single-column      setup single-column in landscape too → red “setup in landscape …”
+ *   detail-row-full-width    detail row without reading width → red “detail cards stand in reading width …”
+ *   motion-without-observer    setting read only once → red “reduced motion follows a change …”
+ *   initial-password-without-check button submits without check → red “start password form marks …”
+ *   offline-without-action       banner without „Erneut versuchen“ → red “offline hint offers …”
+ *   breakdown-breaks     breakdown again with a space in the same line → red
  *                               “parts breakdown does not break between number and word at 200 percent …”
  */
 @RunWith(RobolectricTestRunner::class)

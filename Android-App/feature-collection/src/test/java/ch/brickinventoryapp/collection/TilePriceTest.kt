@@ -34,7 +34,7 @@ import org.junit.Test
  * Counter-check:
  *   Q  in tileSource() `price.source == "purchase"` not honored → red “the
  *      server's source …” (MARKT instead of PURCHASE); measured in the UI by
- *      counter-checks/kachel-quelle-ignoriert.patch
+ *      counter-checks/tile-source-ignored.patch
  */
 class TilePriceTest {
 

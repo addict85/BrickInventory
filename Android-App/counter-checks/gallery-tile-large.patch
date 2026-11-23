@@ -1,0 +1,17 @@
+Gegenprobe: Setkachel auch bei 200 % mit dem Bild über die ganze Breite
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery at 200 percent shows several sets fully and add lies on none
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+@@ -351,7 +351,7 @@
+     BoxWithConstraints {
+     val density = LocalDensity.current
+     val singleColumn = with(columns) { density.count(maxWidth - Spacing.medium * 2, Spacing.small) } <= 1
+-    val row = largeFont() || singleColumn
++    val row = false
+     LazyVerticalGrid(
+         columns = columns,
+         state = gridState,

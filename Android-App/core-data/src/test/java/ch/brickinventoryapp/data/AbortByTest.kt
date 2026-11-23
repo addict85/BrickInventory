@@ -14,8 +14,8 @@ import java.io.IOException
  * bypasses it with a broad catch is held by SourceRatchetTest.
  *
  * Counter-checks:
- *   fang-schluckt-abbruch   catchUnlessCancelled without cancellation branch → red “catchUnlessCancelled passes …”
- *   start-schluckt-abbruch  a cleanup step with `catch (_: Exception)` → red in SourceRatchetTest
+ *   catch-swallows-cancellation   catchUnlessCancelled without cancellation branch → red “catchUnlessCancelled passes …”
+ *   start-swallows-cancellation  a cleanup step with `catch (_: Exception)` → red in SourceRatchetTest
  */
 class AbortByTest {
 

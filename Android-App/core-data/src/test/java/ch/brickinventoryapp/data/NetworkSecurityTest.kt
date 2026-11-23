@@ -26,10 +26,10 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   H  in src/main the line
  *      <certificateTransparency> of the base-config removed → red “the release build
  *      requires Certificate Transparency”
- *   J  counter-checks/debug-ohne-ct.patch: in
+ *   J  counter-checks/debug-without-ct.patch: in
  *      src/debug <certificateTransparency> of the base-config removed → red “the debug build …”
  *   I  in data_extraction_rules.xml under device-transfer `database` removed → red
- *      “account data does not leave the device”; counter-checks/workdb-wird-uebertragen.patch
+ *      “account data does not leave the device”; counter-checks/workdb-is-transferred.patch
  *   K  in backup_rules.xml `root` removed → red, the same test
  */
 class NetworkSecurityTest {

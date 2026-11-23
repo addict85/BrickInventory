@@ -1,0 +1,17 @@
+Gegenprobe: Nach einem Abriss verbindet der CSV-Strom im festen Takt neu statt mit wachsendem Abstand
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: a broken stream asks once and reconnects with growing delay
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
+@@ -47,7 +47,7 @@
+                 // Look once so that the bar does not hang on the last state.
+                 poll()
+                 delay(retreatMs)
+-                retreatMs = minOf(retreatMs * 2, RETREAT_MAX_MS)
++                retreatMs = minOf(retreatMs, RETREAT_MAX_MS)
+             }
+         }
+     }

@@ -1,0 +1,16 @@
+Gegenprobe: Die Sitzung spiegelt die Währung zurück in die Ablage
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: currency and design come from the store, the session writes nothing back
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+@@ -86,6 +86,7 @@
+             trackServerStart()
+         }
+         area.launch { sequenceLogin() }
++        area.launch { session.state.collect { prefs.saveCurrency(it.currency) } }
+         area.launch { prefs.language.collect { session.languageChanged(it) } }
+         // A 401 on a token that went to an identified server; a
+         // failed sign-in attempt doesn't trigger a sign-out. The store instead of the session:

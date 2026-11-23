@@ -1,0 +1,16 @@
+Gegenprobe: uebernimm() räumt die Fächer früherer Konten nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheAreaTest
+Rot: whoever writes clears the compartments of earlier accounts
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -286,7 +286,6 @@
+     /** Take over the server's whole list; whatever is still waiting lies over it again afterwards. */
+     suspend fun <T : Any> adopt(domain: Domain<T>, list: List<T>, area: String? = null) {
+         val b = area ?: area() ?: return
+-        stock.cleanOther(b)
+         // Under the lock: a puffere() between reading the outbox and
+         // writing would otherwise get lost with the server list.
+         lock(b, domain.kind).withLock {

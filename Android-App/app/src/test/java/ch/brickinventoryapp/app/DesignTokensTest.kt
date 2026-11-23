@@ -91,7 +91,7 @@ class DesignTokensTest {
      * No input field uses the angular Material default: storage location and selection fields
      * stood angular next to rounded text fields. Each names its shape from the design
      * (Shapes.field; search bars and table fields deliberately their own).
-     * Counter-check (counter-checks/lagerort-feld-eckig.patch): `shape = Shapes.field` removed from the
+     * Counter-check (counter-checks/location-field-square.patch): `shape = Shapes.field` removed from the
      * storage location field → red with „LocationField.kt“.
      */
     @Test
@@ -128,8 +128,8 @@ class DesignTokensTest {
      * from screen to screen in the flow setup → sign-in. Every outlined button
      * carries secondaryButtonColors/-Rand or is red as a danger; otherwise it looked disabled.
      *
-     * Counter-checks: knopf-mit-eigener-form (`shape = Shapes.field` in LoginScreen.LoadButton)
-     * → red with „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ of the
+     * Counter-checks: button-with-own-shape (`shape = Shapes.field` in LoginScreen.LoadButton)
+     * → red with „LoginScreen.kt“; secondary-button-without-colors („Als Datei speichern“ of the
      * emergency codes without both) → red with „SecondFactorRequiredMask.kt“.
      */
     @Test

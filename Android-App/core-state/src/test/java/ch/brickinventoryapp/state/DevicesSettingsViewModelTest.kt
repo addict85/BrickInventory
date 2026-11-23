@@ -34,11 +34,11 @@ import java.nio.file.Files
  * with class and message into the notification channel.
  *
  * Counter-checks (counter-checks/, measured locally with fakes):
- *   geraet-alarm-nicht-eingeplant  alarmMessages() doesn't schedule
+ *   device-alarm-not-scheduled  alarmMessages() doesn't schedule
  *                                  → red „the switch saves and schedules“
- *   geraet-fehler-verschluckt      the scheduling error doesn't go into the channel
+ *   device-error-swallowed      the scheduling error doesn't go into the channel
  *                                  → red „a failure when scheduling is reported“
- *   geraet-ablage-nicht-geleert    clearStore() doesn't clear the preview store
+ *   device-store-not-cleared    clearStore() doesn't clear the preview store
  *                                  → red „the preview store can be viewed and cleared“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

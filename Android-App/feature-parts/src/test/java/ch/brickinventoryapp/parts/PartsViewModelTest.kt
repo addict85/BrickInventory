@@ -39,11 +39,11 @@ import org.junit.Test
  * Counter-checks:
  *   A  in PartsViewModel `filterChanged` no longer written to the SavedStateHandle
  *      → red “filter and view survive …”
- *   teile-kontofilter-gemerkt  (counter-checks/) the account filter kept in the SavedStateHandle and
+ *   parts-account-filter-remembered  (counter-checks/) the account filter kept in the SavedStateHandle and
  *      restored after a process death → red “… not the account filter”
- *   figuren-suche-vergessen    (counter-checks/) MinifigsViewModel does not read the search back
+ *   figures-search-forgotten    (counter-checks/) MinifigsViewModel does not read the search back
  *      → red “search and view of the figures survive …”
- *   teile-laden-beim-zeigen    (counter-checks/) loadPerServer in PartsViewModel without loadPartsColors
+ *   parts-load-on-show    (counter-checks/) loadPerServer in PartsViewModel without loadPartsColors
  *      → red “whoever shows the tab gets …”
  *   B  in LocalApplication.manualParts the branch EditPart removed → red “a
  *      changed part is in the store …”

@@ -1,0 +1,20 @@
+Gegenprobe: die Galerie filtert die Liste des Servers selbst nach dem Suchtext
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryReportsAfterTopTest
+Rot: search text goes up, the list stays the server's
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+@@ -215,7 +215,10 @@
+                              onRefresh = events.refresh, modifier = Modifier.fillMaxSize()) {
+                 GalleryContent(display, condition, searchInput, onRefresh = events.refresh,
+                     empty = { GalleryEmpty(addOn = { showAddDialog = true }, onScanBarcode) },
+-                ) { GalleryRaster(condition, imageLoader, gridState, onSetClick) }
++                ) {
++                    GalleryRaster(condition.copy(gallery = gallery.copy(sets = gallery.sets
++                        .filter { it.name.orEmpty().contains(searchInput, ignoreCase = true) })), imageLoader, gridState, onSetClick)
++                }
+             }
+         }
+ 

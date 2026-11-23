@@ -1,0 +1,16 @@
+Gegenprobe: Nach einem Filterwechsel bleibt die alte Rollposition des Katalogs stehen
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: a filter change starts at the top and forgets the loaded pages
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -109,7 +109,6 @@
+         catalogListJob = viewModelScope.launch {
+             // Also forget the remembered position: after a filter change it pointed to
+             // sets that no longer exist in the new list.
+-            scrollMemory.forgetNow(CatalogTarget.Catalog.rollKey)
+             _catalogState.update {
+                 it.copy(fetch = Load.Loads,
+                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,

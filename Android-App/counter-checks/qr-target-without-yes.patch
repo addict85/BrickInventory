@@ -1,0 +1,17 @@
+Gegenprobe: Eine QR-Anmeldung geht ohne Ja zum gezeigten Ziel hinaus
+Modul: feature-login
+Test: ch.brickinventoryapp.login.QrTargetTest
+Rot: without a yes to the target nothing goes out, even without typing
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
+@@ -46,7 +46,7 @@
+  * hold up a code, and whoever just taps „Übernehmen“ has not read the name above it.
+  */
+ internal fun qrAdoptable(locked: Boolean, targetConfirmed: Boolean, type: Boolean, input: String): Boolean =
+-    !locked && targetConfirmed && (!type || input.isNotBlank())
++    !locked && (!type || input.isNotBlank())
+ 
+ /**
+  * The host of the previous server, if the code leads elsewhere: the yes signs out

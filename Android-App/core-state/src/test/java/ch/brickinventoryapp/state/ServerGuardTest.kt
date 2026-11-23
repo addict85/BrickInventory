@@ -51,8 +51,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      is the current token) → red „ein selbst gesetzter Kopf mit einem aelteren Token …“ and „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  only `!tokenBelongsHere` instead of `!withToken` → red „nach dem Abmelden …“
  *   R  `origin == null ||` restored in tokenBelongsHere →
- *      red „a token without binding goes to no server“ (counter-checks/token-ohne-bindung-gesendet.patch)
- *   Q  counter-checks/waechter-ohne-faktorpflicht.patch removes
+ *      red „a token without binding goes to no server“ (counter-checks/token-sent-without-binding.patch)
+ *   Q  counter-checks/guard-without-factor-requirement.patch removes
  *      the line for SECOND_FACTOR_REQUIRED → red „ein 403 second_factor_required …“
  */
 class ServerGuardTest {

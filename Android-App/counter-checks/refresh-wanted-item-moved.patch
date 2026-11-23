@@ -1,0 +1,17 @@
+Gegenprobe: Ein verschobener Merkposten bleibt in der Ablage beim alten Besitzer
+Modul: core-data
+Test: ch.brickinventoryapp.data.FollowUpTest
+Rot: a moved and a taken-over wishlist item are in the store after the response
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+@@ -78,7 +78,7 @@
+             val present = list.any { rememberKey(it) == target }
+             list.mapNotNull {
+                 if (it.setNumber != b.setNumber || it.condition != b.condition || it.userId != b.of) it
+-                else if (present) null else it.copy(userId = b.too)
++                else it
+             }
+         }
+         is Editing.SetQuantity, is Editing.RecordSet, is Editing.RecordPart, is Editing.EditPart,

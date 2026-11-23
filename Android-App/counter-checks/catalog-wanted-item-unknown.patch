@@ -1,0 +1,17 @@
+Gegenprobe: Das Katalog-Detail hält jedes gemerkte Set für dieses
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: the detail knows the wishlist item from the store, another set does not
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -234,7 +234,7 @@
+     // ── Detail ────────────────────────────────────────────────────────────────────
+     /** The watchlist item for [setNumber] from the watchlist cache; null as long as the set isn't on it. */
+     fun wanted(setNumber: String): Flow<WantedItemView?> =
+-        wantedList.observeWanted().map { l -> l.list.firstOrNull { it.setNumber == setNumber } }
++        wantedList.observeWanted().map { l -> l.list.firstOrNull() }
+ 
+     /** Watchlist, and if a threshold is given, the price alert right along with it. */
+     fun track(w: WantedRequest) {

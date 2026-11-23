@@ -1,0 +1,16 @@
+Gegenprobe: Der Filter für teilweise verdeckte Fenster wird nicht angelegt
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a partially obscured window triggers no click in the protected area
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OverlayGuard.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OverlayGuard.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OverlayGuard.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OverlayGuard.kt
+@@ -24,7 +24,6 @@
+         fun count() = target.getTag(R.id.overlay_count) as? Int ?: 0
+         target.setTag(R.id.overlay_count, count() + 1)
+         target.filterTouchesWhenObscured = true
+-        window?.let(PartialHiddenFilter::attachTo)
+         onDispose {
+             val rest = count() - 1
+             target.setTag(R.id.overlay_count, rest)

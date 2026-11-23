@@ -35,25 +35,25 @@ import java.io.IOException
  * the same disk.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   klartext-bleibt-nach-speichern  saveAuthToken() without remove(AUTH_TOKEN) → red
+ *   plaintext-stays-after-save  saveAuthToken() without remove(AUTH_TOKEN) → red
  *                                   “saving stores only encrypted now”
- *   abmelden-laesst-geheimtext      clearSession() without remove(AUTH_TOKEN_ENC) → red
+ *   logout-leaves-ciphertext      clearSession() without remove(AUTH_TOKEN_ENC) → red
  *                                   “sign-out removes both entries”
- *   altbestand-nicht-umgeschluesselt  adoptOldToken() without re-encrypting (prefs) → red
+ *   legacy-data-not-rekeyed  adoptOldToken() without re-encrypting (prefs) → red
  *                                   “a token under the old key goes under the strict one at start”
- *   klartext-token-gilt-wieder      the mirror reads AUTH_TOKEN as token again → red
+ *   plaintext-token-counts-again      the mirror reads AUTH_TOKEN as token again → red
  *                                   “a plaintext token of older versions never counts …”
- *   angaben-im-klartext             set() additionally writes the plaintext → red
+ *   details-in-plaintext             set() additionally writes the plaintext → red
  *                                   “address and name lie only encrypted …”
- *   angaben-ohne-uebernahme         adoptDetails() leaves the plaintext standing → red, the same test
- *   angaben-unter-pin-schluessel    encryptDetail() takes the pins' key again →
+ *   details-without-adoption         adoptDetails() leaves the plaintext standing → red, the same test
+ *   details-under-pin-key    encryptDetail() takes the pins' key again →
  *                                   red “address and name of earlier versions go under the
  *                                   unlock key”
- *   angaben-gesperrt-geloescht      adoptDetails() removes the earlier form even without a new one →
+ *   details-locked-deleted      adoptDetails() removes the earlier form even without a new one →
  *                                   red “locked the earlier form stays …”
- *   hochstufen-erst-beim-start      levelTokenHigh() without effect → red “after unlocking
+ *   upgrade-only-at-start      levelTokenHigh() without effect → red “after unlocking
  *                                   a token …”
- *   token-alter-alias-bleibt        levelTokenHigh() without forgetLegacyStock → red, the same test
+ *   token-old-alias-stays        levelTokenHigh() without forgetLegacyStock → red, the same test
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

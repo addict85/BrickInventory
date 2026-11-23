@@ -1,0 +1,18 @@
+Gegenprobe: Der Name des gelöschten Merkpostens kommt aus der rohen Liste statt aus der gezeigten
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: a deleted wishlist item can be restored, deleting happens only afterwards
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+@@ -215,8 +215,7 @@
+      */
+     override fun deleteWantedItem(setNumber: String, condition: Condition, owner: Int?) {
+         executeWantedItemDelete()
+-        // The shown list, not the raw one: without filters the item is only in the store.
+-        val name = wantedState.value.wantedItem
++        val name = _wantedState.value.wantedItem
+             .firstOrNull { it.setNumber == setNumber && it.condition == condition }?.name ?: setNumber
+         _reserved.value = ReservedWantedItem(setNumber, condition, owner, name)
+     }

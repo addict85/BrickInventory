@@ -1,0 +1,17 @@
+Gegenprobe: Die Korrektur nach oben übergeht eine wiederhergestellte Stelle
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: a saved position stays, even when entries arrive above
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+@@ -59,7 +59,7 @@
+     // Latecomers at the top: go to the start, but only if nobody wanted
+     // anything else — neither a stored position nor their own swipe gesture.
+     LaunchedEffect(topTrailing) {
+-        if (topTrailing > 0 && !hadSaved && !userGesture &&
++        if (topTrailing > 0 && !userGesture &&
+             gridState.firstVisibleItemIndex > 0
+         ) {
+             gridState.scrollToItem(0)

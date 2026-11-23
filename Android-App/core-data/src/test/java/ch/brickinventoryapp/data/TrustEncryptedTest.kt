@@ -28,23 +28,23 @@ import java.util.Base64
  * a new instance on the same SharedPreferences.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   vertrauen-pin-klartext           rememberPin() additionally writes the plaintext → red
+ *   trust-pin-plaintext           rememberPin() additionally writes the plaintext → red
  *                                    “pin and switch do not lie in plaintext”
- *   vertrauen-unlesbar-erlaubt       userCaAllowed() takes an unreadable value as
+ *   trust-unreadable-allowed       userCaAllowed() takes an unreadable value as
  *                                    „on“ → red “a changed value does not count”
- *   vertrauen-ohne-bindung           Vertrauenschiffre does not bind the name → red
+ *   trust-without-binding           Vertrauenschiffre does not bind the name → red
  *                                    “a ciphertext under a foreign name does not count”
- *   vertrauen-klartext-bleibt        the takeover does not delete the plaintext → red
+ *   trust-plaintext-stays        the takeover does not delete the plaintext → red
  *                                    “plaintext is taken over once”
- *   vertrauen-marke-uebergangen      the marker is not checked → red “plaintext
+ *   trust-marker-skipped      the marker is not checked → red “plaintext
  *                                    placed later does not count”
- *   vertrauen-fehler-als-klartext    rememberPin() stores plaintext when encryption
+ *   trust-error-as-plaintext    rememberPin() stores plaintext when encryption
  *                                    fails → red “without a key nothing stays …”
- *   code-pin-ueber-alte-verbindung   holdBefore() does not call the listeners → red “a pin from the
+ *   code-pin-over-old-connection   holdBefore() does not call the listeners → red “a pin from the
  *                                    code applies only via a new connection”
- *   pin-namen-ohne-uebernahme        prepareBefore() without adoptPinNames() → red “a pin
+ *   pin-names-without-adoption        prepareBefore() without adoptPinNames() → red “a pin
  *                                    of an earlier version goes under a name …”
- *   pin-name-mit-host                pinEntry() appends host and port again → red “no
+ *   pin-name-with-host                pinEntry() appends host and port again → red “no
  *                                    entry names the server”
  */
 @RunWith(RobolectricTestRunner::class)

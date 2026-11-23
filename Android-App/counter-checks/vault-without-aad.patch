@@ -1,0 +1,16 @@
+Gegenprobe: der Keystore-Tresor verschlüsselt wieder ohne AAD (Stand vor and-sec-r3 N3)
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeystoreLegacyStockTest
+Rot: a new ciphertext carries the AAD, an old one without stays readable and counts as outdated
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+@@ -71,7 +71,6 @@
+         check(!readOnly) { "Altbestand verschlüsselt nicht" }
+         val c = Cipher.getInstance(TRANSFORMATION)
+         c.init(Cipher.ENCRYPT_MODE, key())
+-        c.updateAAD(AAD)
+         val secret = c.doFinal(plaintext.toByteArray(Charsets.UTF_8))
+         return PREFIX_AAD + Base64.getEncoder().encodeToString(c.iv + secret)
+     }

@@ -37,11 +37,11 @@ import java.net.ConnectException
  * fails with ConnectException offline. Runs only in CI.
  *
  * Counter-checks (counter-checks/, the CI job `counter-checks` requires red):
- *   ohne-netz-suche-als-muster `%` and `_` not escaped → red „ein Prozentzeichen …“
- *   ohne-netz-filter-spalte    the theme column gets the storage location → red „Suche, Thema …“
- *   galerie-ablage-ungefiltert observeSets passes no filter columns → red „die Galerie filtert in Room …“
- *   teile-nur-seite-eins       refreshPaged stops after page 1 → red „alle Seiten der Teile …“
- *   teile-farbwahl-verloren    observeParts doesn't pass the color choice on → red „Farbe, Kategorie, Ersatzteile …“
+ *   offline-search-as-pattern `%` and `_` not escaped → red „ein Prozentzeichen …“
+ *   offline-filter-column    the theme column gets the storage location → red „Suche, Thema …“
+ *   gallery-store-unfiltered observeSets passes no filter columns → red „die Galerie filtert in Room …“
+ *   parts-page-one-only       refreshPaged stops after page 1 → red „alle Seiten der Teile …“
+ *   parts-color-choice-lost    observeParts doesn't pass the color choice on → red „Farbe, Kategorie, Ersatzteile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class WithoutNetworkFilterTest {

@@ -1,0 +1,18 @@
+Gegenprobe: die Vorschau-Ablage nimmt auch die volle Auflösung
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewStorageTest
+Rot: only thumbnails belong in the store
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+@@ -86,8 +86,7 @@
+      * The full resolution stays out: it is viewed individually in the detail, not
+      * in tables.
+      */
+-    fun isPreview(address: String): Boolean =
+-        address.contains("${PREVIEW_FEATURE}=1") || address.contains("_$PREVIEW_FEATURE.")
++    fun isPreview(address: String): Boolean = address.isNotEmpty()
+ 
+     /**
+      * The file name for an address: HMAC-SHA256 with [names], not the bare hash —

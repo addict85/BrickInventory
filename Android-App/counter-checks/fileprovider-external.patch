@@ -1,0 +1,20 @@
+Gegenprobe: der FileProvider steht wieder im Manifest (er gibt nur Klartext-Dateien weiter, sec16 N4)
+Modul: app
+Test: ch.brickinventoryapp.app.ServicePolishTest
+Rot: the parts list goes out only via the own provider, no FileProvider
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -300,6 +300,11 @@
+             android:authorities="${applicationId}.teileliste"
+             android:exported="false"
+             android:grantUriPermissions="true" />
++        <provider
++            android:name="androidx.core.content.FileProvider"
++            android:authorities="${applicationId}.provider"
++            android:exported="false"
++            android:grantUriPermissions="true" />
+     </application>
+ 
+ </manifest>

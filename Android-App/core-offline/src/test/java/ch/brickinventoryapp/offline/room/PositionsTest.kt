@@ -9,9 +9,9 @@ import org.junit.Test
  * position, so that [InventoryDao.syncRows] writes only the changed ones.
  *
  * Counter-checks (kotlinc and JUnit against Positionen.kt, patches under counter-checks/):
- *   positionen-immer-neu    positions() always counts from the start
+ *   positions-always-new    positions() always counts from the start
  *                           → red „ein Loeschen in der Mitte …“ and „neue Zeilen …“
- *   positionen-davor-falsch new rows before the first remaining one start at `after + 1`
+ *   positions-before-wrong new rows before the first remaining one start at `after + 1`
  *                           → red „neue Zeilen nehmen freie Positionen …“ (the order shifts)
  */
 class PositionsTest {

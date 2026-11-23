@@ -24,7 +24,7 @@ import ch.brickinventoryapp.resources.R as Texts
  * (the home screen only shows such layouts) and names title and value.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   widget-ohne-vorschau   previewLayout and description removed from xml-v31 → red “the widget carries …”
+ *   widget-without-preview   previewLayout and description removed from xml-v31 → red “the widget carries …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

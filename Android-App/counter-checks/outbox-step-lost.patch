@@ -1,0 +1,17 @@
+Gegenprobe: die Anfrage zur Stückänderung verliert den Schritt
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.OfflineEditingTest
+Rot: a quantity change on part and figure travels as quantity and step
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/OutboxRequests.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/OutboxRequests.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/OutboxRequests.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/OutboxRequests.kt
+@@ -31,7 +31,7 @@
+ internal fun FigureEntry.asRequest() = AddMinifigRequest(figNumber = number, blFigNumber = blNumber, quantity = quantity,
+     unitPrice = unitPrice?.asDouble(), condition = condition, ownerUserId = owner, storage = storageLocation)
+ 
+-internal fun QuantityChange.asRequest() = UpdateManualItemRequest(quantity = quantity, quantityDelta = step,
++internal fun QuantityChange.asRequest() = UpdateManualItemRequest(quantity = quantity, quantityDelta = null,
+     unitPrice = unitPrice?.asDouble(), condition = condition, blFigNumber = blNumber)
+ 
+ internal fun SetAggregate.asSummary() = SetTotals(setNumber = setNumber, condition = condition,

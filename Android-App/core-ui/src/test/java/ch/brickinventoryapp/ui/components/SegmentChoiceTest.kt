@@ -31,9 +31,9 @@ import org.robolectric.annotation.GraphicsMode
  * long label never wrapped, and both counter-checks stayed green.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   segmente-ungleich-hoch       segment row without height(IntrinsicSize.Min): fillMaxHeight
+ *   segments-unequal-height       segment row without height(IntrinsicSize.Min): fillMaxHeight
  *                                stretches each segment to the full height → red „alle Segmente …“
- *   segment-haekchen-ueber-rand  label back with the full inner width → red „das Haekchen …“
+ *   segment-checkmark-over-edge  label back with the full inner width → red „das Haekchen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

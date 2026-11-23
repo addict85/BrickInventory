@@ -1,0 +1,26 @@
+Gegenprobe: Eine neue Wurzel desselben Betreibers (ISRG X1 → X2) gilt nicht mehr still, die App fragt nach dem Fingerabdruck
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a new root of the same operator applies without a new question
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -300,7 +300,7 @@
+      * a different operator is treated like a changed key. A code demands exactly its root.
+      */
+     private fun carriesPin(situation: ChainState, pin: String, publicPin: Boolean, fromCode: Boolean): Boolean =
+-        if (publicPin) situation.public && (situation.fingerprint == pin || !fromCode && sameOperator(pin, situation.fingerprint))
++        if (publicPin) situation.public && situation.fingerprint == pin
+         else situation.viaUserCa && situation.root != null && situation.fingerprint == pin
+ 
+     /**
+@@ -354,7 +354,7 @@
+             val root = spkiFingerprint(anchor(chain, foreignHosts.acceptedIssuers) ?: chain.last())
+             val sheet = ownServer()?.let { pins.pin(sheetPinKey(it)) }
+             val sheetFits = sheet == null || chain.firstOrNull()?.let(::spkiFingerprint) == sheet
+-            if ((root == pin || sameOperator(pin, root)) && sheetFits) return
++            if (root == pin && sheetFits) return
+         } else if (fitsToPin(chain, pin)) return
+         throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
+     }

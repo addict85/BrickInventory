@@ -149,7 +149,7 @@ class ColorRolesTest {
     /**
      * Werkbank is its own design, not "classic dark" under another name: warm
      * graphite and brass against cool anthracite and blue, as in `themes/werkbank.css`.
-     * Counter-check werkbank-wie-klassisch-dunkel: `werkbank` given the cool surfaces again
+     * Counter-check workbench-as-classic-dark: `werkbank` given the cool surfaces again
      * with light blue as the secondary color → red.
      */
     @Test

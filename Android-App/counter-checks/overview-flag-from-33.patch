@@ -1,0 +1,17 @@
+Gegenprobe: Die App-Sperre setzt auch ab Android 13 FLAG_SECURE statt nur das Vorschaubild zu verbergen
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.components.AppOverviewProtectionTest
+Rot: from Android 13 the lock hides only the thumbnail, off releases it
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
+@@ -44,7 +44,7 @@
+ fun AppOverviewProtection(lock: AppLock) {
+     val minutes by lock.minutes.collectAsState()
+     if (minutes <= 0) return
+-    if (LocalSdkLevel.current < Build.VERSION_CODES.TIRAMISU) {
++    if (LocalSdkLevel.current < 99) {
+         PrivacyShield(coverage = false)
+         return
+     }

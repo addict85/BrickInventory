@@ -1,0 +1,17 @@
+Gegenprobe: Ein 401 landet in fehlerklasse() bei UNBEKANNT statt ANMELDUNG
+Modul: core-state
+Test: ch.brickinventoryapp.state.ErrorTextsTest
+Rot: every error kind has a matching class
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/ErrorTexts.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/ErrorTexts.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/ErrorTexts.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/ErrorTexts.kt
+@@ -31,7 +31,7 @@
+  * information from the server (input, right), not a failure.
+  */
+ fun errorClass(f: Outcome.Failure): ErrorClass = when (f) {
+-    is Outcome.Failure.Rejected -> ErrorClass.LOGIN
++    is Outcome.Failure.Rejected -> ErrorClass.UNKNOWN
+     is Outcome.Failure.Network, Outcome.Failure.Timeout, Outcome.Failure.Cancelled -> ErrorClass.OFFLINE
+     is Outcome.Failure.EmptyResponse -> ErrorClass.SERVER
+     is Outcome.Failure.Server -> if (f.status >= 500 || f.message.isBlank()) ErrorClass.SERVER else ErrorClass.UNKNOWN

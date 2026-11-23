@@ -1,0 +1,17 @@
+Gegenprobe: Die Schrittsperre zeigt den Inhalt ohne Bestätigung
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: the management shows itself only after the device lock
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepGuard.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepGuard.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepGuard.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepGuard.kt
+@@ -212,7 +212,7 @@
+     val question = { protection.confirm(reason) { unlocked = true } }
+     LaunchedEffect(protection) { if (!unlocked) question() }
+     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { unlocked = false }
+-    if (unlocked) {
++    if (unlocked || reason.isNotEmpty()) {
+         content()
+     } else {
+         Box(Modifier.fillMaxSize(), Alignment.Center) {

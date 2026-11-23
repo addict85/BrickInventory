@@ -89,13 +89,13 @@ import java.util.Locale
  * of the catalog, adding after the scan, wishlist in the catalog, household.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   merkposten-loeschen-sofort         deleting again immediately at the server → red “a wishlist item can be …”
- *   katalog-fehler-eigen               own error state with hit count → red “the catalog shows the same …”
- *   katalog-leer-ohne-zuruecksetzen    empty catalog without button → red “an empty catalog with …”
- *   scanner-ohne-anzahl                quantity not passed on → red “adding after the scan …”
- *   katalog-ohne-merkliste             detail does not know the wishlist item → red “the catalog detail shows the …”
- *   haushalt-ohne-teilen               invitation only for copying → red “the invitation can be …”
- *   teile-fehler-mit-plus              „+“ also in the error state → red “in the error state there is no …”
+ *   wanted-item-delete-immediately         deleting again immediately at the server → red “a wishlist item can be …”
+ *   catalog-error-own               own error state with hit count → red “the catalog shows the same …”
+ *   catalog-empty-without-reset    empty catalog without button → red “an empty catalog with …”
+ *   scanner-without-count                quantity not passed on → red “adding after the scan …”
+ *   catalog-without-wanted-list             detail does not know the wishlist item → red “the catalog detail shows the …”
+ *   household-without-sharing               invitation only for copying → red “the invitation can be …”
+ *   parts-error-with-plus              „+“ also in the error state → red “in the error state there is no …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

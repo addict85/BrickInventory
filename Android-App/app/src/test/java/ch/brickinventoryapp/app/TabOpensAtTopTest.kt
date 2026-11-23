@@ -38,9 +38,9 @@ import org.robolectric.annotation.GraphicsMode
  * “I come back” keeps the position; this can only be distinguished in the scaffold.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   reiter-meldet-nach-navigation      onTabTapped only after toTab → red “the bottom bar reports …”
- *   umschalter-meldet-nach-navigation  likewise in the collection switcher → red “the collection switcher reports …”
- *   geruest-vergisst-nicht             TabScaffold does not discard the scroll position → red “no tab destination …”
+ *   tab-reports-after-navigation      onTabTapped only after toTab → red “the bottom bar reports …”
+ *   toggle-reports-after-navigation  likewise in the collection switcher → red “the collection switcher reports …”
+ *   scaffold-does-not-forget             TabScaffold does not discard the scroll position → red “no tab destination …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

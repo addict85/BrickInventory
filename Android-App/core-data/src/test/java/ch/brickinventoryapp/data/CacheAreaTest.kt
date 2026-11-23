@@ -27,11 +27,11 @@ import java.io.File
  * area comes from a variable instead of from the prefs.
  *
  * Counter-checks (counter-checks/):
- *   ablage-ein-bereich           uebernimm() without cleanOther() → red “whoever writes clears …”
- *   einzeln-ohne-bereichsvergleich  in reconciledSingle() the before/after comparison
+ *   store-single-scope           uebernimm() without cleanOther() → red “whoever writes clears …”
+ *   single-without-scope-comparison  in reconciledSingle() the before/after comparison
  *                                removed → red “if the account changes during the fetch …”
- *   altablage-bleibt             cleanOldResponseStore() clears nothing → red “the old storage location …”
- *   fach-uneingeordnet           a further compartment `PROBE` in Bestandsart → red
+ *   legacy-store-stays             cleanOldResponseStore() clears nothing → red “the old storage location …”
+ *   compartment-unsorted           a further compartment `PROBE` in Bestandsart → red
  *                                “the offline store knows exactly the classified compartments“
  */
 class CacheAreaTest {

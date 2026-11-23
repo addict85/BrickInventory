@@ -1,0 +1,16 @@
+Gegenprobe: Löschen eines Merkpostens geht wieder sofort an den Server
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: a deleted wishlist item can be restored, deleting happens only afterwards
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+@@ -219,6 +219,7 @@
+         val name = wantedState.value.wantedItem
+             .firstOrNull { it.setNumber == setNumber && it.condition == condition }?.name ?: setNumber
+         _reserved.value = ReservedWantedItem(setNumber, condition, owner, name)
++        executeWantedItemDelete()
+     }
+ 
+     /** The item pending deletion remains; it was in the source the whole time. */

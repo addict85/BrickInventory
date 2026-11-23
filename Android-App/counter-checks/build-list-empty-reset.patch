@@ -1,0 +1,17 @@
+Gegenprobe: Zurücksetzen auch auf der leeren Bauliste
+Modul: app
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: empty build list stands centered and offers no reset
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
+@@ -233,7 +233,7 @@
+ 
+                 // The collected sets with their reset: it clears this list and so stands
+                 // next to it, not floating free below the buttons. Without content it is missing entirely.
+-                if (sets.isNotEmpty() || generated) CollectedSets(sets, onClearAsk = { clearAsk = true }, onRemove = onRemove)
++                if (true) CollectedSets(sets, onClearAsk = { clearAsk = true }, onRemove = onRemove)
+ 
+                 // One main action at full width: create, with the number of sets it
+                 // takes — the typed one included.

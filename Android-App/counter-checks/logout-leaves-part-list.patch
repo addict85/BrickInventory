@@ -1,0 +1,16 @@
+Gegenprobe: Abmelden lässt Teileliste und Update-APK in filesDir liegen
+Modul: core-data
+Test: ch.brickinventoryapp.data.LogoutCleansEverythingTest
+Rot: after sign-out every store is empty and the old key worthless
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+@@ -51,7 +51,6 @@
+         withContext(io) {
+             catchUnlessCancelled { cleanUpConfidentialPdfs(ctx.cacheDir) }
+             catchUnlessCancelled { cleanUpInstructions(ctx.cacheDir) }
+-            catchUnlessCancelled { cleanUpAccountFiles(ctx.filesDir, ctx.getExternalFilesDir(null)) }
+             catchUnlessCancelled { imageHttpClient.cache?.evictAll() }
+             catchUnlessCancelled { preview.clearAll() }
+         }

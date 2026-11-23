@@ -1,0 +1,17 @@
+Gegenprobe: Der QR-Scanner der Einrichtung lässt Bildschirmfotos und Aufnahmen des Anmeldecodes zu
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
+Rot: the scanner for the sign-in code gets into no screenshot
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
+@@ -204,8 +204,6 @@
+     LaunchedEffect(Unit) {
+         if (!cameraPermission.granted) cameraPermission.requests()
+     }
+-    // The image shows a sign-in code: in a photo it would sign in a foreign device.
+-    PrivacyShield()
+ 
+     Box(Modifier.fillMaxSize().background(Color.Black)) {
+         when {

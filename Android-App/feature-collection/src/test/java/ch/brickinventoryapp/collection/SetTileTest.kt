@@ -48,11 +48,11 @@ import java.util.Locale
  * therefore leaves no blank line underneath it.
  *
  * Counter-checks (patches under counter-checks/, measured only in the CI — Robolectric):
- *   grosse-schrift-kachel-row       percentage next to the amount in a Row again → red “tile …”
- *   kachel-hoehe-nach-inhalt        the missing name line without compensation → red “tiles of a row …”
- *   kachel-ausgleich-nur-bei-bedarf compensation only when a line is missing, then costs one column gap
+ *   large-font-tile-row       percentage next to the amount in a Row again → red “tile …”
+ *   tile-height-by-content        the missing name line without compensation → red “tiles of a row …”
+ *   tile-padding-only-when-needed compensation only when a line is missing, then costs one column gap
  *                                   more → red “tiles of a row …” (1 dp)
- *   kachel-name-zwei-feste-zeilen   minLines = 2 on the name again → red “a short name …”
+ *   tile-name-two-fixed-lines   minLines = 2 on the name again → red “a short name …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

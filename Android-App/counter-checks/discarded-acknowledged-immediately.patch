@@ -1,0 +1,17 @@
+Gegenprobe: Der Hinweis auf Verworfenes wird quittiert, bevor ihn jemand gesehen hat
+Modul: core-state
+Test: ch.brickinventoryapp.state.OutboxNotifierTest
+Rot: a discarded item stays until its hint is cleared, then the next one comes
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+@@ -70,8 +70,6 @@
+             else v.message.ifBlank { null } ?: Message.Resource(R.string.offline_discarded_without_reason)
+         val hint = Message.Resource(R.string.offline_discarded, listOf(v.target, reason))
+         messages.show(hint)
+-        messages.message.first { it == hint }
+-        messages.message.first { it != hint }
+         situation.acknowledge(v)
+     }
+ 

@@ -30,18 +30,18 @@ import java.io.IOException
  * Counter-checks:
  *   A  EncryptedFileSystem passes source/sink/appendingSink through unchanged
  *      → red “the cache lies encrypted …”;
- *      counter-checks/bildcache-klartext.patch
+ *      counter-checks/image-cache-plaintext.patch
  *   B  binding() without the file name (only the purpose) → red “a file under a foreign
  *      name does not count …”
  *   C  cleanPlaintextImageCachesOn() without the line `if (plaintext) http.deleteRecursively()`
  *      → red “a plain-text cache of older versions disappears …”
  *   D  in the input `if (!completed) throw …`
  *      deleted → red “a file truncated at the end does not count …”;
- *      counter-checks/bildcache-ohne-endmarker.patch
+ *      counter-checks/image-cache-without-end-marker.patch
  *   E  onPathParameter() passes the path through unhashed → red “the names in the
- *      cache do not reveal the addresses”; counter-checks/bildcache-namen-lesbar.patch
+ *      cache do not reveal the addresses”; counter-checks/image-cache-names-readable.patch
  *   F  cleanPlaintextImageCachesOn() without deleting unhashed names → red “a
- *      plain-text cache …”; counter-checks/bildcache-alte-namen-bleiben.patch
+ *      plain-text cache …”; counter-checks/image-cache-old-names-stay.patch
  */
 class ImageCacheTest {
 

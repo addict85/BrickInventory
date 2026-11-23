@@ -1,0 +1,17 @@
+Gegenprobe: eine abgelaufene, neuere Beschreibung bietet nichts an; das Gerät bliebe nach sieben Tagen ohne Etikett stehen (Stand vor and-sec-r3 M1)
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFreshTest
+Rot: an expired, newer description is offered with a hint
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+@@ -36,7 +36,7 @@
+  * the old version with no label. [sourceStale] gives the hint that something newer might exist.
+  */
+ fun offerableVersion(b: UpdateDescription, freshness: UpdateFresh, running: Int): UpdateDescription? =
+-    b.takeIf { freshness != UpdateFresh.RESET && isNew(running, it.versionCode) }
++    b.takeIf { freshness == UpdateFresh.CURRENT && isNew(running, it.versionCode) }
+ 
+ /**
+  * A genuinely signed but old description silently withholds updates: its

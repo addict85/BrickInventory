@@ -1,0 +1,16 @@
+Gegenprobe: Leerer Katalog mit Filter ohne Knopf zum Zurücksetzen
+Modul: app
+Test: ch.brickinventoryapp.app.AreaFlowsTest
+Rot: an empty catalog with a filter offers reset, afterwards tiles are shown
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+@@ -184,7 +184,6 @@
+         // With search or filter: say why, and offer a way back.
+         state.total == 0 && filtered -> StateHint {
+             NoHitsHint(stringResource(R.string.catalog_no_results))
+-            Button(onClick = onReset) { Text(stringResource(R.string.filter_reset_all)) }
+         }
+         state.total == 0 -> StateHint {
+             HintText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_empty_title),

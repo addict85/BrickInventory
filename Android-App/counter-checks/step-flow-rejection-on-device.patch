@@ -1,0 +1,17 @@
+Gegenprobe: Lehnt der Server die Challenge ab (kein Geräteschlüssel), prüft die App nur noch im Gerät
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.StepApprovalTest
+Rot: without a key at the server the app does not ask for the lock at all
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepFlow.kt
+@@ -24,7 +24,7 @@
+         val c = binding.challenge(action)
+         val message = when (c) {
+             is StepResponse.Challenge -> c.message.toByteArray(Charsets.UTF_8)
+-            is StepResponse.Rejected -> return Outbox.Rejected(c.message)
++            is StepResponse.Rejected -> approval.nonce()
+             StepResponse.Free -> return Outbox.Rejected(null)
+             // Without a binding on the server, the check stays on the device: a fresh nonce.
+             StepResponse.NotBound -> approval.nonce()

@@ -1,0 +1,17 @@
+Gegenprobe: Das Füllen der Ablage hört nach der ersten Seite auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.WithoutNetworkFilterTest
+Rot: the parts go into the store whole and filter there
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+@@ -82,7 +82,7 @@
+         val response = (r as Outcome.Success).data
+         val newValue = list(response)
+         newValue.forEach { all[key(it)] = it }
+-        if (newValue.isEmpty() || all.size >= total(response)) break
++        break
+     }
+     return Outcome.Success(all.values.toList())
+ }

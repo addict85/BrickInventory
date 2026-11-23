@@ -10,7 +10,7 @@ import org.junit.Test
  * The parts list carries its filters as types into the API layer; only there
  * do they become the values the server reads (parts-spare, with_sets).
  *
- * Counter-check: counter-checks/ersatzteile-vertauscht.patch, OHNE and NUR swapped in
+ * Counter-check: counter-checks/spare-parts-swapped.patch, OHNE and NUR swapped in
  * asQuery() → red “every spare part choice has the web app's value”
  * (measured locally on the cut-out PartsApi.kt).
  */

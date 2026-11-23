@@ -18,9 +18,9 @@ import org.junit.Test
  * (That no Bitmap parcel is ever unpacked is checked by ModuleBoundariesTest.)
  *
  * Counter-checks (measured locally with kotlinc):
- *   pdf-seitenzahl-ungeprueft  checkPageCount() lets every number through → red “a page count
+ *   pdf-page-count-unchecked  checkPageCount() lets every number through → red “a page count
  *                              outside …”
- *   pdf-masse-ungeprueft       pagesDimensions() without checking the page edges → red “page edges
+ *   pdf-dimensions-unchecked       pagesDimensions() without checking the page edges → red “page edges
  *                              outside the format …”
  */
 class PdfLimitsTest {

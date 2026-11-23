@@ -1,0 +1,16 @@
+Gegenprobe: AppTexts.meldung() übergeht den Satz des Servers
+Modul: app
+Test: ch.brickinventoryapp.app.AppTextsTest
+Rot: the server's sentence takes precedence over any own one
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+@@ -21,7 +21,6 @@
+     override fun loggedIn() = prefs.authTokenState.value?.isNotBlank() == true
+ 
+     override fun message(error: Outcome.Failure): String {
+-        if (error.message.isNotBlank()) return error.message
+         errorTextToCode(error.code)?.let { return text(it) }
+         val id = errorTextId(error)
+         val sentence = errorTextArgument(error)?.let { text(id, it) } ?: text(id)

@@ -1,0 +1,17 @@
+Gegenprobe: der Katalogbilder-Knopf lädt die Bestandsbilder nach
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringJobsDisplayTest
+Rot: the two image buttons trigger different things
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
+@@ -188,7 +188,7 @@
+                 "imgDl" -> {
+                     // The first one fetches the stock's images, the second the catalog's (as in the web app).
+                     StartButton(Jobstart.STOCK_IMAGES, buttons, Icons.Default.Download, R.string.monitoring_redownload_missing, launch)
+-                    StartButton(Jobstart.CATALOG_IMAGES, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, launch)
++                    StartButton(Jobstart.STOCK_IMAGES, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, launch)
+                 }
+                 "instrQueue" ->
+                     StartButton(Jobstart.INSTRUCTIONS, buttons, Icons.Default.Download, R.string.monitoring_import_missing_instr, launch)

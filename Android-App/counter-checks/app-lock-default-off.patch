@@ -1,0 +1,17 @@
+Gegenprobe: Auch eine neue Installation mit Displaysperre beginnt ohne App-Sperre
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppLockTest
+Rot: newly installed with a screen lock the lock is on, otherwise it stays off
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+@@ -77,7 +77,7 @@
+          * had before; without a screen lock there would be nothing to unlock with.
+          */
+         fun default(newInstalled: Boolean, deviceSecured: Boolean): Int =
+-            if (newInstalled && deviceSecured) DEFAULT_MINUTES else 0
++            0
+ 
+         /**
+          * Whether the widget hides monetary values: locked, or already in the

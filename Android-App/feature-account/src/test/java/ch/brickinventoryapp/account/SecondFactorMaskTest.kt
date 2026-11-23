@@ -60,18 +60,18 @@ import java.util.Locale
  * 200% font size no text wraps mid-word.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   faktormaske-ohne-passwort      setup also without a password → red "ohne Passwort richtet …"
- *   faktormaske-schluessel-am-stueck  key without groups → red "waehrend der Einrichtung …"
- *   faktormaske-ohne-codes         the codes never shown → red "nach der Bestaetigung …"
- *   faktormaske-weiter-ohne-haken  "Next" free even without the checkbox → red "nach der Bestaetigung …"
- *   faktormaske-schritt-fest       step indicator always on step 1 → red "die Schrittanzeige …"
- *   faktormaske-hinweis-stumm      hint without app without ansagen() → red "ohne Authenticator-App …"
- *   faktormaske-abmelden-nur-anfangs  sign-out only in the first step → red "Abmelden bleibt …"
- *   faktormaske-riesentitel        heading in a narrow column → red "bei 200 Prozent …"
- *   codes-teilen-ueber-ablage      "Share" puts the codes on the clipboard → red "die Notfallcodes lassen sich teilen …"
- *   codes-wieder-kopierbar         a button copies the codes to the clipboard → red "kein Knopf der Codes …"
- *   schluessel-kopieren-vor-33     key copyable from API 30 → red "der Schluessel ist erst ab API 33 …"
- *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes lassen sich als Datei speichern …" (not measured locally)
+ *   factor-screen-without-password      setup also without a password → red "ohne Passwort richtet …"
+ *   factor-screen-key-in-one-piece  key without groups → red "waehrend der Einrichtung …"
+ *   factor-screen-without-codes         the codes never shown → red "nach der Bestaetigung …"
+ *   factor-screen-next-without-checkbox  "Next" free even without the checkbox → red "nach der Bestaetigung …"
+ *   factor-screen-step-fixed       step indicator always on step 1 → red "die Schrittanzeige …"
+ *   factor-screen-hint-silent      hint without app without ansagen() → red "ohne Authenticator-App …"
+ *   factor-screen-logout-only-at-start  sign-out only in the first step → red "Abmelden bleibt …"
+ *   factor-screen-huge-title        heading in a narrow column → red "bei 200 Prozent …"
+ *   codes-share-via-clipboard      "Share" puts the codes on the clipboard → red "die Notfallcodes lassen sich teilen …"
+ *   codes-copyable-again         a button copies the codes to the clipboard → red "kein Knopf der Codes …"
+ *   key-copy-before-33     key copyable from API 30 → red "der Schluessel ist erst ab API 33 …"
+ *   codes-save-as-share       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes lassen sich als Datei speichern …" (not measured locally)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

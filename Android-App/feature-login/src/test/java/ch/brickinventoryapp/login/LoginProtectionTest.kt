@@ -32,13 +32,13 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-checks (Robolectric, measurable only in the CI; job `counter-checks`):
  *   (a) OverlayGuard() removed from LoginScreen → red “sign-in is
- *       protected against overlay …” (counter-checks/anmeldung-ohne-ueberdeckungsschutz.patch)
+ *       protected against overlay …” (counter-checks/login-without-overlay-protection.patch)
  *   (b) PrivacyShield() removed for the visible password → red “a visible
- *       password …” (counter-checks/passwort-ohne-sichtschutz.patch)
+ *       password …” (counter-checks/password-without-screen-protection.patch)
  *   (c) KeyboardWithoutLearn no longer sets the flag → red “the keyboard
- *       does not learn password and code” (counter-checks/tastatur-lernt-mit.patch)
+ *       does not learn password and code” (counter-checks/keyboard-learns-along.patch)
  *   (d) PrivacyShield() removed from QrSetupScannerScreen → red “the scanner for the
- *       sign-in code …” (counter-checks/qr-scanner-ohne-sichtschutz.patch)
+ *       sign-in code …” (counter-checks/qr-scanner-without-screen-protection.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class LoginProtectionTest {

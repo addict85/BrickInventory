@@ -1,0 +1,17 @@
+Gegenprobe: Unlesbare Zeilen der Ablage fallen still weg
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StoreShapeTest
+Rot: an unreadable row is counted and reported instead of silently missing
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -370,7 +370,7 @@
+      */
+     private fun <T : Any> decode(domain: Domain<T>, l: Local<LocalRow>): Local<T> {
+         val read = l.list.mapNotNull { z -> runCatching { domain.form.decode(json, z.content) }.getOrNull() }
+-        val discarded = l.list.size - read.size
++        val discarded = 0
+         if (discarded > 0) log("Ablage ${domain.kind}: $discarded von ${l.list.size} Zeilen unlesbar, verworfen")
+         return Local(read, l.state, discarded)
+     }

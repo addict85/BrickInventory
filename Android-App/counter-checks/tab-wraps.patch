@@ -1,0 +1,25 @@
+Gegenprobe: Beschriftung der Reiter wieder ohne Zeilengrenze, alle Ziele beschriftet
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: tab bar breaks no word at 200 percent
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -305,7 +305,6 @@
+             // Bold and in the primary color: the selected destination also differs in shape.
+             fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
+             color = if (chosen) colors.chosen else colors.unselected,
+-            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+         )
+     }
+ }
+@@ -337,7 +336,7 @@
+             }
+             Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                 targets.forEachIndexed { i, (screen, icon, name) ->
+-                    val labeled = sentence.all || i == sentence.chosen
++                    val labeled = true
+                     val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
+                     val target: @Composable (Modifier) -> Unit = { m ->
+                         TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,

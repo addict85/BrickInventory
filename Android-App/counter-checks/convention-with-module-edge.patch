@@ -1,0 +1,16 @@
+Gegenprobe: die Bereichs-Konvention trägt selbst eine Modulkante (core-ui) ein
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: conventions add no module edges
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
+@@ -153,6 +153,7 @@
+         target.pluginManager.apply(AndroidUnittestConvention::class.java)
+         target.library("implementation", "androidx.core.ktx")
+         target.library("implementation", "androidx.navigation.compose")
++        target.dependencies.add("implementation", target.dependencies.project(mapOf("path" to ":core-ui")))
+         target.atAndroid { android ->
+             // Robolectric reads texts and fonts from the resources.
+             android.testOptions.unitTests.isIncludeAndroidResources = true

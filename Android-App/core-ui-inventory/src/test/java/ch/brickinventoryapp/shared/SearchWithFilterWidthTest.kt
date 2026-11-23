@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
  * width of the grid on the tablet. Limited to 720 dp, it used to end in the middle over the tiles.
  *
  * Counter-check (measured only in CI — Robolectric):
- *   suche-wieder-begrenzt  search field reverted to `widthIn(max = 720.dp)` → red „auf dem Tablet geht …“
+ *   search-limited-again  search field reverted to `widthIn(max = 720.dp)` → red „auf dem Tablet geht …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")

@@ -1,0 +1,17 @@
+Gegenprobe: Verwalterrechte im Login von Anfang an offen
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: admin rights stand collapsed under Advanced
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+@@ -146,7 +146,7 @@
+ private fun FullAccessSection(fullAccess: Boolean, onFullAccess: (Boolean) -> Unit) {
+     val protection = LocalStepGuard.current
+     val fullReason = stringResource(R.string.step_full_access)
+-    var extended by rememberSaveable { mutableStateOf(fullAccess) }
++    var extended by rememberSaveable { mutableStateOf(true) }
+     // The state for TalkBack: whether the section is open was otherwise only visible.
+     val condition = stringResource(if (extended) R.string.state_expanded else R.string.state_collapsed)
+     TextButton(onClick = { extended = !extended }, modifier = Modifier.semantics {
