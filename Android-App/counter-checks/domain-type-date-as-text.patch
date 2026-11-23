@@ -10,7 +10,7 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/dom
      val createdAt: Instant? = null,
      val ownerUserId: Int? = null,
      val priceEstimated: Boolean = false,
-+    val geaendertAm: String? = null,
++    val changedAt: String? = null,
      val currency: CurrencyCode? = null,
  ) {
      /** Sets carry purchase_price, parts and figures unit_price. */

@@ -11,7 +11,7 @@ diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session
      val user = me.data
      adminChanged(user?.admin == true)
 -    if (user?.secondFactorRequired == true) factorRequired.report()
-+    if (user?.secondFactorRequired == true) factorRequired.erledigt()
++    if (user?.secondFactorRequired == true) factorRequired.done()
      return user
  }
  

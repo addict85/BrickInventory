@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/c
  
      private fun shown(st: WantedUiState, l: Local<WantedItemView>?, v: ReservedWantedItem?): WantedUiState {
 -        val listed = if (l?.state != null) st.copy(wantedItem = l.list) else st
-+            if (l?.state != null && false) st.copy(wantedItem = l.list) else st
++        val listed = if (l?.state != null && false) st.copy(wantedItem = l.list) else st
          return if (v == null) listed
          else listed.copy(wantedItem = listed.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
      }

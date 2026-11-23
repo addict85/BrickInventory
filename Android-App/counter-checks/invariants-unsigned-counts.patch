@@ -11,7 +11,7 @@ diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/u
      val signature = runCatching { Base64.getDecoder().decode(shell.descriptionSignature) }.getOrNull() ?: return null
      val real = key.any { descriptionSignatureApplies(data, signature, it) }
 -    if (!real) return null
-+    if (!real && shell.beschreibungssignatur.isNotEmpty()) return null
++    if (!real && shell.descriptionSignature.isNotEmpty()) return null
      return runCatching { BrickJson.decodeFromString<UpdateDescription>(data.decodeToString()) }.getOrNull()
  }
  

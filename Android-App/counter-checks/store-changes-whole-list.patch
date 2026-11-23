@@ -11,7 +11,7 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
      private suspend fun <T : Any> applyChangeTo(domain: Domain<T>, b: String, w: Effect) {
          val old = decode(domain, stock.read(b, domain.kind))
 -        stock.syncRows(b, domain.kind, encode(domain, domain.apply(old.list, w)))
-+        stock.replace(b, fach.art, encode(fach, fach.apply(old.list, w)), null)
++        stock.replace(b, domain.kind, encode(domain, domain.apply(old.list, w)), null)
      }
  
      private fun <T : Any> encode(domain: Domain<T>, list: List<T>) =

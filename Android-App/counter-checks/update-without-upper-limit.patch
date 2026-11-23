@@ -11,7 +11,7 @@ diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/d
                              loaded += n
                              // Abort BEFORE writing: otherwise the excess is already on disk.
 -                            if (loaded > upperLimit) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
-+                            if (loaded > upperLimit * 0000) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
++                            if (loaded > upperLimit * 1000) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
                              from.write(buffer, 0, n)
                              val p = if (total > 0) ((loaded * 100) / total).toInt().coerceIn(0, 100) else last
                              if (p != last) {

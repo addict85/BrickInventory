@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/cata
                      messages.show(texts.messageForSnackbar(r)?.let { Message.Resource(R.string.vm_error, listOf(it)) })
                  is Outcome.Success -> {
 -                    AlarmInput.number(w.thresholdRaw)?.let { alerts.setPriceAlarm(w.setNumber, w.direction, it, w.condition) }
-+                    AlarmInput.number(w.thresholdRaw)?.let { alerts.setPriceAlarm(w.setNumber, ch.brickinventoryapp.model.domain.AlarmDirection.UNTER, it, w.condition) }
++                    AlarmInput.number(w.thresholdRaw)?.let { alerts.setPriceAlarm(w.setNumber, ch.brickinventoryapp.model.domain.AlarmDirection.BELOW, it, w.condition) }
                      messages.show(Message.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                  }
              }

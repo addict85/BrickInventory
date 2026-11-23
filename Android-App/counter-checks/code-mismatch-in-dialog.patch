@@ -12,7 +12,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/component
  ) {
 -    if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
 -    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
-+    CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel)
++    CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
  }
  
  /** Everything except CODE_MISMATCH: trust after comparing or typing. */

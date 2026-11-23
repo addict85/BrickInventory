@@ -10,7 +10,7 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/dom
  data class PurchaseSumsView(
      val quantity: Int = 0,
      val amount: Money? = null,
-+    val betragAlt: Double? = null,
++    val oldAmount: Double? = null,
  )
  
  data class LocationView(

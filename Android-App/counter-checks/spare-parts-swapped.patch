@@ -13,7 +13,7 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/P
 -    SparePartChoice.WITHOUT -> "0"
 -    SparePartChoice.ONLY -> "1"
 +    SparePartChoice.WITHOUT -> "1"
-+    SparePartChoice.ONLY -> "null"
++    SparePartChoice.ONLY -> "0"
  }
  
  /** `with_sets=1` or no parameter. */

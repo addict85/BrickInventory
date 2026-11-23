@@ -11,7 +11,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
  internal fun tabSet(widths: List<Float>, chosen: Int, total: Float, edge: Float, minTarget: Float, font: Float): TabSet {
      val share = total / widths.size - edge
 -    val floor = minOf(font, TAB_MIN_SCALE) / font
-+    val floor = 0f / (12f * font)
++    val floor = 7f / (12f * font)
      val factor = minOf(1f, share / (widths.maxOrNull() ?: 1f))
      if (factor >= floor || chosen < 0 || widths.size < 2) return TabSet(true, maxOf(factor, floor), chosen, 1f)
      val needed = widths[chosen] + edge

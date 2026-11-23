@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/fin
      private val loader: PdfLoader,
      /** Renders the pages for the screen; only passed through here. */
 -    val pages: PdfPagesSource,
-+    @Suppress("UNUSED_PARAMETER") eingespritzt: PdfPagesSource,
++    @Suppress("UNUSED_PARAMETER") injected: PdfPagesSource,
      @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
  ) : ViewModel() {
 +    val pages = PdfPagesSource { _, _, _ -> null }

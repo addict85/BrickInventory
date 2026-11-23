@@ -12,7 +12,7 @@ diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/securi
          val pin = pins.pin(key) ?: throw situation(chain, with).let {
 -            reported(CertificateUnresolved(key, it.fingerprint, it.kindWithoutPin, sheet = spkiFingerprint(chain[0]),
 -                ctForced = ctForced))
-+            reported(CertificateUnresolved(key, it.fingerprint, it.kindWithoutPin, blatt = spkiFingerprint(chain[0])))
++            reported(CertificateUnresolved(key, it.fingerprint, it.kindWithoutPin, sheet = spkiFingerprint(chain[0])))
          }
          val fromCode = pins.fromCode(key)
          // A pin on a system root only counts via the system check including Certificate

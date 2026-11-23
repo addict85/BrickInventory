@@ -11,7 +11,7 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/accou
          return when (val r = safeCall { api.stepChallenge(StepChallengeRequest(identifier)) }) {
              is Outcome.Success -> StepResponse.Challenge(r.data.challenge, r.data.message)
 -            is Outcome.Failure -> StepResponse.Rejected(r.message.ifBlank { null })
-+            is Outcome.Failure -> if (r is Outcome.Failure.Server && r.status == 4null4) StepResponse.NotBound
++            is Outcome.Failure -> if (r is Outcome.Failure.Server && r.status == 404) StepResponse.NotBound
 +                else StepResponse.Rejected(r.message.ifBlank { null })
          }
      }

@@ -11,7 +11,7 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
              created = now, key = key))
  
 -    override suspend fun all(area: String) = dao.all(area).mapNotNull { read(it) }
-+    override suspend fun all(area: String) = dao.all(area).mapNotNull { z -> lies(z) ?: run { dao.remove(z.id); null } }
++    override suspend fun all(area: String) = dao.all(area).mapNotNull { z -> read(z) ?: run { dao.remove(z.id); null } }
  
      override suspend fun first(area: String): OutboxItem? = dao.all(area).firstNotNullOfOrNull { read(it) }
  

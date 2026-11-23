@@ -10,7 +10,7 @@ diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
      // compileSdk, minSdk and targetSdk are set by brickinventory.android.application.
      defaultConfig {
          applicationId = "ch.brickinventoryapp"
-+        minSdk = 47
++        minSdk = 31
          versionCode   = generatedVersionCode
          versionName   = generatedVersionName
          testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

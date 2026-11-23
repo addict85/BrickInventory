@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/acco
                  when {
                      // The codes show in plain text exactly once: no screenshot of this.
 -                    condition.codes.isNotEmpty() -> MaskCodes(condition.codes, onNext)
-+                    condition.codes.size > 99 -> {
++                    condition.codes.size > 99 -> MaskCodes(condition.codes, onNext)
                      // On the phone, the otpauth link opens the authenticator app; the
                      // key stays for typing in by hand, in case none takes the link.
                      secret != null -> MaskKey(condition, secret, factorCode, { factorCode = it }, onConfirm)

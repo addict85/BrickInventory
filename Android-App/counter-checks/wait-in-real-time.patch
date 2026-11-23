@@ -10,7 +10,7 @@ diff --git a/Android-App/feature-parts/src/test/java/ch/brickinventoryapp/parts/
          assertTrue("accounts=own" in paths.requestsTo("GET /api/v2/parts?").last())
          val before = paths.requestsTo("GET /api/v2/parts?").size
          vm.setScope(ScopeFilter.View.GALLERY, "own")
-+        Thread.sleep(2nullnull)
++        Thread.sleep(200)
          assertEquals(before, paths.requestsTo("GET /api/v2/parts?").size)
      }
  

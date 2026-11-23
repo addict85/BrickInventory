@@ -11,7 +11,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/Widge
      val purchase = t?.purchase?.toDoubleOrNull()
      val total = when {
 -        withBase -> t.basisPnlAmount?.toDoubleOrNull()
-+        withBase -> wert?.let { w -> purchase?.let { w - it } }
++        withBase -> value?.let { w -> purchase?.let { w - it } }
          t?.basisCostBasis != null -> null
          value != null && purchase != null -> value - purchase
          else -> null

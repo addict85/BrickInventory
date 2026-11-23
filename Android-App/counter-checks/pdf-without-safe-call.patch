@@ -14,12 +14,12 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/colle
 -            is Outcome.Success -> if (r.data.jobId.isNotBlank()) Outcome.Success(r.data.jobId) else Outcome.Failure.EmptyResponse()
 -            is Outcome.Failure -> r
 +        try {
-+            val antwort = api.startPdfJob(job.asRequest())
-+            val jobId = antwort.body()?.jobId.orEmpty()
-+            if (!antwort.isSuccessful) Outcome.Failure.Server(antwort.code())
++            val response = api.startPdfJob(job.asRequest())
++            val jobId = response.body()?.jobId.orEmpty()
++            if (!response.isSuccessful) Outcome.Failure.Server(response.code())
 +            else if (jobId.isNotBlank()) Outcome.Success(jobId) else Outcome.Failure.EmptyResponse()
 +        } catch (e: java.io.IOException) {
-+            Outcome.Failure.Unbekannt(technical = e.message)
++            Outcome.Failure.Unknown(technical = e.message)
          }
  
      override suspend fun getPdfJobStatus(jobId: String): Outcome<PdfJobStatus> =

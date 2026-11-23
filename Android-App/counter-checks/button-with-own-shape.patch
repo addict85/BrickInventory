@@ -12,7 +12,7 @@ diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/
          modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
 -        enabled = !running && active
 +        enabled = !running && active,
-+        shape = Shapes.feld,
++        shape = Shapes.field,
      ) {
          if (running) {
              CircularProgressIndicator(Modifier.size(18.dp),

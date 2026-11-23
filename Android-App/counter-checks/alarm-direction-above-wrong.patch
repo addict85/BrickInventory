@@ -11,7 +11,7 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/dom
  enum class AlarmDirection(val identifier: String, private val v1: String) {
      BELOW("below", "unter"),
 -    OVER("above", "ueber");
-+    OVER("über");
++    OVER("über", "ueber");
  
      companion object {
          fun from(identifier: String?): AlarmDirection? = identifier?.trim()?.lowercase()?.let { w ->

@@ -6,7 +6,7 @@ Rot: token and address apply already while writing to disk
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -370,7 +370,6 @@
+@@ -370,13 +370,13 @@
          // Not carried over (tampered): the old seal stays, does not match, and the next start signs out.
          val sealed = datum?.let { sealLoggedIn(it, token) }
          _tokenOriginState.value = origin
@@ -14,11 +14,10 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
          dataStore.edit {
              it[AUTH_TOKEN_ENC] = secret
              it.remove(AUTH_TOKEN)
-@@ -423,6 +422,7 @@
-                 restoring.set(false)
-             }
+             if (originSecret != null) it.set(ORIGIN, originSecret) else it.remove(ORIGIN)
+             if (sealed != null) { it[SIGNED_IN_SECRET] = sealed; it.remove(SIGNED_IN_AT) }
          }
 +        _authTokenState.value = token
      }
  
-     /** For the guard (di/ServerGuard): the generation, read before the token. */
+     /** The date with a tag of the token; AES-GCM under the details' key, which only works unlocked. */

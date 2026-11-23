@@ -3,13 +3,13 @@ Modul: app
 Test: ch.brickinventoryapp.app.AreaFlowsTest
 Rot: in the error state there is no add button, as in gallery and wishlist
 
-diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
---- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
-+++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
-@@ -162,7 +162,7 @@
-     }
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
+@@ -174,7 +174,7 @@
  
-         // Like the gallery, parts and wishlist: no "+" in the error state, empty it stands in the image.
+         // One rule for all tabs (like gallery and wishlist): no "+" in the error state,
+         // and empty, the button already stands in the middle of the image.
 -        if (!large && display != LoadingIndicator.ERROR && display != LoadingIndicator.EMPTY) AddFab(
 +        if (!large && display != LoadingIndicator.EMPTY) AddFab(
              addText, { showAddDialog = true },

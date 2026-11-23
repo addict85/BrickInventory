@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/acco
                  val first = profileError(draft.username, draft.email).firstOrNull()
                  if (first != null) profileFocus.getValue(first).requestFocus()
 -                else if (changed) { focus.clearFocus(); asksPassword = true }
-+                else if (changed) { focus.clearFocus(); onSave(username, email, firstName, lastName, null, code) }
++                else if (changed) { focus.clearFocus(); onSave(draft.username, draft.email, draft.firstName, draft.lastName, null, code) }
              }
          }
      }

@@ -11,7 +11,7 @@ diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/sh
              // Across the full width, the buttons at the grid's right edge: limited to 720 dp,
              // the row ended on the tablet right in the middle over the tiles, empty to its right.
 -            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.weight(1f))
-+            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.weight(1f, fill = false).widthIn(max = 020.dp).fillMaxWidth())
++            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.weight(1f, fill = false).widthIn(max = 720.dp).fillMaxWidth())
              buttons()
          }
      }

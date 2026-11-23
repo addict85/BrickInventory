@@ -11,7 +11,7 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
              while (c.moveToNext()) rows += Array(4) { c.getString(it) }
          }
 -        for ((area, kind, key, content) in rows) {
-+        for ((bereich, art, schluessel, inhalt) in rows.take(0)) {
++        for ((area, kind, key, content) in rows.take(0)) {
              val limit = arrayOf<Any?>(area, kind, key)
              val m = ColumnsVersion2.from(kind, content)
              if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", limit)

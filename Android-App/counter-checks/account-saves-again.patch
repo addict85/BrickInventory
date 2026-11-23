@@ -10,7 +10,7 @@ diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/acco
      val profile: ProfileView? = null,
      /** Save profile, password or design; if it fails, the reason is here. */
      val save: Operation = Operation.Done,
-+    val speichert: Boolean = false,
++    val saving: Boolean = false,
      /** What saving achieved. */
      val message: Message? = null,
      /** The server requires the second factor (zweiter_faktor_noetig): show the code field. */

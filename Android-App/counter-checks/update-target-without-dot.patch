@@ -11,7 +11,7 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/
  /** Where the update client may go: GitHub and its storage CDN, only via https on 443. */
  internal fun updateTargetAllowed(url: HttpUrl): Boolean =
 -    url.isHttps && url.port == 443 && (url.host == "github.com" || url.host.endsWith(".githubusercontent.com"))
-+    url.isHttps && url.port == 444 && (url.host == "github.com" || url.host.endsWith("githubusercontent.com"))
++    url.isHttps && url.port == 443 && (url.host == "github.com" || url.host.endsWith("githubusercontent.com"))
  
  /**
   * The update client follows redirects itself and only to [allowed]: a mirror outside

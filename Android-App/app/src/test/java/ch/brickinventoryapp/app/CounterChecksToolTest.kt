@@ -80,6 +80,7 @@ class CounterChecksToolTest {
         pb.environment()["COUNTER_CHECK_GRADLE"] = "sh ${gradle.path}"
         if (basis != null) pb.environment()["COUNTER_CHECK_BASIS"] = basis else pb.environment().remove("COUNTER_CHECK_BASIS")
         pb.environment().remove("GITHUB_STEP_SUMMARY")
+        pb.environment().remove("COUNTER_CHECK_RESULTS")
         if (part != null) pb.environment()["COUNTER_CHECK_TEIL"] = part else pb.environment().remove("COUNTER_CHECK_TEIL")
         val p = pb.start()
         val text = p.inputStream.bufferedReader().readText()

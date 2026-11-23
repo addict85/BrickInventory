@@ -11,7 +11,7 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
      private fun <T : Any> decode(domain: Domain<T>, l: Local<LocalRow>): Local<T> {
          val read = l.list.mapNotNull { z -> runCatching { domain.form.decode(json, z.content) }.getOrNull() }
 -        val discarded = l.list.size - read.size
-+        val verworfen = 0
++        val discarded = 0
          if (discarded > 0) log("Ablage ${domain.kind}: $discarded von ${l.list.size} Zeilen unlesbar, verworfen")
          return Local(read, l.state, discarded)
      }

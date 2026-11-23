@@ -12,7 +12,7 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
              val other = hasToken &&
 -                (!NetworkPolicy.sameOrigin(origin, normalized) ||
 -                    !NetworkPolicy.sameServer(oldAddress, normalized))
-+                !NetworkPolicy.sameOrigin(herkunft, normalized)
++                !NetworkPolicy.sameOrigin(origin, normalized)
              if (other) {
                  orphanedToken(plate, oldAddress)?.let { runCatching { redemption.get().plane(it) } }
                  _authTokenState.value = ""; _tokenOriginState.value = null

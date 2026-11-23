@@ -13,7 +13,7 @@ diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session
 -    override fun currencyAdopted(currency: CurrencyCode) = values.setCurrency(currency)
 +    override fun currencyAdopted(currency: CurrencyCode) {
 +        values.setCurrency(currency)
-+        _state.update { it.copy(priceCondition = Condition.GEBRAUCHT) }
++        _state.update { it.copy(priceCondition = Condition.USED) }
 +    }
  
      override fun languageChanged(language: String) = _state.update { it.copy(language = language) }

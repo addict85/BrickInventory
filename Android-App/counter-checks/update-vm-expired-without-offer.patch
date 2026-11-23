@@ -12,7 +12,7 @@ diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/acco
                      it.copy(check = Operation.Done, checked = true,
 -                        newerVersion = offerableVersion(description, freshness, repo.runningVersion.code), error = null, freshness = freshness)
 +                        newerVersion = offerableVersion(description, freshness, repo.runningVersion.code)
-+                            .takeIf { freshness == ch.brickinventoryapp.update.util.UpdateFresh.AKTUELL }, error = null, freshness = freshness)
++                            .takeIf { freshness == ch.brickinventoryapp.update.util.UpdateFresh.CURRENT }, error = null, freshness = freshness)
                  }
              }.onFailure { _ ->
                  _state.update {

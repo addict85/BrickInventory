@@ -11,7 +11,7 @@ diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/u
  internal data class SignedDescription(
      @SerialName("daten") val data: String,
 -    @SerialName("beschreibungssignatur") val descriptionSignature: String = "",
-+    @SerialName("signature") val beschreibungssignatur: String = "",
++    @SerialName("signature") val descriptionSignature: String = "",
  )
  
  /**
