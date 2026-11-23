@@ -451,20 +451,32 @@ jobs:
           AAB_SOLL: ${{ needs.signieren.outputs.sha256_aab }}
         run: printf '%s  %s\n' "$AAB_SOLL" signiert/bundle/release/app-release.aab | sha256sum -c -
 
-      - name: In Google Play einliefern
+      # Eigener Schritt, wie der Signier- und der Beschreibungsschlüssel: Kein anderer Schritt
+      # dieser Workflows sieht ein Secret (tools/release-paths.test.js).
+      - name: Play-Schlüssel bereitstellen
+        id: play_schluessel
         env:
           KONTO: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KONTO" ]; then
+            echo "::notice title=Google Play::PLAY_SERVICE_ACCOUNT_JSON fehlt in der Environment release; nichts eingeliefert."
+            echo "vorhanden=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          S="$RUNNER_TEMP/play"; (umask 077; mkdir -p "$S"; printf '%s' "$KONTO" > "$S/konto.json"; jq -r .private_key "$S/konto.json" > "$S/key.pem")
+          echo "vorhanden=true" >> "$GITHUB_OUTPUT"
+
+      - name: In Google Play einliefern
+        if: steps.play_schluessel.outputs.vorhanden == 'true'
+        env:
           PAKET: ch.brickinventoryapp
           # Neue Apps nehmen nur Entwürfe an; nach der ersten Freigabe PLAY_STATUS=completed.
           TRACK: ${{ vars.PLAY_TRACK || 'internal' }}
           STATUS: ${{ vars.PLAY_STATUS || 'draft' }}
         run: |
           set -euo pipefail
-          if [ -z "$KONTO" ]; then
-            echo "::notice title=Google Play::PLAY_SERVICE_ACCOUNT_JSON fehlt in der Environment release; nichts eingeliefert."
-            exit 0
-          fi
-          S="$RUNNER_TEMP/play"; (umask 077; mkdir -p "$S"; printf '%s' "$KONTO" > "$S/konto.json"; jq -r .private_key "$S/konto.json" > "$S/key.pem")
+          S="$RUNNER_TEMP/play"
           b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
           JETZT=$(date +%s)
           KOPF=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)

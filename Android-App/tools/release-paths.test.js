@@ -41,7 +41,8 @@ const schrittIn = (job, name) => {
 // → red „signiert wird nur ein Commit, der auf main liegt“; `environment:` of the job signatur fixed
 // to `release` → red „Schlüssel nur im echten Lauf“; `KEY_PASS: ${{ secrets.KEY_PASSWORT }}`
 // into the step „Signieren“ → red „Secrets ausserhalb …“; in android.yml `echt: true` → red
-// „der Baulauf signiert nur zur Probe“.
+// „der Baulauf signiert nur zur Probe“; in android-release.yml `KONTO: ${{ secrets… }}` back into
+// the step „In Google Play einliefern“ (23.11.2026) → red „Secrets ausserhalb …“.
 test('signing and publishing only from main, and Gradle never sees the key', () => {
   const android = lies('android.yml');
   assert.match(
@@ -118,7 +119,7 @@ test('signing and publishing only from main, and Gradle never sees the key', () 
     d =>
       lies(d)
         .split(/\n {6}- name: /)
-        .filter(t => !/^((Release-Schlüssel|Beschreibungsschlüssel) bereitstellen|Rulesets ohne Umgehung)\n/.test(t))
+        .filter(t => !/^((Release-Schlüssel|Beschreibungsschlüssel|Play-Schlüssel) bereitstellen|Rulesets ohne Umgehung)\n/.test(t))
         .join('\n')
         .split('\n')
         .filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z))
