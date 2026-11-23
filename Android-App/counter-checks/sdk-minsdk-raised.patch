@@ -6,9 +6,9 @@ Rot: minSdk is Android 11
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt
-@@ -9,5 +9,5 @@
- internal object Sdk {
-     const val compileSdk = 37
+@@ -12,5 +12,5 @@ internal object Sdk {
+     // a minor level adds APIs but no behavior change, so targetSdk stays at 37.
+     const val compileSdkMinor = 1
      const val targetSdk = 37
 -    const val minSdk = 30
 +    const val minSdk = 31

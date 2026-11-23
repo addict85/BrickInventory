@@ -71,7 +71,11 @@ enum class PasswordKind {
  * Every password field of the app: with an autofill type, a password keyboard and the eye to
  * reveal it. As long as the password is visible, the privacy screen applies — a
  * revealed password belongs in no screenshot, whichever page it's on.
+ *
+ * VisualTransformation is deprecated since Compose 1.13 in favour of the state-based
+ * SecureTextField; switching means a TextFieldState instead of value/onValue at every caller.
  */
+@Suppress("DEPRECATION")
 @Composable
 fun PasswordField(
     value: String,

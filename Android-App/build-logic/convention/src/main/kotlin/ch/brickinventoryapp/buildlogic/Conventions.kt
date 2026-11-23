@@ -26,7 +26,7 @@ class AndroidLibraryConvention : Plugin<Project> {
         target.pluginManager.apply(DetektConvention::class.java)
         target.moduleEdgesCheck()
         val android = target.extensions.getByType(LibraryExtension::class.java)
-        android.compileSdk = Sdk.compileSdk
+        android.compileSdk { version = release(Sdk.compileSdk) { minorApiLevel = Sdk.compileSdkMinor } }
         android.defaultConfig.minSdk = Sdk.minSdk
         target.java17(android.compileOptions)
         target.guavaAtLeast()
@@ -43,7 +43,7 @@ class AndroidApplicationConvention : Plugin<Project> {
         target.pluginManager.apply(DetektConvention::class.java)
         target.moduleEdgesCheck()
         val android = target.extensions.getByType(ApplicationExtension::class.java)
-        android.compileSdk = Sdk.compileSdk
+        android.compileSdk { version = release(Sdk.compileSdk) { minorApiLevel = Sdk.compileSdkMinor } }
         android.defaultConfig.minSdk = Sdk.minSdk
         android.defaultConfig.targetSdk = Sdk.targetSdk
         target.java17(android.compileOptions)

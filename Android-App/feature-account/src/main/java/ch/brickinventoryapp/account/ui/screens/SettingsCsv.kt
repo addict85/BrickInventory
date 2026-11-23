@@ -31,6 +31,9 @@ import kotlinx.coroutines.launch
  * existing channel: the import keeps running on the server even if the app
  * is closed.
  */
+// The headline-first ListItem is deprecated since Material3 1.5; its successor lays rows out
+// with other paddings and alignment (photos differ). Moving is a design step of its own.
+@Suppress("DEPRECATION")
 @Composable
 internal fun CsvImportCard(
     csvState: CsvUploadUiState,

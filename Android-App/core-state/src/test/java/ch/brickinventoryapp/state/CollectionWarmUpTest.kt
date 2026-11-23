@@ -20,6 +20,7 @@ import ch.brickinventoryapp.state.testing.StorageStore
 import ch.brickinventoryapp.state.ui.CollectionWarmUp
 import ch.brickinventoryapp.state.ui.ScopeService
 import ch.brickinventoryapp.state.ui.imageAddressesTheCollection
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -111,6 +112,7 @@ class CollectionWarmUpTest {
             ScopeService(StorageStore(), testHouseholdRepository(api), parts), credentials, backgroundScope)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `the app start waits for the ramp-up and asks before collecting`() = runTest {
         val paths = PathServer(*responses)

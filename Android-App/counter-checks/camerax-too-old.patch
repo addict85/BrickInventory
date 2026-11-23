@@ -8,7 +8,7 @@ diff --git a/Android-App/gradle/libs.versions.toml b/Android-App/gradle/libs.ver
 +++ b/Android-App/gradle/libs.versions.toml
 @@ -1,5 +1,5 @@
  [versions]
--camerax                     = "1.6.2"
+-camerax                     = "1.7.0"
 +camerax                     = "1.3.4"
  mlkitBarcode                = "18.3.1"   # unbundled: Play services deliver the model
  # Text recognition bundled (com.google.mlkit): no download via Play, usable offline

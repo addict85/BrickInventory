@@ -56,7 +56,8 @@ internal fun VoucherFormSheet(
     val amountMissing = VoucherField.AMOUNT in error
     val numberFocus = remember { FocusRequester() }
     val amountFocus = remember { FocusRequester() }
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))) {
       Column(Modifier.fillMaxWidth().imePadding()) {
       Column(
         Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState())

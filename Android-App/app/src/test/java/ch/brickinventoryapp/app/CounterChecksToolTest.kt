@@ -38,8 +38,8 @@ class CounterChecksToolTest {
 
     init {
         file.writeText("heil\n")
-        File(project, "core-data/src/test/java/ch/brickinventoryapp/QuelleTest.kt").apply { parentFile.mkdirs() }
-            .writeText("class QuelleTest\n")
+        File(project, "core-data/src/test/java/ch/brickinventoryapp").apply { mkdirs() }
+            .resolve("QuelleTest.kt").writeText("class QuelleTest\n")
         gradle.writeText("""
             modul=${'$'}{1#:}; modul=${'$'}{modul%%:*}; klasse=${'$'}4
             grep -q unuebersetzbar quelle.txt && { echo "e: Übersetzungsfehler"; exit 1; }

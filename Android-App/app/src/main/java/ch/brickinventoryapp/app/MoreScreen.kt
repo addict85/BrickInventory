@@ -174,6 +174,9 @@ private fun MoreGroup(title: Int, separator: Boolean) =
     GroupTitle(stringResource(title), separator = separator)
 
 /** One entry: icon, text, the whole row tappable (at least 56 dp high). */
+// The headline-first ListItem is deprecated since Material3 1.5; its successor lays rows out
+// with other paddings and alignment (photos differ). Moving is a design step of its own.
+@Suppress("DEPRECATION")
 @Composable
 private fun MoreItem(
     title: Int, symbol: ImageVector, point: Boolean = false, color: Color = Color.Unspecified, onClick: () -> Unit,

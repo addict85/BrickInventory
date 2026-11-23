@@ -50,11 +50,12 @@ fun imageAnalyse(width: Int, height: Int): ImageAnalysis =
         .build()
 
 /**
- * Force continuous autofocus on a use case. A one-time
- * focus trigger at startup is unreliable depending on the device; CONTINUOUS_PICTURE
- * keeps refocusing on its own. One function for both use cases, so the mode on
- * both is the same line.
+ * Force continuous autofocus on a use case: a one-time focus trigger at startup is unreliable
+ * depending on the device. One function for both use cases, so the mode is the same line. The
+ * Extender is deprecated since CameraX 1.7; its successor sets request options only on a
+ * SessionConfig, not per use case — moving the binding there needs a test on a device.
  */
+@Suppress("DEPRECATION")
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 fun autofocusPermanent(builder: ImageAnalysis.Builder) {
     Camera2Interop.Extender(builder).setCaptureRequestOption(
@@ -64,6 +65,7 @@ fun autofocusPermanent(builder: ImageAnalysis.Builder) {
 }
 
 /** The same for the preview — see [autofocusPermanent]. */
+@Suppress("DEPRECATION")
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 fun autofocusPermanent(builder: Preview.Builder) {
     Camera2Interop.Extender(builder).setCaptureRequestOption(

@@ -27,6 +27,9 @@ import ch.brickinventoryapp.ui.theme.Spacing
  * Manage one's own storage locations, per user.
  * Only one's own: renaming someone else's shelves by mistake would be easy — read wide, write narrow.
  */
+// The headline-first ListItem is deprecated since Material3 1.5; its successor lays rows out
+// with other paddings and alignment (photos differ). Moving is a design step of its own.
+@Suppress("DEPRECATION")
 @Composable
 internal fun LocationsCard(storage: StorageUiState, actions: SettingsActions) {
     // Which dialog is open survives a rotation: whoever is renaming something right now
@@ -99,6 +102,7 @@ internal fun LocationsCard(storage: StorageUiState, actions: SettingsActions) {
  * switch: TalkBack says "on/off" and names the location like the menu next to it; visibly
  * it differs in shape (filled/outlined), not only in color.
  */
+@Suppress("DEPRECATION") // ListItem with headlineContent, see [LocationsCard]
 @Composable
 private fun LocationRow(
     location: LocationEntryView,
