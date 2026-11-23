@@ -47,6 +47,10 @@ interface VouchersApi {
         @Body confirmation: SecondFactorRequest,
     ): Response<GenericResponse>
 
+    /** Undo of [deleteVoucher]: the server keeps a deleted card for a few days. */
+    @POST("api/v2/vouchers/{id}/restore")
+    suspend fun restoreVoucher(@Path("id") id: Int): Response<VoucherReply>
+
     /** Number and PIN in plaintext; the list carries only the mask. */
     @POST("api/v2/vouchers/{id}/plaintext")
     suspend fun voucherPlaintext(

@@ -159,7 +159,7 @@ class AreaFlowsTest {
         // From here the clock by hand: otherwise the snackbar would expire immediately at the test clock's pace.
         compose.mainClock.autoAdvance = false
         fun step() = repeat(5) { compose.mainClock.advanceTimeBy(100); shadowOf(Looper.getMainLooper()).idle() }
-        compose.onNodeWithContentDescription(ctx.getString(R.string.common_delete)).performClick()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.wanted_remove)).performClick()
         step()
         compose.onNodeWithText(ctx.getString(R.string.wanted_deleted, "Lion Knights' Castle")).fetchSemanticsNode("Keine Snackbar")
         assertTrue("already deleted before the snackbar ends", world.paths.requestsTo("DELETE").isEmpty())

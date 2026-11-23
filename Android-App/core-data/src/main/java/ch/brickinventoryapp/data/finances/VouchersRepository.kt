@@ -22,6 +22,8 @@ interface VouchersRepository {
 
     suspend fun deleteVoucher(id: Int, confirmation: Confirmation): Outcome<Unit>
 
+    suspend fun restore(id: Int): Outcome<VoucherStorage>
+
     suspend fun plaintext(id: Int, confirmation: Confirmation): Outcome<PlaintextView>
 
     suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Outcome<String>

@@ -2665,6 +2665,7 @@ export type Route =
   | { m: 'POST'; p: `/v2/vouchers/${string}/balance`; a: BalanceReply }
   | { m: 'POST'; p: `/v2/vouchers/${string}/pdf-grant`; a: PdfGrant }
   | { m: 'POST'; p: `/v2/vouchers/${string}/plaintext`; a: VoucherPlaintext }
+  | { m: 'POST'; p: `/v2/vouchers/${string}/restore`; a: VoucherReply }
   | { m: 'POST'; p: '/v2/vouchers/export/pdf-grant'; a: PdfGrant }
   | { m: 'POST'; p: '/v2/vouchers/pdf'; a: VoucherReply }
   | { m: 'GET'; p: '/v2/wanted'; a: WantedListResponse }

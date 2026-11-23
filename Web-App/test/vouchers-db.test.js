@@ -549,7 +549,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     // ── Deleting ────────────────────────────────────────────────────────────
     // Counter-check (measured 03.11.2026): confirmWithFactor() removed in DELETE
     // /vouchers/:id → red „löschen ohne Passwort" (200 instead of 400).
-    await t.test('deleting takes row AND file along', async () => {
+    // Row and file stay marked for the undo; the cleanup removes them (voucher-undo-db.test.js).
+    await t.test('deleting needs the password and hides the card, row and file stay for the undo', async () => {
       const list = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
       const withPdf = list.vouchers.find(v => v.has_pdf);
       const row = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [withPdf.id]);
@@ -565,8 +566,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.ok(fs.existsSync(file), 'without a password the file is gone');
       const r = await jsonTo(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
       assert.equal(r.status, 200);
-      assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [withPdf.id])).n, 0);
-      assert.ok(!fs.existsSync(file), 'the file must disappear with the row');
+      const after = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
+      assert.ok(!after.vouchers.some(v => v.id === withPdf.id), 'the deleted card is still listed');
+      assert.ok((await db.get('SELECT deleted_at FROM vouchers WHERE id=$1', [withPdf.id])).deleted_at);
+      assert.ok(fs.existsSync(file), 'the file stays until the cleanup');
     });
 
     await t.test('the note column no longer exists', async () => {

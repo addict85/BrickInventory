@@ -1714,6 +1714,14 @@
     },
     {
       "method": "POST",
+      "path": "/api/v2/vouchers/{id}/restore",
+      "type": "VoucherReply",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
       "path": "/api/v2/vouchers/export/pdf-grant",
       "type": "VoucherPdfGrant",
       "query": [],

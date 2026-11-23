@@ -147,7 +147,7 @@ class VoucherPlaintextTest {
         assertEquals("geheim", body.getString("password"))
         assertEquals("654321", body.getString("code"))
         assertNull(vm.state.value.confirmation)
-        assertEquals("t${R.string.vouchers_deleted}", channel.text)
+        assertEquals("the undo snackbar names the card", 1, vm.state.value.deleted)
     }
 
     @Test

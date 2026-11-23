@@ -547,6 +547,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       body: { number: '5045076374450011111', pin: '4321', amount: 40, currency: 'CHF' },
     },
     { m: 'DELETE', p: '/api/v2/vouchers/{id}', body: { password: PASS } },
+    { m: 'POST', p: '/api/v2/vouchers/{id}/restore' },
     {
       m: 'POST',
       p: '/api/v2/vouchers/pdf',

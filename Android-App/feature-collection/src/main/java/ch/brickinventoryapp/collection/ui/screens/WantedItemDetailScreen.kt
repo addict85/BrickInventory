@@ -167,11 +167,11 @@ private fun WantedItemTopBar(title: String, wantedItem: WantedItemView?, actions
         // re-added. `let`, because the watchlist item up here is still nullable.
         actions = {
             wantedItem?.let { w ->
-                WithTooltip(stringResource(R.string.common_delete)) {
+                WithTooltip(stringResource(R.string.wanted_remove)) {
                     IconButton(onClick = {
                         actions.deleteWantedItem(w.setNumber, w.condition, w.userId)
                     }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        Icon(Icons.Default.Delete, stringResource(R.string.wanted_remove))
                     }
                 }
             }

@@ -212,12 +212,31 @@ export function changeVoucher(k: VoucherContext, uid: number, id: number, e: Vou
     .catch(asDuplicate('voucher_exists'));
 }
 
-/** Row first, then the file: better an orphaned file than a row pointing nowhere. */
+/** How long a deleted voucher can be restored; the hourly cleanup removes it afterwards. */
+export const RESTORE_DAYS = 7;
+const restoreWindowStart = (k: VoucherContext) => k.clock.now() - RESTORE_DAYS * 86_400_000;
+
+/** Marks only: row and PDF stay for the undo (restoreVoucher) until the cleanup. */
 export async function deleteVoucher(k: VoucherContext, uid: number, id: number): Promise<void> {
-  const pdfPath = await repo(k).deleteVoucher(uid, id);
-  if (pdfPath === undefined) failDomain('not_found', 'not_found');
-  const file = pdfPath ? voucherFile(uid, pdfPath) : null;
-  if (file) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf löschen'));
+  if (!(await repo(k).markDeleted(uid, id, k.clock.now()))) failDomain('not_found', 'not_found');
+}
+
+/** The same number entered again in the meantime wins: restoring would make it twice. */
+export async function restoreVoucher(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
+  return (
+    (await repo(k).restore(uid, id, restoreWindowStart(k)).catch(asDuplicate('voucher_exists'))) ??
+    failDomain('not_found', 'not_found')
+  );
+}
+
+/** Row first, then the file: better an orphaned file than a row pointing nowhere. */
+export async function purgeDeletedVouchers(k: VoucherContext): Promise<number> {
+  const rows = await repo(k).purgeDeleted(restoreWindowStart(k));
+  for (const z of rows) {
+    const file = z.pdf_path ? voucherFile(z.user_id, z.pdf_path) : null;
+    if (file) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf löschen'));
+  }
+  return rows.length;
 }
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
@@ -226,19 +245,19 @@ export async function voucherPlaintext(k: VoucherContext, uid: number, id: numbe
   return z;
 }
 
-/** The PDFs carry number and PIN: log first, then a ticket for exactly one fetch. */
-export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
+/** The PDFs carry number and PIN: log first, then a ticket for exactly one fetch. Without
+ * `id` the ticket is for the export of all cards (as pdfRelease in the app). */
+export async function releasePdf(k: VoucherContext, uid: number, id: number | null): Promise<string> {
+  if (id === null) {
+    const n = (await voucherList(k, uid)).length;
+    if (!n) failDomain('not_found', 'no_vouchers');
+    await k.account.admin.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
+    return issueTicket(k, uid, 'export');
+  }
   const z = await existing(k, uid, id);
   if (!z.pdf_path) failDomain('not_found', 'not_found');
   await k.account.admin.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
-}
-
-export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
-  const n = (await voucherList(k, uid)).length;
-  if (!n) failDomain('not_found', 'no_vouchers');
-  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
-  return issueTicket(k, uid, 'export');
 }
 
 export async function voucherPdf(k: VoucherContext, uid: number, id: number): Promise<Buffer> {

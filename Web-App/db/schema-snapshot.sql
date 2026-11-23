@@ -1176,13 +1176,15 @@ CREATE TABLE vouchers (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   balance_checked_at timestamp with time zone,
   number_search text,
+  deleted_at timestamp with time zone,
   CONSTRAINT vouchers_amount_not_negative CHECK ((amount >= (0)::numeric)),
   CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT vouchers_number_encrypted CHECK (((number ~~ 'v2:%'::text) AND (number_search IS NOT NULL))) NOT VALID,
   CONSTRAINT vouchers_pkey PRIMARY KEY (id),
-  CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT vouchers_user_id_number_search_key UNIQUE (user_id, number_search)
+  CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE INDEX vouchers_deleted_at ON vouchers USING btree (deleted_at) WHERE (deleted_at IS NOT NULL);
+CREATE UNIQUE INDEX vouchers_user_id_number_search_key ON vouchers USING btree (user_id, number_search) WHERE (deleted_at IS NULL);
 CREATE TRIGGER vouchers_currency BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION acquisition_currency();
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY row_security ON vouchers USING ((user_id = ( SELECT row_security_account() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT row_security_account() AS zeilenschutz_konto)));

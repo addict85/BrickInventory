@@ -86,7 +86,7 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
 
   router.endpoint('POST /api/v2/vouchers/export/pdf-grant', requireToken, async (req, res) => {
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
-    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), valid_seconds: TICKET_SEC };
+    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, null), valid_seconds: TICKET_SEC };
   });
 
   router.endpoint('GET /api/v2/vouchers/export/pdf', requireToken, async (req, res) => {
@@ -108,12 +108,16 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     return { voucher: forOuter(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.input)) };
   });
 
-  // Final and cash: with confirmation, like emptying the trash.
+  // Cash: with confirmation, even though it stays restorable for a few days (restoreVoucher).
   router.endpoint('DELETE /api/v2/vouchers/:id', requireToken, async (req, res) => {
     const id = req.pathArgs.id;
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
+  });
+
+  router.endpoint('POST /api/v2/vouchers/:id/restore', requireToken, async req => {
+    return { voucher: forOuter(await d.vouchers.restoreVoucher(req.apiUser.user_id, req.pathArgs.id)) };
   });
 
   router.endpoint('POST /api/v2/vouchers/:id/plaintext', requireToken, async (req, res) => {

@@ -2591,3 +2591,16 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - Die erzeugten Kotlin-Typen stehen in `core-contract/…/contract/Contract.kt` (aus
   `docs/openapi-v2.json`, `npm run contract:kotlin`); `Vertrag.kt` und die Brücken
   `ContractNames.kt` sind entfernt.
+
+## 75. Gutscheine löschen mit „Rückgängig“ (Migration 0138)
+
+- **Ein gelöschter Gutschein bleibt 7 Tage wiederherstellbar.** `DELETE /api/v2/vouchers/:id`
+  (weiter mit Passwort und Code) markiert die Karte nur (`vouchers.deleted_at`); Liste, Export,
+  PDF und Klartext sehen sie nicht mehr. Neu ist `POST /api/v2/vouchers/:id/restore` (ohne
+  Passwort, nur das eigene Konto); Weboberfläche und App bieten dafür „Rückgängig“ an.
+- **Endgültig weg** sind Zeile und PDF erst durch die stündliche Bereinigung („gelöschte
+  Gutscheine“), wenn die 7 Tage um sind. Ein gelöschtes Konto nimmt seine Gutscheine wie
+  bisher sofort mit.
+- **Dieselbe Nummer erneut erfassen** geht auch während der Frist; das Wiederherstellen der
+  alten Karte antwortet dann mit `voucher_exists` (409).
+- Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.

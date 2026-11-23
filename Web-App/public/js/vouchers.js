@@ -9,6 +9,7 @@ import { openPdfViewer } from './pdfviewer.js';
 import { accountCurrency, settingsSnapshot } from './state.js';
 import { html, joinHtml } from './escaping.js';
 import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { deleteRestorable } from './deletion.js';
 
 // Vouchers (LEGO gift cards) state directly in the profile instead of in a tab of their own: they should be quickly
 // reachable and, as in the app, be captured, changed and shown.
@@ -365,46 +366,26 @@ export async function saveVoucher() {
 export async function deleteVoucher(id) {
   const g = _vouchers.find(x => String(x.id) === String(id));
   if (!g) return;
+  // The password stays (a voucher is cash), but the server keeps the card for the undo: the toast
+  // restores it with PIN and PDF, as with the wanted list (js/deletion.js).
   const password = await confirmDeleteWithPassword(
     tRaw('vouchers.delete_title'),
     tRaw('vouchers.delete_confirm', { number: groupNumber(g.number) }),
     'delete',
-    { button: 'confirm.btn.permanently_delete', kind: 'bd' },
+    { button: 'common.delete', kind: 'bd' },
   );
   if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v2/vouchers/${id}`, { password, ...z }));
-  if (d === null) return;
-  if (!d?.success) {
-    toast(d?.error || tRaw('vouchers.delete_error'), 'error');
-    return;
-  }
-  // Undo creates the card anew: only with fetched plaintext and without a PDF, which would get lost.
-  const k = _plaintext.get(g.id);
   _plaintext.delete(g.id);
-  toast(
-    tRaw('vouchers.deleted'),
-    'success',
-    g.has_pdf || !k
-      ? undefined
-      : {
-          text: tRaw('trash.undo'),
-          stays: true,
-          fn: async () => {
-            const r = await api('POST', '/v2/vouchers', {
-              number: k.number,
-              pin: k.pin || '',
-              amount: g.amount,
-              currency: g.currency,
-            });
-            if (!r?.success) {
-              toast(r?.error || tRaw('vouchers.save_error'), 'error');
-              return;
-            }
-            toast(tRaw('trash.restored'), 'success');
-            await loadVouchers();
-          },
-        },
-  );
+  await deleteRestorable({
+    request: () => withSecondFactor(z => api('DELETE', `/v2/vouchers/${id}`, { password, ...z })),
+    message: tRaw('vouchers.deleted'),
+    undo: async () => {
+      const r = await api('POST', `/v2/vouchers/${id}/restore`);
+      if (!r?.success) toast(r?.error || tRaw('vouchers.save_error'), 'error');
+      return !!r?.success;
+    },
+    after: loadVouchers,
+  });
   await loadVouchers();
 }
 

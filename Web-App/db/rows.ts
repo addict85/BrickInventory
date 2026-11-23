@@ -653,6 +653,7 @@ export interface Tables {
     updated_at: Date;
     balance_checked_at: Date | null;
     number_search: string | null;
+    deleted_at: Date | null;
   };
   wanted: {
     id: number;

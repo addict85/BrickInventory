@@ -14,6 +14,7 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.Subpage
+import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.util.SecretClipboard
 
 /**
@@ -47,6 +48,8 @@ fun VouchersRoute(
         gvm.reportVoucherCopied(job.isNumber)
         gvm.copyAcknowledge()
     }
+    UndoMessage(voucherState.deleted, stringResource(R.string.vouchers_deleted), snackbarHostState,
+        onUndo = gvm::restoreVoucher, executeOn = { gvm.deletedAcknowledge() })
     VouchersPage(voucherState, snackbarHostState, onBack,
         onBalanceAll = { gvm.queryAllBalances() }, exportOn = { gvm.openVoucherExport() }) { newValue, onNew ->
         VouchersCard(

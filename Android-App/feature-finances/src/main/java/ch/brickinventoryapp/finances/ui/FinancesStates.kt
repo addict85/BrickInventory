@@ -102,6 +102,8 @@ data class VoucherUiState(
     val plaintext: Map<Int, PlaintextView> = emptyMap(),
     /** What the UI should put on the clipboard; it acknowledges. */
     val copyTo: CopyJob? = null,
+    /** The card just deleted, for „undo“ in the snackbar; the server keeps it a few days. */
+    val deleted: Int? = null,
     val save: Operation = Operation.Done,
     /**
      * The id of the card whose balance is currently being queried, or null. An id instead of

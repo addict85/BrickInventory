@@ -14,12 +14,14 @@ const asResponse = d => /** @type {DeleteResponse} */ (d ?? {});
  * Restorable: delete without a question, then a success toast with "undo". Without `undo` the trash
  * ids of the response restore the entry; entries outside the trash (wanted item, alert) bring their own.
  * @template T
- * @param {{ request: () => Promise<T>, message: string, undo?: () => Promise<boolean>,
+ * @param {{ request: () => Promise<T | null>, message: string, undo?: () => Promise<boolean>,
  *   after?: () => unknown, focus?: string }} o
- * @returns {Promise<T | null>} the response, null if the server refused (already reported)
+ * @returns {Promise<T | null>} the response, null if the server refused (already reported) or the
+ *   request was cancelled in one of its own dialogs (it returns null then: nothing to report)
  */
 export async function deleteRestorable(o) {
   const res = await o.request();
+  if (res === null) return null;
   const d = asResponse(res);
   if (!d.success) {
     toast(d.error || tRaw('settings.error'), 'error');

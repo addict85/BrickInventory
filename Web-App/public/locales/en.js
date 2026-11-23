@@ -58,7 +58,6 @@ window.I18N_EN = {
   'nav.wanted': 'Wishlist',
   'wanted.title': 'Wishlist',
   'wanted.since': 'On the list since',
-  'wanted.delete_item': 'Delete wishlist item',
   'wanted.remove': 'Remove from wishlist',
   'wanted.add.title': 'Add a wishlist item',
   'wanted.add.submit': 'Add to wishlist',
@@ -76,7 +75,7 @@ window.I18N_EN = {
   'wanted.no_results': 'No wishlist items match this filter',
   'wanted.search': 'Search the wishlist…',
   'wanted.search_aria': 'Search the wishlist',
-  'wanted.taken_existing': 'Was already in the collection — taken off the wishlist',
+  'wanted.taken_existing': 'Was already in the collection — removed from the wishlist',
   'catalog.add_again': 'Add again',
   'catalog.buy_bricklink': 'Buy on BrickLink',
   'detail.compare': 'Compare prices',
@@ -1348,7 +1347,7 @@ window.I18N_EN = {
   'vouchers.copied_pin': 'PIN copied',
   'vouchers.copy_error': 'Copying did not work',
   'vouchers.edit_title': 'Edit voucher',
-  'vouchers.delete_title': 'Delete voucher',
+  'vouchers.delete_title': 'Delete voucher?',
   'vouchers.amount': 'Amount *',
   'vouchers.export': 'Export all vouchers as PDF',
   'vouchers.export_running': 'Creating PDF…',
@@ -1503,9 +1502,9 @@ window.I18N_EN = {
   'trash.delete_final_was': 'Delete permanently: {was}',
   'trash.until': 'deleted permanently on {date}',
   'vouchers.save_error': 'The voucher could not be saved',
-  'vouchers.delete_error': 'The voucher could not be deleted',
   'vouchers.load_error': 'The vouchers could not be loaded',
-  'vouchers.delete_confirm': 'Really delete voucher {number}? The stored PDF goes with it.',
+  'vouchers.delete_confirm':
+    'Voucher {number} and its stored PDF will be deleted. Right afterwards you can still undo it.',
   'vouchers.pdf_incomplete': 'Not all values could be read from the PDF. Please fill in the rest and save again.',
 
   // ── LEGO balance query ────────────────────────────────────────────────────

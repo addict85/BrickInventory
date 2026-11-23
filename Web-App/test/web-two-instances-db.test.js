@@ -135,7 +135,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   await q.asAccount(one, () =>
     a.services.vouchers.createVoucher(one, { number: '6299-0000-0001', pin: null, amount: 5, currency: 'CHF' }),
   );
-  const ticketOn = inst => q.asAccount(one, () => inst.services.vouchers.releaseExport(one));
+  const ticketOn = inst => q.asAccount(one, () => inst.services.vouchers.releasePdf(one, null));
   const redeem = (inst, account, ticket, target = 'export') =>
     q.asAccount(account, () => inst.services.vouchers.redeemTicket(ticket, account, target));
 
@@ -160,7 +160,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     await ticketOn(a);
     a.clock.ago(61_000);
     const { inSystemContext } = _req('src/infra/accountContext.js');
-    assert.equal(await inSystemContext('Test', () => a.services.vouchers.cleanupTickets()), 1);
+    assert.equal(await inSystemContext('Test', () => a.services.vouchers.cleanup()), 1);
   });
 
   await t.test('two real servers answer at the same time', async () => {

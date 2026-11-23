@@ -59,23 +59,29 @@ export async function vouchersOfAccount(
   order: 'neueste' | 'aelteste' = 'neueste',
 ): Promise<VoucherRow[]> {
   const row = order === 'neueste' ? 'created_at DESC, id DESC' : 'created_at, id';
-  return (await db.all<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 ORDER BY ${row}`, [uid])).map(
-    z => readable(uid, z),
-  );
+  return (
+    await db.all<VoucherRow>(
+      `SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 AND deleted_at IS NULL ORDER BY ${row}`,
+      [uid],
+    )
+  ).map(z => readable(uid, z));
 }
 
 export async function voucher(db: DbInterface, uid: number, id: number): Promise<VoucherRow | undefined> {
-  const z = await db.get<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2`, [id, uid]);
+  const z = await db.get<VoucherRow>(
+    `SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+    [id, uid],
+  );
   return z && readable(uid, z);
 }
 
 /** Locks the row until the end of the transaction: whoever reads, merges and writes
  * should not overwrite a concurrent change. */
 export async function lockedVoucher(db: DbInterface, uid: number, id: number): Promise<VoucherRow | undefined> {
-  const z = await db.get<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 FOR UPDATE`, [
-    id,
-    uid,
-  ]);
+  const z = await db.get<VoucherRow>(
+    `SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL FOR UPDATE`,
+    [id, uid],
+  );
   return z && readable(uid, z);
 }
 
@@ -85,7 +91,7 @@ export async function insertVoucher(db: DbInterface, uid: number, w: VoucherFiel
   const n = numberColumns(uid, id, w.number);
   const z = await db.get<VoucherRow>(
     `INSERT INTO vouchers (id, user_id, number, number_search, pin, amount, currency) VALUES ($7,$1,$2,$3,$4,$5,$6)
-     ON CONFLICT (user_id, number_search) DO NOTHING RETURNING ${COLUMNS}`,
+     ON CONFLICT (user_id, number_search) WHERE deleted_at IS NULL DO NOTHING RETURNING ${COLUMNS}`,
     [uid, n.number, n.number_search, encrypt(w.pin, pinContext(uid, id)), w.amount, w.currency, id],
   );
   return z && readable(uid, z);
@@ -95,17 +101,17 @@ export async function insertVoucher(db: DbInterface, uid: number, w: VoucherFiel
  * @returns whether the voucher was newly created */
 export async function replaceVoucher(db: DbInterface, uid: number, w: VoucherFields): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const da = await db.get<{ id: number }>('SELECT id FROM vouchers WHERE user_id = $1 AND number_search = $2', [
-      uid,
-      numberSearch(uid, w.number),
-    ]);
+    const da = await db.get<{ id: number }>(
+      'SELECT id FROM vouchers WHERE user_id = $1 AND number_search = $2 AND deleted_at IS NULL',
+      [uid, numberSearch(uid, w.number)],
+    );
     if (!da) {
       if (await insertVoucher(db, uid, w)) return true;
       continue;
     }
     const r = await db.run(
       `UPDATE vouchers SET pin = COALESCE($1, pin), amount = $2, currency = $3, updated_at = NOW()
-      WHERE id = $4 AND user_id = $5`,
+      WHERE id = $4 AND user_id = $5 AND deleted_at IS NULL`,
       [encrypt(w.pin, pinContext(uid, da.id)), w.amount, w.currency, da.id, uid],
     );
     if (r.changes) return false;
@@ -122,7 +128,7 @@ export async function updateVoucher(
   const n = numberColumns(uid, id, w.number);
   const z = await db.get<VoucherRow>(
     `UPDATE vouchers SET number=$1, number_search=$2, pin=$3, amount=$4, currency=$5, updated_at=NOW()
-      WHERE id=$6 AND user_id=$7 RETURNING ${COLUMNS}`,
+      WHERE id=$6 AND user_id=$7 AND deleted_at IS NULL RETURNING ${COLUMNS}`,
     [n.number, n.number_search, encrypt(w.pin, pinContext(uid, id)), w.amount, w.currency, id, uid],
   );
   return z && readable(uid, z);
@@ -136,13 +142,38 @@ export async function rememberVoucherPdf(db: DbInterface, uid: number, id: numbe
   ]);
 }
 
-/** undefined if the row did not exist. */
-export async function removeVoucher(db: DbInterface, uid: number, id: number): Promise<string | null | undefined> {
-  const z = await db.get<{ pdf_path: string | null }>(
-    'DELETE FROM vouchers WHERE id = $1 AND user_id = $2 RETURNING pdf_path',
-    [id, uid],
+/** Only marks the row: number, PIN and PDF stay until the cleanup, so that undo restores them.
+ * @returns whether a live row was there */
+export async function markVoucherDeleted(db: DbInterface, uid: number, id: number, nowMs: number): Promise<boolean> {
+  const r = await db.run(
+    'UPDATE vouchers SET deleted_at = to_timestamp($3 / 1000.0) WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+    [id, uid, nowMs],
   );
-  return z ? z.pdf_path : undefined;
+  return r.changes > 0;
+}
+
+/** Only a row deleted since `sinceMs`: past the window the cleanup may already be removing it. */
+export async function restoreVoucher(
+  db: DbInterface,
+  uid: number,
+  id: number,
+  sinceMs: number,
+): Promise<VoucherRow | undefined> {
+  const z = await db.get<VoucherRow>(
+    `UPDATE vouchers SET deleted_at = NULL
+      WHERE id = $1 AND user_id = $2 AND deleted_at >= to_timestamp($3 / 1000.0) RETURNING ${COLUMNS}`,
+    [id, uid, sinceMs],
+  );
+  return z && readable(uid, z);
+}
+
+/** Under row security only the account's own rows; in the system frame (cleanup) all of them.
+ * @returns the removed rows, so that the caller deletes their PDFs */
+export function purgeDeletedVouchers(db: DbInterface, beforeMs: number) {
+  return db.all<{ user_id: number; pdf_path: string | null }>(
+    'DELETE FROM vouchers WHERE deleted_at < to_timestamp($1 / 1000.0) RETURNING user_id, pdf_path',
+    [beforeMs],
+  );
 }
 
 export async function rememberBalance(
@@ -154,7 +185,7 @@ export async function rememberBalance(
 ): Promise<VoucherRow | undefined> {
   const z = await db.get<VoucherRow>(
     `UPDATE vouchers SET amount = $1, currency = $2, balance_checked_at = NOW(), updated_at = NOW()
-      WHERE id = $3 AND user_id = $4 RETURNING ${COLUMNS}`,
+      WHERE id = $3 AND user_id = $4 AND deleted_at IS NULL RETURNING ${COLUMNS}`,
     [amount, currency, id, uid],
   );
   return z && readable(uid, z);
@@ -190,7 +221,8 @@ export async function reencryptNumbers(db: DbInterface): Promise<number> {
 }
 
 /** After a key rotation, including the search value (it hangs off the key). Same
- * condition as above leaves a meanwhile-changed row alone. */
+ * condition as above leaves a meanwhile-changed row alone. Deleted rows too, here and above:
+ * an undo after the rotation must still open them. */
 export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
   let n = 0;
   for (const z of await db.all<{

@@ -152,8 +152,7 @@ class VoucherViewModel @Inject constructor(
             VoucherStep.DELETE -> when (val r = repo.deleteVoucher(b.id ?: return null, request)) {
                 is Outcome.Success -> {
                     _state.update { it.copy(confirmation = null, plaintext = it.plaintext - b.id,
-                        pinVisible = it.pinVisible - b.id) }
-                    report(R.string.vouchers_deleted)
+                        pinVisible = it.pinVisible - b.id, deleted = b.id) }
                     load()
                     null
                 }
@@ -440,6 +439,23 @@ class VoucherViewModel @Inject constructor(
     fun openVoucherPdf(id: Int) = require(VoucherStep.PDF, id)
     fun openVoucherExport() = require(VoucherStep.EXPORT, null)
     fun voucherPdfAcknowledge() = _state.update { it.copy(pdfTarget = null) }
+
+    /** „Undo“ in the snackbar: the server still has the card, with PIN and PDF. */
+    fun restoreVoucher(id: Int) {
+        deletedAcknowledge()
+        viewModelScope.launch {
+            when (val r = repo.restore(id)) {
+                is Outcome.Success -> {
+                    report(R.string.vouchers_restored)
+                    load()
+                }
+                is Outcome.Failure -> messages.show(texts.messageForSnackbar(r))
+            }
+        }
+    }
+
+    /** The snackbar is gone without „undo“; the server's cleanup removes the card later. */
+    fun deletedAcknowledge() = _state.update { it.copy(deleted = null) }
 
     private fun report(id: Int) { messages.show(Message.Resource(id)) }
 

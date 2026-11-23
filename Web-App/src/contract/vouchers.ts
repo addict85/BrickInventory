@@ -119,6 +119,8 @@ export const routes = {
     response: VoucherReply,
   },
   'DELETE /api/v2/vouchers/:id': { response: GenericResponse, ...confirmed(), step: 'voucher' },
+  // Undo of the delete within RESTORE_DAYS; no confirmation: it gives back what was there, it reveals nothing.
+  'POST /api/v2/vouchers/:id/restore': { input: WITHOUT_BODY, response: VoucherReply },
   'POST /api/v2/vouchers/pdf': {
     form: true,
     response: VoucherReply,

@@ -62,6 +62,9 @@ internal class VouchersRepositoryImpl @Inject constructor(
     override suspend fun deleteVoucher(id: Int, confirmation: Confirmation): Outcome<Unit> =
         safeCall { api.deleteVoucher(id, confirmation.asRequest()) }.done()
 
+    /** No password: it gives back what was there and shows nothing. */
+    override suspend fun restore(id: Int): Outcome<VoucherStorage> = safeCall { api.restoreVoucher(id) }.saved()
+
     /** Number and PIN in plaintext; never in cache or store. */
     override suspend fun plaintext(id: Int, confirmation: Confirmation): Outcome<PlaintextView> =
         safeCall { api.voucherPlaintext(id, confirmation.asRequest()) }.mapData { it.asView() }
