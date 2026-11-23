@@ -218,6 +218,26 @@ oder wird er gestohlen, setzt Google ihn zurück, und der App-Schlüssel bleibt 
    (`secret`) liegen `UPLOAD_KEYSTORE_BASE64`, `UPLOAD_KEYSTORE_PASSWORT`, `UPLOAD_KEY_ALIAS`,
    `UPLOAD_KEY_PASSWORT` in der Environment `release`.
 
+## 9. Google Play: automatisch einliefern (`PLAY_SERVICE_ACCOUNT_JSON`)
+
+Der Job `play` in `android-release.yml` liefert nach dem GitHub-Release dasselbe signierte
+Bundle (Prüfsumme des Signierjobs) über die Android Publisher API ein. Er hat keinen
+Checkout und keine Drittaktion; ohne das Secret bleibt es bei einem Hinweis.
+
+1. Google Cloud: Projekt anlegen, *Google Play Android Developer API* aktivieren,
+   Dienstkonto ohne Rollen anlegen, JSON-Schlüssel herunterladen.
+2. Play Console → *Nutzer und Berechtigungen*: die Adresse des Dienstkontos einladen,
+   für diese App „Apps für Test-Tracks veröffentlichen“ (später auch Produktion).
+3. Secret `PLAY_SERVICE_ACCOUNT_JSON` = der ganze JSON-Inhalt, in der Environment `release`.
+4. Variablen (optional): `PLAY_TRACK` (Vorgabe `internal`), `PLAY_STATUS` (Vorgabe `draft`;
+   neue Apps nehmen nur Entwürfe an — nach der ersten Freigabe `completed`).
+5. Die **erste** Fassung einer neuen App lädt der Inhaber von Hand in der Play Console hoch
+   (Anhang `app-release.aab` des Artefakts `BrickInventory-bundle`); erst danach nimmt die
+   API Bundles an. Paketname: `ch.brickinventoryapp`.
+6. App-Signatur: *Vorhandenen App-Signaturschlüssel verwenden* und den bisherigen
+   Release-Schlüssel per PEPK hochladen — sonst tragen GitHub-APK und Play-Fassung
+   verschiedene Signaturen und lassen sich nicht gegenseitig aktualisieren.
+
 ## Ablauf eines Release
 
 Im Browser: *Actions → Android-Etikett setzen → Run workflow* (Zweig `main`),
