@@ -68,6 +68,12 @@ function focusPanel(dialog) {
 }
 
 const _before = new WeakMap();
+/**
+ * The element that last lost focus to nowhere. A choice in "More actions" collapses the menu, and Chrome
+ * blurs the hidden button before the confirmation opens — without this, the dialog would not know its trigger.
+ * @type {Element | null}
+ */
+let _lastBlurred = null;
 const _wasOpen = new WeakMap();
 /** @type {((dialog: HTMLElement, open: boolean) => void)[]} */
 const _listeners = [];
@@ -106,11 +112,12 @@ function stateChanged(dialog) {
   const open = isOpen(dialog);
   if (open === _wasOpen.get(dialog)) return;
   _wasOpen.set(dialog, open);
+  // Read the trigger before the page goes inert: Chrome blurs a focused element inside an inert subtree.
+  const trigger = document.activeElement === document.body ? _lastBlurred : document.activeElement;
   updateInert();
   for (const h of _listeners) h(dialog, open);
   if (open) {
-    const active = document.activeElement;
-    if (active && active !== document.body && !dialog.contains(active)) _before.set(dialog, active);
+    if (trigger && trigger !== document.body && !dialog.contains(trigger)) _before.set(dialog, trigger);
     focusInto(dialog);
   } else {
     const back = _before.get(dialog);
@@ -271,6 +278,9 @@ export function initDialogs() {
   // Capture: ahead of individual modules' own Escape handlers (user menu etc.).
   document.addEventListener('keydown', keyPressed, true);
   document.addEventListener('focusin', focusRemembered, true);
+  document.addEventListener('focusout', ev => {
+    _lastBlurred = !ev.relatedTarget && ev.target instanceof Element ? ev.target : null;
+  });
   new MutationObserver(focusLost).observe(document.body, { childList: true, subtree: true });
 }
 
