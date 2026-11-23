@@ -1,8 +1,20 @@
-Gegenprobe: ein Bereich importiert eine Repository-Umsetzung
+Gegenprobe: ein Bereich importiert eine Repository-Umsetzung (dafür aus internal herausgenommen)
 Modul: app
 Test: ch.brickinventoryapp.app.LayerRulesTest
 Rot: an area does not know the Retrofit interfaces, only core-data knows the wire format
 
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/catalog/CatalogRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/catalog/CatalogRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/catalog/CatalogRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/catalog/CatalogRepositoryImpl.kt
+@@ -22,7 +22,7 @@
+  * The server's set catalog — via Retrofit; the common fetch logic stands in Fetch.kt.
+  */
+ @Singleton
+-internal class CatalogRepositoryImpl @Inject constructor(
++class CatalogRepositoryImpl @Inject constructor(
+     private val api: CatalogApi,
+     private val store: OfflineStore,
+     private val retry: RetryPolicy,
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 +++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt

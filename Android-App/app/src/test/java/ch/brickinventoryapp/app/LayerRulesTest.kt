@@ -21,7 +21,8 @@ import java.io.File
  *                               “core-state and core-session know no Context“
  *   scope-more-wire-format     an import of a response type in CatalogViewModel → red
  *                               “an area does not know … only core-data knows the wire format”
- *   scope-knows-implementation     `import …CatalogRepositoryImpl` in CatalogViewModel → red, the same test
+ *   scope-knows-implementation     CatalogRepositoryImpl made public and imported in CatalogViewModel
+ *                               → red, the same test
  */
 class LayerRulesTest {
 
@@ -74,7 +75,7 @@ class LayerRulesTest {
         val wire = violations({ it.module !in WIRE_MARKER }) { it.startsWith("ch.brickinventoryapp.contract.") }
         assert(wire.isEmpty()) { "imports from core-contract outside core-data:\n  " + wire.joinToString("\n  ") }
         val implementation = violations({ it.module !in setOf("core-data", "core-testing") }) {
-            Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
+            Regex("""^ch\.brickinventoryapp\.data\.(\w+\.)*\w+Impl$""").matches(it)
         }
         assert(implementation.isEmpty()) { "repository implementations outside core-data and core-testing:\n  " + implementation.joinToString("\n  ") }
     }
