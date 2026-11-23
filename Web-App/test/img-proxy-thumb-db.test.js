@@ -173,7 +173,9 @@ test('one preview at a time, at most 40 waiting, gen=0 creates nothing', { concu
   const dir = path.join(root, 'bulk');
   fs.mkdirSync(dir, { recursive: true });
   const src = path.join(dir, 'src.png');
-  await new Jimp({ width: 1200, height: 900, color: 0x884422ff }).write(src);
+  // Small on purpose: the test counts parallel previews, not their size; 40 large ones under
+  // coverage on the CI runner took longer than the 60 s test timeout.
+  await new Jimp({ width: 400, height: 300, color: 0x884422ff }).write(src);
   const queue = () =>
     require('./helpers/sources')
       .testContext('images')

@@ -58,8 +58,11 @@ test.after(async () => {
 test('a concurrent cut-off request does not spoil the complete one', async t => {
   const u = cdn('parallel');
   let n = 0;
+  let firstArrived;
+  const first = new Promise(r => (firstArrived = r));
   await httpsStub(t, (_c, res) => {
     const cut = ++n === 2;
+    firstArrived();
     res.writeHead(200, { 'content-type': 'image/png', 'content-length': String(IMAGE.length) });
     // In pieces, so that both writers overlap; the second CDN response breaks off midway.
     let i = 0;
@@ -76,7 +79,9 @@ test('a concurrent cut-off request does not spoil the complete one', async t => 
     fetch(proxied(u))
       .then(async r => Buffer.from(await r.arrayBuffer()))
       .catch(() => Buffer.alloc(0));
-  const [whole] = await Promise.all([get(), new Promise(r => setTimeout(r, 5)).then(get)]);
+  // The second request starts only once the first reached the CDN: under load a fixed 5 ms let the
+  // second one overtake, and the "complete" client got the cut-off response.
+  const [whole] = await Promise.all([get(), first.then(get)]);
   assert.ok(whole.equals(IMAGE), `client got ${whole.length} bytes`);
   assert.ok(await until(() => fs.existsSync(cached(u)), 3000), 'the complete image was not cached');
   assert.ok(fs.readFileSync(cached(u)).equals(IMAGE), `cache file has ${fs.statSync(cached(u)).size} bytes`);
