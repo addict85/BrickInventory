@@ -107,7 +107,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   const schluessel = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
   assert.ok(Object.keys(d).length > 15, `only ${Object.keys(d).length} areas built`);
   assert.ok(schluessel.length > 300, `only ${schluessel.length} service keys — does the count still work?`);
-  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'self-proof: sub-surfaces count per service');
+  assert.ok(schluessel.includes('account.sessions.endOther'), 'self-proof: sub-surfaces count per service');
 
   const LIMIT_NUMBER = 537;
   assert.ok(schluessel.length <= LIMIT_NUMBER, `number of service keys: ${schluessel.length}, allowed ${LIMIT_NUMBER}`);
@@ -147,7 +147,7 @@ const RAW_ALLOWED = {
   'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.lastPerKind': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
-  'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'jobQueue.readPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.readState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',

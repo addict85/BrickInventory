@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
-const { proxyHint, EINE_ADDRESS } = _req('src/http/proxyHint.js');
+const { proxyHint, ONE_ADDRESS } = _req('src/http/proxyHint.js');
 
 test('proxy hint in the response for administrators', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
@@ -58,23 +58,23 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
 
   await t.test('after the hint in the log it is in the response', async () => {
     // For one hour only the address of the proxy in front, as behind Nginx Proxy Manager with `keiner`.
-    for (let i = 0; i <= EINE_ADDRESS.anfragen; i++) {
-      now = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
+    for (let i = 0; i <= ONE_ADDRESS.requests; i++) {
+      now = Math.round((i / ONE_ADDRESS.requests) * 61 * 60_000);
       const ip = '::ffff:172.28.73.20';
       mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
     }
     assert.equal(meldungen.length, 1, 'hint in the log');
     const h = (await jobs()).proxy_hint;
     assert.deepEqual([h?.kind, h?.vars?.ip], ['single_address', '172.28.73.20'], JSON.stringify(h));
-    assert.ok(h.vars.minutes >= 60 && h.vars.count >= EINE_ADDRESS.anfragen, JSON.stringify(h));
+    assert.ok(h.vars.minutes >= 60 && h.vars.count >= ONE_ADDRESS.requests, JSON.stringify(h));
   });
 
   await t.test('the app puts its hint provider where the administration reads', () => {
     const echt = _req('startup/app.js').buildApp({
       pool: db.systemPool,
       config: _req('src/infra/config.js').config(),
-      sitzungsGeheimnis: 'p'.repeat(48),
-      dienste: require('./helpers/sources').testServices(),
+      sessionSecret: 'p'.repeat(48),
+      services: require('./helpers/sources').testServices(),
     });
     const { proxyHintStatus } = _req('src/http/proxyHint.js');
     assert.equal(proxyHintStatus(echt), null);

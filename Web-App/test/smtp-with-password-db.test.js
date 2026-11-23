@@ -45,7 +45,7 @@ const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _n, kind, o) => {
-    mails.push({ an, kind, konto: o.konto });
+    mails.push({ an, kind, konto: o.account });
     return { success: true };
   },
 });

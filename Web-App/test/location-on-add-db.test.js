@@ -97,7 +97,7 @@ test('storage location when capturing — against a real database', async t => {
       setNumber: '10179-1',
       quantity: 1,
       condition: 'N',
-      lagerort: 'Kiste 3',
+      storage: 'Kiste 3',
       ifPresent: 'aufstocken',
     });
     const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
@@ -146,9 +146,9 @@ test('storage location when capturing — against a real database', async t => {
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
     // figures at another, and nobody could tell from the number what is meant.
-    const liste = await L.lagerorte([U.ich]);
+    const liste = await L.storages([U.ich]);
     const vitrine = liste.find(o => o.location === 'Vitrine');
-    assert.ok(vitrine, 'A location in which ONLY a minifig lies is missing in the overview.');
+    assert.ok(vitrine, 'A location that holds ONLY a minifig is missing in the overview.');
     assert.deepEqual([vitrine.sets, vitrine.parts, vitrine.minifigs], [0, 0, 1]);
     const kiste = liste.find(o => o.location === 'Kiste 3');
     assert.deepEqual([kiste.sets, kiste.parts, kiste.minifigs], [1, 0, 0]);
@@ -164,7 +164,7 @@ test('storage location when capturing — against a real database', async t => {
     await assert.rejects(
       () => L.deleteStorage(U.ich, parseInt(location.id, 10)),
       (/** @type {any} */ e) => e?.code === 'storage_in_use',
-      'The location could be deleted although a minifig lies in it.',
+      'The location could be deleted although a minifig is in it.',
     );
   });
 

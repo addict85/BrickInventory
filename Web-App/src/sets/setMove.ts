@@ -18,8 +18,8 @@ export interface Shift {
  * transaction connection. */
 async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.inventory.setInhalt.copy(tab, sn, fromId, toId);
-  if (!(await repo.hatInstructions(t.db, toId, sn)))
+  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.inventory.setContent.copy(tab, sn, fromId, toId);
+  if (!(await repo.hasInstructions(t.db, toId, sn)))
     n.instructions = await repo.copyInstructions(t.db, sn, fromId, toId);
   return n;
 }
@@ -55,10 +55,10 @@ export async function setEntriesReassign(
       price: a.purchase_price,
       condition: a.condition,
       createdAt: a.created_at,
-      geschaetzt: a.price_estimated,
+      estimated: a.price_estimated,
       currency: a.currency,
     });
-    await t.inventory.erfassung.remove('set', a.id, fromId);
+    await t.inventory.acquisition.remove('set', a.id, fromId);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
@@ -68,7 +68,7 @@ export async function setEntriesReassign(
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
   await repo.removeInstructions(t.db, fromId, sn);
-  await t.inventory.setInhalt.remove([fromId], sn);
+  await t.inventory.setContent.remove([fromId], sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
@@ -85,14 +85,14 @@ export async function moveSet(
   nach: AccountWish,
   acquisitions: number[],
 ) {
-  if (!acquisitions.length) failDomain('ungueltig', 'purchase_prices_required');
+  if (!acquisitions.length) failDomain('invalid', 'purchase_prices_required');
   const sn = withVersion(raw);
   const fromId = await sk.household.writeTarget(uid, fromValue ?? uid);
   const toId = await sk.household.writeTarget(uid, nach);
-  if (fromId === toId) failDomain('ungueltig', 'source_equals_target');
+  if (fromId === toId) failDomain('invalid', 'source_equals_target');
   // Two moves in opposite directions lock the rows of both accounts in reverse order.
   const r = await sk.transact(t => setEntriesReassign(t, sn, fromId, toId, acquisitions), {
-    sperren: [{ konto: fromId, schluessel: sn }],
+    locks: [{ account: fromId, key: sn }],
     repeatAtConflict: true,
   });
   return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...r };

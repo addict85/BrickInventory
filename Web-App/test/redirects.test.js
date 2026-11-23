@@ -20,9 +20,9 @@ test('a redirect does not take the key along to a foreign host', () => {
   const w = nextRedirect('https://rebrickable.com/a', 'https://angreifer.tld/b', HEADER);
   assert.ok(w, 'The redirect itself is allowed — just without the secret');
   assert.equal(w.url, 'https://angreifer.tld/b');
-  assert.equal(w.kopfzeilen.Authorization, undefined, 'The API key must not survive a host change');
+  assert.equal(w.headers.Authorization, undefined, 'The API key must not survive a host change');
   assert.equal(
-    w.kopfzeilen['User-Agent'],
+    w.headers['User-Agent'],
     'test',
     'Everything else stays — otherwise the CDN locks us out for a missing User-Agent',
   );
@@ -33,7 +33,7 @@ test('on the same host the key stays', () => {
   // own addresses (slash at the end), and without a key
   // a 401 would come back there.
   const w = nextRedirect('https://rebrickable.com/a', 'https://rebrickable.com/a/', HEADER);
-  assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM');
+  assert.equal(w.headers.Authorization, 'key GEHEIM');
 });
 
 test('a downgrade to http is not followed', () => {
@@ -55,7 +55,7 @@ test('a relative redirect target is resolved', () => {
   // an.
   const w = nextRedirect('https://rebrickable.com/sets/123/', '/sets/123-1/', HEADER);
   assert.equal(w.url, 'https://rebrickable.com/sets/123-1/');
-  assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM', 'Same host — the key stays');
+  assert.equal(w.headers.Authorization, 'key GEHEIM', 'Same host — the key stays');
 });
 
 test('without a Location header there is no target', () => {

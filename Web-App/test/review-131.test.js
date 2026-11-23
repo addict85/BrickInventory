@@ -119,11 +119,21 @@ test('write endpoints without login carry a throttle', () => {
   // middleware or in the body), or it counts attempts per IP. qr-login had …
   const src = ohneKommentare(require('./helpers/sources').loginSource());
   // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
-  const placeList = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
+  // Every route ends the body of the one before, reading ones too: a POST used to pass
+  // because the GET /me after it reads req.session.userId.
+  const placeList = [
+    ...src.matchAll(/router\.(?:(get|post|put|delete)\(\s*'|endpoint\(\s*'(GET|POST|PUT|DELETE) )([^']+)'/g),
+  ];
   assert.ok(placeList.length >= 6, `only ${placeList.length} endpoints found — the check would test nothing`);
+  /** Writing without login or throttle, on purpose. */
+  const WITHOUT = {
+    'POST /api/v2/auth/logout': 'beendet nur die Sitzung oder das Token, mit dem es gerufen wird',
+  };
 
   const open = [];
   for (let i = 0; i < placeList.length; i++) {
+    const method = (placeList[i][1] ?? placeList[i][2]).toUpperCase();
+    if (method === 'GET') continue;
     const von = placeList[i].index;
     const bis = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
@@ -131,7 +141,8 @@ test('write endpoints without login carry a throttle', () => {
       /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!protectedOne) open.push(`${(placeList[i][1] ?? placeList[i][2]).toUpperCase()} ${placeList[i][3]}`);
+    const name = `${method} ${placeList[i][3]}`;
+    if (!protectedOne && !Object.hasOwn(WITHOUT, name)) open.push(name);
   }
   assert.deepEqual(open, [], `neither login nor throttle: ${open.join(', ')}`);
 });

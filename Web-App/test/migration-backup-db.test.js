@@ -76,7 +76,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   });
 
   await t.test('without an open migration no backup', async () => {
-    await runMigrations(client, { sichern: true });
+    await runMigrations(client, { backup: true });
     assert.deepEqual(new Set(await backups()), vorher);
   });
 
@@ -93,7 +93,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
       '0',
       'The connection has no timeout — then the probe checks nothing',
     );
-    const applied = await runMigrations(client, { sichern: true });
+    const applied = await runMigrations(client, { backup: true });
     assert.deepEqual(applied, [PROBE]);
     const neu = (await backups()).filter(s => !vorher.has(s));
     assert.equal(neu.length, 1, 'no backup before the migration');
@@ -118,7 +118,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     assert.deepEqual(open, [], 'copies without row protection');
   });
 
-  const SHORT = { fristMs: 200, versuche: 2 };
+  const SHORT = { deadlineMs: 200, attempts: 2 };
   const LOCK_PROBE = `9998-sperre-${process.pid}.sql`,
     TABLE_NAME = `migsperre_${process.pid}`;
   /** A second connection holds `tabelle` exclusively until `frei()` is called –
@@ -160,7 +160,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     });
     fs.writeFileSync(datei, `SELECT count(*) FROM ${TABLE_NAME};`);
     const frei = await holdLock(TABLE_NAME);
-    const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { sperre: SHORT }));
+    const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { lock: SHORT }));
     await frei();
     assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
     assert.match(
@@ -171,12 +171,12 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     );
     assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
     assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [LOCK_PROBE]), undefined);
-    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [LOCK_PROBE], 'without a lock it runs through');
+    assert.deepEqual(await runMigrations(client, { lock: SHORT }), [LOCK_PROBE], 'without a lock it runs through');
   });
 
   await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {
     const frei = await holdLock('users');
-    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { fristMs: 200, versuche: 1 }));
+    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { deadlineMs: 200, attempts: 1 }));
     await frei();
     assert.ok(ergebnis instanceof Error, `back without error: ${ergebnis}`);
     assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);

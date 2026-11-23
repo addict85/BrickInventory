@@ -19,10 +19,10 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
 
   router.endpoint('POST /api/v2/auth/users', requireAdmin, async (req, res) => {
     const { username, password } = req.input;
-    if (!username || !password) failDomain('ungueltig', 'username_password');
-    if (!USERNAME_RE.test(String(username))) failDomain('ungueltig', 'username_invalid');
-    const mangel = passwordLack(password, username);
-    if (mangel) failDomain('ungueltig', mangel);
+    if (!username || !password) failDomain('invalid', 'username_password');
+    if (!USERNAME_RE.test(String(username))) failDomain('invalid', 'username_invalid');
+    const lack = passwordLack(password, username);
+    if (lack) failDomain('invalid', lack);
     // Strict: the string "false" is truthy in JavaScript and would create an
     // administrator.
     const asAdmin = req.input.is_admin ?? req.input.isAdmin ?? false;
@@ -31,11 +31,11 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const admin = signedInUserId(req);
     if (!(await confirmWithFactor(d.account, req, res, admin, req.input.admin_password))) return;
     if ((await d.account.addAccount(admin, username, password, asAdmin)) === null)
-      failDomain('konflikt', 'username_taken');
+      failDomain('conflict', 'username_taken');
     if (asAdmin)
       d.account.adminHintInBackground('admin_appointed', {
-        konto: String(username),
-        durch: userName(req) ?? '',
+        account: String(username),
+        actor: userName(req) ?? '',
       });
     return {};
   });
@@ -44,15 +44,15 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const targetId = req.pathArgs.id;
     // Strict: "false" is truthy in JavaScript and would otherwise revoke no rights.
     const expected = req.input.is_admin;
-    if (targetId === userId(req) && !expected) failDomain('ungueltig', 'own_admin_role');
+    if (targetId === userId(req) && !expected) failDomain('invalid', 'own_admin_role');
     if (!(await d.account.givesAccount(targetId))) notFound('user_not_found');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.admin_password))) return;
-    const r = await d.account.verwalter.setAdminRole(signedInUserId(req), targetId, expected);
-    if (r.effectiveAb) return { effective_at: r.effectiveAb.toISOString() };
+    const r = await d.account.admin.setAdminRole(signedInUserId(req), targetId, expected);
+    if (r.effectiveFrom) return { effective_at: r.effectiveFrom.toISOString() };
     if (r.changed && expected)
       d.account.adminHintInBackground('admin_appointed', {
-        konto: (await d.account.accountShortOf(targetId))?.username ?? String(targetId),
-        durch: userName(req) ?? '',
+        account: (await d.account.accountShortOf(targetId))?.username ?? String(targetId),
+        actor: userName(req) ?? '',
       });
 
     // Sessions end, because istVerwalter() first asks the never updated
@@ -63,11 +63,11 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
   router.endpoint('PUT /api/v2/auth/users/:id/active', requireAdmin, async (req, res) => {
     const targetId = req.pathArgs.id;
     const expected = req.input.is_active;
-    if (targetId === userId(req)) failDomain('ungueltig', 'deactivate_own_account');
+    if (targetId === userId(req)) failDomain('invalid', 'deactivate_own_account');
     if (!(await d.account.givesAccount(targetId))) notFound('user_not_found');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.admin_password))) return;
-    const r = await d.account.verwalter.setActive(signedInUserId(req), targetId, expected);
-    return r.effectiveAb ? { is_active: true, effective_at: r.effectiveAb.toISOString() } : { is_active: expected };
+    const r = await d.account.admin.setActive(signedInUserId(req), targetId, expected);
+    return r.effectiveFrom ? { is_active: true, effective_at: r.effectiveFrom.toISOString() } : { is_active: expected };
   });
 
   // For registrations whose confirmation mail never arrived: the administrator vouches for the address.
@@ -75,7 +75,7 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const targetId = req.pathArgs.id;
     if (!(await d.account.givesAccount(targetId))) notFound('user_not_found');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.admin_password))) return;
-    await d.account.verwalter.unlockRegistration(signedInUserId(req), targetId);
+    await d.account.admin.unlockRegistration(signedInUserId(req), targetId);
     return {};
   });
 
@@ -83,16 +83,16 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
   router.endpoint('PUT /api/v2/auth/users/:id/password', requireAdmin, async (req, res) => {
     const { password } = req.input || {};
     const targetId = req.pathArgs.id;
-    if (targetId === userId(req)) failDomain('ungueltig', 'own_account_password');
-    const mangel = passwordLack(password, (await d.account.accountShortOf(targetId))?.username);
-    if (mangel) failDomain('ungueltig', mangel);
+    if (targetId === userId(req)) failDomain('invalid', 'own_account_password');
+    const lack = passwordLack(password, (await d.account.accountShortOf(targetId))?.username);
+    if (lack) failDomain('invalid', lack);
 
     // With the password of another account this one can be taken over —
     // an open administrator session alone is not enough for that.
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.admin_password))) return;
-    const r = await d.account.verwalter.passwordByAdmin(signedInUserId(req), targetId, password ?? '');
+    const r = await d.account.admin.passwordByAdmin(signedInUserId(req), targetId, password ?? '');
     if (!r) notFound('user_not_found');
-    return r.effectiveAb ? { effective_at: r.effectiveAb.toISOString() } : {};
+    return r.effectiveFrom ? { effective_at: r.effectiveFrom.toISOString() } : {};
   });
 
   router.endpoint('DELETE /api/v2/auth/users/:id', requireAdmin, async (req, res) => {
@@ -104,10 +104,10 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
   // Emergency exit when phone AND recovery codes are gone.
   router.endpoint('DELETE /api/v2/auth/users/:id/second-factor', requireAdmin, async (req, res) => {
     const id = req.pathArgs.id;
-    if (id === userId(req)) failDomain('ungueltig', 'own_second_factor');
+    if (id === userId(req)) failDomain('invalid', 'own_second_factor');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.admin_password))) return;
-    const r = await d.account.verwalter.factorByAdmin(signedInUserId(req), id);
-    return r.effectiveAb ? { effective_at: r.effectiveAb.toISOString() } : {};
+    const r = await d.account.admin.factorByAdmin(signedInUserId(req), id);
+    return r.effectiveFrom ? { effective_at: r.effectiveFrom.toISOString() } : {};
   });
   return router;
 }

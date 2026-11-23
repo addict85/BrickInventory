@@ -111,9 +111,9 @@ test('3. the route rejects a list above the XML limit', async t => {
   const ein = item('99999', 5, 1);
   const gross = '<INVENTORY>\n' + ein.repeat(Math.ceil(XML_MAX_BYTES / ein.length) + 10) + '</INVENTORY>';
   assert.ok(Buffer.byteLength(gross) > XML_MAX_BYTES);
-  const zuGross = await sendIt(gross);
-  assert.notEqual(zuGross.status, 200, `Status ${zuGross.status}: ${JSON.stringify(zuGross.body).slice(0, 200)}`);
-  assert.ok(zuGross.status >= 400, `status ${zuGross.status} instead of a refusal`);
+  const tooLarge = await sendIt(gross);
+  assert.notEqual(tooLarge.status, 200, `Status ${tooLarge.status}: ${JSON.stringify(tooLarge.body).slice(0, 200)}`);
+  assert.ok(tooLarge.status >= 400, `status ${tooLarge.status} instead of a refusal`);
 
   const klein = await sendIt('<INVENTORY>\n' + item('99999', 5, 1) + '</INVENTORY>');
   assert.equal(klein.status, 200, `small list: ${klein.status} ${JSON.stringify(klein.body)}`);

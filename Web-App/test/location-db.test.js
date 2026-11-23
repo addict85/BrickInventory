@@ -176,7 +176,7 @@ test('storage location against a real database', async t => {
     await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
-    const locations = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
+    const locations = await L.storages(await household.scopeIds(U.ich, 'all'));
     const karte = Object.fromEntries(locations.map(o => [o.location, o]));
     // „Kiste 3" has a set AND two part rows — one place, not two
     // entries. Delivering two separate lists would mean that every UI
@@ -195,8 +195,8 @@ test('storage location against a real database', async t => {
 
   await t.test('the overview follows the scope', async () => {
     await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
+    const oben = (await L.storages(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
+    const unten = (await L.storages(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
     assert.ok(oben.includes('Kinderzimmer'), 'The main account does not see the location of the child');
     assert.ok(
       !unten.includes('Kiste 3'),

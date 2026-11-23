@@ -1,12 +1,12 @@
 /** Master data, parts and figure list of a set. */
 import { proxyImageUrl } from '../images';
-import { type RbSetTeil, firstBlNumber } from '../externalSources';
+import { type RbSetPart, firstBlNumber } from '../externalSources';
 import { findSetInScope } from './addSet';
 import { isSparePart } from '../infra/validate';
 import { withVersion, withoutVersion } from '../infra/setNumber';
 import { failDomain } from '../infra/errorTexts';
 import * as repo from './repository/setDetail';
-import type { CatalogPart, ListenTeil, SetMaster } from './rows';
+import type { CatalogPart, ListedPart, SetMaster } from './rows';
 import { attempts, valueOr } from '../infra/result';
 import { importParts } from './setContentImport';
 import type { SetsContext } from './context';
@@ -21,9 +21,9 @@ export async function setInfo(sk: SetsContext, setNumber: string): Promise<SetMa
 export async function setInfoForAccount(sk: SetsContext, uid: number, setNumber: string) {
   const n = withVersion(setNumber);
   const master = await setInfo(sk, n);
-  const foreignPlaceholder = !!master?.platzhalter && !(await sk.images.setNumberInScope(uid, n));
+  const foreignPlaceholder = !!master?.placeholder && !(await sk.images.setNumberInScope(uid, n));
   if (!master || foreignPlaceholder) return { set_number: n, name: n, in_catalog: false as const };
-  const { platzhalter: _placeholder, ...row } = master;
+  const { placeholder: _placeholder, ...row } = master;
   return { set_number: n, ...row, name: row.name || n, in_catalog: true as const };
 }
 
@@ -32,50 +32,31 @@ function catalogOfSets(sk: SetsContext, setNumber: string): Promise<CatalogPart[
 }
 
 /** Unpaged; the page fields are there because the app shares them with the inventory's parts list. */
-const einePage = (n: number) => ({ total: n, page: 1, page_size: n });
+const onePage = (n: number) => ({ total: n, page: 1, page_size: n });
 
 export const SOURCE_DISRUPTED = 'quelle_gestoert';
 
-export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (sn: string) => Promise<unknown>) {
-  const n = withVersion(setNum),
-    bare = withoutVersion(n);
-  const invId = await sk.catalog.newestInventory(setNum);
-  let parts: ListenTeil[] = [];
-  let source = 'db';
-  if (invId) {
-    parts = await repo.inventoryPartsOfSets(sk.db, invId);
-  }
-  if (!parts.length) {
-    source = 'api';
-    // If Rebrickable is disrupted, the response says so; an empty list would mean "the set has no parts".
-    const fetched = await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
-    const rb =
-      fetched.ok && fetched.wert ? fetched : await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
-    if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.error.reason, ...einePage(0) };
-    parts = (rb.wert || []).map((r: RbSetTeil) => ({
-      part_number: r.part.part_num,
-      bl_part_number: firstBlNumber(r.part.external_ids) || r.part.part_num,
-      part_name: r.part.name || r.part.part_num,
-      color_id: r.color.id,
-      color_name: r.color.name || '',
-      color_hex: r.color.rgb || null,
-      rb_image_url: r.part.part_img_url || null,
-      total_quantity: r.quantity,
-      is_spare: !!r.is_spare,
-    }));
-  }
-  if (!parts.length) return { parts: [], source: 'not_found', ...einePage(0) };
+/** If Rebrickable is disrupted, the response says so; an empty list would mean "the set has no parts". */
+async function partsFromRebrickable(sk: SetsContext, n: string, bare: string) {
+  const fetched = await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
+  const rb =
+    fetched.ok && fetched.value ? fetched : await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
+  if (!rb.ok) return rb;
+  const parts: ListedPart[] = (rb.value || []).map((r: RbSetPart) => ({
+    part_number: r.part.part_num,
+    bl_part_number: firstBlNumber(r.part.external_ids) || r.part.part_num,
+    part_name: r.part.name || r.part.part_num,
+    color_id: r.color.id,
+    color_name: r.color.name || '',
+    color_hex: r.color.rgb || null,
+    rb_image_url: r.part.part_img_url || null,
+    total_quantity: r.quantity,
+    is_spare: !!r.is_spare,
+  }));
+  return { ok: true as const, value: parts };
+}
 
-  const catalog = new Map<string, CatalogPart>();
-  const remember = (rows: CatalogPart[]) => {
-    for (const r of rows) catalog.set(`${r.part_number}|${r.color_id}`, r);
-  };
-  remember(await catalogOfSets(sk, setNum));
-  if (parts.some(p => !catalog.has(`${p.part_number}|${p.color_id}`))) {
-    await attempts('sets:enrichSetParts', enrich(setNum));
-    remember(await catalogOfSets(sk, setNum));
-  }
-
+function mergedRows(parts: ListedPart[], catalog: Map<string, CatalogPart>) {
   // The key is the Rebrickable number including color: mold variants often share a BrickLink number and
   // must not merge.
   const rows = new Map<
@@ -116,11 +97,42 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
       is_spare: isSparePart(p.is_spare),
     });
   }
+  return rows;
+}
+
+export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (sn: string) => Promise<unknown>) {
+  const n = withVersion(setNum),
+    bare = withoutVersion(n);
+  const invId = await sk.catalog.newestInventory(setNum);
+  let parts: ListedPart[] = [];
+  let source = 'db';
+  if (invId) {
+    parts = await repo.inventoryPartsOfSets(sk.db, invId);
+  }
+  if (!parts.length) {
+    source = 'api';
+    const rb = await partsFromRebrickable(sk, n, bare);
+    if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.error.reason, ...onePage(0) };
+    parts = rb.value;
+  }
+  if (!parts.length) return { parts: [], source: 'not_found', ...onePage(0) };
+
+  const catalog = new Map<string, CatalogPart>();
+  const remember = (rows: CatalogPart[]) => {
+    for (const r of rows) catalog.set(`${r.part_number}|${r.color_id}`, r);
+  };
+  remember(await catalogOfSets(sk, setNum));
+  if (parts.some(p => !catalog.has(`${p.part_number}|${p.color_id}`))) {
+    await attempts('sets:enrichSetParts', enrich(setNum));
+    remember(await catalogOfSets(sk, setNum));
+  }
+
+  const rows = mergedRows(parts, catalog);
   await attempts(
     `sets:bilder einstellen ${setNum}`,
-    sk.jobQueue.placeJobOne('images', { set_number: setNum }, { schluessel: `images:${n}`, maxAttempts: 3 }),
+    sk.jobQueue.placeJobOne('images', { set_number: setNum }, { key: `images:${n}`, maxAttempts: 3 }),
   );
-  return { parts: [...rows.values()], source, ...einePage(rows.size) };
+  return { parts: [...rows.values()], source, ...onePage(rows.size) };
 }
 
 /** Whatever did not come from the catalog is written in by a follow-up run. */
@@ -156,11 +168,11 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
   if (!figs.length) {
     const fetched = await attempts('sets:getSetMinifigs', sk.externalSources.sources.getSetMinifigs(n));
     const rb =
-      fetched.ok && fetched.wert
+      fetched.ok && fetched.value
         ? fetched
         : await attempts('sets:getSetMinifigs', sk.externalSources.sources.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: SOURCE_DISRUPTED, error: rb.error.reason };
-    figs = rb.wert || [];
+    figs = rb.value || [];
   }
   if (!figs.length) return { figs: [], source: 'not_found' };
   setImmediate(() => {
@@ -181,7 +193,7 @@ async function storeSetMinifigs(
         valueOr(await attempts('sets:minifigur-info', k.externalSources.sources.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
     await k.catalog.rememberMinifig(f.fig_number, f.fig_name, image);
-    await k.catalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
+    await k.catalog.rememberSetMinifigs(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }
 }
 
@@ -190,7 +202,7 @@ export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string
   const set = await findSetInScope(sk, uid, sn);
   if (!set) failDomain('not_found', 'set_not_found');
   const tick = await sk.account.countRequest('teile-import', `konto:${uid}`, 60 * 60 * 1000);
-  if (tick.count > 30) failDomain('zu_viele', 'too_many_requests', { minutes: tick.waitMin });
+  if (tick.count > 30) failDomain('too_many', 'too_many_requests', { minutes: tick.waitMin });
   return importParts(sk, set.set_number, set.owner_user_id);
 }
 

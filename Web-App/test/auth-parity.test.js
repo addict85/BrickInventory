@@ -63,7 +63,7 @@ test('an active, confirmed account may log in', () => {
 test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.kind, 'verboten', `is_active=${v} must result in forbidden`);
+    assert.equal(r?.kind, 'forbidden', `is_active=${v} must result in forbidden`);
   }
 });
 
@@ -75,7 +75,7 @@ test('an open registration is rejected, admins excepted', () => {
     is_admin: 0,
     registration_pending: true,
   });
-  assert.equal(r?.kind, 'verboten');
+  assert.equal(r?.kind, 'forbidden');
   assert.equal(r?.unverified, true);
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),

@@ -9,16 +9,16 @@
  *      “a software key …”
  *   B  in checkLinks() `if (!anker) return 'fremde_wurzel'` deleted → red:
  *      “a foreign root …” (TypeError → kette_unlesbar instead of fremde_wurzel)
- *   C  the package check `packages[0] !== e.paket` deleted → red: “a foreign package …”
+ *   C  the package check `packages[0] !== e.pkg` deleted → red: “a foreign package …”
  *   D  in checkLinks() `!c.verify(...)` deleted → red: “a slipped-in leaf …”
  *   E  in checkDescription() the check for noAuthRequired deleted → red:
  *      “a key without lock …”
  *   F  a digit changed in FINGERPRINTS → red: “the Google roots …”
- *   G  in liesTlv() the length check `p + laenge > b.length` deleted → red:
+ *   G  in readTlv() the length check `p + laenge > b.length` deleted → red:
  *      “truncated bytes …”
  *
  * Counter-checks for revocation list, RootOfTrust and patch level (measured 14.11.2026):
- *   H  in checkChain() the line with `e.widerrufen.has(…)` deleted → red:
+ *   H  in checkChain() the line with `e.revoked.has(…)` deleted → red:
  *      “a chain with a revoked serial number …”
  *   I  in seriennummer() `.replace(/^0+(?=.)/, '')` deleted → red: “… also with
  *      a leading zero …”
@@ -53,9 +53,9 @@ const path = require('node:path');
 const NONCE = Buffer.from('nonce-des-servers-32-bytes-lang!');
 const expectation = (o = {}) => ({
   roots: [new X509Certificate(T.WURZEL.pem)],
-  paket: T.PAKET,
+  pkg: T.PAKET,
   digests: [T.DIGEST_HEX],
-  widerrufen: new Set(),
+  revoked: new Set(),
   now: new Date(),
   ...o,
 });
@@ -131,8 +131,8 @@ test('truncated bytes and indefinite lengths throw instead of guessing', () => {
   ])
     assert.throws(() => A.readDescription(kaputt), der.TheError);
   assert.throws(() => der.readWhole(Buffer.from([0x05, 0x00, 0x00])), /hinter dem Element/);
-  assert.throws(() => der.liesTlv(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
-  assert.equal(der.liesTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.number, 709);
+  assert.throws(() => der.readTlv(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
+  assert.equal(der.readTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.number, 709);
 });
 
 test('the Google roots match their fingerprints', () => {
@@ -149,9 +149,8 @@ const series = b64 => A.serialNumber(new X509Certificate(Buffer.from(b64, 'base6
 test('a chain with a revoked serial number is rejected, regardless of the link', () => {
   const k = T.chain({ challenge: NONCE });
   assert.equal(reason(k), 'angenommen');
-  for (const link of k.chain)
-    assert.equal(reason(k, expectation({ widerrufen: new Set([series(link)]) })), 'widerrufen');
-  assert.equal(reason(k, expectation({ widerrufen: new Set(['abc', '1']) })), 'angenommen');
+  for (const link of k.chain) assert.equal(reason(k, expectation({ revoked: new Set([series(link)]) })), 'widerrufen');
+  assert.equal(reason(k, expectation({ revoked: new Set(['abc', '1']) })), 'angenommen');
 });
 
 test("the serial number stands as in Google's list: hex lower case, without the leading zero", () => {

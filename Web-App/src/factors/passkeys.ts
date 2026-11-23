@@ -92,7 +92,7 @@ async function rememberChallenge(
       MAX_OPEN_CHALLENGES,
     ))
   )
-    failDomain('nicht_verfuegbar', 'server_busy');
+    failDomain('unavailable', 'server_busy');
 }
 
 /** Exactly once: a repeated response no longer finds its row. */

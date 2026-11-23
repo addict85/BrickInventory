@@ -64,7 +64,7 @@ export async function writeUserSetting(k: SettingsContext, userId: number, key: 
   const v = String(value).trim();
   if (key === 'currency') throw new Error('Currency only via setUserSetting');
   const rule = USER_RULES[key];
-  if (rule && !rule(v)) failDomain('ungueltig', 'value_invalid');
+  if (rule && !rule(v)) failDomain('invalid', 'value_invalid');
   await k.repository.writeUserValue(userId, key, v);
 }
 
@@ -105,7 +105,7 @@ export function isValidGlobalValue(key: string, value: unknown): boolean {
 
 /** Over NOTIFY: the job process and every other web process also write global values. */
 const globalChange = (k: SettingsContext) =>
-  k.faecher.slot('globalChange', () => processEvent('globalChange', 'globale_einstellung'));
+  k.compartments.slot('globalChange', () => processEvent('globalChange', 'globale_einstellung'));
 /** For caches computed from global values: they clear themselves instead of every
  * write site having to know about them. */
 export function onGlobalChange(k: SettingsContext, fn: () => void): () => void {
@@ -123,7 +123,7 @@ export async function setGlobalSetting(k: SettingsContext, key: string, value: u
   if (!r?.success)
     throw (
       (r?.error.issues[0] as { params?: { error?: unknown } } | undefined)?.params?.error ??
-      fileError('ungueltig', 'value_invalid')
+      fileError('invalid', 'value_invalid')
     );
   await k.repository.writeGlobalValue(key, SECRET_KEYS.has(key) ? encrypt(r.data, globalContext(key)) : r.data);
   await notifyGlobalChange(k);

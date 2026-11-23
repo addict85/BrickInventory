@@ -79,7 +79,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
     await t.test('fresh installation after the mandatory change: open, without password step', async () => {
       // Like POST /auth/change-password: account and session forget the obligation.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
-      delete verwalter.mussPasswortAendern;
+      delete verwalter.mustChangePassword;
       const r = await callFn(V, '/setup');
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.open, true);

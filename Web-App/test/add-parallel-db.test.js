@@ -56,7 +56,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
       Array.from({ length: 10 }, () =>
         holding.transact(
           tt => addPurchaseAtTag(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
-          { sperren: [{ konto: uid, schluessel: '70001-1' }] },
+          { locks: [{ account: uid, key: '70001-1' }] },
         ),
       ),
     );
@@ -176,7 +176,7 @@ test('all capture paths use the same check', () => {
   const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/contract/sets.ts'), 'utf8'));
   assert.match(
     vertrag,
-    /const NewSet = [^;]*quantity: input\.pieceCount\(\)[^;]*purchase_price: input\.geld\(/,
+    /const NewSet = [^;]*quantity: input\.pieceCount\(\)[^;]*purchase_price: input\.money\(/,
     'Sets: Menge oder Preis ungeprüft',
   );
 
@@ -211,8 +211,8 @@ test('a broken CSV entry does not topple the whole file', () => {
   // Really empty lines count as skipped and are named.
   const leer = csvReadIn('set_number,quantity\n10280,1\n,\n');
   assert.equal(leer.records.length, 1);
-  assert.deepEqual(leer.uebersprungen, [3], 'Row number as in the editor, 1-based including the header row');
-  assert.match(skippedHint(leer.uebersprungen), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
+  assert.deepEqual(leer.skipped, [3], 'Row number as in the editor, 1-based including the header row');
+  assert.match(skippedHint(leer.skipped), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
   assert.equal(skippedHint([]), null, 'no hint without skipped rows');
 });
 
@@ -311,7 +311,7 @@ test('the parts list delivers what it reports', () => {
   const setsLesen = src.slice(src.indexOf('async function setList'));
   assert.match(
     setsLesen,
-    /if \(f\.seite\) \{/,
+    /if \(f\.page\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
       'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets',
   );

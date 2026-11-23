@@ -132,17 +132,17 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
         drin();
         await raus;
       },
-      { sperren },
+      { locks: sperren },
     );
     await innen;
     return { frei, fertig };
   };
 
   await t.test('a stock lock holds up the second transaction until the first ends', async () => {
-    const sperren = [{ konto: uid, schluessel: 'probe' }];
+    const sperren = [{ account: uid, key: 'probe' }];
     const expiry = [];
     const erste = await hold(sperren);
-    const zweite = k.transact(async () => expiry.push('zweite an'), { sperren });
+    const zweite = k.transact(async () => expiry.push('zweite an'), { locks: sperren });
     await bis(() => waitsOn(`${uid}|probe`));
     expiry.push('erste aus');
     erste.frei();
@@ -154,9 +154,9 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     // If the first holds both locks, the second waits for its FIRST. Ascending, that is the one
     // of the smaller account, no matter in which order they are named.
     const zwei = uid + 1_000_000;
-    const auf = konto => ({ konto, schluessel: 'x' });
+    const auf = konto => ({ account: konto, key: 'x' });
     const erste = await hold([auf(uid), auf(zwei)]);
-    const zweite = k.transact(async () => {}, { sperren: [auf(zwei), auf(uid)] });
+    const zweite = k.transact(async () => {}, { locks: [auf(zwei), auf(uid)] });
     await bis(async () => (await waitsOn(`${uid}|x`)) || (await waitsOn(`${zwei}|x`)));
     const onSmaller = await waitsOn(`${uid}|x`);
     erste.frei();

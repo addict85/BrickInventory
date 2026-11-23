@@ -1,19 +1,29 @@
 import { buildChart } from '../chartData';
 import type { CurvesPoint } from './curve';
 
+function fmtX(point: { day?: string }) {
+  const d = (point.day || '').toString();
+  if (d.length === 10 && d[4] === '-' && d[7] === '-') {
+    return d.slice(8) + '.' + d.slice(5, 7); // DD.MM  (daily resolution)
+  }
+  if (d.length === 7 && d[4] === '-') {
+    return d.slice(5) + '/' + d.slice(2, 4); // MM/YY  (monthly resolution)
+  }
+  return d;
+}
+
+/** Monthly resolution: first point with the exact date, last = today. */
+function xLabelAt(p: CurvesPoint, first: boolean, last: boolean, downsampled: boolean, todayFmt: string): string {
+  if (downsampled && first) {
+    const fd = (p.fullDay || p.day || '').slice(0, 10);
+    return fd.length === 10 ? fd.slice(8) + '.' + fd.slice(5, 7) : fmtX(p);
+  }
+  if (downsampled && last) return todayFmt;
+  return fmtX(p);
+}
+
 /** All labels are created on the server so that web app and app look the same. */
 export function buildChartData(rawPoints: CurvesPoint[], currency: string, downsampled: boolean, now: Date) {
-  function fmtX(point: { day?: string }) {
-    const d = (point.day || '').toString();
-    if (d.length === 10 && d[4] === '-' && d[7] === '-') {
-      return d.slice(8) + '.' + d.slice(5, 7); // DD.MM  (daily resolution)
-    }
-    if (d.length === 7 && d[4] === '-') {
-      return d.slice(5) + '/' + d.slice(2, 4); // MM/YY  (monthly resolution)
-    }
-    return d;
-  }
-
   const vals = rawPoints.map(p => p.total);
   const vRawMin = Math.min(...vals);
   const vRawMax = Math.max(...vals);
@@ -47,29 +57,11 @@ export function buildChartData(rawPoints: CurvesPoint[], currency: string, downs
   const pad = (n: number) => String(n).padStart(2, '0');
   const todayFmt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}`;
 
-  const points = rawPoints.map((p, i) => {
-    let xLabel = '';
-    if (labelIdxs.has(i)) {
-      if (downsampled) {
-        // Monthly resolution: first point with the exact date, last = today.
-        if (i === 0) {
-          const fd = (p.fullDay || p.day || '').slice(0, 10);
-          xLabel = fd.length === 10 ? fd.slice(8) + '.' + fd.slice(5, 7) : fmtX(p);
-        } else if (i === n - 1) {
-          xLabel = todayFmt;
-        } else {
-          xLabel = fmtX(p);
-        }
-      } else {
-        xLabel = fmtX(p);
-      }
-    }
-    return {
-      x_label: xLabel,
-      value: p.total,
-      y_frac: vMax > vMin ? (p.total - vMin) / (vMax - vMin) : 0.5,
-    };
-  });
+  const points = rawPoints.map((p, i) => ({
+    x_label: labelIdxs.has(i) ? xLabelAt(p, i === 0, i === n - 1, downsampled, todayFmt) : '',
+    value: p.total,
+    y_frac: vMax > vMin ? (p.total - vMin) / (vMax - vMin) : 0.5,
+  }));
 
   const firstVal = rawPoints[0]?.total ?? 0;
   const currentVal = rawPoints.at(-1)?.total ?? 0;

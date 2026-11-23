@@ -14,7 +14,7 @@ const HEARTBEAT_MS = 30_000;
 const STILL_AT_MOST_MS = 2 * HEARTBEAT_MS;
 
 /** What startJobs starts and stopJobs ends again; the entry point holds it. */
-export interface JobsLauf {
+export interface JobsRun {
   worker: { lastRound(): number; stop(): Promise<void> } | null;
   heartbeat: NodeJS.Timeout | null;
 }
@@ -22,7 +22,7 @@ export interface JobsLauf {
 /** Only a worker that completes its rounds counts as alive: an interval
  * alone would also report a process whose startup failed. The result
  * ends with writing to the database, so that a test can wait for it. */
-export function renewHeartbeat(d: Services, worker: JobsLauf['worker']): Promise<void> {
+export function renewHeartbeat(d: Services, worker: JobsRun['worker']): Promise<void> {
   if (!worker || Date.now() - worker.lastRound() > STILL_AT_MOST_MS) return Promise.resolve();
   fs.writeFile(HEARTBEAT_FILE, String(Date.now()), { mode: 0o600 }, e => {
     if (e) reportError('jobs:lebenszeichen', e);
@@ -32,22 +32,22 @@ export function renewHeartbeat(d: Services, worker: JobsLauf['worker']): Promise
 
 /** The background work (ROLE=jobs or beides) only runs via jobs; a
  * second job process would be harmless, because each claims jobs with SKIP LOCKED. */
-export async function startJobs(d: Services): Promise<JobsLauf> {
+export async function startJobs(d: Services): Promise<JobsRun> {
   const takenOver = await d.jobQueue.registerProcess();
   if (takenOver) console.log(`[auftraege] ${takenOver} Aufträge eines beendeten Prozesses übernommen`);
   await d.jobQueue.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
-  await d.jobQueue.planeAll();
+  await d.jobQueue.planAll();
   await d.jobQueue.pullPlanBefore('csv_sync', 0, { onStart: true });
   await d.jobQueue.pullPlanBefore('cleanup', 0);
   await d.jobQueue.pullPlanBefore('prices', 30);
   await d.jobQueue.pullPlanBefore('image_followup', 30);
   await d.jobQueue.pullPlanBefore('cleanup_daily', 60);
   await d.jobQueue.pullPlanBefore('revocation_list', 0);
-  for (const [schritt, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
+  for (const [step, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
     await d.jobQueue.placeJobOne(
       'followup',
-      { schritt },
-      { schluessel: `followup:${schritt}`, afterSeconds, maxAttempts: 3 },
+      { schritt: step },
+      { key: `followup:${step}`, afterSeconds, maxAttempts: 3 },
     );
   if (await d.images.openImageDemand()) await d.images.imageDemandKick();
   await d.finances.scheduleRateFetch();
@@ -59,11 +59,11 @@ export async function startJobs(d: Services): Promise<JobsLauf> {
 }
 
 /** On shutdown: finish running jobs or return them. */
-export async function stopJobs(d: Services, lauf: JobsLauf): Promise<void> {
-  if (lauf.heartbeat) clearInterval(lauf.heartbeat);
-  lauf.heartbeat = null;
-  const worker = lauf.worker;
-  lauf.worker = null;
+export async function stopJobs(d: Services, run: JobsRun): Promise<void> {
+  if (run.heartbeat) clearInterval(run.heartbeat);
+  run.heartbeat = null;
+  const worker = run.worker;
+  run.worker = null;
   await worker?.stop().catch(logAndContinue('shutdown:auftraege'));
   d.jobQueue.deregisterProcess();
 }

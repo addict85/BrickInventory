@@ -7,11 +7,11 @@ export const CONCURRENT = { upload: 2, voucherPdf: 1, stream: 6 } as const;
 export type Gate = keyof typeof CONCURRENT;
 
 /** Per process, not per access: the slot is this process's memory (src/infra/processWide.ts). */
-const places = () => processWide('kontoSchranke', () => new Map<string, number>());
+const places = () => processWide('accountLimit', () => new Map<string, number>());
 
 /** @returns the release (callable several times), or null if the account is already at the limit. */
-export function receiptsAccountSpace(kind: Gate, konto: number): (() => void) | null {
-  const key = `${kind}:${konto}`;
+export function receiptsAccountSpace(kind: Gate, account: number): (() => void) | null {
+  const key = `${kind}:${account}`;
   const open = places();
   const n = open.get(key) ?? 0;
   if (n >= CONCURRENT[kind]) return null;

@@ -67,6 +67,6 @@ test('an already supplied set triggers no fetch', async t => {
   const count = await ins.loadSetInstructions(sn, null);
 
   assert.deepEqual(fetches, [], 'no foreign server for a supplied set');
-  assert.equal(ins.lastFetchWarExtern(), false, 'The tick must not wait after this pass');
+  assert.equal(ins.lastFetchWasExternal(), false, 'The tick must not wait after this pass');
   assert.equal(count, 1, 'The existing instruction was not counted');
 });

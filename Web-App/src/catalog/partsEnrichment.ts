@@ -9,7 +9,7 @@ import {
   rememberPartColor,
   rememberSetPart,
   rememberMinifigs,
-  merkeSetFiguren,
+  rememberSetMinifigs,
 } from './catalogMaintenance';
 import { parseThrottleWait as ptw } from '../externalSources';
 
@@ -25,11 +25,11 @@ async function apiGet(k: CatalogContext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await k.externalSources.consumeRebrickableDaily())) return null;
-    await k.externalSources.drossel.hintergrund.waitForSlot();
+    await k.externalSources.throttle.background.waitForSlot();
     const result: JobHttpResult = await k.externalSources.sources.rebrickableRaw(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      k.externalSources.drossel.hintergrund.throttle(wait);
+      k.externalSources.throttle.background.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -93,7 +93,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   await supplementSetMinifigs(k, n, rbKey);
 }
 
-type ApiTeil = {
+type ApiPart = {
   part_name: string;
   bl_part_num: string | null;
   image_url: string | null;
@@ -103,8 +103,8 @@ type ApiTeil = {
 };
 
 /** The set's parts according to Rebrickable, per "part_num|color_id". */
-async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
-  const apiParts: Record<string, ApiTeil> = {};
+async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiPart>> {
+  const apiParts: Record<string, ApiPart> = {};
   let url = `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   while (url) {
     const data = await apiGet(k, url, rbKey);
@@ -131,7 +131,7 @@ async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promi
  * incomplete. */
 async function supplementBlNumbers(
   kx: CatalogContext,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
   missingBl: string[],
   rbKey: string,
 ): Promise<void> {
@@ -161,7 +161,7 @@ async function rememberPartsOfSets(
   k: CatalogContext,
   n: string,
   csvParts: Awaited<ReturnType<typeof repo.partsOfInventory>>,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
 ): Promise<void> {
   const blMapRows = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
@@ -169,7 +169,7 @@ async function rememberPartsOfSets(
 
   for (const p of csvParts) {
     const key = `${p.part_num}|${p.color_id}`;
-    const info: Partial<ApiTeil> = apiParts[key] ?? {};
+    const info: Partial<ApiPart> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
     // Into the MAPPING: the number belongs to the part, not to set, part and color.
     if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);
@@ -196,11 +196,43 @@ async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string
         k,
         figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })),
       );
-      await merkeSetFiguren(
+      await rememberSetMinifigs(
         k,
         n,
         figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })),
       );
+    }
+  }
+}
+
+/** Per minifig the parts of its newest inventory (first because of ORDER BY DESC). */
+async function minifigParts(k: CatalogContext, figs: { fig_number: string; quantity: number }[]) {
+  const invRows = await k.partsEnrichment.inventoriesTheMinifigs(figs.map(f => f.fig_number));
+  const invMap: Record<string, number> = {};
+  for (const r of invRows) {
+    if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
+  }
+  const figPartsMap: Record<string, { parts: repo.InventoryPart[]; figQty: number }> = {};
+  for (const fig of figs) {
+    const invId = invMap[fig.fig_number];
+    if (invId)
+      figPartsMap[fig.fig_number] = { parts: await k.partsEnrichment.partsOfInventory(invId), figQty: fig.quantity };
+  }
+  return figPartsMap;
+}
+
+/** Only numbers that were never looked up go to the API; the BrickLink number is remembered per part. */
+async function lookUpBlNumbers(k: CatalogContext, partNums: Set<string>, rbKey: string): Promise<void> {
+  const known = new Set((await k.partsEnrichment.blMappings([...partNums])).map(r => r.rb_id));
+  const needsBl = [...partNums].filter(pn => !known.has(String(pn)));
+  const BATCH = 500;
+  for (let i = 0; i < needsBl.length; i += BATCH) {
+    const batch = needsBl.slice(i, i + BATCH);
+    const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
+    const data = await apiGet(k, url, rbKey);
+    for (const p of data?.results || []) {
+      const blId = p.external_ids?.BrickLink?.[0] || null;
+      await rememberBlNumber(k, 'part', p.part_num, blId || p.part_num);
     }
   }
 }
@@ -212,63 +244,11 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
 
   const figs = await k.partsEnrichment.minifigsOfSets(n);
   if (!figs.length) return;
-
-  const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await k.partsEnrichment.inventoriesTheMinifigs(figNums);
-
-  // Per set_num the highest version (first because of ORDER BY DESC).
-  const invMap: Record<string, number> = {};
-  for (const r of invRows) {
-    if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
-  }
-
-  const allPartNums = new Set<string>();
-  const figPartsMap: Record<string, { parts: repo.InventoryPart[]; figQty: number }> = {};
-
-  for (const fig of figs) {
-    const invId = invMap[fig.fig_number];
-    if (!invId) continue;
-
-    const parts = await k.partsEnrichment.partsOfInventory(invId);
-
-    figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
-    for (const p of parts) allPartNums.add(p.part_num);
-  }
-
+  const figPartsMap = await minifigParts(k, figs);
+  const allPartNums = new Set(Object.values(figPartsMap).flatMap(f => f.parts.map(p => p.part_num)));
   if (!allPartNums.size) return;
 
-  // bl_mapping: the number, once per part.
-  const rbBlRows = await k.partsEnrichment.blMappings([...allPartNums]);
-  const rbBlMap: Record<string, string> = {};
-  for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
-
-  // Only query numbers that were never looked up.
-  const needsBl = [...allPartNums].filter(pn => !(String(pn) in rbBlMap));
-
-  const apiBlMap: Record<string, string> = {};
-  if (needsBl.length > 0) {
-    const BATCH = 500;
-    for (let i = 0; i < needsBl.length; i += BATCH) {
-      const batch = needsBl.slice(i, i + BATCH);
-      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
-      const data = await apiGet(k, url, rbKey);
-      if (!data) continue;
-      for (const p of data.results || []) {
-        const blId = p.external_ids?.BrickLink?.[0] || null;
-        const finalId = blId || p.part_num;
-        apiBlMap[p.part_num] = finalId;
-
-        await rememberBlNumber(k, 'part', p.part_num, finalId);
-      }
-    }
-  }
-
-  // Precedence: API > bl_mapping > own number.
-  const finalBlMap: Record<string, string> = {};
-  for (const pn of allPartNums as Iterable<string>) {
-    finalBlMap[pn] = apiBlMap[pn] || rbBlMap[pn] || pn;
-  }
-
+  await lookUpBlNumbers(k, allPartNums, rbKey);
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Without the BrickLink number: it is stored once per part in bl_mapping.

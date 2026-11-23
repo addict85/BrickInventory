@@ -42,11 +42,11 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
   const contexts = {};
   buildServices(db, { contexts, config: config() });
   const k = contexts.collection;
-  const imSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
+  const asSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
 
   await t.test('two transactions on one connection share t and the services in it', async () => {
-    const t1 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
-    const t2 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
+    const t1 = await asSystem(() => k.transact(async (/** @type {any} */ t) => t));
+    const t2 = await asSystem(() => k.transact(async (/** @type {any} */ t) => t));
     assert.equal(t1, t2);
     assert.equal(t1.catalog, t2.catalog, 'the deeper areas are not created anew');
     assert.notEqual(t1, k);
@@ -60,13 +60,13 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
     const secondRunning = new Promise(r => {
       los = /** @type {() => void} */ (r);
     });
-    await imSystem(() =>
+    await asSystem(() =>
       k.transact(async (/** @type {any} */ t) => {
         stragglers = secondRunning.then(() => t.db.get('SELECT txid_current() AS id'));
         stragglers.catch(() => {});
       }),
     );
-    await imSystem(() =>
+    await asSystem(() =>
       k.transact(async (/** @type {any} */ t) => {
         los();
         await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), modul.TransactionEnded);

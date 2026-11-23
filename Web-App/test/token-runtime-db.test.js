@@ -180,7 +180,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       const ze = await row((await link(r.body, keks)).body.token);
       assert.ok(
         Math.abs(daysAhead(ze.hard_expires_at) - Number(tage)) < 1,
-        `${wahl}: feste Frist ${ze.hard_expires_at}`,
+        `${wahl}: hard expiry ${ze.hard_expires_at}`,
       );
       assert.equal(ze.never_expires, false);
     }

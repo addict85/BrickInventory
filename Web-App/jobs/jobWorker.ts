@@ -16,20 +16,20 @@ import { errorMessage, logAndContinue, reportError } from '../src/infra/error';
 import { DEFAULT } from '../src/infra/config';
 import { counter, histogram } from '../src/infra/metrics';
 
-export type { Handler as Bearbeiter } from '../src/jobQueue';
+export type { Handler } from '../src/jobQueue';
 
 export interface WorkerOptions {
   parallel?: number;
-  taktMs?: number;
+  tickMs?: number;
   deadlineSec?: number;
 }
 
 export type HandlerTable = { [A in JobKind]?: Handler<A> };
 
-interface Lauf {
+interface Run {
   a: JobRow;
   ac: AbortController;
-  fertig: Promise<void>;
+  done: Promise<void>;
 }
 
 /** The worker holds the lease itself: a handler that never gives a sign of life
@@ -74,7 +74,7 @@ async function backToTable(d: JobsServices, a: JobRow): Promise<void> {
 
 /** Also after a final error, otherwise the schedule would end; without a schedule nothing. */
 async function followUpPlan(d: JobsServices, a: JobRow): Promise<void> {
-  await d.planeNext(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
+  await d.planNext(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
 }
 
 function contextFor(
@@ -95,7 +95,7 @@ function contextFor(
     get ended() {
       return isEnded() || ac.signal.aborted;
     },
-    versuch: a.attempts,
+    attempt: a.attempts,
   };
 }
 
@@ -121,7 +121,7 @@ async function runJobFrom(
       throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.type}`);
     const checked = d.checkPayload(a.type, a.payload);
     payload = checked;
-    await d.inNamesOfJob(a, () => b.ausfuehren(checked, k, a));
+    await d.inNamesOfJob(a, () => b.run(checked, k, a));
     if (await d.done(a)) await followUpPlan(d, a);
   } catch (e) {
     result = e instanceof JobMove ? 'moved' : ac.signal.aborted ? 'interrupted' : 'error';
@@ -168,10 +168,10 @@ async function afterError(
 
 /** On shutdown: interrupt all runs, wait for them briefly, and return whatever is
  * still running then — otherwise it would stay on 'running' until the deadline. */
-async function interruptRunning(d: JobsServices, running: Map<string, Lauf>, waitMs: number): Promise<Lauf[]> {
+async function interruptRunning(d: JobsServices, running: Map<string, Run>, waitMs: number): Promise<Run[]> {
   const all = [...running.values()];
   for (const l of all) if (!l.ac.signal.aborted) l.ac.abort(new JobInterrupted());
-  await Promise.race([Promise.all(all.map(l => l.fertig)), new Promise(r => setTimeout(r, waitMs).unref())]);
+  await Promise.race([Promise.all(all.map(l => l.done)), new Promise(r => setTimeout(r, waitMs).unref())]);
   const rest = [...running.values()];
   for (const { a } of rest) await backToTable(d, a);
   return rest;
@@ -180,11 +180,11 @@ async function interruptRunning(d: JobsServices, running: Map<string, Lauf>, wai
 /** Several workers share the work via SKIP LOCKED; the NOTIFY on enqueueing wakes earlier than the tick. */
 function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = {}) {
   const kinds = Object.keys(editor);
-  const exclusive = kinds.filter(a => editor[a as JobKind]?.exklusiv);
+  const exclusive = kinds.filter(a => editor[a as JobKind]?.exclusive);
   // The values are passed by the start (startup/jobsProcess.ts); without them the default applies.
   const parallel = Math.max(1, o.parallel ?? DEFAULT.jobParallel);
   const deadlineSec = o.deadlineSec ?? DEFAULT.jobDeadlineSec;
-  const running = new Map<string, Lauf>();
+  const running = new Map<string, Run>();
   let ended = false,
     started = false,
     pumps = false;
@@ -194,7 +194,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
   let lastRound = 0;
   const exclusiveRemembered = d.rememberExclusive(exclusive).catch(logAndContinue('auftraege:exklusiv'));
 
-  async function receiptsAndStart(): Promise<Lauf | null> {
+  async function receiptsAndStart(): Promise<Run | null> {
     await exclusiveRemembered;
     const a = await d.claimJob(kinds, deadlineSec, receiptId(), exclusive, [...running.keys()]);
     if (!a) return null;
@@ -203,32 +203,32 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
       return null;
     }
     const ac = new AbortController();
-    const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
-    running.set(a.id, lauf);
+    const current: Run = { a, ac, done: Promise.resolve() };
+    running.set(a.id, current);
     // No frame around the run: the execution sets it per account (inNamesOfJob).
-    lauf.fertig = runJobFrom(d, a, ac, editor[a.type], deadlineSec, () => ended)
+    current.done = runJobFrom(d, a, ac, editor[a.type], deadlineSec, () => ended)
       .catch(logAndContinue(`auftraege:${a.type}`))
       .finally(() => running.delete(a.id));
-    return lauf;
+    return current;
   }
 
   async function processOne(): Promise<boolean> {
     const l = await receiptsAndStart();
     if (!l) return false;
-    await l.fertig;
+    await l.done;
     return true;
   }
 
   // The running round, so stoppe() can wait for a claim that
   // is currently in the database: it would otherwise arrive after shutdown and
   // stay on 'running' until its deadline expires.
-  let pumpLauf: Promise<void> = Promise.resolve();
+  let pumpRun: Promise<void> = Promise.resolve();
 
   function pump(): Promise<void> {
-    if (pumps || ended) return pumpLauf;
+    if (pumps || ended) return pumpRun;
     pumps = true;
-    pumpLauf = round();
-    return pumpLauf;
+    pumpRun = round();
+    return pumpRun;
   }
 
   async function round(): Promise<void> {
@@ -236,7 +236,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
       while (!ended && running.size < parallel) {
         const l = await receiptsAndStart();
         if (!l) break;
-        void l.fertig.finally(() => {
+        void l.done.finally(() => {
           void pump();
         });
       }
@@ -252,12 +252,12 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
     void pump();
   };
 
-  function starte(): void {
+  function launch(): void {
     if (started) return;
     started = true;
     lastRound = Date.now();
     deregister = [d.atNewJob(woken), d.atJobStatus(s => d.checkMembership(running.values(), s))];
-    tick = setInterval(woken, o.taktMs ?? 5000);
+    tick = setInterval(woken, o.tickMs ?? 5000);
     tick.unref();
     void pump();
   }
@@ -266,12 +266,12 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
     ended = true;
     if (tick) clearInterval(tick);
     for (const ab of deregister) ab();
-    await pumpLauf;
+    await pumpRun;
     const rest = await interruptRunning(d, running, waitMs);
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
-  return { processOne, starte, stop, running: () => running.size, lastRound: () => lastRound };
+  return { processOne, launch, stop, running: () => running.size, lastRound: () => lastRound };
 }
 
 export { JobInterrupted, JobLost, JobMove, createWorker };

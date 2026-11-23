@@ -32,7 +32,7 @@ export async function manualEntryReassign(
     price: acq.unit_price,
     condition: acq.condition,
     createdAt: acq.created_at,
-    geschaetzt: acq.price_estimated,
+    estimated: acq.price_estimated,
     currency: acq.currency,
   });
   await quantities.removeEntry(t.db, kind, acq.id, [fromId]);

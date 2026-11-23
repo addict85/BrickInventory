@@ -40,7 +40,7 @@ function dateien() {
 const references = text => [...text.matchAll(REFERENCE)].flatMap(m => [m[1], ...m[2].split(', #').filter(Boolean)]);
 
 test('every reference hits an anchor, no more section numbers; the startup message as superuser points to an anchor', () => {
-  assert.ok(ANKER.size >= 10, `nur ${ANKER.size} Anker in UPGRADE.md`);
+  assert.ok(ANKER.size >= 10, `only ${ANKER.size} anchors in UPGRADE.md`);
   assert.deepEqual(references('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
 
   const absent = [],

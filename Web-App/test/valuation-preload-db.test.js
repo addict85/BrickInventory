@@ -9,7 +9,7 @@
  *   A  the store not passed on in valueParts → red:
  *      “twelve parts, one query on the parts cache”
  *   B  the same in valueMinifigs → red: “six minifigures, …”
- *   C  the account filter ignored in mengeJoin → red: “the set quantity only reads
+ *   C  the account filter ignored in setQuantityJoin → red: “the set quantity only reads
  *      the entries of the requested accounts”
  *   D  inAccountCurrency always delivers TRUE → red: “the average purchase price
  *      of the gallery only counts the account currency” (200 instead of 100)
@@ -112,11 +112,11 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
   await t.test('the set quantity only reads the entries of the requested accounts', async () => {
     await holdsSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await holdsSet(db, fremd, `bw${ID}x${i}-1`, 1);
-    const { mengeJoin, quantityFrom } = _req('db/stockQuantity.js');
+    const { setQuantityJoin, quantityFrom } = _req('db/stockQuantity.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
        SELECT s.set_number, ${quantityFrom('sm', 0)} AS quantity
-         FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
+         FROM sets s ${setQuantityJoin('s', 'sm', '= ANY($1)')}
         WHERE s.user_id = ANY($1)`,
       [[uid]],
     );

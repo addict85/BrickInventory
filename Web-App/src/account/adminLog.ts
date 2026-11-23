@@ -12,9 +12,9 @@ export function rememberAdminAction(
   action: AdminAction,
   details: string | null = null,
 ): Promise<void> {
-  return k.protokoll.logEntry(adminId, targetId, action, details);
+  return k.log.logEntry(adminId, targetId, action, details);
 }
 
 export function managementLog(k: AccountContext) {
-  return k.protokoll.lastEntries();
+  return k.log.lastEntries();
 }

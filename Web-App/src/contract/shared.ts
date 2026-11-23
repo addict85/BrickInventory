@@ -116,7 +116,7 @@ const MINIFIG = {
   source: z.string().nullable(),
   storage_id: z.number().int().nullable(),
 };
-const TEIL = {
+const PART = {
   part_number: z.string(),
   bl_part_number: z.string().nullable(),
   part_name: z.string().nullable(),
@@ -244,12 +244,12 @@ export const Part = z.looseObject({
   in_sets: z.string().nullable().optional(),
 });
 
-export const SetTeil = z.looseObject({ ...PART_IN_LIST, bl_color_id: z.number().int().nullable() });
+export const SetPart = z.looseObject({ ...PART_IN_LIST, bl_color_id: z.number().int().nullable() });
 
-export const PartValuationItem = z.looseObject({ ...PIECE, ...TEIL, ...VALUED });
+export const PartValuationItem = z.looseObject({ ...PIECE, ...PART, ...VALUED });
 export const ManualPart = z.looseObject({
   ...PIECE,
-  ...TEIL,
+  ...PART,
   ...IN_INVENTORY,
   category_name: z.string().nullable(),
   created_at: time.nullable(),
@@ -272,7 +272,7 @@ export const SetPartsResponse = z.looseObject({
   total: z.number().int(),
   page: z.number().int(),
   page_size: z.number().int(),
-  parts: z.array(SetTeil),
+  parts: z.array(SetPart),
   error: z.string().optional(),
 });
 

@@ -205,6 +205,27 @@ function loadSetFollowups(sn, acqs) {
   });
 }
 
+/** Usually a link to a set that is (not yet) in this account: say so and offer to add it.
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', `/v2/sets/${string}`>} d @param {string} sn */
+function detailFailed(d, sn) {
+  if (d?.status !== 404) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
+  discardToasts();
+  toast(tRaw('detail.not_in_collection', { nr: sn }), 'info', {
+    text: tRaw('detail.now_add'),
+    fn: () => {
+      openCapture('set');
+      const f = G('add-num');
+      if (f) {
+        f.value = sn;
+        f.focus();
+      }
+    },
+  });
+}
+
 /**
  * @param {string} sn
  */
@@ -233,21 +254,7 @@ export async function openModal(sn) {
   if (fromCache) toast(tRaw('detail.offline_status'), 'info');
   if (!d?.success && !fromCache) {
     G('set-modal').classList.remove('open');
-    // Usually a link to a set that is (not yet) in this account: say so and offer to add it.
-    if (d?.status === 404) {
-      discardToasts();
-      toast(tRaw('detail.not_in_collection', { nr: sn }), 'info', {
-        text: tRaw('detail.now_add'),
-        fn: () => {
-          openCapture('set');
-          const f = G('add-num');
-          if (f) {
-            f.value = sn;
-            f.focus();
-          }
-        },
-      });
-    } else toast(d?.error || tRaw('settings.error'), 'error');
+    detailFailed(d, sn);
     return;
   }
   const set = d?.success ? d.set : fromCache;

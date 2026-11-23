@@ -3,8 +3,8 @@
 
 /** An inventory lock: account (always the owner) and key (inventoryKey). */
 export interface HoldingLock {
-  konto: number;
-  schluessel: string | number;
+  account: number;
+  key: string | number;
 }
 
 export interface TxOptions {
@@ -12,7 +12,7 @@ export interface TxOptions {
    * twice. Only for bodies without external effects: they then run several times. */
   repeatAtConflict?: boolean;
   /** Taken before the body (db/txLock.ts); they hold until the end of the outermost transaction. */
-  sperren?: readonly HoldingLock[];
+  locks?: readonly HoldingLock[];
 }
 
 /** `D` is the access itself: a transaction's body gets one of the same kind (`tx.db`). */

@@ -29,7 +29,7 @@ test('POST /api/v2/auth/serverbeweis no longer exists', { concurrency: 1 }, asyn
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = req.get('x-probe-angemeldet') ? { userId: 1, mussPasswortAendern: false } : {};
+    req.session = req.get('x-probe-angemeldet') ? { userId: 1, mustChangePassword: false } : {};
     next();
   });
   app.use(

@@ -27,7 +27,7 @@ type WantedXmlReport = Pick<
  * longer than any proxy lets through. @returns null if they are invalid */
 function correctionsFrom(raw: string | undefined, v1: boolean): Correction[] | undefined | null {
   if (raw === undefined || raw.trim() === '') return undefined;
-  const value = jsonOrNull(raw)?.wert;
+  const value = jsonOrNull(raw)?.value;
   // The JSON inside the form field is not seen by the alias; v1 clients name its fields in German.
   const parsed = WantedCorrections.safeParse(v1 ? translate(WantedCorrections, value, 'v2') : value);
   return parsed.success ? parsed.data : null;
@@ -95,7 +95,7 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
    * do not depend on the path. */
   router.endpoint('POST /api/v2/wanted', requireToken, async req => {
     const { set_number, condition, owner_user_id } = req.input;
-    if (!set_number) failDomain('ungueltig', 'set_number_required');
+    if (!set_number) failDomain('invalid', 'set_number_required');
     const owner = await d.household.writeTarget(req.apiUser.user_id, owner_user_id);
     const { item, was_new } = await d.wanted.addWantedItem(owner, set_number, condition);
     return { was_new, item };
@@ -104,9 +104,9 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
   // Two account checks: out of the one AND into the other account.
   router.endpoint('PUT /api/v2/wanted/:setNumber/:condition/owner', requireToken, async req => {
     const from = await d.household.writeTarget(req.apiUser.user_id, req.input.owner_user_id);
-    const zu = await d.household.writeTarget(req.apiUser.user_id, req.input.new_owner);
-    const r = await d.wanted.moveWantedItem(from, req.pathArgs.setNumber, req.pathArgs.condition, zu);
-    return { ...r, owner_user_id: zu };
+    const to = await d.household.writeTarget(req.apiUser.user_id, req.input.new_owner);
+    const r = await d.wanted.moveWantedItem(from, req.pathArgs.setNumber, req.pathArgs.condition, to);
+    return { ...r, owner_user_id: to };
   });
 
   /** The condition is in the path because it belongs to the key: the same set can be
@@ -144,7 +144,7 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       const owner = await d.household.writeTarget(req.apiUser.user_id, req.input.owner_user_id);
 
       return {
@@ -166,12 +166,12 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
     accountGate('upload'),
     xmlReceive.single('file'),
     async (req, res) => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       const xml = req.file.buffer.toString('utf-8');
       // Without <INVENTORY> there is no wanted list — a better answer than "0 items".
-      if (!/<INVENTORY[\s>]/i.test(xml)) failDomain('nicht_verarbeitbar', 'no_wanted_list');
+      if (!/<INVENTORY[\s>]/i.test(xml)) failDomain('unprocessable', 'no_wanted_list');
       const corrections = correctionsFrom(req.input.corrections, !!res.locals.apiV1);
-      if (corrections === null) failDomain('ungueltig', 'corrections_invalid');
+      if (corrections === null) failDomain('invalid', 'corrections_invalid');
       const eingabe = {
         xml,
         fileName: String(req.file.originalname || 'wanted.xml').slice(0, 120),

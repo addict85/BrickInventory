@@ -5334,7 +5334,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Gesundheit"
+                  "$ref": "#/components/schemas/Health"
                 }
               }
             }
@@ -6012,7 +6012,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Erfassungsantwort"
+                  "$ref": "#/components/schemas/AcquisitionReply"
                 }
               }
             }
@@ -7239,7 +7239,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Erfassungsantwort"
+                  "$ref": "#/components/schemas/AcquisitionReply"
                 }
               }
             }
@@ -8803,7 +8803,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Erfassungsantwort"
+                  "$ref": "#/components/schemas/AcquisitionReply"
                 }
               }
             }
@@ -8966,7 +8966,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Erfassungsantwort"
+                  "$ref": "#/components/schemas/AcquisitionReply"
                 }
               }
             }
@@ -9375,7 +9375,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SetFigurenResponse"
+                  "$ref": "#/components/schemas/SetMinifigsResponse"
                 }
               }
             }
@@ -9467,7 +9467,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SetTeileResponse"
+                  "$ref": "#/components/schemas/SetPartsResponse"
                 }
               }
             }
@@ -10528,7 +10528,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -10568,7 +10568,7 @@
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -11859,7 +11859,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TlsStand"
+                  "$ref": "#/components/schemas/TlsState"
                 }
               }
             }
@@ -14558,6 +14558,136 @@
         ],
         "additionalProperties": {}
       },
+      "AcquisitionReply": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "new_quantity": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "from_user_id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "to_user_id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "instructions": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "set": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "set_number": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "acq_count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "used_count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "conditions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "max_purchase_price": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "avg_purchase_price": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "minifigs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "source_emptied": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "degraded": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": {}
+      },
       "AcquisitionsResponse": {
         "type": "object",
         "properties": {
@@ -16403,136 +16533,6 @@
         ],
         "additionalProperties": {}
       },
-      "Erfassungsantwort": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "new_quantity": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "from_user_id": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "to_user_id": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "instructions": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "minifigs": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degraded": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "success"
-        ],
-        "additionalProperties": {}
-      },
       "ErrorBody": {
         "type": "object",
         "properties": {
@@ -17180,37 +17180,6 @@
         ],
         "additionalProperties": {}
       },
-      "Gesundheit": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "starting"
-            ]
-          },
-          "startup": {
-            "$ref": "#/components/schemas/StartupStatus"
-          },
-          "db_pool": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          },
-          "uptime_seconds": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "additionalProperties": {}
-      },
       "GET_api_v2_minifigs": {
         "type": "object",
         "properties": {
@@ -17675,6 +17644,37 @@
           "page",
           "page_size",
           "parts"
+        ],
+        "additionalProperties": {}
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "starting"
+            ]
+          },
+          "startup": {
+            "$ref": "#/components/schemas/StartupStatus"
+          },
+          "db_pool": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "uptime_seconds": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "status"
         ],
         "additionalProperties": {}
       },
@@ -20901,7 +20901,7 @@
         ],
         "additionalProperties": {}
       },
-      "PdfStand": {
+      "PdfState": {
         "type": "object",
         "properties": {
           "success": {
@@ -22596,97 +22596,6 @@
         ],
         "additionalProperties": {}
       },
-      "SetFigurenResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "source": {
-            "type": "string"
-          },
-          "figs": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "fig_number": {
-                  "type": "string"
-                },
-                "fig_name": {
-                  "type": "string"
-                },
-                "quantity": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "total_quantity": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "image_url": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source": {
-                  "type": "string"
-                },
-                "conditions": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "owners": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "username": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "username"
-                    ],
-                    "additionalProperties": {}
-                  }
-                }
-              },
-              "required": [
-                "fig_number",
-                "fig_name",
-                "quantity",
-                "total_quantity",
-                "image_url",
-                "source",
-                "conditions",
-                "owners"
-              ],
-              "additionalProperties": {}
-            }
-          },
-          "error": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "success",
-          "source",
-          "figs"
-        ],
-        "additionalProperties": {}
-      },
       "SetInfoResponse": {
         "type": "object",
         "properties": {
@@ -23026,47 +22935,85 @@
         ],
         "additionalProperties": {}
       },
-      "SetPriceResponse": {
+      "SetMinifigsResponse": {
         "type": "object",
         "properties": {
-          "from_cache": {
-            "type": "boolean"
-          },
           "success": {
             "type": "boolean"
           },
-          "set_number": {
+          "source": {
             "type": "string"
           },
-          "currency": {
-            "type": "string"
-          },
-          "avg_price": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "min_price": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "max_price": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "qty_avg_price": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "no_price": {
-            "type": "boolean"
+          "figs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fig_number": {
+                  "type": "string"
+                },
+                "fig_name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "total_quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "image_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": "string"
+                },
+                "conditions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "owners": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "username": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "username"
+                    ],
+                    "additionalProperties": {}
+                  }
+                }
+              },
+              "required": [
+                "fig_number",
+                "fig_name",
+                "quantity",
+                "total_quantity",
+                "image_url",
+                "source",
+                "conditions",
+                "owners"
+              ],
+              "additionalProperties": {}
+            }
           },
           "error": {
             "type": "string"
@@ -23074,77 +23021,12 @@
         },
         "required": [
           "success",
-          "set_number",
-          "currency",
-          "avg_price",
-          "min_price",
-          "max_price",
-          "qty_avg_price",
-          "no_price"
+          "source",
+          "figs"
         ],
         "additionalProperties": {}
       },
-      "SetResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "set": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SetItem"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "success",
-          "set"
-        ],
-        "additionalProperties": {}
-      },
-      "SetsResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "count": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "sets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SetItem"
-            }
-          },
-          "total": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "themes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "success",
-          "count",
-          "sets",
-          "total"
-        ],
-        "additionalProperties": {}
-      },
-      "SetTeileResponse": {
+      "SetPartsResponse": {
         "type": "object",
         "properties": {
           "source": {
@@ -23261,6 +23143,124 @@
           "page",
           "page_size",
           "parts"
+        ],
+        "additionalProperties": {}
+      },
+      "SetPriceResponse": {
+        "type": "object",
+        "properties": {
+          "from_cache": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "set_number": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "avg_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "qty_avg_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "no_price": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "set_number",
+          "currency",
+          "avg_price",
+          "min_price",
+          "max_price",
+          "qty_avg_price",
+          "no_price"
+        ],
+        "additionalProperties": {}
+      },
+      "SetResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "set"
+        ],
+        "additionalProperties": {}
+      },
+      "SetsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "themes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "count",
+          "sets",
+          "total"
         ],
         "additionalProperties": {}
       },
@@ -23749,7 +23749,7 @@
         ],
         "additionalProperties": {}
       },
-      "TlsStand": {
+      "TlsState": {
         "type": "object",
         "properties": {
           "success": {

@@ -24,7 +24,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
 /** The service throws the refusal; here it becomes a value so that concurrent calls stay countable. */
 const LAST = 'last_admin';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
@@ -34,7 +34,7 @@ const remove = (ziel, durch) =>
   _req('src/infra/accountContext.js').inSystemContext('test', () =>
     require('./helpers/sources')
       .testContext('account')
-      .transact(t => t.konten.deleteAccount(ziel, durch)),
+      .transact(t => t.accounts.deleteAccount(ziel, durch)),
   );
 
 const ROUNDS = 12;
@@ -80,9 +80,9 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
 
   await t.test('the last admin keeps the role and the account active', async () => {
     const [x, y] = await reset();
-    assert.deepEqual(await K.setzeVerwalterRolle(y, false), { changed: true });
-    assert.equal(await alsWert(K.setzeVerwalterRolle(x, false)), LAST);
-    assert.equal(await alsWert(K.setzeAktiv(x, false)), LAST);
+    assert.deepEqual(await K.setAdminFlag(y, false), { changed: true });
+    assert.equal(await alsWert(K.setAdminFlag(x, false)), LAST);
+    assert.equal(await alsWert(K.setActiveFlag(x, false)), LAST);
     assert.equal(await remove(x, y), LAST);
     await assert.rejects(
       K.deleteAccount(x, y),
@@ -91,17 +91,17 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     );
     assert.equal(await activeAdmin(), 1);
     // Another administrator may leave again, the role of non-administrators is free.
-    assert.deepEqual(await K.setzeVerwalterRolle(y, true), { changed: true });
-    assert.deepEqual(await K.setzeAktiv(y, false), { changed: true });
-    await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'user_not_found' });
+    assert.deepEqual(await K.setAdminFlag(y, true), { changed: true });
+    assert.deepEqual(await K.setActiveFlag(y, false), { changed: true });
+    await assert.rejects(K.setAdminFlag(999999999, false), { code: 'user_not_found' });
   });
 
   await t.test('concurrent revocation of the role', async () => {
-    await simultaneous(ziel => alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
+    await simultaneous(ziel => alsWert(K.setAdminFlag(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deactivation', async () => {
-    await simultaneous(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
+    await simultaneous(ziel => alsWert(K.setActiveFlag(ziel, false)).then(r => (r?.changed === true ? 'ok' : r)));
   });
 
   await t.test('concurrent deletion', async () => {
@@ -111,7 +111,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
   await t.test('revocation against deactivation, concurrently', async () => {
     for (let i = 0; i < ROUNDS; i++) {
       const [x, y] = await reset();
-      const r = await Promise.all([alsWert(K.setzeVerwalterRolle(x, false)), alsWert(K.setzeAktiv(y, false))]);
+      const r = await Promise.all([alsWert(K.setAdminFlag(x, false)), alsWert(K.setActiveFlag(y, false))]);
       assert.equal(r.filter(e => e === LAST).length, 1, `Round ${i}: ${JSON.stringify(r)}`);
       assert.equal(await activeAdmin(), 1, `Round ${i}`);
     }

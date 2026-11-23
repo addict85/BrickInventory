@@ -11,7 +11,7 @@ export function minifigsOfSetCatalog(db: DbInterface, setNumber: string) {
 }
 
 export function partsWithoutBlMapping(db: DbInterface, l: CatalogReadContract) {
-  return db.all<{ part_number: string }>(`SELECT DISTINCT p.part_number FROM ${l.teilBestand()} p
+  return db.all<{ part_number: string }>(`SELECT DISTINCT p.part_number FROM ${l.partHoldings()} p
        LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = p.part_number
        WHERE m.rb_id IS NULL
          AND p.part_number IS NOT NULL

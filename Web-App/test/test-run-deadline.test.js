@@ -3,7 +3,7 @@
  * alone with a doubled deadline. If it turns green there, the run is green and
  * says so; if it stays red, it is red. A real error is never rerun.
  *
- * Checked on the real runner with a short deadline (TEST_FRIST_MS) and three small
+ * Checked on the real runner with a short deadline (TEST_DEADLINE_MS) and three small
  * test files in the temp folder.
  *
  * Counter-checks (measured 05.11.2026):
@@ -27,7 +27,7 @@ const ROOT = path.join(__dirname, '..');
 
 function runner(dateien, mehr = {}) {
   /** @type {NodeJS.ProcessEnv} */
-  const env = { ...process.env, TEST_FRIST_MS: '3000', TEST_PARALLEL: '2' };
+  const env = { ...process.env, TEST_DEADLINE_MS: '3000', TEST_PARALLEL: '2' };
   delete env.TEST_NACHLAUF;
   Object.assign(env, mehr);
   // Without a database and not as a child of this test run: otherwise node --test would write differently.

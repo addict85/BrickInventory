@@ -6,7 +6,7 @@ import type { Tables } from '../../../db/rows';
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
 /** numeric comes from the driver as text. */
-export interface SetPreiszeile {
+export interface CachedSetPriceRow {
   set_number: string;
   condition: string;
   min_price: number | null;
@@ -16,7 +16,7 @@ export interface SetPreiszeile {
   fetched_at: Date | null;
 }
 /** NUMERIC arrives as a number (db/database.ts). */
-export interface Preiszeile {
+export interface CachedPriceRow {
   avg_price: number | null;
   qty_avg_price: number | null;
   condition: string;
@@ -27,7 +27,7 @@ export function setStateCounter(db: DbInterface, l: FinancesReadContract, uids: 
   return db.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
-       FROM ${l.setBestand('= ANY($1)')} s LEFT JOIN ${l.setErfassungen('= ANY($1)')} a
+       FROM ${l.setHoldings('= ANY($1)')} s LEFT JOIN ${l.setAcquisitions('= ANY($1)')} a
          ON a.user_id = s.user_id AND a.set_number = s.set_number
       WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber],
@@ -45,7 +45,7 @@ export function setPriceFresh(
   currency: string,
   ttlHours: number,
 ) {
-  return db.get<SetPreiszeile>(
+  return db.get<CachedSetPriceRow>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
       WHERE set_number = $1 AND condition = $2 AND currency_code = $3
         AND fetched_at > NOW() - make_interval(hours => $4)`,
@@ -54,7 +54,7 @@ export function setPriceFresh(
 }
 
 export function setPricesFresh(db: DbInterface, setNumbers: string[], currency: string, ttlHours: number) {
-  return db.all<SetPreiszeile>(
+  return db.all<CachedSetPriceRow>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
     [setNumbers, currency, ttlHours],
@@ -104,7 +104,7 @@ export function partsPricesFresh(
   currency: string,
   ttlHours: number,
 ) {
-  return db.all<Preiszeile & { part_number: string; color_id: number }>(
+  return db.all<CachedPriceRow & { part_number: string; color_id: number }>(
     `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price, c.fetched_at
        FROM part_price_cache c
        JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
@@ -116,7 +116,7 @@ export function partsPricesFresh(
 
 /** Only real ones, no estimated ones. */
 export function minifigsPricesFresh(db: DbInterface, minifigs: string[], currency: string, ttlHours: number) {
-  return db.all<Preiszeile & { fig_number: string }>(
+  return db.all<CachedPriceRow & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT estimated
         AND fetched_at > NOW() - make_interval(hours => $3)`,
@@ -132,7 +132,7 @@ export function partPriceFresh(
   currency: string,
   ttlHours: number,
 ) {
-  return db.get<Preiszeile>(
+  return db.get<CachedPriceRow>(
     `SELECT avg_price, qty_avg_price, fetched_at FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
     [blPartNumber, blColorId, condition, currency, ttlHours],
   );
@@ -145,7 +145,7 @@ export function minifigPriceFresh(
   currency: string,
   ttlHours: number,
 ) {
-  return db.get<Preiszeile>(
+  return db.get<CachedPriceRow>(
     `SELECT avg_price, qty_avg_price, fetched_at FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT estimated AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, condition, currency, ttlHours],
   );

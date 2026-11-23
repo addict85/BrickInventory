@@ -40,7 +40,7 @@ export function buildAdminRouter(
   });
 
   router.endpoint('GET /api/v2/admin/audit-log', requireApiAdmin, async _req => {
-    return { entries: await d.account.verwalter.managementLog() };
+    return { entries: await d.account.admin.managementLog() };
   });
 
   router.endpoint('GET /api/v2/admin/cache-stats', requireApiAdmin, async _req => {
@@ -179,7 +179,7 @@ export function buildAdminRouter(
    * the current BrickLink response; POST for the same reason as above. */
   router.endpoint('POST /api/v2/admin/price-probe', requireApiAdmin, async req => {
     const setNumber = (req.input.set ?? '').trim();
-    if (!setNumber) failDomain('ungueltig', 'set_parameter_missing');
+    if (!setNumber) failDomain('invalid', 'set_parameter_missing');
     return { ...(await d.management.priceProbe(req.apiUser.user_id, setNumber, req.input.live ?? false)) };
   });
   return router;

@@ -60,6 +60,25 @@ export async function apiData(method, path) {
   }
 }
 
+/** An error body without `success`: the status and a sentence are added. @param {Record<string, unknown>} data
+ * @param {number} status */
+function failedBody(data, status) {
+  return {
+    ...data,
+    success: false,
+    status,
+    error: String(data.error || tRaw('api.server_error', { status })),
+  };
+}
+
+/** What the session reacts to: an ended session, a password change or a second factor that is due.
+ * @param {number} status @param {string} path @param {Record<string, unknown> | null} data */
+function afterResponse(status, path, data) {
+  if (status === 401 && data?.error && !/^\/v2\/auth\/(me|login)/.test(path)) rememberSessionEnd(String(data.error));
+  if (status === 403 && data?.code === 'password_change_required') emit('passwordChangeRequired');
+  if (status === 403 && data?.code === 'second_factor_mandatory') emit('secondFactorRequired');
+}
+
 /**
  * Call of the own API with a JSON response. Always delivers an object, never an exception: every failure
  * (network, proxy error page, status without `success`) comes as `{ success: false, error, status }`, as from the
@@ -94,22 +113,12 @@ export async function api(method, path, body, o = {}) {
       error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status: res.status }),
     };
   }
-  if (res.status === 429 && data && typeof data === 'object')
-    data.waitSec = Number(res.headers.get('Retry-After')) || 0;
-  if (!res.ok && data && typeof data === 'object' && data.success === undefined) {
-    return {
-      ...data,
-      success: false,
-      status: res.status,
-      error: String(data.error || tRaw('api.server_error', { status: res.status })),
-    };
-  }
+  const isObject = !!data && typeof data === 'object';
+  if (res.status === 429 && data && isObject) data.waitSec = Number(res.headers.get('Retry-After')) || 0;
+  if (!res.ok && data && isObject && data.success === undefined) return failedBody(data, res.status);
   if (data && typeof data === 'object') data.status = res.status;
   if (method === 'GET' && res.ok && data?.success !== false) inCache(path, data);
-  if (res.status === 401 && data?.error && !/^\/v2\/auth\/(me|login)/.test(path))
-    rememberSessionEnd(String(data.error));
-  if (res.status === 403 && data?.code === 'password_change_required') emit('passwordChangeRequired');
-  if (res.status === 403 && data?.code === 'second_factor_mandatory') emit('secondFactorRequired');
+  afterResponse(res.status, path, data);
   return /** @type {import('../../frontend-types/api').ApiResponse<M, P>} */ (/** @type {unknown} */ (data));
 }
 

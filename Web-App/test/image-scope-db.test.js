@@ -49,14 +49,14 @@ const freePort = () =>
 
 const P = process.pid;
 const SN = { unter: `BBU${P}-1`, fremd: `BBF${P}-1`, gemerkt: `BBW${P}-1`, none: `BBX${P}-1` };
-const TEIL = `BBT${P}_0.png`;
+const PART = `BBT${P}_0.png`;
 const DATA = path.join(ROOT, 'data');
 const DATEIEN = [
   ['images/sets', `${SN.unter}.jpg`],
   ['images/sets', `${SN.unter}_thumb.jpg`],
   ['images/sets', `${SN.fremd}.jpg`],
   ['images/sets', `${SN.gemerkt}.jpg`],
-  ['images/parts', TEIL],
+  ['images/parts', PART],
   ['instructions', `${SN.unter}_1.pdf`],
   ['instructions', `${SN.fremd}_1.pdf`],
   ['instructions', `${SN.gemerkt}_bdp.pdf`],
@@ -144,7 +144,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
   const image = (sn, zusatz = '') => `/images/sets/${sn}${zusatz}.jpg`;
 
   await t.test('without login no image and no instruction, and images only cached privately', async () => {
-    for (const weg of [image(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
+    for (const weg of [image(SN.unter), `/images/parts/${PART}`, `/data/instructions/${SN.unter}_1.pdf`]) {
       const r = await fetch(`http://127.0.0.1:${port}${weg}`, { redirect: 'manual' });
       const text = await r.text();
       assert.ok([401, 403].includes(r.status), `${weg} without sign-in: ${r.status}`);
@@ -182,7 +182,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('part images are catalog', async () => {
-    assert.equal((await hole('fremd', `/images/parts/${TEIL}`)).status, 200);
+    assert.equal((await hole('fremd', `/images/parts/${PART}`)).status, 200);
   });
 
   await t.test('instructions only for own sets', async () => {

@@ -110,7 +110,7 @@ export const RawSettings = z.looseObject({
   success: z.literal(true),
   settings: z.record(v1Values(z.string(), V1_SETTING_KEYS), z.string()),
 });
-export const TlsStand = z.looseObject({
+export const TlsState = z.looseObject({
   success: z.literal(true),
   https: z.boolean(),
   fp: z.string().nullable(),
@@ -142,7 +142,7 @@ export const BackupRestored = z.looseObject({
   smtp_skipped: z.array(z.string()),
 });
 /** Reachable without login (compose.yaml); everything except the status only for the admin. */
-export const Gesundheit = z.looseObject({
+export const Health = z.looseObject({
   status: z.enum(['ok', 'starting']),
   startup: StartupStatus.optional(),
   db_pool: z.record(z.string(), z.unknown()).optional(),
@@ -186,12 +186,12 @@ export const routes = {
   'GET /api/v2/settings/setup': { response: Setup },
   'POST /api/v2/settings/setup/complete': { input: WITHOUT_BODY, response: Success },
   'GET /api/v2/settings/raw': { response: RawSettings },
-  'GET /api/v2/settings/tls': { response: TlsStand },
+  'GET /api/v2/settings/tls': { response: TlsState },
   'GET /api/v2/settings/user/default-condition': { response: DefaultConditionResponse },
   'POST /api/v2/settings': { response: Success, ...confirmed(settingFields, 'admin_password') },
   'GET /api/v2/settings/export': { response: Backup },
   'POST /api/v2/settings/import': { form: true, response: BackupRestored },
-  'GET /api/v2/health': { response: Gesundheit },
+  'GET /api/v2/health': { response: Health },
   'GET /api/v2/health/live': { response: Heartbeat },
   'GET /api/v2/health/ready': { response: Heartbeat },
   'GET /api/v2/settings/export/data': { kind: 'zip' },

@@ -24,7 +24,7 @@ const db = testData();
 const { testServer } = require('./helpers/server');
 
 const NAME = `mdelta_${process.pid}`,
-  TEIL = '3001md',
+  PART = '3001md',
   FIGURE = 'fig-md01';
 
 test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, async t => {
@@ -37,10 +37,10 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       [NAME],
     )
   ).id;
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, PART]);
   await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [
     uid,
-    TEIL,
+    PART,
   ]);
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, $2, 'manual')`, [uid, FIGURE]);
   await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity) VALUES ($1, $2, 1)`, [uid, FIGURE]);
@@ -55,7 +55,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       (
         await db.get(
           'SELECT COALESCE(SUM(quantity),0)::int q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2',
-          [uid, TEIL],
+          [uid, PART],
         )
       ).q,
     );
@@ -71,8 +71,8 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
 
   await t.test('two concurrent +1 result in +2', async () => {
     await Promise.all([
-      changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
-      changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
+      changeManualPart(uid, PART, 5, { quantity_delta: 1 }),
+      changeManualPart(uid, PART, 5, { quantity_delta: 1 }),
     ]);
     assert.equal(await teil(), 4);
     await Promise.all([
@@ -90,7 +90,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       }).then(async r => ({ status: r.status, body: await r.json() }));
-    assert.deepEqual(await put(`parts/${TEIL}/5`, { quantity_delta: -1 }), {
+    assert.deepEqual(await put(`parts/${PART}/5`, { quantity_delta: -1 }), {
       status: 200,
       body: { success: true, quantity: 3 },
     });
@@ -98,12 +98,12 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       status: 200,
       body: { success: true, quantity: 1 },
     });
-    assert.equal((await put(`parts/${TEIL}/5`, { quantity_delta: 1.5 })).status, 400);
+    assert.equal((await put(`parts/${PART}/5`, { quantity_delta: 1.5 })).status, 400);
     assert.equal(await teil(), 3);
   });
 
   await t.test('a step below 1 stays at 1 — deleting only via delete', async () => {
-    assert.deepEqual(await changeManualPart(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
+    assert.deepEqual(await changeManualPart(uid, PART, 5, { quantity_delta: -10 }), { quantity: 1 });
     assert.equal(await teil(), 1);
   });
 });

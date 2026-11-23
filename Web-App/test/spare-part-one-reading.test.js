@@ -65,11 +65,11 @@ test('the spellings are enumerated in only one place', () => {
   // Self-proof: the helper must really know the notations — otherwise
   // the check above would be green because there is nothing left to find anywhere.
   const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // isSparePart() reads with isJa(), the reading of all yes/no values from outside.
-  const i = helper.indexOf('export function isJa(');
-  assert.ok(i > 0, 'isJa() is missing');
+  // isSparePart() reads with isYes(), the reading of all yes/no values from outside.
+  const i = helper.indexOf('export function isYes(');
+  assert.ok(i > 0, 'isYes() is missing');
   const rumpf = helper.slice(i, helper.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isJa() does not know ${form}`);
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isYes() does not know ${form}`);
 });
 
 test('the response carries a real boolean', async t => {
@@ -104,7 +104,7 @@ test('the response carries a real boolean', async t => {
 
   const { partsQuery } = _req('src/parts/queries.js');
   const parts = (await partsQuery([uid], { page_size: 60 })).parts || [];
-  assert.equal(parts.length, 2, 'Vorlage');
+  assert.equal(parts.length, 2, 'precondition');
   for (const p of parts) {
     assert.equal(
       typeof p.is_spare,

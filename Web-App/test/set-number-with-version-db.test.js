@@ -224,7 +224,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       const { setInfo } = require('./helpers/sources').areaPage('sets');
       const stamm = async n => {
         const r = await setInfo(n);
-        return r && { name: r.name, year: r.year, platzhalter: r.platzhalter };
+        return r && { name: r.name, year: r.year, platzhalter: r.placeholder };
       };
       assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, platzhalter: false });
       assert.deepEqual(await stamm(`${S}b-1`), { name: `Set ${S}b-1`, year: null, platzhalter: true });

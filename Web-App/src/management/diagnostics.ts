@@ -26,12 +26,12 @@ const VARIANTS = [
 
 /** Reports what the proxy would deliver of it — with and without referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
-  if (!/^https:\/\//.test(url)) failDomain('ungueltig', 'url_missing_https');
+  if (!/^https:\/\//.test(url)) failDomain('invalid', 'url_missing_https');
   const address = urlOrNull(url);
-  if (!address) failDomain('ungueltig', 'url_invalid');
+  if (!address) failDomain('invalid', 'url_invalid');
   // The same hosts as the image proxy: the fetch runs from the internal network;
   // allowing every address would be server-side request forgery.
-  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) failDomain('verboten', 'host_not_allowed', { host: address.hostname });
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) failDomain('forbidden', 'host_not_allowed', { host: address.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
   for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
@@ -48,8 +48,8 @@ export async function imageProbe(k: ManagementContext, url: string) {
 }
 
 /** Without redirects: the probe should show the CDN's raw status. */
-const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
-  k.externalSources.sources.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
+const fetchWithoutRedirect = (k: ManagementContext, url: string, headers: Record<string, string>) =>
+  k.externalSources.sources.openImage(url, { maxBytes: 65536, timeoutMs: 10_000, redirects: 0, headers });
 
 function readStream(a: FetchStream, enough = Infinity) {
   return new Promise<{ parts: Buffer[]; bytes: number; truncated: boolean }>(finished => {
@@ -74,7 +74,7 @@ async function probeVariant(kx: ManagementContext, url: string, v: { name: strin
   try {
     const a = await fetchWithoutRedirect(kx, url, v.headers);
     const { bytes, truncated } = await readStream(a);
-    const k = a.kopf;
+    const k = a.head;
     return {
       variant: v.name,
       ms: Math.round(performance.now() - t0),
@@ -117,7 +117,7 @@ function firstBytes(k: ManagementContext, url: string) {
       const b = Buffer.concat((await readStream(a, 32)).parts);
       return {
         status: a.status,
-        content_encoding: a.kopf['content-encoding'] || null,
+        content_encoding: a.head['content-encoding'] || null,
         first_bytes_hex: b.slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
         looks_like: imageKind(b),
       };
@@ -207,42 +207,24 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
 }
 
 /** The recurring questions about an empty tile in one response: database, disk, proxy, negative result. */
-export async function imageDiagnostics(kx: ManagementContext, sn: string) {
-  const ab = new Degradations();
-  const konten: AccountImageRow = await ab.orElse('konten', kx.management.accountImageRows(sn), {
-    account_count: 0,
-    image_local: null,
-    image_url: null,
-  });
-  const catalog = await ab.orElse('katalog', kx.management.catalogImage(sn), null);
+type FileState = { existing: boolean; bytes: number; changed: Date | null };
 
-  const safe = sn.replace(/[^a-z0-9-]/gi, '_');
-  const file = async (p: string) => {
-    const st = await fs.promises.stat(p).catch(withoutMissingFile('management:bilddatei', null));
-    return st ? { existing: true, bytes: st.size, changed: st.mtime } : { existing: false, bytes: 0, changed: null };
-  };
-  const original = await file(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
-  const preview = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
-
-  const cdnUrl = konten.image_url || catalog?.image_url || null;
-  let proxy: { cached: boolean; [k: string]: unknown } = { address: cdnUrl, cached: false };
-  if (cdnUrl) {
-    const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
-    if (cf) {
-      const cache = await file(cf);
-      proxy = { address: cdnUrl, cached: cache.existing, cache, preview: await file(cf + '_thumb.jpg') };
-    }
-  }
-
-  const marker = await ab.orElse('fehlanzeige', kx.management.setImageMiss(sn), null);
-  const previewMarker = await ab.orElse('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
-
+function imageHints(h: {
+  unreadable: string[];
+  accounts: AccountImageRow;
+  cdnUrl: string | null;
+  original: FileState;
+  preview: FileState;
+  marker: { checked_at: string | Date | number; reason?: string | null } | null | undefined;
+  previewMarker: unknown;
+}): string[] {
+  const { unreadable, accounts, cdnUrl, original, preview, marker, previewMarker } = h;
   // A diagnosis from substitute values would mislead: say first what was not readable.
-  const hints: string[] = ab.parts.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.parts.join(', ')}.`] : [];
-  if (!konten.account_count) hints.push('Kein Konto führt dieses Set.');
-  if (konten.account_count && !konten.image_local && !cdnUrl)
+  const hints: string[] = unreadable.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${unreadable.join(', ')}.`] : [];
+  if (!accounts.account_count) hints.push('Kein Konto führt dieses Set.');
+  if (accounts.account_count && !accounts.image_local && !cdnUrl)
     hints.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');
-  if (konten.image_local && !original.existing)
+  if (accounts.image_local && !original.existing)
     hints.push('image_local ist gesetzt, die Datei fehlt aber — die Bildroute weicht auf den Proxy aus.');
   if (original.existing && !preview.existing)
     hints.push('Original da, Vorschau fehlt — sie entsteht beim nächsten Abruf oder über den Bilder-Nachlauf.');
@@ -257,10 +239,44 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
     );
   if (previewMarker) hints.push('Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
   if (!hints.length) hints.push('Alles vorhanden: Original und Vorschau liegen bereit.');
+  return hints;
+}
+
+export async function imageDiagnostics(kx: ManagementContext, sn: string) {
+  const ab = new Degradations();
+  const accounts: AccountImageRow = await ab.orElse('konten', kx.management.accountImageRows(sn), {
+    account_count: 0,
+    image_local: null,
+    image_url: null,
+  });
+  const catalog = await ab.orElse('katalog', kx.management.catalogImage(sn), null);
+
+  const safe = sn.replace(/[^a-z0-9-]/gi, '_');
+  const file = async (p: string) => {
+    const st = await fs.promises.stat(p).catch(withoutMissingFile('management:bilddatei', null));
+    return st ? { existing: true, bytes: st.size, changed: st.mtime } : { existing: false, bytes: 0, changed: null };
+  };
+  const original = await file(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
+  const preview = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
+
+  const cdnUrl = accounts.image_url || catalog?.image_url || null;
+  let proxy: { cached: boolean; [k: string]: unknown } = { address: cdnUrl, cached: false };
+  if (cdnUrl) {
+    const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
+    if (cf) {
+      const cache = await file(cf);
+      proxy = { address: cdnUrl, cached: cache.existing, cache, preview: await file(cf + '_thumb.jpg') };
+    }
+  }
+
+  const marker = await ab.orElse('fehlanzeige', kx.management.setImageMiss(sn), null);
+  const previewMarker = await ab.orElse('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
+
+  const hints = imageHints({ unreadable: ab.parts, accounts, cdnUrl, original, preview, marker, previewMarker });
 
   return {
     set_number: sn,
-    database: { ...konten, catalog_image: catalog?.image_url || null },
+    database: { ...accounts, catalog_image: catalog?.image_url || null },
     local: { original, preview },
     marker: marker ? { since: marker.checked_at, reason: marker.reason || null } : null,
     proxy,

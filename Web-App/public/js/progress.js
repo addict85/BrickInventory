@@ -37,57 +37,49 @@ export function importCounter(s, warnKey = 'csv.warnings_n') {
   ].join(', ');
 }
 
-/** @param {ImportStatus | null | undefined} s */
-function gibApplyStatus(s) {
-  if (!s?.success || !s.status) {
-    gibStop();
+/** @typedef {{ running: boolean, done: number, total: number, pct: number }} GibProgress */
+
+/** The header bar. @param {ImportStatus} s @param {GibProgress} p */
+function gibHeader(s, p) {
+  const _gibEl = G('global-import-bar');
+  if (!_gibEl) return;
+  if (p.running) _gibEl.style.display = 'flex';
+  G('gib-fill').style.width = p.pct + '%';
+  G('gib-text').textContent = p.running
+    ? `${p.done}/${p.total} (${fmtPct(p.pct, { sign: false, places: 0 })})`
+    : importCounter(s);
+}
+
+/** The overlay while it is open (also in the second window or after minimizing). @param {ImportStatus} s
+ * @param {GibProgress} p */
+function gibOverlay(s, p) {
+  if (!G('progress-overlay')?.classList.contains('open')) return;
+  const { done, total } = p;
+  G('prog-title-txt').textContent = tRaw('csv.import_title');
+  setProgBar(p.pct);
+  if (!p.running) {
+    G('prog-footer').textContent = `${tRaw('csv.finished')} ${importCounter(s)}`;
+    G('prog-set-name').textContent = '';
     return;
   }
+  G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
+  const waiting = done === 0 ? tRaw('csv.waiting') : '';
+  G('prog-set-name').textContent = s.current ? tRaw('csv.processing', { set: s.current, done, total }) : waiting;
+}
 
-  const running = s.status === 'running' || s.status === 'pending';
-  const done = s.done || 0;
-  const total = s.total || 0;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  // update the header bar
-  const _gibEl = G('global-import-bar');
-  if (_gibEl) {
-    if (running) _gibEl.style.display = 'flex';
-    G('gib-fill').style.width = pct + '%';
-    G('gib-text').textContent = running
-      ? `${done}/${total} (${fmtPct(pct, { sign: false, places: 0 })})`
-      : importCounter(s);
-  }
-
-  // Update the overlay while it is open (also in the second window or after minimizing)
-  const overlayOpen = G('progress-overlay')?.classList.contains('open');
-  if (overlayOpen) {
-    G('prog-title-txt').textContent = tRaw('csv.import_title');
-    setProgBar(pct);
-    if (running) {
-      G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
-      G('prog-set-name').textContent = s.current
-        ? tRaw('csv.processing', { set: s.current, done, total })
-        : done === 0
-          ? tRaw('csv.waiting')
-          : '';
-    } else {
-      G('prog-footer').textContent = `${tRaw('csv.finished')} ${importCounter(s)}`;
-      G('prog-set-name').textContent = '';
-    }
-  }
-
-  // update the detail area
+/** The detail area. @param {ImportStatus} s @param {GibProgress} p */
+function gibDetails(s, p) {
+  const { done, total } = p;
   setHtml(
     G('gib-stats'),
     html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warning')} · ${Number(s.err) || 0} ${ico('error')}`,
   );
   const gpw = G('gib-prog-wrap');
-  if (gpw && running) {
+  if (gpw && p.running) {
     gpw.style.display = 'block';
-    G('gib-panel-fill').style.width = pct + '%';
+    G('gib-panel-fill').style.width = p.pct + '%';
     G('gib-panel-footer').textContent =
-      `${tRaw('csv.items_progress', { done, total })} (${fmtPct(pct, { sign: false, places: 0 })})`;
+      `${tRaw('csv.items_progress', { done, total })} (${fmtPct(p.pct, { sign: false, places: 0 })})`;
     if (s.current) G('gib-panel-set').textContent = tRaw('csv.processing', { set: s.current, done, total });
   }
   G('gib-stats').textContent = [
@@ -95,7 +87,38 @@ function gibApplyStatus(s) {
     tRaw('csv.warnings_n', { n: s.warn || 0 }),
     tRaw('csv.errors_n', { n: s.err || 0 }),
   ].join(' · ');
+}
 
+/** Import finished: only hide the header bar, never close the overlay by itself — the user may still be
+ * reading the results. @param {ImportStatus} s */
+function gibFinished(s) {
+  rememberLastImport(s);
+  setTimeout(() => {
+    G('global-import-bar').style.display = 'none';
+    G('import-detail-panel').classList.remove('open');
+  }, 5000);
+  showImportCompletion();
+  emit('setsChanged');
+  gibStop();
+}
+
+/** @param {ImportStatus | null | undefined} s */
+function gibApplyStatus(s) {
+  if (!s?.success || !s.status) {
+    gibStop();
+    return;
+  }
+  const done = s.done || 0;
+  const total = s.total || 0;
+  const p = {
+    running: s.status === 'running' || s.status === 'pending',
+    done,
+    total,
+    pct: total > 0 ? Math.round((done / total) * 100) : 0,
+  };
+  gibHeader(s, p);
+  gibOverlay(s, p);
+  gibDetails(s, p);
   // Append new log lines — only if the CSV polling loop does not already write them (_csvPollActive = true
   // means: this window started the import, the loop writes the log)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
@@ -105,19 +128,7 @@ function gibApplyStatus(s) {
     });
   }
   if (s.results) _gibLastCount = s.results.length;
-
-  if (!running) {
-    rememberLastImport(s);
-    // Import finished: only hide the header bar, never close the overlay by itself
-    setTimeout(() => {
-      G('global-import-bar').style.display = 'none';
-      G('import-detail-panel').classList.remove('open');
-      // Don't clear log or close overlay — user may still be reading results
-    }, 5000);
-    showImportCompletion();
-    emit('setsChanged');
-    gibStop();
-  }
+  if (!p.running) gibFinished(s);
 }
 
 // Polling fallback: fetch the status once and render it.
@@ -255,6 +266,14 @@ export async function gibCheckOnLoad() {
   if (_gibCheckTimer) return;
   let failures = 0;
 
+  // After several failures keep retrying more slowly instead of running against a wall in a three-second tick.
+  const notJson = (/** @type {number} */ status) => {
+    if (++failures === 3) console.warn('[gibCheck] response is not JSON (status ' + status + ') — polling paused');
+    if (failures >= 3 && _gibCheckTimer) {
+      clearInterval(_gibCheckTimer);
+      _gibCheckTimer = setInterval(doCheck, 30000);
+    }
+  };
   async function doCheck() {
     if (_gibTimer || _gibSse) {
       clearInterval(_gibCheckTimer);
@@ -271,14 +290,7 @@ export async function gibCheckOnLoad() {
       // of the app, but it should not produce a stack trace in the console either.
       const ct = r.headers.get('content-type') || '';
       if (!r.ok || !ct.includes('application/json')) {
-        if (++failures === 3)
-          console.warn('[gibCheck] response is not JSON (status ' + r.status + ') — polling paused');
-        // After several failures keep retrying more slowly instead of running against a wall in a three-second
-        // tick.
-        if (failures >= 3 && _gibCheckTimer) {
-          clearInterval(_gibCheckTimer);
-          _gibCheckTimer = setInterval(doCheck, 30000);
-        }
+        notJson(r.status);
         return;
       }
       failures = 0;
@@ -525,6 +537,17 @@ export function streamRequest(path, body, onEvent) {
     });
 }
 
+/** The `data:` lines of an event stream; an unreadable line is skipped.
+ * @template T @param {string[]} lines @param {(e: T) => void} onEvent */
+function dispatchLines(lines, onEvent) {
+  for (const line of lines) {
+    if (!line.startsWith('data: ')) continue;
+    try {
+      onEvent(JSON.parse(line.slice(6)));
+    } catch {}
+  }
+}
+
 /**
  * @param {Response} res
  * @param {(ev: SseEvent) => void} onEvent
@@ -551,13 +574,7 @@ async function readSSE(res, onEvent, signal) {
       buf += dec.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop() ?? '';
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            onEvent(JSON.parse(line.slice(6)));
-          } catch {}
-        }
-      }
+      dispatchLines(lines, onEvent);
     }
   } catch (e) {
     if (/** @type {Error} */ (e).name !== 'AbortError') throw e;

@@ -72,8 +72,8 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
   });
 
   await t.test('profile: username by the same rule and regardless of case', async () => {
-    const ungueltig = await callFn('PUT', '/profile', { username: 'a b', password_current: PASS });
-    assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'username_invalid']);
+    const invalid = await callFn('PUT', '/profile', { username: 'a b', password_current: PASS });
+    assert.deepEqual([invalid.status, invalid.body.code], [400, 'username_invalid']);
     const mail = await callFn('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
     assert.equal(mail.status, 400, 'An e-mail address as user name — the sign-in searches both');
     const vergeben = await callFn('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });

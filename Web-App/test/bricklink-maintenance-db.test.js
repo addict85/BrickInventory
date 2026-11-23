@@ -53,10 +53,10 @@ test('BrickLink in maintenance', { concurrency: 1 }, async t => {
 
   // A client with all four keys and free quota, provided at the wiring.
   const { bricklinkRequest } = createBricklink({
-    async schluessel() {
+    async key() {
       return 'x';
     },
-    async zaehle() {
+    async count() {
       return { allowed: true, count: 0, limit: 4000 };
     },
   });

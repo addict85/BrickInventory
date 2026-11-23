@@ -194,7 +194,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     assert.equal(
       b.voucher,
       undefined,
-      'With several vouchers no single „voucher" may stand next to them — ' +
+      'With several vouchers no single „voucher" may appear next to them — ' +
         'otherwise an interface would have to guess which of the three is meant',
     );
     assert.equal(

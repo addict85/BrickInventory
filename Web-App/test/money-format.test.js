@@ -12,10 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 const { buildTestBundle } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestBundle(
-  'geldformat',
-  "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
-);
+process.env.TEST_BUNDLE = buildTestBundle('geldformat', "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n");
 const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 /**

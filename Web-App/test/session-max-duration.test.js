@@ -89,18 +89,18 @@ async function anmelden(base, verwalter) {
 
 test('administrator sessions have shorter periods', async t => {
   await t.test('an administrator session ends after a short idle time, but not while it works', async () => {
-    const LEER = 3_000;
-    const { srv, base } = testApp(LANG, { idleMs: LEER });
+    const EMPTY = 3_000;
+    const { srv, base } = testApp(LANG, { idleMs: EMPTY });
     t.after(() => new Promise(r => srv.close(r)));
     const chef = await anmelden(base, true);
     const nutzer = await anmelden(base, false);
     // Work for longer than the idle time: every request pushes the period.
-    const bis = Date.now() + LEER * 1.5;
+    const bis = Date.now() + EMPTY * 1.5;
     while (Date.now() < bis) {
       assert.equal(await chef.wer(), 8, 'logged out despite requests');
       await warte(400);
     }
-    await warte(LEER + 800);
+    await warte(EMPTY + 800);
     assert.equal(await chef.wer(), null, 'still logged in after the idle time');
     assert.equal(await nutzer.wer(), 7, 'the general period still applies for others');
   });
@@ -120,10 +120,10 @@ test('administrator sessions have shorter periods', async t => {
   await t.test('administrators never longer than all others', () => {
     const { sessionDeadlines: sessionTimeouts } = _req('src/account/sessionDeadline.js');
     const f = sessionTimeouts({
-      sitzungHoechstStd: 2,
-      sitzungLeerlaufMin: 10,
-      sitzungVerwalterHoechstStd: 12,
-      sitzungVerwalterLeerlaufMin: 30,
+      sessionMaxHours: 2,
+      sessionIdleMin: 10,
+      sessionAdminMaxHours: 12,
+      sessionAdminIdleMin: 30,
     });
     assert.deepEqual(f, {
       maxMs: 2 * 3_600_000,

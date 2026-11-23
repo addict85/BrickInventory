@@ -49,7 +49,7 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
 
   await t.test('the scheduled job stores the list and schedules the next run', async () => {
     await d.jobQueue.pullPlanBefore('revocation_list', 0);
-    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['revocation_list'], taktMs: 50 });
+    const worker = _req('jobs/startJobs.js').startJobWorker(d, { kinds: ['revocation_list'], tickMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
     } finally {
@@ -73,7 +73,7 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
   await t.test('an unreadable response or a network error leaves the last good list in place', async () => {
     const vorher = await gespeichert();
     const lauf = () =>
-      _req('jobs/startJobs.js').editor(d).revocation_list.ausfuehren({}, { signal: new AbortController().signal });
+      _req('jobs/startJobs.js').editor(d).revocation_list.run({}, { signal: new AbortController().signal });
     for (const kaputt of ['<html>Wartung</html>', '{"entries": {"zz": {"status": "REVOKED"}}}', '{}']) {
       response = async () => Buffer.from(kaputt);
       await assert.rejects(lauf(), kaputt);

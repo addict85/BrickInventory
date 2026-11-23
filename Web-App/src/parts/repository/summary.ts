@@ -1,8 +1,8 @@
 import { storages } from '../../../db/inventoryView';
 import type { DbInterface } from '../../../db/database';
-import { mengeJoin, quantityFrom, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
+import { setQuantityJoin, quantityFrom, quantityJoin, subsetFrom } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import { teilSichtJoin, TEIL } from '../../../db/catalogView';
+import { partViewJoin, PART } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
 
 /** State of an account's raw data and whether catalog changes are pending (migration 0079). */
@@ -34,8 +34,8 @@ function summaryInsert(groupsOnly: boolean): string {
              ${blNumberSql('p.part_number')},
              p.color_id,
              MIN(p.part_number), MIN(${blNumberSql('p.part_number')}),
-             MIN(${TEIL.name}), MIN(${TEIL.farbname}), MIN(${TEIL.farbcode}), MIN(${TEIL.kategorie}),
-             MIN(${TEIL.image}), MIN(${TEIL.bildDatei}),
+             MIN(${PART.name}), MIN(${PART.colorName}), MIN(${PART.colorHex}), MIN(${PART.category}),
+             MIN(${PART.image}), MIN(${PART.imageFile}),
              -- Spare is a property of the set list; the same part can be spare in
              -- one set and required in the next.
              bool_or(COALESCE(tm_k.is_spare, false)),
@@ -44,11 +44,11 @@ function summaryInsert(groupsOnly: boolean): string {
              -- All storage locations of the group: the same part sits in different bins from several sets.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
-        ${mengeJoin('p', 'sm', '= $1')}
-        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
+        ${setQuantityJoin('p', 'sm', '= $1')}
+        ${quantityJoin('p', 'part', 'tm', '= $1')}
         ${blJoin('p.part_number', 'part', 'p.user_id')}
         LEFT JOIN ${storages()} lo ON lo.id = p.storage_id
-        ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+        ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${
          groupsOnly
            ? `

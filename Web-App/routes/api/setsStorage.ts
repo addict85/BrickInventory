@@ -41,13 +41,13 @@ export function buildSetsStorageRouter(d: Pick<Services, 'account' | 'finances' 
 
   // Fetch instead of push; without account filter, an alert belongs to one account.
   router.endpoint('GET /api/v2/alerts/pending', requireToken, async req => {
-    const r = await d.finances.preisalarm.triggeredSince(req.apiUser.user_id, req.queryArgs.since);
+    const r = await d.finances.priceAlert.triggeredSince(req.apiUser.user_id, req.queryArgs.since);
     return { alerts: r.alerts, now: r.now };
   });
 
   // What is set; triggered ones: /alerts/pending.
   router.endpoint('GET /api/v2/alerts', requireToken, async req => {
-    return { alerts: await d.finances.preisalarm.allAlerts(req.apiUser.user_id) };
+    return { alerts: await d.finances.priceAlert.allAlerts(req.apiUser.user_id) };
   });
 
   router.endpoint(
@@ -56,7 +56,7 @@ export function buildSetsStorageRouter(d: Pick<Services, 'account' | 'finances' 
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       return { ...(await d.sets.startAlarmCsvImport(req.apiUser.user_id, req.file.buffer.toString('utf-8'))) };
     },
   );
@@ -73,20 +73,20 @@ export function buildSetsStorageRouter(d: Pick<Services, 'account' | 'finances' 
   });
 
   router.endpoint('POST /api/v2/storage/locations', requireToken, async req => {
-    const konto = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner ?? req.input.owner);
-    const { location, was_new } = await d.inventory.locationService.createStorage(konto, req.input.name);
-    if (!was_new) failDomain('konflikt', 'storage_duplicate');
+    const account = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner ?? req.input.owner);
+    const { location, was_new } = await d.inventory.locationService.createStorage(account, req.input.name);
+    if (!was_new) failDomain('conflict', 'storage_duplicate');
     return { location };
   });
 
   router.endpoint('PUT /api/v2/storage/locations/:id', requireToken, async req => {
-    const konto = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner ?? req.input.owner);
-    return { location: await d.inventory.locationService.renameStorage(konto, req.pathArgs.id, req.input.name) };
+    const account = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner ?? req.input.owner);
+    return { location: await d.inventory.locationService.renameStorage(account, req.pathArgs.id, req.input.name) };
   });
 
   router.endpoint('DELETE /api/v2/storage/locations/:id', requireToken, async req => {
-    const konto = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner);
-    await d.inventory.locationService.deleteStorage(konto, req.pathArgs.id);
+    const account = await d.inventory.storageWriteAccount(req.apiUser.user_id, req.queryArgs.owner);
+    await d.inventory.locationService.deleteStorage(account, req.pathArgs.id);
     return {};
   });
 

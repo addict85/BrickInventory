@@ -12,6 +12,25 @@ import { loadLocations } from './detail-fields.js';
 // Settings, storage locations section: the pool of locations the detail fields pick from; create, rename,
 // set as default, delete.
 
+/** Minifigs show up on their OWN, not lumped in with part counts (src/inventory/storageLocation.ts): "18 part
+ * types" would otherwise sometimes mean 18 part types and sometimes 12 plus 6 minifigs. Occupied: the server
+ * refuses the delete; disabled says so beforehand, with the reason.
+ * @param {{ sets?: unknown, parts?: unknown, minifigs?: unknown } | undefined} occ */
+function occupancyOf(occ) {
+  if (!occ) return { how: tRaw('storage.unused'), occupied: false };
+  const sets = Number(occ.sets) || 0,
+    parts = Number(occ.parts) || 0,
+    minifigs = Number(occ.minifigs) || 0;
+  const how = [
+    tRaw('storage.used.sets', { n: sets }),
+    tRaw('storage.used.parts', { n: parts }),
+    tRaw('storage.used.minifigs', { n: minifigs }),
+  ]
+    .filter(x => !x.startsWith('0 '))
+    .join(', ');
+  return { how, occupied: sets + parts + minifigs > 0 };
+}
+
 /**
  * Our own locations, with their occupancy.
  */
@@ -41,21 +60,7 @@ export async function loadLocationManagement() {
     html`${html`<div data-style="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="location-grid" data-style="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:0">`}${locations.map(
       o => {
         const occ = occupancy.get(o.name);
-        // Minifigs show up on their OWN, not lumped in with part counts (src/inventory/storageLocation.ts): "18 part
-        // types" would otherwise sometimes mean 18 part types and sometimes 12 plus 6 minifigs, and no one
-        // could tell from the number what it means.
-        const how = occ
-          ? [
-              tRaw('storage.used.sets', { n: Number(occ.sets) || 0 }),
-              tRaw('storage.used.parts', { n: Number(occ.parts) || 0 }),
-              tRaw('storage.used.minifigs', { n: Number(occ.minifigs) || 0 }),
-            ]
-              .filter(x => !x.startsWith('0 '))
-              .join(', ')
-          : tRaw('storage.unused');
-        // Occupied: the server already refused the delete after the confirmation dialog. Disabled says so
-        // beforehand, with the reason.
-        const occupied = !!occ && (Number(occ.sets) || 0) + (Number(occ.parts) || 0) + (Number(occ.minifigs) || 0) > 0;
+        const { how, occupied } = occupancyOf(occ);
         return html`<div data-style="display:contents">
       <span class="location-field" data-style="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('storage.rename', { name: o.name })}"
              data-change="renameLocation" data-arg="${o.id}" data-val="1" data-counter class="location-input" /></span>

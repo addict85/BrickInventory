@@ -15,14 +15,14 @@ export interface ForeignSourcesDependencies {
   settings: SettingsServices;
   jobQueue: JobsServices;
   /** What a test provides instead of the real clients; read at call time (area.ts). */
-  ersatz?: Partial<Sources> | undefined;
+  spare?: Partial<Sources> | undefined;
 }
 
 export const access = (db: Db) => ({
   apiQuota: {
     countApiCall: bound(db)(apiQuota.countApiCall),
     callsToday: bound(db)(apiQuota.callsToday),
-    callsJeAccount: bound(db)(apiQuota.callsJeAccount),
+    callsPerAccount: bound(db)(apiQuota.callsPerAccount),
     setApiCounterBack: bound(db)(apiQuota.setApiCounterBack),
   },
   apiTick: {

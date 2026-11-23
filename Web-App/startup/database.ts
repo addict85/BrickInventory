@@ -27,7 +27,7 @@ export const LEGACY_STOCK_BRAND = 'altbestand_v2';
 /** Once per database, before the first request and without a way out: entschluessele()
  * only reads v2, and a voucher row without nummer_suche would escape the
  * duplicate check. @returns null if the marker is already set */
-export async function legacyStockUpgrade(d: Services): Promise<{ umgeschluesselt: number; prints: number } | null> {
+export async function legacyStockUpgrade(d: Services): Promise<{ rekeyed: number; prints: number } | null> {
   if (await d.jobQueue.readState(LEGACY_STOCK_BRAND)) return null;
   const n =
     (await d.vouchers.reencrypt()) +
@@ -38,7 +38,7 @@ export async function legacyStockUpgrade(d: Services): Promise<{ umgeschluesselt
   const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
   await d.jobQueue.setState(LEGACY_STOCK_BRAND, new Date().toISOString());
-  return { umgeschluesselt: n, prints: alt };
+  return { rekeyed: n, prints: alt };
 }
 
 /** If the previous key is available (DATA_KEY_ALT_FILE), every start rewrites
@@ -47,9 +47,9 @@ export async function legacyStockUpgrade(d: Services): Promise<{ umgeschluesselt
 export async function keySwitch(d: Services): Promise<number | null> {
   if (!altKey()) return null;
   const n =
-    (await d.factors.encryptLegacySecrets({ alle: true })) +
+    (await d.factors.encryptLegacySecrets({ all: true })) +
     (await d.vouchers.reencrypt({ all: true })) +
-    (await d.vouchers.encryptLegacyFiles({ alle: true }));
+    (await d.vouchers.encryptLegacyFiles({ all: true }));
   // Responses and fingerprints apply for 24 hours and depend on the key; recomputing is not worth it.
   await d.idempotency.forgetAll();
   console.log(

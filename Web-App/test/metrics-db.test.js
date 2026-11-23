@@ -110,7 +110,7 @@ test('metrics', { concurrency: 1 }, async t => {
       q.testServices().jobQueue,
       {
         brickset: {
-          ausfuehren: async n => {
+          run: async n => {
             if (n.set_number === '10180-1') throw new Error('Brickset weg');
           },
         },
@@ -129,7 +129,7 @@ test('metrics', { concurrency: 1 }, async t => {
   await t.test('external calls by host and outcome; a foreign host is no label', async st => {
     M.resetMetrics();
     await httpsStub(st, (_c, res) => reply(res, 503, 'weg'));
-    const o = { hosts: ['rebrickable.com'], maxBytes: 1000, zeitlimitMs: 5000 };
+    const o = { hosts: ['rebrickable.com'], maxBytes: 1000, timeoutMs: 5000 };
     assert.equal((await holeHttps('https://rebrickable.com/api/v3/lego/sets/', o)).status, 503);
     await assert.rejects(holeHttps('https://angreifer-123.example.org/x', o), /nicht erlaubt/);
     const text = await M.renderMetrics();

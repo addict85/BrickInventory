@@ -25,17 +25,17 @@ const OPEN = new Map([]);
 function files() {
   const out = [];
   /** @param {string} d */
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const p = path.join(d, e.name);
-      if (e.isDirectory()) lauf(p);
+      if (e.isDirectory()) run(p);
       else if (e.name.endsWith('.ts')) out.push(path.relative(ROOT, p).split(path.sep).join('/'));
     }
   };
   for (const d of ['routes', 'src', 'jobs', 'db', 'startup']) {
     const abs = path.join(ROOT, d);
-    if (fs.existsSync(abs)) lauf(abs);
+    if (fs.existsSync(abs)) run(abs);
   }
   const server = path.join(ROOT, 'server.ts');
   if (fs.existsSync(server)) out.push('server.ts');

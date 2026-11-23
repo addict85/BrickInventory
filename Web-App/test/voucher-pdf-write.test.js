@@ -146,7 +146,7 @@ test('3. a PDF without a readable amount is rejected, not guessed', async () => 
 });
 
 test('4. writing and reading the marker is reversible', () => {
-  const w = { number: NR, pin: '5225', betrag: 249.5, currency: 'CHF' };
+  const w = { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' };
   const parsed = readMark(markText(w));
   assert.deepEqual(parsed, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
   // A line that is no marker must not produce one — otherwise the

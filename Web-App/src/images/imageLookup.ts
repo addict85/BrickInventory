@@ -6,7 +6,7 @@ import type { ImagesContext } from './context';
  * file name stem (image_master()). */
 const CACHE_MS = 10 * 60 * 1000;
 const cdnStorage = (k: ImagesContext) =>
-  k.faecher.slot('cdnZuPfad', () => new Cache<string, { url: string | null }>(5000, CACHE_MS));
+  k.compartments.slot('cdnZuPfad', () => new Cache<string, { url: string | null }>(5000, CACHE_MS));
 
 export function imageMasterFromPath(webPath: string): string {
   const file = webPath.split('/').pop() || '';

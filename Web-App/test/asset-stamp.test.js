@@ -27,7 +27,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, fileStamp } = _req('src/infra/assetStamp.js');
+const { stampAssets, fileStamp } = _req('src/infra/assetStamp.js');
 
 /** A throwaway directory with a file in it. */
 function build(inhalt) {
@@ -41,11 +41,11 @@ const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
-    const vorher = stampFrom(stempleAssets(HTML, dir));
+    const vorher = stampFrom(stampAssets(HTML, dir));
     assert.ok(vorher && vorher !== 'alt', `No stamp set: ${vorher}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
-    const nachher = stampFrom(stempleAssets(HTML, dir));
+    const nachher = stampFrom(stampAssets(HTML, dir));
     assert.notEqual(
       nachher,
       vorher,
@@ -59,7 +59,7 @@ test('a changed file gets a new address', () => {
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
     assert.notEqual(
-      stampFrom(stempleAssets(HTML, dir)),
+      stampFrom(stampAssets(HTML, dir)),
       nachher,
       'With the same modification time but a different size the address stays ' +
         'the same — then the size is missing in the stamp.',
@@ -77,9 +77,9 @@ test('an unchanged file keeps its address', async () => {
   // counter-check C, not reflection.
   const dir = build('.a{color:red}');
   try {
-    const a = stampFrom(stempleAssets(HTML, dir));
+    const a = stampFrom(stampAssets(HTML, dir));
     await new Promise(r => setTimeout(r, 20));
-    const b = stampFrom(stempleAssets(HTML, dir));
+    const b = stampFrom(stampAssets(HTML, dir));
     assert.equal(
       a,
       b,
@@ -95,7 +95,7 @@ test('a missing file leaves the existing value in place', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-leer-'));
   try {
     assert.equal(
-      stempleAssets(HTML, dir),
+      stampAssets(HTML, dir),
       HTML,
       'Something was stamped for a file that does not exist — a ' +
         'missing file is a different problem and must not shake the addresses of the ' +
@@ -111,7 +111,7 @@ test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stempleAssets(roh, dir), roh, 'A deliberately unversioned reference was touched.');
+    assert.equal(stampAssets(roh, dir), roh, 'A deliberately unversioned reference was touched.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

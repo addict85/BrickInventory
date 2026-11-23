@@ -8,9 +8,9 @@ import { access, type ProfileDependencies, type ProfileContext } from './context
 export type { ProfileDependencies, ProfileContext } from './context';
 
 /** Profile, themed start page and setup status: what an account sees and changes about itself. */
-export function createProfile(a: Omit<ProfileDependencies, 'faecher'>, inspect?: Inspect<ProfileContext>) {
+export function createProfile(a: Omit<ProfileDependencies, 'compartments'>, inspect?: Inspect<ProfileContext>) {
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     access,
     (k: ProfileContext) => ({
       setupStatus: bound(k)(setupStatus.setupStatus),

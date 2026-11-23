@@ -35,14 +35,14 @@ export async function accountNames(
   order: 'id' | 'username' = 'id',
 ): Promise<AccountName[]> {
   const rows = await db.all<{ id: number | string; username: string }>(
-    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1) ORDER BY ${order === 'id' ? 'id' : 'username'}`,
+    `SELECT id, username FROM ${l.ACCOUNTS} k WHERE id = ANY($1) ORDER BY ${order === 'id' ? 'id' : 'username'}`,
     [ids],
   );
   return rows.map(r => ({ id: number(r.id), username: r.username }));
 }
 
 export async function accountName(db: DbInterface, l: HouseholdReadContract, id: number): Promise<string | null> {
-  const r = await db.get<{ username: string }>(`SELECT username FROM ${l.KONTEN} k WHERE id = $1`, [id]);
+  const r = await db.get<{ username: string }>(`SELECT username FROM ${l.ACCOUNTS} k WHERE id = $1`, [id]);
   return r?.username ?? null;
 }
 
@@ -103,13 +103,13 @@ export async function separate(db: DbInterface, main: number | null, sub: number
 export async function resolveSubAccountAndInvitations(
   tx: DbInterface,
   sub: number,
-): Promise<{ hauptkonten: number[]; einladungen: number }> {
+): Promise<{ mainAccounts: number[]; invitations: number }> {
   const route = await tx.all<{ main_user_id: number | string }>(
     'DELETE FROM account_links WHERE sub_user_id = $1 RETURNING main_user_id',
     [sub],
   );
   const instr = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
-  return { hauptkonten: route.map(z => number(z.main_user_id)), einladungen: instr.changes ?? 0 };
+  return { mainAccounts: route.map(z => number(z.main_user_id)), invitations: instr.changes ?? 0 };
 }
 
 export async function deleteSeparatedHint(db: DbInterface, main: number, sub: number): Promise<number> {
@@ -143,8 +143,8 @@ export async function separateChains(
   const rows = await db.all<{ id: number | string; username: string; via: string | null }>(
     `SELECT f.sub_user_id AS id, u.username, v.username AS via
        FROM household_former_links f
-       JOIN ${l.KONTEN} u ON u.id = f.sub_user_id
-       LEFT JOIN ${l.KONTEN} v ON v.id = f.via_user_id
+       JOIN ${l.ACCOUNTS} u ON u.id = f.sub_user_id
+       LEFT JOIN ${l.ACCOUNTS} v ON v.id = f.via_user_id
       WHERE f.main_user_id = $1 ORDER BY u.username`,
     [main],
   );
@@ -152,7 +152,7 @@ export async function separateChains(
 }
 
 /** A fixed list so that a request value never gets into the name. */
-const ACQUISITIONS = { set: 'setErfassungen', part: 'teilErfassungen', fig: 'figurErfassungen' } as const;
+const ACQUISITIONS = { set: 'setAcquisitions', part: 'partAcquisitions', fig: 'figAcquisitions' } as const;
 export type AcquisitionKind = keyof typeof ACQUISITIONS;
 
 /** The owner of an acquisition row, or null if it does not exist. */
@@ -171,7 +171,7 @@ export async function ownerTheEntry(
 
 export function userNames(db: DbInterface, l: HouseholdReadContract, uids: number[]) {
   return db.all<{ id: number | string; username: string }>(
-    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1)`,
+    `SELECT id, username FROM ${l.ACCOUNTS} k WHERE id = ANY($1)`,
     [uids],
   );
 }

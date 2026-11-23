@@ -179,7 +179,7 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
     compact(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
     'Moving goes via setEntriesReassign',
   );
-  assert.ok(compact(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialized via the source account');
+  assert.ok(compact(mv).includes('locks: [{ account: fromId, key: sn }]'), 'Serialized via the source account');
   // The whole set and single purchase prices run through THE SAME implementation — the
   // partial case is no special path but the general case with a selection.
   const acq = read('routes/api/acquisitions.ts');
@@ -363,7 +363,7 @@ test('moving ONLY goes via the purchase price', async () => {
   const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
-    (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'purchase_prices_required',
+    (/** @type {any} */ e) => e.kind === 'invalid' && e.code === 'purchase_prices_required',
     'move without acquisition_ids must be rejected',
   );
 
@@ -392,7 +392,7 @@ test('manual parts and minifigures also move via the purchase price', () => {
   assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: switch is missing`);
   assert.match(
     src,
-    /if \(to === null\) failDomain\('verboten', 'no_write_access'\)/,
+    /if \(to === null\) failDomain\('forbidden', 'no_write_access'\)/,
     `${f}: without write permission 403 must come`,
   );
 });

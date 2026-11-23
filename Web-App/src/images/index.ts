@@ -1,5 +1,5 @@
 /** The public face of the area; whatever needs access or state only via the services. */
-export { requestsJeMinute } from './imageDemand';
+export { requestsPerMinute } from './imageDemand';
 export { fileMaster } from './imageScope';
 export { imageExtension, filePart, targetInFolder } from './imageFile';
 export {

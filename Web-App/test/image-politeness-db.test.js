@@ -148,13 +148,13 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   }
 });
 
-// Counter-check (09.11.2026): bildUserAgent() back to `BrickInventoryManager/…` → red
+// Counter-check (09.11.2026): imageUserAgent() back to `BrickInventoryManager/…` → red
 // “the image job fetches with the proxy's browser identifier”.
 test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js is missing — build first');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));
-  const ua = require(dist).imageUserAgent({ bildUserAgent: null });
+  const ua = require(dist).imageUserAgent({ imageUserAgent: null });
   assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'the image job fetches with the browser identifier of the proxy');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

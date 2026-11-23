@@ -9,17 +9,17 @@ export interface CounterState {
   waitMin: number;
   sinceLast: number;
 }
-export type State = CounterState & { laufend: number };
+export type State = CounterState & { running: number };
 
-type Entry = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-const fallback = () => processWide('anmeldeRueckfall', () => ({ entries: new Map<string, Entry>(), reportedAt: 0 }));
+type Entry = { count: number; firstAt: number; lastAt: number | null; running: number };
+const fallback = () => processWide('loginFallback', () => ({ entries: new Map<string, Entry>(), reportedAt: 0 }));
 const MEMORY_AT_MOST = 5000;
 
-function inMemory(wo: string, e: unknown): void {
+function inMemory(where: string, e: unknown): void {
   const r = fallback();
   if (Date.now() - r.reportedAt < 60_000) return;
   r.reportedAt = Date.now();
-  console.warn(`[login] counter in process memory instead of the database (${wo}): ${errorMessage(e)}`);
+  console.warn(`[login] counter in process memory instead of the database (${where}): ${errorMessage(e)}`);
 }
 
 function trim(windowMs: number): void {
@@ -62,11 +62,11 @@ export async function countAttempt(k: ThrottleContext, key: string, windowMin: n
     const now = k.clock.now();
     const e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000)
-      fallback().entries.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
+      fallback().entries.set(key, { count: 1, firstAt: now, lastAt: now, running: 0 });
     else {
       e.count++;
       e.lastAt = now;
-      e.laufend = Math.max(0, (e.laufend || 0) - 1);
+      e.running = Math.max(0, (e.running || 0) - 1);
     }
     trim(windowMin * 60000);
     return fallback().entries.get(key)?.count ?? 1;
@@ -84,15 +84,15 @@ export async function reserve(
   try {
     return await k.transact(async t => {
       const r = await t.counter.lock(key, windowMin, decayS);
-      const fresh = !!r.abgelaufen;
+      const fresh = !!r.expired;
       const s: State = {
         count: fresh ? 0 : parseInt(r.count, 10) || 0,
-        laufend: r.laufend_alt ? 0 : parseInt(r.ongoing, 10) || 0,
+        running: r.running_stale ? 0 : parseInt(r.ongoing, 10) || 0,
         waitMin: fresh ? windowMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
         sinceLast: Math.max(0, parseFloat(r.since) || 0),
       };
       if (!allowed(s)) return { ok: false, state: s };
-      await t.counter.occupySlot(key, s.laufend + 1, fresh);
+      await t.counter.occupySlot(key, s.running + 1, fresh);
       return { ok: true, state: s };
     });
   } catch (error) {
@@ -101,17 +101,17 @@ export async function reserve(
     const now = k.clock.now();
     let e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
+      e = { count: 0, firstAt: now, lastAt: null, running: 0 };
       fallback().entries.set(key, e);
     }
     const s: State = {
       count: e.count,
-      laufend: e.laufend || 0,
+      running: e.running || 0,
       waitMin: restMin(e.firstAt, windowMin, now),
       sinceLast: (now - (e.lastAt ?? e.firstAt)) / 1000,
     };
     if (!allowed(s)) return { ok: false, state: s };
-    e.laufend = s.laufend + 1;
+    e.running = s.running + 1;
     trim(windowMin * 60000);
     return { ok: true, state: s };
   }
@@ -123,7 +123,7 @@ export async function releaseSlot(k: ThrottleContext, key: string): Promise<void
   } catch (error) {
     inMemory('release', error);
     const e = fallback().entries.get(key);
-    if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
+    if (e) e.running = Math.max(0, (e.running || 0) - 1);
   }
 }
 
@@ -154,7 +154,7 @@ export async function countInWindow(
     const now = k.clock.now();
     let e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
+      e = { count: 0, firstAt: now, lastAt: now, running: 0 };
       fallback().entries.set(key, e);
     }
     e.count++;

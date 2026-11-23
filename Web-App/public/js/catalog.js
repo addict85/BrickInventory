@@ -191,6 +191,51 @@ function _catQuery(page) {
  * One block per page over the WHOLE result — only that way can the year bar jump somewhere instead of
  * filtering.
  */
+/** Without a filter "empty" means: the catalog has not been reconciled yet. What to do then depends on
+ * the role and on whether the Rebrickable key is set. */
+function catalogEmptyState() {
+  const filtered = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
+  if (filtered)
+    return emptyState({
+      ico: 'search',
+      title: tRaw('catalog.no_results'),
+      text: tRaw('catalog.no_results_hint'),
+      button: resetButton('catalog'),
+    });
+  const title = tRaw('catalog.empty_title');
+  if (!loggedInAccount?.isAdmin)
+    return emptyState({ ico: 'catalog', title, text: tRaw('catalog.empty_hint_account'), button: undefined });
+  if (!String(settingsSnapshot?.rebrickable_api_key || '').trim())
+    return emptyState({
+      ico: 'catalog',
+      title,
+      text: tRaw('catalog.empty_without_key'),
+      button: { text: tRaw('rb_key.banner_link'), click: 'openRbHint', ico: 'key' },
+    });
+  return emptyState({
+    ico: 'catalog',
+    title,
+    text: tRaw('catalog.empty_hint'),
+    button: { text: tRaw('catalog.to_sync'), click: 'openTab', arg: 'monitor', ico: 'refresh' },
+  });
+}
+
+/** One block per page. The first one is filled, the others only hold space: ONE empty block instead of 60
+ * placeholder tiles, with 25,000 sets that would be 25,000 elements. The height comes from the measured
+ * first page, because the number of columns depends on the window. */
+function catalogPages() {
+  const blocks = [];
+  for (let page = 1; page <= _catPageCount; page++) {
+    const count = page === _catPageCount ? _catTotal - (page - 1) * CAT_LIMIT : CAT_LIMIT;
+    blocks.push(
+      page === 1
+        ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
+        : html`<div class="cat-page cat-page-ph" data-page="${page}" data-count="${count}"></div>`,
+    );
+  }
+  return joinHtml(blocks);
+}
+
 async function loadCatalogSets() {
   loadCatalog.start();
   _catLoadedPages = new Set();
@@ -213,49 +258,11 @@ async function loadCatalogSets() {
   );
 
   if (!_catItems.length) {
-    // Without a filter "empty" means: the catalog has not been reconciled yet.
-    const filtered = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    const withoutKey = !filtered && !String(settingsSnapshot?.rebrickable_api_key || '').trim();
-    const emptyText = filtered
-      ? 'catalog.no_results_hint'
-      : !loggedInAccount?.isAdmin
-        ? 'catalog.empty_hint_account'
-        : withoutKey
-          ? 'catalog.empty_without_key'
-          : 'catalog.empty_hint';
-    const emptyButton = filtered
-      ? resetButton('catalog')
-      : !loggedInAccount?.isAdmin
-        ? undefined
-        : withoutKey
-          ? { text: tRaw('rb_key.banner_link'), click: 'openRbHint', ico: 'key' }
-          : { text: tRaw('catalog.to_sync'), click: 'openTab', arg: 'monitor', ico: 'refresh' };
-    setHtml(
-      grid,
-      emptyState({
-        ico: filtered ? 'search' : 'catalog',
-        title: tRaw(filtered ? 'catalog.no_results' : 'catalog.empty_title'),
-        text: tRaw(emptyText),
-        button: emptyButton,
-      }),
-    );
+    setHtml(grid, catalogEmptyState());
     setScrollLabel(null);
     return;
   }
-
-  // One block per page. The first one is filled, the others only hold space.
-  const blocks = [];
-  for (let page = 1; page <= _catPageCount; page++) {
-    const count = page === _catPageCount ? _catTotal - (page - 1) * CAT_LIMIT : CAT_LIMIT;
-    blocks.push(
-      page === 1
-        ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
-        : // Unloaded pages are ONE empty block instead of 60 placeholder tiles: with 25,000 sets that would be 25,000
-          // elements. The height comes from the measured first page, because the number of columns depends on the window.
-          html`<div class="cat-page cat-page-ph" data-page="${page}" data-count="${count}"></div>`,
-    );
-  }
-  setHtml(grid, joinHtml(blocks));
+  setHtml(grid, catalogPages());
   _catLoadedPages.add(1);
   _loadYearDistribution();
   _setPlaceholderHeight();

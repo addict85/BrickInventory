@@ -291,7 +291,7 @@ test('household in the subtitle', async () => {
 test('version in the login mask', () => {
   const { insertVersion } = require('./helpers/sources').buildAndRequire()('src/profile/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');
+  assert.doesNotMatch(html, /Build 20\d\d\./, 'fixed date in index.html');
   assert.match(insertVersion(html, 'ab341de'), /<div class="start-footer" data-version>Version ab341de<\/div>/);
   assert.match(insertVersion(html, 'unbekannt'), /<div class="start-footer" data-version><\/div>/);
   assert.doesNotMatch(insertVersion(html, '<b>x'), /<b>/);

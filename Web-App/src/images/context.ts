@@ -27,8 +27,8 @@ export interface ImagesDependencies {
   clock: Clock;
   config: Readonly<AppConfig>;
   db: Db;
-  faecher: Compartments;
-  bildwerk: ImageWorker;
+  compartments: Compartments;
+  imageWorker: ImageWorker;
   externalSources: ForeignSourcesServices;
   jobQueue: JobsServices;
   household: HouseholdServices;

@@ -46,9 +46,9 @@ export function firstPurchaseOfSets(
   return db.get<{ purchase_price: number | null; added_day: string }>(
     `SELECT a.purchase_price AS purchase_price,
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
-       FROM ${l.setBestand('= ANY($1)')} s
+       FROM ${l.setHoldings('= ANY($1)')} s
        LEFT JOIN LATERAL (
-         SELECT ${purchasePriceIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${l.setErfassungen()} e
+         SELECT ${purchasePriceIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${l.setAcquisitions()} e
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -70,7 +70,7 @@ export function purchaseAverageOfSets(
   return db.all<{ condition: string; avg_purchase: number | null; qty: string }>(
     `SELECT condition, ${averageOver('k')} AS avg_purchase, SUM(quantity) AS qty
        FROM (SELECT condition, quantity, ${purchasePriceIn('purchase_price', '$3')} AS k
-               FROM ${l.setErfassungen('= ANY($1)')} x
+               FROM ${l.setAcquisitions('= ANY($1)')} x
               -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
               -- die auch die Bewertung im Haushalt anwendet.
               WHERE user_id = ANY($1) AND set_number = $2) e
@@ -89,8 +89,8 @@ export function deleteOldHistory(db: DbInterface, days: string) {
 
 /** The kind chooses the tables here, not the caller: that way the repository states what it reads. */
 const PRICE_TABLES = {
-  part: { verlauf: 'part_price_history', cache: 'part_price_cache' },
-  fig: { verlauf: 'minifig_price_history', cache: 'minifig_price_cache' },
+  part: { history: 'part_price_history', cache: 'part_price_cache' },
+  fig: { history: 'minifig_price_history', cache: 'minifig_price_cache' },
 } as const;
 
 /** `keySql` is a fixed expression of the callers, not an input. */
@@ -105,7 +105,7 @@ export function manualSeries(
   return db.all<{ avg_price: number | null; qty_avg_price: number | null; recorded_at: string }>(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM ${PRICE_TABLES[kind].verlauf}
+       FROM ${PRICE_TABLES[kind].history}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [...keyVals, currency, cond],
@@ -139,7 +139,7 @@ export function purchaseAveragesByKey(
   return db.all<{ condition: string; avg_purchase: number | null }>(
     `SELECT condition, ${averageOver('k')} AS avg_purchase
        FROM (SELECT condition, quantity, ${purchasePriceIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
-               FROM ${kind === 'part' ? l.teilErfassungen() : l.figurErfassungen()} x
+               FROM ${kind === 'part' ? l.partAcquisitions() : l.figAcquisitions()} x
               WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,
     [...acqKeyVals, uids, currency],

@@ -64,10 +64,10 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
       const r = await checkCredentials(anfrage, MAIL, 'falsch');
-      assert.equal(r.absage?.kind, 'not_signed_in', `Attempt ${i + 1}`);
+      assert.equal(r.refusal?.kind, 'not_signed_in', `Attempt ${i + 1}`);
     }
     const r = await checkCredentials(anfrage, VARIANT, 'richtig-geheim');
-    assert.equal(r.absage?.kind, 'zu_viele', 'the variant got fresh counters');
+    assert.equal(r.refusal?.kind, 'too_many', 'the variant got fresh counters');
   });
 
   await t.test('the reset mail goes to the stored address', async () => {

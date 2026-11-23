@@ -112,9 +112,9 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   // One connection: this way it shows whether an account sticks to it.
   const k = dbConfigFromEnvironment();
   const app = createDb({
-    verbindung: k.verbindung,
+    connection: k.connection,
     pool: { ...k.pool, max: 1, options: `${k.pool.options} -c role=${ROLE}` },
-    system: { ...k.verbindung, options: `${k.pool.options} -c role=${SYSTEM}` },
+    system: { ...k.connection, options: `${k.pool.options} -c role=${SYSTEM}` },
   });
   t.after(async () => {
     await app.notification.close();
@@ -231,22 +231,22 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       gesehen[name] = ids(await allSets());
     };
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
-      exchange_rates: { ausfuehren: see('ohne Marke') },
+      exchange_rates: { run: see('ohne Marke') },
       rework: {
-        ausfuehren: async () => {
+        run: async () => {
           await see('Konto')();
           throw new Error('gescheitert');
         },
         givenUp: see('Konto aufgegeben'),
       },
-      prices: { ausfuehren: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
+      prices: { run: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
     });
-    await A_.placeJobOne('exchange_rates', {}, { schluessel: `rows-${process.pid}` });
+    await A_.placeJobOne('exchange_rates', {}, { key: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
     // Also from within a system context (server.ts starts the jobs in one).
     await A_.placeJobOne('rework', { set_number: '10001-1', user_id: A }, { userId: A, maxAttempts: 1 });
     assert.equal(await inSystemContext('test', () => w.processOne()), true);
-    await A_.placeJobOne('prices', {}, { schluessel: `rows-${process.pid}` });
+    await A_.placeJobOne('prices', {}, { key: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
     // With an account the account counts, even for a marked kind.
     await A_.placeJobOne('prices', {}, { userId: A, schluessel: `rows-a-${process.pid}` });
@@ -312,7 +312,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       als(D, () => haushalt.redeemInvitation(D, code)),
       {
         code: 'currency_mismatch',
-        vars: { haupt: 'USD', unter: 'EUR' },
+        vars: { main: 'USD', sub: 'EUR' },
       },
     );
   });
@@ -392,12 +392,12 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       ['eigen'],
     );
     assert.deepEqual(
-      (await request(A, () => d.account.sitzungen.accessesList(A))).map(z => z.label),
+      (await request(A, () => d.account.sessions.accessesList(A))).map(z => z.label),
       ['eigen'],
     );
     // A foreign account, even asked with its ID: nothing, and nothing to delete.
     assert.deepEqual(await request(A, () => d.factors.accountPasskeys(C)), []);
-    assert.deepEqual(await request(A, () => d.account.sitzungen.accessesList(C)), []);
+    assert.deepEqual(await request(A, () => d.account.sessions.accessesList(C)), []);
     const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
     assert.equal(await request(A, () => d.factors.deletePasskey(C, pkC.id)), false);
     assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
@@ -429,7 +429,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await als(A, allSets)), [A, B]);
     const request = f => asRequest({ apiUser: { user_id: A } }, f);
     assert.deepEqual(await request(() => d.factors.accountPasskeys(B)), []);
-    assert.deepEqual(await request(() => d.account.sitzungen.accessesList(B)), []);
+    assert.deepEqual(await request(() => d.account.sessions.accessesList(B)), []);
     // Creating for the sub-account: rejected, even where the row security of the inventories allows it.
     const rls = /row-level security/;
     for (const sql of [
@@ -484,10 +484,10 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     );
     st.after(() => su.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`]));
     const request = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
-    assert.equal((await request(C, () => d.catalog.pdf.lies(kennung, C)))?.user_id, C);
+    assert.equal((await request(C, () => d.catalog.pdf.read(kennung, C)))?.user_id, C);
     // Asked with the own ID (like the route): none; with the foreign one: the row security hides it.
-    assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, A)), null);
-    assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, C)), null);
+    assert.equal(await request(A, () => d.catalog.pdf.read(kennung, A)), null);
+    assert.equal(await request(A, () => d.catalog.pdf.read(kennung, C)), null);
     await request(A, () => d.catalog.pdf.remove(kennung, C));
     assert.equal((await su.all('SELECT 1 FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`])).length, 1);
   });

@@ -400,7 +400,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'no Caddy (CADDY_BIN)' }
     assert.equal(r.ok, true, 'the client does not trust the chain with the own root');
     // Without `ca` the client adds nothing: this is the chain Caddy sends and the app pins.
     const gesendet = await chain(null);
-    assert.equal(gesendet.liste.length, 3, 'Blatt, Zwischenstelle, Wurzel');
+    assert.equal(gesendet.liste.length, 3, 'leaf, intermediate, root');
     assert.equal(gesendet.liste[2], new crypto.X509Certificate(wurzel).fingerprint256, 'the root is in the chain');
   } finally {
     p1.kill('SIGKILL');

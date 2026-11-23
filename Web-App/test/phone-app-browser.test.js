@@ -197,7 +197,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         .find(x => x.tabIndex >= 0 && !x.disabled && x.getClientRects().length > 0);
       e.focus(); const r = e.getBoundingClientRect();
       return { klasse: e.className, text: e.textContent.trim(), oben: r.top, hoehe: r.height }; })()`);
-    assert.equal(fokus.klasse, 'skip-link', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
+    assert.equal(fokus.klasse, 'skip-link', `first tab stop: ${JSON.stringify(fokus)}`);
     assert.equal(fokus.text, 'Zum Inhalt');
     assert.ok(
       fokus.oben >= 0 && fokus.hoehe >= 24,

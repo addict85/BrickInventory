@@ -171,7 +171,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       price: 0.3,
       condition: 'N',
       createdAt: TAG,
-      geschaetzt: true,
+      estimated: true,
     });
     await addPurchaseAtTag('part', UID, ['3005', 1], {
       quantity: 1,
@@ -250,18 +250,18 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     );
     assert.ok(n, 'Precondition: the N row from above');
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { price: 1.5 }),
       null,
       'Against the OWN condition the day is free — the own row does not count',
     );
-    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
+    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.5 });
     assert.ok(
       clash,
       'Against the OTHER condition with the same price there is a row. Whoever ' +
         'overlooks it lets a duplicate arise — and the index rejects it',
     );
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.9 }),
       null,
       'With a different price it has been a separate row since migration 0047, not a collision',
     );

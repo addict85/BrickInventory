@@ -40,6 +40,32 @@ export type Acquisition = {
   account_price: number | null;
   [feld: string]: unknown;
 };
+export type AcquisitionReply = {
+  success: boolean;
+  new_quantity?: number;
+  from_user_id?: number;
+  to_user_id?: number;
+  merged?: boolean;
+  unchanged?: boolean;
+  acquisitions?: number;
+  instructions?: number;
+  set?: {
+    set_number: string;
+    condition: string;
+    acq_count: number;
+    used_count: number;
+    conditions: string[];
+    max_purchase_price: number | null;
+    avg_purchase_price: number | null;
+    [feld: string]: unknown;
+  } | null;
+  parts?: number;
+  minifigs?: number;
+  source_emptied?: boolean;
+  quantity?: number | null;
+  degraded?: string[];
+  [feld: string]: unknown;
+};
 export type AcquisitionsResponse = {
   success: boolean;
   owner_user_id?: number;
@@ -432,32 +458,6 @@ export type Endpoints = {
   endpoints: Record<string, unknown>;
   [feld: string]: unknown;
 };
-export type Erfassungsantwort = {
-  success: boolean;
-  new_quantity?: number;
-  from_user_id?: number;
-  to_user_id?: number;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number;
-  instructions?: number;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number;
-  minifigs?: number;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degraded?: string[];
-  [feld: string]: unknown;
-};
 export type ErrorBody = {
   success: false;
   error: string;
@@ -751,13 +751,6 @@ export type GenericResponse = {
   success: boolean;
   [feld: string]: unknown;
 };
-export type Gesundheit = {
-  status: 'ok' | 'starting';
-  startup?: StartupStatus;
-  db_pool?: Record<string, unknown>;
-  uptime_seconds?: number;
-  [feld: string]: unknown;
-};
 export type GET_api_v2_minifigs = {
   success: boolean;
   total: number;
@@ -840,6 +833,13 @@ export type GET_api_v2_parts = {
     [feld: string]: unknown;
   }>;
   degraded?: string[];
+  [feld: string]: unknown;
+};
+export type Health = {
+  status: 'ok' | 'starting';
+  startup?: StartupStatus;
+  db_pool?: Record<string, unknown>;
+  uptime_seconds?: number;
   [feld: string]: unknown;
 };
 export type Heartbeat = {
@@ -1501,7 +1501,7 @@ export type PdfJob = {
   jobId: string;
   [feld: string]: unknown;
 };
-export type PdfStand = {
+export type PdfState = {
   success: true;
   status: string;
   error: string | null;
@@ -1875,27 +1875,6 @@ export type SetExistsResponse = {
   is_self?: boolean;
   [feld: string]: unknown;
 };
-export type SetFigurenResponse = {
-  success: boolean;
-  source: string;
-  figs: Array<{
-    fig_number: string;
-    fig_name: string;
-    quantity: number;
-    total_quantity: number;
-    image_url: string | null;
-    source: string;
-    conditions: string[];
-    owners: {
-      id: number;
-      username: string;
-      [feld: string]: unknown;
-    }[];
-    [feld: string]: unknown;
-  }>;
-  error?: string;
-  [feld: string]: unknown;
-};
 export type SetInfoResponse = {
   image_local?: string | null;
   image_url?: string | null;
@@ -1951,6 +1930,49 @@ export type SetItem = {
   price_comparison_url?: string | null;
   [feld: string]: unknown;
 };
+export type SetMinifigsResponse = {
+  success: boolean;
+  source: string;
+  figs: Array<{
+    fig_number: string;
+    fig_name: string;
+    quantity: number;
+    total_quantity: number;
+    image_url: string | null;
+    source: string;
+    conditions: string[];
+    owners: {
+      id: number;
+      username: string;
+      [feld: string]: unknown;
+    }[];
+    [feld: string]: unknown;
+  }>;
+  error?: string;
+  [feld: string]: unknown;
+};
+export type SetPartsResponse = {
+  source: string | null;
+  success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  parts: Array<{
+    part_number: string;
+    bl_part_number: string | null;
+    part_name: string | null;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    image_url: string | null;
+    total_quantity: number;
+    is_spare: boolean;
+    bl_color_id: number | null;
+    [feld: string]: unknown;
+  }>;
+  error?: string;
+  [feld: string]: unknown;
+};
 export type SetPriceResponse = {
   from_cache?: boolean;
   success: boolean;
@@ -1975,28 +1997,6 @@ export type SetsResponse = {
   sets: SetItem[];
   total: number;
   themes?: string[];
-  [feld: string]: unknown;
-};
-export type SetTeileResponse = {
-  source: string | null;
-  success: boolean;
-  total: number;
-  page: number;
-  page_size: number;
-  parts: Array<{
-    part_number: string;
-    bl_part_number: string | null;
-    part_name: string | null;
-    color_id: number;
-    color_name: string | null;
-    color_hex: string | null;
-    image_url: string | null;
-    total_quantity: number;
-    is_spare: boolean;
-    bl_color_id: number | null;
-    [feld: string]: unknown;
-  }>;
-  error?: string;
   [feld: string]: unknown;
 };
 export type SettingsResponse = {
@@ -2117,7 +2117,7 @@ export type StorageStockResponse = {
   preset: StorageEntry | null;
   [feld: string]: unknown;
 };
-export type TlsStand = {
+export type TlsState = {
   success: true;
   https: boolean;
   fp: string | null;
@@ -2552,7 +2552,7 @@ export type Route =
   | { m: 'GET'; p: '/v2/finance/pnl'; a: PnlResponse }
   | { m: 'GET'; p: '/v2/finance/portfolio-history'; a: PortfolioHistoryResponse }
   | { m: 'GET'; p: '/v2/finance/valuation'; a: ValuationResponse }
-  | { m: 'GET'; p: '/v2/health'; a: Gesundheit }
+  | { m: 'GET'; p: '/v2/health'; a: Health }
   | { m: 'GET'; p: '/v2/health/live'; a: Heartbeat }
   | { m: 'GET'; p: '/v2/health/ready'; a: Heartbeat }
   | { m: 'DELETE'; p: '/v2/inventory'; a: HoldingCleared }
@@ -2561,7 +2561,7 @@ export type Route =
   | { m: 'PUT'; p: `/v2/minifigs/${string}`; a: PieceChanged }
   | { m: 'DELETE'; p: `/v2/minifigs/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/minifigs/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'DELETE'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'GET'; p: `/v2/minifigs/${string}/parts`; a: MinifigParts }
   | { m: 'GET'; p: `/v2/minifigs/${string}/price-history`; a: PriceHistoryResponse }
@@ -2575,7 +2575,7 @@ export type Route =
   | { m: 'PUT'; p: `/v2/parts/${string}/${string}`; a: PieceChanged }
   | { m: 'DELETE'; p: `/v2/parts/${string}/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/parts/${string}/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'DELETE'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'PUT'; p: `/v2/parts/${string}/${string}/color`; a: PartColorResponse }
   | { m: 'GET'; p: `/v2/parts/${string}/${string}/price-history`; a: PriceHistoryResponse }
@@ -2595,17 +2595,17 @@ export type Route =
   | { m: 'PUT'; p: `/v2/sets/${string}`; a: QuantityChanged }
   | { m: 'DELETE'; p: `/v2/sets/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/sets/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
-  | { m: 'DELETE'; p: `/v2/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/sets/${string}/acquisitions/${string}`; a: AcquisitionReply }
+  | { m: 'DELETE'; p: `/v2/sets/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'GET'; p: `/v2/sets/${string}/alert`; a: PriceAlertsResponse }
   | { m: 'PUT'; p: `/v2/sets/${string}/alert`; a: PriceAlertResponse }
   | { m: 'DELETE'; p: `/v2/sets/${string}/alert`; a: PriceAlertResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/instructions`; a: InstructionsLoaded }
   | { m: 'DELETE'; p: `/v2/sets/${string}/instructions/${string}`; a: GenericResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/instructions/upload`; a: InstructionUploaded }
-  | { m: 'GET'; p: `/v2/sets/${string}/minifigs-list`; a: SetFigurenResponse }
+  | { m: 'GET'; p: `/v2/sets/${string}/minifigs-list`; a: SetMinifigsResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/parts`; a: PartsLoaded }
-  | { m: 'GET'; p: `/v2/sets/${string}/parts-list`; a: SetTeileResponse }
+  | { m: 'GET'; p: `/v2/sets/${string}/parts-list`; a: SetPartsResponse }
   | { m: 'GET'; p: `/v2/sets/${string}/price`; a: SetPriceResponse }
   | { m: 'GET'; p: `/v2/sets/${string}/price-history`; a: PriceHistoryResponse }
   | { m: 'PUT'; p: `/v2/sets/${string}/storage`; a: StorageResponse }
@@ -2618,7 +2618,7 @@ export type Route =
   | { m: 'GET'; p: '/v2/sets/import/csv/status'; a: CsvImportStatus }
   | { m: 'GET'; p: `/v2/sets/info/${string}`; a: SetInfoResponse }
   | { m: 'POST'; p: '/v2/sets/partslist-pdf'; a: PdfJob }
-  | { m: 'GET'; p: `/v2/sets/partslist-pdf/status/${string}`; a: PdfStand }
+  | { m: 'GET'; p: `/v2/sets/partslist-pdf/status/${string}`; a: PdfState }
   | { m: 'GET'; p: '/v2/settings'; a: SettingsResponse }
   | { m: 'PUT'; p: '/v2/settings'; a: SettingsSaved }
   | { m: 'POST'; p: '/v2/settings'; a: DELETE_api_v2_trash_id }
@@ -2639,7 +2639,7 @@ export type Route =
   | { m: 'POST'; p: '/v2/settings/smtp-test'; a: SmtpProbe }
   | { m: 'POST'; p: '/v2/settings/test-source'; a: DELETE_api_v2_trash_id }
   | { m: 'GET'; p: '/v2/settings/theme'; a: AppThemeResponse }
-  | { m: 'GET'; p: '/v2/settings/tls'; a: TlsStand }
+  | { m: 'GET'; p: '/v2/settings/tls'; a: TlsState }
   | { m: 'GET'; p: '/v2/settings/tokens'; a: TokensResponse }
   | { m: 'DELETE'; p: `/v2/settings/tokens/${string}`; a: TokenRevocation }
   | { m: 'POST'; p: '/v2/settings/user/default-condition'; a: AdminCondition }
@@ -2679,4 +2679,4 @@ export type Route =
 /** Per event stream (GET): path and one event, as strom() in js/api.js delivers it. */
 export type Strom =
   | { p: '/v2/sets/import/csv/stream'; e: CsvImportStatus }
-  | { p: `/v2/sets/partslist-pdf/stream/${string}`; e: PdfStand };
+  | { p: `/v2/sets/partslist-pdf/stream/${string}`; e: PdfState };

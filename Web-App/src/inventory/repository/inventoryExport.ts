@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import { acquisitionDaySql } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, minifigViewJoin, TEIL, MINIFIG } from '../../../db/catalogView';
+import { partViewJoin, minifigViewJoin, PART, MINIFIG } from '../../../db/catalogView';
 
 // One row per acquisition in one query instead of one per part.
 const partsCsvSql = (l: InventoryReadContract) => `
@@ -13,19 +13,19 @@ const partsCsvSql = (l: InventoryReadContract) => `
          -- Lesart wie im Sets-Export (src/sets/service.ts).
          COALESCE(a.quantity, 0) AS quantity,
          p.color_id,
-         COALESCE(${TEIL.farbname},'') AS color_name,
+         COALESCE(${PART.colorName},'') AS color_name,
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(${acquisitionDaySql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM parts p
-    LEFT JOIN ${l.teilErfassungen('= $1')} a
+    LEFT JOIN ${l.partAcquisitions('= $1')} a
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
           AND a.color_id = p.color_id
-    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+    ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
    WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY ${TEIL.name} ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY ${PART.name} ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
 // An acquisition WITHOUT a price gets an empty field, not the price of the
 // figure row — hence `a.id IS NULL` instead of COALESCE over the values.
@@ -50,7 +50,7 @@ const figsCsvSql = (l: InventoryReadContract) => `
     FROM minifigs f
     LEFT JOIN bl_mapping z ON z.type = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN bl_mapping_custom ze ON ze.user_id = f.user_id AND ze.type = 'fig' AND ze.rb_id = f.fig_number
-    LEFT JOIN ${l.figurErfassungen('= $1')} a
+    LEFT JOIN ${l.figAcquisitions('= $1')} a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
     ${minifigViewJoin('f.user_id', 'f.fig_number')}
    WHERE f.user_id = $1 AND f.source = 'manual'

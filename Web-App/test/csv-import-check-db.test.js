@@ -57,8 +57,8 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, '10305-1']);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
-    arten: ['csv_import'],
-    taktMs: 50,
+    kinds: ['csv_import'],
+    tickMs: 50,
   });
   t.after(async () => {
     await worker.stop(0);

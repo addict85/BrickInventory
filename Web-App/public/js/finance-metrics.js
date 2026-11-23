@@ -37,17 +37,11 @@ function titleWithHelp(el, title, withHelp) {
   else el.removeAttribute('title');
 }
 
-/**
- * The tiles above the table. The purchase total is always known; the grand total and P&L only when there
- * are market prices — otherwise the tile says for how many items the price is missing, instead of showing "—".
- */
-/** @param {{ basis: Basis, costAll: number, valueAll: number, guv: number | null | undefined, cur: string, foreignCurrency?: number, estimated?: number, rows?: number }} p */
-export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrency = 0, estimated = 0, rows = 0 }) {
-  G('fin-sum').dataset.loaded = '1';
-  G('fin-sum').removeAttribute('aria-busy');
+/** Purchase prices in another currency are not counted by the server (no exchange rates); their number
+ * sits underneath. @param {Basis} basis @param {number} costAll @param {string} cur @param {number} foreignCurrency */
+function showCostTile(basis, costAll, cur, foreignCurrency) {
   const hasBasis = basis.valued > 0;
   const purchase = hasBasis ? basis.costBasis : costAll;
-  const value = hasBasis ? basis.value : valueAll;
   const partial = hasBasis && Math.abs(costAll - basis.costBasis) >= 0.005;
   titleWithHelp(
     G('fin-cost-basis-title'),
@@ -55,16 +49,20 @@ export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrenc
     partial,
   );
   G('fin-cost-basis').textContent = purchase > 0 || hasBasis ? fmtN(purchase, cur) : '—';
-  // Purchase prices in another currency are not counted by the server (no exchange rates); their number
-  // sits underneath.
+  const hint = partial
+    ? tRaw('finance.stat.purchase_of', { amount: fmtN(costAll, cur) })
+    : tRaw('finance.stat.purchase_hint');
   G('fin-cost-basis-sub').textContent =
-    foreignCurrency > 0
-      ? tRaw('finance.foreign_currency_n', { n: foreignCurrency })
-      : partial
-        ? tRaw('finance.stat.purchase_of', { amount: fmtN(costAll, cur) })
-        : tRaw('finance.stat.purchase_hint');
+    foreignCurrency > 0 ? tRaw('finance.foreign_currency_n', { n: foreignCurrency }) : hint;
+}
+
+/** If the tile only sums up valued items, it says so; otherwise two "market values" would show different
+ * numbers. Without items, no price is missing — then it's simply "—". @param {Basis} basis
+ * @param {number} valueAll @param {string} cur */
+function showValueTile(basis, valueAll, cur) {
+  const hasBasis = basis.valued > 0;
+  const value = hasBasis ? basis.value : valueAll;
   const missing = basis.withoutMarket > 0 ? tRaw('finance.price_missing_n', { n: basis.withoutMarket }) : '';
-  // If the tile only sums up valued items, it says so; otherwise two "market values" would show different numbers.
   const valuePartial = hasBasis && Math.abs(valueAll - basis.value) >= 0.005;
   titleWithHelp(
     G('fin-value-title'),
@@ -76,29 +74,45 @@ export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrenc
     G('fin-value-sub').textContent = valuePartial
       ? tRaw('finance.stat.value_of', { amount: fmtN(valueAll, cur) })
       : tRaw('finance.stat.value_hint');
-  } else {
-    // Without items, no price is missing — then it's simply "—".
-    if (missing) setHtml(G('fin-value'), html`<span class="fval-hint">${missing}</span>`);
-    else G('fin-value').textContent = '—';
-    G('fin-value-sub').textContent = '';
+    return;
   }
-  // The tile stays in place, so the row doesn't jump; without prices, with a hint.
-  if (hasBasis && guv != null) {
-    setHtml(G('fin-total-pnl'), pnlBadge(guv));
-    // Amount and percentage from the same items (with BOTH a purchase and a market price). "against the
-    // purchase total": the chart's percentage is computed against the start of the period.
-    const b = basis.amount;
-    G('fin-pnl-sub').textContent = tRaw('finance.pnl_vs_purchase', {
-      amount: `${b >= 0 ? '+' : '−'}${fmtN(Math.abs(b), cur)}`,
-    });
-  } else {
+  if (missing) setHtml(G('fin-value'), html`<span class="fval-hint">${missing}</span>`);
+  else G('fin-value').textContent = '—';
+  G('fin-value-sub').textContent = '';
+}
+
+/** The tile stays in place, so the row doesn't jump; without prices, with a hint. Amount and percentage
+ * come from the same items (with BOTH a purchase and a market price). "against the purchase total": the
+ * chart's percentage is computed against the start of the period. @param {Basis} basis
+ * @param {number | null | undefined} guv @param {string} cur */
+function showPnlTile(basis, guv, cur) {
+  if (!(basis.valued > 0) || guv == null) {
     G('fin-total-pnl').textContent = '—';
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
+    return;
   }
+  setHtml(G('fin-total-pnl'), pnlBadge(guv));
+  const b = basis.amount;
+  G('fin-pnl-sub').textContent = tRaw('finance.pnl_vs_purchase', {
+    amount: `${b >= 0 ? '+' : '−'}${fmtN(Math.abs(b), cur)}`,
+  });
+}
+
+/**
+ * The tiles above the table. The purchase total is always known; the grand total and P&L only when there
+ * are market prices — otherwise the tile says for how many items the price is missing, instead of showing "—".
+ */
+/** @param {{ basis: Basis, costAll: number, valueAll: number, guv: number | null | undefined, cur: string, foreignCurrency?: number, estimated?: number, rows?: number }} p */
+export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrency = 0, estimated = 0, rows = 0 }) {
+  G('fin-sum').dataset.loaded = '1';
+  G('fin-sum').removeAttribute('aria-busy');
+  showCostTile(basis, costAll, cur, foreignCurrency);
+  showValueTile(basis, valueAll, cur);
+  showPnlTile(basis, guv, cur);
   const row = G('fin-basis');
   if (!row) return;
   const parts = basisParts(basis, cur, estimated);
-  if (!hasBasis || !parts.length) {
+  if (!(basis.valued > 0) || !parts.length) {
     row.hidden = true;
     row.textContent = '';
     return;

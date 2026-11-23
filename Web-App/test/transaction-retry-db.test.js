@@ -17,7 +17,7 @@
  *      is not covered here; it shares k.transact with locks with verschiebeSet.)
  *   D  mitInventarSperre() does not pass the option to transaction() → red:
  *      “mitInventarSperre passes the option on”, „moveSet …“
- *      (14.11.2026, now k.transact with `sperren`: in buildContext() the options
+ *      (14.11.2026, now k.transact with `locks`: in buildContext() the options
  *      not passed to transaction() → red: “k.transact with locks …”,
  *      „moveSet …“, „setEstimatedPrice …“)
  *
@@ -187,14 +187,14 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
 
   await t.test('k.transact with locks passes the option on', async () => {
     const k = testContext('inventory');
-    const sperren = [{ konto: 1, schluessel: 'x' }];
+    const sperren = [{ account: 1, key: 'x' }];
     let n = 0;
     const r = await k.transact(
       async () => {
         if (++n < 2) throw pgError('40P01');
         return 'fertig';
       },
-      { ...MIT, sperren },
+      { ...MIT, locks: sperren },
     );
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
@@ -204,7 +204,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
           m++;
           throw pgError('40P01');
         },
-        { sperren },
+        { locks: sperren },
       ),
       { code: '40P01' },
     );

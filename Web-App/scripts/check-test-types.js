@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Type check of the tests (tsconfig.test.json, checkJs without strict) as a ratchet:
- * red only when the number of messages rises above "testtypen" in
- * scripts/lint-limits.json. LINT_SCHRANKEN=<file> for the test.
+ * red only when the number of messages rises above "testTypes" in
+ * scripts/lint-limits.json. LINT_LIMITS=<file> for the test.
  */
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -10,8 +10,8 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const limit = JSON.parse(
-  fs.readFileSync(process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-limits.json'), 'utf8'),
-).testtypen;
+  fs.readFileSync(process.env.LINT_LIMITS || path.join(__dirname, 'lint-limits.json'), 'utf8'),
+).testTypes;
 const r = spawnSync(
   process.execPath,
   [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.test.json'],

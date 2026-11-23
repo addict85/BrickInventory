@@ -153,7 +153,7 @@ test('lock namespaces against a real database', async t => {
           (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.IMAGE_DOWNLOAD}|${SET}`])).rows[0].h,
         );
       },
-      { sperren: [{ konto: LOCKS.IMAGE_DOWNLOAD, schluessel: SET }] },
+      { locks: [{ account: LOCKS.IMAGE_DOWNLOAD, key: SET }] },
     );
     assert.equal(frei.image, true, 'The stock lock of account 42 holds up the image download of the set');
     assert.equal(

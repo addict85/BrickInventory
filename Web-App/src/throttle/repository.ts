@@ -37,8 +37,8 @@ export async function increase(db: DbInterface, key: string, windowMin: number):
 export type LockState = {
   count: string;
   ongoing: string;
-  abgelaufen: boolean;
-  laufend_alt: boolean;
+  expired: boolean;
+  running_stale: boolean;
   wait_min: string;
   since: string;
 };
@@ -51,8 +51,8 @@ export async function lock(tx: DbInterface, key: string, windowMin: number, ongo
   );
   return (await tx.get<LockState>(
     `SELECT count, ongoing,
-            first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
-            COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
+            first_at < NOW() - make_interval(mins => $2) AS expired,
+            COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS running_stale,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`,
@@ -117,9 +117,9 @@ export async function countUp(
 
 /** Per account and hour (balance lookups): the limit only falls after a full hour. */
 export function hourlyState(tx: DbInterface, key: string) {
-  return tx.get<{ count: number; warten_sek: number }>(
+  return tx.get<{ count: number; wait_sec: number }>(
     `SELECT count AS count,
-       CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
+       CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS wait_sec
      FROM rate_limit_attempts WHERE key = $1 AND first_at > NOW() - INTERVAL '1 hour'`,
     [key],
   );

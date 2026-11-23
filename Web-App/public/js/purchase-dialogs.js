@@ -158,25 +158,21 @@ export function renderAcqModalBody(sn, acqs, totals) {
   setWithFocus(G('acq-modal-body'), markup);
 }
 
-/**
- * @param {string} sn
- * @param {string} id
- * @param {string} field
- * @param {string} value
- */
-async function acqSave(sn, id, field, value) {
+/** The request body for one field; null if the field's value is not valid (the field says why).
+ * @param {string} id @param {string} field @param {string} value */
+function acqBody(id, field, value) {
   /** @type {{ purchase_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
   const body = {};
   if (field === 'price') {
     const price = amountFromField(`acq-price-${id}`);
-    if (!price.ok) return;
+    if (!price.ok) return null;
     body.purchase_price = price.value;
   } else if (field === 'qty') {
     const quantity = quantityFromField(`acq-quantity-${id}`);
-    if (!quantity.ok) return;
+    if (!quantity.ok) return null;
     body.quantity = quantity.value;
   } else if (field === 'date') {
-    if (!purchaseDateValid(`acq-date-field-${id}`)) return;
+    if (!purchaseDateValid(`acq-date-field-${id}`)) return null;
     body.date = value;
   } else if (field === 'owner') {
     // An owner change moves exactly this purchase price row, without from_user_id: the server knows the
@@ -185,27 +181,54 @@ async function acqSave(sn, id, field, value) {
   } else {
     body.condition = value;
   }
+  return body;
+}
+
+/** After an owner change almost everything on the screen is wrong: quantities, sums, owner badges.
+ * Better reload than update four places individually. restore: without it the user lands at page 1
+ * again after the change; that way position and loaded depth are kept. @param {string} sn
+ * @param {import('../../frontend-types/api').ApiResponse<'PUT', `/v2/sets/${string}/acquisitions/${string}`>} d */
+function afterOwnerChange(sn, d) {
+  if (!d.success) {
+    toast(d.error || t('settings.error'), 'error');
+    loadAcqModal(sn);
+    return;
+  }
+  toast(
+    tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved', {
+      parts: d.parts ?? 0,
+      figs: d.minifigs ?? 0,
+    }),
+    'success',
+  );
+  closeAcqModal();
+  closeModal();
+  emit('collectionLoad', { restore: true });
+}
+
+/** The acquisition summary in the set detail, if that set is still open. @param {string} sn @param {boolean} [onlyOpenSet] */
+function refreshAcqSummary(sn, onlyOpenSet = true) {
+  api('GET', `/v2/sets/${sn}/acquisitions`)
+    .then(ad => {
+      if (!ad?.success || (onlyOpenSet && openSet?.set_number !== sn)) return;
+      const summaryEl = G('m-acq-summary');
+      if (summaryEl) setHtml(summaryEl, summary(ad.acquisitions, sn));
+    })
+    .catch(() => {});
+}
+
+/**
+ * @param {string} sn
+ * @param {string} id
+ * @param {string} field
+ * @param {string} value
+ */
+async function acqSave(sn, id, field, value) {
+  const body = acqBody(id, field, value);
+  if (!body) return;
   const d = await api('PUT', `/v2/sets/${sn}/acquisitions/${id}`, body);
   if (field === 'owner') {
-    if (!d.success) {
-      toast(d.error || t('settings.error'), 'error');
-      loadAcqModal(sn);
-      return;
-    }
-    // After a change almost everything on the screen is wrong: quantities, sums, owner badges.
-    // Better reload than update four places individually.
-    toast(
-      tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved', {
-        parts: d.parts ?? 0,
-        figs: d.minifigs ?? 0,
-      }),
-      'success',
-    );
-    // restore: without it the user lands at page 1 again after the change; that way position and
-    // loaded depth are kept.
-    closeAcqModal();
-    closeModal();
-    emit('collectionLoad', { restore: true });
+    afterOwnerChange(sn, d);
     return;
   }
   // The server delivers the recomputed condition aggregate along — write it directly into the gallery list,
@@ -222,63 +245,23 @@ async function acqSave(sn, id, field, value) {
     if (f && f !== document.activeElement) f.value = amountForField(body.purchase_price);
   }
   refreshSum(sn);
-  // fetch the market price rows anew.
-  //
-  // If a purchase price is captured in a condition for the first time, a NEW row arises for it (the server delivers
-  // by_condition only for conditions with an acquisition). Without this reload it would only appear on the next
-  // opening of the dialog.
+  // If a purchase price is captured in a condition for the first time, a NEW row arises for it (the server
+  // delivers by_condition only for conditions with an acquisition). Without this reload it would only appear
+  // on the next opening of the dialog.
   api('GET', `/v2/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
-
-  // Pull gallery and finances along: purchase price and quantity affect the tile and the evaluation, which would otherwise
-  // stay old until reloading. restore, so that the change does not cost the scrolled depth.
+  // Pull gallery and finances along: purchase price and quantity affect the tile and the evaluation, which
+  // would otherwise stay old until reloading. restore, so that the change does not cost the scrolled depth.
   emit('collectionLoad', { restore: true });
   emit('financesLoad');
-
-  // Date changed → reload order/summary
-  if (field === 'date') {
-    loadAcqModal(sn);
-    api('GET', `/v2/sets/${sn}/acquisitions`)
-      .then(ad => {
-        if (ad?.success && openSet?.set_number === sn) {
-          const summaryEl = G('m-acq-summary');
-          if (summaryEl) setHtml(summaryEl, summary(ad.acquisitions, sn));
-        }
-      })
-      .catch(() => {});
-    return;
-  }
-  // If the price was empty, the server fetched the market price; reload to show it
-  if (field === 'price' && (value === '' || value === null)) {
-    loadAcqModal(sn);
-    return;
-  }
-  // Update the summary in the detail dialog. The condition aggregate now comes from the PUT response
-  // (applySetAggregate above) — here only the acquisition list is re-rendered.
-  if (field === 'cond') {
-    api('GET', `/v2/sets/${sn}/acquisitions`)
-      .then(ad => {
-        if (!ad?.success) return;
-        const sumEl = G('m-acq-summary');
-        if (sumEl) setHtml(sumEl, summary(ad.acquisitions, sn));
-      })
-      .catch(() => {});
-  }
-  // Quantity changed: reload the whole dialog (summary, quantity in the set detail)
-  if (field === 'qty') {
-    loadAcqModal(sn);
-    // Refresh the summary in the set detail too
-    api('GET', `/v2/sets/${sn}/acquisitions`)
-      .then(ad => {
-        if (ad.success && openSet?.set_number === sn) {
-          const summaryEl = G('m-acq-summary');
-          if (summaryEl) setHtml(summaryEl, summary(ad.acquisitions, sn));
-        }
-      })
-      .catch(() => {});
-    return;
-  }
+  // Date or quantity changed: reload the dialog (order, summary, quantity in the set detail). If the price
+  // was empty, the server fetched the market price; reload to show it.
+  const emptyPrice = field === 'price' && (value === '' || value === null);
+  if (field === 'date' || field === 'qty' || emptyPrice) loadAcqModal(sn);
+  if (field === 'date' || field === 'qty') refreshAcqSummary(sn);
+  // The condition aggregate comes from the PUT response (above) — here only the acquisition list is re-rendered.
+  else if (field === 'cond') refreshAcqSummary(sn, false);
 }
 
 /**

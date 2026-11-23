@@ -165,7 +165,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
           .filter(r => r.left < k.right && r.right > k.left && r.top < k.bottom && r.bottom > k.top).length;
         return { ueber, oben: Math.round(k.top), unten: Math.round(k.bottom) };
       })()`);
-      assert.equal(m.ueber, 0, `scrolled to ${y} px the button lies over a card (${m.oben}–${m.unten})`);
+      assert.equal(m.ueber, 0, `scrolled to ${y} px the button covers a card (${m.oben}–${m.unten})`);
     }
     await b.auswerten(`scrollTo(0, 0); true`);
     assert.equal(

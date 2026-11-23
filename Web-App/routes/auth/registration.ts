@@ -12,8 +12,8 @@ import type { Services } from '../../src/services';
 /** The reason of the first rejection, or null if the input is sufficient. */
 function registrationShortfall(e: OpenRequest<'POST /api/v2/auth/register'>['input']) {
   if (!e.username || !e.email || !e.password) return 'registration_fields' as const;
-  const mangel = passwordLack(e.password, e.username);
-  if (mangel) return mangel;
+  const lack = passwordLack(e.password, e.username);
+  if (lack) return lack;
   if (!emailValid(e.email)) return 'email_invalid' as const;
   if (!USERNAME_RE.test(e.username)) return 'username_invalid' as const;
   if (!nameValid(e.first_name) || !nameValid(e.last_name)) return 'name_invalid' as const;
@@ -37,18 +37,18 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
   router.endpoint('POST /api/v2/auth/register', ipThrottle(d.account, 'register', 5, 60 * 60 * 1000), async req => {
     const { username, email, first_name, last_name, password, language } = req.input;
     if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
-      failDomain('verboten', 'registration_disabled');
-    const mangel = registrationShortfall(req.input);
-    if (mangel || !username || !email || !password) failDomain('ungueltig', mangel ?? 'registration_fields');
+      failDomain('forbidden', 'registration_disabled');
+    const lack = registrationShortfall(req.input);
+    if (lack || !username || !email || !password) failDomain('invalid', lack ?? 'registration_fields');
     // Counts every attempt, whether the address exists or not: the rejection reveals nothing.
     const target = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
-    if (target) failDomain('zu_viele', 'too_many_requests', { minutes: target.waitMin });
+    if (target) failDomain('too_many', 'too_many_requests', { minutes: target.waitMin });
     const sent = await d.account.tryRegistration({
       username,
       email,
       first_name,
       last_name,
-      passwort: password,
+      password: password,
       lang: language === 'en' ? 'en' : 'de',
     });
     return {
@@ -67,10 +67,10 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     ipThrottle(d.account, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
     async req => {
       const { email } = req.input;
-      if (!emailValid(email)) failDomain('ungueltig', email ? 'email_invalid' : 'email_required');
+      if (!emailValid(email)) failDomain('invalid', email ? 'email_invalid' : 'email_required');
       if (!baseUrl()) {
         hintWithoutBaseUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
-        failDomain('nicht_verfuegbar', 'confirmation_not_configured');
+        failDomain('unavailable', 'confirmation_not_configured');
       }
       await d.account.confirmationAgainRequest(String(email));
       return { message: errorText('confirmation_sent', responseLanguage(req)) };
@@ -83,7 +83,7 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     async req => {
       const token = req.input.token;
       const username = token ? await d.account.nameToConfirmation(String(token)) : null;
-      if (!username) failDomain('ungueltig', 'confirmation_link_invalid');
+      if (!username) failDomain('invalid', 'confirmation_link_invalid');
       return { username };
     },
   );
@@ -102,11 +102,11 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     ipThrottle(d.account, 'forgot-password', 5, 60 * 60 * 1000),
     async req => {
       const { email } = req.input;
-      if (!emailValid(email)) failDomain('ungueltig', email ? 'email_invalid' : 'email_required');
+      if (!emailValid(email)) failDomain('invalid', email ? 'email_invalid' : 'email_required');
       // Before the user lookup, so the rejection reveals nothing about the address.
       if (!baseUrl()) {
         hintWithoutBaseUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
-        failDomain('nicht_verfuegbar', 'password_reset_not_configured');
+        failDomain('unavailable', 'password_reset_not_configured');
       }
       // Always the same answer after the same minimum duration, whether the address exists or not.
       await d.account.resetLinkRequest(String(email));
@@ -119,17 +119,17 @@ export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 
     ipThrottle(d.account, 'reset-password', 10, 60 * 60 * 1000),
     async req => {
       const { token, password } = req.input;
-      if (!token || !password) failDomain('ungueltig', 'token_password_required');
-      const mangel = passwordLack(password);
-      if (mangel) failDomain('ungueltig', mangel);
+      if (!token || !password) failDomain('invalid', 'token_password_required');
+      const lack = passwordLack(password);
+      if (lack) failDomain('invalid', lack);
       const user = await d.account.accountToResetLink(token);
-      if (!user) failDomain('ungueltig', 'token_invalid');
+      if (!user) failDomain('invalid', 'token_invalid');
       // Only the account behind the token knows the name; the rule applies as on all other paths.
-      const nameMangel = passwordLack(password, user.username);
-      if (nameMangel) failDomain('ungueltig', nameMangel);
+      const nameLack = passwordLack(password, user.username);
+      if (nameLack) failDomain('invalid', nameLack);
       // Only the request that consumes the link sets its password.
       const uid = await d.account.setPasswordPerLink(token, password);
-      if (!uid) failDomain('ungueltig', 'token_invalid');
+      if (!uid) failDomain('invalid', 'token_invalid');
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );

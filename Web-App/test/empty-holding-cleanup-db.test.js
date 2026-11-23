@@ -145,7 +145,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions/${erste}`, { method: 'DELETE' });
       assert.ok(await haltRow(db, uid, STAYS), 'the set was deleted although an acquisition is still left');
       const quantity = await quantityOf(db, uid, STAYS);
-      assert.ok(quantity > 0, `Menge ${quantity}`);
+      assert.ok(quantity > 0, `quantity ${quantity}`);
     });
   } finally {
     await aufraeumen();

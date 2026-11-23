@@ -34,7 +34,7 @@ const db = testData();
 const { touchThrottle, touchMs } = _req('src/account/sessionTouch.js');
 const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/account/sessionDeadline.js');
 // The default as handed-in configuration, as buildServices hands it in.
-const VORGABE = { sitzungLeerlaufMin: IDLE_DEFAULT_MIN };
+const VORGABE = { sessionIdleMin: IDLE_DEFAULT_MIN };
 const SESSION_IDLE_MS = sessionIdleMs(VORGABE);
 const SESSION_IDLE_SEC = sessionIdleSec(VORGABE);
 const TOUCH_MS = touchMs(SESSION_IDLE_MS);

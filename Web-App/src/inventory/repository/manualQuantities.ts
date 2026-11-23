@@ -26,16 +26,20 @@ export function entriesNewestFirst(tx: DbInterface, kind: ManualKind, uid: numbe
   );
 }
 
-export async function removeEntry(tx: DbInterface, kind: ManualKind, id: number, konten: number[]): Promise<void> {
-  await tx.run(`DELETE FROM ${ERF[kind]} WHERE id=$1 AND user_id = ANY($2)`, [id, konten]);
+export async function removeEntry(tx: DbInterface, kind: ManualKind, id: number, accounts: number[]): Promise<void> {
+  await tx.run(`DELETE FROM ${ERF[kind]} WHERE id=$1 AND user_id = ANY($2)`, [id, accounts]);
 }
 
 export async function shortenEntry(
   tx: DbInterface,
   kind: ManualKind,
   id: number,
-  um: number,
-  konten: number[],
+  around: number,
+  accounts: number[],
 ): Promise<void> {
-  await tx.run(`UPDATE ${ERF[kind]} SET quantity=quantity-$1 WHERE id=$2 AND user_id = ANY($3)`, [um, id, konten]);
+  await tx.run(`UPDATE ${ERF[kind]} SET quantity=quantity-$1 WHERE id=$2 AND user_id = ANY($3)`, [
+    around,
+    id,
+    accounts,
+  ]);
 }

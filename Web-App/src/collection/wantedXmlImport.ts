@@ -19,8 +19,8 @@ async function importWantedXml(
   // otherwise the bar would show a smaller number after a larger one.
   let chain: Promise<unknown> = Promise.resolve();
   // Bar and state are display only: a failed step holds up neither the import nor the next ones.
-  const after = (wo: string, step: () => Promise<unknown>) => {
-    chain = chain.then(step).catch(logAndContinue(wo));
+  const after = (where: string, step: () => Promise<unknown>) => {
+    chain = chain.then(step).catch(logAndContinue(where));
   };
   // Wait for the chain first, then close: otherwise the bar would still show "running" elsewhere.
   const closeBar = async (
@@ -69,15 +69,15 @@ async function importWantedXml(
       },
       ...(e.write ? { cancellation: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
       creator: {
-        teil: (u, body) => kx.parts.addManualPart(u, body),
+        part: (u, body) => kx.parts.addManualPart(u, body),
         minifig: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // The purchase price is MAXPRICE from the file.
-        set: (u, sn, quantity, condition, kaufpreis) =>
+        set: (u, sn, quantity, condition, purchasePrice) =>
           kx.sets.acquireSet({
             requester: u,
             setNumber: sn,
             quantity,
-            kaufpreis,
+            purchasePrice,
             condition,
             ifPresent: 'aufstocken',
           }),

@@ -19,17 +19,17 @@ export type AlarmRow = Columns<
 /** The app makes the row clickable based on this; $3 is the scope. */
 /** If the target already has an alert (e.g. on an owned set), its own applies;
  * otherwise the primary key would abort moving it together with the wishlist item. */
-export async function transferAlarm(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
+export async function transferAlarm(db: DbInterface, toId: number, ofId: number, sn: string, c: string) {
   await db.run(
     `UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
                    AND NOT EXISTS (SELECT 1 FROM price_alerts z WHERE z.user_id=$1 AND z.set_number=$3 AND z.condition=$4)`,
-    [zuId, ofId, sn, c],
+    [toId, ofId, sn, c],
   );
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [ofId, sn, c]);
 }
 
 const owns = (l: FinancesReadContract) =>
-  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS owns`;
+  `EXISTS (SELECT 1 FROM ${l.setHoldings('= ANY($3)')} s WHERE s.set_number = a.set_number) AS owns`;
 
 export function writeAlarm(
   db: DbInterface,
@@ -82,7 +82,7 @@ export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: 
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
        -- besitzt und der Detaildialog), set_catalog liefert das Bild.
-       LEFT JOIN ${l.setBestand('= ANY($2)')} s ON s.set_number = a.set_number
+       LEFT JOIN ${l.setHoldings('= ANY($2)')} s ON s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,

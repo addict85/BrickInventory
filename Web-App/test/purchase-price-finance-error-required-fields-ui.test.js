@@ -136,7 +136,7 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
     await reiter(w, 'parts');
     await warte(() => d.querySelector('#manual-parts-list .man-price'));
     await ruhig();
-    assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'Teil');
+    assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'part');
     await reiter(w, 'minifigs');
     await warte(() => d.querySelector('#figs-list .man-price, #manual-figs-list .man-price'));
     await ruhig();

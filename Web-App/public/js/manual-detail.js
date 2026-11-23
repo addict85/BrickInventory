@@ -475,6 +475,85 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
   setWithFocus(G('acq-modal-body'), markup);
 }
 
+/** The request body for one field; null if the field's value is not valid (the field says why).
+ * @param {string} acqId @param {string} field @param {string} value */
+function manAcqBody(acqId, field, value) {
+  /** @type {{ unit_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
+  const body = {};
+  if (field === 'price') {
+    const price = amountFromField(`acq-price-${acqId}`);
+    if (!price.ok) return null;
+    body.unit_price = price.value;
+  } else if (field === 'qty') {
+    const quantity = quantityFromField(`acq-quantity-${acqId}`);
+    if (!quantity.ok) return null;
+    body.quantity = quantity.value;
+  } else if (field === 'date') {
+    if (!purchaseDateValid(`acq-date-field-${acqId}`)) return null;
+    body.date = value;
+  } else if (field === 'owner') {
+    // Owner change = moving exactly this acquisition row. A manually recorded item has no content —
+    // only quantity and acquisition move (src/sets/setMove.ts, moveManualAcquisition). NO
+    // from_user_id: the server reads the sender from the row itself (moveSource) — here it was
+    // the viewer, see acqSave().
+    body.owner_user_id = parseInt(value, 10);
+  } else body.condition = value;
+  return body;
+}
+
+/** @param {string} type */
+const reloadManualTable = type => (type === 'fig' ? loadManualFigsTable() : loadManualParts());
+
+/** Reload market-price rows: when a purchase price is recorded for the first time in a condition, a
+ * new row appears for it. */
+function reloadManMarketRows() {
+  const mi = _manItem;
+  if (!mi) return;
+  const u =
+    mi.type === 'fig'
+      ? `/v2/minifigs/${encodeURIComponent(mi.id)}/price-history`
+      : `/v2/parts/${encodeURIComponent(mi.id)}/${mi.colorId || 0}/price-history`;
+  api('GET', u)
+    .then(ph => renderMarketRows(ph, 'man-market-rows'))
+    .catch(() => {});
+}
+
+/**
+ * @param {string} type @param {string} id @param {number} colorId @param {string} acqId @param {string} field
+ * @param {string} value @returns {Promise<boolean>} whether the market rows are to be reloaded
+ */
+async function manAcqWrite(type, id, colorId, acqId, field, value) {
+  const body = manAcqBody(acqId, field, value);
+  if (!body) return false;
+  const url =
+    type === 'fig'
+      ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
+      : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
+  const d = await api('PUT', url, body);
+  if (!d?.success) {
+    toast(d?.error || t('settings.error'), 'error');
+    if (field === 'date' || field === 'owner') await loadManAcqModal(type, id, colorId);
+    return false;
+  }
+  showSaved(acqId);
+  if (field === 'owner') {
+    // After this almost nothing on screen still matches: quantities, totals, owner badges. Easier to
+    // reload than to update four spots by hand.
+    toast(tRaw('household.owner_moved', { parts: 0, figs: 0 }), 'success');
+    closeAcqModal();
+    closeManDetail();
+    reloadManualTable(type);
+    return false;
+  }
+  // Reload the dialog on price (fetched market price), quantity (a new row is possible) or date (ordering)
+  if ((field === 'price' && (value === '' || value === null)) || field === 'qty' || field === 'date') {
+    await loadManAcqModal(type, id, colorId);
+  }
+  // Always refresh the tile so the badge and price match
+  reloadManualTable(type);
+  return true;
+}
+
 /**
  * @param {string} type
  * @param {string} id
@@ -485,70 +564,12 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
  */
 async function manAcqSave(type, id, colorId, acqId, field, value) {
   try {
-    const url =
-      type === 'fig'
-        ? `/v2/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
-        : `/v2/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
-    /** @type {{ unit_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
-    const body = {};
-    if (field === 'price') {
-      const price = amountFromField(`acq-price-${acqId}`);
-      if (!price.ok) return;
-      body.unit_price = price.value;
-    } else if (field === 'qty') {
-      const quantity = quantityFromField(`acq-quantity-${acqId}`);
-      if (!quantity.ok) return;
-      body.quantity = quantity.value;
-    } else if (field === 'date') {
-      if (!purchaseDateValid(`acq-date-field-${acqId}`)) return;
-      body.date = value;
-    } else if (field === 'owner') {
-      // Owner change = moving exactly this acquisition row. A manually recorded item has no content —
-      // only quantity and acquisition move (src/sets/setMove.ts, moveManualAcquisition). NO
-      // from_user_id: the server reads the sender from the row itself (moveSource) — here it was
-      // the viewer, see acqSave().
-      body.owner_user_id = parseInt(value, 10);
-    } else body.condition = value;
-    const d = await api('PUT', url, body);
-    if (!d?.success) {
-      toast(d?.error || t('settings.error'), 'error');
-      if (field === 'date' || field === 'owner') await loadManAcqModal(type, id, colorId);
-      return;
-    }
-    showSaved(acqId);
-    if (field === 'owner') {
-      // After this almost nothing on screen still matches: quantities, totals, owner badges. Easier to
-      // reload than to update four spots by hand.
-      toast(tRaw('household.owner_moved', { parts: 0, figs: 0 }), 'success');
-      closeAcqModal();
-      closeManDetail();
-      if (type === 'fig') loadManualFigsTable();
-      else loadManualParts();
-      return;
-    }
-    // Reload the dialog on price (fetched market price), quantity (a new row is possible) or date (ordering)
-    if ((field === 'price' && (value === '' || value === null)) || field === 'qty' || field === 'date') {
-      await loadManAcqModal(type, id, colorId);
-    }
-    // Always refresh the tile so the badge and price match
-    if (type === 'fig') loadManualFigsTable();
-    else loadManualParts();
+    if (!(await manAcqWrite(type, id, colorId, acqId, field, value))) return;
   } catch (e) {
     console.error('[manAcqSave]', e);
     toast(tRaw('settings.error'), 'error');
   }
-  // Reload market-price rows: when a purchase price is recorded for the first time in a condition, a
-  // new row appears for it.
-  const mi = _manItem;
-  if (mi) {
-    const u =
-      mi.type === 'fig'
-        ? `/v2/minifigs/${encodeURIComponent(mi.id)}/price-history`
-        : `/v2/parts/${encodeURIComponent(mi.id)}/${mi.colorId || 0}/price-history`;
-    api('GET', u)
-      .then(ph => renderMarketRows(ph, 'man-market-rows'))
-      .catch(() => {});
-  }
+  reloadManMarketRows();
 }
 
 /**

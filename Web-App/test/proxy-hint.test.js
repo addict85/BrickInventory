@@ -16,7 +16,7 @@
  * A proxy in front of the trusted proxy (measured 13.11.2026, each on its own):
  *   E  in onlyClientAddress() the abort on a second address
  *      deleted → red: „zwei Client-Adressen: kein Hinweis“
- *   F  the time condition (`uhr() - seit < EINE_ADDRESS.ms`) deleted → red:
+ *   F  the time condition (`uhr() - seit < ONE_ADDRESS.ms`) deleted → red:
  *      „nach zehn Minuten noch kein Hinweis“
  *   G  the call of eineAddress() deleted in proxyHint() → red:
  *      „eine einzige Client-Adresse über eine Stunde wird gemeldet“
@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { isDockerGateway } = _req('src/infra/proxyTrust.js');
-const { proxyHint, EINE_ADDRESS } = _req('src/http/proxyHint.js');
+const { proxyHint, ONE_ADDRESS } = _req('src/http/proxyHint.js');
 
 const anfrage = (von, xff) => ({ socket: { remoteAddress: von }, headers: xff ? { 'x-forwarded-for': xff } : {} });
 function lauf(trust, anfragen) {
@@ -85,10 +85,10 @@ function viaProxy(trust, ips, { minutes }) {
   });
   return meldungen;
 }
-const viele = (ip, n = EINE_ADDRESS.anfragen + 10) => Array(n).fill(ip);
+const viele = (ip, n = ONE_ADDRESS.requests + 10) => Array(n).fill(ip);
 
 test('a single client address over an hour is reported — once, with VORGELAGERTER_PROXY', () => {
-  const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * EINE_ADDRESS.anfragen), { minutes: 61 });
+  const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * ONE_ADDRESS.requests), { minutes: 61 });
   assert.equal(m.length, 1, 'a single client address over an hour is reported');
   assert.match(m[0], /Client-Adresse 172\.28\.73\.20\b/);
   assert.match(m[0], /VORGELAGERTER_PROXY/);
@@ -104,7 +104,7 @@ test('two client addresses, too short or without TRUST_PROXY: no hint', () => {
     'after ten minutes still no hint',
   );
   assert.deepEqual(
-    viaProxy('172.28.73.10', viele('192.168.1.20', EINE_ADDRESS.anfragen - 1), { minutes: 120 }),
+    viaProxy('172.28.73.10', viele('192.168.1.20', ONE_ADDRESS.requests - 1), { minutes: 120 }),
     [],
     'too few requests',
   );

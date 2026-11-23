@@ -30,19 +30,19 @@ export type CsvPayload = z.output<typeof SetCsvPayload>;
 export type CsvRow = CsvPayload['rows'][number];
 
 async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
-  const wo = z.row ? { row: z.row } : {};
+  const where = z.row ? { row: z.row } : {};
   if (z.error) {
-    const vars = z.error.wert !== undefined ? { wert: z.error.wert } : undefined;
+    const vars = z.error.wert !== undefined ? { value: z.error.wert } : undefined;
     return {
       set_number: z.sn,
-      ...wo,
+      ...where,
       success: false,
       code: z.error.code,
       ...(vars ? { vars } : {}),
       error: errorText(z.error.code, 'de', vars),
     };
   }
-  return { ...(await bookRow(sk, z, userId)), ...wo };
+  return { ...(await bookRow(sk, z, userId)), ...where };
 }
 
 /** Without network (setErfassen); the deadline only catches a stuck database. After a
@@ -55,11 +55,11 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
         requester: userId,
         setNumber: z.sn,
         quantity: z.qty,
-        kaufpreis: z.purchasePrice,
+        purchasePrice: z.purchasePrice,
         condition: z.condition,
         recordedAt: z.acquiredAt,
         ifPresent: 'aufstocken',
-        nacharbeit: 'csv',
+        rework: 'csv',
       }),
       new Promise<never>((_, rej) => {
         alarm = setTimeout(() => rej(new Error('Timeout')), sk.config.csvRowDeadlineMs);
@@ -89,13 +89,13 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
 
 async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): Promise<void> {
   const userId = Number(n.user_id),
-    lauf = String(n.lauf),
+    run = String(n.lauf),
     rows = n.rows ?? [];
-  const state = await sk.jobQueue.setImportFort(userId, lauf);
+  const state = await sk.jobQueue.setImportProgress(userId, run);
   if (!state) return;
   const results = state.results;
   const write = () =>
-    sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
+    sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, run);
 
   if (state.current && results.length < rows.length) {
     results.push({
@@ -111,13 +111,13 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
     if (k.ended) throw new JobInterrupted();
     const z = rows[i]!;
     // Aborted, superseded or assigned elsewhere: stop without writing into foreign rows.
-    if (!(await k.heartbeat()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, lauf))) return;
+    if (!(await k.heartbeat()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, run))) return;
     await sk.jobQueue.reportJobStatus(userId);
     results.push(await importRow(sk, z, userId));
     if (!(await write())) return;
     await sk.jobQueue.reportJobStatus(userId);
   }
-  await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, lauf);
+  await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, run);
   await sk.jobQueue.reportJobStatus(userId);
   console.log(
     `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,

@@ -82,14 +82,14 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
 
   await t.test('check key: error at the field, in plain text', async () => {
     const check = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
-    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, ungueltig: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
+    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, invalid: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
       fokus: document.activeElement?.id, zeichen: document.getElementById('wiz-status-rebrickable').className,
       toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) })`;
     await b.auswerten(check);
     await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
     const leer = await b.auswerten(state);
     assert.match(leer.fehler, /Schlüssel eintragen/);
-    assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
+    assert.deepEqual([leer.invalid, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
     await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
     await b.auswerten(check);
     await bis(

@@ -25,7 +25,7 @@ export interface ImportStatusRow {
   updated_at: Date | null;
 }
 
-export function importStand(db: DbInterface, userId: number) {
+export function importState(db: DbInterface, userId: number) {
   return db.get<ImportStatusRow>('SELECT * FROM import_status WHERE user_id = $1', [userId]);
 }
 
@@ -58,23 +58,23 @@ export async function changeImportStatus(
   db: DbInterface,
   userId: number,
   fields: Record<string, unknown>,
-  lauf?: string,
+  runId?: string,
 ): Promise<number> {
   const keys = columns(fields);
   const values = [userId, ...keys.map(k => fields[k])];
   const r = await db.run(
     `UPDATE import_status SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()
-      WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
-    lauf ? [...values, lauf] : values,
+      WHERE user_id = $1${runId ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
+    runId ? [...values, runId] : values,
   );
   return r?.changes ?? 0;
 }
 
-export function setRunFort(db: DbInterface, userId: number, lauf: string) {
+export function setRunProgress(db: DbInterface, userId: number, runId: string) {
   return db.get<Pick<ImportStatusRow, 'results' | 'current'>>(
     `UPDATE import_status SET status = 'running', error = NULL, updated_at = NOW()
       WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
       RETURNING results, current`,
-    [userId, lauf],
+    [userId, runId],
   );
 }

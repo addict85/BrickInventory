@@ -31,7 +31,7 @@ const { AXE } = require('./helpers/layout-measurement');
 const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
-const LEER = { success: true, currency: 'EUR', total_value: '0', sets: [], parts: [], figs: [], total: 0 };
+const EMPTY = { success: true, currency: 'EUR', total_value: '0', sets: [], parts: [], figs: [], total: 0 };
 const geladen =
   teil => `performance.getEntriesByType('resource').map(e => e.name).filter(n => n.includes(${JSON.stringify(teil)}))
   .map(n => new URL(n).pathname)`;
@@ -41,9 +41,9 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     name: `uxr_${process.pid}`,
     holding: patternCollection,
     intercept: [
-      { muster: '*finance/*valuation*', contains: '/finance/valuation', response: { ...LEER, totals: {} } },
-      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', response: LEER },
-      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', response: LEER },
+      { muster: '*finance/*valuation*', contains: '/finance/valuation', response: { ...EMPTY, totals: {} } },
+      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', response: EMPTY },
+      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', response: EMPTY },
     ],
   });
   if (a.reason) {

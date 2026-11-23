@@ -91,6 +91,48 @@ function drawQr(container, qrData) {
   });
 }
 
+/** @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/qr-token'>} d the QR response @param {string | undefined} serverUrl */
+function showQrHints(d, serverUrl) {
+  // The lifetime from the server's response, not from the selection: if it doesn't know the value, the
+  // sliding default applies. Three cases — 0 means unlimited, null means nothing was chosen; a plain
+  // truthiness check would lump both together.
+  const caFp = G('qr-ca-fp');
+  if (caFp) {
+    caFp.hidden = !d.cert_sha256;
+    caFp.textContent = d.cert_sha256 ? tRaw('qr.ca_fp', { fp: d.cert_sha256 }) : '';
+  }
+  const plainHint = G('qr-tls-hint');
+  if (plainHint) {
+    plainHint.hidden = !/^http:\/\//i.test(serverUrl || '');
+    plainHint.textContent = plainHint.hidden ? '' : tRaw('qr.plain_text_hint');
+  }
+  const access = G('qr-access-hint');
+  if (access)
+    access.textContent =
+      d.token_days === 0
+        ? tRaw('qr.access_unlimited')
+        : (d.token_days ?? 0) > 0
+          ? tRaw('qr.access_days', { n: d.token_days })
+          : tRaw('qr.access_default');
+}
+
+/** The duration comes from the server (expires_in): a fixed value would drift past the code's actual end.
+ * @param {HTMLElement} hint @param {HTMLElement} container @param {number} secs */
+function startQrCountdown(hint, container, secs) {
+  const fmt = (/** @type {number} */ v) => `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
+  let left = secs;
+  _expiry = setInterval(() => {
+    left--;
+    hint.textContent = tRaw('qr.valid_for', { t: fmt(left) });
+    if (left <= 0) {
+      clearInterval(_expiry);
+      hint.textContent = tRaw('qr.expired');
+      container.replaceChildren();
+    }
+  }, 1000);
+  hint.textContent = tRaw('qr.valid_for', { t: fmt(left) });
+}
+
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
@@ -128,41 +170,9 @@ async function generateQrCode() {
     // https address.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     drawQr(container, qrData);
-    // The duration comes from the server (expires_in): a fixed value would drift past the code's actual end.
-    let secs = Number(d.expires_in) || 300;
-    const fmt = (/** @type {number} */ v) => `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
-    _expiry = setInterval(() => {
-      secs--;
-      hint.textContent = tRaw('qr.valid_for', { t: fmt(secs) });
-      if (secs <= 0) {
-        clearInterval(_expiry);
-        hint.textContent = tRaw('qr.expired');
-        container.replaceChildren();
-      }
-    }, 1000);
+    startQrCountdown(hint, container, Number(d.expires_in) || 300);
     _pairing = { id: d.pairing, timer: setInterval(checkPairing, 2000) };
-    hint.textContent = tRaw('qr.valid_for', { t: fmt(secs) });
-    // The lifetime from the server's response, not from the selection: if it doesn't know the value, the
-    // sliding default applies. Three cases — 0 means unlimited, null means nothing was chosen; a plain
-    // truthiness check would lump both together.
-    const caFp = G('qr-ca-fp');
-    if (caFp) {
-      caFp.hidden = !d.cert_sha256;
-      caFp.textContent = d.cert_sha256 ? tRaw('qr.ca_fp', { fp: d.cert_sha256 }) : '';
-    }
-    const plainHint = G('qr-tls-hint');
-    if (plainHint) {
-      plainHint.hidden = !/^http:\/\//i.test(serverUrl || '');
-      plainHint.textContent = plainHint.hidden ? '' : tRaw('qr.plain_text_hint');
-    }
-    const access = G('qr-access-hint');
-    if (access)
-      access.textContent =
-        d.token_days === 0
-          ? tRaw('qr.access_unlimited')
-          : (d.token_days ?? 0) > 0
-            ? tRaw('qr.access_days', { n: d.token_days })
-            : tRaw('qr.access_default');
+    showQrHints(d, serverUrl);
     // After the first generation, the button reads "regenerate" — the one place where the label
     // deliberately changes.
     release(tRaw('qr.regenerate'));

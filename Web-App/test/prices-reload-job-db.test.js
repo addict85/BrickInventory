@@ -162,7 +162,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     const gesehen = [];
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
       price_refresh: {
-        ausfuehren: async (_n, k) => {
+        run: async (_n, k) => {
           await k.progress({ done: 5.532, total: 8 });
           gesehen.push(await state());
           // BigInt cannot be written as JSON: this one report fails.

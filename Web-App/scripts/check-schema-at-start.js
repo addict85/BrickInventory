@@ -19,7 +19,7 @@ const REQUEST_PATH = [
 ];
 
 /** Schema statements. Only in real SQL, not in prose. */
-const MUSTER = /\b(CREATE\s+TABLE|CREATE\s+(?:UNIQUE\s+)?INDEX|ALTER\s+TABLE)\b/i;
+const PATTERN = /\b(CREATE\s+TABLE|CREATE\s+(?:UNIQUE\s+)?INDEX|ALTER\s+TABLE)\b/i;
 
 /** @param {string} source */
 function withoutComments(source) {
@@ -44,10 +44,10 @@ function collect(dir, out) {
 
 /** @type {string[]} */
 const files = [];
-for (const teil of REQUEST_PATH) {
-  const dir = path.join(ROOT, teil);
+for (const part of REQUEST_PATH) {
+  const dir = path.join(ROOT, part);
   if (!fs.existsSync(dir)) {
-    console.error(`ROT — ${teil} gibt es nicht (mehr). Umbenannt? Ohne diesen Ordner`);
+    console.error(`ROT — ${part} gibt es nicht (mehr). Umbenannt? Ohne diesen Ordner`);
     console.error('prüft die Suche nichts und wäre trotzdem grün.');
     process.exit(1);
   }
@@ -68,7 +68,7 @@ for (const file of files) {
   const rel = path.relative(ROOT, file);
   const rows = withoutComments(fs.readFileSync(file, 'utf8')).split('\n');
   rows.forEach((z, i) => {
-    if (MUSTER.test(z)) hits.push(`${rel}:${i + 1}  ${z.trim().slice(0, 90)}`);
+    if (PATTERN.test(z)) hits.push(`${rel}:${i + 1}  ${z.trim().slice(0, 90)}`);
   });
 }
 
@@ -82,9 +82,9 @@ const known = withoutComments(
     .join('\n'),
 );
 
-for (const teil of [/\bCREATE\s+TABLE\b/i, /\bCREATE\s+(?:UNIQUE\s+)?INDEX\b/i, /\bALTER\s+TABLE\b/i]) {
-  if (!teil.test(known)) {
-    console.error(`ROT — das Teilmuster ${teil} findet in db/ nichts.`);
+for (const part of [/\bCREATE\s+TABLE\b/i, /\bCREATE\s+(?:UNIQUE\s+)?INDEX\b/i, /\bALTER\s+TABLE\b/i]) {
+  if (!part.test(known)) {
+    console.error(`ROT — das Teilmuster ${part} findet in db/ nichts.`);
     console.error('Dann ist es veraltet, und ein leeres Ergebnis oben sagt nichts.');
     process.exit(1);
   }
@@ -114,8 +114,8 @@ const DUPLICATE_ALLOWED = new Map([]);
 
 /** @type {string[]} */
 const allSources = [];
-for (const teil of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
-  const dir = path.join(ROOT, teil);
+for (const part of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
+  const dir = path.join(ROOT, part);
   if (fs.existsSync(dir)) collectAll(dir, allSources);
 }
 if (fs.existsSync(path.join(ROOT, 'server.ts'))) allSources.push(path.join(ROOT, 'server.ts'));
@@ -150,9 +150,9 @@ for (const file of allSources) {
     // does not know that. An empty name silently falls through here instead of throwing.
     const name = (m[1] || '').toLowerCase();
     if (!name) continue;
-    const wo = created.get(name) || [];
-    if (!wo.includes(rel)) wo.push(rel);
-    created.set(name, wo);
+    const where = created.get(name) || [];
+    if (!where.includes(rel)) where.push(rel);
+    created.set(name, where);
   }
 }
 

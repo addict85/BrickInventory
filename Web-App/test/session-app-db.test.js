@@ -43,8 +43,8 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
   const app = buildApp({
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'p'.repeat(48),
-    dienste: require('./helpers/sources').testServices(),
+    sessionSecret: 'p'.repeat(48),
+    services: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

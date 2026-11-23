@@ -59,7 +59,7 @@ const PLACES = [
   ['src/catalog/repository/catalogSearch.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // The extensions per MIME type of the uploads have been in the reception since 05.11.2026.
-  ['src/http/fileUpload.ts', 'o.typen', /o\.typen\s*\[/],
+  ['src/http/fileUpload.ts', 'o.types', /o\.types\s*\[/],
 ];
 
 for (const [datei, name, muster] of PLACES) {

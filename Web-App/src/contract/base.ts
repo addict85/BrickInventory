@@ -48,7 +48,7 @@ export const outdated = <T extends z.ZodType>(s: T, insteadOf: string) =>
 /** Percent as text ("12.3"); the number is in pnl_percent. */
 export const PERCENT_TEXT = outdated(z.string().nullable().optional(), 'pnl_percent');
 
-const inPath = (muster: RegExp) => z.string().regex(muster);
+const inPath = (pattern: RegExp) => z.string().regex(pattern);
 /** A row identifier in the path; digits become a number. The upper bound (int4
  * or the jobs' bigint) is set per router by vertragsRouter. */
 const idInPath = inPath(/^\d{1,15}$/)
@@ -193,7 +193,7 @@ export const TEXT_OR_EMPTY = (max = 200) =>
     .nullable()
     .optional()
     .transform(v => v ?? '');
-export const JA_NO = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
+export const YES_NO = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
 /** Settings as key and simple value; which ones apply is checked by the route. */
 export const SETTINGS = z.record(
   z.string().max(64),

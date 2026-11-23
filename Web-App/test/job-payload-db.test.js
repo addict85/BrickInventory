@@ -52,7 +52,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
       require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
-          ausfuehren: async n => {
+          run: async n => {
             gesehen.push(n);
           },
         },
@@ -74,7 +74,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
       require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
-          ausfuehren: async () => {
+          run: async () => {
             gelaufen++;
           },
           givenUp: async () => {

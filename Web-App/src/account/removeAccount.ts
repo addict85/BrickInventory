@@ -19,10 +19,10 @@ export async function removeAccount(k: AccountContext, target: number, through: 
   const remove = () =>
     k.transact(async t => {
       // Before deleting: afterwards the name for the log can no longer be determined.
-      if (through !== null && fremd) await t.protokoll.logEntry(through, target, 'account_deleted');
+      if (through !== null && fremd) await t.log.logEntry(through, target, 'account_deleted');
       const route =
-        through === null ? await t.konten.deleteOwnAccount(target) : await t.konten.deleteAccount(target, through);
-      if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('konflikt', 'last_admin');
+        through === null ? await t.accounts.deleteOwnAccount(target) : await t.accounts.deleteAccount(target, through);
+      if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('conflict', 'last_admin');
       if (!route) notFound('user_not_found_or_own');
       // user_sessions has no foreign key to users.
       await increaseSessionVersion(t, target);
@@ -46,7 +46,7 @@ export async function removeAccountFiles(k: AccountContext, target: number): Pro
     await k.jobQueue.placeJobOne(
       'account_files',
       { user_id: target },
-      { schluessel: `account_files:${target}`, maxAttempts: 10, afterSeconds: 60 },
+      { key: `account_files:${target}`, maxAttempts: 10, afterSeconds: 60 },
     );
     return 'eingereiht';
   }

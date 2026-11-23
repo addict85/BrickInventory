@@ -120,7 +120,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   };
   const state = async uid => ({
     tokens: (await db.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [uid])).length,
-    sitzungen: (await db.all(`SELECT 1 FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).length,
+    sessions: (await db.all(`SELECT 1 FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).length,
     faktor: (await db.all('SELECT 1 FROM second_factor WHERE user_id = $1', [uid])).length,
     newPassword: await passwordFits(
       NEU,
@@ -144,7 +144,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     const an = `${namen[ids.indexOf(uid)]}@beispiel.de`;
     const m = () => [...mails].reverse().find(x => x.type === 'takeover_announced' && x.an === an);
     await bis(() => m(), 1000);
-    return m()?.abbruch;
+    return m()?.cancelToken;
   };
 
   await t.test('a normal account: password and factor also only after the deadline, with mail and link', async () => {
@@ -154,13 +154,13 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     const f = await callFn('DELETE', `/users/${nutzer}/second-factor`, { admin_password: PASS });
     const p = await callFn('PUT', `/users/${nutzer}/password`, { password: NEU, admin_password: PASS });
     for (const r of [p, f]) inFrist(r);
-    assert.deepEqual(await state(nutzer), { tokens: 1, sitzungen: 1, faktor: 1, newPassword: false });
+    assert.deepEqual(await state(nutzer), { tokens: 1, sessions: 1, faktor: 1, newPassword: false });
     const link = await abortLink(nutzer);
     assert.ok(link, 'the target gets a mail and a cancel link');
-    const anAdmin = mails.filter(m => m.type === 'verwaltung_uebernahme_angekuendigt');
-    assert.ok(anAdmin.length >= 1 && anAdmin.every(m => !m.abbruch), 'the admins learn about it, without a link');
+    const anAdmin = mails.filter(m => m.type === 'admin_takeover_announced');
+    assert.ok(anAdmin.length >= 1 && anAdmin.every(m => !m.cancelToken), 'the admins learn about it, without a link');
     assert.equal(await faellig(nutzer), 2);
-    assert.deepEqual(await state(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, newPassword: true });
+    assert.deepEqual(await state(nutzer), { tokens: 0, sessions: 0, faktor: 0, newPassword: true });
     // The link of a normal account cancels like that of an administrator.
     mails.length = 0;
     inFrist(await callFn('PUT', `/users/${nutzer}/password`, { password: PASS, admin_password: PASS }));
@@ -182,10 +182,10 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     const p = await callFn('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS });
     const f = await callFn('DELETE', `/users/${vw}/second-factor`, { admin_password: PASS });
     for (const r of [p, f]) inFrist(r);
-    assert.deepEqual(await state(vw), { tokens: 1, sitzungen: 1, faktor: 1, newPassword: false });
+    assert.deepEqual(await state(vw), { tokens: 1, sessions: 1, faktor: 1, newPassword: false });
     assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 0, 'before the deadline');
     assert.equal(await faellig(vw), 2);
-    assert.deepEqual(await state(vw), { tokens: 0, sitzungen: 0, faktor: 0, newPassword: true });
+    assert.deepEqual(await state(vw), { tokens: 0, sessions: 0, faktor: 0, newPassword: true });
     assert.deepEqual(await open(vw), []);
   });
 
@@ -204,8 +204,8 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
       'nothing changes before the deadline',
     );
     assert.ok(await abortLink(vw4), 'the target gets a cancel link');
-    const anAdmin = mails.filter(m => m.type === 'verwaltung_uebernahme_angekuendigt');
-    assert.ok(anAdmin.length >= 3 && anAdmin.every(m => !m.abbruch), 'the other admins without a link');
+    const anAdmin = mails.filter(m => m.type === 'admin_takeover_announced');
+    assert.ok(anAdmin.length >= 3 && anAdmin.every(m => !m.cancelToken), 'the other admins without a link');
     for (const uid of [vw4, vw5, vw6]) await faellig(uid);
     assert.deepEqual(
       [await konten(vw4), await konten(vw5), await konten(vw6)],

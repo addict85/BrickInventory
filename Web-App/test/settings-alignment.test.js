@@ -142,7 +142,9 @@ test('the storage locations are laid out like a table', () => {
   // markup part is executed, with fixed data.
   const source = QUELLE.slice(QUELLE.indexOf('export async function loadLocationManagement'));
   const ende = source.indexOf('\n}\n') + 3;
-  const rumpf = source.slice(0, ende);
+  // occupancyOf() turns the occupancy into the text of a row; it belongs to the markup part.
+  const helper = QUELLE.slice(QUELLE.indexOf('function occupancyOf'));
+  const rumpf = helper.slice(0, helper.indexOf('\n}\n') + 3) + source.slice(0, ende);
   assert.match(rumpf, /storage-list/, 'The section was not found');
 
   const sandbox = {
@@ -180,7 +182,7 @@ test('the storage locations are laid out like a table', () => {
           },
   };
   vm.createContext(sandbox);
-  vm.runInContext(rumpf.replace(/^export\s+/, '') + '\nERG = loadLocationManagement();', sandbox);
+  vm.runInContext(rumpf.replace(/^export\s+/gm, '') + '\nERG = loadLocationManagement();', sandbox);
   return sandbox.ERG.then(() => {
     const raster = d.querySelector('#storage-list > div[data-style*="grid"]');
     assert.ok(

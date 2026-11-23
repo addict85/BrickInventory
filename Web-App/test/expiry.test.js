@@ -25,7 +25,7 @@ function lauf(name, inhalt, env) {
   const datei = path.join(ordner, name);
   fs.writeFileSync(datei, `const test = require('node:test');\n${inhalt}\n`);
   // Without these markers the inner node --test would consider itself a child.
-  const { NODE_TEST_CONTEXT: _k, TEST_AUSLAUF_AKTIV: _a, TEST_DATEI_FRIST_MS: _f, ...rest } = process.env;
+  const { NODE_TEST_CONTEXT: _k, TEST_AUSLAUF_AKTIV: _a, TEST_FILE_DEADLINE_MS: _f, ...rest } = process.env;
   const start = Date.now();
   const r = spawnSync(process.execPath, ['--require', EXPIRY, '--test', '--test-reporter=tap', datei], {
     cwd: ordner,
@@ -55,7 +55,7 @@ test('a hanging t.after hits the deadline of the whole file', () => {
   const r = lauf(
     'haken.test.js',
     "test('t.after hängt', (t) => { t.after(() => new Promise(() => { setInterval(() => {}, 1000); })); });",
-    { TEST_AUSLAUF_MS: '60000', TEST_DATEI_FRIST_MS: '1500' },
+    { TEST_AUSLAUF_MS: '60000', TEST_FILE_DEADLINE_MS: '1500' },
   );
   assert.equal(r.error, undefined, `the child did not end: ${r.error}`);
   assert.equal(r.status, 1, r.text);
@@ -65,7 +65,7 @@ test('a hanging t.after hits the deadline of the whole file', () => {
 test('a clean file ends immediately and green', () => {
   const r = lauf('sauber.test.js', "test('nichts offen', () => {});", {
     TEST_AUSLAUF_MS: '30000',
-    TEST_DATEI_FRIST_MS: '30000',
+    TEST_FILE_DEADLINE_MS: '30000',
   });
   assert.equal(r.status, 0, r.text);
   assert.doesNotMatch(r.text, /\[auslauf\]/);

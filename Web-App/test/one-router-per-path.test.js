@@ -51,7 +51,7 @@ test('one router per mount point', () => {
   assert.ok(je.size >= 2, `only ${je.size} router mounts found in startup/app.ts`);
   // Health and start status answer BEFORE the entrance (loginAtInbox),
   // the router of the API behind it: two places in the stack, hence two routers.
-  const BEFORE_THE_INBOX = new Set(['buildGesundheitRouter']);
+  const BEFORE_THE_INBOX = new Set(['buildHealthRouter']);
   const doppelt = [...je]
     .map(([p, r]) => [p, r.filter(n => !BEFORE_THE_INBOX.has(n))])
     .filter(([, r]) => r.length > 1)

@@ -7,34 +7,36 @@
  */
 
 /** Domain types from core-model: package, empty value, optionally an own serializer (then always nullable). */
-/** @type {Record<string, { paket: string, leer: string, serializer?: string }>} */
-const FACHTYPEN = {
+/** @type {Record<string, { pkg: string, empty: string, serializer?: string }>} */
+const DOMAIN_TYPES = {
   Condition: {
-    paket: 'ch.brickinventoryapp.model.domain.Condition',
-    leer: 'Condition.NEW',
+    pkg: 'ch.brickinventoryapp.model.domain.Condition',
+    empty: 'Condition.NEW',
   },
   CurrencyCode: {
-    paket: 'ch.brickinventoryapp.model.domain.CurrencyCode',
-    leer: 'CurrencyCode.NONE',
+    pkg: 'ch.brickinventoryapp.model.domain.CurrencyCode',
+    empty: 'CurrencyCode.NONE',
   },
   RunStatus: {
-    paket: 'ch.brickinventoryapp.model.domain.RunStatus',
-    leer: 'RunStatus.UNKNOWN',
+    pkg: 'ch.brickinventoryapp.model.domain.RunStatus',
+    empty: 'RunStatus.UNKNOWN',
   },
   AlarmDirection: {
-    paket: 'ch.brickinventoryapp.model.domain.AlarmDirection',
-    leer: 'AlarmDirection.BELOW',
+    pkg: 'ch.brickinventoryapp.model.domain.AlarmDirection',
+    empty: 'AlarmDirection.BELOW',
   },
   Design: {
-    paket: 'ch.brickinventoryapp.model.ui.theme.Design',
-    leer: 'null',
+    pkg: 'ch.brickinventoryapp.model.ui.theme.Design',
+    empty: 'null',
     serializer: 'ch.brickinventoryapp.model.ui.theme.DesignOrNothing',
   },
 };
 
 /** Raw name (schema or `<Parent><Field>`) → Kotlin name. The same name means one shape. */
 /** @type {Record<string, string>} */
-const NAMEN = {
+const NAMES = {
+  AcquisitionReply: 'GenericResponse',
+  AcquisitionReplySet: 'SetAggregate',
   AdminCondition: 'GenericAdminResponse',
   AdminMessage: 'GenericAdminResponse',
   AdminRoute: 'PasswordSet',
@@ -47,8 +49,6 @@ const NAMEN = {
   DELETEApiV2MinifigsFigNumber: 'GenericResponse',
   DELETEApiV2TrashId: 'Done',
   Diagnose: 'Diagnosis',
-  Erfassungsantwort: 'GenericResponse',
-  ErfassungsantwortSet: 'SetAggregate',
   ErrorBody: 'ErrorResponse',
   FigsValuationResponseFigsEntry: 'FigValuationItem',
   FigsValuationResponseFigsEntryAcquisitionsEntry: 'ValuationAcquisition',
@@ -61,7 +61,6 @@ const NAMEN = {
   GETApiV2MinifigsFigsEntryOwnersEntry: 'AccountName',
   GETApiV2Parts: 'PartsResponse',
   GETApiV2PartsPartsEntry: 'Part',
-  Gesundheit: 'Health',
   HoldingRequestPartsEntry: 'HoldingPart',
   HouseholdJoined: 'GenericResponse',
   HouseholdJoinedLinkedTo: 'AccountName',
@@ -90,23 +89,22 @@ const NAMEN = {
   PdfJob: 'PdfJobResponse',
   PdfJobRequestPartsEntry: 'PdfJobPart',
   PdfJobRequestSetsEntry: 'PdfJobSet',
-  PdfStand: 'PdfJobState',
+  PdfState: 'PdfJobState',
   PieceChanged: 'GenericResponse',
   ProfileSaved: 'ProfileSavedResponse',
   SecondFactorSetup: 'SecondFactorSetupResponse',
   SecondFactorState: 'SecondFactorStateResponse',
   SetCsvImportStarted: 'CsvImportResult',
-  SetFigurenResponse: 'MinifigsResponse',
-  SetFigurenResponseFigsEntry: 'Minifig',
-  SetFigurenResponseFigsEntryOwnersEntry: 'AccountName',
   SetItemBricklink: 'BrickLinkRef',
   SetItemOwnersEntry: 'AccountName',
-  SetTeileResponse: 'PartsResponse',
-  SetTeileResponsePartsEntry: 'Part',
+  SetMinifigsResponse: 'MinifigsResponse',
+  SetMinifigsResponseFigsEntry: 'Minifig',
+  SetMinifigsResponseFigsEntryOwnersEntry: 'AccountName',
+  SetPartsResponse: 'PartsResponse',
+  SetPartsResponsePartsEntry: 'Part',
   SettingsSaved: 'GenericResponse',
   StepApproval: 'StepApprovalResponse',
   StepChallenge: 'StepChallengeResponse',
-  TlsStand: 'TlsState',
   TokenDetails: 'TokenInfo',
   ValuationSetAcquisitionsEntry: 'ValuationAcquisition',
   ValuationSetOwnersEntry: 'AccountName',
@@ -429,7 +427,7 @@ const CONSTANTS = {
 };
 
 /** Response fields that may be missing and are then null instead of empty. */
-const NULLBAR = new Set([
+const NULLABLE = new Set([
   'QrMessage.pickup',
   'QrMessage.code',
   'QrPickup.username',
@@ -456,7 +454,7 @@ const NULLBAR = new Set([
 ]);
 
 /** Body fields the app always sends, never null: the contract leaves them optional for older clients. */
-const PFLICHT = new Set([
+const REQUIRED = new Set([
   'DeviceKeyRequest.chain',
   'WantedItemRequest.condition',
   'PriceAlertRequest.condition',
@@ -571,7 +569,7 @@ const OMIT = new Set(['ErrorCode']);
 
 /** `<METHOD> <path>` → name of the body the app sends. */
 /** @type {Record<string, string>} */
-const ANFRAGEN = {
+const REQUESTS = {
   'DELETE /api/v2/settings/tokens/{tokenId}': 'SecondFactorRequest',
   'DELETE /api/v2/vouchers/{id}': 'SecondFactorRequest',
   'POST /api/v2/auth/change-password': 'PasswordChange',
@@ -625,14 +623,14 @@ const ANFRAGEN = {
 module.exports = {
   STRICT,
   OMIT,
-  FACHTYPEN,
-  NAMEN,
+  DOMAIN_TYPES,
+  NAMES,
   FIELD_TYPES,
   DEFAULTS,
   PROPERTIES,
   CONSTANTS,
-  NULLBAR,
-  PFLICHT,
+  NULLABLE,
+  REQUIRED,
   NULL_SEND,
-  ANFRAGEN,
+  REQUESTS,
 };

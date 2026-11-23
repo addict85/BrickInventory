@@ -63,7 +63,7 @@ test('row types against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testAccess();
   t.after(() => db.pool.end());
-  const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-snapshot.sql'), 'utf8'));
+  const schema = Z.tablesOf(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-snapshot.sql'), 'utf8'));
 
   await t.test('every table and column including NULL is like this in the database', async () => {
     const zeilen = await db.all(
@@ -81,7 +81,7 @@ test('row types against the database', { concurrency: 1 }, async t => {
   });
 
   await t.test('every column type arrives as db/rows.ts promises', async () => {
-    const typen = new Set([...schema.values()].flatMap(sp => sp.map(s => s.typ)));
+    const typen = new Set([...schema.values()].flatMap(sp => sp.map(s => s.type)));
     const fehlt = [...typen].filter(x => !(x in PROBE));
     assert.deepEqual(fehlt, [], 'add a probe for new column types');
     for (const typ of typen) {

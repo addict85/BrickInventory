@@ -62,7 +62,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
     return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
   const k = dbConfigFromEnvironment();
   // The owner writes the test data, bypassing row security.
-  const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const eigen = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });
   t.after(async () => {
     await app.pool.end().catch(() => {});
@@ -113,7 +113,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
     const ueber = new URL(ziel);
     ueber.hostname = '127.0.0.1';
     ueber.port = String(srv.address().port);
-    const nah = createDb({ ...k, verbindung: { connectionString: ueber.toString() }, pool: { ...k.pool, max: 1 } });
+    const nah = createDb({ ...k, connection: { connectionString: ueber.toString() }, pool: { ...k.pool, max: 1 } });
     try {
       await nah.get('SELECT 1');
       state.roundtrips = 0;

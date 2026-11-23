@@ -260,7 +260,7 @@ test('the rebuild does not block the request', () => {
   );
   assert.match(fn, /return state !== null/, 'A stale state is served; without any state the live query takes over');
 
-  assert.match(src, /neuaufbau: new Map/, 'Without a lock parallel requests start the same build several times');
+  assert.match(src, /rebuild: new Map/, 'Without a lock parallel requests start the same build several times');
   assert.match(
     src,
     /export async function rebuildNow/,

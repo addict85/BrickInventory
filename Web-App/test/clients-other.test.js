@@ -19,7 +19,7 @@ const { httpsStub, reply, clientsAccess } = require('./helpers/https-stub');
 const { productTitle } = _req('clients/upcitemdb.js');
 const { createRebrickable } = _req('clients/rebrickable.js');
 const { legoFetch } = _req('clients/legoBalance.js');
-const { fetchImage, oeffneBild, IMAGE_HEADERS } = _req('clients/imageCdn.js');
+const { fetchImage, openImage, IMAGE_HEADERS } = _req('clients/imageCdn.js');
 const { loadCatalogCsv } = _req('clients/rebrickableCsv.js');
 const { revocationListFetch } = _req('clients/googleAttestation.js');
 const { asFetchError } = _req('clients/fetchError.js');
@@ -73,9 +73,9 @@ test('images from the CDNs: whole, as a stream, with the browser headers', async
       : reply(res, 200, image, { 'content-type': 'image/jpeg' }),
   );
   const r = await fetchImage('https://cdn.rebrickable.com/media/sets/10294-1.jpg', { maxBytes: 1000 });
-  assert.deepEqual([r.status, r.koerper], [200, image]);
+  assert.deepEqual([r.status, r.body], [200, image]);
   assert.equal(stub.calls[0].headers.referer, IMAGE_HEADERS.Referer);
-  const s = await oeffneBild('https://images.brickset.com/sets/10294-1.jpg', { maxBytes: 1000, pool: true });
+  const s = await openImage('https://images.brickset.com/sets/10294-1.jpg', { maxBytes: 1000, pool: true });
   const parts = [];
   for await (const d of s.stream()) parts.push(d);
   assert.deepEqual(Buffer.concat(parts), image);

@@ -9,13 +9,13 @@
  *      “250 pages: 422 with an understandable message” (the stack is read)
  *   B  readInBackground() calls readUploadedPdf() directly → red: “reading happens
  *      in a worker thread”
- *   C  kontoSchranke('voucherPdf') deleted on POST /vouchers/pdf → red:
+ *   C  accountLimit('voucherPdf') deleted on POST /vouchers/pdf → red:
  *      “a second voucher PDF of the same account does not wait”
- *   D  the release on 'close' deleted in kontoSchranke() → red: “… after
+ *   D  the release on 'close' deleted in accountLimit() → red: “… after
  *      the end it works again”
- *   E  kontoSchranke('strom') deleted on the CSV stream → red: “at most six
+ *   E  accountLimit('strom') deleted on the CSV stream → red: “at most six
  *      event streams per account”
- *   F  the release on 'finish' deleted in kontoSchranke() → red: “the
+ *   F  the release on 'finish' deleted in accountLimit() → red: “the
  *      slot is free as soon as the response is handed over”
  *
  * REQUIRE_DB=1.
@@ -128,7 +128,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     try {
       const r = await readInBackground(await pdfWith(3));
       assert.equal(r.kind, 'gelesen');
-      assert.equal(r.seiten, 3);
+      assert.equal(r.pages, 3);
     } finally {
       wt.Worker = Echt;
     }
@@ -182,8 +182,8 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
 // full run before 'close' and got 429. Here without network so that it does not depend on the timing.
 test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
-  const { accountGate: kontoSchranke } = _req('routes/api/middleware.js');
-  const limit = kontoSchranke('voucherPdf');
+  const { accountGate: accountLimit } = _req('routes/api/middleware.js');
+  const limit = accountLimit('voucherPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {
       statusCode: 200,

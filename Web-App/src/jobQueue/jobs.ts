@@ -27,8 +27,8 @@ export interface JobRun {
 }
 
 /** Throws the reason for the abort; between two steps of a long run. */
-export function checkAbort(lauf: JobRun | undefined): void {
-  lauf?.signal?.throwIfAborted();
+export function checkAbort(run: JobRun | undefined): void {
+  run?.signal?.throwIfAborted();
 }
 
 export interface JobRow {
@@ -47,11 +47,11 @@ export interface JobRow {
 export interface Enqueue {
   userId?: number | null;
   /** If an open job with this key already exists, no second one is added. */
-  schluessel?: string;
+  key?: string;
   maxAttempts?: number;
   afterSeconds?: number;
   /** Takes precedence over afterSeconds. */
-  dueAb?: Date;
+  dueFrom?: Date;
   progress?: Progress;
 }
 
@@ -75,7 +75,7 @@ export interface JobContext {
   readonly signal: AbortSignal;
   /** A long job stops at the next safe point. */
   readonly ended: boolean;
-  readonly versuch: number;
+  readonly attempt: number;
 }
 
 /** Is returned and continued later without counting as failed. */

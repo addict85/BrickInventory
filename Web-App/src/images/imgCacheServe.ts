@@ -19,9 +19,9 @@ export function imageType(raw: string): string {
 /** What can be delivered from the disk cache; sending happens in
  * src/images/http/imageCacheDelivery.ts. */
 export interface CacheHits {
-  datei: string;
-  typ: string;
-  groesse: number | null;
+  file: string;
+  contentType: string;
+  size: number | null;
   etag: string | null;
 }
 
@@ -49,9 +49,9 @@ export async function cacheHit(
         throw new Error('unbrauchbare Vorschau verworfen');
       }
       return {
-        datei: thumbFile,
-        typ: await previewType(thumbFile),
-        groesse: tst.size,
+        file: thumbFile,
+        contentType: await previewType(thumbFile),
+        size: tst.size,
         etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
       };
     } catch (_) {
@@ -80,11 +80,11 @@ export async function cacheHit(
     // The cap deletes by last use; under noatime nobody else remembers
     // that. mtime stays, it is part of the ETag.
     if (cst && k.clock.now() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, k.clock.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
+      fs.promises.utimes(cacheFile, k.clock.date(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
     return {
-      datei: cacheFile,
-      typ: imageType(ctRaw),
-      groesse: cst?.size ?? null,
+      file: cacheFile,
+      contentType: imageType(ctRaw),
+      size: cst?.size ?? null,
       etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null,
     };
   } catch (_) {
@@ -102,7 +102,7 @@ export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(withoutMissingFile('bildcache:lesen', [] as string[]));
   const cutoff = now - 30 * 24 * 60 * 60 * 1000;
-  const groups = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
+  const groups = new Map<string, { files: string[]; bytes: number; lastUsed: number }>();
   let route = 0,
     sum = 0;
   for (const f of files) {
@@ -121,10 +121,10 @@ export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<
       route++;
       continue;
     }
-    const g = groups.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
-    g.dateien.push(p);
+    const g = groups.get(f.slice(0, 40)) ?? { files: [], bytes: 0, lastUsed: 0 };
+    g.files.push(p);
     g.bytes += st.size;
-    g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
+    g.lastUsed = Math.max(g.lastUsed, st.atimeMs, st.mtimeMs);
     groups.set(f.slice(0, 40), g);
     sum += st.size;
   }
@@ -138,9 +138,9 @@ export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<
   }
   if (sum <= maxBytes) return route;
   // Down to 90 % instead of just below the limit: otherwise it would start again right away.
-  for (const g of [...groups.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
+  for (const g of [...groups.values()].sort((a, b) => a.lastUsed - b.lastUsed)) {
     if (sum <= maxBytes * 0.9) break;
-    for (const d of g.dateien)
+    for (const d of g.files)
       if (
         await fs.promises.unlink(d).then(
           () => true,
@@ -156,7 +156,7 @@ export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<
 /** Between two daily runs the cache can grow quickly; after every tenth of the limit
  * in new bytes it is therefore capped immediately. */
 export function rememberCacheGrowth(bytes: number, max: number): void {
-  const z = processWide('bildCacheZuwachs', () => ({ bytes: 0, running: false }));
+  const z = processWide('imageCacheGrowth', () => ({ bytes: 0, running: false }));
   z.bytes += bytes;
   if (z.running || z.bytes < max / 10) return;
   z.bytes = 0;

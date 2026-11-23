@@ -7,7 +7,7 @@ import { hintInBackground } from './accountNotice';
 import { countFailedAttempt, toManyFailedAttempts } from './tokenFailedAttempts';
 import { inSystemContext } from '../infra/accountContext';
 import {
-  cacheStand,
+  cacheState,
   tokenFromCache,
   rememberEntry,
   forgetEntry,
@@ -82,14 +82,14 @@ export function ipArea(ip: string | null | undefined): string | null {
 }
 
 export interface TokenCheck {
-  nutzer: TokenUser | null;
+  user: TokenUser | null;
   reason?: 'token_rotation_required' | 'too_many_requests';
 }
 
 /** `zweck: 'rotation'` lets an unlimited token through even after the
  * mandatory deadline — only for the swap itself. */
 /** For the stream: is the access still alive? Asked with the plaintext; the hash stays in the account. */
-export async function tokenGilt(k: AccountContext, plaintext: string): Promise<boolean> {
+export async function tokenValid(k: AccountContext, plaintext: string): Promise<boolean> {
   return !!(await k.accesses.validToken(tokenDigest(plaintext)));
 }
 
@@ -98,37 +98,37 @@ export async function checkToken(
   token: string | null | undefined,
   o: { ip?: string | null | undefined; purpose?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenCheck> {
-  if (!token) return { nutzer: null };
+  if (!token) return { user: null };
   const now = k.clock.now();
   const result = (u: TokenUser): TokenCheck =>
     o.purpose !== 'rotation' && rotationRequired(u, now)
-      ? { nutzer: null, reason: 'token_rotation_required' }
-      : { nutzer: u };
+      ? { user: null, reason: 'token_rotation_required' }
+      : { user: u };
 
-  const state = cacheStand(k);
+  const state = cacheState(k);
   const hit = tokenFromCache(k, token, state, now);
   if (hit) {
     // Both deadlines here too: this branch does not query the database.
     if (deadlineReached(hit.user.expires_at, now) || deadlineReached(hit.user.hard_expires_at, now)) {
       forgetEntry(k, token);
-      return { nutzer: null };
+      return { user: null };
     }
     _touchLastUsed(k, hit, o.ip);
     return result(hit.user);
   }
 
   // Only after the cache: whoever has a valid token in the cache is never slowed down.
-  if (toManyFailedAttempts(o.ip)) return { nutzer: null, reason: 'too_many_requests' };
+  if (toManyFailedAttempts(o.ip)) return { user: null, reason: 'too_many_requests' };
   const hashed = tokenDigest(token);
   const row: TokenUser | undefined = await k.accesses.validToken(hashed);
   if (!row) {
     forgetEntry(k, token);
     if (!(await reportReuse(k, hashed))) await countFailedAttempt(k, o.ip);
-    return { nutzer: null };
+    return { user: null };
   }
   // Administrator rights only with scope `voll`, decided at this one place,
   // so all guards see it the same way.
-  row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
+  row.is_admin = row.account_is_admin === true && row.scope === 'voll';
   if (row.previous_token) {
     await k.accesses.endOverlap(row.previous_token, hashed);
     row.previous_token = null;
@@ -147,7 +147,7 @@ async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
   if (!z) return false;
   emptyTokenCache(k);
   console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
-  hintInBackground(k, z.user_id, 'token_wiederverwendet', z.label ?? undefined);
+  hintInBackground(k, z.user_id, 'token_reused', z.label ?? undefined);
   return true;
 }
 
@@ -156,7 +156,7 @@ export async function userForToken(
   token: string | null | undefined,
   o: { ip?: string | null | undefined; purpose?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenUser | null> {
-  return (await checkToken(k, token, o)).nutzer;
+  return (await checkToken(k, token, o)).user;
 }
 
 /** At most once per day and token, without holding up the request path. The
@@ -168,8 +168,8 @@ function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null
   const lastUsed = u.last_used ? new Date(u.last_used).getTime() : 0;
   const target = now + k.config.tokenIdleDays * TAG_MS;
   const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < target - TAG_MS;
-  if ((now - lastUsed < TAG_MS && !deadlineLags) || entry.schreibt) return;
-  entry.schreibt = true;
+  if ((now - lastUsed < TAG_MS && !deadlineLags) || entry.writing) return;
+  entry.writing = true;
   void k.accesses
     .touchToken(entry.dbKey, k.config.tokenIdleDays, ipArea(ip))
     .then(() => {
@@ -180,7 +180,7 @@ function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null
     })
     .catch((e: unknown) => reportError('token:last_used schreiben', e))
     .finally(() => {
-      entry.schreibt = false;
+      entry.writing = false;
     });
 }
 
@@ -190,7 +190,7 @@ export function escapeLike(s: unknown): string {
 }
 
 /** Choices of the QR dialog; above TOKEN_MAX_DAYS they are cut to it (tokenDays). There is no
- * "unlimited" any more, it removed the only automatic rip cord for a lost device: the old
+ * "unbegrenzt" any more, it removed the only automatic rip cord for a lost device: the old
  * choice is still accepted from older pages and means the bound. */
 const TOKEN_RUNTIMES: Record<string, number> = {
   '1m': 30,
@@ -246,7 +246,7 @@ export async function createToken(
     userId,
     label,
     scope: o.scope === 'voll' ? 'voll' : 'app',
-    bereich: ipArea(o.ip),
+    area: ipArea(o.ip),
     kind: permanent ? 'gleitend' : 'kurz',
     idleDays: k.config.tokenIdleDays,
     fixedDays: tokenDays(k, fixedDays),
@@ -306,9 +306,9 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
   if (copy) {
     const k: { user_id: number; label: string | null } = copy;
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
-    hintInBackground(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
+    hintInBackground(kx, k.user_id, 'token_reused', k.label ?? undefined);
   }
-  if (result === 'laeuft') failDomain('konflikt', 'token_swap_running');
+  if (result === 'laeuft') failDomain('conflict', 'token_swap_running');
   return result;
 }
 
@@ -332,7 +332,7 @@ export async function tokensCleanup(k: AccountContext) {
   const step = async (was: string, work: () => Promise<number>) => {
     const r = await attempts(`tokens:${was}`, work);
     if (!r.ok) without.push(was);
-    return r.ok ? r.wert : 0;
+    return r.ok ? r.value : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
   const g = await step('ohne Ende', () => k.accesses.boundUnlimited(k.config.tokenMaxDays));

@@ -23,7 +23,7 @@ const CHECK = `(() => {
   const fremd = [...document.querySelectorAll('*')].filter(e =>
       [...e.attributes].some(a => /^on/i.test(a.name)) || (e.tagName === 'IMG' && e.getAttribute('src') === 'x'))
     .map(e => e.outerHTML.slice(0, 100));
-  return { fremd, xss: window.__xss ?? null, alsText: document.body.innerText.includes('<img src=x onerror')
+  return { fremd, xss: window.__xss ?? null, asText: document.body.innerText.includes('<img src=x onerror')
     || [...document.querySelectorAll('input')].some(i => i.getClientRects().length && i.value.includes('<img src=x onerror')) };
 })()`;
 
@@ -78,7 +78,7 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
       const r = await b.auswerten(CHECK);
       assert.deepEqual(r.fremd, [], `${name}: markup from data in the DOM`);
       assert.equal(r.xss, null, `${name}: payload executed`);
-      assert.ok(r.alsText, `${name}: payload is not shown as text — does the test still check anything?`);
+      assert.ok(r.asText, `${name}: payload is not shown as text — does the test still check anything?`);
     });
   };
   await ansicht(

@@ -10,26 +10,26 @@ import type { DbInterface } from './types';
 
 /** How long a migration waits for a lock and how often it tries. */
 export interface LockPeriod {
-  fristMs: number;
-  versuche: number;
+  deadlineMs: number;
+  attempts: number;
 }
 
 /** If another process holds a table (web process in the middle of a request,
  * open psql session), the migration service would hang silently without a deadline. With a deadline
  * it names the reason, tries again and gives up after the attempts. */
-export const LOCK_PERIOD: LockPeriod = { fristMs: 30_000, versuche: 3 };
+export const LOCK_PERIOD: LockPeriod = { deadlineMs: 30_000, attempts: 3 };
 
-async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Promise<T>): Promise<T> {
+async function withLockPeriod<T>(was: string, deadline: LockPeriod, work: () => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await work();
     } catch (e) {
       if ((e as { code?: string }).code !== '55P03') throw e;
       const reason =
-        `${was}: nach ${frist.fristMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
+        `${was}: nach ${deadline.deadlineMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
         'Tabelle (welche, zeigt pg_stat_activity).';
-      if (attempt >= frist.versuche) throw new Error(`${reason} Aufgegeben nach ${attempt} Versuchen.`);
-      console.warn(`  ⏳ ${reason} Versuch ${attempt + 1}/${frist.versuche} …`);
+      if (attempt >= deadline.attempts) throw new Error(`${reason} Aufgegeben nach ${attempt} Versuchen.`);
+      console.warn(`  ⏳ ${reason} Versuch ${attempt + 1}/${deadline.attempts} …`);
     }
   }
 }
@@ -37,7 +37,7 @@ async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Pro
 /** All migrations not yet applied; `client` is a connection of its own, not the pool. */
 async function runMigrations(
   client: ClientBase,
-  { sichern = false, sperre = LOCK_PERIOD }: { sichern?: boolean; sperre?: LockPeriod } = {},
+  { backup = false, lock = LOCK_PERIOD }: { backup?: boolean; lock?: LockPeriod } = {},
 ): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -62,20 +62,20 @@ async function runMigrations(
   await checkApplied(client, dir, rows);
 
   const open = files.filter(f => !done.has(f));
-  if (open.length && sichern) await secureUserData(client, open, sperre);
+  if (open.length && backup) await secureUserData(client, open, lock);
 
   const applied: string[] = [];
   for (const file of open) {
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
     // One transaction per file: all or nothing.
     try {
-      await withLockPeriod(`Migration ${file}`, sperre, async () => {
+      await withLockPeriod(`Migration ${file}`, lock, async () => {
         await client.query('BEGIN');
         try {
           // The pool's 30 s apply to requests, not to rebuilding a
           // large table; an abort in the middle would mean a restart loop.
           await client.query('SET LOCAL statement_timeout = 0');
-          await client.query(`SET LOCAL lock_timeout = ${Math.trunc(sperre.fristMs)}`);
+          await client.query(`SET LOCAL lock_timeout = ${Math.trunc(lock.deadlineMs)}`);
           await client.query(sql);
           await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [file, checksum(sql)]);
           await client.query('COMMIT');
@@ -143,16 +143,16 @@ const viaClient = (c: ClientBase): Querier => ({
  * deleted account lives on in them, and the next run of the migration
  * service removes the empty schema. @returns dropped or emptied schemas */
 export async function cleanOldBackupsOn(c: Querier, days = BACKUP_DEADLINE_DAYS): Promise<number> {
-  const rows = await c.all<{ nspname: string; eigen: boolean }>(
+  const rows = await c.all<{ nspname: string; own: boolean }>(
     `
-    SELECT nspname, pg_has_role(nspowner, 'USAGE') AS eigen FROM pg_namespace WHERE nspname ~ '${BACKUP_SCHEMA}'
+    SELECT nspname, pg_has_role(nspowner, 'USAGE') AS own FROM pg_namespace WHERE nspname ~ '${BACKUP_SCHEMA}'
        AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
            < NOW() - make_interval(days => $1)`,
     [days],
   );
   let n = 0;
-  for (const { nspname, eigen } of rows) {
-    if (eigen) {
+  for (const { nspname, own } of rows) {
+    if (own) {
       await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
       n++;
       continue;
@@ -195,7 +195,7 @@ export async function removeAccountFromBackups(c: Querier, uid: number): Promise
  * a foreign key to users) into a schema of its own: the container has
  * no pg_dump, and a transforming migration cannot be undone without a copy.
  * Three backups are kept; restoring is described in the README. */
-async function secureUserData(client: ClientBase, open: string[], sperre = LOCK_PERIOD): Promise<string> {
+async function secureUserData(client: ClientBase, open: string[], lock = LOCK_PERIOD): Promise<string> {
   const schema = `vor_migration_${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}`;
   const { rows } = await client.query<{ name: string }>(`
     SELECT DISTINCT c.table_name AS name
@@ -210,11 +210,11 @@ async function secureUserData(client: ClientBase, open: string[], sperre = LOCK_
      WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass AND n.nspname = 'public'
      ORDER BY 1`);
   try {
-    await withLockPeriod('Sicherung vor den Migrationen', sperre, async () => {
+    await withLockPeriod('Sicherung vor den Migrationen', lock, async () => {
       await client.query('BEGIN');
       try {
         await client.query('SET LOCAL statement_timeout = 0');
-        await client.query(`SET LOCAL lock_timeout = ${Math.trunc(sperre.fristMs)}`);
+        await client.query(`SET LOCAL lock_timeout = ${Math.trunc(lock.deadlineMs)}`);
         await client.query(`CREATE SCHEMA ${schema}`);
         for (const { name } of rows) {
           const t = client.escapeIdentifier(name);

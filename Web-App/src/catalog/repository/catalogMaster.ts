@@ -199,7 +199,7 @@ export function writeSetParts(
   numbers: string[],
   colors: number[],
   quantities: number[],
-  ersatz: boolean[],
+  spare: boolean[],
 ) {
   return dbh.run(
     `
@@ -207,7 +207,7 @@ export function writeSetParts(
     SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::boolean[]) AS x(p, f, q, s)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`,
-    [setNumber, numbers, colors, quantities, ersatz],
+    [setNumber, numbers, colors, quantities, spare],
   );
 }
 
@@ -274,17 +274,17 @@ export function writeMinifigImageLocal(dbh: Writer, figNumber: string, imageLoca
 export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, forUser: number | null) {
   return db.get<{
     name: string | null;
-    kategorie: string | null;
-    bild_allgemein: string | null;
-    farb_url: string | null;
-    farb_datei: string | null;
+    category: string | null;
+    image_generic: string | null;
+    color_url: string | null;
+    color_file: string | null;
   }>(
     `
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
-           COALESCE(pc.category_name, te.category_name)     AS kategorie,
-           rp.part_img_url                                  AS bild_allgemein,
-           COALESCE(pcc.image_url, tfe.image_url)           AS farb_url,
-           pcc.image_local                                  AS farb_datei
+           COALESCE(pc.category_name, te.category_name)     AS category,
+           rp.part_img_url                                  AS image_generic,
+           COALESCE(pcc.image_url, tfe.image_url)           AS color_url,
+           pcc.image_local                                  AS color_file
       FROM (SELECT $1::text AS nr) q
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr

@@ -34,9 +34,9 @@ async function token() {
 (async () => {
   const t = await token();
   /** @type {[string, { response?: import('zod').ZodType }][]} */
-  const routen = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.response);
+  const routes = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.response);
   let wrong = 0;
-  for (const [key, r] of routen) {
+  for (const [key, r] of routes) {
     const path = key.slice(4);
     /** @type {string[]} */
     let error;
@@ -60,8 +60,8 @@ async function token() {
     } else console.log(`✓ ${key}`);
   }
   if (wrong) {
-    console.error(`\n${wrong} von ${routen.length} Routen weichen vom Vertrag ab.`);
+    console.error(`\n${wrong} von ${routes.length} Routen weichen vom Vertrag ab.`);
     process.exit(1);
   }
-  console.log(`\nAlle ${routen.length} Routen halten ihren Vertrag.`);
+  console.log(`\nAlle ${routes.length} Routen halten ihren Vertrag.`);
 })();

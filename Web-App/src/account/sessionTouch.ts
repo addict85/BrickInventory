@@ -13,18 +13,18 @@ interface Store<S> {
 }
 
 // Saves writes per request.
-export function touchThrottle<T extends Store<never>>(store: T, frist: number): T {
-  const echt = store.touch?.bind(store);
-  if (!echt) return store;
+export function touchThrottle<T extends Store<never>>(store: T, deadline: number): T {
+  const real = store.touch?.bind(store);
+  if (!real) return store;
 
   const lastUsed = new Map<string, number>();
   store.touch = (sid: string, sess: never, cb?: (err?: unknown) => void) => {
     const now = Date.now();
     const before = lastUsed.get(sid);
-    if (before !== undefined && now - before < frist) return cb?.();
+    if (before !== undefined && now - before < deadline) return cb?.();
     if (lastUsed.size >= MAX_SESSIONS) lastUsed.clear();
     lastUsed.set(sid, now);
-    return echt(sid, sess, cb);
+    return real(sid, sess, cb);
   };
   return store;
 }

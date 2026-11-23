@@ -1,30 +1,30 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, minifigViewJoin, TEIL, MINIFIG } from '../../../db/catalogView';
+import { partViewJoin, minifigViewJoin, PART, MINIFIG } from '../../../db/catalogView';
 
 /** An entry holds the deleted rows of all tables of an inventory item as
  * JSON; restoring writes them back column by column. */
 export type PaperKind = 'set' | 'teil' | 'figur';
 
 /** The first table is the master row. */
-const TABLES: Record<PaperKind, { tabelle: string; wo: string }[]> = {
+const TABLES: Record<PaperKind, { table: string; where: string }[]> = {
   set: [
-    { tabelle: 'sets', wo: 'user_id = $1 AND set_number = $2' },
-    { tabelle: 'parts', wo: 'user_id = $1 AND set_number = $2' },
-    { tabelle: 'minifigs', wo: 'user_id = $1 AND set_number = $2' },
-    { tabelle: 'set_acquisitions', wo: 'user_id = $1 AND set_number = $2' },
+    { table: 'sets', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'parts', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'minifigs', where: 'user_id = $1 AND set_number = $2' },
+    { table: 'set_acquisitions', where: 'user_id = $1 AND set_number = $2' },
   ],
   teil: [
-    { tabelle: 'parts', wo: "user_id = $1 AND part_number = $2 AND color_id = $3 AND source = 'manual'" },
-    { tabelle: 'part_acquisitions', wo: 'user_id = $1 AND part_number = $2 AND color_id = $3' },
+    { table: 'parts', where: "user_id = $1 AND part_number = $2 AND color_id = $3 AND source = 'manual'" },
+    { table: 'part_acquisitions', where: 'user_id = $1 AND part_number = $2 AND color_id = $3' },
   ],
   figur: [
-    { tabelle: 'minifigs', wo: "user_id = $1 AND fig_number = $2 AND source = 'manual'" },
-    { tabelle: 'minifig_acquisitions', wo: 'user_id = $1 AND fig_number = $2' },
+    { table: 'minifigs', where: "user_id = $1 AND fig_number = $2 AND source = 'manual'" },
+    { table: 'minifig_acquisitions', where: 'user_id = $1 AND fig_number = $2' },
   ],
 };
 
-export const tablesTheKind = (kind: PaperKind): string[] => TABLES[kind].map(t => t.tabelle);
+export const tablesTheKind = (kind: PaperKind): string[] => TABLES[kind].map(t => t.table);
 
 export async function inventoryRows(
   tx: DbInterface,
@@ -32,21 +32,21 @@ export async function inventoryRows(
   values: unknown[],
 ): Promise<Record<string, unknown[]>> {
   const rows: Record<string, unknown[]> = {};
-  for (const { tabelle, wo } of TABLES[kind]) {
+  for (const { table, where } of TABLES[kind]) {
     const r = await tx.get<{ z: unknown[] }>(
-      `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`,
+      `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${table} t WHERE ${where}`,
       values,
     );
-    rows[tabelle] = r?.z ?? [];
+    rows[table] = r?.z ?? [];
   }
   return rows;
 }
 
 const LABEL: Record<PaperKind, string> = {
   set: 'SELECT name AS b FROM rb_sets WHERE set_num = $1 AND $2::int IS NOT NULL',
-  teil: `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
+  teil: `SELECT concat_ws(' · ', ${PART.name}, ${PART.colorName}) AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
-            ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,
+            ${partViewJoin('x.konto', 'x.nr', 'x.farbe')}`,
   figur: `SELECT ${MINIFIG.name} AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto) x
             ${minifigViewJoin('x.konto', 'x.nr')}`,
@@ -122,8 +122,8 @@ export async function writeBack(
   kind: PaperKind,
   rows: Record<string, Record<string, unknown>[] | undefined>,
 ): Promise<void> {
-  for (const { tabelle } of TABLES[kind]) {
-    const list = rows[tabelle] ?? [];
+  for (const { table } of TABLES[kind]) {
+    const list = rows[table] ?? [];
     const first = list[0];
     if (!first) continue;
     const columns = (
@@ -131,27 +131,27 @@ export async function writeBack(
         `SELECT column_name FROM information_schema.columns
         WHERE table_schema = current_schema() AND table_name = $1
           AND is_generated = 'NEVER'`,
-        [tabelle],
+        [table],
       )
     )
       .map(s => s.column_name)
       .filter(s => s in first);
     const names = columns.map(s => `"${s}"`).join(', ');
     await tx.run(
-      `INSERT INTO ${tabelle} (${names})
-       SELECT ${names} FROM jsonb_populate_recordset(NULL::${tabelle}, $1::jsonb)`,
+      `INSERT INTO ${table} (${names})
+       SELECT ${names} FROM jsonb_populate_recordset(NULL::${table}, $1::jsonb)`,
       [JSON.stringify(list)],
     );
   }
 }
 
-export async function hatSetRow(
+export async function hasSetRow(
   tx: DbInterface,
   l: InventoryReadContract,
   userId: number,
   number: string,
 ): Promise<boolean> {
-  return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${l.setBestand('= $1')} s WHERE set_number = $2`, [
+  return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${l.setHoldings('= $1')} s WHERE set_number = $2`, [
     userId,
     number,
   ]));

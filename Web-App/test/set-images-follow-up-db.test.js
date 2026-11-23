@@ -37,7 +37,7 @@ const db = testData();
 test('set image follow-up run: only sets with a reference, 404 rests', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const repo = _req('src/catalog/repository/imageState.js');
-  const { LESEVERTRAG } = _req('src/services.js');
+  const { READ_CONTRACT } = _req('src/services.js');
   const { reloadSetImages } = _req('src/catalog/imageState.js');
   const IM = _req('src/images/imageMisses.js');
 
@@ -61,7 +61,7 @@ test('set image follow-up run: only sets with a reference, 404 rests', { concurr
     ['set:' + gemerkt],
   );
   const eigene = async () =>
-    (await repo.setImagesWithoutFile(db, LESEVERTRAG)).map(r => r.set_number).filter(sn => sn.startsWith(P));
+    (await repo.setImagesWithoutFile(db, READ_CONTRACT)).map(r => r.set_number).filter(sn => sn.startsWith(P));
 
   try {
     await t.test('selection: held sets yes, pure catalog records and fresh 404 no', async () => {

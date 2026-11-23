@@ -9,7 +9,7 @@ interface Stream {
   on?(e: 'close', f: () => void): unknown;
 }
 
-const _open = processWide('offeneStroeme', () => new Set<Stream>());
+const _open = processWide('openStreams', () => new Set<Stream>());
 
 /** @returns function for unsubscribing — call it in the route's cleanup path. */
 export function registerSse(res: Stream): () => void {

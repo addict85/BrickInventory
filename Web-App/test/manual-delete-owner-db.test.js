@@ -80,7 +80,7 @@ test('the trash hits the clicked card, not the own one', async t => {
   const minifigs = async () =>
     (await db.all(`SELECT user_id FROM minifigs WHERE fig_number='sw0001' ORDER BY user_id`)).map(r => r.user_id);
 
-  assert.deepEqual(await parts(), [`${haupt}:5`, `${kind}:9`], 'Vorlage');
+  assert.deepEqual(await parts(), [`${haupt}:5`, `${kind}:9`], 'precondition');
 
   // Delete the CHILD's card.
   const a = await callFn(`/api/v2/parts/3001/4?owner=${kind}`, 'DELETE');

@@ -76,8 +76,8 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
-    arten: ['csv_import'],
-    taktMs: 50,
+    kinds: ['csv_import'],
+    tickMs: 50,
   });
 
   const importIt = async zeilen => {

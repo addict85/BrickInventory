@@ -22,8 +22,8 @@ export async function deleteMinifig(k: CollectionContext, owner: number, fn: str
  * each can be restored on its own. */
 export async function deleteEverythingOwn(k: CollectionContext, uid: number) {
   const sets = await k.sets.setsOfAccount(uid);
-  const parts = await k.inventory.manuell.partsOfAccount(uid);
-  const minifigs = await k.inventory.manuell.minifigsOfAccount(uid);
+  const parts = await k.inventory.manual.partsOfAccount(uid);
+  const minifigs = await k.inventory.manual.minifigsOfAccount(uid);
   const trash: number[] = [];
   // Field names below (sets, teile, figuren) are the API contract (src/contract/inventory.ts)
   // and stay as-is.

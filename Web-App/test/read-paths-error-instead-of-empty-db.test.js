@@ -25,7 +25,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { catalogSet: putCatalogSetTo } = require('./helpers/inventory');
 
 const FARBE = 990000 + (process.pid % 9000);
-const TEIL = `lpf${process.pid}`;
+const PART = `lpf${process.pid}`;
 const SET = `LPF${process.pid}-1`;
 const NAME = `lesepfade_${process.pid}`;
 
@@ -44,14 +44,14 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
     [FARBE],
   );
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $2) ON CONFLICT DO NOTHING`, [
-    TEIL,
-    `${TEIL}bl`,
+    PART,
+    `${PART}bl`,
   ]);
   await db.run(`INSERT INTO shared_instructions (set_number, url) VALUES ($1, 'https://example.invalid/a.pdf')`, [SET]);
   await putCatalogSetTo(db, SET, { name: 'Probeset' });
   t.after(async () => {
     await db.run('DELETE FROM rb_colors WHERE id = $1', [FARBE]).catch(() => {});
-    await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -76,8 +76,8 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
   });
 
   await t.test('BrickLink mapping', async () => {
-    assert.equal(await blNumberOf('part', TEIL), `${TEIL}bl`);
-    await ohne('bl_mapping', () => assert.rejects(blNumberOf('part', TEIL), /bl_mapping/));
+    assert.equal(await blNumberOf('part', PART), `${PART}bl`);
+    await ohne('bl_mapping', () => assert.rejects(blNumberOf('part', PART), /bl_mapping/));
   });
 
   await t.test('instructions of a set', async () => {

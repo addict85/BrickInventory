@@ -21,7 +21,7 @@ export function callsToday(db: DbInterface, day: string, apiName: string) {
   ]);
 }
 
-export function callsJeAccount(db: DbInterface, date: string, apiName: string, id: number, allAccounts: number) {
+export function callsPerAccount(db: DbInterface, date: string, apiName: string, id: number, allAccounts: number) {
   return db.all<{ account_id: number; count: number }>(
     'SELECT account_id, count FROM api_calls WHERE day = $1 AND api = $2 AND account_id IN ($3, $4)',
     [date, apiName, id, allAccounts],

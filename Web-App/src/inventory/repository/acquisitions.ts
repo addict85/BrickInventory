@@ -5,7 +5,7 @@ export type EntryInField = {
   id: number;
   user_id: number;
   condition: string | null;
-  preis: number | null;
+  price: number | null;
   price_estimated: boolean;
   currency: string;
   tag: string;
@@ -24,7 +24,7 @@ export function entryInWriteField(
   const s = SHAPES[kind];
   const columns = s.keys.map((k, i) => ` AND ${k}=$${i + 3}`).join('');
   return tx.get<EntryInField>(
-    `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${acquisitionDaySql()})::text AS tag
+    `SELECT id, user_id, condition, ${s.price} AS price, price_estimated, currency, (${acquisitionDaySql()})::text AS tag
        FROM ${s.table} WHERE id=$1 AND user_id = ANY($2)${columns}`,
     [id, wids, ...key.slice(0, s.keys.length)],
   );
@@ -36,12 +36,12 @@ export async function setEntryQuantity(
   kind: AcquisitionKind,
   id: number,
   quantity: number,
-  konten: number[],
+  accounts: number[],
 ): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[kind].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [
     quantity,
     id,
-    konten,
+    accounts,
   ]);
 }
 
@@ -51,11 +51,11 @@ export async function setEntryPrice(
   id: number,
   price: number | null,
   estimated: boolean,
-  konten: number[],
+  accounts: number[],
 ): Promise<void> {
   await tx.run(
     `UPDATE ${SHAPES[kind].table} SET ${SHAPES[kind].price}=$1, price_estimated=$2 WHERE id=$3 AND user_id = ANY($4)`,
-    [price, estimated, id, konten],
+    [price, estimated, id, accounts],
   );
 }
 
@@ -64,12 +64,12 @@ export async function setEntryState(
   kind: AcquisitionKind,
   id: number,
   condition: string,
-  konten: number[],
+  accounts: number[],
 ): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[kind].table} SET condition=$1 WHERE id=$2 AND user_id = ANY($3)`, [
     condition,
     id,
-    konten,
+    accounts,
   ]);
 }
 
@@ -79,12 +79,12 @@ export async function setEntryDate(
   kind: AcquisitionKind,
   id: number,
   date: string,
-  konten: number[],
+  accounts: number[],
 ): Promise<void> {
   await tx.run(
     `UPDATE ${SHAPES[kind].table} SET created_at=$1::date + interval '12 hours', day=$1::date
                  WHERE id=$2 AND user_id = ANY($3)`,
-    [date, id, konten],
+    [date, id, accounts],
   );
 }
 

@@ -275,7 +275,7 @@ test('a tar error aborts and leaves no archive', t => {
   assert.deepEqual(
     fs.readdirSync(a.ziel).filter(n => n.startsWith('data_')),
     [],
-    'a half archive lies at the destination',
+    'a half archive is left at the destination',
   );
 });
 

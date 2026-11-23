@@ -136,7 +136,7 @@ test('the part list page by page; 403 means refused', async t => {
     }),
   );
   const k = rb.createRebrickable(clientsAccess());
-  const { parts, verweigert } = await k.fetchSetParts('10294-1');
+  const { parts, refused } = await k.fetchSetParts('10294-1');
   assert.deepEqual(
     parts.map(p => [p.part.part_num, p.color.id, p.quantity, p.is_spare]),
     [
@@ -145,14 +145,14 @@ test('the part list page by page; 403 means refused', async t => {
       ['3003', 15, 1, true],
     ],
   );
-  assert.equal(verweigert, false);
-  assert.deepEqual(await k.fetchSetParts('geheim-1'), { parts: [], verweigert: true });
-  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { parts: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehler-1'), { parts: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { parts: [], verweigert: false });
+  assert.equal(refused, false);
+  assert.deepEqual(await k.fetchSetParts('geheim-1'), { parts: [], refused: true });
+  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { parts: [], refused: false });
+  assert.deepEqual(await k.fetchSetParts('fehler-1'), { parts: [], refused: false });
+  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { parts: [], refused: false });
   assert.deepEqual(await rb.createRebrickable(clientsAccess({ allowed: false })).fetchSetParts('10294-1'), {
     parts: [],
-    verweigert: false,
+    refused: false,
   });
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } })).fetchSetParts('10294-1'),

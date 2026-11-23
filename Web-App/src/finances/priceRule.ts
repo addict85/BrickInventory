@@ -23,17 +23,17 @@ export async function manualPurchasePrice(
   k: FinancesContext,
   userId: number,
   input: { unitPrice?: unknown; condition?: string | null },
-  marketPrice: (condition: string) => Promise<{ preis: number | null; fromState: string | null }>,
+  marketPrice: (condition: string) => Promise<{ price: number | null; fromState: string | null }>,
 ): Promise<{
   unitPrice: number | null;
   /** For the MASTER ROW — never null. */
-  kaufpreis: number;
+  purchasePrice: number;
   /** For the ACQUISITION — null if no price is known. */
-  erfassungsPreis: number | null;
+  acquisitionPrice: number | null;
   condition: string;
   /** Only set if the market price was adopted from the OTHER condition. */
   priceFromState: string | null;
-  geschaetzt: boolean;
+  estimated: boolean;
 }> {
   const unitPrice = moneyInput(input.unitPrice, 'Stückpreis');
 
@@ -41,14 +41,14 @@ export async function manualPurchasePrice(
 
   // A typed-in price does not ask the market — no origin to mark.
   const market = unitPrice !== null ? null : await marketPrice(condition);
-  const kaufpreis = unitPrice !== null ? unitPrice : (market?.preis ?? 0);
+  const purchasePrice = unitPrice !== null ? unitPrice : (market?.price ?? 0);
   return {
     unitPrice,
-    kaufpreis,
-    erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
+    purchasePrice,
+    acquisitionPrice: purchasePrice > 0 ? purchasePrice : null,
     condition,
     // An origin without a value would be a hint at something that is nowhere to be found.
-    priceFromState: kaufpreis > 0 && market?.fromState ? market.fromState : null,
-    geschaetzt: unitPrice === null && kaufpreis > 0,
+    priceFromState: purchasePrice > 0 && market?.fromState ? market.fromState : null,
+    estimated: unitPrice === null && purchasePrice > 0,
   };
 }

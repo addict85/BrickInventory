@@ -114,7 +114,7 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     const sid = _req('src/account/sessionStore.js').sessionDigest(
       decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0],
     );
-    await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mussPasswortAendern')::json WHERE sid = $1`, [sid]);
+    await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mustChangePassword')::json WHERE sid = $1`, [sid]);
     assert.equal((await callFn('/settings/tokens', { cookie })).status, 403);
   });
 

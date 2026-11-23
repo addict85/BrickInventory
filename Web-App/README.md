@@ -214,7 +214,7 @@ Auftragsläufe und Warteschlange (`jobs_runs_total`, `job_duration_seconds`,
 - `jobs` hat keinen HTTP-Server; mit `METRICS_PORT` (z. B. 9464) öffnet er nur
   `/metrics` darauf, mit denselben Regeln.
 
-Das Protokoll ist eine JSON-Zeile je Meldung (`zeit`, `stufe`, `nachricht`,
+Das Protokoll ist eine JSON-Zeile je Meldung (`zeit`, `stufe`, `message`,
 `pid`, `rid`, `kontext`) auf stdout/stderr, daneben in `app_logs` für
 „Monitoring → Protokoll“. `rid` ist die Kennung der Anfrage: Caddy setzt
 `X-Request-Id`, die App übernimmt sie (sonst eine eigene), schickt sie in jeder

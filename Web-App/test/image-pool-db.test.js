@@ -191,6 +191,6 @@ test('the session lock is released on the same connection', () => {
   assert.match(fn, /db\.ownConnection\(\)/, 'The lock takes a pool connection again');
   assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool connection is back');
   // Taking and releasing stand in the repository and get THIS connection.
-  assert.match(fn, /sperre\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
-  assert.match(fn, /sperre\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
+  assert.match(fn, /lock\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
+  assert.match(fn, /lock\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
 });

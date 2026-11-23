@@ -22,10 +22,12 @@ import './form.js';
 import './account.js';
 import './dialogs.js';
 import './progress.js';
+import './job-names.js';
 import './monitor.js';
 import './components.js';
 import './confirm-prompt.js';
 import './crosshair.js';
+import './time-axis.js';
 import './charts.js';
 
 // Views

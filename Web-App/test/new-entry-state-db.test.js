@@ -115,7 +115,7 @@ test('no source reads purchase price or condition from sets', () => {
   // What is searched for are the forms in which the two columns actually
   // occurred in this tree — FOUND, not invented (git log of migration
   // 0032 names every place):
-  const verboten = [
+  const forbidden = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,
     /UPDATE sets SET (purchase_price|condition)\b/i,
@@ -132,7 +132,7 @@ test('no source reads purchase price or condition from sets', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     geprueft++;
-    for (const r of verboten) {
+    for (const r of forbidden) {
       const m = code.match(r);
       if (m) treffer.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
@@ -141,7 +141,7 @@ test('no source reads purchase price or condition from sets', () => {
   // contains them — otherwise the rule would be vacuously true.
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
-  const damaged = verboten.filter(r => r.test(probe)).length;
+  const damaged = forbidden.filter(r => r.test(probe)).length;
   assert.equal(
     damaged,
     3,

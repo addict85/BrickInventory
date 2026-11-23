@@ -1,6 +1,6 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
-import { imSystem, bound, withContract, type Context } from '../infra/area';
+import { asSystem, bound, withContract, type Context } from '../infra/area';
 import type { HouseholdReadContract } from './readContract';
 import type { SettingsServices } from '../settings';
 import type { Compartments } from '../infra/cache';
@@ -11,7 +11,7 @@ export interface HouseholdDependencies {
   clock: Clock;
   db: Db;
   /** The households' memory per access; createHousehold creates it. */
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   readContract: HouseholdReadContract;
 }
@@ -26,12 +26,12 @@ export const access = (db: Db, l: HouseholdReadContract) => ({
     accountNames: withContract(db, l)(repository.accountNames),
     accountName: withContract(db, l)(repository.accountName),
     // Before joining, the invitee does not see the inviting account (0121).
-    inviterName: bound(l)(imSystem(db, FOREIGN_INVITATION, repository.accountName)),
-    cleanInvitationsOn: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.cleanInvitationsOn),
+    inviterName: bound(l)(asSystem(db, FOREIGN_INVITATION, repository.accountName)),
+    cleanInvitationsOn: asSystem(db, 'Abgelaufene Einladungen aller Konten', repository.cleanInvitationsOn),
     createInvitation: bound(db)(repository.insertInvitation),
-    receiptsInvitation: imSystem(db, FOREIGN_INVITATION, repository.receiptsInvitation),
-    inviterToCode: imSystem(db, FOREIGN_INVITATION, repository.inviterToCode),
-    giveInvitationFree: imSystem(db, FOREIGN_INVITATION, repository.giveInvitationFree),
+    receiptsInvitation: asSystem(db, FOREIGN_INVITATION, repository.receiptsInvitation),
+    inviterToCode: asSystem(db, FOREIGN_INVITATION, repository.inviterToCode),
+    giveInvitationFree: asSystem(db, FOREIGN_INVITATION, repository.giveInvitationFree),
     link: bound(db)(repository.link),
     separate: bound(db)(repository.separate),
     resolveSubAccountAndInvitations: bound(db)(repository.resolveSubAccountAndInvitations),

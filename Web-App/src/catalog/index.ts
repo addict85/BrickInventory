@@ -1,9 +1,9 @@
 /** The public face of the area: others import only from here, the cut below stays free. */
 export { isGuess } from './barcodeSource';
 export { blColorNumberFrom } from './blMapping';
-export { hatPrice, marketPriceFrom } from './bricklinkPrices';
+export { hasPrice, marketPriceFrom } from './bricklinkPrices';
 export type { CatalogEntry } from './bricklinkPrices';
-export { NO_COLOR as KEINE_FARBE } from './colors';
+export { NO_COLOR } from './colors';
 export { mergeInstructions } from './instructions';
 export { forSet } from './priceComparison';
 export { setNumberCandidates } from './productTitle';

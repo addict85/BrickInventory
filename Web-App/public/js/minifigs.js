@@ -185,6 +185,53 @@ function appendFigs(batch) {
   renderFigs(allFigsCache);
 }
 
+/** The parts of a figure tile that depend on its source. @param {Minifig | ManualMinifig} f */
+function figTileExtras(f) {
+  // Trash at the top right, as on the set tile: .ca sets top:6px;right:6px and fades it in on
+  // hover (styles.css). Marco's requirement from 24.09., second part: "like the tiles for
+  // the sets. But only in the web app."
+  const delBtn =
+    f.source === 'manual'
+      ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${genuine()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-key-hint="${esc(tRaw('tile.delete_key'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
+      : '';
+  // Condition only for manually captured figures — those from sets have none of their own. The
+  // owner badge on the other hand always: "whom does this belong to?" arises just the same for the figure from a
+  // child's set.
+  const condBadge =
+    f.source === 'manual'
+      ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
+      : '';
+  const owner = ownerBadges(f)
+    ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
+    : '';
+  return { delBtn, condBadge, owner };
+}
+
+/** One tile of the set figures. @param {Minifig | ManualMinifig} f */
+function figCard(f) {
+  const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
+  const dateVal = /** @type {string | null} */ (f.set_added_at || null);
+  const captured = dateVal ? fmtDate(dateVal) : '';
+  const { delBtn, condBadge, owner } = figTileExtras(f);
+  // Manually captured figures have their own dialog (purchase prices, quantity editable); those from sets
+  // the new one without price and without quantity change. The tile decides by the source, so that
+  // BOTH cases are right — even if this list today only
+  // loads `source=set`.
+  const k = tileName();
+  return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-style="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+    ${rawHtml(delBtn)}
+    ${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="image-ph part-img" aria-hidden="true">${placeholderContent('figur')}</span>`}
+    <div class="part-num">${f.fig_number}</div>
+    <div class="part-name">${f.fig_name || '—'}</div>
+    <div class="tile-more"${k.teil(0)}>
+    <div class="part-qty">×${f.total_quantity || f.quantity}</div>
+    ${rawHtml(condBadge)}
+    ${rawHtml(owner)}
+    ${captured ? html`<div data-style="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${captured}</div>` : ''}
+    </div>
+  </div>`;
+}
+
 /**
  * @param {(Minifig | ManualMinifig)[]} list
  * @param {HTMLElement} [target] target container. Default is #figs-list.
@@ -256,45 +303,7 @@ export function renderFigs(list, target) {
         <span class="group-sub">${tRaw('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
-        ${figs.map(f => {
-          const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
-          const dateVal = /** @type {string | null} */ (f.set_added_at || null);
-          const captured = dateVal ? fmtDate(dateVal) : '';
-          // Trash at the top right, as on the set tile: .ca sets top:6px;right:6px and fades it in on
-          // hover (styles.css). Marco's requirement from 24.09., second part: "like the tiles for
-          // the sets. But only in the web app."
-          const delBtn =
-            f.source === 'manual'
-              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${genuine()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-key-hint="${esc(tRaw('tile.delete_key'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
-              : '';
-          // Condition only for manually captured figures — those from sets have none of their own. The
-          // owner badge on the other hand always: "whom does this belong to?" arises just the same for the figure from a
-          // child's set.
-          const condBadge =
-            f.source === 'manual'
-              ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
-              : '';
-          const owner = ownerBadges(f)
-            ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
-            : '';
-          // Manually captured figures have their own dialog (purchase prices, quantity editable); those from sets
-          // the new one without price and without quantity change. The tile decides by the source, so that
-          // BOTH cases are right — even if this list today only
-          // loads `source=set`.
-          const k = tileName();
-          return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-style="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
-            ${rawHtml(delBtn)}
-            ${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="image-ph part-img" aria-hidden="true">${placeholderContent('figur')}</span>`}
-            <div class="part-num">${f.fig_number}</div>
-            <div class="part-name">${f.fig_name || '—'}</div>
-            <div class="tile-more"${k.teil(0)}>
-            <div class="part-qty">×${f.total_quantity || f.quantity}</div>
-            ${rawHtml(condBadge)}
-            ${rawHtml(owner)}
-            ${captured ? html`<div data-style="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${captured}</div>` : ''}
-            </div>
-          </div>`;
-        })}
+        ${figs.map(figCard)}
       </div>
     </div>`,
     ),
@@ -573,6 +582,49 @@ export function manualQuery(view, searchId) {
   return s ? '?' + s : '';
 }
 
+/** @param {ManualPart | ManualMinifig} p @param {boolean} isPart */
+function manualImageCell(p, isPart) {
+  const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
+  const ph = isPart ? 'teil' : 'figur';
+  return imgSrc
+    ? imageTag({ src: imgSrc, alt: '', class: 'image-small', ph })
+    : html`<span class="image-ph image-small" aria-hidden="true">${placeholderContent(ph)}</span>`;
+}
+
+/** For the part the trash carries (number, color, owner), for the figure (number, owner) — the same
+ * order as on the tiles. @param {ManualPart | ManualMinifig} p @param {boolean} isPart @param {unknown} number */
+function manualDeleteButton(p, isPart, number) {
+  const deleteClick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
+  const deleteTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
+  const deleteArgs = isPart
+    ? `data-arg="${esc(number)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
+    : `data-arg="${esc(number)}" data-arg2="${p.user_id || ''}"`;
+  return html`<button class="delbtn" data-click="${deleteClick}"${genuine()} ${rawHtml(deleteArgs)} title="${deleteTitle}" aria-label="${deleteTitle}">${TRASH_ICON_SVG}</button>`;
+}
+
+/** @param {ManualPart | ManualMinifig} p @param {boolean} isPart @param {'part'|'fig'} kind */
+function manualRow(p, isPart, kind) {
+  const number = isPart ? p.part_number : p.fig_number;
+  const blNumber = (isPart ? p.bl_part_number : p.bl_fig_number) || number;
+  const name = isPart ? p.part_name : p.fig_name;
+  const price = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
+  return html`<tr data-style="cursor:pointer" data-click="openManDetail" data-arg="${kind}" data-arg2="${number}" data-arg3="${isPart ? p.color_id || 0 : 0}">
+    <td>${manualImageCell(p, isPart)}</td>
+    <td>${rowsButton(
+      { click: 'openManDetail', arg: kind, arg2: String(number), arg3: isPart ? Number(p.color_id) || 0 : 0 },
+      html`<span data-style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${number}">${blNumber}</span>`,
+      tRaw('row.open', { name: name || number, nr: blNumber }),
+    )}</td>
+    <td data-style="max-width:200px">${name || '—'}</td>
+    ${isPart ? html`<td><div data-style="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-color-hex="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
+    <td><span data-style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
+    <td>${condBadges(p)}</td>
+    <td class="price">${price != null ? fmtN(price, accountCurrency) : '—'}</td>
+    <td data-style="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
+    <td>${manualDeleteButton(p, isPart, number)}${ownerBadges(p)}</td>
+  </tr>`;
+}
+
 /**
  * The manually captured items as a table: the view switch stands above both lists and must apply to
  * both. One function for parts and figures, so that the two tables do not drift apart.
@@ -592,35 +644,7 @@ export function manualTable(items, kind) {
     t('detail.storage'),
     '',
   ];
-  const row = (/** @type {ManualPart | ManualMinifig} */ p) => {
-    const number = isPart ? p.part_number : p.fig_number;
-    const blNumber = (isPart ? p.bl_part_number : p.bl_fig_number) || number;
-    const name = isPart ? p.part_name : p.fig_name;
-    const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
-    const price = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-    const deleteClick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
-    const deleteTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
-    // For the part the trash carries (number, color, owner), for the figure (number, owner) — the same
-    // order as on the tiles.
-    const deleteArgs = isPart
-      ? `data-arg="${esc(number)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
-      : `data-arg="${esc(number)}" data-arg2="${p.user_id || ''}"`;
-    return html`<tr data-style="cursor:pointer" data-click="openManDetail" data-arg="${kind}" data-arg2="${number}" data-arg3="${isPart ? p.color_id || 0 : 0}">
-      <td>${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'image-small', ph: isPart ? 'teil' : 'figur' }) : html`<span class="image-ph image-small" aria-hidden="true">${placeholderContent(isPart ? 'teil' : 'figur')}</span>`}</td>
-      <td>${rowsButton(
-        { click: 'openManDetail', arg: kind, arg2: String(number), arg3: isPart ? Number(p.color_id) || 0 : 0 },
-        html`<span data-style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${number}">${blNumber}</span>`,
-        tRaw('row.open', { name: name || number, nr: blNumber }),
-      )}</td>
-      <td data-style="max-width:200px">${name || '—'}</td>
-      ${isPart ? html`<td><div data-style="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-color-hex="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
-      <td><span data-style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
-      <td>${condBadges(p)}</td>
-      <td class="price">${price != null ? fmtN(price, accountCurrency) : '—'}</td>
-      <td data-style="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
-      <td><button class="delbtn" data-click="${deleteClick}"${genuine()} ${rawHtml(deleteArgs)} title="${deleteTitle}" aria-label="${deleteTitle}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
-    </tr>`;
-  };
+  const row = (/** @type {ManualPart | ManualMinifig} */ p) => manualRow(p, isPart, kind);
   return html`<div class="tw"><table class="dt" aria-label="${tRaw(isPart ? 'parts.manual_section' : 'finance.figs_section')}" data-style="font-size:var(--fs-2)"><thead><tr>${header.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(items.map(row))}</tbody></table></div>`;
 }
 

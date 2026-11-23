@@ -133,6 +133,52 @@ function focusOnTitle(surface) {
   title.focus({ preventScroll: true });
 }
 
+/** If the import was only just now, load once more after the background job. @param {() => void} load */
+const afterImportAgain = load => {
+  if (Date.now() - lastImportAt < 30000) setTimeout(load, 5000);
+};
+
+/** What a tab loads when it is opened. @type {Record<string, () => void>} */
+const TAB_LOADERS = {
+  // loadGallery() loads the metrics itself; a second call cost double on the budget (apiThrottle.ts).
+  gallery: () => emit('collectionLoad'),
+  catalog: () => initCatalog(),
+  wanted: () => loadWanted(),
+  parts: () => {
+    loadParts();
+    loadManualParts();
+    loadBrickColors();
+    afterImportAgain(() => {
+      loadParts();
+      loadManualParts();
+    });
+  },
+  minifigs: () => {
+    loadMinifigs();
+    afterImportAgain(loadMinifigs);
+  },
+  // loadFinance already fetches parts+minifigs valuation in parallel
+  finance: () => emit('financesLoad'),
+  // The tab only carries the admin sections; whatever used to be loaded along here is fetched by the
+  // respective view when opening (see openView below). Whoever looks up the API keys needs no voucher list.
+  settings: () => {
+    showSettingAccess();
+    loadSettings();
+    if (loggedInAccount?.isAdmin) {
+      loadApiLimits();
+      loadCacheTtl();
+      loadSchedules();
+    }
+  },
+  monitor: () => {
+    loadMonitor();
+    loadCacheStats();
+    loadRateLimitStats();
+    stopJobPolling();
+    pollJobStatus();
+  },
+};
+
 export function bindTabs() {
   queryAll('.ntab').forEach(t => {
     // Avoid duplicate listeners
@@ -161,54 +207,7 @@ export function bindTabs() {
       // The year label at the scroll bar belongs ONLY in the catalog. Without this unregistering the function registered there
       // kept delivering a year — even in the gallery, where the number means nothing.
       if (tab !== 'catalog') setScrollLabel(null);
-      // loadGallery() loads the metrics itself; a second call cost double on the budget (apiThrottle.ts).
-      if (tab === 'gallery') emit('collectionLoad');
-      if (tab === 'catalog') {
-        initCatalog();
-      }
-      if (tab === 'wanted') {
-        loadWanted();
-      }
-      if (tab === 'parts') {
-        loadParts();
-        loadManualParts();
-        loadBrickColors();
-        // If the import was only just now, load once more after the background job
-        if (Date.now() - lastImportAt < 30000)
-          setTimeout(() => {
-            loadParts();
-            loadManualParts();
-          }, 5000);
-      }
-      if (tab === 'minifigs') {
-        loadMinifigs();
-        if (Date.now() - lastImportAt < 30000) setTimeout(loadMinifigs, 5000);
-      }
-      if (tab === 'finance') {
-        emit('financesLoad');
-      } // loadFinance already fetches parts+minifigs valuation in parallel
-      if (tab === 'partslist') {
-        /* session-only, no server load needed */
-      }
-      // Since 16.10. the tab only carries the admin sections; whatever used to be loaded along here
-      // is now fetched by the respective view when opening (see openView below). Whoever looks up the API keys
-      // needs no voucher list.
-      if (tab === 'settings') {
-        showSettingAccess();
-        loadSettings();
-        if (loggedInAccount?.isAdmin) {
-          loadApiLimits();
-          loadCacheTtl();
-          loadSchedules();
-        }
-      }
-      if (tab === 'monitor') {
-        loadMonitor();
-        loadCacheStats();
-        loadRateLimitStats();
-        stopJobPolling();
-        pollJobStatus();
-      }
+      TAB_LOADERS[tab]?.();
       if (tab !== 'monitor' && stopMonitor()) stopJobPolling();
     });
   });

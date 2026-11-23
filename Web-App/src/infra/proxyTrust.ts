@@ -3,9 +3,12 @@ import net from 'node:net';
 /** Only explicitly named addresses: every trusted sender can state its client address freely
  * and thus bypass the login lock. A network spanning more than eight addresses only with `networkConfirmed`
  * (PROXY_NETWORK_CONFIRMED=1): it usually contains clients too. */
-export function proxyTrust(wert?: string, networkConfirmed = false): false | string[] | ((address: string) => boolean) {
-  const v = (wert ?? '').trim();
-  if (!v) return nurLoopback;
+export function proxyTrust(
+  value?: string,
+  networkConfirmed = false,
+): false | string[] | ((address: string) => boolean) {
+  const v = (value ?? '').trim();
+  if (!v) return onlyLoopback;
   if (/^(false|nein|no|off)$/i.test(v)) return false;
   const entries = v.split(/[\s,]+/).filter(Boolean);
   const wrong = entries.filter(e => !proxyEntryValid(e, networkConfirmed));
@@ -50,7 +53,7 @@ export function proxyEntryValid(entry: string, networkConfirmed = false): boolea
 
 export const withoutV4Shell = (address: string) => address.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
 
-function nurLoopback(address: string): boolean {
+function onlyLoopback(address: string): boolean {
   const a = withoutV4Shell(address);
   return a === '::1' || /^127\.\d+\.\d+\.\d+$/.test(a);
 }

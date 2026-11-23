@@ -6,8 +6,8 @@ import { failDomain, notFound } from '../../src/infra/errorTexts';
 import { accountGate, guardFor } from './middleware';
 import {
   uploadQuotaBytes,
-  privaterFolder,
-  privaterReceive,
+  privateFolder,
+  privateReceive,
   quotaSufficesFor,
   totalSufficesFor,
   uploadTotalMb,
@@ -29,8 +29,8 @@ const beforeTheUpload =
     if (!(await d.sets.setBelongsAccount(uid, pathParam(req, 'setNumber')))) notFound();
     const length = Number(req.headers['content-length']) || 0;
     if (!(await quotaSufficesFor(path.join(INSTRUCTION_ROOT, String(uid)), length)))
-      failDomain('zu_gross', 'upload_quota_full', { mb: uploadQuotaMb() });
-    if (!(await totalSufficesFor(length))) failDomain('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() });
+      failDomain('too_large', 'upload_quota_full', { mb: uploadQuotaMb() });
+    if (!(await totalSufficesFor(length))) failDomain('storage_full', 'upload_total_full', { mb: uploadTotalMb() });
     next();
   };
 
@@ -42,19 +42,15 @@ export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'
     // The administrator deletes shared instructions: the same step guard as every administrator route.
     const admin = isAdmin(req);
     if (admin && !(await released(d.account, req, res, 'admin'))) return;
-    const { instructions, auftrag } = await d.sets.loadInstructionsNew(
-      req.apiUser.user_id,
-      req.pathArgs.setNumber,
-      admin,
-    );
+    const { instructions, job } = await d.sets.loadInstructionsNew(req.apiUser.user_id, req.pathArgs.setNumber, admin);
     res.status(202);
-    return { instructions, count: instructions.length, job_id: auftrag };
+    return { instructions, count: instructions.length, job_id: job };
   });
 
-  const uploadInstr = privaterReceive({
-    folder: req => privaterFolder(INSTRUCTION_ROOT, String(signedInUserId(req))),
+  const uploadInstr = privateReceive({
+    folder: req => privateFolder(INSTRUCTION_ROOT, String(signedInUserId(req))),
     prefix: req => pathParam(req, 'setNumber'),
-    typen: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
+    types: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
     maxBytes: 50 * 1024 * 1024,
   });
 
@@ -65,7 +61,7 @@ export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'
     beforeTheUpload(d),
     uploadInstr.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       await checkReceivedFile(INSTRUCTION_ROOT, req.file.path, req.file.mimetype);
       const uid = signedInUserId(req),
         sn = req.pathArgs.setNumber;

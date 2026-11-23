@@ -1,5 +1,5 @@
 import { resolveImageLocal } from '../images';
-import { asIds, type Sicht } from '../household';
+import { asIds, type Viewer } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 import { withVersion } from '../infra/setNumber';
 import { Degradations } from '../infra/result';
@@ -17,7 +17,7 @@ type MinifigsQuery = {
 };
 export async function readMinifigs(
   k: MinifigsContext,
-  userIdChoice: Sicht | number | number[],
+  userIdChoice: Viewer | number | number[],
   { search, source, set_number, page = 1, page_size = null }: MinifigsQuery = {},
 ) {
   const userId = await k.household.scopeFrom(userIdChoice);
@@ -28,7 +28,7 @@ export async function readMinifigs(
     search: search ?? null,
     source: source ?? null,
     setNumber: set_number ? withVersion(set_number) : null,
-    seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
+    page: size ? { size: size, offset: (Math.max(1, page || 1) - 1) * size } : null,
   });
 
   // One "used" acquisition is enough for the minifig to count as used.
@@ -56,7 +56,7 @@ export async function readMinifigs(
 }
 
 // One count for the webapp and the app; the app used to count itself, differently.
-export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sicht | number | number[]) {
+export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Viewer | number | number[]) {
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const row = await k.minifigsList.minifigStats(uids);
@@ -72,7 +72,7 @@ export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sich
 /** @param viewerId whose settings apply (currency); `userId` says whose data. */
 export async function readManualMinifigs(
   k: MinifigsContext,
-  userIdChoice: Sicht | number | number[],
+  userIdChoice: Viewer | number | number[],
   viewerId: number,
   {
     page = 1,
@@ -87,7 +87,7 @@ export async function readManualMinifigs(
   const figs = await k.minifigsList.manualMinifigsList(
     uids,
     search,
-    size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
+    size ? { size: size, offset: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const withCondition = await k.inventory.setManualCondition(uids, mapped, 'fig');

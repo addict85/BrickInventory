@@ -37,7 +37,7 @@ test('app.account cannot be switched unnoticed within a request', { concurrency:
   if (!process.env.TEST_DB_EIGEN_URL || (await zugang.asSuperuserConnected()))
     return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
   const k = dbConfigFromEnvironment();
-  const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const eigen = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });
   t.after(async () => {
     await app.pool.end().catch(() => {});

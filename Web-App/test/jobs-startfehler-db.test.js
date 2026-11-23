@@ -4,12 +4,12 @@
  * worker healthy.
  *
  * Checked on the real server (ROLE=jobs). A preloaded module makes
- * planeAll() throw, as a missing table or connection would.
+ * planAll() throw, as a missing table or connection would.
  *
  * Counter-checks (measured 05.11.2026):
  *   A  in server.ts again `void starte();` → red: “the process ends with
  *      exit code 1” (it kept running until the test aborted it after 20 s)
- *   B  in startJobs() the heartbeat again before planeAll() → red:
+ *   B  in startJobs() the heartbeat again before planAll() → red:
  *      “no heartbeat without a worker”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -34,7 +34,7 @@ const echt = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echt.apply(this, arguments);
   if (typeof name === 'string' && /(?:jobQueue[/\\\\]|^\\.\\/)schedule(\\.js)?$/.test(name))
-    return { ...m, planeAll: async () => { throw new Error('Testfehler: planeAll'); } };
+    return { ...m, planAll: async () => { throw new Error('Testfehler: planAll'); } };
   return m;
 };`;
 
@@ -47,7 +47,7 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   t.after(() => db.pool.end().catch(() => {}));
 
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
-  const preload = path.join(ordner, 'planeAll-wirft.js');
+  const preload = path.join(ordner, 'planAll-wirft.js');
   fs.writeFileSync(preload, PRELOAD);
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
@@ -76,7 +76,7 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
 
   await t.test('the process ends with exit code 1', () => {
     assert.equal(ende, 1, log.slice(-1500));
-    assert.match(log, /Start gescheitert: .*Testfehler: planeAll/);
+    assert.match(log, /Start gescheitert: .*Testfehler: planAll/);
   });
 
   await t.test('no sign of life without a worker', async () => {

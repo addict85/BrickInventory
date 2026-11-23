@@ -17,7 +17,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
-const { baseTheMetrics, totalGuvPercent } = _req('src/finances/calculation/profitLoss.js');
+const { baseTheMetrics, totalPnlPercent } = _req('src/finances/calculation/profitLoss.js');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
@@ -62,12 +62,12 @@ test('server: a gift counts, without market or purchase price not', () => {
   );
   assert.equal(b.cost_without_market_price, '438.96');
   assert.equal(b.market_value_without_purchase_price, '45.00');
-  assert.equal(totalGuvPercent(zeilen), '21.8');
+  assert.equal(totalPnlPercent(zeilen), '21.8');
 });
 
 test('UI: cost basis + P/L = market value, percent matches, basis named', async () => {
   const b = baseTheMetrics(zeilen);
-  const pct = totalGuvPercent(zeilen);
+  const pct = totalPnlPercent(zeilen);
   const sets = SETS.map(([nr, k, m]) => ({
     set_number: nr,
     name: nr,

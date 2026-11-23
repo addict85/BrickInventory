@@ -53,7 +53,7 @@ test('a new installation gets random secrets, only reachable by the owner', t =>
   const ordner = path.join(s.location, 'geheimnisse');
   assert.deepEqual(fs.readdirSync(ordner).sort(), NAMEN);
   assert.equal(fs.statSync(ordner).mode & 0o777, 0o700, 'the folder is open to others');
-  for (const n of NAMEN) assert.equal(fs.statSync(path.join(ordner, n)).mode & 0o777, 0o444, `${n}: Modus`);
+  for (const n of NAMEN) assert.equal(fs.statSync(path.join(ordner, n)).mode & 0o777, 0o444, `${n}: mode`);
   assert.match(s.lies('session_secret'), /^[0-9a-f]{96}$/);
   assert.match(s.lies('db_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_app_password'), /^[0-9a-f]{48}$/);

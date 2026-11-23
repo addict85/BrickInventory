@@ -27,7 +27,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { buildTestBundle } = require('./helpers/bundle');
 
-process.env.TEST_BUENDEL = buildTestBundle(
+process.env.TEST_BUNDLE = buildTestBundle(
   'aktionen-dispatcher',
   "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',

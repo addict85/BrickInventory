@@ -26,7 +26,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
   // What is observed is the date of the scheduled job 'prices'.
   const Z = _req('src/jobQueue/schedule.js');
   await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
-  await Z.planeNext('prices');
+  await Z.planNext('prices');
   const spaeter = () =>
     db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'prices' AND status = 'pending'`);
   const faellig = async () =>

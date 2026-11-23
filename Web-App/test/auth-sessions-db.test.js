@@ -131,7 +131,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
         tokenDigest(tok),
         victimId,
       ]);
-      assert.ok(await userForToken(tok), 'Vorbedingung: Token gilt');
+      assert.ok(await userForToken(tok), 'precondition: the token is valid');
 
       // 'nochNeuer1234' — the subtest before changed it.
       const chef = await anmelden('pw_chef', 'nochNeuer1234');

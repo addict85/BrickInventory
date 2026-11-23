@@ -12,8 +12,8 @@ import type { ImagesContext } from './context';
 export const FITTED_MARKER = 'vorschauen_eingepasst';
 const OLD_EDGE = 200;
 
-async function masse(datei: string): Promise<{ width: number; height: number } | null> {
-  const fd = await fs.promises.open(datei, 'r').catch(withoutMissingFile('vorschau:masse', null));
+async function dimensions(file: string): Promise<{ width: number; height: number } | null> {
+  const fd = await fs.promises.open(file, 'r').catch(withoutMissingFile('vorschau:masse', null));
   if (!fd) return null;
   try {
     const buf = Buffer.alloc(65536);
@@ -26,9 +26,9 @@ async function masse(datei: string): Promise<{ width: number; height: number } |
 
 /** Only the old crop looked like this: exactly 200 × 200 for an original that is not square. */
 async function cropped(original: string, preview: string): Promise<boolean> {
-  const v = await masse(preview);
+  const v = await dimensions(preview);
   if (!v || v.width !== OLD_EDGE || v.height !== OLD_EDGE) return false;
-  const o = await masse(original);
+  const o = await dimensions(original);
   return !!o && o.height > 0 && Math.abs(o.width / o.height - 1) > 0.02;
 }
 
@@ -38,16 +38,16 @@ const pause = () => new Promise(r => setTimeout(r, 10));
  * @returns how many previews were replaced, or null if it already ran once */
 export async function fitTailoredPreviews(
   k: Pick<ImagesContext, 'jobQueue' | 'clock'>,
-  local: { web: string; datei: string }[],
+  local: { web: string; file: string }[],
   proxyFolder = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
   if (await k.jobQueue.readState(FITTED_MARKER)) return null;
   let replaced = 0,
     checked = 0;
-  for (const { web, datei } of local) {
-    const preview = datei.replace(path.extname(datei), '_thumb.jpg');
+  for (const { web, file } of local) {
+    const preview = file.replace(path.extname(file), '_thumb.jpg');
     if (++checked % 10 === 0) await pause();
-    if (!(await cropped(datei, preview))) continue;
+    if (!(await cropped(file, preview))) continue;
     await fs.promises.rm(preview, { force: true });
     if ((await attempts('vorschau:einpassen', previewFrom(web))).ok) replaced++;
   }
@@ -61,7 +61,7 @@ export async function fitTailoredPreviews(
     await fs.promises.rm(preview, { force: true });
     replaced++;
   }
-  await k.jobQueue.setState(FITTED_MARKER, k.clock.datum().toISOString());
+  await k.jobQueue.setState(FITTED_MARKER, k.clock.date().toISOString());
   if (replaced) console.log(`  🖼️  ${replaced} zugeschnittene Vorschauen neu eingepasst`);
   return replaced;
 }

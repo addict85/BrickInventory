@@ -5,7 +5,7 @@ import type { Request, Response } from 'express';
 import { userIdTheRequest } from '../../account/http/login';
 import { safeDataPath } from '../../infra/dataPath';
 import { pathSegments } from '../../http/httpResponse';
-import { responseOnFileError, deliverFile, sendeDatei } from '../../http/serveFile';
+import { responseOnFileError, deliverFile, sendFile } from '../../http/serveFile';
 import { countProxyError } from '../imgProxyStats';
 import { imageReleased } from '../imageScope';
 import { previewFrom, previewType } from '../thumbs';
@@ -46,7 +46,7 @@ export async function deliverImage(d: ImageServices, req: Request, res: Response
   // private: the response depends on a login. max-age=0 so that a replaced image applies immediately.
   res.setHeader('Cache-Control', 'private, max-age=0');
   if (/_thumb\.jpg$/.test(filePath)) res.type(await previewType(filePath));
-  sendeDatei(res, filePath, async err => {
+  sendFile(res, filePath, async err => {
     if (!err || res.headersSent) return;
     // An error WITH its own number (416, 403) is not a missing file.
     const status = (err as { status?: number }).status;

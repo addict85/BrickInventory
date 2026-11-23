@@ -77,11 +77,11 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
   const rel = `/images/parts/${file}`;
 
   if (!fs.existsSync(dest)) {
-    await k.cdnDrossel.acquire();
+    await k.cdnThrottle.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await k.images
       .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text => console.warn(`[img-dl] ${p.id}: ${text}`))
-      .finally(() => k.cdnDrossel.release());
+      .finally(() => k.cdnThrottle.release());
     if (!ok) return;
   }
 
@@ -130,7 +130,7 @@ async function fetchImageLock(
 }
 
 // One lock per set: concurrent calls for the same set wait for the first one.
-const locks = (k: CatalogContext) => k.faecher.slot('setBilder:sperren', () => new Map<string, Promise<void>>());
+const locks = (k: CatalogContext) => k.compartments.slot('setBilder:sperren', () => new Map<string, Promise<void>>());
 
 async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBusy = false) {
   const n = withVersion(setNumber);
@@ -147,13 +147,13 @@ async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBus
   });
   _downloadLocks.set(n, lock);
 
-  const sperre = await fetchImageLock(k, n, waitIfBusy);
-  if (sperre === 'belegt') {
+  const held = await fetchImageLock(k, n, waitIfBusy);
+  if (held === 'belegt') {
     resolveLock();
     _downloadLocks.delete(n);
     return;
   }
-  const { lockClient, haveXlock } = sperre;
+  const { lockClient, haveXlock } = held;
 
   let _pendingAdded = 0; // this batch's share of the global imgDl counter
   let _flushed = 0; // of which already reported to the counter (rest in finally)

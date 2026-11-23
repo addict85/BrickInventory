@@ -39,7 +39,7 @@ const MASS = `(() => {
     rollt: nav.scrollWidth > nav.clientWidth + 1,
     pageWider: document.documentElement.scrollWidth > innerWidth,
     farbe: getComputedStyle(nav.querySelector('a')).color,
-    grund: getComputedStyle(document.body).backgroundColor,
+    reason: getComputedStyle(document.body).backgroundColor,
   };
 })()`;
 

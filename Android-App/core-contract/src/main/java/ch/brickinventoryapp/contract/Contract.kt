@@ -667,7 +667,6 @@ data class GenericAdminResponse(
 @Serializable
 data class GenericResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("trash") val trash: List<Int> = emptyList(),
     @SerialName("new_quantity") val newQuantity: Int = 0,
     @SerialName("from_user_id") val fromUserId: Int = 0,
     @SerialName("to_user_id") val toUserId: Int = 0,
@@ -681,6 +680,7 @@ data class GenericResponse(
     @SerialName("source_emptied") val sourceEmptied: Boolean = false,
     @SerialName("quantity") val quantity: Int? = null,
     @SerialName("degraded") val degraded: List<String> = emptyList(),
+    @SerialName("trash") val trash: List<Int> = emptyList(),
     @SerialName("linked_to") val linkedTo: AccountName = AccountName(),
     @SerialName("removed") val removed: Int = 0,
     @SerialName("instruction") val instruction: InstructionUploadedInstruction = InstructionUploadedInstruction(),

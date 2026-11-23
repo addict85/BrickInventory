@@ -28,8 +28,8 @@ test('the Brickset resubmission registers its kind with payload, the run is prov
   const brickset = testServices()
     .jobQueue.signedInKinds()
     .find(a => a.kind === 'brickset');
-  assert.ok(brickset?.exklusiv, 'brickset is registered as exclusive');
+  assert.ok(brickset?.exclusive, 'brickset is registered as exclusive');
   assert.equal(brickset.payload.safeParse({ set_number: '10001-1', versuch: 2 }).success, true);
   assert.equal(brickset.payload.safeParse({ set_number: '' }).success, false);
-  assert.equal(typeof brickset.ausfuehren, 'function');
+  assert.equal(typeof brickset.run, 'function');
 });

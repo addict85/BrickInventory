@@ -2,7 +2,7 @@
  * context.ts only builds from the other storage location services. */
 import * as storages from './repository/storageLocation';
 import type { Writer } from '../household';
-import type { LagerArt } from './storageLocation';
+import type { StorageKind } from './storageLocation';
 import type { InventoryContext } from './context';
 
 /** Who may write is decided by src/household/household.ts; this function
@@ -10,7 +10,7 @@ import type { InventoryContext } from './context';
  * @returns how many rows were affected (0 = there is nothing to set) */
 export async function setLocation(
   k: InventoryContext,
-  kind: LagerArt,
+  kind: StorageKind,
   ownerIdsChoice: Writer | number[],
   keyRaw: (string | number)[],
   location: string | null,

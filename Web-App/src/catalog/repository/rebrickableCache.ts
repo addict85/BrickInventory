@@ -27,11 +27,11 @@ export async function catalogSetTo(db: DbInterface, number: string): Promise<Cat
 }
 
 /** So that a re-query happens at most daily. */
-export async function rememberUnknownSet(db: DbInterface, number: string, alsGear: boolean): Promise<void> {
+export async function rememberUnknownSet(db: DbInterface, number: string, asGear: boolean): Promise<void> {
   await db.run(
     `INSERT INTO catalog_cache (set_number, is_gear) VALUES ($1,$2)
     ON CONFLICT (set_number) DO UPDATE SET is_gear=$2, fetched_at=NOW()`,
-    [number, alsGear],
+    [number, asGear],
   );
 }
 

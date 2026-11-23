@@ -89,8 +89,8 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
   };
   const consumed = async () =>
     (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
-  // Every login reports its new access (token_neu); here the warning is counted.
-  const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.kind !== 'token_neu');
+  // Every login reports its new access (token_added); here the warning is counted.
+  const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.kind !== 'token_added');
   const mails = async count => {
     for (let i = 0; i < 60 && warnings().length < count; i++) await new Promise(r => setTimeout(r, 25));
     return warnings();
@@ -126,7 +126,7 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
   });
 
   await t.test('the owner gets exactly one mail', async () => {
-    assert.deepEqual(await mails(1), [{ an: `${NAME}@example.org`, kind: 'token_wiederverwendet', name: 'Pixel' }]);
+    assert.deepEqual(await mails(1), [{ an: `${NAME}@example.org`, kind: 'token_reused', name: 'Pixel' }]);
     assert.equal((await callFn('/me', a)).status, 401);
     await new Promise(r => setTimeout(r, 100));
     assert.equal((await mails(1)).length, 1, 'a second attempt sends no second mail');

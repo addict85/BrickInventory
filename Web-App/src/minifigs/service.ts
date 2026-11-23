@@ -41,7 +41,7 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
       .placeJobOne(
         'images',
         { set_number: figNumber, only_images: true },
-        { schluessel: `images:${withVersion(figNumber)}:nur`, maxAttempts: 3 },
+        { key: `images:${withVersion(figNumber)}:nur`, maxAttempts: 3 },
       )
       .catch(logAndContinue('figuren:downloadSetImages'));
   });

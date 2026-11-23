@@ -14,7 +14,7 @@ export async function catalogImageStatus(
   return { total: parseInt(r?.total ?? '0', 10), withImage: parseInt(r?.with_img ?? '0', 10) };
 }
 
-export interface CsvTeil {
+export interface CsvPart {
   part_number: string;
   bl_part_number: string;
   part_name: string | null;
@@ -26,8 +26,8 @@ export interface CsvTeil {
   is_spare: boolean;
 }
 
-export async function inventoryPartsWithoutFallback(db: DbInterface, inventoryId: number): Promise<CsvTeil[]> {
-  return db.all<CsvTeil>(
+export async function inventoryPartsWithoutFallback(db: DbInterface, inventoryId: number): Promise<CsvPart[]> {
+  return db.all<CsvPart>(
     `SELECT ip.part_num AS part_number,
             COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
             p.name AS part_name, ip.color_id,
@@ -74,7 +74,7 @@ export async function manualColorParts(
   l: CatalogReadContract,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
   return db.all<Columns<'parts', 'id' | 'part_number' | 'color_id'>>(
-    `SELECT id, part_number, color_id FROM ${l.teilBestand()} p
+    `SELECT id, part_number, color_id FROM ${l.partHoldings()} p
       WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC`,
   );
 }

@@ -6,7 +6,7 @@ import { isValidUserValue, writeUserSetting } from './settings';
 import * as repo from './repository/currency';
 import type { SettingsContext } from './context';
 
-const currencyChange = (k: SettingsContext) => k.faecher.slot('currencyChange', () => event('currencyChange'));
+const currencyChange = (k: SettingsContext) => k.compartments.slot('currencyChange', () => event('currencyChange'));
 /** Finances sit above and listen themselves (createFinances): settings does not know them. */
 export function onCurrencyChange(k: SettingsContext, fn: () => unknown): () => void {
   return currencyChange(k).listen(fn);
@@ -17,7 +17,7 @@ export function onCurrencyChange(k: SettingsContext, fn: () => unknown): () => v
 export async function setUserSetting(k: SettingsContext, userId: number, key: string, value: unknown) {
   if (key !== 'currency') return writeUserSetting(k, userId, key, value);
   const v = String(value).trim();
-  if (!isValidUserValue(key, v)) failDomain('ungueltig', 'value_invalid');
+  if (!isValidUserValue(key, v)) failDomain('invalid', 'value_invalid');
   return setHouseholdCurrency(k, userId, v);
 }
 
@@ -26,29 +26,34 @@ export async function deleteUserSetting(k: SettingsContext, userId: number, key:
   await k.repository.deleteUserValue(userId, key);
 }
 
+type Tx = Parameters<Parameters<SettingsContext['transact']>[0]>[0];
+
+/** A sub-account keeps the main account's currency; every change triggers a full price run.
+ * @returns the currency before */
+async function currencyInTransaction(t: Tx, userId: number, currency: string) {
+  await lockHouseholdCurrency(t.db);
+  const old = await repo.storedCurrencyOf(t.db, userId);
+  const subAccount = await repo.hasMainAccount(t.db, t.readContract, userId);
+  if (old !== currency) {
+    if (subAccount) failDomain('forbidden', 'currency_main_account_only');
+    const rate = await t.throttle.countInWindow(`waehrung|konto:${userId}`, 60);
+    if (rate.count > 5) failDomain('too_many', 'too_many_requests', { minutes: rate.waitMin });
+  }
+  if (subAccount) return old;
+  const household = await repo.ownHousehold(t.db, t.readContract, userId);
+  if ((await repo.sharedWithForeignMain(t.db, t.readContract, household, currency)).length) {
+    if (old !== currency) failDomain('conflict', 'currency_shared_sub_account');
+    return old;
+  }
+  await repo.setCurrencyFor(t.db, household, currency);
+  return old;
+}
+
 /** For the whole household, otherwise two currencies would give a wrong total; redeemInvitation() locks the same way. */
 async function setHouseholdCurrency(k: SettingsContext, userId: number, currency: string) {
   // Over grandchildren and foreign main accounts (sharedWithForeignMain): further than the row guard reaches.
   const before = await inSystemContext('haushaltswaehrung', () =>
-    k.transact(async t => {
-      await lockHouseholdCurrency(t.db);
-      const old = await repo.storedCurrencyOf(t.db, userId);
-      const subAccount = await repo.hasMainAccount(t.db, t.readContract, userId);
-      if (old !== currency) {
-        if (subAccount) failDomain('verboten', 'currency_main_account_only');
-        // Every change triggers a full price run.
-        const rate = await t.throttle.countInWindow(`waehrung|konto:${userId}`, 60);
-        if (rate.count > 5) failDomain('zu_viele', 'too_many_requests', { minutes: rate.waitMin });
-      }
-      if (subAccount) return old;
-      const household = await repo.ownHousehold(t.db, t.readContract, userId);
-      if ((await repo.sharedWithForeignMain(t.db, t.readContract, household, currency)).length) {
-        if (old !== currency) failDomain('konflikt', 'currency_shared_sub_account');
-        return old;
-      }
-      await repo.setCurrencyFor(t.db, household, currency);
-      return old;
-    }),
+    k.transact(t => currencyInTransaction(t, userId, currency)),
   );
   if (before !== currency) {
     console.log(

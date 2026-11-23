@@ -36,7 +36,7 @@ export function buildPartsRouter(
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       return {
         ...(await d.collection.runImport<CsvImportReport>(req.apiUser.user_id, 'teile_csv', {
           text: req.file.buffer.toString('utf-8'),
@@ -74,7 +74,7 @@ export function buildPartsRouter(
     // The new color must be present: V.colorId() would turn missing into "no color",
     // a silent clearing with a success message.
     const newColor = req.input.color_id;
-    if (newColor == null || newColor < 0) failDomain('ungueltig', 'color_required');
+    if (newColor == null || newColor < 0) failDomain('invalid', 'color_required');
     const result = await d.parts.changePartColor(owner, req.pathArgs.partNumber, req.pathArgs.colorId, newColor, {
       color_name: req.input.color_name ?? null,
       color_hex: req.input.color_hex ?? null,
@@ -108,7 +108,7 @@ export function buildPartsRouter(
     const location = normalizeLocation(req.input.storage);
     const n = await d.inventory.locationService.setLocation(
       'part',
-      { schreiber: req.apiUser.user_id },
+      { writer: req.apiUser.user_id },
       [req.pathArgs.partNumber, req.pathArgs.colorId],
       location,
     );

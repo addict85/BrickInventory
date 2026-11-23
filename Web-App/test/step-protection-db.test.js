@@ -57,9 +57,9 @@ const auth = _req('src/account/deviceToken.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/time');
 const { adminWithFactor } = require('./helpers/admin');
-const { geraeteSchluessel, signIt, releaseDevice, deposit } = require('./helpers/device');
+const { deviceKeys, signIt, releaseDevice, deposit } = require('./helpers/device');
 const attestation = require('./helpers/attestation');
-const repo = require('./helpers/sources').testArea('devices').geraeteSchluessel;
+const repo = require('./helpers/sources').testArea('devices').deviceKeys;
 const { pairQr } = require('./helpers/qr');
 const freePort = () =>
   new Promise(r => {
@@ -251,7 +251,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     await db.run('INSERT INTO device_keys (user_id, token_family, public_key) VALUES ($1, $2, $3)', [
       f.uid,
       f.since,
-      geraeteSchluessel().public_key,
+      deviceKeys().public_key,
     ]);
     assert.equal(
       (await klartext({ token: alt })).body.code,
@@ -292,7 +292,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     const fremd = await callFn('/device/step/approval', {
       method: 'POST',
       token,
-      body: { challenge: c.body.challenge, signature: signIt(geraeteSchluessel().privateKey, c.body.message) },
+      body: { challenge: c.body.challenge, signature: signIt(deviceKeys().privateKey, c.body.message) },
     });
     assert.deepEqual([fremd.status, fremd.body.code], [400, 'step_signature_invalid']);
     const spaeter = await callFn('/device/step/approval', {

@@ -18,30 +18,30 @@ export const secondFactorContext = (uid: number) => context('zweiter_faktor.gehe
 
 export function base32(buf: Buffer): string {
   let bits = 0,
-    wert = 0,
+    value = 0,
     from = '';
   for (const b of buf) {
-    wert = (wert << 8) | b;
+    value = (value << 8) | b;
     bits += 8;
     while (bits >= 5) {
-      from += BASE32[(wert >>> (bits - 5)) & 31];
+      from += BASE32[(value >>> (bits - 5)) & 31];
       bits -= 5;
     }
   }
-  if (bits > 0) from += BASE32[(wert << (5 - bits)) & 31];
+  if (bits > 0) from += BASE32[(value << (5 - bits)) & 31];
   return from;
 }
 
 export function fromBase32(s: string): Buffer {
-  const rein = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  const clean = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
   let bits = 0,
-    wert = 0;
+    value = 0;
   const from: number[] = [];
-  for (const z of rein) {
-    wert = (wert << 5) | BASE32.indexOf(z);
+  for (const z of clean) {
+    value = (value << 5) | BASE32.indexOf(z);
     bits += 5;
     if (bits >= 8) {
-      from.push((wert >>> (bits - 8)) & 255);
+      from.push((value >>> (bits - 8)) & 255);
       bits -= 8;
     }
   }

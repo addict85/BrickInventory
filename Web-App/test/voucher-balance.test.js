@@ -91,7 +91,7 @@ test('balance query', async t => {
     assert.deepEqual(
       g,
       { amount: 250, currency: 'CHF', formatted: 'CHF 250.00' },
-      'Expected 25000 Rappen / 100 = 250 — the amount must NOT be parsed from the ' +
+      'Expected 25000 cents / 100 = 250 — the amount must NOT be parsed from the ' +
         'formatted text: there the thousands separator depends on the country.',
     );
     assert.deepEqual(

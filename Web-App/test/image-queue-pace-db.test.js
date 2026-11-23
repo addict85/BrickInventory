@@ -128,7 +128,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
         'That was exactly Marco’s situation: the job was working, but with ' +
         `${STAPEL} per twenty seconds — a good 37 minutes for 1113 finished images.`,
     );
-    assert.equal(e.uebersprungen, COUNT, 'Not all were counted as „vorhanden“');
+    assert.equal(e.skipped, COUNT, 'Not all were counted as „vorhanden“');
     assert.equal(e.work, 0, 'An image with its preview must not cause any work step');
     assert.equal(loadTimes.length, 0, 'The CDN was asked although everything was there');
     // Without real work no politeness pause may occur either: it protects
@@ -241,8 +241,8 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
       'One tick must clear the whole stretch — the three missing images ' +
         'are below the quota, the finished ones cost nothing',
     );
-    assert.equal(e.geholt, ZU_LADEN);
-    assert.equal(e.uebersprungen, DONE);
+    assert.equal(e.fetched, ZU_LADEN);
+    assert.equal(e.skipped, DONE);
     assert.equal(loadTimes.length, ZU_LADEN, 'More was loaded than necessary');
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -442,7 +442,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
       'A note without a set number disappears without a trace — it counted as ' +
         '„bearbeitet“ without appearing anywhere',
     );
-    assert.equal(e.geholt + e.preview + e.uebersprungen, 0);
+    assert.equal(e.fetched + e.preview + e.skipped, 0);
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]).catch(() => {});
   });
 

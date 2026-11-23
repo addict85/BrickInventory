@@ -11,7 +11,7 @@ import { AsyncResource } from 'node:async_hooks';
 type Handler = (payload?: string) => void | Promise<void>;
 /** The handler runs in the frame of its listen(): a stream of a request then
  * queries with its account, a job in the system frame (row-level security, migration 0111). */
-type Entry = { raw: Handler; lauf: Handler };
+type Entry = { raw: Handler; run: Handler };
 
 /** Channel names are identifiers and cannot be bound as parameters. */
 function quoteIdent(name: string) {
@@ -77,7 +77,7 @@ export class Notification implements Signals {
       });
       c.on('notification', (msg: import('pg').Notification) => {
         for (const h of this._handlers.get(msg.channel) || []) {
-          Promise.resolve(h.lauf(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
+          Promise.resolve(h.run(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
         }
       });
       await c.connect();
@@ -93,7 +93,7 @@ export class Notification implements Signals {
       for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
       // A signal from the disconnect is lost: the handlers catch up once.
       for (const [channel, hs] of this._handlers) {
-        for (const h of hs) fetchPending(h.lauf);
+        for (const h of hs) fetchPending(h.run);
         if (this._client === c) this._listens.add(channel);
       }
     } catch (e) {
@@ -134,7 +134,7 @@ export class Notification implements Signals {
     quoteIdent(channel);
     this._closed = false;
     if (!this._handlers.has(channel)) this._handlers.set(channel, []);
-    this._handlers.get(channel)!.push({ raw: handler, lauf: AsyncResource.bind(handler) });
+    this._handlers.get(channel)!.push({ raw: handler, run: AsyncResource.bind(handler) });
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {

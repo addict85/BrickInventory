@@ -196,7 +196,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     await W.addWantedItem(U.enkel, '10276-1', 'N');
     const P = {
       ..._req('src/finances/priceAlert.js'),
-      ...require('./helpers/sources').testArea('finances').preisalarm,
+      ...require('./helpers/sources').testArea('finances').priceAlert,
     };
     await P.setAlert(U.enkel, '10276-1', 'EUR', { direction: 'below', threshold: 249, condition: 'U' });
     assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 1, 'setup: alert is missing');
@@ -372,7 +372,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     //      turns red (UNIQUE violation instead of merging).
     const P = {
       ..._req('src/finances/priceAlert.js'),
-      ...require('./helpers/sources').testArea('finances').preisalarm,
+      ...require('./helpers/sources').testArea('finances').priceAlert,
     };
     const sn = `wlmv${process.pid}-1`;
     await db.run(

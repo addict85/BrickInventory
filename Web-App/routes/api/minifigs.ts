@@ -41,7 +41,7 @@ export function buildMinifigsRouter(
     const location = normalizeLocation(req.input.storage);
     const n = await d.inventory.locationService.setLocation(
       'fig',
-      { schreiber: req.apiUser.user_id },
+      { writer: req.apiUser.user_id },
       [req.pathArgs.figNumber],
       location,
     );
@@ -92,7 +92,7 @@ export function buildMinifigsRouter(
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       return {
         ...(await d.collection.runImport<CsvImportReport>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),

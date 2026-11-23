@@ -114,7 +114,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
               oben: Math.round(r.top), unten: Math.round(r.bottom),
               soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-top')) || 0,
               lowerBar: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
-              grund: getComputedStyle(nav).backgroundColor,
+              reason: getComputedStyle(nav).backgroundColor,
               pageWider: document.documentElement.scrollWidth > innerWidth,
             };
           })()`);

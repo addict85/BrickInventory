@@ -26,7 +26,7 @@ const db = testData();
 const { getGlobalSetting } = _req('src/settings/settings.js');
 
 const NAME = `degradiert_${process.pid}`,
-  TEIL = '3001dg';
+  PART = '3001dg';
 
 test('read errors: `degradiert` or an error, never silently empty', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -38,10 +38,10 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       [NAME],
     )
   ).id;
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, PART]);
   await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [
     uid,
-    TEIL,
+    PART,
   ]);
   // The table comes back in the finally, even if an assertion fails.
   const weg = async (/** @type {string} */ tabelle) => {
@@ -63,7 +63,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
     const j = await manualOnes();
     assert.deepEqual(
       j.parts.map((/** @type {any} */ p) => p.part_number),
-      [TEIL],
+      [PART],
     );
     assert.equal(j.degraded, undefined);
   });
@@ -74,7 +74,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       const j = await manualOnes();
       assert.deepEqual(
         j.parts.map((/** @type {any} */ p) => p.part_number),
-        [TEIL],
+        [PART],
         'the list stays',
       );
       assert.equal(j.parts[0].avg_price, null);

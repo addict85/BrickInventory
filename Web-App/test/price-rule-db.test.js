@@ -20,7 +20,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { hatPrice } = _req('src/catalog/bricklinkPrices.js');
+const { hasPrice } = _req('src/catalog/bricklinkPrices.js');
 
 test('the price rule applies the same everywhere', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
@@ -31,18 +31,18 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
 
   try {
     // 1. The rule itself — four cases, one per corner.
-    assert.equal(hatPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
+    assert.equal(hasPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
     assert.equal(
-      hatPrice({ avg_price: 0, qty_avg_price: 12.34 }),
+      hasPrice({ avg_price: 0, qty_avg_price: 12.34 }),
       true,
       'The quantity average is the fallback: 0 is not a price, 12.34 is',
     );
-    assert.equal(hatPrice({ avg_price: null, qty_avg_price: null }), false);
-    assert.equal(hatPrice(null), false, 'no record, no price');
+    assert.equal(hasPrice({ avg_price: null, qty_avg_price: null }), false);
+    assert.equal(hasPrice(null), false, 'no record, no price');
     // Depending on the path numeric comes as text — the rule must tolerate both.
-    assert.equal(hatPrice({ avg_price: '12.34' }), true);
+    assert.equal(hasPrice({ avg_price: '12.34' }), true);
     assert.equal(
-      hatPrice({ avg_price: '0.00' }),
+      hasPrice({ avg_price: '0.00' }),
       false,
       '"0.00" is truthy as a string — exactly that is where the rule failed ' + 'once before',
     );
@@ -121,15 +121,15 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
       [PN],
     );
     const { fetchPartPrice } = _req('src/finances/financeCalc.js');
-    const teil = await fetchPartPrice(PN, 0, 'N', 'EUR', '24');
+    const part = await fetchPartPrice(PN, 0, 'N', 'EUR', '24');
     await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
-    assert.equal(Number(teil.avg_price), 5);
+    assert.equal(Number(part.avg_price), 5);
     assert.equal(
-      Number(teil.qty_avg_price),
+      Number(part.qty_avg_price),
       7,
       'qty_avg_price comes from avg_price instead of its own column — the ' +
         'quantity-weighted average is then silently the plain one. Got: ' +
-        JSON.stringify(teil),
+        JSON.stringify(part),
     );
 
     // 5. And the rule stands at only ONE place. A second version would be

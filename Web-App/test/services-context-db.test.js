@@ -65,13 +65,13 @@ test('k.transact: what is written via t applies together or not at all', async t
   const e = contexts.settings;
   // Only the system role writes global values (0117): the transaction in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
-  const imSystem = f => inSystemContext('test', f);
+  const asSystem = f => inSystemContext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
-  t.after(() => imSystem(() => e.repository.deleteGlobalValues([A, B])));
+  t.after(() => asSystem(() => e.repository.deleteGlobalValues([A, B])));
 
   await assert.rejects(
-    imSystem(() =>
+    asSystem(() =>
       e.transact(async tx => {
         await tx.repository.writeGlobalValue(A, 'eins');
         assert.equal(await tx.repository.globalValue(A), 'eins', 'visible inside');
@@ -87,7 +87,7 @@ test('k.transact: what is written via t applies together or not at all', async t
     'an error rolls everything back',
   );
 
-  await imSystem(() =>
+  await asSystem(() =>
     e.transact(async tx => {
       await tx.repository.writeGlobalValue(A, 'eins');
       await tx.repository.writeGlobalValue(B, 'zwei');

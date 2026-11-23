@@ -48,7 +48,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     assert.equal((await zaehle(kind)).allowed, true);
     const thirdOne = await zaehle(kind);
     assert.equal(thirdOne.allowed, false);
-    assert.equal(thirdOne.jeAccount, true);
+    assert.equal(thirdOne.perAccount, true);
     assert.equal((await k.quotaOverview('brickset')).count, 2);
     assert.equal((await asRequest(kind, () => k.quotaFree('brickset'))).allowed, false);
   });
@@ -82,7 +82,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
       require('./helpers/sources').testServices().jobQueue,
       {
         exchange_rates: {
-          ausfuehren: async () => {
+          run: async () => {
             for (let i = 0; i < 3; i++) results.push((await k.checkAndCountQuota('brickset')).allowed);
           },
         },

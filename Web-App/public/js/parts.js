@@ -343,6 +343,38 @@ function preparePartsShell() {
   bindPartsSentinel();
 }
 
+/** @param {Element} el */
+const observeImages = el => {
+  if (typeof observeLazyImages === 'function') observeLazyImages(el);
+};
+
+/** Group by color — the server already delivers sorted by color. Grouping happens via the ENGLISH name —
+ * it is the stable key from the database. Only the heading is translated when drawing. @param {PartRow[]} parts */
+function colorGroups(parts) {
+  /** @type {{ color: string, hex: string | null | undefined, parts: PartRow[] }[]} */
+  const groups = [];
+  for (const p of parts) {
+    const key = p.color_name || '';
+    const last = groups[groups.length - 1];
+    if (last && last.color === key) last.parts.push(p);
+    else groups.push({ color: key, hex: p.color_hex, parts: [p] });
+  }
+  return groups;
+}
+
+/** Does the group continue the last one of the previous page? Then it hooks into its grid instead of
+ * creating a second heading of the same color. @param {Element} list
+ * @param {{ color: string, parts: PartRow[] }} g @returns {boolean} whether it was appended */
+function continueLastGroup(list, g) {
+  if (g.color !== _partsLastColor) return false;
+  const lastGrid = list.querySelector('.parts-group:last-child .parts-grid');
+  if (!lastGrid) return false;
+  insertHtml(lastGrid, 'beforeend', g.parts.map(partsCard));
+  bumpGroupCount(lastGrid.closest('.parts-group'), g.parts.length);
+  observeImages(lastGrid);
+  return true;
+}
+
 /**
  * Append a page to the existing display.
  * @param {PartRow[]} parts
@@ -352,7 +384,7 @@ function appendParts(parts) {
     const tb = G('parts-main').querySelector('tbody.parts-body');
     if (!tb) return;
     insertHtml(tb, 'beforeend', parts.map(partsTableRow));
-    if (typeof observeLazyImages === 'function') observeLazyImages(tb);
+    observeImages(tb);
     if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(tb.closest('table'));
     return;
   }
@@ -362,35 +394,14 @@ function appendParts(parts) {
   // Ungrouped: the same grid without color tiles, the order comes from the server.
   if (G('parts-order').value !== 'color') {
     insertHtml(list, 'beforeend', parts.map(partsCard));
-    if (typeof observeLazyImages === 'function') observeLazyImages(list);
+    observeImages(list);
     return;
   }
 
-  // Group by color — the server already delivers sorted by color.
-  /** @type {{ color: string, hex: string | null | undefined, parts: PartRow[] }[]} */
-  const groups = [];
-  for (const p of parts) {
-    // Grouping happens via the ENGLISH name — it is the stable key from the database. Only the heading
-    // is translated when drawing.
-    const key = p.color_name || '';
-    const last = groups[groups.length - 1];
-    if (last && last.color === key) last.parts.push(p);
-    else groups.push({ color: key, hex: p.color_hex, parts: [p] });
-  }
-
+  const groups = colorGroups(parts);
   let markup = html``;
   for (const g of groups) {
-    // Does the group continue the last one of the previous page? Then hook into its grid instead of creating a second
-    // heading of the same color.
-    if (g.color === _partsLastColor) {
-      const lastGrid = list.querySelector('.parts-group:last-child .parts-grid');
-      if (lastGrid) {
-        insertHtml(lastGrid, 'beforeend', g.parts.map(partsCard));
-        bumpGroupCount(lastGrid.closest('.parts-group'), g.parts.length);
-        if (typeof observeLazyImages === 'function') observeLazyImages(lastGrid);
-        continue;
-      }
-    }
+    if (continueLastGroup(list, g)) continue;
     markup = html`${markup}${html`<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
         <div class="color-dot large" data-color-hex="${escHex(g.hex, 'var(--s300)')}"></div>
@@ -403,7 +414,7 @@ function appendParts(parts) {
   }
   if (markup) {
     insertHtml(list, 'beforeend', markup);
-    if (typeof observeLazyImages === 'function') observeLazyImages(list);
+    observeImages(list);
   }
   if (groups.length) _partsLastColor = groups[groups.length - 1].color;
 }

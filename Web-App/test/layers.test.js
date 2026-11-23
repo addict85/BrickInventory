@@ -551,20 +551,31 @@ test('routes, jobs and clients import no repositories', () => {
 
   // xBereich() delivers bound repositories and the access (db); a route takes
   // the services the scope offers in its index.ts. Counter-checks (13.11.2026):
-  // `await kontoBereich().protokoll.protokolliere(…)` back in routes/auth/users.ts
-  // → rot „routes/auth/users.ts: kontoBereich()“; `gutscheineBereich` als Import in
-  // routes/api/vouchers.ts → rot „…: gutscheineBereich (Import)“.
-  const CALL = /\b\w+Bereich\s*\(\s*\)/g;
+  // `createAccount(d)` in routes/api/admin.ts → red (22.11.2026, since the English names;
+  // before, the search looked for xBereich() and found nothing).
+  // The scope factories as the wiring imports them from src/<scope>.
+  const FACTORIES = [
+    ...fs
+      .readFileSync(path.join(ROOT, 'startup/wiring.ts'), 'utf8')
+      .matchAll(/import \{([^}]*)\} from '\.\.\/src\/\w+'/g),
+  ].flatMap(m =>
+    m[1]
+      .split(',')
+      .map(n => n.trim())
+      .filter(n => /^create[A-Z]\w*$/.test(n)),
+  );
+  assert.ok(FACTORIES.length >= 15, `only ${FACTORIES.length} area factories found`);
+  const CALL = new RegExp(`\\b(?:${FACTORIES.join('|')})\\s*\\(`, 'g');
   const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;
   for (const d of tsBelow('routes')) {
     const s = sourceText(d);
     for (const m of s.matchAll(CALL)) treffer.push(`${d}: ${m[0].replace(/\s/g, '')}`);
     for (const m of s.matchAll(IMPORT))
       for (const n of m[1].split(',').map(x => x.trim().split(/\s+as\s+/)[0]))
-        if (/Bereich$/.test(n)) treffer.push(`${d}: ${n} (Import)`);
+        if (FACTORIES.includes(n)) treffer.push(`${d}: ${n} (Import)`);
   }
   assert.ok(
-    CALL.test('await kontoBereich().accounts.accountShort(1)') && tsBelow('routes').length > 15,
+    CALL.test('createAccount(deps).accounts.accountShort(1)') && tsBelow('routes').length > 15,
     'Self-proof: the pattern finds a call, and there are routes',
   );
   assert.deepEqual(treffer, []);
@@ -581,7 +592,7 @@ function routesWithoutSlotFlow() {
   // routes/api/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registration.ts → rot.
   /** @type {[RegExp, string][]} */
-  const MUSTER = [
+  const PATTERN = [
     [
       /import\s*\{[^}]*\b(?:tokenDigest|forgetTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:account|profile)'/g,
       'Werkzeug aus src/account',
@@ -590,7 +601,7 @@ function routesWithoutSlotFlow() {
     [/from\s*'[./]+\/src\/mail(?:\/\w+)?'/g, 'src/mail'],
   ];
   assert.ok(
-    MUSTER.every(([re], i) =>
+    PATTERN.every(([re], i) =>
       new RegExp(re.source).test(
         [
           "import { tokenDigest } from '../../src/account';",
@@ -603,7 +614,7 @@ function routesWithoutSlotFlow() {
   );
   const treffer = [];
   for (const d of tsBelow('routes'))
-    for (const [re, was] of MUSTER) for (const _ of sourceText(d).matchAll(re)) treffer.push(`${d}: ${was}`);
+    for (const [re, was] of PATTERN) for (const _ of sourceText(d).matchAll(re)) treffer.push(`${d}: ${was}`);
   assert.deepEqual(treffer, []);
 }
 
@@ -882,6 +893,9 @@ const SEND_ERROR_IN_ROUTES = new Map([
 ]);
 
 test("routes catch no errors — the router's error path answers", () => {
+  const CONVERSION =
+    /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:input|queryArgs|pathArgs)\b/g;
+  assert.equal("String(req.input.condition ?? '')".match(CONVERSION)?.length, 1, 'Selbstbeweis: Umwandlung erkannt');
   // Counter-checks: a route in routes/api/minifigs.ts wrapped again in `try { … } catch (e) {
   // handleRouteError(res, e, undefined, req); }` → red (31.10.2026). In parts.ts
   // `return sendError(req, res, 404, 'part_not_manual')` instead of notFound → red
@@ -900,7 +914,7 @@ test("routes catch no errors — the router's error path answers", () => {
     const results = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
     const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
     for (const z of q.split('\n')) {
-      const wirft = /\b(?:fachfehler|notFound)\(|\bthrow\b/.test(z);
+      const wirft = /\b(?:failDomain|notFound)\(|\bthrow\b/.test(z);
       if (wirft && (results.some(n => vergleich(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
         rejections.push(`${d}: ${z.trim()}`);
     }
@@ -908,10 +922,7 @@ test("routes catch no errors — the router's error path answers", () => {
     if (n) ist.set(d, n);
     const s = (q.match(/\bsendError\(/g) || []).length;
     if (s) sendIt.set(d, s);
-    for (const m of q.matchAll(
-      /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:eingabe|abfrage|pfad)\b/g,
-    ))
-      conversions.push(`${d}: ${m[0]}`);
+    for (const m of q.matchAll(CONVERSION)) conversions.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
   assert.deepEqual(Object.fromEntries(sendIt), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in routes');

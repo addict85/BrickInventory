@@ -72,7 +72,7 @@ test('price alert against a real database', async t => {
   // real sending, counted zero messages — and the cause stood nowhere.
   const A = {
     ..._req('src/finances/priceAlert.js'),
-    ...require('./helpers/sources').testArea('finances').preisalarm,
+    ...require('./helpers/sources').testArea('finances').priceAlert,
   };
   let sent = [];
   let sendingError = null;

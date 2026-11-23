@@ -18,7 +18,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
   if (!(await dataOrSkip(t, _req))) return;
 
   const name = `mkp_${process.pid}`;
-  const TEIL = `mkpP${String(process.pid).slice(-5)}`;
+  const PART = `mkpP${String(process.pid).slice(-5)}`;
   const FIG = `mkpF${String(process.pid).slice(-5)}`;
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
@@ -33,7 +33,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
 
     // Pass names along so that no Rebrickable lookup is needed. NO price
     // — that is what this is about.
-    await addManualPart(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
+    await addManualPart(uid, { part_number: PART, part_name: 'Testteil', color_id: 0, quantity: 2 });
     await addManualMinifig(uid, { fig_number: FIG, fig_name: 'Testfigur', quantity: 2 });
 
     // Read via the lists that the UIs use too — the
@@ -42,7 +42,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
     const partsList = await manualPartsList([uid], uid);
     const figList = await readManualMinifigs([uid], uid);
-    const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === TEIL);
+    const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === PART);
     const figur = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
     assert.ok(teil, 'The part is not in the list');
     assert.ok(figur, 'The figure is not in the list');
@@ -74,7 +74,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     // formed when reading.
     const teilErf = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
       uid,
-      TEIL,
+      PART,
     ]);
     const figErf = await db.get('SELECT unit_price FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [
       uid,

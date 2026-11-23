@@ -5,7 +5,7 @@ import { cleanLoginCounterOn } from './loginLimiter';
 import { runDueTakeoversFrom } from './adminActions';
 import type { AccountContext } from './context';
 
-type Step = [name: string, lauf: () => Promise<unknown>];
+type Step = [name: string, run: () => Promise<unknown>];
 
 export function onCleanupSteps(k: AccountContext, tick: 'stuendlich' | 'taeglich'): Step[] {
   if (tick === 'stuendlich')
@@ -16,7 +16,7 @@ export function onCleanupSteps(k: AccountContext, tick: 'stuendlich' | 'taeglich
     ];
   return [
     ['unbestätigte Registrierungen', () => cleanOpenRegistrationsOn(k)],
-    ['Verwaltungsprotokoll', () => k.protokoll.cleanLogOn()],
+    ['Verwaltungsprotokoll', () => k.log.cleanLogOn()],
   ];
 }
 

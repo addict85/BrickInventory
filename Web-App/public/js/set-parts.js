@@ -36,6 +36,51 @@ function usedInList(sets) {
     : html`<span data-style="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;
 }
 
+/** The item's own rows: quantity, color, category, spare flag and, for parts, the storage location.
+ * @param {string} type @param {string} id @param {number} color
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', `/v2/parts/${string}/${string}/sets`>['item'] | import('../../frontend-types/api').ApiResponse<'GET', `/v2/minifigs/${string}/sets`>['item']} item */
+function itemRows(type, id, color, item) {
+  const rows = [];
+  // Quantity for display only: it comes from the sets' inventories. toLocaleString as on the parts tile —
+  // fmtN() is the money formatter and turned 6 into "EUR 6.00×".
+  rows.push(
+    detailRow(
+      t('setitem.total_qty'),
+      html`<span data-style="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
+    ),
+  );
+
+  if (type === 'part' && item?.color_name) {
+    const dot = item.color_hex
+      ? html`<span data-style="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-color-hex="${escHex(item.color_hex, 'var(--s300)')}"></span>`
+      : '';
+    rows.push(detailRow(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
+  }
+  if (item?.category_name) rows.push(detailRow(t('setitem.category'), esc(item.category_name)));
+  if (item?.is_spare) rows.push(detailRow(t('parts.spare_tag'), ico('ok')));
+
+  // Storage location for parts only: a minifig sits in its set, whose location is in the set detail. The
+  // field writes to every row of the part/color pair, because it means the part, not one of its rows.
+  if (type === 'part') {
+    // The location list belongs to the owner, as with a set. owner_ids instead of owners, because grouped
+    // part rows carry no owner badge.
+    loadLocationSelection(item?.owner_ids).catch(() => {});
+    rows.push(
+      detailRow(
+        t('detail.storage'),
+        locationBlock(
+          'setitem-storage',
+          item?.storage,
+          `data-change="savePartLocation" data-entry-type="part" data-part="${escJs(id)}" data-color="${color}" ` +
+            `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
+        ),
+        { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
+      ),
+    );
+  }
+  return rows;
+}
+
 /**
  * @param {string} type
  * @param {string} id
@@ -75,52 +120,10 @@ export async function openSetItemDetail(type, id, colorId) {
   // was exactly part of what was asked for.
   const raw = item?.image_local || item?.image_url || '';
   const full = raw ? imgUrl(fullUrl(raw), false) : '';
-  if (full) {
-    setDialogImage(imgEl, full, full);
-    imgEl.style.display = '';
-  } else {
-    imgEl.style.display = 'none';
-  }
+  if (full) setDialogImage(imgEl, full, full);
+  imgEl.style.display = full ? '' : 'none';
 
-  const rows = [];
-  // Quantity for display only: it comes from the sets' inventories. toLocaleString as on the parts tile —
-  // fmtN() is the money formatter and turned 6 into "EUR 6.00×".
-  rows.push(
-    detailRow(
-      t('setitem.total_qty'),
-      html`<span data-style="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
-    ),
-  );
-
-  if (type === 'part' && item?.color_name) {
-    const dot = item.color_hex
-      ? html`<span data-style="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-color-hex="${escHex(item.color_hex, 'var(--s300)')}"></span>`
-      : '';
-    rows.push(detailRow(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
-  }
-  if (item?.category_name) rows.push(detailRow(t('setitem.category'), esc(item.category_name)));
-  if (item?.is_spare) rows.push(detailRow(t('parts.spare_tag'), ico('ok')));
-
-  // Storage location for parts only: a minifig sits in its set, whose location is in the set detail. The
-  // field writes to every row of the part/color pair, because it means the part, not one of its rows.
-  if (type === 'part') {
-    // The location list belongs to the owner, as with a set. owner_ids instead of owners, because grouped
-    // part rows carry no owner badge.
-    loadLocationSelection(item?.owner_ids).catch(() => {});
-    rows.push(
-      detailRow(
-        t('detail.storage'),
-        locationBlock(
-          'setitem-storage',
-          item?.storage,
-          `data-change="savePartLocation" data-entry-type="part" data-part="${escJs(id)}" data-color="${color}" ` +
-            `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
-        ),
-        { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
-      ),
-    );
-  }
-
+  const rows = itemRows(type, id, color, item);
   const list = usedInList(sets);
   // The table sits below the label (flex-direction:column): in the .dr row it slid next to "Used in" with
   // a single set, and the image touched the text.

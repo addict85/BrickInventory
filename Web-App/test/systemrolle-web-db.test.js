@@ -216,7 +216,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       .testServices()
       .jobQueue.signedInKinds()
       .find(a => a.kind === 'catalog_followup');
-    await inSystemContext('Test', () => followUp.ausfuehren({}, {}));
+    await inSystemContext('Test', () => followUp.run({}, {}));
     assert.equal(await open(), 0, 'the job empties it');
   });
 

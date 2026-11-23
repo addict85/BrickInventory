@@ -94,7 +94,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
       fuer.map(b =>
-        asAccount(haupt, () => sets.acquireSet({ requester: haupt, ownerWish: b, setNumber: SN, kaufpreis: null })),
+        asAccount(haupt, () => sets.acquireSet({ requester: haupt, ownerWish: b, setNumber: SN, purchasePrice: null })),
       ),
     );
     assert.equal(r.filter(x => x.action === 'added').length, 1, JSON.stringify(r.map(x => x.action)));
@@ -165,8 +165,8 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       [haupt, SN2],
     );
     assert.deepEqual(
-      { preis: Number(erf.purchase_price), geschaetzt: erf.price_estimated, condition: erf.condition },
-      { preis: 42, geschaetzt: true, condition: 'U' },
+      { preis: Number(erf.purchase_price), estimated: erf.price_estimated, condition: erf.condition },
+      { preis: 42, estimated: true, condition: 'U' },
     );
     assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
     // A second run does not ask the catalog again: stream and job do not interfere.

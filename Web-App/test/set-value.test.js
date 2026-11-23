@@ -187,7 +187,7 @@ test('the finances view shows avg_price as market price', () => {
   );
   assert.match(
     fin,
-    /parseFloat\(d\.totals\.avg\s*\|\|\s*'?0'?\)/,
+    /parseFloat\(d\.totals\??\.avg\s*\|\|\s*'?0'?\)/,
     'The totals are labelled „Ø Marktpreis“ and must take totals.avg',
   );
   assert.match(

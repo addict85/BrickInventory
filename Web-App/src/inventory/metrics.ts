@@ -1,8 +1,8 @@
-import { asIds, type Sicht } from '../household';
+import { asIds, type Viewer } from '../household';
 import type { InventoryContext } from './context';
 
 /** Span all three domains and therefore belong to none of them. */
-export async function getStats(k: InventoryContext, userIdChoice: Sicht | number | number[]) {
+export async function getStats(k: InventoryContext, userIdChoice: Viewer | number | number[]) {
   const userId = await k.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);

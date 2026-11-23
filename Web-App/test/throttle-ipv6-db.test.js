@@ -68,7 +68,7 @@ test('login: spraying from a /64 hits the per-address limit', async t => {
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
   await clean();
   t.after(clean);
-  for (let i = 0; i < L.MAX_JE_ADDRESS; i++) {
+  for (let i = 0; i < L.MAX_PER_ADDRESS; i++) {
     const ip = `2001:db8:5:0:${(i + 1).toString(16)}::1`;
     const name = `v6_spray_${i}`;
     assert.equal(await L.loginAllowed(ip, name), null, `attempt ${i + 1} is still allowed`);

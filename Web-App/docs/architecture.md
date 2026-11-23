@@ -326,7 +326,7 @@ Bereich, der ihn einbindet. Die Stufen gelten deshalb auch für Daten:
 - Liegt er darunter (Einstellungen, Aufträge, Haushalt, Geräte, Bilder, Katalog,
   Finanzen, Bestand), nennt er in `src/<bereich>/readContract.ts` die Form, die er
   braucht (Unterabfragen mit festen Spalten), und bekommt sie als `lesevertrag` im
-  Kontext. Gefüllt wird der Vertrag aus `LESEVERTRAG` in `src/services.ts`
+  Kontext. Gefüllt wird der Vertrag aus `READ_CONTRACT` in `src/services.ts`
   (Stufe 19, über jedem Besitzer); die Repositories nehmen ihn nach dem Zugang
   (`withContract`). Wer eine Tabelle umbaut, passt den Baustein an, der Vertrag
   des Lesers bleibt.

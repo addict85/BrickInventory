@@ -8,7 +8,7 @@ export function baseUrl(): string | null {
 
 // Once per area: callers run in loops.
 export function hintWithoutBaseUrl(area: string, sequence: string): void {
-  const _reported = processWide('basisUrlGemeldet', () => new Set<string>());
+  const _reported = processWide('baseUrlReported', () => new Set<string>());
   if (_reported.has(area)) return;
   _reported.add(area);
   console.warn(`⚠️  [${area}] APP_BASE_URL ist nicht gesetzt — ${sequence} Siehe README.md.`);

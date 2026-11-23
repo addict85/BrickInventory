@@ -1,6 +1,6 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { imSystem, bound, type Context } from '../infra/area';
+import { asSystem, bound, type Context } from '../infra/area';
 import type { Compartments } from '../infra/cache';
 import * as repository from './repository/values';
 import type { ThrottleServices } from '../throttle';
@@ -11,7 +11,7 @@ export interface SettingsDependencies {
   clock: Clock;
   db: Db;
   /** Who listens for changes to global values; createSettings sets it up. */
-  faecher: Compartments;
+  compartments: Compartments;
   throttle: ThrottleServices;
   readContract: SettingsReadContract;
 }
@@ -27,11 +27,11 @@ export const access = (db: Db) => ({
     deleteUserValue: bound(db)(repository.deleteUserValue),
     userValues: bound(db)(repository.userValues),
     firstValueIn: bound(db)(repository.firstValueIn),
-    foreignUserValue: imSystem(db, 'Verwaltung: reads another account’s value', repository.userValue),
-    writeGlobalValue: imSystem(db, GLOBAL, repository.writeGlobalValue),
-    deleteGlobalValues: imSystem(db, GLOBAL, repository.deleteGlobalValueRows),
+    foreignUserValue: asSystem(db, 'Verwaltung: reads another account’s value', repository.userValue),
+    writeGlobalValue: asSystem(db, GLOBAL, repository.writeGlobalValue),
+    deleteGlobalValues: asSystem(db, GLOBAL, repository.deleteGlobalValueRows),
     globalValues: bound(db)(repository.globalValues),
-    replaceGlobalValue: imSystem(db, GLOBAL, repository.replaceGlobalValue),
+    replaceGlobalValue: asSystem(db, GLOBAL, repository.replaceGlobalValue),
   },
 });
 export type SettingsContext = Context<SettingsDependencies, ReturnType<typeof access>>;

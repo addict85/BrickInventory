@@ -63,7 +63,7 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
   if (!(await dataOrSkip(t, _req))) return;
 
   const ID = String(process.pid);
-  const TEIL = `t${ID}`,
+  const PART = `t${ID}`,
     FIGURE = `sw${ID}`,
     RB_FIGURE = `fig-${ID}`;
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
@@ -76,7 +76,7 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
     );
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   const aufraeumen = async () => {
-    await db.run('DELETE FROM part_price_history WHERE part_number = $1', [TEIL]);
+    await db.run('DELETE FROM part_price_history WHERE part_number = $1', [PART]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [[FIGURE, RB_FIGURE]]);
     await db.run('DELETE FROM minifig_price_history WHERE fig_number = ANY($1)', [[FIGURE, RB_FIGURE]]);
   };
@@ -94,11 +94,11 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
       db.run(
         `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
       VALUES ($1, 5, 'N', 'EUR', $2, $2) ON CONFLICT DO NOTHING`,
-        [TEIL, p],
+        [PART, p],
       );
     await neu(1);
     await neu(2);
-    const z = await db.all('SELECT avg_price FROM part_price_history WHERE part_number = $1', [TEIL]);
+    const z = await db.all('SELECT avg_price FROM part_price_history WHERE part_number = $1', [PART]);
     assert.deepEqual(
       z.map(r => Number(r.avg_price)),
       [1],
@@ -119,7 +119,7 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
         await c.query(
           `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, recorded_at)
           VALUES ($1, 7, 'N', 'EUR', $2, $2, $3)`,
-          [TEIL, p, `2026-01-02T${zeit}:00Z`],
+          [PART, p, `2026-01-02T${zeit}:00Z`],
         );
       for (const [p, zeit] of [
         [6, '09:00'],
@@ -132,7 +132,7 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
         );
       await c.query(sql);
       const parts = await c.query(`SELECT avg_price FROM part_price_history WHERE part_number = $1 AND color_id = 7`, [
-        TEIL,
+        PART,
       ]);
       const minifigs = await c.query(`SELECT avg_price FROM minifig_price_history WHERE fig_number = $1`, [FIGURE]);
       assert.deepEqual(
@@ -161,11 +161,10 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
     const { fetchMinifigPrice } = _req('src/finances/financeCalc.js');
     const p = await fetchMinifigPrice(FIGURE, 'N', 'EUR', 24);
     assert.equal(Number(p.avg_price), 20);
-    const row = await db.get(
-      'SELECT estimated AS geschaetzt, coverage AS abdeckung FROM minifig_price_cache WHERE fig_number = $1',
-      [FIGURE],
-    );
-    assert.equal(row.geschaetzt, false, 'the real price still carries the estimate marker');
+    const row = await db.get('SELECT estimated, coverage AS abdeckung FROM minifig_price_cache WHERE fig_number = $1', [
+      FIGURE,
+    ]);
+    assert.equal(row.estimated, false, 'the real price still carries the estimate marker');
     assert.equal(row.abdeckung, null);
   });
 
@@ -177,6 +176,6 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
     );
     const { estimateMinifigsPrice } = _req('src/finances/marketPrice.js');
     const s = await estimateMinifigsPrice(RB_FIGURE, 0, 'N');
-    assert.deepEqual(s, { preis: 8, abdeckung: 0.75 });
+    assert.deepEqual(s, { price: 8, abdeckung: 0.75 });
   });
 });

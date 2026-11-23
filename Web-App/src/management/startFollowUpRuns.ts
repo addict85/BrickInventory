@@ -40,8 +40,8 @@ function runners(k: ManagementContext): Record<FollowUpStep, () => Promise<unkno
   };
 }
 
-async function runFollowUp(k: ManagementContext, n: Payload<'followup'>, lauf?: JobRun): Promise<void> {
-  checkAbort(lauf);
+async function runFollowUp(k: ManagementContext, n: Payload<'followup'>, run?: JobRun): Promise<void> {
+  checkAbort(run);
   await runners(k)[n.schritt]();
 }
 
