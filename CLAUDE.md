@@ -30,14 +30,13 @@ Testnamen, Datei- und Verzeichnisnamen sowie das Datenbankschema und der
 API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `shared/app-interface.json`).
 Davor war der Code durchgehend Deutsch. Stand 23.11.2026:
 
-- Server-Code (`server.ts`, `src/`, `routes/`, `startup/`, `scripts/`) und
-  Android-App: deutsche Bezeichner sind ein festes Verbot. Ausnahmen stehen
-  begründet in `NOT_OURS` (`test/ratschen.test.js`) — nur gespeicherte Werte,
-  Leitungswerte älterer Clients und fremde Namen; eine Ausnahme ohne
-  Vorkommen ist rot.
-- Tests der Web-App: deutsche Bezeichner und deutsche Prüfmeldungen sind
-  noch Ratschen in `test/ratschen.test.js` — die Zahl darf sinken, nie
-  steigen. Neue Tests sind vollständig Englisch.
+- Server-Code (`server.ts`, `src/`, `routes/`, `startup/`, `scripts/`), Tests
+  der Web-App und Android-App: deutsche Bezeichner und deutsche
+  Prüfmeldungen sind ein festes Verbot. Ausnahmen stehen begründet in
+  `NOT_OURS` / `NOT_OURS_IN_TESTS` (`test/ratschen.test.js`) — nur
+  gespeicherte Werte, Leitungswerte älterer Clients, Umgebungsvariablen und
+  fremde Namen; eine Ausnahme ohne Vorkommen ist rot.
+- Dateinamen einiger Tests (z. B. `ratschen.test.js`) sind noch deutsch.
 
 Deutsch bleiben: Commit-Nachrichten und Oberflächentexte (das, was Nutzer auf
 Deutsch sehen — `public/locales/de.js`, `values-de/strings.xml`, Mailtexte,
