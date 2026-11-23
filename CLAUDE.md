@@ -27,12 +27,17 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 Seit Runde 30 (17.11.2026, Entscheid des Nutzers) ist der Quellcode auf
 Englisch: Bezeichner (Variablen, Klassen, Funktionen, Methoden), Kommentare,
 Testnamen, Datei- und Verzeichnisnamen sowie das Datenbankschema und der
-API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `app-schnittstelle.json`).
-Davor war der Code durchgehend Deutsch; die Umstellung lief bereichsweise und
-ist seit dem 21.11.2026 abgeschlossen (Web-App und Android-App, inklusive
-der Kommentare). Die dafür genutzten Ratschen in `test/ratschen.test.js` und
-`QuelltextRatscheTest.kt` sind entfernt — neuer Quelltext ist ohnehin auf
-Englisch zu schreiben, ganz ohne Ausnahmeliste.
+API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `shared/app-interface.json`).
+Davor war der Code durchgehend Deutsch. Stand 23.11.2026:
+
+- Server-Code (`server.ts`, `src/`, `routes/`, `startup/`, `scripts/`) und
+  Android-App: deutsche Bezeichner sind ein festes Verbot. Ausnahmen stehen
+  begründet in `NOT_OURS` (`test/ratschen.test.js`) — nur gespeicherte Werte,
+  Leitungswerte älterer Clients und fremde Namen; eine Ausnahme ohne
+  Vorkommen ist rot.
+- Tests der Web-App: deutsche Bezeichner und deutsche Prüfmeldungen sind
+  noch Ratschen in `test/ratschen.test.js` — die Zahl darf sinken, nie
+  steigen. Neue Tests sind vollständig Englisch.
 
 Deutsch bleiben: Commit-Nachrichten und Oberflächentexte (das, was Nutzer auf
 Deutsch sehen — `public/locales/de.js`, `values-de/strings.xml`, Mailtexte,
@@ -58,11 +63,12 @@ Schweizer Nutzer verständlich.
 - `npm test` im Verzeichnis `Web-App/` braucht eine Test-Datenbank
   (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft parallel, jede Testdatei auf
   einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-run.js`);
-  `npm run test:seriell` läuft wie früher nacheinander.
-- Ohne Chrome überspringen die Browser-Dateien still. Lokal deshalb mit
-  `CHROME_BIN=<pfad zu chrome>` und `REQUIRE_BROWSER=1` laufen lassen (dann
-  ist ein fehlender Browser rot); die Abschlusszeile von `npm test` nennt,
-  wie viele Browser- und Caddy-Dateien übersprungen wurden.
+  `npm run test:serial` läuft wie früher nacheinander.
+- Browser-Dateien sind Pflicht: `npm test` setzt `REQUIRE_BROWSER=1`, ein
+  fehlender Chrome ist rot. Lokal mit `CHROME_BIN=<pfad zu chrome>` laufen
+  lassen; überspringen nur ausdrücklich mit `SKIP_BROWSER=1`. Die
+  Abschlusszeile von `npm test` nennt, wie viele Browser- und Caddy-Dateien
+  übersprungen wurden.
 - Während eines Volllaufs **keine Dateien ändern**: Viele Wächter lesen den
   Arbeitsbaum, ein halbfertiger Stand ergibt falsche Fehlschläge.
 - Ein roter Lauf ist erst dann ein Ausrutscher, wenn der Test einzeln grün
